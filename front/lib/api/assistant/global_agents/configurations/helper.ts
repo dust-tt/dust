@@ -14,9 +14,9 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
+  GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  GLOBAL_AGENTS_SID,
 } from "@app/types/assistant/assistant";
 
 export function _getHelperGlobalAgent({

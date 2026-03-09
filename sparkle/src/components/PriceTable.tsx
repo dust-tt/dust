@@ -1,5 +1,5 @@
 import { CheckIcon, DashIcon, XMarkIcon } from "@sparkle/icons/app";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import React, { type ReactNode } from "react";
 
 import { Icon } from "./Icon";
@@ -62,7 +62,7 @@ export function PriceTable({
 
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-w-full",
         "s-flex s-cursor-default s-flex-col s-border s-border-white/30",
         sizeTable[size],
@@ -74,13 +74,13 @@ export function PriceTable({
       )}
     >
       <div
-        className={classNames(
+        className={cn(
           "s-flex s-flex-col",
           size === "xs" ? "s-px-4 s-py-3" : "s-px-5 s-py-4"
         )}
       >
         <div
-          className={classNames(
+          className={cn(
             size === "xs" ? "s-heading-2xl" : "s-heading-3xl",
             "s-w-full s-text-right",
             "s-text-foreground"
@@ -90,7 +90,7 @@ export function PriceTable({
         </div>
         <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
           <span
-            className={classNames(
+            className={cn(
               size === "xs" ? "s-heading-3xl" : "s-heading-4xl",
               textColorTable[color]
             )}
@@ -98,7 +98,7 @@ export function PriceTable({
             {price}
           </span>
           <span
-            className={classNames(
+            className={cn(
               "s-text-foreground",
               size === "xs" ? "s-heading-base" : "s-heading-lg"
             )}
@@ -114,7 +114,7 @@ export function PriceTable({
           borderTopRightRadius: "4px",
           borderTopLeftRadius: "4px",
         }}
-        className={classNames(
+        className={cn(
           "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
           "s-bg-background dark:s-bg-muted-background-night"
         )}
@@ -152,7 +152,7 @@ PriceTable.Item = function ({
 }: PriceTableItemProps) {
   return (
     <div
-      className={classNames(
+      className={cn(
         size === "xs"
           ? "s-gap-2 s-p-2.5 s-text-sm"
           : "s-gap-3 s-p-4 s-text-base",
@@ -170,7 +170,7 @@ PriceTable.Item = function ({
         />
       </div>
       <div
-        className={classNames(
+        className={cn(
           variant === "xmark"
             ? "s-text-primery-600 dark:s-text-primery-600-night"
             : "",
@@ -198,7 +198,7 @@ PriceTable.ActionContainer = function ({
     <>
       {position === "bottom" ? <div className="s-h-full s-w-full" /> : null}
       <div
-        className={classNames(
+        className={cn(
           "s-flex s-w-full s-justify-center s-px-2",
           size === "xs" ? "s-py-2" : "s-py-4",
           position === "top"

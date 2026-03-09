@@ -1,18 +1,3 @@
-import {
-  BookOpenIcon,
-  Button,
-  Card,
-  CardActionButton,
-  CardGrid,
-  EmptyCTA,
-  Hoverable,
-  Spinner,
-  ToolsIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
@@ -24,11 +9,11 @@ import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capab
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -44,6 +29,21 @@ import {
 } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import {
+  BookOpenIcon,
+  Button,
+  Card,
+  CardActionButton,
+  CardGrid,
+  EmptyCTA,
+  Hoverable,
+  Spinner,
+  ToolsIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useState } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;

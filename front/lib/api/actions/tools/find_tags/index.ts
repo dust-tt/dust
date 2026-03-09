@@ -1,52 +1,34 @@
-import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
-import trim from "lodash/trim";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
+import trim from "lodash/trim";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
 export async function executeFindTags(
+  auth: Authenticator,
   query: string,
-  dataSources: DataSourcesToolConfigurationType,
-  auth?: Authenticator
+  dataSources: DataSourcesToolConfigurationType
 ): Promise<Result<TextContent[], MCPError>> {
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
-  const coreSearchArgsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration) =>
-      getCoreSearchArgs(auth, dataSourceConfiguration),
-    { concurrency: 10 }
-  );
-
-  if (coreSearchArgsResults.some((res) => res.isErr())) {
+  if (coreSearchArgsResults.isErr()) {
     return new Err(
       new MCPError(
-        "Invalid data sources: " +
-          removeNulls(
-            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-          )
-            .map((error) => error.message)
-            .join("\n")
+        "Invalid data sources: " + coreSearchArgsResults.error.message
       )
     );
   }
 
-  const coreSearchArgs = removeNulls(
-    coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-  );
+  const coreSearchArgs = coreSearchArgsResults.value;
 
   if (coreSearchArgs.length === 0) {
     return new Err(

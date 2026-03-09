@@ -1,3 +1,10 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useDeleteTrigger, useUserTriggers } from "@app/lib/swr/agent_triggers";
+import { classNames } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   BellIcon,
@@ -20,14 +27,6 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
 import { useCallback, useMemo, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useDeleteTrigger, useUserTriggers } from "@app/lib/swr/agent_triggers";
-import { classNames } from "@app/lib/utils";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import type { WorkspaceType } from "@app/types/user";
 
 interface ProfileTriggersTabProps {
   owner: WorkspaceType;

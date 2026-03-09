@@ -1,3 +1,7 @@
+import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import {
   Button,
   DropdownMenu,
@@ -12,10 +16,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
-import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 
 function getAuthMethodLabel(
   authMethod: CreateMCPServerDialogFormValues["authMethod"],
@@ -216,7 +216,7 @@ export function RemoteMCPServerConfigurationSection({
           {!defaultServerConfig && authMethod === "oauth-static" && (
             <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
               The redirect URI to allow is{" "}
-              <strong>{window.origin + "/oauth/mcp_static/finalize"}</strong>
+              <strong>{finalizeUriForProvider("mcp_static")}</strong>
             </div>
           )}
         </div>

@@ -1,11 +1,10 @@
-import type { Attributes } from "sequelize";
-
 import { PlanModel } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { isDevelopment, isTest } from "@app/types/shared/env";
+import type { Attributes } from "sequelize";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
@@ -55,6 +54,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 14,
     canUseProduct: true,
+    isByok: false,
   });
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_39_CODE,
@@ -81,6 +81,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 14,
     canUseProduct: true,
+    isByok: false,
   });
 }
 

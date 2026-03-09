@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { syncNotionUrls } from "@app/lib/api/poke/plugins/data_sources/notion_url_sync";
 import { runOnRedis } from "@app/lib/api/redis";
@@ -12,6 +8,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
 import { PostNotionSyncPayloadSchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 const RECENT_URLS_COUNT = 100;
 

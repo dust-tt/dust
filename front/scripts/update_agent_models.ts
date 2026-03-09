@@ -1,21 +1,25 @@
-import { Op } from "sequelize";
-
 import {
   getModelConfigByModelId,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Op } from "sequelize";
 
 type SupportedModelIds = SupportedModel["modelId"];
 type SelectCriteria = {
   onlyActive: boolean;
   usesResponseFormat: boolean;
 };
+
+// Type cast to enable cross-workspace queries.
+const AgentConfigurationModelWithBypass: ModelStaticWorkspaceAware<AgentConfigurationModel> =
+  AgentConfigurationModel;
 
 // Find the workspaceIds that have agentConfigurations using the fromModel and match the selectCriteria.
 async function findMatchingWorkspaces(
@@ -32,11 +36,15 @@ async function findMatchingWorkspaces(
     };
   }
 
-  const agentConfigurations = await AgentConfigurationModel.findAll({
+  const agentConfigurations = await AgentConfigurationModelWithBypass.findAll({
     where: whereClause,
     attributes: ["workspaceId"],
     raw: true,
     group: ["workspaceId"],
+    // WORKSPACE_ISOLATION_BYPASS: Migration script needs to query across all workspaces
+    // to identify which workspaces have agent configurations using the source model.
+    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 
   return agentConfigurations.map((ac) => ac.workspaceId);

@@ -1,6 +1,3 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { AssistantCreativityLevel } from "@app/types/assistant/builder";
@@ -14,6 +11,8 @@ import type {
   TemplateVisibility,
 } from "@app/types/assistant/templates";
 import type { TimeframeUnit } from "@app/types/shared/utils/time_frame";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;

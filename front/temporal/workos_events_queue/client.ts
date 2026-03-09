@@ -1,5 +1,3 @@
-import type { Event } from "@workos-inc/node";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { QUEUE_NAME } from "@app/temporal/workos_events_queue/config";
 import {
@@ -9,6 +7,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Event } from "@workos-inc/node";
 
 export async function launchWorkOSEventsWorkflow({
   eventPayload,

@@ -1,16 +1,7 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  getDatabaseExampleRowsContent,
-  getQueryWritingInstructionsContent,
-  getSchemaContent,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
@@ -19,22 +10,23 @@ import {
 } from "@app/lib/api/actions/servers/data_warehouses/helpers";
 import { DATA_WAREHOUSES_TOOLS_METADATA } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { executeQuery } from "@app/lib/api/actions/servers/query_tables_v2/helpers";
+import {
+  getDatabaseExampleRowsContent,
+  getQueryWritingInstructionsContent,
+  getSchemaContent,
+} from "@app/lib/api/actions/servers/tables_query/schema";
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
-  list: async ({ nodeId, limit, nextPageCursor, dataSources }, extra) => {
-    const { auth } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  list: async ({ nodeId, limit, nextPageCursor, dataSources }, { auth }) => {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -52,14 +44,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const result =
       nodeId === null
@@ -94,13 +78,8 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
 
   find: async (
     { query, rootNodeId, limit, nextPageCursor, dataSources },
-    extra
+    { auth }
   ) => {
-    const { auth } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -118,14 +97,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const result = await getWarehouseNodes(
       auth,
@@ -157,12 +128,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     ]);
   },
 
-  describe_tables: async ({ dataSources, tableIds }, extra) => {
-    const { auth } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  describe_tables: async ({ dataSources, tableIds }, { auth }) => {
     const dataSourceConfigurationsResult =
       await getAgentDataSourceConfigurations(
         auth,
@@ -177,14 +143,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const validationResult = await validateTables(
       auth,
@@ -232,12 +190,10 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     ]);
   },
 
-  query: async ({ dataSources, tableIds, query, fileName }, extra) => {
-    const { auth, agentLoopContext } = extra;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
+  query: async (
+    { dataSources, tableIds, query, fileName },
+    { auth, agentLoopContext }
+  ) => {
     if (!agentLoopContext?.runContext) {
       return new Err(
         new MCPError("Missing agentLoopContext for file generation")
@@ -260,14 +216,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     }
 
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    const authRes = await ensureAuthorizedDataSourceViews(
-      auth,
-      agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-    );
-    if (authRes.isErr()) {
-      return new Err(authRes.error);
-    }
 
     const validationResult = await validateTables(
       auth,

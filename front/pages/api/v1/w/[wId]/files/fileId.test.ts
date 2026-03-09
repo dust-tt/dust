@@ -1,9 +1,8 @@
-import type { RequestMethod } from "node-mocks-http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { FileResource } from "@app/lib/resources/file_resource";
 import handler from "@app/pages/api/v1/w/[wId]/files/[fileId]";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import type { RequestMethod } from "node-mocks-http";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/resources/file_resource", () => ({
   FileResource: {

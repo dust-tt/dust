@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
@@ -11,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GPT_4_1_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 
 export type AgentObservabilitySummaryInput = {
   auth: Authenticator;

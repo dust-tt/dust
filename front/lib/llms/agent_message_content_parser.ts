@@ -1,6 +1,3 @@
-import assert from "assert";
-import escapeRegExp from "lodash/escapeRegExp";
-
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -19,6 +16,8 @@ import {
 } from "@app/types/assistant/models/togetherai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import escapeRegExp from "lodash/escapeRegExp";
 
 type AgentMessageTokenClassification = GenerationTokensEvent["classification"];
 

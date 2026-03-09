@@ -1,6 +1,3 @@
-import { faker } from "@faker-js/faker";
-import { expect, test, vi } from "vitest";
-
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -13,6 +10,8 @@ import type {
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
+import { faker } from "@faker-js/faker";
+import { expect, test, vi } from "vitest";
 
 // Mock GCS bucket to avoid external dependencies.
 vi.mock("@app/lib/file_storage", () => ({

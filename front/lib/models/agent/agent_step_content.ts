@@ -1,11 +1,10 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentModel> {
   declare createdAt: CreationOptional<Date>;

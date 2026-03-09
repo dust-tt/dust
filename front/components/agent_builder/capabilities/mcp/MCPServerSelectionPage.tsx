@@ -1,11 +1,3 @@
-import {
-  ActionCard,
-  ActionIcons,
-  BookOpenIcon,
-  Hoverable,
-} from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
-
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import {
   InternalActionIcons,
@@ -14,6 +6,13 @@ import {
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import {
+  ActionCard,
+  ActionIcons,
+  BookOpenIcon,
+  Hoverable,
+} from "@dust-tt/sparkle";
+import React, { useMemo } from "react";
 
 export interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;

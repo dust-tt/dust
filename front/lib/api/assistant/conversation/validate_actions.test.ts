@@ -26,10 +26,10 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
-  createAgentMessages,
   createUserMentions,
   dismissMention,
 } from "@app/lib/api/assistant/conversation/mentions";
+import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
@@ -47,8 +47,10 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";

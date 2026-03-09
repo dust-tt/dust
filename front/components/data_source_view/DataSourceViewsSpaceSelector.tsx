@@ -1,7 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import type { Dispatch, SetStateAction } from "react";
-import { useMemo } from "react";
-
 import type { useCaseDataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { SpaceSelector } from "@app/components/spaces/SpaceSelector";
@@ -13,6 +9,9 @@ import type {
 } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import type { Dispatch, SetStateAction } from "react";
+import { useMemo } from "react";
 
 interface DataSourceViewsSpaceSelectorProps {
   allowedSpaces?: SpaceType[];

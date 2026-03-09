@@ -1,6 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,6 +12,8 @@ import {
 } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import { isLeft } from "fp-ts/lib/Either";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetOAuthSetupResponseBody {
   redirectUrl: string;
@@ -24,7 +23,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetOAuthSetupResponseBody>>,
   auth: Authenticator,
-  _session: SessionWithUser
+  _session: SessionWithUser | null
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {

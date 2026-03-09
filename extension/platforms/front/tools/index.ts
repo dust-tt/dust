@@ -1,7 +1,7 @@
-import { registerEmailDraftTool } from "@app/platforms/front/tools/emailDraftTool";
-import { registerGetCurrentConversationTool } from "@app/platforms/front/tools/getCurrentConversationTool";
-import { registerNewConversationDraftTool } from "@app/platforms/front/tools/newConversationDraftTool";
-import { registerUpdateDraftTool } from "@app/platforms/front/tools/updateDraftTool";
+import { registerEmailDraftTool } from "@extension/platforms/front/tools/emailDraftTool";
+import { registerGetCurrentConversationTool } from "@extension/platforms/front/tools/getCurrentConversationTool";
+import { registerNewConversationDraftTool } from "@extension/platforms/front/tools/newConversationDraftTool";
+import { registerUpdateDraftTool } from "@extension/platforms/front/tools/updateDraftTool";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 

@@ -1,13 +1,8 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
-import {
-  Button,
-  type ButtonProps,
-  ScrollArea,
-  Separator,
-} from "@sparkle/components";
+import { Button, type ButtonProps } from "@sparkle/components/Button";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
+import { Separator } from "@sparkle/components/Separator";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -34,7 +29,7 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "full"] as const;
+const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "full", "fit"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
 
 const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl"] as const;
@@ -46,6 +41,7 @@ const sizeClasses: Record<DialogSizeType, string> = {
   xl: "sm:s-max-w-3xl",
   "2xl": "sm:s-max-w-5xl",
   full: "sm:s-max-w-full sm:s-h-full",
+  fit: "sm:s-max-w-[90vw] s-w-fit",
 };
 
 const heightClasses: Record<DialogHeightType, string> = {
@@ -58,7 +54,7 @@ const heightClasses: Record<DialogHeightType, string> = {
 const dialogVariants = cva(
   cn(
     "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%] s-translate-y-[-50%] s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]",
-    "s-rounded-2xl s-flex s-flex-col s-w-full s-border s-border s-shadow-lg s-sm:rounded-lg",
+    "s-rounded-2xl s-flex s-flex-col s-w-full s-max-w-[calc(100vw-2rem)] s-border s-border s-shadow-lg s-sm:rounded-lg",
     "s-bg-background dark:s-bg-background-night",
     "s-border-border dark:s-border-border-night",
     "s-max-h-[90vh]"

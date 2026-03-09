@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
@@ -19,6 +17,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { FileType } from "@app/types/files";
 import { isConversationFileUseCase } from "@app/types/files";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface FileUploadedRequestResponseBody {
   file: FileType;

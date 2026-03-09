@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { TemplateResource } from "@app/lib/resources/template_resource";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -14,11 +14,14 @@ Return up to 5 most relevant templates, ordered by match confidence.
 # Guidelines:
 - Match based on semantic similarity between the query and each template's description and tags.
 - Prefer templates whose description closely matches the intent of the query.
+- Return an EMPTY array if no template clearly matches the query intent. Do NOT force a match — irrelevant suggestions are worse than no suggestions.
 
 Here is the list of available templates:
 `;
 
 const FUNCTION_NAME = "suggest_templates";
+
+const RELEVANCE_THRESHOLD = 0.5;
 
 const SUGGEST_TEMPLATES_FUNCTION_SPECIFICATIONS: AgentActionSpecification[] = [
   {
@@ -30,7 +33,7 @@ const SUGGEST_TEMPLATES_FUNCTION_SPECIFICATIONS: AgentActionSpecification[] = [
       properties: {
         suggested_templates: {
           type: "array",
-          description: "Array of template ids.",
+          description: "Array of template ids with relevance scores.",
           items: {
             type: "object",
             properties: {
@@ -38,8 +41,13 @@ const SUGGEST_TEMPLATES_FUNCTION_SPECIFICATIONS: AgentActionSpecification[] = [
                 type: "string",
                 description: "The unique sId of the template.",
               },
+              relevance: {
+                type: "number",
+                description:
+                  "Relevance score from 0 to 1. 1 = perfect match, 0 = completely unrelated. Be strict: a score above 0.5 means the template directly addresses the query intent.",
+              },
             },
-            required: ["id"],
+            required: ["id", "relevance"],
           },
         },
       },
@@ -60,7 +68,7 @@ export async function getSuggestedTemplatesForQuery(
 ): Promise<Result<TemplateResource[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = getFastestWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error(
@@ -84,7 +92,7 @@ export async function getSuggestedTemplatesForQuery(
       providerId: model.providerId,
       modelId: model.modelId,
       functionCall: FUNCTION_NAME,
-      temperature: 0.7,
+      temperature: 0.2,
       useCache: true,
     },
     {
@@ -128,6 +136,11 @@ export async function getSuggestedTemplatesForQuery(
   }
 
   const suggestedIds = suggestedTemplates
+    .filter(
+      (entry) =>
+        typeof entry?.relevance === "number" &&
+        entry.relevance >= RELEVANCE_THRESHOLD
+    )
     .map((entry) => entry?.id)
     .filter(isString);
 

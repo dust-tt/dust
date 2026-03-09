@@ -1,4 +1,28 @@
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { SkillsTable } from "@app/components/skills/SkillsTable";
+import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useHashParam } from "@app/hooks/useHashParams";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
+import { SKILL_ICON } from "@app/lib/skill";
+import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { isEmptyString } from "@app/types/shared/utils/general";
+import {
+  ArrowDownOnSquareIcon,
   Button,
   MagnifyingGlassIcon,
   Page,
@@ -10,22 +34,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { SkillsTable } from "@app/components/skills/SkillsTable";
-import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
-import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { Head } from "@app/lib/platform";
-import { SKILL_ICON } from "@app/lib/skill";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
-import { isEmptyString } from "@app/types/shared/utils/general";
 
 const SKILL_SEARCH_TAB = {
   id: "search",
@@ -75,10 +83,13 @@ function sortSkillsByName(skills: SkillWithRelationsType[]) {
 
 export function ManageSkillsPage() {
   const owner = useWorkspace();
-  const { user, subscription } = useAuth();
+  const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
   const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
@@ -170,6 +181,7 @@ export function ManageSkillsPage() {
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (searchBarRef.current) {
       searchBarRef.current.focus();
@@ -193,13 +205,17 @@ export function ManageSkillsPage() {
     };
   }, []);
 
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("wide");
+  useSetPageTitle("Dust - Manage Skills");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="wide"
-      subscription={subscription}
-      owner={owner}
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       <SkillDetailsSheet
         skill={selectedSkill}
         onClose={() => handleSkillSelect(null)}
@@ -212,9 +228,12 @@ export function ManageSkillsPage() {
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
-      <Head>
-        <title>Dust - Manage Skills</title>
-      </Head>
+      {isImportDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportDialogOpen(false)}
+          owner={owner}
+        />
+      )}
       <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
         <Page.Header
           title="Manage Skills"
@@ -233,6 +252,15 @@ export function ManageSkillsPage() {
                 setSkillSearch(s);
               }}
             />
+            {hasFeature("sandbox_tools") && (
+              <Button
+                label="Import skill"
+                variant="outline"
+                icon={ArrowDownOnSquareIcon}
+                tooltip="Import skills from a GitHub repository"
+                onClick={() => setIsImportDialogOpen(true)}
+              />
+            )}
             <Button
               label="Create skill"
               href={getSkillBuilderRoute(owner.sId, "new")}
@@ -281,6 +309,6 @@ export function ManageSkillsPage() {
           </div>
         </Page.Vertical>
       </div>
-    </AppContentLayout>
+    </>
   );
 }

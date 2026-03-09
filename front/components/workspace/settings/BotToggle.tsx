@@ -1,14 +1,6 @@
-import {
-  ArrowPathIcon,
-  BookOpenIcon,
-  Button,
-  ContextItem,
-  SliderToggle,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -18,6 +10,14 @@ import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  ArrowPathIcon,
+  BookOpenIcon,
+  Button,
+  ContextItem,
+  SliderToggle,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export function BotToggle({
   owner,
@@ -59,15 +59,16 @@ export function BotToggle({
 
   const [isChangingBot, setIsChangingBot] = useState(false);
   const sendNotification = useSendNotification();
+  const regionContext = useRegionContext();
 
   const createBotConnectionAndDataSource = async () => {
     // OAuth flow
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: oauth.provider,
       useCase: oauth.useCase ?? "connection",
       extraConfig: oauth.extraConfig,
+      regionInfo: regionContext.regionInfo,
     });
     if (!cRes.isOk()) {
       return cRes;
@@ -151,11 +152,11 @@ export function BotToggle({
               icon={ArrowPathIcon}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({
-                  dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
                   owner,
                   provider: oauth.provider,
                   useCase: oauth.useCase ?? "connection",
                   extraConfig: oauth.extraConfig,
+                  regionInfo: regionContext.regionInfo,
                 });
                 if (!cRes.isOk()) {
                   sendNotification({

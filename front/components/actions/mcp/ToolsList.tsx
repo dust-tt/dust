@@ -1,3 +1,11 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Card,
@@ -14,15 +22,6 @@ import {
 } from "@dust-tt/sparkle";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
-import type { LightWorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 
 interface ToolsListProps {
   owner: LightWorkspaceType;

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -17,6 +15,7 @@ import { credentialsFromProviders } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { RunType } from "@app/types/run";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetRunsResponseBody = {
   runs: RunType[];
@@ -34,7 +33,7 @@ async function handler(
   >,
   auth: Authenticator,
   { space }: { space: SpaceResource },
-  session: SessionWithUser
+  session: SessionWithUser | null
 ) {
   const { aId } = req.query;
   if (typeof aId !== "string") {
@@ -179,7 +178,7 @@ async function handler(
       return;
 
     case "GET":
-      if (req.query.wIdTarget) {
+      if (req.query.wIdTarget && session) {
         // If we have a `wIdTarget` query parameter, we are fetching runs that were created with an
         // API key coming from another workspace. So we override the `owner` variable. This is only
         // available to dust super users.

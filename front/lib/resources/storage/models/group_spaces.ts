@@ -1,11 +1,10 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { GroupSpaceKind } from "@app/types/space";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class GroupSpaceModel extends WorkspaceAwareModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;

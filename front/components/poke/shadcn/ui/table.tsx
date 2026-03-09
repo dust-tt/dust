@@ -1,3 +1,4 @@
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   Button,
   ClipboardCheckIcon,
@@ -6,8 +7,6 @@ import {
   LinkWrapper,
 } from "@dust-tt/sparkle";
 import * as React from "react";
-
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 const Table = React.forwardRef<
   HTMLTableElement,

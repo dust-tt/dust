@@ -1,7 +1,5 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
-import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import React, { type ReactNode, useMemo } from "react";
 
 const getNodeText = (node: ReactNode): string => {

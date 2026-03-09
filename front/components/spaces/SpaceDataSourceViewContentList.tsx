@@ -1,31 +1,3 @@
-import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  Button,
-  cn,
-  Cog6ToothIcon,
-  DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import type {
-  CellContext,
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table";
-import * as React from "react";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -40,8 +12,8 @@ import {
 } from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
@@ -71,6 +43,33 @@ import type { FileUseCase } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  Button,
+  Cog6ToothIcon,
+  cn,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
+import type * as React from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const DEFAULT_VIEW_TYPE = "all";
 const PAGE_SIZE = 100;
@@ -296,6 +295,7 @@ export const SpaceDataSourceViewContentList = ({
   const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
 
   // Reset pagination when sorting changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [sortingAsString, resetPagination]);

@@ -1,5 +1,3 @@
-import parseArgs from "minimist";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import {
   launchDataRetentionWorkflow,
@@ -8,6 +6,7 @@ import {
 import { QUEUE_NAME } from "@app/temporal/data_retention/config";
 import { runSignal } from "@app/temporal/data_retention/signals";
 import { dataRetentionWorkflow } from "@app/temporal/data_retention/workflows";
+import parseArgs from "minimist";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

@@ -1,0 +1,168 @@
+import { Box, Text } from "ink";
+import type { Result } from "meow";
+import type { FC } from "react";
+import React, { useCallback, useState } from "react";
+
+import { CLI_VERSION } from "../utils/version.js";
+import Auth from "./commands/Auth.js";
+import Cache from "./commands/Cache.js";
+import Chat from "./commands/Chat.js";
+import Conversations from "./commands/Conversations.js";
+import Logout from "./commands/Logout.js";
+import NonInteractiveChat from "./commands/NonInteractiveChat.js";
+import SkillInit from "./commands/SkillInit.js";
+import Status from "./commands/Status.js";
+import UpdateInfo from "./components/UpdateInfo.js";
+import Help from "./Help.js";
+
+interface AppProps {
+  cli: Result<{
+    version: {
+      type: "boolean";
+      shortFlag: "v";
+    };
+    force: {
+      type: "boolean";
+      shortFlag: "f";
+    };
+    help: {
+      type: "boolean";
+      shortFlag: "h";
+    };
+    port: {
+      type: "number";
+      shortFlag: "p";
+    };
+    sId: {
+      type: "string";
+      shortFlag: "s";
+      isMultiple: true;
+    };
+    agent: {
+      type: "string";
+      shortFlag: "a";
+    };
+    message: {
+      type: "string";
+      shortFlag: "m";
+    };
+    conversationId: {
+      type: "string";
+      shortFlag: "c";
+    };
+    messageId: {
+      type: "string";
+    };
+    details: {
+      type: "boolean";
+      shortFlag: "d";
+    };
+    auto: {
+      type: "boolean";
+    };
+    noUpdateCheck: {
+      type: "boolean";
+    };
+    key: {
+      type: "string";
+    };
+    workspaceId: {
+      type: "string";
+    };
+    resume: {
+      type: "string";
+      shortFlag: "r";
+    };
+    projectName: {
+      type: "string";
+    };
+    projectId: {
+      type: "string";
+    };
+  }>;
+}
+
+const App: FC<AppProps> = ({ cli }) => {
+  const [updateCheckComplete, setUpdateCheckComplete] = useState(false);
+  const { input, flags } = cli;
+  const command = input[0] || "chat";
+  const isNonInteractiveChat =
+    command === "chat" && Boolean(flags.message || flags.messageId);
+
+  const handleUpdateComplete = useCallback(() => {
+    setUpdateCheckComplete(true);
+  }, []);
+
+  if (flags.version) {
+    return <Text>Dust CLI v{CLI_VERSION}</Text>;
+  }
+
+  if (flags.help) {
+    return <Help />;
+  }
+
+  // Skip update checks for non-interactive chat mode.
+  if (!flags.noUpdateCheck && !isNonInteractiveChat && !updateCheckComplete) {
+    return <UpdateInfo onComplete={handleUpdateComplete} />;
+  }
+
+  // Handle --resume flag: treat as chat with conversationId
+  const resumeId = flags.resume;
+  const effectiveConversationId = resumeId || flags.conversationId;
+
+  switch (command) {
+    case "login":
+      return (
+        <Auth force={flags.force} apiKey={flags.key} wId={flags.workspaceId} />
+      );
+    case "status":
+      return <Status />;
+    case "logout":
+      return <Logout />;
+    case "conversations":
+      return <Conversations />;
+    case "chat":
+      // Check if this is a non-interactive chat operation
+      if (flags.message || flags.messageId) {
+        return (
+          <NonInteractiveChat
+            agentSearch={flags.agent}
+            message={flags.message}
+            conversationId={flags.conversationId}
+            messageId={flags.messageId}
+            details={flags.details}
+            projectName={flags.projectName}
+            projectId={flags.projectId}
+          />
+        );
+      }
+      // Interactive chat
+      return (
+        <Chat
+          sId={flags.sId?.[0]}
+          agentSearch={flags.agent}
+          conversationId={effectiveConversationId}
+          autoAcceptEditsFlag={flags.auto}
+          projectName={flags.projectName}
+          projectId={flags.projectId}
+        />
+      );
+    case "skill:init":
+      return <SkillInit />;
+    case "cache:clear":
+      return <Cache />;
+    case "help":
+      return <Help />;
+    default:
+      return (
+        <Box flexDirection="column">
+          <Text color="red">Unknown command: {command}</Text>
+          <Box marginTop={1}>
+            <Help />
+          </Box>
+        </Box>
+      );
+  }
+};
+
+export default App;

@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -162,5 +160,3 @@ export const ButtonsSwitch = React.forwardRef<
   );
 });
 ButtonsSwitch.displayName = "ButtonsSwitch";
-
-export default ButtonsSwitch;

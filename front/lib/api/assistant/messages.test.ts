@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -23,6 +21,7 @@ import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("batchRenderMessages", () => {
   let auth: Authenticator;

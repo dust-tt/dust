@@ -1,6 +1,3 @@
-import * as t from "io-ts";
-import type { JSONSchema7 } from "json-schema";
-
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import { ModelIdCodec } from "@app/types/assistant/models/models";
@@ -9,6 +6,8 @@ import { ReasoningEffortCodec } from "@app/types/assistant/models/reasoning";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "@app/types/shared/utils/time_frame";
+import * as t from "io-ts";
+import type { JSONSchema7 } from "json-schema";
 
 const LimitCodec = createRangeCodec(0, 100);
 

@@ -1,10 +1,9 @@
-import type { Editor } from "@tiptap/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import type { Editor } from "@tiptap/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("InstructionsRootExtension serialization", () => {
   let editor: Editor;

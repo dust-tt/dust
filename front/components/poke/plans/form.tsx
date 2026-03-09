@@ -1,3 +1,10 @@
+import { classNames } from "@app/lib/utils";
+import type { PlanType } from "@app/types/plan";
+import {
+  isMaxMessagesTimeframeType,
+  MAX_MESSAGE_TIMEFRAMES,
+} from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   Checkbox,
   ConfluenceLogo,
@@ -11,14 +18,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-
-import { classNames } from "@app/lib/utils";
-import type { PlanType } from "@app/types/plan";
-import {
-  isMaxMessagesTimeframeType,
-  MAX_MESSAGE_TIMEFRAMES,
-} from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type EditingPlanType = {
   code: string;
@@ -37,6 +36,7 @@ export type EditingPlanType = {
   isWebCrawlerAllowed: boolean;
   isSSOAllowed: boolean;
   isSCIMAllowed: boolean;
+  isByok: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -62,6 +62,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
     isSSOAllowed: plan.limits.users.isSSOAllowed,
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
+    isByok: plan.isByok,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
@@ -129,6 +130,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       canUseProduct: true,
     },
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
+    isByok: editingPlan.isByok,
   };
 };
 
@@ -149,6 +151,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isWebCrawlerAllowed: false,
   isSSOAllowed: false,
   isSCIMAllowed: false,
+  isByok: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -302,6 +305,11 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "SCIM",
+  },
+  isByok: {
+    type: "boolean",
+    width: "tiny",
+    title: "BYOK",
   },
   maxVaults: {
     type: "number",

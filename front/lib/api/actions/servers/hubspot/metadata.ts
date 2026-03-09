@@ -1,10 +1,9 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const HUBSPOT_TOOL_NAME = "hubspot" as const;
 
@@ -486,6 +485,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
             .describe(
               "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
             ),
+          hubspot_owner_id: z
+            .string()
+            .optional()
+            .describe("The ID of the note's owner/creator."),
         })
         .describe("Properties for the note."),
       associations: noteAssociationsSchema

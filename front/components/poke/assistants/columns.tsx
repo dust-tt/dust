@@ -1,3 +1,9 @@
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   EmotionLaughIcon,
@@ -7,12 +13,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
-import type { LightWorkspaceType } from "@app/types/user";
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,
@@ -134,7 +134,7 @@ export function makeColumnsForAssistants(
               }}
             />
             <a
-              href={`${getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
+              href={`${config.getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
               download={`${assistant.name}.json`}
               target="_blank"
               rel="noopener noreferrer"

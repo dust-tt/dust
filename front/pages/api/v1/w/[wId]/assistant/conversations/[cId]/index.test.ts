@@ -1,6 +1,5 @@
-import { describe } from "vitest";
-
 import { createPublicApiAuthenticationTests } from "@app/tests/utils/generic_public_api_tests";
+import { describe } from "vitest";
 
 import handler from "./index";
 

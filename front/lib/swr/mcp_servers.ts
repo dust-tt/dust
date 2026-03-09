@@ -1,6 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -15,13 +12,14 @@ import type {
   MCPServerTypeWithViews,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -65,13 +63,15 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;
   connectionId: string;
 };
 
-function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
+export function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isAdmin(owner),
@@ -106,12 +106,14 @@ export function useMCPServer({
   owner: LightWorkspaceType;
   serverId: string;
 }) {
+  const { fetcher } = useFetcher();
   const serverFetcher: Fetcher<GetMCPServerResponseBody> = fetcher;
 
   const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
 
   const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
     disabled,
+    revalidateOnFocus: false,
   });
 
   if (!serverId) {
@@ -141,6 +143,7 @@ export function useAvailableMCPServers({
   space?: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = space
@@ -176,6 +179,7 @@ export function useMCPServers({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp`;
@@ -277,23 +281,27 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
   const createInternalMCPServer = async ({
     name,
     oauthConnection,
+    useCase,
     includeGlobal,
     sharedSecret,
     customHeaders,
   }: {
     name: string;
-    oauthConnection?: MCPConnectionType;
     includeGlobal: boolean;
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
-  }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
+  } & (
+    | { oauthConnection: MCPConnectionType; useCase?: never }
+    | { oauthConnection?: never; useCase: MCPOAuthUseCase }
+    | { oauthConnection?: never; useCase?: never }
+  )): Promise<Result<CreateMCPServerResponseBody, Error>> => {
     const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
         serverType: "internal",
-        useCase: oauthConnection?.useCase,
+        useCase: oauthConnection?.useCase ?? useCase,
         connectionId: oauthConnection?.connectionId,
         includeGlobal,
         ...(sharedSecret !== undefined ? { sharedSecret } : {}),
@@ -620,6 +628,7 @@ export function useMCPServerConnections({
   connectionType: MCPServerConnectionConnectionType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const connectionsFetcher: Fetcher<GetConnectionsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -656,15 +665,18 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
+    credentialId,
     mcpServerId,
     mcpServerDisplayName,
     provider,
   }: {
-    connectionId: string;
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
-  }): Promise<PostConnectionResponseBody | null> => {
+  } & (
+    | { connectionId: string; credentialId?: never }
+    | { connectionId?: never; credentialId: string }
+  )): Promise<PostConnectionResponseBody | null> => {
     const response = await clientFetch(
       `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
       {
@@ -674,6 +686,7 @@ export function useCreateMCPServerConnection({
         },
         body: JSON.stringify({
           connectionId,
+          credentialId,
           mcpServerId,
           provider,
         }),
@@ -845,6 +858,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
+  const regionContext = useRegionContext();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -897,11 +911,11 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       }
 
       const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
         useCase,
         extraConfig,
+        regionInfo: regionContext.regionInfo,
       });
 
       if (cRes.isErr()) {
@@ -951,6 +965,7 @@ export function useMCPServerViews({
   availability?: MCPServerAvailability | "all";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
   const url = getMCPServerViewsKey(owner, space, availability);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
@@ -1044,6 +1059,7 @@ export function useMCPServersUsage({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/mcp/usage`,
@@ -1069,6 +1085,7 @@ export function useMCPServerViewsNotActivated({
   space: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsNotActivatedResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -1214,6 +1231,7 @@ function useMCPServerViewsFromSpacesBase(
   availabilities: MCPServerAvailability[],
   swrOptions?: SWRConfiguration
 ) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
 
   const spaceIds = spaces.map((s) => s.sId).join(",");

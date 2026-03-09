@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -8,6 +6,7 @@ import {
   extractTextFromBuffer,
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type {
   GmailMessage,
   MessageDetail,
@@ -30,6 +29,7 @@ import {
 import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(
@@ -394,14 +394,26 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         base64Data = result.data;
       } else {
         const attachmentErrorText = await getErrorText(response);
-        return new Err(
-          new MCPError(
-            `Failed to fetch attachment via API: ${attachmentErrorText}`
-          )
-        );
+        const lowerError = attachmentErrorText.toLowerCase();
+
+        // Gmail sometimes returns attachmentIds that look valid but fail with
+        // "invalid attachment token". Fall back to fetching from the MIME body.
+        if (!lowerError.includes("invalid") && !lowerError.includes("token")) {
+          return new Err(
+            new MCPError(
+              `Failed to fetch attachment via Gmail API (messageId: ${messageId}, ` +
+                `filename: "${filename}"): ${attachmentErrorText}`,
+              { tracked: false }
+            )
+          );
+        }
       }
-    } else {
-      // For inline content (no real attachmentId), fetch from message body
+    }
+
+    // Fallback: fetch attachment data from the message MIME body.
+    // Used when hasRealAttachmentId is false (inline content) or when the
+    // attachments API returned an invalid token error.
+    if (!base64Data) {
       const messageResponse = await fetchFromGmail(
         `/gmail/v1/users/me/messages/${encodedMessageId}?format=full`,
         accessToken,
@@ -411,7 +423,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       if (!messageResponse.ok) {
         const messageErrorText = await getErrorText(messageResponse);
         return new Err(
-          new MCPError(`Failed to fetch message: ${messageErrorText}`)
+          new MCPError(
+            `Failed to fetch message for attachment fallback (messageId: ${messageId}): ${messageErrorText}`
+          )
         );
       }
 
@@ -421,26 +435,45 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       if (!base64Data) {
         return new Err(
           new MCPError(
-            `Inline attachment data not found in message body. This attachment may not be retrievable.`
+            `Attachment data not found in message body (messageId: ${messageId}, ` +
+              `filename: "${filename}", partId: ${partId}, mimeType: ${mimeType}). ` +
+              `This can happen when Gmail returns an invalid attachment token and ` +
+              `the attachment is too large to be included inline in the message payload.`
           )
         );
       }
-    }
-
-    if (!base64Data) {
-      return new Err(new MCPError("Failed to retrieve attachment data"));
     }
 
     // Gmail returns URL-safe base64, convert to standard base64
     const standardBase64 = base64Data.replace(/-/g, "+").replace(/_/g, "/");
     const buffer = Buffer.from(standardBase64, "base64");
 
-    return processAttachment({
+    const result = await processAttachment({
       mimeType,
       filename,
       extractText: async () => extractTextFromBuffer(buffer, mimeType),
       downloadContent: async () => new Ok(buffer),
     });
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    // Always include the binary file as a resource so it can be used by other tools.
+    const hasResource = result.value.some((c) => c.type === "resource");
+    if (!hasResource) {
+      result.value.push({
+        type: "resource" as const,
+        resource: {
+          blob: standardBase64,
+          _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
+          mimeType,
+          uri: "",
+        },
+      });
+    }
+
+    return result;
   },
 
   create_reply_draft: async (

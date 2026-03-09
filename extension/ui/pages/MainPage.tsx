@@ -1,30 +1,28 @@
-import type { ProtectedRouteChildrenProps } from "@app/ui/components/auth/ProtectedRoute";
-import { ActionValidationProvider } from "@app/ui/components/conversation/ActionValidationProvider";
-import { ConversationContainer } from "@app/ui/components/conversation/ConversationContainer";
-import { ConversationsListButton } from "@app/ui/components/conversation/ConversationsListButton";
-import { FileDropProvider } from "@app/ui/components/conversation/FileUploaderContext";
-import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
-import { DropzoneContainer } from "@app/ui/components/DropzoneContainer";
-import { InputBarProvider } from "@app/ui/components/input_bar/InputBarContext";
-import { UserDropdownMenu } from "@app/ui/components/navigation/UserDropdownMenu";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
-  BarHeader,
-  Button,
-  ChevronLeftIcon,
-  ExternalLinkIcon,
-} from "@dust-tt/sparkle";
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { useConversation } from "@app/hooks/conversations/useConversation";
+import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { getProjectRoute } from "@app/lib/utils/router";
+import { Button, MoreIcon } from "@dust-tt/sparkle";
+import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
+import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
+import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { ConversationContainer } from "../components/conversation/ConversationContainer";
 
-export const MainPage = ({
-  user,
-  workspace,
-  handleLogout,
-}: ProtectedRouteChildrenProps) => {
+export const MainPage = () => {
+  const { user, workspace, subscription } = useAuth();
+  const { serverId } = useMcpServer();
+  useSetupNotifications();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
-
-  const navigate = useNavigate();
 
   // Parse conversation ID from catch-all path
   const params = useParams();
@@ -32,14 +30,23 @@ export const MainPage = ({
     if (!params["*"]) {
       return null;
     }
-    const match = params["*"].match(/conversations\/([^/]+)/);
+    const match = params["*"].match(/conversation\/([^/]+)/);
+    const isNewConversation = match && match[1] === "new";
+    const isSpaceConversation = match && match[1] === "space";
+    if (isNewConversation || isSpaceConversation) {
+      return null;
+    }
     return match ? match[1] : null;
   }, [params]);
 
   const { conversation, isConversationLoading, conversationError } =
-    usePublicConversation({
-      conversationId: conversationId ?? null,
+    useConversation({
+      conversationId: conversationId,
+      workspaceId: workspace.sId,
     });
+
+  const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
+    useConversationMenu();
 
   const headerTitle = useMemo(() => {
     if (!conversationId) {
@@ -55,68 +62,62 @@ export const MainPage = ({
   }, [conversation, isConversationLoading, conversationId, conversationError]);
 
   return (
-    <FileDropProvider>
-      <ActionValidationProvider>
-        <DropzoneContainer
-          description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-          title="Attach files to the conversation"
-        >
-          <BarHeader
-            title={headerTitle}
-            tooltip={headerTitle}
-            leftActions={
-              conversationId && (
-                <Button
-                  icon={ChevronLeftIcon}
-                  variant="ghost"
-                  onClick={() => {
-                    navigate("/");
-                  }}
-                  size="sm"
-                />
-              )
-            }
-            rightActions={
-              conversationId ? (
-                <div className="items-right flex flex-row">
-                  <ConversationsListButton size="sm" />
-                  <Button
-                    icon={ExternalLinkIcon}
-                    variant="ghost"
-                    href={`${user.dustDomain}/w/${workspace.sId}/agent/${conversationId}`}
-                    target="_blank"
-                    size="sm"
-                    tooltip="Open in Dust"
-                  />
-                </div>
-              ) : (
-                <div className="items-right flex flex-row space-x-1">
-                  <ConversationsListButton size="sm" />
-                  <UserDropdownMenu user={user} handleLogout={handleLogout} />
-                </div>
-              )
-            }
-          />
-          {!conversationId && (
-            <div className="flex items-start justify-between">
-              <div className="element fixed bottom-0 right-0 z-10 p-2 text-sm">
-                <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
-                  {shortcut}
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="h-full w-full pt-28">
-            <InputBarProvider>
-              <ConversationContainer
-                owner={workspace}
-                conversationId={conversationId ?? null}
-                user={user}
+    <ConversationLayout
+      title={headerTitle}
+      backHref={
+        conversation?.spaceId
+          ? getProjectRoute(workspace.sId, conversation.spaceId)
+          : undefined
+      }
+      rightActions={
+        conversationId ? (
+          <ConversationMenu
+            activeConversationId={conversationId}
+            conversation={conversation}
+            owner={workspace}
+            trigger={
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={MoreIcon}
+                aria-label="Conversation menu"
               />
-            </InputBarProvider>
+            }
+            isConversationDisplayed={true}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
+            displayOpenInBrowser
+            openDetailsInNewTab
+          />
+        ) : (
+          <div className="items-right flex flex-row space-x-1">
+            <UserDropdownMenu />
           </div>
-        </DropzoneContainer>
-      </ActionValidationProvider>
-    </FileDropProvider>
+        )
+      }
+    >
+      {!conversationId && (
+        <div className="element fixed bottom-0 right-0 z-10 p-2 text-sm">
+          <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
+            {shortcut}
+          </p>
+        </div>
+      )}
+      <BlockedActionsProvider owner={workspace} conversation={conversation}>
+        <ConversationSidePanelProvider>
+          <GenerationContextProvider>
+            <ConversationContainer
+              workspace={workspace}
+              user={user}
+              subscription={subscription}
+              conversationId={conversationId}
+              conversation={conversation}
+              serverId={serverId}
+            />
+          </GenerationContextProvider>
+        </ConversationSidePanelProvider>
+      </BlockedActionsProvider>
+    </ConversationLayout>
   );
 };

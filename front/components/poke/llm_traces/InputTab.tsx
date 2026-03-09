@@ -1,12 +1,3 @@
-import {
-  Chip,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@dust-tt/sparkle";
-import { JsonViewer } from "@textea/json-viewer";
-import type { ComponentProps } from "react";
-
 import { ToolCallCard } from "@app/components/poke/llm_traces/ToolCallsView";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
@@ -22,6 +13,14 @@ import type {
 } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isString } from "@app/types/shared/utils/general";
+import {
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@dust-tt/sparkle";
+import { JsonViewer } from "@textea/json-viewer";
+import type { ComponentProps } from "react";
 
 interface ContentArrayViewProps {
   contents: Content[];

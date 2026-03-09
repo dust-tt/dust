@@ -5,7 +5,7 @@ import {
   startForwarder,
   stopForwarder,
 } from "../lib/forward";
-import { FORWARDER_PORTS } from "../lib/forwarderConfig";
+import { FORWARDER_MAPPINGS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
 import { FORWARDER_LOG_PATH } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
@@ -52,7 +52,12 @@ export async function forwardStatusCommand(): Promise<Result<void>> {
     console.log(`PID:        ${status.pid}`);
     console.log(`Target:     ${status.state.targetEnv} (base port ${status.state.basePort})`);
     console.log(`Updated:    ${status.state.updatedAt}`);
-    console.log(`Listening:  ports ${FORWARDER_PORTS.join(", ")}`);
+    console.log("Listening:");
+    for (const m of FORWARDER_MAPPINGS) {
+      console.log(
+        `            ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${status.state.basePort + m.targetOffset}`
+      );
+    }
 
     // Check if target is still warm
     const env = await getEnvironment(status.state.targetEnv);

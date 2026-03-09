@@ -1,7 +1,6 @@
-import removeMarkdown from "remove-markdown";
-
 import { replaceContentNodeMarkdownWithQuotedTitle } from "@app/lib/content_nodes";
 import { replaceMentionsWithAt } from "@app/lib/mentions/format";
+import removeMarkdown from "remove-markdown";
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
@@ -49,9 +48,32 @@ export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+};
+
+const HTML_ENTITY_PATTERN = new RegExp(
+  Object.keys(HTML_ENTITIES).join("|"),
+  "g"
+);
+
+function decodeHtmlEntities(text: string): string {
+  return text.replace(
+    HTML_ENTITY_PATTERN,
+    (match) => HTML_ENTITIES[match] ?? match
+  );
+}
+
 export function stripMarkdown(text: string): string {
-  return removeMarkdown(
-    replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
+  return decodeHtmlEntities(
+    removeMarkdown(
+      replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
+    )
   );
 }
 

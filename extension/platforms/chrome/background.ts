@@ -7,13 +7,13 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "@app/platforms/chrome/messages";
-import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
-import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
-import { DUST_US_URL } from "@app/shared/lib/config";
-import { extractPage } from "@app/shared/lib/extraction";
-import { generatePKCE } from "@app/shared/lib/utils";
-import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
+} from "@extension/platforms/chrome/messages";
+import type { PendingUpdate } from "@extension/platforms/chrome/services/core_platform";
+import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
+import { DUST_US_URL } from "@extension/shared/lib/config";
+import { extractPage } from "@extension/shared/lib/extraction";
+import { generatePKCE } from "@extension/shared/lib/utils";
+import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
@@ -27,11 +27,9 @@ const state: {
   refreshRequests: ((
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void)[];
-  lastHandler: (() => void) | undefined;
 } = {
   refreshingToken: false,
   refreshRequests: [],
-  lastHandler: undefined,
 };
 
 /**
@@ -80,16 +78,31 @@ const shouldDisableContextMenuForDomain = async (
     return true;
   }
 
-  const user = await platform.auth.getStoredUser();
-  if (!user || !user.selectedWorkspace) {
+  const token = await platform.auth.getAccessToken();
+  const regionInfo = await platform.auth.getRegionInfoFromStorage();
+  const selectedWorkspace = await platform.auth.getSelectedWorkspace();
+
+  if (!token || !regionInfo || !selectedWorkspace) {
     return false;
   }
 
-  const blacklistedDomains =
-    user.workspaces.find((w) => w.sId === user.selectedWorkspace)
-      ?.blacklistedDomains || [];
-
-  return blacklistedDomains.some((d) => url.includes(d));
+  try {
+    const res = await fetch(
+      `${regionInfo.url}/api/w/${selectedWorkspace}/extension/config`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "omit", // Ensure cookies are not sent with requests from the extension
+      }
+    );
+    if (!res.ok) {
+      return false;
+    }
+    const data = await res.json();
+    const blacklistedDomains: string[] = data.blacklistedDomains ?? [];
+    return blacklistedDomains.some((d) => url.includes(d));
+  } catch {
+    return false;
+  }
 };
 
 const toggleContextMenus = (isDisabled: boolean) => {
@@ -125,7 +138,6 @@ chrome.runtime.onConnect.addListener(async (port) => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
       await platform.storage.set("extensionReady", false);
-      state.lastHandler = undefined;
     });
   }
 });
@@ -184,15 +196,19 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     return;
   }
 
+  // chrome.sidePanel.open() must be called synchronously within the user gesture
+  // context. Any await before this call would break the gesture chain and throw:
+  // "sidePanel.open() may only be called in response to a user gesture".
+  if (tab) {
+    void chrome.sidePanel.open({ windowId: tab.windowId });
+  }
+
   const isExtensionReady =
     await platform.storage.get<boolean>("extensionReady");
 
-  if (!isExtensionReady && tab) {
-    // Store the handler for later use when the extension is ready.
-    state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
+  if (!isExtensionReady) {
+    // Store the pending action for later use when the extension is ready.
+    await platform.storage.set("pendingAction", event.menuItemId);
   } else {
     void handler();
   }
@@ -363,11 +379,16 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "INPUT_BAR_STATUS":
-        // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
-        if (state.lastHandler && message.available) {
-          state.lastHandler();
-          state.lastHandler = undefined;
-        }
+        void (async () => {
+          if (message.available) {
+            const pendingAction =
+              await platform.storage.get<string>("pendingAction");
+            if (pendingAction) {
+              getActionHandler(pendingAction)?.();
+            }
+          }
+          await platform.storage.delete("pendingAction");
+        })();
         return false;
 
       default:
@@ -402,9 +423,9 @@ chrome.runtime.onMessageExternal.addListener((request) => {
         })
         .then(() => {
           chrome.storage.local.get(
-            ["extensionReady", "user"],
-            ({ extensionReady, user }) => {
-              if (request.workspaceId != user?.selectedWorkspace) {
+            ["extensionReady", "selectedWorkspace"],
+            ({ extensionReady, selectedWorkspace }) => {
+              if (request.workspaceId != selectedWorkspace) {
                 log("[onMessageExternal] User selected another workspace.");
                 return;
               }
@@ -473,7 +494,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
  * Authenticate the user using WorkOS.
  */
 const authenticate = async (
-  { connection }: AuthBackgroundMessage,
+  { organizationId }: AuthBackgroundMessage,
   sendResponse: (
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void
@@ -483,17 +504,15 @@ const authenticate = async (
   const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
-    response_type: "code",
     redirect_uri: redirectUrl,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
-    organization_id: connection ?? "",
-    provider: "authkit",
+    ...(organizationId ? { organizationId } : {}),
   };
 
   const queryString = new URLSearchParams(options).toString();
 
-  const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
+  const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -565,22 +584,22 @@ const refreshToken = async (
         refresh_token: refreshToken,
       };
 
-      const user = await platform.auth.getStoredUser();
-      if (!user) {
-        log("No user found for token refresh.");
+      const regionInfo = await platform.auth.getRegionInfoFromStorage();
+      if (!regionInfo) {
+        log("No region info found for token refresh.");
         const handlers = state.refreshRequests;
         state.refreshRequests = [];
         handlers.forEach((sendResponse) => {
           sendResponse({
             success: false,
-            error: "No user found for token refresh.",
+            error: "No region info found for token refresh.",
           });
         });
         return;
       }
 
       const response = await fetch(
-        `${user.dustDomain}/api/v1/auth/authenticate`,
+        `${regionInfo.url}/api/workos/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -602,10 +621,10 @@ const refreshToken = async (
       handlers.forEach((sendResponse) => {
         sendResponse({
           success: true,
-          accessToken: data.access_token,
-          refreshToken: data.refresh_token || refreshToken,
-          expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
-          authentication_method: data.authentication_method,
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken || refreshToken,
+          expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          authentication_method: data.authenticationMethod,
         });
       });
     } catch (error) {
@@ -633,13 +652,11 @@ const exchangeCodeForTokens = async (
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   try {
     const tokenParams: Record<string, string> = {
-      grant_type: "authorization_code",
       code_verifier: codeVerifier,
       code,
-      redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
+    const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(tokenParams),
@@ -656,11 +673,10 @@ const exchangeCodeForTokens = async (
 
     return {
       success: true,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
-      ...(data.id_token && { idToken: data.id_token }),
-      authentication_method: data.authentication_method,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      authentication_method: data.authenticationMethod,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
@@ -694,12 +710,7 @@ const logout = async (
     return;
   }
 
-  const user = await platform.auth.getStoredUser();
-  if (!user) {
-    return true;
-  }
-
-  const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
+  const logoutUrl = `${DUST_US_URL}/api/workos/logout-url?${new URLSearchParams(
     queryParams
   )}`;
 

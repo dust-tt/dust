@@ -1,6 +1,3 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import React from "react";
-
 import type { PriceTableDisplay } from "@app/components/plans/PlansTables";
 import {
   BusinessPriceTable,
@@ -9,6 +6,9 @@ import {
 import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export function ProPlansTable({
   owner,

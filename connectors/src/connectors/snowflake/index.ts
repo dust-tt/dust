@@ -110,9 +110,26 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       snowflakeConfigBlob
     );
 
-    const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
-    if (launchRes.isErr()) {
-      throw launchRes.error;
+    try {
+      const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
+      if (launchRes.isErr()) {
+        throw launchRes.error;
+      }
+    } catch (e) {
+      logger.error(
+        { error: e, connectorId: connector.id },
+        "Failed to launch Snowflake sync workflow, rolling back connector creation"
+      );
+
+      const deleteRes = await connector.delete();
+      if (deleteRes.isErr()) {
+        logger.error(
+          { error: deleteRes.error, connectorId: connector.id },
+          "Failed to delete Snowflake connector during rollback"
+        );
+      }
+
+      throw e;
     }
 
     return new Ok(connector.id.toString());

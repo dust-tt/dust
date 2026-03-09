@@ -1,5 +1,3 @@
-import { faker } from "@faker-js/faker";
-
 import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type {
@@ -7,6 +5,7 @@ import type {
   WebhookSourceSignatureAlgorithm,
 } from "@app/types/triggers/webhooks";
 import type { WorkspaceType } from "@app/types/user";
+import { faker } from "@faker-js/faker";
 
 export class WebhookSourceFactory {
   private workspace: WorkspaceType;

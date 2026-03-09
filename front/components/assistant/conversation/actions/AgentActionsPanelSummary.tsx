@@ -1,11 +1,11 @@
-import { Separator } from "@dust-tt/sparkle";
-import type React from "react";
-
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   AgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
+import { Separator } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import type React from "react";
 
 export function AgentActionSummary({
   agentMessageToRender,

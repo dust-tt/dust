@@ -1,7 +1,33 @@
+import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import {
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableRow,
+} from "@app/components/poke/shadcn/ui/table";
+import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
+import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
+import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
+import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  FREE_NO_PLAN_CODE,
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+  isProPlanPrefix,
+} from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
+import { usePokePlans } from "@app/lib/swr/poke";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
+import { isDevelopment } from "@app/types/shared/env";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
   ConfluenceLogo,
+  cn,
   GithubLogo,
   GlobeAltIcon,
   GoogleLogo,
@@ -21,28 +47,12 @@ import {
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 
-import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import {
-  PokeTable,
-  PokeTableBody,
-  PokeTableCell,
-  PokeTableRow,
-} from "@app/components/poke/shadcn/ui/table";
-import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
-import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
-import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
-import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
-import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
-import { usePokePlans } from "@app/lib/swr/poke";
-import type { PlanType, SubscriptionType } from "@app/types/plan";
-import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
-import { isDevelopment } from "@app/types/shared/env";
-import type { WorkspaceType } from "@app/types/user";
-
-type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
+type SubscriptionStatus =
+  | "paymentFailed"
+  | "trialing"
+  | "ended"
+  | "active"
+  | "inconsistent";
 
 function getSubscriptionDisplayStatus(
   subscription: SubscriptionType
@@ -53,19 +63,23 @@ function getSubscriptionDisplayStatus(
   if (subscription.trialing) {
     return "trialing";
   }
+
+  if (subscription.status === "active") {
+    return "active";
+  }
   if (
     subscription.plan.code === FREE_NO_PLAN_CODE ||
-    (subscription.endDate !== null && subscription.endDate <= Date.now())
+    subscription.status === "ended"
   ) {
     return "ended";
   }
-  return "active";
+  return "inconsistent";
 }
 
 const STATUS_CONFIG: Record<
   SubscriptionStatus,
   {
-    chipColor: "info" | "blue" | "warning" | "success";
+    chipColor: "info" | "blue" | "warning" | "success" | "rose";
     chipLabel: string;
     cardClass: string;
   }
@@ -93,6 +107,12 @@ const STATUS_CONFIG: Record<
     chipLabel: "Active",
     cardClass:
       "border-success-200 bg-success-50 dark:border-success-200-night dark:bg-success-50-night",
+  },
+  inconsistent: {
+    chipColor: "rose",
+    chipLabel: "Inconsistent",
+    cardClass:
+      "border-rose-200 bg-rose-50 dark:border-rose-200-night dark:bg-rose-50-night",
   },
 };
 
@@ -226,9 +246,19 @@ export function ActiveSubscriptionTable({
               <PokeTableRow>
                 <PokeTableCell>End Date</PokeTableCell>
                 <PokeTableCell>
-                  {subscription.endDate
-                    ? format(subscription.endDate, "yyyy-MM-dd")
-                    : "/"}
+                  {subscription.endDate ? (
+                    <span
+                      className={cn(
+                        subscription.status === "active" &&
+                          subscription.endDate <= Date.now() &&
+                          "font-semibold text-red-500"
+                      )}
+                    >
+                      {format(subscription.endDate, "yyyy-MM-dd")}
+                    </span>
+                  ) : (
+                    "/"
+                  )}
                 </PokeTableCell>
               </PokeTableRow>
             </PokeTableBody>
@@ -331,6 +361,16 @@ export function PlanLimitationsTable({
                 <PokeTableCell>Is Deep Dive allowed?</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.isDeepDiveAllowed ? "✅" : "❌"}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>Is Opus enabled?</PokeTableCell>
+                <PokeTableCell>
+                  {isDustCompanyPlan(activePlan.code) ||
+                  isEntreprisePlanPrefix(activePlan.code)
+                    ? "✅"
+                    : "❌"}
                 </PokeTableCell>
               </PokeTableRow>
 

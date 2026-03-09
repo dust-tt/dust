@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
@@ -9,6 +7,7 @@ import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assis
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
+import { z } from "zod";
 
 export const WebhookFormSchema = z.object({
   name: z

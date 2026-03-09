@@ -12,6 +12,7 @@ import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
+  slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
 import {
   launchSlackGarbageCollectWorkflow,
@@ -20,9 +21,12 @@ import {
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceDocument,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   SlackChannelModel,
   SlackMessagesModel,
@@ -35,7 +39,7 @@ import type {
   AdminSuccessResponseType,
   SlackCheckChannelResponseType,
   SlackCommandType,
-  SlackJoinResponseType as SlackJoinResponseType,
+  SlackJoinResponseType,
 } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
@@ -274,15 +278,7 @@ export const slack = async ({
         throw new Error("Missing --botName argument");
       }
 
-      if (!groupId) {
-        throw new Error("Missing --groupId argument");
-      }
-
-      if (!providerType) {
-        throw new Error("Missing --providerType argument");
-      }
-
-      if (!["slack", "slack_bot"].includes(providerType)) {
+      if (!providerType || !["slack", "slack_bot"].includes(providerType)) {
         throw new Error(
           "--providerType argument must be set to 'slack' or 'slack_bot'"
         );
@@ -291,6 +287,17 @@ export const slack = async ({
       if (!whitelistType || !isSlackbotWhitelistType(whitelistType)) {
         throw new Error(
           "--whitelistType argument must be set to 'summon_agent' or 'index_messages'"
+        );
+      }
+
+      if (providerType === "slack" && whitelistType !== "index_messages") {
+        throw new Error(
+          "slack provider only supports 'index_messages' whitelist type"
+        );
+      }
+      if (providerType === "slack_bot" && whitelistType !== "summon_agent") {
+        throw new Error(
+          "slack_bot provider only supports 'summon_agent' whitelist type"
         );
       }
 
@@ -311,13 +318,23 @@ export const slack = async ({
         connector.id
       );
 
-      if (slackConfig) {
-        // Handle groupId as either a single string or comma-separated string of group IDs
-        const groupIds = groupId.includes(",")
-          ? groupId.split(",").map((id) => id.trim())
-          : [groupId];
-        await slackConfig.whitelistBot(botName, groupIds, whitelistType);
+      if (!slackConfig) {
+        throw new Error(
+          `Could not find Slack configuration for connector ${connector.id}`
+        );
       }
+
+      let groupIds: string[] = [];
+      if (whitelistType === "summon_agent") {
+        if (!groupId) {
+          throw new Error(
+            "Missing --groupId argument (required for summon_agent)"
+          );
+        }
+        groupIds = groupId.split(",").map((id) => id.trim());
+      }
+
+      await slackConfig.whitelistBot(botName, groupIds, whitelistType);
 
       return { success: true };
     }
@@ -841,6 +858,58 @@ export const slack = async ({
         legacyConnector.id,
         slackBotConnector.id
       );
+
+      return { success: true };
+    }
+
+    case "delete-conversation": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+      if (!args.threadTs) {
+        throw new Error("Missing --threadTs argument");
+      }
+
+      const connector = await ConnectorResource.findByWorkspaceIdAndType(
+        args.wId,
+        "slack"
+      );
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const documentId = slackThreadInternalIdFromSlackThreadIdentifier({
+        channelId: args.channelId,
+        threadTs: args.threadTs,
+      });
+
+      const message = await SlackMessagesModel.findOne({
+        where: { connectorId: connector.id, documentId },
+      });
+
+      if (!message) {
+        throw new Error(`Document ${documentId} not found in DB`);
+      }
+
+      logger.info(
+        { documentId, channelId: args.channelId, threadTs: args.threadTs },
+        "Deleting conversation document"
+      );
+
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+      await deleteDataSourceDocument(dataSourceConfig, documentId, {
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        documentId,
+      });
+
+      await message.destroy();
+
+      logger.info({ documentId }, "Document deleted from core and DB");
 
       return { success: true };
     }

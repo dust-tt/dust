@@ -51,6 +51,34 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
+### [GEN6] Prefer exhaustive switch + assertNever over if/else on union types
+
+When branching on a discriminated union or string union, prefer an exhaustive `switch` with
+`assertNever` (from `@app/types/shared/utils/assert_never`) over chains of `if`/`else` or nested
+ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
+are added.
+
+Example:
+
+```
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+type Status = "approved" | "rejected" | "expired";
+
+function titleForStatus(status: Status): string {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "expired":
+      return "Expired";
+    default:
+      return assertNever(status);
+  }
+}
+```
+
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
 Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
@@ -185,6 +213,21 @@ import config from "@app/lib/api/config";
 const apiUrl = config.getApiUrl();
 const isProduction = config.getNodeEnv() === "production";
 ```
+
+### [GEN11] Dynamic imports are forbidden by default in production code
+
+In production TypeScript/TSX code, prefer static imports at the top of the file.
+
+Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
+optional dependencies, or excluding client-only code from server bundles).
+
+This rule does not apply to CommonJS config files (e.g., `next.config.js`, `tailwind.config.js`)
+or to Vitest patterns such as `vi.mock(import("..."), ...)`.
+
+If a dynamic import is strictly necessary, it must:
+
+- Use a string literal module specifier (no computed paths).
+- Be accompanied by a short comment explaining why a static import is not acceptable.
 
 ## SECURITY
 
@@ -417,6 +460,56 @@ AgentMessageModel.hasMany(AgentMCPActionModel, {
 }
 ```
 
+### [BACK14] No breaking changes in PRIVATE API endpoints
+
+Breaking changes in PRIVATE API endpoints are prohibited. The PRIVATE API serves multiple clients
+(web app, browser extensions, etc.) that may be running different versions. Breaking
+changes can cause crashes or data corruption for users who haven't updated to the latest version.
+
+All changes to PRIVATE API endpoints must be backward compatible. Follow these steps based on the
+type of change:
+
+**1. Deleting an endpoint:**
+
+- Do NOT delete the endpoint immediately
+- Mark the endpoint as deprecated in code comments with deprecation date
+- Create the replacement endpoint or functionality first
+- Monitor usage metrics to ensure all clients have migrated
+- Only delete after confirmed all clients have stopped using it
+- If deletion is urgent, coordinate a synchronized release across all clients
+
+**2. Adding a mandatory input parameter:**
+
+- Do NOT add required parameters immediately
+- First: Add the parameter as optional with sensible defaults
+- Update all client code to send the parameter
+- Make the parameter required only after a period of time
+- Document the default behavior clearly in code comments
+- Example: Add `userId` as optional defaulting to current authenticated user, then make it required once all clients are updated
+
+**3. Changing a validation schema (stricter validation):**
+
+- Do NOT tighten validation rules on existing fields immediately
+- Add new optional fields with strict validation instead
+- Only enforce stricter validation after all clients are compliant
+
+**4. Removing a response field:**
+
+- Do NOT remove fields from responses immediately
+- First: Update all client code to stop using the field
+- Remove the field from backend response only after a period of time
+- If removal is urgent, create a new endpoint version instead
+
+**5. Adding or removing enum values in responses:**
+
+- **Adding** a new enum value to responses:
+  - Ensure all clients handle unknown enum values gracefully with a fallback
+
+- **Removing** an enum value from responses:
+  - Do NOT remove enum values immediately
+  - First: Update all client code to stop relying on the removed value
+  - Stop returning the enum value from backend only after a period of time
+
 ## MCP
 
 ### [MCP1] Single file internal servers
@@ -519,6 +612,30 @@ export function useCreateFolder({
 };
 ```
 
+When a component is not always visible (modal, sheet, drawer, panel), its SWR hooks should accept
+and forward a `disabled` flag tied to visibility to avoid unnecessary API calls when the component
+is mounted but not shown. Skip `disabled` only when prefetching is intentional.
+
+```typescript
+// BAD — fetches on every mount, even when the sheet is closed
+function MCPServerDetails({ owner }: MCPServerDetailsProps) {
+  const { mcpServers } = useMCPServers({ owner });
+  // ...
+}
+
+// GOOD — fetch is skipped while the sheet is closed
+function MCPServerDetails({ owner, disabled }: MCPServerDetailsProps) {
+  const { mcpServers } = useMCPServers({ owner, disabled });
+  // ...
+}
+
+<MCPServerDetails owner={owner} disabled={!isOpen} />
+```
+
+Reviewer: If you see an SWR hook called unconditionally inside a conditionally-visible component,
+require the author to either add a `disabled` prop forwarded to the hook or justify the prefetch
+with a comment.
+
 In NextJS pages, getServerSideProps should not fetch data and return more that what's
 available in authenticator. Rather rely on API endpoint and SWR calls.
 
@@ -526,3 +643,23 @@ available in authenticator. Rather rely on API endpoint and SWR calls.
 
 Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the
 load time is expected to be small.
+
+### [REACT4] Stable references on Context provider values
+
+Object or array literals passed as Context provider `value` create a new reference on every
+render, triggering re-renders of all consumers. Always memoize Context values.
+
+```typescript
+// BAD — every consumer re-renders on each parent render
+<MyContext.Provider value={{ items: id ? [id] : [] }}>
+
+// GOOD — consumers only re-render when id changes
+const value = useMemo(() => ({ items: id ? [id] : [] }), [id]);
+<MyContext.Provider value={value}>
+```
+
+For regular component props, only memoize when the child is wrapped in `React.memo` or the prop
+is used as a hook dependency. Do not add `useMemo` preemptively.
+
+Reviewer: If you see an inline object or array literal passed directly as a Context provider
+value, require the author to memoize it.

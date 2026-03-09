@@ -1,8 +1,9 @@
-import { ProtectedRoute } from "@app/ui/components/auth/ProtectedRoute";
-import { LoginPage } from "@app/ui/pages/LoginPage";
-import { MainPage } from "@app/ui/pages/MainPage";
-import { RunPage } from "@app/ui/pages/RunPage";
-import { SubscribePage } from "@app/ui/pages/SubscribePage";
+import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
+import { LoginPage } from "@extension/ui/pages/LoginPage";
+import { MainPage } from "@extension/ui/pages/MainPage";
+import { ProjectMainPage } from "@extension/ui/pages/ProjectMainPage";
+import { RunPage } from "@extension/ui/pages/RunPage";
+import { SubscribePage } from "@extension/ui/pages/SubscribePage";
 
 export const routes = [
   {
@@ -10,37 +11,26 @@ export const routes = [
     element: <LoginPage />,
   },
   {
-    path: "/run",
-    element: <ProtectedRoute>{() => <RunPage />}</ProtectedRoute>,
-  },
-  {
-    path: "/subscribe",
-    element: (
-      <ProtectedRoute>
-        {({ user, workspace, handleLogout }) => (
-          <SubscribePage
-            user={user}
-            workspace={workspace}
-            handleLogout={handleLogout}
-          />
-        )}
-      </ProtectedRoute>
-    ),
-  },
-  // Keep catch-all route last. This will handle both root path and /conversations/:conversationId
-  // Since we catch all, we will need to manually handle the conversationId in the MainPage component.
-  {
-    path: "*",
-    element: (
-      <ProtectedRoute>
-        {({ user, workspace, handleLogout }) => (
-          <MainPage
-            user={user}
-            workspace={workspace}
-            handleLogout={handleLogout}
-          />
-        )}
-      </ProtectedRoute>
-    ),
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "/run",
+        element: <RunPage />,
+      },
+      {
+        path: "/subscribe",
+        element: <SubscribePage />,
+      },
+      {
+        path: "/w/:wId/conversation/space/:spaceId",
+        element: <ProjectMainPage />,
+      },
+      // Keep catch-all route last. This will handle both root path and /conversations/:conversationId
+      // Since we catch all, we will need to manually handle the conversationId in the MainPage component.
+      {
+        path: "*",
+        element: <MainPage />,
+      },
+    ],
   },
 ];

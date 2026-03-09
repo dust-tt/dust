@@ -12,10 +12,13 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities";
-import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import {
+  launchMicrosoftFullSyncWorkflow,
+  launchMicrosoftIncrementalSyncWorkflow,
+} from "@connectors/connectors/microsoft/temporal/client";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   updateDataSourceDocumentParents,
@@ -36,6 +39,7 @@ import {
   INTERNAL_MIME_TYPES,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import { isString } from "@connectors/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import fs from "fs";
 import * as t from "io-ts";
@@ -126,6 +130,17 @@ export const microsoft = async ({
           );
         }
       }
+      return { success: true };
+    }
+    case "start-full-sync": {
+      const connector = await getConnector(args);
+      const folderId = isString(args.folderId) ? args.folderId : undefined;
+      await throwOnError(
+        launchMicrosoftFullSyncWorkflow(
+          connector.id,
+          folderId ? [folderId] : undefined
+        )
+      );
       return { success: true };
     }
     case "check-file": {

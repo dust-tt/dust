@@ -1,6 +1,7 @@
-import { useCurrentUrlAndDomain } from "@app/platforms/chrome/hooks/useCurrentDomain";
-import type { CaptureActionsProps } from "@app/shared/services/platform";
+import { useExtensionConfig } from "@app/lib/swr/extension";
 import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
+import { useCurrentUrlAndDomain } from "@extension/platforms/chrome/hooks/useCurrentDomain";
+import type { CaptureActionsProps } from "@extension/shared/services/platform";
 
 export function ChromeCaptureActions({
   fileUploaderService,
@@ -9,11 +10,11 @@ export function ChromeCaptureActions({
   owner,
 }: CaptureActionsProps) {
   const { currentDomain, currentUrl } = useCurrentUrlAndDomain();
-  const blacklistedConfig: string[] = owner.blacklistedDomains ?? [];
+  const { blacklistedDomains } = useExtensionConfig(owner);
 
   const isBlacklisted =
     currentDomain === "chrome" ||
-    blacklistedConfig.some((d) =>
+    blacklistedDomains.some((d: string) =>
       d.startsWith("http://") || d.startsWith("https://")
         ? currentUrl.startsWith(d)
         : currentDomain.endsWith(d)

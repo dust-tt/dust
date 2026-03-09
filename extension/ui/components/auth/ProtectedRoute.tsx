@@ -1,33 +1,14 @@
-import type { RouteChangeMesssage } from "@app/platforms/chrome/messages";
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import type { StoredUser } from "@app/shared/services/auth";
-import { useAuth } from "@app/ui/components/auth/AuthProvider";
-import type { ExtensionWorkspaceType } from "@dust-tt/client";
-import { classNames, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import { cn, Spinner } from "@dust-tt/sparkle";
+import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 
-interface ProtectedRouteProps {
-  children: ReactNode | ((props: ProtectedRouteChildrenProps) => ReactNode);
-}
-
-export interface ProtectedRouteChildrenProps {
-  user: StoredUser;
-  workspace: ExtensionWorkspaceType;
-  handleLogout: () => void;
-}
-
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute = () => {
   const platform = usePlatform();
-  const {
-    isLoading,
-    isAuthenticated,
-    isUserSetup,
-    user,
-    workspace,
-    handleLogout,
-  } = useAuth();
+  const { isLoading, isAuthenticated, isUserSetup, user, workspace } =
+    useExtensionAuth();
 
   const navigate = useNavigate();
 
@@ -47,6 +28,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }, [navigate]);
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
     if (!isAuthenticated || !isUserSetup || !user || !workspace) {
       navigate("/login");
       return;
@@ -56,30 +40,26 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
     return (
       <div
-        className={classNames(
-          "flex h-screen flex-col gap-2 p-4",
+        className={cn(
+          "flex h-screen items-center justify-center",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
+        <Spinner />
       </div>
     );
   }
 
   return (
     <div
-      className={classNames(
-        "flex h-screen flex-col gap-2 overflow-y-auto px-4",
+      className={cn(
+        "flex h-screen flex-col gap-2 overflow-y-auto",
         "bg-background text-foreground",
         "dark:bg-background-night dark:text-foreground-night"
       )}
     >
-      {typeof children === "function"
-        ? children({ user, workspace, handleLogout })
-        : children}
+      <Outlet />
     </div>
   );
 };

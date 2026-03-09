@@ -1,5 +1,5 @@
-import type { ConversationEventType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+// This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events
+// via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
@@ -11,6 +11,8 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ConversationEventType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger
@@ -59,7 +61,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 async function handler(
   req: NextApiRequest,
   // This endpoint only returns void as it is used only for streaming, so no need to use @dust-tt/client types.
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
@@ -123,6 +125,11 @@ async function handler(
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
+        // Butler suggestions are internal events, not exposed via the public API.
+        if (event.data.type === "butler_suggestion_created") {
+          continue;
+        }
+
         let publicEvent: ConversationEventType | undefined;
 
         if (event.data.type === "agent_message_new") {

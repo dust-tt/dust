@@ -1,3 +1,4 @@
+import { LinkWrapper } from "@app/lib/platform";
 import {
   Button,
   ExclamationCircleIcon,
@@ -5,8 +6,7 @@ import {
   LoginIcon,
 } from "@dust-tt/sparkle";
 
-import { LinkWrapper } from "@app/lib/platform";
-
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Custom404() {
   return (
     <div className="flex h-dvh items-center justify-center">

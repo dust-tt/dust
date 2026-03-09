@@ -1,6 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
@@ -15,8 +12,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types/oauth/lib";
 import type {
+  ExtraConfigType,
   OAuthConnectionType,
   OAuthProvider,
   OAuthUseCase,
@@ -24,6 +21,8 @@ import type {
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
+import { z } from "zod";
 
 export const MCP_OAUTH_RESPONSE_TYPE = "code";
 export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";

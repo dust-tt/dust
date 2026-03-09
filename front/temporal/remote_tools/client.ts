@@ -1,5 +1,3 @@
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/remote_tools/config";
@@ -7,6 +5,7 @@ import { syncRemoteMCPServersWorkflow } from "@app/temporal/remote_tools/workflo
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 export async function createRemoteMCPServersSyncSchedule(): Promise<
   Result<string, Error>

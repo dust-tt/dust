@@ -1,12 +1,14 @@
-import { Button, cn } from "@dust-tt/sparkle";
-import _ from "lodash";
-import React from "react";
-
+import config from "@app/lib/api/config";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Button, cn } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 import { prettifyGroupName } from "./utils";
 
@@ -80,10 +82,7 @@ export const APIKeysList = ({
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
                       >
-                        Domain:{" "}
-                        <strong>
-                          {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
-                        </strong>
+                        Domain: <strong>{config.getApiBaseUrl()}</strong>
                       </p>
                       <p
                         className={cn(

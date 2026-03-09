@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -10,6 +7,8 @@ import type {
   AgentSuggestionState,
   SuggestionPayload,
 } from "@app/types/suggestions/agent_suggestion";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionModel> {
   declare createdAt: CreationOptional<Date>;

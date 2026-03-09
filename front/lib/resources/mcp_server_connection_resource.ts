@@ -1,16 +1,9 @@
-import type { WhereOptions } from "sequelize";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import {
   getServerTypeAndIdFromSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -25,6 +18,14 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { formatUserFullName } from "@app/types/user";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -180,6 +181,34 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     return connections.length > 0
       ? new Ok(connections[0])
       : new Err(new DustError("connection_not_found", "Connection not found"));
+  }
+
+  static async findByInternalServerName(
+    auth: Authenticator,
+    {
+      serverName,
+      connectionType,
+    }: {
+      serverName: InternalMCPServerNameType;
+      connectionType: MCPServerConnectionConnectionType;
+    }
+  ): Promise<MCPServerConnectionResource | null> {
+    const connections = await this.baseFetch(auth, {
+      where: {
+        serverType: "internal",
+        connectionType,
+        ...(connectionType === "personal"
+          ? { userId: auth.getNonNullableUser().id }
+          : {}),
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return (
+      connections.find((c) =>
+        matchesInternalMCPServerName(c.internalMCPServerId, serverName)
+      ) ?? null
+    );
   }
 
   static async listByMCPServer(

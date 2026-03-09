@@ -9,6 +9,10 @@ inputs:
     description: "Build Sparkle"
     required: false
     default: "false"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "22.22.0"
 outputs:
   cache-hit-node-modules:
     description: "Whether node_modules cache was hit"
@@ -19,7 +23,7 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 20.13.0
+        node-version: ${{ inputs.node-version }}
 
     - name: Cache node_modules
       id: cache-node-modules
@@ -28,16 +32,16 @@ runs:
         path: |
           node_modules
           front/node_modules
+          front-spa/node_modules
           connectors/node_modules
           sparkle/node_modules
-          cli/node_modules
+          cli/dust-cli/node_modules
           extension/node_modules
           viz/node_modules
-          eslint-plugin-dust/node_modules
           sdks/js/node_modules
-        key: workspaces-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        key: workspaces-node-modules-${{ runner.os }}-node${{ inputs.node-version }}-${{ hashFiles('package-lock.json') }}
         restore-keys: |
-          workspaces-node-modules-${{ runner.os }}-
+          workspaces-node-modules-${{ runner.os }}-node${{ inputs.node-version }}-
 
     - name: Install workspaces dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'

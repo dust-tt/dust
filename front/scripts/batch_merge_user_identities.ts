@@ -1,10 +1,9 @@
-import { promises as fs } from "fs";
-
 import { Authenticator } from "@app/lib/auth";
 import { mergeUserIdentities } from "@app/lib/iam/users";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { promises as fs } from "fs";
 
 import { makeScript } from "./helpers";
 

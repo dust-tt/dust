@@ -1,8 +1,7 @@
+import logger from "@app/logger/logger";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-
-import logger from "@app/logger/logger";
 
 const StatusPageComponentCodec = t.type({
   name: t.string,

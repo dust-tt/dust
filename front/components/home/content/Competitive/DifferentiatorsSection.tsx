@@ -1,3 +1,5 @@
+import { H2, P } from "@app/components/home/ContentComponents";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   BoltIcon,
   BookOpenIcon,
@@ -5,9 +7,6 @@ import {
   RobotIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-
-import { H2, P } from "@app/components/home/ContentComponents";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 type IconType = "robot" | "bolt" | "book" | "users";
 type IconColor = "green" | "orange" | "blue" | "red";

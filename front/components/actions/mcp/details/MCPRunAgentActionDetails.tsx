@@ -1,3 +1,41 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type {
+  ActionDetailsDisplayContext,
+  ToolExecutionDetailsProps,
+} from "@app/components/actions/mcp/details/types";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@app/components/markdown/CiteBlock";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isAgentPauseOutputResourceType,
+  isRunAgentQueryProgressOutput,
+  isRunAgentQueryResourceType,
+  isRunAgentResultResourceType,
+  isStoreResourceProgressOutput,
+  isToolGeneratedFile,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/lib/mentions/markdown/plugin";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { emptyArray } from "@app/lib/swr/swr";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
@@ -11,41 +49,9 @@ import {
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import {
-  CitationsContext,
-  CiteBlock,
-  getCiteDirective,
-} from "@app/components/markdown/CiteBlock";
-import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import {
-  isAgentPauseOutputResourceType,
-  isRunAgentChainOfThoughtProgressOutput,
-  isRunAgentGenerationTokensProgressOutput,
-  isRunAgentQueryResourceType,
-  isRunAgentResultResourceType,
-  isStoreResourceProgressOutput,
-  isToolGeneratedFile,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/lib/mentions/markdown/plugin";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
-import { useSpaces } from "@app/lib/swr/spaces";
-import { emptyArray } from "@app/lib/swr/swr";
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 
 export function MCPRunAgentActionDetails({
   lastNotification,
@@ -86,15 +92,13 @@ export function MCPRunAgentActionDetails({
 
   const [query, setQuery] = useState<string | null>(null);
   const [childAgentId, setChildAgentId] = useState<string | null>(null);
+  const [childStreamIds, setChildStreamIds] = useState<{
+    conversationId: string;
+    agentMessageId: string;
+  } | null>(null);
 
-  const [streamedChainOfThought, setStreamedChainOfThought] = useState<
-    string | null
-  >(null);
-  const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
-  const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MCPReferenceCitation }[]
-  >([]);
-
+  // Extract query, childAgentId, conversationId, and agentMessageId from
+  // notifications and tool output.
   useEffect(() => {
     if (queryResource) {
       setQuery(queryResource.resource.text);
@@ -110,51 +114,48 @@ export function MCPRunAgentActionDetails({
           setQuery(runAgentQueryResource.resource.text);
           setChildAgentId(runAgentQueryResource.resource.childAgentId);
         }
-      } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
-        setStreamedChainOfThought(output.chainOfThought);
-      } else if (isRunAgentGenerationTokensProgressOutput(output)) {
-        setStreamedResponse(output.text);
+      }
+      // Extract stream connection IDs from run_agent progress notification.
+      if (isRunAgentQueryProgressOutput(output) && output.agentMessageId) {
+        setChildStreamIds({
+          conversationId: output.conversationId,
+          agentMessageId: output.agentMessageId,
+        });
       }
     }
   }, [queryResource, lastNotification]);
 
-  const response = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.text;
-    }
-    return streamedResponse;
-  }, [resultResource, streamedResponse]);
-
-  const chainOfThought = useMemo(() => {
-    if (resultResource && resultResource.resource.chainOfThought) {
-      return resultResource.resource.chainOfThought;
-    }
-    return streamedChainOfThought;
-  }, [resultResource, streamedChainOfThought]);
+  // Subscribe to the child agent's event stream.
+  const {
+    response: streamingResponse,
+    chainOfThought: streamingChainOfThought,
+    isStreamingResponse,
+    isStreamingChainOfThought,
+  } = useChildAgentStream({
+    childStreamIds,
+    owner,
+    // We only stream when we are in the sidebar, in the conversation we only show the query.
+    disabled: displayContext !== "sidebar",
+  });
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: childAgentId,
   });
 
-  const isBusy = useMemo(() => {
-    return !resultResource;
-  }, [resultResource]);
-
-  const isStreamingChainOfThought = useMemo(() => {
-    return isBusy && chainOfThought !== null && response === null;
-  }, [isBusy, chainOfThought, response]);
-
-  const isStreamingResponse = useMemo(() => {
-    return isBusy && response !== null && !resultResource;
-  }, [isBusy, response, resultResource]);
+  const response = resultResource?.resource.text ?? streamingResponse;
+  const chainOfThought =
+    resultResource?.resource.chainOfThought ?? streamingChainOfThought;
 
   const conversationUrl = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.uri;
     }
+    if (childStreamIds) {
+      return `/w/${owner.sId}/conversation/${childStreamIds.conversationId}`;
+    }
     return null;
-  }, [resultResource]);
+  }, [resultResource, childStreamIds, owner.sId]);
 
   const references = useMemo(() => {
     if (!resultResource?.resource.refs) {
@@ -175,12 +176,79 @@ export function MCPRunAgentActionDetails({
     return mcpReferenceCitations;
   }, [resultResource]);
 
+  if (!childAgent) {
+    return null;
+  }
+
+  return (
+    <MCPRunAgentActionDetailsDisplay
+      displayContext={displayContext}
+      owner={owner}
+      query={query}
+      childAgent={childAgent}
+      isBusy={resultResource === null}
+      isStreamingChainOfThought={
+        resultResource === null && isStreamingChainOfThought
+      }
+      isStreamingResponse={resultResource === null && isStreamingResponse}
+      chainOfThought={chainOfThought}
+      response={response}
+      conversationUrl={conversationUrl}
+      references={references}
+      addedMCPServerViewIds={addedMCPServerViewIds}
+      mcpServerViews={mcpServerViews}
+      handoverResource={handoverResource}
+      generatedFiles={generatedFiles}
+    />
+  );
+}
+
+interface MCPRunAgentActionDetailsDisplayProps {
+  displayContext: ActionDetailsDisplayContext;
+  owner: LightWorkspaceType;
+  query: string | null;
+  childAgent: AgentConfigurationType;
+  isBusy: boolean;
+  isStreamingChainOfThought: boolean;
+  isStreamingResponse: boolean;
+  chainOfThought: string | null;
+  response: string | null;
+  conversationUrl: string | null;
+  references: Record<string, MCPReferenceCitation>;
+  addedMCPServerViewIds: string[];
+  mcpServerViews: MCPServerViewType[];
+  handoverResource: { resource: { text: string } } | null;
+  generatedFiles: ToolGeneratedFileType[];
+}
+
+function MCPRunAgentActionDetailsDisplay({
+  displayContext,
+  owner,
+  query,
+  childAgent,
+  isBusy,
+  isStreamingChainOfThought,
+  isStreamingResponse,
+  chainOfThought,
+  response,
+  conversationUrl,
+  references,
+  addedMCPServerViewIds,
+  mcpServerViews,
+  handoverResource,
+  generatedFiles,
+}: MCPRunAgentActionDetailsDisplayProps) {
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: MCPReferenceCitation }[]
+  >([]);
+
   const updateActiveReferences = (doc: MCPReferenceCitation, index: number) => {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
       setActiveReferences([...activeReferences, { index, document: doc }]);
     }
   };
+
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [getCiteDirective(), agentMentionDirective],
     []
@@ -194,10 +262,6 @@ export function MCPRunAgentActionDetails({
     }),
     [owner]
   );
-
-  if (!childAgent) {
-    return null;
-  }
 
   const agentName = childAgent.name;
 

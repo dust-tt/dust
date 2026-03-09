@@ -1,6 +1,4 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
-import { Button, type RegularButtonProps } from "@sparkle/components/";
+import { Button, type RegularButtonProps } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
@@ -43,6 +41,7 @@ EmptyCTA.displayName = "EmptyCTA";
 interface EmptyCTAButtonProps extends RegularButtonProps {
   icon: React.ComponentType;
   label: string;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 const EmptyCTAButton: React.FC<EmptyCTAButtonProps> = ({

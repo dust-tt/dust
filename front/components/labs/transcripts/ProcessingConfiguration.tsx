@@ -1,7 +1,3 @@
-import { Page, SliderToggle } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-import type { KeyedMutator } from "swr";
-
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
@@ -9,6 +5,9 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Page, SliderToggle } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+import type { KeyedMutator } from "swr";
 
 interface ProcessingConfigurationProps {
   owner: LightWorkspaceType;

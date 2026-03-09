@@ -8,7 +8,7 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/mentions";
+import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -57,6 +57,7 @@ export async function validateAction(
     userMessageId,
     userMessageVersion,
     userMessageUserId,
+    userMessageOrigin,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -199,6 +200,7 @@ export async function validateAction(
       conversationTitle,
       userMessageId,
       userMessageVersion,
+      userMessageOrigin,
     },
     // Resume from the step where the action was created.
     startStep: agentStepContent.step,

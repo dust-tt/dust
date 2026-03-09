@@ -1,5 +1,3 @@
-import { Button, Label, PencilSquareIcon } from "@dust-tt/sparkle";
-
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
@@ -9,6 +7,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
+import { Button, Label, PencilSquareIcon } from "@dust-tt/sparkle";
 
 import Block from "./Block";
 

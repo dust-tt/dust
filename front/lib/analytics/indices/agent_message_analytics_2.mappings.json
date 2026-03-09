@@ -80,6 +80,23 @@
         }
       }
     },
+    "skills_used": {
+      "type": "nested",
+      "properties": {
+        "skill_id": {
+          "type": "keyword"
+        },
+        "skill_name": {
+          "type": "keyword"
+        },
+        "skill_type": {
+          "type": "keyword"
+        },
+        "source": {
+          "type": "keyword"
+        }
+      }
+    },
     "feedbacks": {
       "type": "nested",
       "properties": {

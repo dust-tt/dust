@@ -1,11 +1,4 @@
-import { markdownStyles } from "@dust-tt/sparkle";
-import { Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
-import type { Editor } from "@tiptap/react";
-import { useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo } from "react";
-
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
@@ -27,8 +20,16 @@ import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
+import { markdownStyles } from "@dust-tt/sparkle";
+import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
+import type { Editor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
+const SUBMIT_COOLDOWN_MS = 750;
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -170,6 +171,7 @@ export interface CustomEditorProps {
     setLoading: (loading: boolean) => void
   ) => void;
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -188,12 +190,14 @@ export const buildEditorExtensions = ({
   owner,
   conversationId,
   spaceId,
+  disableUserMentions,
   onInlineText,
   onUrlDetected,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
+  disableUserMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -222,12 +226,9 @@ export const buildEditorExtensions = ({
           class: markdownStyles.list(),
         },
       },
-      // Markdown styles configuration.
-      code: {
-        HTMLAttributes: {
-          class: markdownStyles.codeInline(),
-        },
-      },
+      // Disable built-in code extension; we use CodeExtension which handles
+      // backslash-escaped backticks (e.g. `\`identifier\``).
+      code: false,
       codeBlock: {
         HTMLAttributes: {
           class: markdownStyles.codeBlock(),
@@ -237,6 +238,11 @@ export const buildEditorExtensions = ({
         HTMLAttributes: {
           class: markdownStyles.unorderedList(),
         },
+      },
+    }),
+    CodeExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.codeInline(),
       },
     }),
     BlockquoteExtension.configure({
@@ -265,15 +271,20 @@ export const buildEditorExtensions = ({
         spaceId,
         select: {
           agents: true,
-          users: true,
+          users: !disableUserMentions,
         },
       }),
     }),
     EmojiExtension,
     Placeholder.configure({
-      placeholder: "Ask an @agent a question, or get some @help",
+      placeholder: ({ node }) => {
+        if (node.type.name !== "paragraph") {
+          return "";
+        }
+        return "Ask an @agent a question, or get some @help";
+      },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     PastedAttachmentExtension.configure({
       onInlineText,
@@ -294,6 +305,7 @@ export const buildEditorExtensions = ({
 const useCustomEditor = ({
   onEnterKeyDown,
   disableAutoFocus,
+  disableUserMentions,
   onUrlDetected,
   owner,
   conversationId,
@@ -309,6 +321,7 @@ const useCustomEditor = ({
         owner,
         conversationId,
         spaceId,
+        disableUserMentions,
         onInlineText,
         onUrlDetected,
       }),
@@ -342,6 +355,7 @@ const useCustomEditor = ({
   );
 
   const editorService = useEditorService(editor);
+  const lastSubmitTimestampMsRef = useRef(0);
 
   // Set keydown handler after editor is initialized to avoid synchronous updates during render.
   useEffect(() => {
@@ -384,6 +398,18 @@ const useCustomEditor = ({
             if (isMobile(navigator)) {
               return false;
             }
+
+            if (event.repeat) {
+              event.preventDefault();
+              return true;
+            }
+
+            const nowMs = Date.now();
+            if (nowMs - lastSubmitTimestampMsRef.current < SUBMIT_COOLDOWN_MS) {
+              event.preventDefault();
+              return true;
+            }
+            lastSubmitTimestampMsRef.current = nowMs;
 
             // Prevent the default Enter key behavior
             event.preventDefault();

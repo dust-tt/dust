@@ -1,7 +1,6 @@
-import { cn, Icon } from "@dust-tt/sparkle";
-
 import { getSkillIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { cn, Icon } from "@dust-tt/sparkle";
 
 type ExtendedSkillInfo = Pick<SkillType, "name" | "icon">;
 

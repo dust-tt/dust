@@ -1,7 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
-import { useWatch } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
   useDraftAgent,
@@ -28,6 +24,9 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
+import { useWatch } from "react-hook-form";
 
 interface EmptyStateProps {
   message: string;

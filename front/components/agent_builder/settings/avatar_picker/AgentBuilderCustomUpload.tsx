@@ -1,14 +1,13 @@
-import { ArrowUpOnSquareIcon, Button } from "@dust-tt/sparkle";
-import type { ChangeEvent } from "react";
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import type { Crop } from "react-image-crop";
-import { centerCrop, makeAspectCrop, ReactCrop } from "react-image-crop";
-
 import type { AvatarPickerTabElement } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { clientFetch } from "@app/lib/egress/client";
 import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types/user";
+import { ArrowUpOnSquareIcon, Button } from "@dust-tt/sparkle";
+import type { ChangeEvent } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import type { Crop } from "react-image-crop";
+import { centerCrop, makeAspectCrop, ReactCrop } from "react-image-crop";
 
 const DEFAULT_CROP: Crop = {
   unit: "%",
@@ -42,6 +41,7 @@ const AgentBuilderCustomUpload = forwardRef<
     useCase: "avatar",
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useImperativeHandle(ref, () => {
     return {
       getUrl: async () => {

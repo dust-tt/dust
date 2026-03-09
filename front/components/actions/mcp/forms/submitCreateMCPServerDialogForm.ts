@@ -2,10 +2,12 @@ import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mc
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
@@ -62,13 +64,18 @@ type CreateRemoteMCPServerFn = (args: {
   customHeaders?: { key: string; value: string }[];
 }) => Promise<Result<CreateMCPServerResponseBody, Error>>;
 
-type CreateInternalMCPServerFn = (args: {
-  name: string;
-  oauthConnection?: MCPConnectionType;
-  includeGlobal: boolean;
-  sharedSecret?: string;
-  customHeaders?: Array<{ key: string; value: string }>;
-}) => Promise<Result<CreateMCPServerResponseBody, Error>>;
+type CreateInternalMCPServerFn = (
+  args: {
+    name: string;
+    includeGlobal: boolean;
+    sharedSecret?: string;
+    customHeaders?: Array<{ key: string; value: string }>;
+  } & (
+    | { oauthConnection: MCPConnectionType; useCase?: never }
+    | { oauthConnection?: never; useCase: MCPOAuthUseCase }
+    | { oauthConnection?: never; useCase?: never }
+  )
+) => Promise<Result<CreateMCPServerResponseBody, Error>>;
 
 interface SubmitCreateMCPServerDialogFormParams {
   owner: WorkspaceType;
@@ -82,6 +89,7 @@ interface SubmitCreateMCPServerDialogFormParams {
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
+  regionInfo: RegionInfo | null;
 }
 
 export async function submitCreateMCPServerDialogForm({
@@ -94,6 +102,7 @@ export async function submitCreateMCPServerDialogForm({
   createWithURL,
   createInternalMCPServer,
   onBeforeCreateServer,
+  regionInfo,
 }: SubmitCreateMCPServerDialogFormParams): Promise<
   Result<CreateMCPServerDialogSubmitResult, Error>
 > {
@@ -159,7 +168,6 @@ export async function submitCreateMCPServerDialogForm({
     const scope = authorization.scope;
 
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: authorization.provider,
       // During setup, the use case is always "platform_actions".
@@ -168,6 +176,7 @@ export async function submitCreateMCPServerDialogForm({
         ...(values.authCredentials ?? {}),
         ...(scope ? { scope } : {}),
       },
+      regionInfo,
     });
 
     if (cRes.isErr()) {
@@ -198,11 +207,8 @@ export async function submitCreateMCPServerDialogForm({
         ? sanitizeHeadersArray(values.customHeaders)
         : undefined;
 
-    const createRes = await createInternalMCPServer({
-      name: internalMCPServer.name,
-      oauthConnection,
-      includeGlobal: true,
-      ...(requiresBearerTokenConfiguration(internalMCPServer) &&
+    const optionalFields =
+      requiresBearerTokenConfiguration(internalMCPServer) &&
       (values.sharedSecret !== undefined ||
         (sanitizedHeaders && sanitizedHeaders.length > 0))
         ? {
@@ -212,8 +218,20 @@ export async function submitCreateMCPServerDialogForm({
                 ? sanitizedHeaders
                 : undefined,
           }
-        : {}),
-    });
+        : {};
+
+    const createRes = oauthConnection
+      ? await createInternalMCPServer({
+          name: internalMCPServer.name,
+          oauthConnection,
+          includeGlobal: true,
+          ...optionalFields,
+        })
+      : await createInternalMCPServer({
+          name: internalMCPServer.name,
+          includeGlobal: true,
+          ...optionalFields,
+        });
 
     if (createRes.isErr()) {
       return new Err(

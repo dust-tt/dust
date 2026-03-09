@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/poke/temporal/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 // Create a single proxy with all normal and long activities
 const normalActivityProxies = proxyActivities<typeof activities>({

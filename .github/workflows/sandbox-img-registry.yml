@@ -1,0 +1,126 @@
+name: Sandbox Image Registry
+
+on:
+  workflow_call:
+    outputs:
+      images-built:
+        description: "Number of images built"
+        value: ${{ jobs.summary.outputs.built-count }}
+  workflow_dispatch:
+    inputs:
+      force-rebuild:
+        description: "Force rebuild all images"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      missing: ${{ steps.check.outputs.missing }}
+      build-matrix: ${{ steps.check.outputs.matrix }}
+      has-missing: ${{ steps.check.outputs.has-missing }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+
+      - name: Check sandbox images
+        id: check
+        working-directory: front
+        env:
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+        run: |
+          set -e
+          FORCE_FLAG=""
+          if [ "${{ inputs.force-rebuild }}" == "true" ]; then
+            FORCE_FLAG="--force-rebuild"
+          fi
+          RESULT=$(npx tsx scripts/sandbox_image_check.ts --json $FORCE_FLAG)
+          echo "Check result:"
+          echo "$RESULT"
+
+          MISSING=$(echo "$RESULT" | jq -c '.missing')
+          MATRIX=$(echo "$RESULT" | jq -c '{include: .buildMatrix}')
+          HAS_MISSING=$(echo "$RESULT" | jq -r 'if (.missing | length) > 0 then "true" else "false" end')
+
+          echo "missing=$MISSING" >> $GITHUB_OUTPUT
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "has-missing=$HAS_MISSING" >> $GITHUB_OUTPUT
+
+  build-templates:
+    needs: [check]
+    if: needs.check.outputs.has-missing == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.check.outputs.build-matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+
+      - name: Write service account JSON
+        run: |
+          echo '${{ secrets.SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT_JSON }}' > /tmp/service-account.json
+
+      - name: Build sandbox image
+        working-directory: front
+        env:
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+          SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT: /tmp/service-account.json
+        run: |
+          npx tsx scripts/sandbox_image_build.ts \
+            --image ${{ matrix.image }} \
+            --tag ${{ matrix.tag }} \
+            --docker-registry us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx \
+            --execute
+
+      - name: Cleanup service account JSON
+        if: always()
+        run: rm -f /tmp/service-account.json
+
+  summary:
+    needs: [check, build-templates]
+    if: always() && needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      built-count: ${{ steps.count.outputs.built }}
+    steps:
+      - name: Calculate built count
+        id: count
+        run: |
+          if [ "${{ needs.check.outputs.has-missing }}" == "true" ]; then
+            MISSING='${{ needs.check.outputs.missing }}'
+            COUNT=$(echo "$MISSING" | jq 'length')
+            echo "built=$COUNT" >> $GITHUB_OUTPUT
+          else
+            echo "built=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Sandbox Image Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.check.outputs.has-missing }}" == "true" ]; then
+            echo "Built **${{ steps.count.outputs.built }}** missing images" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Missing images:" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            echo '${{ needs.check.outputs.missing }}' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "All required sandbox images already exist" >> $GITHUB_STEP_SUMMARY
+          fi

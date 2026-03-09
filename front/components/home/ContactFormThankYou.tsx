@@ -1,12 +1,11 @@
+import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
+import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
+import logger from "@app/logger/logger";
 import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
-
-import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
-import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
-import { getStoredUTMParams } from "@app/lib/utils/utm";
-import logger from "@app/logger/logger";
 
 // Default.com configuration
 const DEFAULT_FORM_ID = 130084;
@@ -70,6 +69,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
   // Get tracking params from sessionStorage for dataLayer
   const storedParams = getStoredUTMParams();
   const gclid = storedParams.gclid;
+  const fbclid = storedParams.fbclid;
+  const msclkid = storedParams.msclkid;
+  const liFatId = storedParams.li_fat_id;
   const utmSource = storedParams.utm_source;
   const utmMedium = storedParams.utm_medium;
   const utmCampaign = storedParams.utm_campaign;
@@ -104,6 +106,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
           user_company_headcount: companyHeadcount,
           consent_marketing: consentMarketing,
           gclid,
+          fbclid,
+          msclkid,
+          li_fat_id: liFatId,
           utm_source: utmSource,
           utm_medium: utmMedium,
           utm_campaign: utmCampaign,
@@ -123,6 +128,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
     headquartersRegion,
     companyHeadcount,
     gclid,
+    fbclid,
+    msclkid,
+    liFatId,
     utmSource,
     utmMedium,
     utmCampaign,

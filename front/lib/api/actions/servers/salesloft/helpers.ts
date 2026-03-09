@@ -1,5 +1,4 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getAllPages,
   makeSalesloftRequest,
@@ -14,40 +13,14 @@ import type {
   SalesloftStep,
   SalesloftUser,
 } from "@app/lib/api/actions/servers/salesloft/types";
-import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decrypt } from "@app/types/shared/utils/hashing";
 
-export async function getBearerToken(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<string | null> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    return null;
-  }
-
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const bearerToken = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
-
-  return bearerToken;
+export function getBearerToken(extra: ToolHandlerExtra): string | null {
+  return extra.authInfo?.token ?? null;
 }
 
 export function formatActionAsString(

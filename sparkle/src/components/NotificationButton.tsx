@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { Button } from "@sparkle/components/Button";
 import { Counter } from "@sparkle/components/Counter";
 import { cn } from "@sparkle/lib/utils";

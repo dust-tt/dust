@@ -1,3 +1,9 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/constants";
+import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   Button,
   DropdownMenu,
@@ -8,21 +14,21 @@ import {
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
-import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import { useSendNotification } from "@app/hooks/useNotification";
 
 const NAME_FIELD_NAME = "agentSettings.name";
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
-export function AgentBuilderNameSection() {
+interface AgentBuilderNameSectionProps {
+  isCreatingNew?: boolean;
+}
+
+export function AgentBuilderNameSection({
+  isCreatingNew = false,
+}: AgentBuilderNameSectionProps) {
   const { owner } = useAgentBuilderContext();
-  const { setValue } = useFormContext<AgentBuilderFormData>();
+  const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
   const sendNotification = useSendNotification();
 
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
@@ -37,6 +43,7 @@ export function AgentBuilderNameSection() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const userSetNameRef = useRef(false);
 
   const handleGenerateNameSuggestions = async () => {
     if (
@@ -88,6 +95,50 @@ export function AgentBuilderNameSection() {
     });
   };
 
+  const handleAutoGenerateName = useCallback(async () => {
+    if (
+      isGenerating ||
+      userSetNameRef.current ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      return;
+    }
+    const currentName = getValues("agentSettings.name");
+    if (currentName?.trim()) {
+      return;
+    }
+    setIsGenerating(true);
+    const result = await getNameSuggestions({
+      owner,
+      instructions,
+      description: description ?? "",
+    });
+    if (
+      result.isOk() &&
+      result.value.status === "ok" &&
+      result.value.suggestions?.[0]
+    ) {
+      setValue(NAME_FIELD_NAME, result.value.suggestions[0], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    setIsGenerating(false);
+  }, [description, getValues, instructions, isGenerating, owner, setValue]);
+
+  useEffect(() => {
+    if (!isCreatingNew) {
+      return;
+    }
+    const onInstructionsBlur = () => {
+      void handleAutoGenerateName();
+    };
+    window.addEventListener(BLUR_EVENT_NAME, onInstructionsBlur);
+    return () =>
+      window.removeEventListener(BLUR_EVENT_NAME, onInstructionsBlur);
+  }, [handleAutoGenerateName, isCreatingNew]);
+
   return (
     <BaseFormFieldSection title="Name" fieldName={NAME_FIELD_NAME}>
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
@@ -96,7 +147,10 @@ export function AgentBuilderNameSection() {
             ref={registerRef}
             placeholder="Enter agent name"
             className="pr-10"
-            onChange={onChange}
+            onChange={(e) => {
+              userSetNameRef.current = true;
+              onChange(e);
+            }}
             message={errorMessage}
             messageStatus={hasError ? "error" : "default"}
             {...registerProps}
@@ -110,19 +164,23 @@ export function AgentBuilderNameSection() {
           >
             <DropdownMenuTrigger asChild>
               <Button
-                icon={SparklesIcon}
+                icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
                 variant="outline"
                 size="xs"
                 className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
                 disabled={
+                  isGenerating ||
                   !instructions ||
                   instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
                 }
                 tooltip={
-                  !instructions ||
-                  instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                    ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
-                    : "Get name suggestions"
+                  isGenerating
+                    ? "Generating name..."
+                    : !instructions ||
+                        instructions.length <
+                          MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                      ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
+                      : "Get name suggestions"
                 }
               />
             </DropdownMenuTrigger>

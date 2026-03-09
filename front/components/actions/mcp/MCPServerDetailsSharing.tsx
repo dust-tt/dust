@@ -1,3 +1,7 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   DataTable,
   Page,
@@ -8,11 +12,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
-
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import type { SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
 
 type RowData = {
   name: string;

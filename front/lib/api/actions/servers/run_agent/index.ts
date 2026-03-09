@@ -1,26 +1,9 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type {
-  AgentMessagePublicType,
-  ConversationPublicType,
-} from "@dust-tt/client";
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
-import _ from "lodash";
-import type z from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
-import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type {
-  ChildAgentBlob,
-  RunAgentBlockingEvent,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+  MCPProgressNotificationType,
+  RunAgentQueryProgressOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolDefinition,
   ToolHandlerExtra,
@@ -40,11 +23,18 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
 } from "@app/lib/api/actions/servers/run_agent/metadata";
+import { isTransientStreamError } from "@app/lib/api/actions/servers/run_agent/network_errors";
+import type {
+  ChildAgentBlob,
+  RunAgentBlockingEvent,
+} from "@app/lib/api/actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/api/actions/servers/run_agent/types";
 import {
   getCitationsFromActions,
   getRefs,
@@ -64,6 +54,18 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { getHeaderFromUserEmail } from "@app/types/user";
+import type {
+  AgentMessagePublicType,
+  ConversationPublicType,
+} from "@dust-tt/client";
+
+import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
 
@@ -98,7 +100,7 @@ const runAgent = async (
     toolName,
     childAgentBlob,
   }: {
-    auth?: Authenticator;
+    auth: Authenticator;
     agentLoopContext?: AgentLoopContextType;
     sendNotification?: (
       notification: MCPProgressNotificationType
@@ -109,7 +111,6 @@ const runAgent = async (
     childAgentBlob: ChildAgentBlob;
   }
 ): Promise<ToolHandlerResult> => {
-  assert(auth, "auth is required to run the run_agent tool");
   assert(
     agentLoopContext?.runContext,
     "agentLoopContext is required to run the run_agent tool"
@@ -195,6 +196,7 @@ const runAgent = async (
 
   const convRes = await getOrCreateConversation(
     api,
+    auth,
     agentLoopContext.runContext,
     {
       childAgentBlob,
@@ -331,7 +333,8 @@ const runAgent = async (
               childAgentId: parsedChildAgentId,
               conversationId: conversation.sId,
               userMessageId,
-            },
+              agentMessageId: agentMessage?.sId ?? null,
+            } satisfies RunAgentQueryProgressOutput,
           },
         },
       },
@@ -480,52 +483,8 @@ const runAgent = async (
         // Separate content based on classification.
         if (event.classification === "chain_of_thought") {
           chainOfThought += event.text;
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: 0,
-              _meta: {
-                data: {
-                  label: "Agent thinking...",
-                  output: {
-                    type: "run_agent_chain_of_thought",
-                    childAgentId: parsedChildAgentId,
-                    conversationId: conversation.sId,
-                    chainOfThought: event.text,
-                  },
-                },
-              },
-            },
-          };
-          if (sendNotification) {
-            await sendNotification(notification);
-          }
         } else if (event.classification === "tokens") {
           finalContent += event.text;
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: 0,
-              _meta: {
-                data: {
-                  label: "Agent responding...",
-                  output: {
-                    type: "run_agent_generation_tokens",
-                    childAgentId: parsedChildAgentId,
-                    conversationId: conversation.sId,
-                    text: event.text,
-                  },
-                },
-              },
-            },
-          };
-          if (sendNotification) {
-            await sendNotification(notification);
-          }
         } else if (
           event.classification === "closing_delimiter" &&
           event.delimiterClassification === "chain_of_thought" &&
@@ -533,28 +492,6 @@ const runAgent = async (
         ) {
           // For closing chain of thought delimiters, add a newline.
           chainOfThought += "\n";
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: 0,
-              _meta: {
-                data: {
-                  label: "Agent thinking...",
-                  output: {
-                    type: "run_agent_chain_of_thought",
-                    childAgentId: parsedChildAgentId,
-                    conversationId: conversation.sId,
-                    chainOfThought: "\n",
-                  },
-                },
-              },
-            },
-          };
-          if (sendNotification) {
-            await sendNotification(notification);
-          }
         }
       } else if (event.type === "agent_error") {
         const errorMessage = `Agent error: ${event.error.message}`;

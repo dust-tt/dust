@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -10,6 +8,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeGetSkillDetails = {
   skill: SkillType;

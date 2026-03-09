@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
-import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import {
+  pruneConflictingInstructionSuggestions,
+  pruneSuggestionsForAgent,
+} from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -13,6 +14,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { beforeEach, describe, expect, it } from "vitest";
 
 async function getFullAgentConfiguration(
   auth: Authenticator,
@@ -680,9 +682,6 @@ describe("pruneSuggestionsForAgent", () => {
       );
 
       // Manually trigger conflict pruning (in production, suggest_prompt_edits does this)
-      const { pruneConflictingInstructionSuggestions } = await import(
-        "@app/lib/api/assistant/agent_suggestion_pruning"
-      );
       await pruneConflictingInstructionSuggestions(
         authenticator,
         agentWithNested,
@@ -761,9 +760,6 @@ describe("pruneSuggestionsForAgent", () => {
       );
 
       // Manually trigger conflict pruning (in production, suggest_prompt_edits does this)
-      const { pruneConflictingInstructionSuggestions } = await import(
-        "@app/lib/api/assistant/agent_suggestion_pruning"
-      );
       await pruneConflictingInstructionSuggestions(
         authenticator,
         agentWithBlocks,
@@ -791,6 +787,62 @@ describe("pruneSuggestionsForAgent", () => {
 
       // Root suggestion should remain pending
       expect(rootSuggestion.state).toBe("pending");
+    });
+
+    it("should mark existing instructions-root suggestion as outdated when block-level suggestion is created", async () => {
+      const agentWithBlocks = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentConfiguration.sId,
+        {
+          instructionsHtml:
+            '<p data-block-id="block1">First.</p><p data-block-id="block2">Second.</p>',
+        }
+      );
+
+      // Create an existing instructions-root suggestion first (e.g. from a previous copilot turn)
+      const rootSuggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+            content: `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"><p>Full rewrite.</p></div>`,
+            type: "replace",
+          },
+        }
+      );
+      expect(rootSuggestion.state).toBe("pending");
+
+      const blockSuggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentWithBlocks,
+        {
+          suggestion: {
+            targetBlockId: "block1",
+            content: "<p>Modified first block only.</p>",
+            type: "replace",
+          },
+        }
+      );
+
+      await pruneConflictingInstructionSuggestions(
+        authenticator,
+        agentWithBlocks,
+        [{ sId: blockSuggestion.sId, targetBlockId: "block1" }]
+      );
+
+      const fetchedRoot = await AgentSuggestionResource.fetchById(
+        authenticator,
+        rootSuggestion.sId
+      );
+      const fetchedBlock = await AgentSuggestionResource.fetchById(
+        authenticator,
+        blockSuggestion.sId
+      );
+
+      // Root should be outdated (block-level edit supersedes full rewrite)
+      expect(fetchedRoot?.state).toBe("outdated");
+      expect(fetchedBlock?.state).toBe("pending");
     });
   });
 });

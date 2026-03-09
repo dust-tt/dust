@@ -1,18 +1,6 @@
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  cn,
-  ContentMessage,
-  InformationCircleIcon,
-  ScrollArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   SkillBuilderFormContext,
@@ -27,25 +15,41 @@ import {
   transformSkillTypeToFormData,
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
-import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
+import { getSkillIcon } from "@app/lib/skill";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ContentMessage,
+  cn,
+  InformationCircleIcon,
+  ScrollArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
   extendedSkill?: SkillType;
+  onSaved: () => void;
 }
 
 export default function SkillBuilder({
   skill,
   extendedSkill,
+  onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -96,7 +100,7 @@ export default function SkillBuilder({
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      skillId: !isCreatingNew ? skill?.sId : undefined,
+      skillId: skill?.sId,
       currentEditors: editors,
     });
 
@@ -118,6 +122,8 @@ export default function SkillBuilder({
       type: "success",
     });
 
+    onSaved();
+
     if (isCreatingNew && result.value.sId) {
       const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;
       await router.replace(newUrl, undefined, { shallow: true });
@@ -128,8 +134,12 @@ export default function SkillBuilder({
     setIsSaving(false);
   };
 
-  const handleCancel = async () => {
-    await appLayoutBack(owner, router);
+  const handleCancel = () => {
+    if (window.history.state?.idx > 0) {
+      router.back();
+    } else {
+      void router.replace(getConversationRoute(owner.sId));
+    }
   };
 
   const handleSave = () => {
@@ -151,14 +161,6 @@ export default function SkillBuilder({
               variant="default"
               className="mx-4"
               title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
-              description={
-                extendedSkill ? (
-                  <ExtendedSkillBadge
-                    extendedSkill={extendedSkill}
-                    className="text-sm"
-                  />
-                ) : undefined
-              }
               rightActions={
                 <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
               }
@@ -166,6 +168,17 @@ export default function SkillBuilder({
 
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+                {extendedSkill && (
+                  <ContentMessage
+                    title={`Built on ${extendedSkill.name}`}
+                    variant="highlight"
+                    icon={getSkillIcon(extendedSkill.icon)}
+                    size="lg"
+                  >
+                    A customized version of {extendedSkill.name} with your own
+                    instructions and preferences.
+                  </ContentMessage>
+                )}
                 {skill?.status === "suggested" && (
                   <ContentMessage
                     title="This is a generated skill suggestion"
@@ -181,7 +194,8 @@ export default function SkillBuilder({
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection skill={skill} />
-                <SkillBuilderToolsSection />
+                {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
+                <SkillBuilderToolsSection extendedSkill={extendedSkill} />
                 <SkillBuilderSettingsSection />
               </div>
             </ScrollArea>

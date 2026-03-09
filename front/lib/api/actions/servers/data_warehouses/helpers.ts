@@ -1,7 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import _ from "lodash";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   RenderedWarehouseNodeType,
@@ -19,6 +15,9 @@ import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function getAvailableWarehouses(
   auth: Authenticator,
@@ -229,8 +228,14 @@ function renderNode(
       ? INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
       : node.mime_type;
 
+  const tableId =
+    node.node_type === "table" && dataSourceId
+      ? `table-${dataSourceId}-${node.node_id}`
+      : null;
+
   return {
     nodeId,
+    tableId,
     title: node.title,
     parentTitle: node.parent_title,
     mimeType,

@@ -1,9 +1,8 @@
-import { useCallback } from "react";
-
+import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useConversation, useConversations } from "@app/lib/swr/conversations";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
 
 export function useUpdateConversationTitle({
   owner,
@@ -18,10 +17,7 @@ export function useUpdateConversationTitle({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   return useCallback(
     async (title: string): Promise<boolean> => {

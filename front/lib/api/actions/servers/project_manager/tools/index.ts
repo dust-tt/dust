@@ -14,10 +14,6 @@ import {
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
-import {
-  getAttachmentFromToolOutput,
-  renderAttachmentXml,
-} from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { upsertProjectContextFile } from "@app/lib/api/projects";
@@ -28,12 +24,12 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { SupportedFileContentType } from "@app/types/files";
 import {
   isAllSupportedFileContentType,
   isSupportedFileContentType,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 /**
  * Reads content from a source file.
@@ -56,63 +52,6 @@ export function createProjectManagerTools(
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof PROJECT_MANAGER_TOOLS_METADATA> = {
-    list_files: async ({ dustProject }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-
-        const files = await FileResource.listByProject(auth, {
-          projectId: space.sId,
-        });
-
-        // Filter files to only those with supported content types.
-        // TypeScript doesn't narrow the type through filter, so we assert it.
-        const supportedFiles = files.filter((file) =>
-          isSupportedFileContentType(file.contentType)
-        ) as Array<FileResource & { contentType: SupportedFileContentType }>;
-
-        if (files.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: "No files are currently in the project context.",
-            },
-          ]);
-        }
-
-        const attachments = supportedFiles.map((file) =>
-          getAttachmentFromToolOutput({
-            fileId: file.sId,
-            contentType: file.contentType,
-            title: file.fileName,
-            snippet: null,
-          })
-        );
-
-        let content = `The following files are currently in the project context:\n`;
-        for (const [i, attachment] of attachments.entries()) {
-          if (i > 0) {
-            content += "\n";
-          }
-          content += renderAttachmentXml({ attachment });
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: content,
-          },
-        ]);
-      }, "Failed to list project files");
-    },
-
     add_file: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -140,10 +79,19 @@ export function createProjectManagerTools(
             return sourceFileRes;
           }
 
+          const sourceFile = sourceFileRes.value;
+          const sourceConversationId = sourceFile.useCaseMetadata
+            ?.conversationId
+            ? sourceFile.useCaseMetadata.sourceConversationId
+            : undefined;
+
           const copyResult = await FileResource.copy(auth, {
             sourceId: sourceFileId,
             useCase: "project_context",
-            useCaseMetadata: { spaceId: space.sId },
+            useCaseMetadata: {
+              spaceId: space.sId,
+              sourceConversationId,
+            },
           });
 
           if (copyResult.isErr()) {
@@ -191,7 +139,11 @@ export function createProjectManagerTools(
             fileName,
             fileSize: Buffer.byteLength(content, "utf-8"),
             useCase: "project_context",
-            useCaseMetadata: { spaceId: space.sId },
+            useCaseMetadata: {
+              spaceId: space.sId,
+              sourceConversationId:
+                agentLoopContext?.runContext?.conversation?.sId,
+            },
           });
 
           // Upload content to GCS.
@@ -208,7 +160,7 @@ export function createProjectManagerTools(
         const upsertRes = await upsertProjectContextFile(auth, file);
 
         if (upsertRes.isErr()) {
-          logger.error(
+          logger.warn(
             {
               error: upsertRes.error,
               fileId: file.sId,
@@ -218,14 +170,28 @@ export function createProjectManagerTools(
           // Don't fail - file is uploaded, just not indexed yet.
         }
 
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            fileId: file.sId,
-            fileName: file.fileName,
-            message: `File "${fileName}" added to project context successfully.`,
-          })
-        );
+        // Adapt the message based on the input
+        let message: string;
+        if (sourceFileId) {
+          message = `File "${fileName}" (${file.sId}) created in project context successfully by copying from the source file (${sourceFileId}). These 2 files are NOT the same, you must use the appropriate file ID depending if you want to work on the original file or the new one.`;
+        } else {
+          message = `File "${fileName}" (${file.sId}) created in project context successfully from provided content.`;
+        }
+
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: file.getPublicUrl(auth),
+              fileId: file.sId,
+              title: file.fileName,
+              contentType: file.contentType,
+              snippet: null,
+              text: message,
+            },
+          },
+        ]);
       }, "Failed to add file");
     },
 
@@ -314,14 +280,20 @@ export function createProjectManagerTools(
           // Don't fail - content is updated, just not re-indexed.
         }
 
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            fileId: file.sId,
-            fileName: file.fileName,
-            message: `File "${file.fileName}" updated successfully.`,
-          })
-        );
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: file.getPublicUrl(auth),
+              fileId: file.sId,
+              title: file.fileName,
+              contentType: file.contentType,
+              snippet: null,
+              text: `File "${file.fileName}" (${file.sId}) updated in project context successfully.`,
+            },
+          },
+        ]);
       }, "Failed to update file");
     },
 
@@ -351,15 +323,7 @@ export function createProjectManagerTools(
           });
         } else {
           // Update existing metadata.
-          const updateRes = await metadata.updateMetadata({ description });
-          if (updateRes.isErr()) {
-            return new Err(
-              new MCPError(
-                `Failed to update project description: ${updateRes.error.message}`,
-                { tracked: false }
-              )
-            );
-          }
+          await metadata.updateDescription(description);
         }
 
         return new Ok(
@@ -425,7 +389,7 @@ export function createProjectManagerTools(
       }, "Failed to get project information");
     },
 
-    search_unread: async (params) => {
+    list_unread: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -448,6 +412,7 @@ export function createProjectManagerTools(
             spaceId: space.sId,
             options: {
               updatedSince: cutoffDate.getTime(),
+              excludeTest: true,
             },
           });
 

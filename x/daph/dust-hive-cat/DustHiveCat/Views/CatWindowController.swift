@@ -20,6 +20,9 @@ class CatWindowController: NSWindowController {
     private var tooltipLabel: NSTextField?
     private var tooltipTimer: Timer?
 
+    // Track previous roaming state for transition animations
+    private var previousRoamingState: CatState = .idle
+
     // Auto-dismiss: polls whether the user has manually focused the target pane
     private var focusCheckTimer: Timer?
 
@@ -273,7 +276,7 @@ class CatWindowController: NSWindowController {
             var error: NSDictionary?
             guard let appleScript = NSAppleScript(source: frontmostScript),
                   let result = appleScript.executeAndReturnError(&error).stringValue,
-                  result.lowercased() == "alacritty" else {
+                  result.lowercased() == self?.prefs.terminalApp.lowercased() else {
                 return
             }
 
@@ -333,9 +336,10 @@ class CatWindowController: NSWindowController {
             task.waitUntilExit()
         }
 
-        // Bring Alacritty to the front
+        // Bring the configured terminal to the front
+        let terminalApp = prefs.terminalApp
         let script = """
-        tell application "Alacritty"
+        tell application "\(terminalApp)"
             activate
         end tell
         """
@@ -375,6 +379,19 @@ extension CatWindowController: CatAnimatorDelegate {
     }
 
     func animatorDidCompleteAnimation(_ type: AnimationType) {
+        switch type {
+        case .walkToSleep:
+            roaming.resume()
+            animator.play(.sleep, loop: true, direction: roaming.direction)
+            return
+        case .sleepToWalk:
+            roaming.resume()
+            animator.play(.walk, loop: true, direction: roaming.direction)
+            return
+        default:
+            break
+        }
+
         // When a non-looping animation completes, return to appropriate state
         switch roaming.state {
         case .attentionNeeded:
@@ -389,16 +406,38 @@ extension CatWindowController: CatAnimatorDelegate {
 
 extension CatWindowController: RoamingBehaviorDelegate {
     func roamingDidChangeState(_ newState: CatState) {
+        let wasSleeping = previousRoamingState == .sleeping
+        previousRoamingState = newState
+
         switch newState {
         case .idle:
-            animator.play(.walk, loop: true, direction: roaming.direction)
+            if wasSleeping && hasTransitionFrames(.sleepToWalk) {
+                roaming.pause()
+                animator.play(.sleepToWalk, loop: false, direction: roaming.direction)
+            } else {
+                animator.play(.walk, loop: true, direction: roaming.direction)
+            }
         case .walking(let direction):
-            animator.play(.walk, loop: true, direction: direction)
+            if wasSleeping && hasTransitionFrames(.sleepToWalk) {
+                roaming.pause()
+                animator.play(.sleepToWalk, loop: false, direction: direction)
+            } else {
+                animator.play(.walk, loop: true, direction: direction)
+            }
         case .sleeping:
-            animator.play(.sleep, loop: true, direction: roaming.direction)
+            if !wasSleeping && hasTransitionFrames(.walkToSleep) {
+                roaming.pause()
+                animator.play(.walkToSleep, loop: false, direction: roaming.direction)
+            } else {
+                animator.play(.sleep, loop: true, direction: roaming.direction)
+            }
         case .attentionNeeded:
             animator.play(.notification, loop: true, direction: roaming.direction)
         }
+    }
+
+    private func hasTransitionFrames(_ animation: AnimationType) -> Bool {
+        !SpriteManager.shared.loadFrames(catType: prefs.catType, animation: animation).isEmpty
     }
 
     func roamingDidUpdatePosition(_ position: CGPoint) {

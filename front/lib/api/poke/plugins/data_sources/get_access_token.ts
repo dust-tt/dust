@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const getAccessTokenPlugin = createPlugin({
@@ -11,6 +11,7 @@ export const getAccessTokenPlugin = createPlugin({
     name: "Get Access Token",
     description: "Retrieve the OAuth access token for this data source.",
     resourceTypes: ["data_sources"],
+    readonly: true,
     args: {},
     redactResult: true,
   },

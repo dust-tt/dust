@@ -1,5 +1,3 @@
-import uniqBy from "lodash/uniqBy";
-
 import type {
   DataSourceBuilderTreeItemType,
   DataSourceBuilderTreeType,
@@ -9,6 +7,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types/data_source_view";
+import uniqBy from "lodash/uniqBy";
 
 /**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations

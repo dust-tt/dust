@@ -21,16 +21,37 @@ interface DesktopNavigationProviderProps {
   defaultOpen?: boolean;
 }
 
+export function NoOpDesktopNavigationProvider({
+  children,
+}: DesktopNavigationProviderProps) {
+  const value = useMemo(
+    () => ({
+      setIsNavigationBarOpen: () => {},
+      toggleNavigationBar: () => {},
+      isNavigationBarOpen: false,
+    }),
+    []
+  );
+
+  return (
+    <DesktopNavigationContext.Provider value={value}>
+      {children}
+    </DesktopNavigationContext.Provider>
+  );
+}
+
 export function DesktopNavigationProvider({
   children,
   defaultOpen = true,
 }: DesktopNavigationProviderProps) {
   const [isNavigationBarOpen, setIsNavigationBarOpen] = useState(defaultOpen);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleNavigationBar = useCallback(() => {
     setIsNavigationBarOpen((prev) => !prev);
   }, [setIsNavigationBarOpen]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(
     () => ({
       setIsNavigationBarOpen,

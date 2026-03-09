@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
@@ -14,6 +12,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { RoleType, UserTypeWithWorkspaces } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetMemberResponseBody = {
   member: {
@@ -143,6 +142,14 @@ async function handler(
                 api_error: {
                   type: "workspace_user_not_found",
                   message: "Could not find the membership.",
+                },
+              });
+            case "last_admin":
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: "Cannot revoke the last admin of a workspace.",
                 },
               });
             case "already_revoked":

@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -16,6 +14,7 @@ import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 
 type DatasourceRetrievalParentGroupData = {
   parentId: string | null;

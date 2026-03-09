@@ -1,5 +1,3 @@
-import { Readable } from "stream";
-
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,6 +13,7 @@ import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import { Readable } from "stream";
 
 export async function processAndStoreFromUrl(
   auth: Authenticator,

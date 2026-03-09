@@ -15,7 +15,6 @@ export type SpaceKind = (typeof SPACE_KINDS)[number];
 export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 export type SpaceType = {
   createdAt: number;
-  description?: string;
   groupIds: string[];
   isRestricted: boolean;
   kind: SpaceKind;
@@ -24,6 +23,18 @@ export type SpaceType = {
   sId: string;
   updatedAt: number;
 };
+
+export type ProjectType = SpaceType & {
+  description: string | null;
+  isMember: boolean;
+  archivedAt: number | null;
+};
+
+export function isProjectType(
+  space: SpaceType | ProjectType
+): space is ProjectType {
+  return space.kind === "project";
+}
 
 export function isUniqueSpaceKind(kind: SpaceKind): kind is UniqueSpaceKind {
   return UNIQUE_SPACE_KINDS.includes(kind as UniqueSpaceKind);

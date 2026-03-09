@@ -1,11 +1,10 @@
-import set from "lodash/set";
-
 import type {
   AdditionalConfigurationInBuilderType,
   MCPServerConfigurationType,
 } from "@app/components/shared/tools_picker/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import set from "lodash/set";
 
 /**
  * Creates default configuration values for MCP server based on requirements

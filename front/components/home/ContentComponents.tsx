@@ -1,3 +1,5 @@
+import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { classNames } from "@app/lib/utils";
 import {
   CircleIcon,
   HexagonIcon,
@@ -9,10 +11,8 @@ import {
   SquareIcon,
   TriangleIcon,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
-import React from "react";
-
-import { classNames } from "@app/lib/utils";
 
 const verticalGridClasses = {
   top: "items-start",
@@ -32,6 +32,25 @@ export const Grid = ({
       "grid grid-cols-12",
       gap,
       verticalGridClasses[verticalAlign]
+    )}
+  >
+    {children}
+  </div>
+);
+
+interface FullWidthSectionProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export const FullWidthSection = ({
+  children,
+  className,
+}: FullWidthSectionProps) => (
+  <div
+    className={cn(
+      "relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen",
+      className
     )}
   >
     {children}

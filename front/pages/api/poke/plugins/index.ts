@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginListItem } from "@app/lib/api/poke/types";
@@ -9,6 +7,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedResourceType } from "@app/types/poke/plugins";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface PokeListPluginsForScopeResponseBody {
   plugins: PluginListItem[];
@@ -71,25 +70,10 @@ async function handler(
       // If the run targets a specific workspace, use a workspace-scoped authenticator.
       if (workspaceId) {
         auth = await Authenticator.fromSuperUserSession(session, workspaceId);
-
-        // Hide plugins during any workspace maintenance.
-        const workspace = auth.workspace();
-        const maintenance = workspace?.metadata?.maintenance;
-        if (maintenance) {
-          // Return a fake plugin explaining why plugins are unavailable.
-          res.status(200).json({
-            plugins: [
-              {
-                id: "maintenance",
-                name: "Plugins are disabled during maintenance",
-                description:
-                  "All plugins are temporarily unavailable while workspace maintenance is in progress.",
-              },
-            ],
-          });
-          return;
-        }
       }
+
+      const workspace = auth.workspace();
+      const maintenance = workspace?.metadata?.maintenance;
 
       const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
@@ -100,10 +84,13 @@ async function handler(
       const pluginList = plugins
         .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
         .filter((p) => !p.manifest.isHidden)
+        // During maintenance, only show readonly plugins.
+        .filter((p) => !maintenance || p.manifest.readonly)
         .map((p) => ({
           id: p.manifest.id,
           name: p.manifest.name,
           description: p.manifest.description,
+          readonly: p.manifest.readonly,
         }));
 
       res.status(200).json({ plugins: pluginList });

@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 import {
   Button,
   DustLogoSquare,
@@ -5,9 +7,6 @@ import {
   LoginIcon,
   Page,
 } from "@dust-tt/sparkle";
-
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
@@ -92,7 +91,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             label="Sign in"
             icon={LoginIcon}
             onClick={() => {
-              window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
+              window.location.href = `${config.getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
             }}
           />
         </>

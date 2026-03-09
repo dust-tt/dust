@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type {
@@ -7,6 +5,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
+import { describe, expect, it } from "vitest";
 
 // Helper function to create a mock content fragment
 function createMockContentFragment(
@@ -41,6 +40,7 @@ function createMockContentFragment(
     textBytes: 100,
     sourceProvider: null,
     sourceIcon: null,
+    isInProjectContext: false,
   };
 }
 
@@ -126,6 +126,7 @@ function createMockConversation(
     content,
     triggerId: null,
     metadata: {},
+    branchId: null,
   };
 }
 

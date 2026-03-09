@@ -1,17 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import assert from "assert";
-import keyBy from "lodash/keyBy";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -47,6 +36,16 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
+import assert from "assert";
+import keyBy from "lodash/keyBy";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 import type { UserResource } from "./user_resource";
 
@@ -248,6 +247,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       includeDeleted,
       // WORKSPACE_ISOLATION_BYPASS: Data source views can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

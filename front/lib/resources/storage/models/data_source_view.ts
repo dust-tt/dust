@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -8,6 +5,8 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { DataSourceViewKind } from "@app/types/data_source_view";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;

@@ -1,18 +1,4 @@
 import {
-  Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import {
   CHART_HEIGHT,
   MAX_TOOLS_DISPLAYED,
   TOOL_EXECUTION_TIME_LEGEND,
@@ -26,6 +12,19 @@ import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
+import {
+  Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 function formatDurationMs(durationMs: number): string {
   if (durationMs >= 1000) {
@@ -132,6 +131,7 @@ export function ToolExecutionTimeChart({
     label: row.label,
   }));
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (view !== "tool") {
       return;

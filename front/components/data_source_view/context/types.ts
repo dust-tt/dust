@@ -1,11 +1,10 @@
-import { z } from "zod";
-
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
+import { z } from "zod";
 
 const tagsFilter = z.object({
   in: z.string().array(),

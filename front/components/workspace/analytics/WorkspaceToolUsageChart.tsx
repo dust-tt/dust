@@ -1,3 +1,18 @@
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
+import {
+  getIndexedColor,
+  getTimeRangeBounds,
+} from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import {
+  useWorkspaceTools,
+  useWorkspaceToolUsage,
+} from "@app/lib/swr/workspaces";
+import { formatShortDate } from "@app/lib/utils/timestamps";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ButtonsSwitch,
@@ -19,22 +34,6 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import {
-  CHART_HEIGHT,
-  INDEXED_COLORS,
-} from "@app/components/agent_builder/observability/constants";
-import { getTimeRangeBounds } from "@app/components/agent_builder/observability/utils";
-import { ChartContainer } from "@app/components/charts/ChartContainer";
-import type { LegendItem } from "@app/components/charts/ChartLegend";
-import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import {
-  useWorkspaceTools,
-  useWorkspaceToolUsage,
-} from "@app/lib/swr/workspaces";
-import { formatShortDate } from "@app/lib/utils/timestamps";
-import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
-
 type ToolUsageDisplayMode = "users" | "executions";
 
 const MAX_SELECTED_TOOLS = 5;
@@ -43,11 +42,6 @@ interface ToolUsageChartPoint {
   timestamp: number;
   date: string;
   values: Record<string, number>;
-}
-
-function getToolColor(toolName: string, allTools: string[]): string {
-  const idx = allTools.indexOf(toolName);
-  return INDEXED_COLORS[(idx >= 0 ? idx : 0) % INDEXED_COLORS.length];
 }
 
 function getToolSelectorLabel(selectedTools: string[]): string {
@@ -88,7 +82,7 @@ function ToolUsageTooltip({
   const rows = toolsForChart.map((tool, idx) => ({
     label: asDisplayToolName(tool),
     value: values[idx].toLocaleString(),
-    colorClassName: getToolColor(tool, toolsForChart),
+    colorClassName: getIndexedColor(tool, toolsForChart),
   }));
 
   if (toolsForChart.length > 1) {
@@ -236,7 +230,7 @@ export function WorkspaceToolUsageChart({
   const legendItems: LegendItem[] = toolsForChart.map((tool) => ({
     key: tool,
     label: asDisplayToolName(tool),
-    colorClassName: getToolColor(tool, toolsForChart),
+    colorClassName: getIndexedColor(tool, toolsForChart),
   }));
 
   const toolSelector = (
@@ -361,7 +355,7 @@ export function WorkspaceToolUsageChart({
             strokeWidth={2}
             dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
             name={asDisplayToolName(tool)}
-            className={getToolColor(tool, toolsForChart)}
+            className={getIndexedColor(tool, toolsForChart)}
             stroke="currentColor"
             dot={false}
           />

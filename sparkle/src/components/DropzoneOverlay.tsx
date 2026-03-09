@@ -12,7 +12,7 @@ export interface DropzoneOverlayProps {
   visual?: React.ReactNode;
 }
 
-export default function DropzoneOverlay({
+export function DropzoneOverlay({
   description,
   isDragActive,
   title,

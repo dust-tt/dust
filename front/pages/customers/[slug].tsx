@@ -1,10 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-import type { GetStaticPaths, GetStaticProps } from "next";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
 import { TableOfContents } from "@app/components/blog/TableOfContents";
 import { A, Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -22,6 +15,12 @@ import type { CustomerStoryPageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { Chip } from "@dust-tt/sparkle";
+import type { GetStaticPaths, GetStaticProps } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   // Don't pre-generate any paths at build time to minimize Contentful API calls.
@@ -90,6 +89,7 @@ export const getStaticProps: GetStaticProps<CustomerStoryPageProps> = async (
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function CustomerStoryPage({
   story,
   relatedStories,

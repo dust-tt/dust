@@ -1,3 +1,10 @@
+import { useQueryParams } from "@app/hooks/useQueryParams";
+import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
+import { getFileViewUrl } from "@app/lib/swr/files";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { isPdfContentType } from "@app/types/files";
+import { DocumentViewRawContentKey } from "@app/types/sheets";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Sheet,
   SheetContainer,
@@ -7,12 +14,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
-import type { DataSourceViewType } from "@app/types/data_source_view";
-import { DocumentViewRawContentKey } from "@app/types/sheets";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;
@@ -36,14 +37,35 @@ export default function DataSourceViewDocumentModal({
       disabled: !params.documentId.value || !dataSourceView,
     });
 
-  const { title, text } = useMemo(() => {
+  const { title, text, isPdf, fileViewUrl } = useMemo(() => {
     const defaultTitle = params.documentId.value ?? undefined;
 
     if (!document) {
-      return { title: defaultTitle, text: undefined };
+      return {
+        title: defaultTitle,
+        text: undefined,
+        isPdf: false,
+        fileViewUrl: null,
+      };
     }
+
+    const mimeType = document.mime_type;
+    const pdf = mimeType ? isPdfContentType(mimeType) : false;
+
+    // For file-backed documents, extract fileId from tags to build the view URL.
+    const fileIdTag = document.tags.find((tag: string) =>
+      tag.startsWith("fileId:")
+    );
+    const fileId = fileIdTag ? fileIdTag.split("fileId:")[1] : null;
+    const viewUrl = pdf ? getFileViewUrl(owner, fileId) : null;
+
     if (document.title) {
-      return { title: document.title, text: document.text };
+      return {
+        title: document.title,
+        text: document.text,
+        isPdf: pdf,
+        fileViewUrl: viewUrl,
+      };
     }
     const titleTag = document.tags.find((tag: string) =>
       tag.startsWith("title:")
@@ -52,8 +74,10 @@ export default function DataSourceViewDocumentModal({
     return {
       title: titleTag ? titleTag.split("title:")[1] : defaultTitle,
       text: document.text,
+      isPdf: pdf,
+      fileViewUrl: viewUrl,
     };
-  }, [document, params.documentId.value]);
+  }, [document, params.documentId.value, owner]);
 
   const onSheetClose = () => {
     params.setParams({
@@ -64,6 +88,20 @@ export default function DataSourceViewDocumentModal({
       onClose();
     }
   };
+
+  const pdfViewer = fileViewUrl ? (
+    <iframe
+      src={`${fileViewUrl}#navpanes=0`}
+      className="h-full min-h-[600px] w-full rounded-lg border-0"
+      title={title}
+    />
+  ) : (
+    <div className="flex flex-col items-center gap-4 py-8">
+      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        PDF preview is not available for this document.
+      </span>
+    </div>
+  );
 
   return (
     <Sheet
@@ -106,7 +144,8 @@ export default function DataSourceViewDocumentModal({
                   </span>
                 </div>
               )}
-              {!isDocumentLoading && document && (
+              {!isDocumentLoading && document && isPdf && pdfViewer}
+              {!isDocumentLoading && document && !isPdf && (
                 <>
                   <div className="copy-sm mb-4 mt-8 text-foreground dark:text-foreground-night">
                     Content of the document:

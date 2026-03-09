@@ -1,9 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +8,11 @@ import { EmbeddingProviderCodec } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;

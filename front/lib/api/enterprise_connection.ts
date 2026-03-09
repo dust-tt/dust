@@ -8,8 +8,8 @@ export async function makeEnterpriseConnectionInitiateLoginUrl(
   const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   if (!workspace || !workspace.workOSOrganizationId) {
-    return `${config.getClientFacingUrl()}/api/workos/login`;
+    return `${config.getApiBaseUrl()}/api/workos/login`;
   }
 
-  return `${config.getClientFacingUrl()}/api/workos/login?organizationId=${workspace.workOSOrganizationId}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
+  return `${config.getApiBaseUrl()}/api/workos/login?organizationId=${workspace.workOSOrganizationId}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
 }

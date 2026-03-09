@@ -1,6 +1,3 @@
-import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
@@ -9,17 +6,16 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { DustError } from "@app/lib/error";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
   useConversationSkills,
   useConversationTools,
-} from "@app/lib/swr/conversations";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+} from "@app/hooks/conversations";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { DustError } from "@app/lib/error";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
   compareAgentsForSort,
@@ -34,6 +30,9 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -53,6 +52,7 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
@@ -70,6 +70,7 @@ export const InputBar = React.memo(function InputBar({
   stickyMentions,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disableUserMentions,
   isFloating = true,
   isSubmitting = false,
   disable = false,
@@ -81,19 +82,12 @@ export const InputBar = React.memo(function InputBar({
     DataSourceViewContentNode[]
   >([]);
 
+  const { animate, setAnimate, getAndClearSelectedAgent, fileUploaderService } =
+    useContext(InputBarContext);
+
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
-  });
-
-  // Files upload.
-
-  const fileUploaderService = useFileUploaderService({
-    owner,
-    useCase: "conversation",
-    useCaseMetadata: conversation
-      ? { conversationId: conversation.sId }
-      : undefined,
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -116,8 +110,6 @@ export const InputBar = React.memo(function InputBar({
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, setAnimate, getAndClearSelectedAgent } =
-    useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedAgent = useMemo(
     () => getAndClearSelectedAgent(),
@@ -223,7 +215,7 @@ export const InputBar = React.memo(function InputBar({
     resetEditorText,
     setLoading
   ) => {
-    if (isEmpty || fileUploaderService.isProcessingFiles) {
+    if (isLocalSubmitting || isEmpty || fileUploaderService.isProcessingFiles) {
       return;
     }
 
@@ -262,10 +254,42 @@ export const InputBar = React.memo(function InputBar({
       setLoading(true);
       setIsLocalSubmitting(true);
 
-      const r = await onSubmit(
-        markdown,
-        mentions,
-        {
+      try {
+        const r = await onSubmit(
+          markdown,
+          mentions,
+          {
+            uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+              return {
+                title: cf.filename,
+                fileId: cf.fileId,
+                contentType: cf.contentType,
+                url: cf.sourceUrl,
+              };
+            }),
+            contentNodes: attachedNodes,
+          },
+          // Only send the selectedMCPServerViewIds if we are creating a new conversation.
+          // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
+          selectedMCPServerViews.map((sv) => sv.sId),
+          // JIT skills for new conversations
+          selectedSkills.map((s) => s.sId)
+        );
+
+        if (r.isOk()) {
+          clearDraft();
+          resetEditorText();
+          fileUploaderService.resetUpload();
+        }
+      } finally {
+        setLoading(false);
+        setIsLocalSubmitting(false);
+      }
+    } else {
+      setIsLocalSubmitting(true);
+
+      try {
+        const submitPromise = onSubmit(markdown, mentions, {
           uploaded: fileUploaderService.getFileBlobs().map((cf) => {
             return {
               title: cf.filename,
@@ -275,38 +299,18 @@ export const InputBar = React.memo(function InputBar({
             };
           }),
           contentNodes: attachedNodes,
-        },
-        // Only send the selectedMCPServerViewIds if we are creating a new conversation.
-        // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-        selectedMCPServerViews.map((sv) => sv.sId),
-        // JIT skills for new conversations
-        selectedSkills.map((s) => s.sId)
-      );
+        });
 
-      setLoading(false);
-      setIsLocalSubmitting(false);
-      if (r.isOk()) {
-        clearDraft();
+        // Execute these operations in parallel with the submission.
         resetEditorText();
+        clearDraft();
         fileUploaderService.resetUpload();
-      }
-    } else {
-      void onSubmit(markdown, mentions, {
-        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-          return {
-            title: cf.filename,
-            fileId: cf.fileId,
-            contentType: cf.contentType,
-            url: cf.sourceUrl,
-          };
-        }),
-        contentNodes: attachedNodes,
-      });
+        setAttachedNodes([]);
 
-      resetEditorText();
-      clearDraft();
-      fileUploaderService.resetUpload();
-      setAttachedNodes([]);
+        await submitPromise;
+      } finally {
+        setIsLocalSubmitting(false);
+      }
     }
   };
 
@@ -366,6 +370,7 @@ export const InputBar = React.memo(function InputBar({
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
+            disableUserMentions={disableUserMentions}
             allAgents={activeAgents}
             owner={owner}
             conversation={conversation}
@@ -377,7 +382,7 @@ export const InputBar = React.memo(function InputBar({
             isSubmitting={
               isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableInput={disable}
+            disableInput={disable || isLocalSubmitting}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}

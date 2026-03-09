@@ -1,14 +1,3 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client/sse.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { ProxyAgent } from "undici";
-
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
@@ -20,10 +9,7 @@ import {
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import {
-  doesInternalMCPServerRequireBearerToken,
-  getServerTypeAndIdFromSId,
-} from "@app/lib/actions/mcp_helper";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
@@ -31,18 +17,23 @@ import {
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  MCPOAuthProvider,
+  MCPOAuthProviderError,
+} from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  createProxyFetch,
   getStaticIPProxyAgent,
   getUntrustedEgressAgent,
 } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
@@ -51,8 +42,30 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client/sse.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
+
+// Short timeout: the Redis round-trip is near-instant when the browser
+// is connected. If it takes longer than 5s the browser is likely
+// disconnected and waiting further won't help.
+const CLIENT_SIDE_CONNECT_TIMEOUT_MS = 5_000;
+
+type MCPProxyKind = "static_ip_proxy" | "untrusted_egress_proxy" | "direct";
+type MCPProxyConfig = {
+  dispatcher?: ReturnType<typeof getUntrustedEgressAgent>;
+  fetch?: FetchLike;
+  proxyKind: MCPProxyKind;
+};
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -95,10 +108,20 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
-async function createMCPDispatcher(
+/**
+ * Build the proxy configuration for a remote MCP server connection.
+ *
+ * Returns both a `dispatcher` (for POST requests via `send()`) and a custom
+ * `fetch` function. The custom `fetch` is necessary because the MCP SDK's
+ * SSEClientTransport and StreamableHTTPClientTransport do NOT forward
+ * `requestInit.dispatcher` to their internal EventSource/GET fetch calls.
+ * Without a custom `fetch`, those connections fall through to the global fetch
+ * which may use a different proxy (e.g. squid-proxy instead of http-proxy).
+ */
+async function createMCPProxyConfig(
   auth: Authenticator,
   host: string
-): Promise<ProxyAgent | undefined> {
+): Promise<MCPProxyConfig> {
   const workspace = auth.getNonNullableWorkspace();
 
   // Check if workspace should use static IP:
@@ -109,17 +132,179 @@ async function createMCPDispatcher(
     (await isHostUnderVerifiedDomain(auth, host));
 
   if (useStaticIP) {
-    const staticIPProxy = getStaticIPProxyAgent();
-    if (staticIPProxy) {
+    const staticAgent = getStaticIPProxyAgent();
+    if (staticAgent) {
       logger.info(
-        { workspaceId: workspace.sId, host, useStaticIP },
+        { workspaceId: workspace.sId, host },
         "Using static IP proxy for MCP request"
       );
-      return staticIPProxy;
+      return {
+        dispatcher: staticAgent,
+        fetch: createProxyFetch(staticAgent),
+        proxyKind: "static_ip_proxy" as const,
+      };
     }
+    logger.warn(
+      { workspaceId: workspace.sId, host },
+      "Static IP proxy required but not configured, falling back to untrusted egress"
+    );
   }
 
-  return getUntrustedEgressAgent();
+  const dispatcher = getUntrustedEgressAgent();
+  if (!dispatcher) {
+    return { proxyKind: "direct" as const };
+  }
+
+  return {
+    dispatcher,
+    fetch: createProxyFetch(dispatcher),
+    proxyKind: "untrusted_egress_proxy" as const,
+  };
+}
+
+/**
+ * Resolve the OAuth token for a remote MCP server.
+ *
+ * For personal_actions servers:
+ *   - Tool execution: use the user's personal token.
+ *   - Listing tools (user session): try personal token first, fall back to workspace.
+ *   - Listing tools (sync / no user): use workspace token.
+ * For platform_actions or servers without auth: use workspace token or shared secret.
+ */
+async function resolveRemoteServerOAuthToken(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    oAuthUseCase,
+    remoteMCPServer,
+    isToolExecution,
+  }: {
+    mcpServerId: string;
+    oAuthUseCase: MCPOAuthUseCase | null;
+    remoteMCPServer: RemoteMCPServerResource;
+    isToolExecution: boolean;
+  }
+): Promise<
+  Result<
+    {
+      token: OAuthTokens | undefined;
+      oauthConnectionType: "personal" | "workspace" | undefined;
+      oauthConnectionId: string | undefined;
+    },
+    Error | MCPServerPersonalAuthenticationRequiredError
+  >
+> {
+  // Shared secret: no OAuth needed.
+  if (remoteMCPServer.sharedSecret) {
+    return new Ok({
+      token: {
+        access_token: remoteMCPServer.sharedSecret,
+        token_type: "bearer",
+        expires_in: undefined,
+        scope: "",
+      },
+      oauthConnectionType: undefined,
+      oauthConnectionId: undefined,
+    });
+  }
+
+  // No authorization required.
+  if (!remoteMCPServer.authorization) {
+    return new Ok({
+      token: undefined,
+      oauthConnectionType: undefined,
+      oauthConnectionId: undefined,
+    });
+  }
+
+  // Determine which connection type to try.
+  let connectionType: "personal" | "workspace";
+  if (oAuthUseCase === "personal_actions" && isToolExecution) {
+    connectionType = "personal";
+  } else if (oAuthUseCase === "personal_actions" && auth.user()) {
+    // Listing tools with a user session: try personal first.
+    const personalConnection = await getConnectionForMCPServer(auth, {
+      mcpServerId,
+      connectionType: "personal",
+    });
+    if (personalConnection.isOk()) {
+      return new Ok({
+        token: {
+          access_token: personalConnection.value.access_token,
+          token_type: "bearer",
+          expires_in: personalConnection.value.access_token_expiry ?? undefined,
+          scope: personalConnection.value.connection.metadata.scope,
+        },
+        oauthConnectionType: "personal",
+        oauthConnectionId: personalConnection.value.connection.connection_id,
+      });
+    }
+    // Personal connection not found — fall back to workspace.
+    connectionType = "workspace";
+  } else {
+    connectionType = "workspace";
+  }
+
+  // Fetch connection token.
+  const c = await getConnectionForMCPServer(auth, {
+    mcpServerId,
+    connectionType,
+  });
+  if (c.isOk()) {
+    return new Ok({
+      token: {
+        access_token: c.value.access_token,
+        token_type: "bearer",
+        expires_in: c.value.access_token_expiry ?? undefined,
+        scope: c.value.connection.metadata.scope,
+      },
+      oauthConnectionType: connectionType,
+      oauthConnectionId: c.value.connection.connection_id,
+    });
+  }
+
+  // Connection failed — return the appropriate error.
+  const { provider, scope } = remoteMCPServer.authorization;
+
+  switch (connectionType) {
+    case "personal": {
+      // Check if admin has set up the workspace connection.
+      const adminConnectionRes =
+        await MCPServerConnectionResource.findByMCPServer(auth, {
+          mcpServerId,
+          connectionType: "workspace",
+        });
+      if (
+        adminConnectionRes.isErr() &&
+        adminConnectionRes.error.code === "connection_not_found"
+      ) {
+        return new Err(
+          new MCPServerRequiresAdminAuthenticationError(
+            mcpServerId,
+            provider,
+            scope
+          )
+        );
+      }
+      return new Err(
+        new MCPServerPersonalAuthenticationRequiredError(
+          mcpServerId,
+          provider,
+          scope
+        )
+      );
+    }
+    case "workspace":
+      return new Err(
+        new MCPServerRequiresAdminAuthenticationError(
+          mcpServerId,
+          provider,
+          scope
+        )
+      );
+    default:
+      assertNever(connectionType);
+  }
 }
 
 export async function connectToMCPServer(
@@ -127,9 +312,11 @@ export async function connectToMCPServer(
   {
     params,
     agentLoopContext,
+    allowDirectToolExecution,
   }: {
     params: MCPConnectionParams;
     agentLoopContext?: AgentLoopContextType;
+    allowDirectToolExecution?: boolean;
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
@@ -159,16 +346,12 @@ export async function connectToMCPServer(
           await mcpClient.connect(client);
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
-          if (agentLoopContext?.runContext) {
+          if (agentLoopContext?.runContext || allowDirectToolExecution) {
             const bearerTokenCredentials =
-              doesInternalMCPServerRequireBearerToken(params.mcpServerId)
-                ? await InternalMCPServerCredentialModel.findOne({
-                    where: {
-                      workspaceId: auth.getNonNullableWorkspace().id,
-                      internalMCPServerId: params.mcpServerId,
-                    },
-                  })
-                : null;
+              await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+                auth,
+                params.mcpServerId
+              );
 
             const serverName = getInternalMCPServerNameFromSId(
               params.mcpServerId
@@ -277,10 +460,9 @@ export async function connectToMCPServer(
                       mcpServerId: params.mcpServerId,
                       connectionType: "workspace",
                     });
-                  // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
                   if (
                     adminConnectionRes.isErr() &&
-                    adminConnectionRes.error.message === "connection_not_found"
+                    adminConnectionRes.error.code === "connection_not_found"
                   ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
@@ -298,7 +480,7 @@ export async function connectToMCPServer(
                     )
                   );
                 } else if (params.oAuthUseCase === "platform_actions") {
-                  // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                  // Workspace connection required — admin must set up or reconnect.
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
@@ -328,60 +510,52 @@ export async function connectToMCPServer(
 
           const url = new URL(remoteMCPServer.url);
 
-          let token: OAuthTokens | undefined;
-
-          // If the server has a shared secret, we use it to authenticate.
-          if (remoteMCPServer.sharedSecret) {
-            token = {
-              access_token: remoteMCPServer.sharedSecret,
-              token_type: "bearer",
-              expires_in: undefined,
-              scope: "",
-            };
+          const tokenRes = await resolveRemoteServerOAuthToken(auth, {
+            mcpServerId: params.mcpServerId,
+            oAuthUseCase: params.oAuthUseCase,
+            remoteMCPServer,
+            isToolExecution: !!(
+              agentLoopContext?.runContext || allowDirectToolExecution
+            ),
+          });
+          if (tokenRes.isErr()) {
+            return tokenRes;
           }
-          // The server requires authentication.
-          else if (remoteMCPServer.authorization) {
-            // We only fetch the personal token if we are running a tool.
-            // Otherwise, for listing tools etc.., we use the workspace token.
-            const connectionType =
-              params.oAuthUseCase === "personal_actions" &&
-              agentLoopContext?.runContext
-                ? "personal"
-                : "workspace";
+          const { token, oauthConnectionType, oauthConnectionId } =
+            tokenRes.value;
 
-            const c = await getConnectionForMCPServer(auth, {
-              mcpServerId: params.mcpServerId,
-              connectionType: connectionType,
-            });
-            if (c.isOk()) {
-              token = {
-                access_token: c.value.access_token,
-                token_type: "bearer",
-                expires_in: c.value.access_token_expiry ?? undefined,
-                scope: c.value.connection.metadata.scope,
-              };
-            } else {
+          const {
+            dispatcher,
+            fetch: proxyFetch,
+            proxyKind,
+          } = await createMCPProxyConfig(auth, url.hostname);
+
+          try {
+            const req = {
+              requestInit: {
+                // Include stored custom headers
+                headers: remoteMCPServer.customHeaders ?? {},
+                dispatcher,
+              },
+              authProvider: new MCPOAuthProvider(token),
+              fetch: proxyFetch,
+            };
+
+            await connectToRemoteMCPServer(mcpClient, url, req);
+          } catch (e: unknown) {
+            // When the MCP SDK receives a 401/403 from the remote server, it
+            // calls unimplemented methods on MCPOAuthProvider which throw
+            // MCPOAuthProviderError. This reliably indicates token rejection.
+            if (
+              e instanceof MCPOAuthProviderError &&
+              remoteMCPServer.authorization &&
+              oauthConnectionType
+            ) {
+              if (oauthConnectionId) {
+                invalidateOAuthConnectionAccessTokenCache(oauthConnectionId);
+              }
               const scope = remoteMCPServer.authorization.scope;
-
-              if (connectionType === "personal") {
-                // Check if admin connection exists for the server.
-                const adminConnection = await getConnectionForMCPServer(auth, {
-                  mcpServerId: params.mcpServerId,
-                  connectionType: "workspace",
-                });
-                // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                if (
-                  adminConnection.isErr() &&
-                  adminConnection.error.message === "connection_not_found"
-                ) {
-                  return new Err(
-                    new MCPServerRequiresAdminAuthenticationError(
-                      params.mcpServerId,
-                      remoteMCPServer.authorization.provider,
-                      scope
-                    )
-                  );
-                }
+              if (oauthConnectionType === "personal") {
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
@@ -389,37 +563,24 @@ export async function connectToMCPServer(
                     scope
                   )
                 );
-              } else if (connectionType === "workspace") {
-                // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                return new Err(
-                  new MCPServerRequiresAdminAuthenticationError(
-                    params.mcpServerId,
-                    remoteMCPServer.authorization.provider,
-                    scope
-                  )
-                );
-              } else {
-                assertNever(connectionType);
               }
+              return new Err(
+                new MCPServerRequiresAdminAuthenticationError(
+                  params.mcpServerId,
+                  remoteMCPServer.authorization.provider,
+                  scope
+                )
+              );
             }
-          }
 
-          try {
-            const req = {
-              requestInit: {
-                // Include stored custom headers
-                headers: remoteMCPServer.customHeaders ?? {},
-                dispatcher: await createMCPDispatcher(auth, url.hostname),
-              },
-              authProvider: new MCPOAuthProvider(token),
-            };
-
-            await connectToRemoteMCPServer(mcpClient, url, req);
-          } catch (e: unknown) {
             logger.error(
               {
-                connectionType,
+                mcpServerId: params.mcpServerId,
+                oauthConnectionType,
+                proxyKind,
                 serverType,
+                targetHost: url.hostname,
+                targetUrlOrigin: url.origin,
                 workspaceId: auth.getNonNullableWorkspace().sId,
                 error: e,
               },
@@ -448,12 +609,17 @@ export async function connectToMCPServer(
           )
         );
       }
+      const { dispatcher, fetch: proxyFetch } = await createMCPProxyConfig(
+        auth,
+        url.hostname
+      );
       const req = {
         requestInit: {
-          dispatcher: await createMCPDispatcher(auth, url.hostname),
+          dispatcher,
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(),
+        fetch: proxyFetch,
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
@@ -481,7 +647,9 @@ export async function connectToMCPServer(
         messageId: params.messageId,
       });
       try {
-        await mcpClient.connect(transport);
+        await mcpClient.connect(transport, {
+          timeout: CLIENT_SIDE_CONNECT_TIMEOUT_MS,
+        });
       } catch (e: unknown) {
         logger.error(
           {
@@ -489,8 +657,9 @@ export async function connectToMCPServer(
             workspaceId: auth.getNonNullableWorkspace().sId,
             error: e,
           },
-          "Error establishing connection to remote MCP server"
+          "Error establishing connection to client side MCP server"
         );
+
         return new Err(
           new Error("Error establishing connection to client side MCP server.")
         );

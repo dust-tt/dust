@@ -1,7 +1,6 @@
-import type { Client, WorkflowHandle } from "@temporalio/client";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import type { Client, WorkflowHandle } from "@temporalio/client";
 
 const WORKFLOW_IDS = ["data-retention-workflow"];
 
@@ -12,6 +11,7 @@ async function isWorkflowRunning(client: Client, workflowId: string) {
     const description = await workflowHandle.describe();
     return description.status.name === "RUNNING";
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     return false;
   }

@@ -1,37 +1,8 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
-import {
-  ArrowPathIcon,
-  Button,
-  ButtonGroup,
-  ButtonGroupDropdown,
-  Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  InformationCircleIcon,
-  InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  RobotIcon,
-  StopIcon,
-  Tooltip,
-  TrashIcon,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { marked } from "marked";
-import React, { useCallback, useContext, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -67,33 +38,31 @@ import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
+import {
+  useCancelMessage,
+  usePostOnboardingFollowUp,
+} from "@app/hooks/conversations";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { useAppRouter } from "@app/lib/platform";
-import {
-  useCancelMessage,
-  usePostOnboardingFollowUp,
-} from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-} from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import {
+  canShowAgentConversationActions,
+  isGlobalAgentId,
+} from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -103,7 +72,33 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import {
+  ArrowPathIcon,
+  Button,
+  ButtonGroup,
+  ButtonGroupDropdown,
+  Chip,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  InformationCircleIcon,
+  InteractiveImageGrid,
+  LinkIcon,
+  MoreIcon,
+  StopIcon,
+  Tooltip,
+  TrashIcon,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import { marked } from "marked";
+import React, { useCallback, useContext, useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
   "https://docs.dust.tt/docs/understanding-llms-context-windows";
@@ -113,23 +108,29 @@ function PrunedContextChip() {
     <Tooltip
       label={
         <div className="flex flex-col gap-2 py-2">
-          <div className="font-semibold">Context window limit reached</div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Some tool results were removed to keep this conversation within its
-            size limit. For more accurate results, try narrowing your query or
-            starting a new conversation.&nbsp;
-            <a
-              href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground dark:hover:text-foreground-night"
-            >
-              Learn more
-            </a>
+          <div className="font-semibold">
+            This conversation reached its size limit
+          </div>
+          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              The agent can only process so much information at once. We removed
+              some <strong>data from earlier steps</strong> to make room. For
+              better accuracy, start a fresh conversation.
+            </p>
+            <p>
+              <a
+                href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground dark:hover:text-foreground-night"
+              >
+                Learn more
+              </a>
+            </p>
           </div>
         </div>
       }
-      className="max-w-md"
+      className="max-w-sm"
       trigger={
         <Chip
           label="Context limit reached"
@@ -172,7 +173,6 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
-  const router = useAppRouter();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -487,11 +487,6 @@ export function AgentMessage({
   const canDeleteAgentMessage =
     !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasShrinkWrapFeatureFlag = hasFeature("agent_builder_shrink_wrap");
-
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
       return;
@@ -605,21 +600,6 @@ export function AgentMessage({
           });
         },
         disabled: isRetryHandlerProcessing || shouldStream,
-      });
-    }
-
-    if (hasShrinkWrapFeatureFlag && isLastMessage && isBuilder(owner)) {
-      dropdownItems.push({
-        label: "Turn into agent",
-        icon: RobotIcon,
-        onSelect: () => {
-          const route = getAgentBuilderRoute(
-            owner.sId,
-            "new",
-            `conversationId=${conversationId}`
-          );
-          void router.push(route);
-        },
       });
     }
 
@@ -738,7 +718,9 @@ export function AgentMessage({
     [agentMessage.configuration, handleSubmit, sendNotification]
   );
 
-  const canMention = agentConfiguration.canRead;
+  const canMention =
+    agentConfiguration.canRead &&
+    canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
 
   const renderName = useCallback(
@@ -779,7 +761,7 @@ export function AgentMessage({
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
-      <div className="inline-flex items-center gap-2 @sm:hidden">
+      <div className="inline-flex items-center gap-2 @xs:hidden">
         <ConversationMessageAvatar
           avatarUrl={agentConfiguration.pictureUrl}
           name={agentConfiguration.name}
@@ -803,7 +785,7 @@ export function AgentMessage({
       </div>
 
       <ConversationMessageAvatar
-        className="hidden @sm:flex"
+        className="hidden @xs:flex"
         avatarUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         isBusy={agentMessage.status === "created"}
@@ -813,7 +795,7 @@ export function AgentMessage({
 
       <div className="flex w-full min-w-0 flex-col gap-3">
         <ConversationMessageTitle
-          className="hidden @sm:flex"
+          className="hidden @xs:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
           infoChip={
@@ -838,6 +820,7 @@ export function AgentMessage({
               owner={owner}
               conversationId={conversationId}
               retryHandler={retryHandler}
+              isRetryHandlerProcessing={isRetryHandlerProcessing}
               isLastMessage={isLastMessage}
               agentMessage={agentMessage}
               references={references}
@@ -877,6 +860,7 @@ function AgentMessageContent({
   activeReferences,
   setActiveReferences,
   retryHandler,
+  isRetryHandlerProcessing,
   onQuickReplySend,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -890,6 +874,7 @@ function AgentMessageContent({
     messageId: string;
     blockedOnly?: boolean;
   }) => Promise<void>;
+  isRetryHandlerProcessing: boolean;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
@@ -910,6 +895,7 @@ function AgentMessageContent({
     VirtuosoMessageListContext
   >();
 
+  const { vizUrl } = useAuth();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -961,15 +947,20 @@ function AgentMessageContent({
   );
 
   // References logic.
-  function updateActiveReferences(
-    document: MCPReferenceCitation,
-    index: number
-  ) {
-    const existingIndex = activeReferences.find((r) => r.index === index);
-    if (!existingIndex) {
-      setActiveReferences([...activeReferences, { index, document }]);
-    }
-  }
+  const updateActiveReferences = useCallback(
+    (document: MCPReferenceCitation, index: number) => {
+      const existingIndex = activeReferences.find((r) => r.index === index);
+      if (!existingIndex) {
+        setActiveReferences([...activeReferences, { index, document }]);
+      }
+    },
+    [activeReferences, setActiveReferences]
+  );
+
+  const citationsContextValue = useMemo(
+    () => ({ references, updateActiveReferences }),
+    [references, updateActiveReferences]
+  );
 
   const handleToolSetupComplete = React.useCallback(
     (toolId: string) => {
@@ -984,7 +975,8 @@ function AgentMessageContent({
         owner,
         agentConfiguration.sId,
         conversationId,
-        sId
+        sId,
+        vizUrl
       ),
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
@@ -996,6 +988,7 @@ function AgentMessageContent({
       conversationId,
       sId,
       agentConfiguration.sId,
+      vizUrl,
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
@@ -1113,7 +1106,7 @@ function AgentMessageContent({
     .filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isInteractiveContentFileContentType(file.contentType)
+        !isInteractiveContentType(file.contentType)
     );
 
   return (
@@ -1128,8 +1121,8 @@ function AgentMessageContent({
       {completedImages.length > 0 && (
         <InteractiveImageGrid
           images={completedImages.map((image) => ({
-            imageUrl: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-            downloadUrl: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+            imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+            downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
             alt: image.title,
             title: image.title,
             isLoading: false,
@@ -1139,12 +1132,7 @@ function AgentMessageContent({
 
       {agentMessage.content !== null && (
         <div>
-          <CitationsContext.Provider
-            value={{
-              references,
-              updateActiveReferences,
-            }}
-          >
+          <CitationsContext.Provider value={citationsContextValue}>
             <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}
@@ -1164,7 +1152,7 @@ function AgentMessageContent({
               document: {
                 fileId: file.fileId,
                 contentType: file.contentType,
-                href: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
+                href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
                 title: file.title,
               },
             })),
@@ -1174,8 +1162,36 @@ function AgentMessageContent({
         </div>
       )}
       {agentMessage.status === "cancelled" && (
-        <div className="text-faint dark:text-faint-night">
-          Message generation was interrupted
+        <div className="flex flex-col gap-2">
+          <div className="text-faint dark:text-faint-night">
+            Message generation was interrupted
+          </div>
+          <div>
+            <ButtonGroupDropdown
+              trigger={
+                <Button
+                  variant="outline"
+                  size="xs"
+                  icon={MoreIcon}
+                  className="text-muted-foreground"
+                />
+              }
+              items={[
+                {
+                  label: "Retry",
+                  icon: ArrowPathIcon,
+                  onSelect: () => {
+                    void retryHandler({
+                      conversationId,
+                      messageId: agentMessage.sId,
+                    });
+                  },
+                  disabled: isRetryHandlerProcessing,
+                },
+              ]}
+              align="end"
+            />
+          </div>
         </div>
       )}
     </div>

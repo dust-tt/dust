@@ -1,9 +1,20 @@
-import type { Environment } from "@app/config/env";
+import type { Environment } from "@extension/config/env";
+import { execSync } from "child_process";
 import Dotenv from "dotenv-webpack";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import webpack from "webpack";
+
+// Get git commit hash
+const getCommitHash = () => {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch (e) {
+    console.error(e);
+    return "development";
+  }
+};
 
 export const getConfig = ({ env }: { env: Environment }) => {
   const isDevelopment = env === "development";
@@ -24,6 +35,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
             loader: "ts-loader",
             options: {
               configFile: path.resolve(__dirname, "../../tsconfig.json"),
+              transpileOnly: true,
             },
           },
           exclude: /node_modules/,
@@ -64,7 +76,9 @@ export const getConfig = ({ env }: { env: Environment }) => {
     resolve: {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
-        "@app": path.resolve(__dirname, "../../"),
+        "@extension": path.resolve(__dirname, "../../"),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
+        "@app": path.resolve(__dirname, "../../../front"),
       },
       fallback: {
         http: require.resolve("stream-http"),
@@ -72,6 +86,8 @@ export const getConfig = ({ env }: { env: Environment }) => {
         stream: require.resolve("stream-browserify"),
         buffer: require.resolve("buffer/"),
         url: require.resolve("url/"),
+        zlib: false,
+        assert: require.resolve("assert"),
       },
     },
     plugins: [
@@ -82,6 +98,21 @@ export const getConfig = ({ env }: { env: Environment }) => {
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
       }),
+
+      new webpack.EnvironmentPlugin({
+        COMMIT_HASH: getCommitHash(),
+        DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
+        DATADOG_ENV: isDevelopment ? "dev" : "prod",
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
+          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
+        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
+          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
+      }),
       new Dotenv({
         path: isDevelopment
           ? path.resolve(__dirname, "../../.env.development")
@@ -89,12 +120,23 @@ export const getConfig = ({ env }: { env: Environment }) => {
       }),
     ].filter(Boolean),
     devServer: {
-      port: 3010,
+      port: 3012,
       hot: true,
       static: {
         directory: path.resolve(__dirname, "./build"),
       },
       historyApiFallback: true,
+      client: {
+        overlay: {
+          // Disable the runtime error overlay. The ResizeObserver "loop
+          // completed with undelivered notifications" error is benign but
+          // fires constantly in the Frontapp iframe context, and the overlay
+          // can't be filtered selectively here because webpack-dev-server
+          // reconstructs filter functions via `new Function`, which Frontapp's
+          // parent-page CSP blocks. Runtime errors still appear in the console.
+          runtimeErrors: false,
+        },
+      },
     },
   };
 };

@@ -1,11 +1,16 @@
-import { workflow } from "@novu/framework";
-import uniqBy from "lodash/uniqBy";
-import z from "zod";
-
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import {
+  getAgentsDataRetention,
+  getConversationsDataRetention,
+} from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getUserNotificationDelay } from "@app/lib/notifications";
+import {
+  ensureSlackNotificationsReady,
+  getUserNotificationDelay,
+} from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -22,7 +27,10 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
+import { pluralize, stripMarkdown } from "@app/types/shared/utils/string_utils";
+import { workflow } from "@novu/framework";
+import uniqBy from "lodash/uniqBy";
+import z from "zod";
 import { renderEmail } from "../email-templates/project-new-conversation";
 import type { ProjectNewConversationPayloadType } from "../triggers/project-new-conversation";
 import { projectNewConversationPayloadSchema } from "../triggers/project-new-conversation";
@@ -31,6 +39,9 @@ const ConversationDetailsSchema = z.object({
   projectName: z.string(),
   userThatCreatedConversationFullName: z.string(),
   conversationTitle: z.string(),
+  hasConversationRetentionPolicy: z.boolean(),
+  hasAgentRetentionPolicies: z.boolean(),
+  firstMessageContent: z.string().nullable(),
 });
 
 const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
@@ -47,7 +58,7 @@ const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-type ProjectDetailsType = z.infer<typeof ConversationDetailsSchema>;
+export type ProjectDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
 const getConversationDetails = async ({
   subscriberId,
@@ -71,6 +82,9 @@ const getConversationDetails = async ({
       projectName: "A project",
       userThatCreatedConversationFullName: "Someone",
       conversationTitle: "New conversation",
+      hasAgentRetentionPolicies: false,
+      hasConversationRetentionPolicy: false,
+      firstMessageContent: null,
     });
   }
 
@@ -79,18 +93,15 @@ const getConversationDetails = async ({
     payload.workspaceId
   );
 
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    payload.conversationId
-  );
+  const conversationRes = await getConversation(auth, payload.conversationId);
 
-  const conversation = conversationResource?.toJSON();
-
-  if (!conversation) {
+  if (conversationRes.isErr()) {
     return new Err(
       new DustError("conversation_not_found", "Conversation not found")
     );
   }
+
+  const conversation = conversationRes.value;
 
   if (!isProjectConversation(conversation)) {
     return new Err(
@@ -120,14 +131,34 @@ const getConversationDetails = async ({
     );
   }
 
+  const conversationsRetention = await getConversationsDataRetention(auth);
+  const hasConversationRetentionPolicy = conversationsRetention !== null;
+
+  const agentsRetention = await getAgentsDataRetention(auth);
+  const hasAgentRetentionPolicies = conversation.content.flat().some((msg) => {
+    if (msg.type !== "agent_message") {
+      return false;
+    }
+
+    return msg.configuration.sId in agentsRetention;
+  });
+
+  const firstMessageContent =
+    conversation.content[0]?.[0].type === "user_message"
+      ? conversation.content[0][0].content
+      : null;
+
   return new Ok({
     projectName: project.name,
     userThatCreatedConversationFullName: userThatCreatedConversation.fullName(),
     conversationTitle: conversation.title ?? "New conversation",
+    hasConversationRetentionPolicy,
+    hasAgentRetentionPolicies,
+    firstMessageContent,
   });
 };
 
-const shouldSkipConversation = async ({
+export const shouldSkipConversation = async ({
   subscriberId,
   payload,
 }: {
@@ -157,9 +188,9 @@ const shouldSkipConversation = async ({
       conversationResource.id
     );
 
-  const isRead = !!lastReadAt && lastReadAt > conversationResource.updatedAt;
+  const hasBeenOpened = !!lastReadAt;
 
-  if (isRead) {
+  if (hasBeenOpened) {
     return true;
   }
 
@@ -193,6 +224,36 @@ const shouldSkipConversation = async ({
   }
 
   return false;
+};
+
+export const getMessagePreviewText = (
+  details: ProjectDetailsType
+): string | undefined => {
+  if (details.hasConversationRetentionPolicy) {
+    return "Preview not available due to data retention policy on conversations in this workspace.";
+  }
+  if (details.hasAgentRetentionPolicies) {
+    return "Preview not available due to data retention policy on agents in this conversation.";
+  }
+  if (details.firstMessageContent) {
+    const stripped = stripMarkdown(details.firstMessageContent);
+    const trimmed = stripped.trim();
+    return trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
+  }
+};
+
+export const getMessagePreviewForSlack = (
+  details: ProjectDetailsType
+): string | undefined => {
+  const preview = getMessagePreviewText(details);
+  if (!preview) {
+    return undefined;
+  }
+  // Replace newlines with "> \n" to maintain blockquote formatting on each line
+  return preview
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
 };
 
 export const projectNewConversationWorkflow = workflow(
@@ -261,6 +322,54 @@ export const projectNewConversationWorkflow = workflow(
             subscriberId: subscriber.subscriberId,
             payload,
           });
+        },
+      }
+    );
+
+    await step.chat(
+      "slack-notification",
+      async () => {
+        // details is guaranteed non-null here because skip prevents execution otherwise.
+        const d = details!;
+        const conversationUrl = getConversationRoute(
+          payload.workspaceId,
+          payload.conversationId,
+          undefined,
+          config.getAppUrl()
+        );
+
+        // Create message preview
+        const messagePreview = getMessagePreviewForSlack(d);
+
+        const baseMessage = `There is a new conversation in "${d.projectName}": ${d.userThatCreatedConversationFullName} started "${d.conversationTitle}"`;
+
+        const message = messagePreview
+          ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
+          : `${baseMessage}\n<${conversationUrl}|View conversation>`;
+        return {
+          body: message,
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          const shouldSkip = await shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+          });
+          if (shouldSkip) {
+            return true;
+          }
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
+            return true;
+          }
+          return false;
         },
       }
     );
@@ -358,12 +467,17 @@ export const projectNewConversationWorkflow = workflow(
               projectName: conversationDetails.projectName,
               createdByFullName:
                 conversationDetails.userThatCreatedConversationFullName,
+              messagePreview: getMessagePreviewText(conversationDetails),
             });
           },
           {
             concurrency: 8,
           }
         );
+        const uniqueProjectNames = uniqBy(
+          conversations,
+          (conversation) => conversation.projectName
+        ).map((conversation) => conversation.projectName);
 
         const body = await renderEmail({
           name: subscriber.firstName ?? "You",
@@ -371,16 +485,13 @@ export const projectNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: workspace?.name ?? "A workspace",
           },
+          projectCount: uniqueProjectNames.length,
           conversations,
         });
-        const uniqueProjectNames = uniqBy(
-          conversations,
-          (conversation) => conversation.projectName
-        ).map((conversation) => conversation.projectName);
         const subject =
           uniqueProjectNames.length > 1
             ? `[Dust] New conversations in your projects`
-            : `[Dust] New conversation(s) in '${uniqueProjectNames[0]}'`;
+            : `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
         return {
           subject,
           body,

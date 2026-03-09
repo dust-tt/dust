@@ -1,20 +1,19 @@
-import { LightbulbIcon, RocketIcon, UserGroupIcon } from "@dust-tt/sparkle";
-
 import type {
   BenefitsProps,
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
+  CustomerStory,
+  QuoteProps,
+} from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import type {
   HeroProps,
   pageSettingsProps,
   ROIProps,
 } from "@app/components/home/content/Solutions/configs/utils";
-import type {
-  CustomerStory,
-  QuoteProps,
-} from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
+import { LightbulbIcon, RocketIcon, UserGroupIcon } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {

@@ -1,11 +1,10 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 import { ACTIVE_ROLES } from "@app/types/user";
+import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 export type MemberDisplayType = {
   createdAt: number;

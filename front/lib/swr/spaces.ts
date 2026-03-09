@@ -1,6 +1,4 @@
-import { useCallback, useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
-
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
@@ -9,12 +7,10 @@ import type {
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import {
   emptyArray,
-  fetcher,
-  fetcherWithBody,
   getErrorFromResponse,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -40,6 +36,7 @@ import type {
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
+import type { GetDigestGenerationStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests/generate/status";
 import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
@@ -49,8 +46,10 @@ import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
-import type { SpaceKind, SpaceType } from "@app/types/space";
+import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo } from "react";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function useSpaces({
   workspaceId,
@@ -61,6 +60,7 @@ export function useSpaces({
   kinds: SpaceKind[] | "all";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -69,10 +69,11 @@ export function useSpaces({
     { disabled }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType>()
+      emptyArray<SpaceType | ProjectType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,6 +96,7 @@ export function useSpaceProjectsLookup({
   spaceIds: string[];
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesLookupFetcher: Fetcher<SpacesLookupResponseBody> = fetcher;
 
   const query =
@@ -134,6 +136,7 @@ export function useSpacesAsAdmin({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -161,6 +164,7 @@ export function useSpaceInfo({
   disabled?: boolean;
   includeAllMembers?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesCategoriesFetcher: Fetcher<GetSpaceResponseBody> = fetcher;
 
   const queryParams = includeAllMembers ? "?includeAllMembers=true" : "";
@@ -195,6 +199,7 @@ export function useSpaceDataSourceView({
   owner: LightWorkspaceType;
   spaceId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
     fetcher;
 
@@ -226,6 +231,7 @@ export function useSpaceDataSourceViews({
   spaceId: string;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const spacesDataSourceViewsFetcher: Fetcher<
     GetSpaceDataSourceViewsResponseBody<false>
   > = fetcher;
@@ -262,6 +268,7 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId: string;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const spacesDataSourceViewsFetcher: Fetcher<
     GetSpaceDataSourceViewsResponseBody<true>
   > = fetcher;
@@ -458,7 +465,10 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (params: PostSpaceRequestBodyType) => {
+  const doCreate = async (
+    params: PostSpaceRequestBodyType,
+    notification?: { title: string; description: string }
+  ) => {
     const { name, managementMode, isRestricted, spaceKind } = params;
 
     if (!name) {
@@ -539,8 +549,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "Successfully created space",
-        description: "Space was successfully created.",
+        title: notification?.title ?? "Successfully created space",
+        description:
+          notification?.description ?? "Space was successfully created.",
       });
 
       const response: PostSpacesResponseBody = await res.json();
@@ -565,7 +576,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     space: SpaceType,
-    params: PatchSpaceMembersRequestBodyType
+    params: PatchSpaceMembersRequestBodyType,
+    notification?: { title: string; description: string }
   ) => {
     const { name: newName, managementMode, isRestricted } = params;
 
@@ -646,8 +658,9 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: "Successfully updated space",
-      description: "Space was successfully updated.",
+      title: notification?.title ?? "Successfully updated space",
+      description:
+        notification?.description ?? "Space was successfully updated.",
     });
 
     const spaceResponse: PatchSpaceResponseBody = await results[0].json();
@@ -714,6 +727,7 @@ export function useSystemSpace({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const systemSpaceFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -787,6 +801,7 @@ export function useSpacesSearch({
   nextPageCursor: string | null;
   resultsCount: number | null;
 } {
+  const { fetcherWithBody } = useFetcher();
   const params = new URLSearchParams();
   if (pagination?.cursor) {
     params.append("cursor", pagination.cursor);
@@ -867,6 +882,7 @@ export function useSpacesSearchWithInfiniteScroll({
   nextPage: () => Promise<void>;
   hasMore: boolean;
 } {
+  const { fetcherWithBody } = useFetcher();
   const body = {
     query: search,
     viewType,
@@ -940,6 +956,7 @@ export function useProjectMetadata({
   spaceId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const projectMetadataFetcher: Fetcher<GetProjectMetadataResponseBody> =
     fetcher;
 
@@ -970,6 +987,16 @@ export function useUpdateProjectMetadata({
     spaceId,
     disabled: true, // Needed just to mutate
   });
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId,
+    disabled: true,
+  });
 
   return async (
     updates: PatchProjectMetadataBodyType
@@ -993,10 +1020,19 @@ export function useUpdateProjectMetadata({
     }
 
     void mutateProjectMetadata();
+    void mutateSpaceSummary();
+    void mutateSpaceInfoRegardlessOfQueryParams();
+
+    const title =
+      updates.archive !== undefined
+        ? updates.archive
+          ? "Project archived"
+          : "Project unarchived"
+        : "Project updated";
+
     sendNotification({
       type: "success",
-      title: "Project metadata updated",
-      description: "Project metadata was successfully updated.",
+      title,
     });
 
     const response: PatchProjectMetadataResponseBody = await res.json();
@@ -1015,6 +1051,7 @@ export function useUserProjectDigests({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const digestsFetcher: Fetcher<GetUserProjectDigestsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -1029,6 +1066,39 @@ export function useUserProjectDigests({
     isDigestsLoading: !error && !data && !disabled,
     isDigestsError: error,
     mutateDigests: mutate,
+  };
+}
+
+const DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS = 2_000;
+
+export function useDigestGenerationStatus({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetDigestGenerationStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests/generate/status`,
+    statusFetcher,
+    {
+      refreshInterval: (
+        data: GetDigestGenerationStatusResponseBody | undefined
+      ) =>
+        data?.status === "running"
+          ? DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS
+          : // 0 means disabled
+            0,
+    }
+  );
+
+  return {
+    generationStatus: data?.status ?? null,
+    isStatusLoading: !error && !data,
+    mutateGenerationStatus: mutate,
   };
 }
 
@@ -1053,12 +1123,6 @@ export function useGenerateUserProjectDigest({
     );
 
     if (res.ok) {
-      sendNotification({
-        type: "success",
-        title: "Generating project digest",
-        description:
-          "Your project digest is being generated. Refresh the page in a moment to see the result.",
-      });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);

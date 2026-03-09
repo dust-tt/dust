@@ -1,6 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -12,25 +9,22 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+import { getHeaderFromUserEmail } from "@app/types/user";
+import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   list: async (_, { auth, agentLoopContext }) => {
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const mcpServerViewIdsFromAgentConfiguration =
       agentLoopContext?.runContext?.agentConfiguration.actions
         .filter(isServerSideMCPServerConfiguration)
         .map((action) => action.mcpServerViewId) ?? [];
 
     const owner = auth.getNonNullableWorkspace();
-    const requestedGroupIds = auth.groupIds();
+    const user = auth.user();
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
@@ -40,7 +34,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...getHeaderFromUserEmail(user?.email),
+          ...getApiKeyNameHeader(auth),
         },
       },
       logger,
@@ -80,10 +75,6 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   },
 
   enable: async ({ toolsetId }, { auth, agentLoopContext }) => {
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const conversationId = agentLoopContext?.runContext?.conversation.sId;
     if (!conversationId) {
       return new Err(
@@ -97,7 +88,6 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       return new Err(new MCPError("User not found", { tracked: false }));
     }
 
-    const requestedGroupIds = auth.groupIds();
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
@@ -108,18 +98,22 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
-          "x-api-user-email": user.email,
+          ...getHeaderFromUserEmail(user.email),
+          ...getApiKeyNameHeader(auth),
         },
       },
       logger,
       config.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
+    const agentConfigurationId =
+      agentLoopContext?.runContext?.agentConfiguration.sId;
+
     const res = await api.postConversationTools({
       conversationId,
       action: "add",
       mcpServerViewId: toolsetId,
+      agentConfigurationId,
     });
 
     if (res.isErr() || !res.value.success) {

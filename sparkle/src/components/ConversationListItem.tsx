@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
 import React, { type ReactNode } from "react";
@@ -7,6 +5,7 @@ import React, { type ReactNode } from "react";
 export interface ReplySectionProps {
   replyCount: number;
   unreadCount: number;
+  mentionCount?: number;
   avatars: Array<{
     name?: string;
     emoji?: string;
@@ -20,6 +19,7 @@ export interface ReplySectionProps {
 export function ReplySection({
   replyCount,
   unreadCount,
+  mentionCount = 0,
   avatars,
   lastMessageBy,
 }: ReplySectionProps) {
@@ -34,7 +34,25 @@ export function ReplySection({
         />
       )}
       <div className="s-min-w-0 s-flex-1 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-        {unreadCount === 0 ? (
+        {mentionCount > 0 ? (
+          <>
+            <span className="s-heading-xs s-text-highlight">
+              {mentionCount} {mentionCount === 1 ? "Mention" : "Mentions"}
+            </span>
+            {unreadCount !== mentionCount && (
+              <span className="s-heading-xs  s-text-highlight">
+                {" "}
+                in {unreadCount} {unreadCount === 1 ? "unread" : "unreads"}
+              </span>
+            )}
+            {replyCount !== unreadCount && (
+              <span className="s-heading-xs">
+                {" "}
+                ({replyCount} {replyCount === 1 ? "reply" : "replies"})
+              </span>
+            )}
+          </>
+        ) : unreadCount === 0 ? (
           <span className="s-heading-xs">{replyCount} Replies</span>
         ) : unreadCount === replyCount ? (
           <span className="s-heading-xs s-text-highlight">
@@ -81,6 +99,7 @@ export interface ConversationListItemProps {
   time: string;
   replySection?: ReactNode;
   onClick?: () => void;
+  showFocus?: boolean;
 }
 
 export function ConversationListItem({
@@ -90,9 +109,41 @@ export function ConversationListItem({
   time,
   replySection,
   onClick,
+  showFocus = false,
 }: ConversationListItemProps) {
+  const [isFocusVisible, setIsFocusVisible] = React.useState(false);
+  const hasPlayedFocusForCurrentTriggerRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!showFocus) {
+      hasPlayedFocusForCurrentTriggerRef.current = false;
+      return;
+    }
+
+    if (hasPlayedFocusForCurrentTriggerRef.current) {
+      return;
+    }
+
+    hasPlayedFocusForCurrentTriggerRef.current = true;
+    setIsFocusVisible(true);
+
+    const timeoutId = setTimeout(() => {
+      setIsFocusVisible(false);
+    }, 2000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [showFocus]);
+
   return (
-    <ListItem onClick={onClick} groupName="conversation-item">
+    <ListItem
+      onClick={onClick}
+      groupName="conversation-item"
+      className={`s-transition-colors s-duration-500 ${
+        isFocusVisible ? "s-bg-highlight-50 dark:s-bg-highlight-100-night" : ""
+      }`}
+    >
       {creator ? (
         <Avatar
           name={creator.fullName}

@@ -1,11 +1,11 @@
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { Button, Input, Label, TextArea } from "@dust-tt/sparkle";
 import type * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
+import { useMemo } from "react";
 import type { ControllerProps, FieldPath, FieldValues } from "react-hook-form";
 import { Controller, FormProvider, useFormContext } from "react-hook-form";
-
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 const Form = FormProvider;
 
@@ -26,8 +26,10 @@ const FormField = <
 >({
   ...props
 }: ControllerProps<TFieldValues, TName>) => {
+  const fieldContextValue = useMemo(() => ({ name: props.name }), [props.name]);
+
   return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
+    <FormFieldContext.Provider value={fieldContextValue}>
       <Controller {...props} />
     </FormFieldContext.Provider>
   );
@@ -69,9 +71,10 @@ const FormItem = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const id = React.useId();
+  const itemContextValue = React.useMemo(() => ({ id }), [id]);
 
   return (
-    <FormItemContext.Provider value={{ id }}>
+    <FormItemContext.Provider value={itemContextValue}>
       <div ref={ref} className={cn("space-y-2", className)} {...props} />
     </FormItemContext.Provider>
   );

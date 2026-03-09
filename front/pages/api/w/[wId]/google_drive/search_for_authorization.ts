@@ -1,6 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -12,6 +9,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const RequestBodySchema = z.object({
   connectionId: z.string().min(1, "connectionId is required"),

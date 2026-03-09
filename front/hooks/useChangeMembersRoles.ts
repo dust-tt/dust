@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
@@ -8,6 +6,7 @@ import type {
   RoleType,
   UserTypeWithWorkspaces,
 } from "@app/types/user";
+import { useCallback } from "react";
 
 type HandleMembersRoleChangeParams = {
   members: UserTypeWithWorkspaces[];
@@ -64,12 +63,19 @@ export function useChangeMembersRoles({
         const errors = results.filter((res) => !res.ok);
 
         if (errors.length > 0) {
+          let description: string;
+          if (errors.length === 1) {
+            const body = await errors[0].json().catch(() => null);
+            description =
+              body?.error?.message ?? "Failed to update member role.";
+          } else {
+            description = `Failed to update members role for ${errors.length} member(s) (${members.length - errors.length} succeeded).`;
+          }
+
           sendNotification({
             type: "error",
             title: "Update failed",
-            description: `Failed to update members role for ${
-              errors.length
-            } member(s) (${members.length - errors.length} succeeded).`,
+            description,
           });
           return false;
         } else {
@@ -84,6 +90,7 @@ export function useChangeMembersRoles({
           return true;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",

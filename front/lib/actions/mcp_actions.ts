@@ -1,17 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-  CallToolResultSchema,
-  McpError,
-  ProgressNotificationSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-import EventEmitter from "events";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   calculateContentSize,
@@ -36,7 +23,10 @@ import type {
   ServerSideMCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import {
+  MCPServerPersonalAuthenticationRequiredError,
+  MCPServerRequiresAdminAuthenticationError,
+} from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
@@ -62,6 +52,8 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
+import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
   AgentLoopRunContextType,
@@ -83,9 +75,12 @@ import {
   DEFAULT_MCP_TOOL_RETRY_POLICY,
   getRetryPolicyFromToolConfiguration,
 } from "@app/lib/api/mcp";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
@@ -95,6 +90,20 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { slugify } from "@app/types/shared/utils/string_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  McpError,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
+import tracer from "dd-trace";
+import EventEmitter from "events";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -118,8 +127,6 @@ function isEmptyInputSchema(schema: JSONSchema): boolean {
 
   return isContentConsideredEmpty;
 }
-
-const MAX_TOOL_NAME_LENGTH = 64;
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
@@ -358,6 +365,24 @@ export async function* tryCallMCPTool(
         };
       }
 
+      // Admin auth errors (no connection or expired token) are surfaced as
+      // tool errors — the user cannot fix these in-conversation; an admin
+      // must act in the MCP server settings.
+      if (
+        connectionResult.error instanceof
+        MCPServerRequiresAdminAuthenticationError
+      ) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
+            },
+          ],
+        };
+      }
+
       return {
         isError: true,
         content: [
@@ -397,20 +422,30 @@ export async function* tryCallMCPTool(
       }
     );
 
+    // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
+    // narrow it as non-null inside the async closure passed to tracer.trace().
+    const client = mcpClient;
+
     // Start the tool call in parallel.
-    const toolPromise = mcpClient.callTool(
-      {
-        name: toolConfiguration.originalName,
-        arguments: inputs,
-        _meta: {
-          progressToken,
-        },
-      },
-      CallToolResultSchema,
-      {
-        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-        signal: abortSignal,
-      }
+    const toolPromise = tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        client.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+            _meta: {
+              progressToken,
+            },
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+            signal: abortSignal,
+          }
+        )
     );
 
     // Read from notificationStream and yield events until the tool is done.
@@ -579,6 +614,52 @@ export async function* tryCallMCPTool(
       }
     }
 
+    // When the MCP SDK receives a 401/403 from the remote server during a
+    // tool call (e.g., StreamableHTTP where each call is a separate HTTP
+    // request), it calls unimplemented methods on MCPOAuthProvider which
+    // throw MCPOAuthProviderError. Trigger re-authentication.
+    if (
+      error instanceof MCPOAuthProviderError &&
+      isServerSideMCPToolConfiguration(toolConfiguration)
+    ) {
+      const mcpServerView = await MCPServerViewResource.fetchById(
+        auth,
+        toolConfiguration.mcpServerViewId
+      );
+      if (mcpServerView) {
+        const authorization = mcpServerView.toJSON().server.authorization;
+        if (authorization) {
+          // Invalidate the cached access token so the next connection attempt
+          // fetches a fresh token after the user re-authenticates.
+          const connectionType =
+            mcpServerView.oAuthUseCase === "personal_actions"
+              ? "personal"
+              : "workspace";
+          const connection = await MCPServerConnectionResource.findByMCPServer(
+            auth,
+            {
+              mcpServerId: mcpServerView.mcpServerId,
+              connectionType,
+            }
+          );
+          if (connection.isOk() && connection.value.connectionId) {
+            invalidateOAuthConnectionAccessTokenCache(
+              connection.value.connectionId
+            );
+          }
+
+          return {
+            // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
+            isError: false,
+            content: makePersonalAuthenticationError(
+              authorization.provider,
+              authorization.scope
+            ).content,
+          };
+        }
+      }
+    }
+
     return {
       isError: true,
       content: [
@@ -621,49 +702,6 @@ function makeClientSideMCPConnectionParams(
     conversationId,
     messageId,
   };
-}
-
-export function getPrefixedToolName(
-  config: MCPServerConfigurationType,
-  originalName: string
-): Result<string, Error> {
-  // Slugify each part separately to preserve separators (used for space disambiguation notably).
-  const slugifiedConfigName = config.name
-    .split(TOOL_NAME_SEPARATOR)
-    .map(slugify)
-    .join(TOOL_NAME_SEPARATOR);
-  const slugifiedOriginalName = slugify(originalName).replaceAll(
-    // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
-    /[^a-zA-Z0-9_.-]/g,
-    ""
-  );
-
-  const separator = TOOL_NAME_SEPARATOR;
-
-  // If the original name is already too long, we can't use it.
-  if (slugifiedOriginalName.length > MAX_TOOL_NAME_LENGTH) {
-    return new Err(
-      new Error(
-        `Tool name "${originalName}" is too long. Maximum length is ${MAX_TOOL_NAME_LENGTH} characters.`
-      )
-    );
-  }
-
-  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
-  const minPrefixLength = 3 + separator.length;
-  const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
-
-  // If we don't have enough room for a meaningful prefix, just return the original name
-  if (availableSpace < minPrefixLength) {
-    return new Ok(slugifiedOriginalName);
-  }
-
-  // Calculate the maximum allowed length for the config name portion
-  const maxConfigNameLength = availableSpace - separator.length;
-  const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
-  const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
-
-  return new Ok(prefixedName);
 }
 
 type AgentLoopListToolsContextWithoutConfigurationType = Omit<
@@ -872,9 +910,11 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
+        let toolName: string;
         // Fix the tool name to be valid for the model.
-        const toolName = getPrefixedToolName(action, toolConfig.name);
-        if (toolName.isErr()) {
+        try {
+          toolName = getPrefixedToolName(action.name, toolConfig.name);
+        } catch (error) {
           logger.warn(
             {
               workspaceId: owner.sId,
@@ -883,7 +923,7 @@ export async function tryListMCPTools(
               actionId: action.sId,
               mcpServerName: action.name,
               toolName: toolConfig.name,
-              error: toolName.error,
+              error: error,
             },
             `Invalid tool name, skipping the tool.`
           );
@@ -952,7 +992,7 @@ export async function tryListMCPTools(
           ...toolConfig,
           originalName: toolConfig.name,
           mcpServerName: action.name,
-          name: toolName.value,
+          name: toolName,
           description: (toolConfig.description ?? "") + extraDescription,
         });
       }
@@ -1058,12 +1098,26 @@ export async function listToolsForServerSideMCPServer(
     return new Ok(serverSideToolConfigs);
   }
 
+  return buildToolConfigurationsFromRawTools(
+    auth,
+    connectionParams.mcpServerId,
+    config,
+    allToolsRaw
+  );
+}
+
+async function buildToolConfigurationsFromRawTools(
+  auth: Authenticator,
+  mcpServerId: string,
+  config: ServerSideMCPServerConfigurationType,
+  allToolsRaw: MCPToolType[]
+): Promise<Result<ServerSideMCPToolConfigurationType[], Error>> {
   const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
     auth,
-    connectionParams.mcpServerId
+    mcpServerId
   );
 
-  const r = getToolExtraFields(connectionParams.mcpServerId, metadata);
+  const r = getToolExtraFields(mcpServerId, metadata);
   if (r.isErr()) {
     return r;
   }
@@ -1075,9 +1129,7 @@ export async function listToolsForServerSideMCPServer(
     toolsArgumentsRequiringApproval,
   } = r.value;
 
-  const availability = getAvailabilityOfInternalMCPServerById(
-    connectionParams.mcpServerId
-  );
+  const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
 
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
@@ -1089,7 +1141,7 @@ export async function listToolsForServerSideMCPServer(
           ? FALLBACK_MCP_TOOL_STAKE_LEVEL
           : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
       availability,
-      toolServerId: connectionParams.mcpServerId,
+      toolServerId: mcpServerId,
       ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
       retryPolicy:
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -1125,6 +1177,40 @@ async function listMCPServerToolsAndServerInstructions(
       agentLoopContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
+      // When the workspace connection is broken (admin token revoked/expired),
+      // fall back to cached tools so users are not blocked.
+      if (
+        MCPServerRequiresAdminAuthenticationError.is(r.error) &&
+        isConnectViaMCPServerId(connectionParams) &&
+        isServerSideMCPServerConfiguration(config)
+      ) {
+        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+          auth,
+          connectionParams.mcpServerId
+        );
+        if (remoteMCPServer?.cachedTools?.length) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              mcpServerId: connectionParams.mcpServerId,
+              cachedToolCount: remoteMCPServer.cachedTools.length,
+            },
+            "Workspace connection broken for remote MCP server, falling back to cached tools"
+          );
+          const cachedToolsRes = await buildToolConfigurationsFromRawTools(
+            auth,
+            connectionParams.mcpServerId,
+            config,
+            remoteMCPServer.cachedTools
+          );
+          if (cachedToolsRes.isOk()) {
+            return new Ok({
+              instructions: undefined,
+              tools: cachedToolsRes.value,
+            });
+          }
+        }
+      }
       return r;
     }
     mcpClient = r.value;

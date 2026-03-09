@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
@@ -12,6 +8,9 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type DiscoverOAuthMetadataResponseBody =
   | {

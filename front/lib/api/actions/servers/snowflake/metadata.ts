@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const SNOWFLAKE_TOOL_NAME = "snowflake" as const;
 export const MAX_QUERY_ROWS = 1000;
@@ -34,7 +33,7 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
   },
   list_tables: {
     description:
-      "List all tables and views within a specified Snowflake schema.",
+      "List all tables, views, and semantic views within a specified Snowflake schema.",
     schema: {
       database: z.string().describe("The name of the database."),
       schema: z
@@ -59,6 +58,22 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Describing Snowflake table",
       done: "Describe Snowflake table",
+    },
+  },
+  describe_semantic_view: {
+    description:
+      "Get the structure (dimensions and metrics) of a Snowflake semantic view. Use this instead of describe_table when the object kind is SEMANTIC_VIEW.",
+    schema: {
+      database: z.string().describe("The name of the database."),
+      schema: z.string().describe("The name of the schema."),
+      semantic_view: z
+        .string()
+        .describe("The name of the semantic view to describe."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Describing Snowflake semantic view",
+      done: "Describe Snowflake semantic view",
     },
   },
   query: {
@@ -112,9 +127,10 @@ export const SNOWFLAKE_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
+
     instructions:
-      "Use list_databases, list_schemas, list_tables, and describe_table to explore the schema before writing queries. Only SELECT queries are allowed.",
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
+      "Use list_databases, list_schemas, list_tables, and describe_table (or describe_semantic_view for semantic views) to explore the schema before writing queries. Only SELECT queries are allowed.",
   },
   tools: Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => ({
     name: t.name,

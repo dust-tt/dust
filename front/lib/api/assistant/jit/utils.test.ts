@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { getProjectContextDataSourceView } from "@app/lib/api/assistant/jit/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -7,6 +5,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("getProjectContextDataSourceView", () => {
   let auth: Authenticator;

@@ -1,6 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import z from "zod";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import config from "@app/lib/api/config";
@@ -14,6 +11,8 @@ import type { CoreAPISearchFilter } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import z from "zod";
 
 const EXTRACT_DATA_FUNCTION_NAME = "extract_data";
 const MAP_MAX_ITERATIONS = 32;

@@ -1,6 +1,3 @@
-import assert from "assert";
-import type Stripe from "stripe";
-
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -15,6 +12,8 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import type Stripe from "stripe";
 
 type CreatePAYGCreditError = {
   error_type: "already_exists" | "invalid_discount" | "unknown";

@@ -1,25 +1,11 @@
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
-
 import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { RegionInfo } from "@app/lib/api/regions/config";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -32,11 +18,10 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useSystemSpace } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
   withTracking,
 } from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -54,6 +39,22 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import { useCallback, useState } from "react";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -73,11 +74,13 @@ export async function setupConnection({
   provider,
   useCase = "connection",
   extraConfig,
+  regionInfo,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
+  regionInfo: RegionInfo | null;
 }): Promise<
   Result<{ connectionId: string; relatedCredentialId?: string }, Error>
 > {
@@ -87,11 +90,11 @@ export async function setupConnection({
 
   // OAuth flow
   const cRes = await setupOAuthConnection({
-    dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
     owner,
     provider,
     useCase,
     extraConfig,
+    regionInfo,
   });
   if (!cRes.isOk()) {
     return cRes;
@@ -130,8 +133,9 @@ export const AddConnectionMenu = ({
 
   const router = useAppRouter();
   const { isDark } = useTheme();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
+  const regionContext = useRegionContext();
 
   const handleOnClose = useCallback(
     () =>
@@ -142,6 +146,7 @@ export const AddConnectionMenu = ({
     []
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleCredentialProviderManagedDataSource = useCallback(
     async ({
       connectionId,
@@ -240,6 +245,7 @@ export const AddConnectionMenu = ({
         owner,
         provider,
         extraConfig,
+        regionInfo: regionContext.regionInfo,
       });
       if (connectionRes.isErr()) {
         throw connectionRes.error;
@@ -304,6 +310,7 @@ export const AddConnectionMenu = ({
         });
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       setShowConfirmConnection((prev) => ({
         isOpen: false,

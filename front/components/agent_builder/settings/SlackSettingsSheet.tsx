@@ -1,3 +1,10 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Checkbox,
@@ -17,16 +24,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useConnectorPermissions } from "@app/lib/swr/connectors";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { DataSourceType } from "@app/types/data_source";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
@@ -38,6 +38,7 @@ export type SlackChannel = {
 };
 
 interface SlackChannelsListProps {
+  disabled?: boolean;
   existingSelection: SlackChannel[];
   onSelectionChange: (channels: SlackChannel[]) => void;
   owner: WorkspaceType;
@@ -45,6 +46,7 @@ interface SlackChannelsListProps {
 }
 
 function SlackChannelsList({
+  disabled,
   existingSelection,
   onSelectionChange,
   owner,
@@ -55,6 +57,7 @@ function SlackChannelsList({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
       dataSource: slackDataSource,
+      disabled,
       filterPermission: "write",
       owner,
       parentId: null,
@@ -200,7 +203,7 @@ export function SlackSettingsSheet({
   slackDataSource,
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
   const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
     []
   );
@@ -320,6 +323,7 @@ export function SlackSettingsSheet({
 
             {isAdmin(owner) && (
               <SlackChannelsList
+                disabled={!isOpen}
                 existingSelection={localSlackChannels}
                 onSelectionChange={handleSelectionChange}
                 owner={owner}

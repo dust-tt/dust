@@ -7,6 +7,7 @@ import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
 import { downCommand } from "./commands/down";
 import { feedCommand } from "./commands/feed";
+import { flagCommand } from "./commands/flag";
 import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
@@ -50,6 +51,10 @@ cli
   .alias("s")
   .option("-n, --name <name>", "Environment name")
   .option("-b, --branch-name <branch>", "Git branch name (default: [prefix]<name>)")
+  .option(
+    "-r, --reuse-existing-branch",
+    "Reuse an existing local branch instead of creating a new one"
+  )
   .option("-O, --no-open", "Do not open terminal session after spawn")
   .option("-A, --no-attach", "Create terminal session but don't attach to it")
   .option("-w, --warm", "Open with a warm tab running dust-hive warm")
@@ -66,6 +71,7 @@ cli
       options: {
         name?: string;
         branchName?: string;
+        reuseExistingBranch?: boolean;
         open?: boolean;
         attach?: boolean;
         warm?: boolean;
@@ -85,6 +91,7 @@ cli
       const spawnOptions: {
         name?: string;
         branchName?: string;
+        reuseExistingBranch?: boolean;
         noOpen?: boolean;
         noAttach?: boolean;
         warm?: boolean;
@@ -98,6 +105,9 @@ cli
       }
       if (options.branchName) {
         spawnOptions.branchName = options.branchName;
+      }
+      if (options.reuseExistingBranch) {
+        spawnOptions.reuseExistingBranch = true;
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;
@@ -328,6 +338,19 @@ cli
   .action(async (name: string | undefined, scenario: string | undefined) => {
     await prepareAndRun(feedCommand(name, scenario));
   });
+
+cli
+  .command("flag [name] [flagName]", "Toggle a feature flag on the workspace")
+  .option("-d, --disable", "Disable the flag (default is enable)")
+  .action(
+    async (
+      name: string | undefined,
+      flagName: string | undefined,
+      options: { disable?: boolean }
+    ) => {
+      await prepareAndRun(flagCommand(name, flagName, { disable: Boolean(options.disable) }));
+    }
+  );
 
 cli.help();
 

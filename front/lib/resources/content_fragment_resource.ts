@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type {
   ConversationAttachmentType,
@@ -51,6 +43,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -358,6 +357,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           textBytes: null,
           sourceProvider: null,
           sourceIcon: null,
+          isInProjectContext: null,
         };
       } else if (contentFragmentType === "content_node") {
         return {
@@ -386,6 +386,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let generatedTables: string[] = [];
       let sourceProvider: string | null = null;
       let sourceIcon: string | null = null;
+      let isInProjectContext: boolean = false;
 
       // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
       const fileResource =
@@ -400,6 +401,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
         sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
+        isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
       }
 
       return {
@@ -413,6 +415,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         textBytes: this.textBytes,
         sourceProvider,
         sourceIcon,
+        isInProjectContext,
       } satisfies FileContentFragmentType;
     } else if (contentFragmentType === "content_node") {
       assert(
@@ -492,7 +495,7 @@ export function fileAttachmentLocation({
   return {
     filePath,
     internalUrl: `https://storage.googleapis.com/${getPrivateUploadBucket().name}/${filePath}`,
-    downloadUrl: `${appConfig.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
+    downloadUrl: `${appConfig.getApiBaseUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
 

@@ -1,6 +1,5 @@
-import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
-
 import type { LLM } from "@app/lib/api/llm/llm";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -9,13 +8,16 @@ import type {
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.
 const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 // Timeout for waiting on a single LLM event (first or subsequent).
-const LLM_EVENT_TIMEOUT_MINUTES = 5;
+const LLM_EVENT_TIMEOUT_MINUTES = 2;
 const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
 
 class LLMStreamTimeoutError extends Error {
@@ -34,7 +36,7 @@ class LLMStreamTimeoutError extends Error {
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
-  logContext?: { conversationId: string; step: number }
+  logContext?: { conversationId: string; step: number; modelId: ModelIdType }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
@@ -132,7 +134,6 @@ export async function getOutputFromLLMStream(
     specifications,
     flushParserTokens,
     contentParser,
-    agentMessageRow,
     step,
     agentConfiguration,
     agentMessage,
@@ -156,7 +157,11 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  const logContext = { conversationId: conversation.sId, step };
+  const logContext = {
+    conversationId: conversation.sId,
+    step,
+    modelId: model.modelId,
+  };
 
   try {
     for await (const event of withPeriodicHeartbeat(events, logContext)) {
@@ -187,7 +192,7 @@ export async function getOutputFromLLMStream(
           )) {
             await updateResourceAndPublishEvent(auth, {
               event: tokenEvent,
-              agentMessageRow,
+              agentMessage,
               conversation,
               step,
             });
@@ -204,7 +209,7 @@ export async function getOutputFromLLMStream(
               messageId: agentMessage.sId,
               text: event.content.delta,
             },
-            agentMessageRow,
+            agentMessage,
             conversation,
             step,
           });
@@ -212,6 +217,11 @@ export async function getOutputFromLLMStream(
           nativeChainOfThought += event.content.delta;
           continue;
         }
+        case "tool_call_delta":
+          // tool_call_delta events act as heartbeat signals during tool call
+          // streaming, preventing the LLM stream timeout when the model is
+          // generating tool call arguments.
+          continue;
         case "reasoning_generated": {
           await updateResourceAndPublishEvent(auth, {
             event: {
@@ -222,7 +232,7 @@ export async function getOutputFromLLMStream(
               messageId: agentMessage.sId,
               text: "\n\n",
             },
-            agentMessageRow,
+            agentMessage,
             conversation,
             step,
           });
@@ -268,12 +278,15 @@ export async function getOutputFromLLMStream(
           name,
           functionCallId: id,
         });
+
+        // Arguments are already fixed by parseToolArguments in the LLM client
+        const stringifiedArgs = JSON.stringify(args);
         contents.push({
           type: "function_call",
           value: {
             id,
             name,
-            arguments: JSON.stringify(args),
+            arguments: stringifiedArgs,
             metadata: thoughtSignature ? { thoughtSignature } : undefined,
           },
         });
@@ -317,6 +330,22 @@ export async function getOutputFromLLMStream(
   }
 
   await flushParserTokens();
+
+  // Validate structured output against the JSON schema when response format is set.
+  const responseFormat = parseResponseFormatSchema(llm.getResponseFormat());
+  if (responseFormat && generation) {
+    const parsed = safeParseJSON(generation);
+    if (parsed.isErr()) {
+      logger.warn(
+        {
+          ...logContext,
+          responseFormatName: responseFormat.json_schema.name,
+          error: parsed.error.message,
+        },
+        "Structured output JSON parsing failed: response from LLM may be invalid."
+      );
+    }
+  }
 
   if (contents.length === 0 && actions.length === 0) {
     return new Err({

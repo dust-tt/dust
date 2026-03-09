@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
 import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
@@ -53,7 +51,7 @@ const cardVariants = cva(
         highlight: cn(
           "s-bg-highlight-50",
           "s-border-border/0",
-          "dark:s-bg-highlight-50-night",
+          "dark:s-bg-highlight-100-night",
           "dark:s-border-border-night/0"
         ),
         warning: cn(
@@ -103,6 +101,8 @@ interface CommonProps {
   size?: CardSizeType;
   className?: string;
   selected?: boolean;
+  isPulsing?: boolean;
+  style?: React.CSSProperties;
 }
 
 interface CardLinkProps extends CommonProps, LinkWrapperProps {
@@ -135,6 +135,8 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       replace,
       shallow,
       selected,
+      isPulsing,
+      style,
       ...props
     },
     ref
@@ -151,14 +153,17 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       cardVariants({ variant, size, selected: isSelected }),
       // Apply interactive styles when either href or onClick is present
       isInteractive ? interactiveClasses : "",
+      isPulsing && "s-animate-ring-pulse s-overflow-visible",
       className
     );
 
     if (href) {
-      return (
+      const linkContent = (
         <Link
           href={href}
-          className={cardButtonClassNames}
+          className={
+            isPulsing ? "s-block s-h-full s-w-full" : cardButtonClassNames
+          }
           replace={replace}
           shallow={shallow}
           target={target}
@@ -168,12 +173,21 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
           {children}
         </Link>
       );
+      if (isPulsing) {
+        return (
+          <div className={cardButtonClassNames} style={style}>
+            {linkContent}
+          </div>
+        );
+      }
+      return linkContent;
     }
 
     return (
       <div
         ref={ref}
         className={cardButtonClassNames}
+        style={style}
         onClick={onClick}
         role={isInteractive ? "button" : undefined}
         aria-pressed={
@@ -208,6 +222,8 @@ interface CardPropsWithButton
     Omit<CardButtonProps, keyof CardPropsBase> {
   href?: never;
 }
+
+InnerCard.displayName = "InnerCard";
 
 export type CardProps = CardPropsWithLink | CardPropsWithButton;
 
@@ -265,21 +281,38 @@ export const CardActionButton = React.forwardRef<
 
 CardActionButton.displayName = "CardActionButton";
 
-export const CardGrid = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ children, className, ...props }, ref) => {
-  return (
-    <div ref={ref} className={cn("s-@container", className)} {...props}>
-      <div
-        className={cn(
-          "s-grid s-grid-cols-1 s-gap-2",
-          "@xxs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
-        )}
-      >
-        {children}
+const uncappedGridClasses = cn(
+  "@xxs:s-grid-cols-2",
+  "@sm:s-grid-cols-3",
+  "@lg:s-grid-cols-4",
+  "@xl:s-grid-cols-5"
+);
+
+const adaptiveGridClasses = cn(
+  "@xxs:has-[>:nth-child(2)]:s-grid-cols-2",
+  "@sm:has-[>:nth-child(3)]:s-grid-cols-3",
+  "@lg:has-[>:nth-child(4)]:s-grid-cols-4",
+  "@xl:has-[>:nth-child(5)]:s-grid-cols-5"
+);
+
+interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
+  adaptColumns?: boolean;
+}
+
+export const CardGrid = React.forwardRef<HTMLDivElement, CardGridProps>(
+  ({ children, className, adaptColumns = false, ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn("s-@container", className)} {...props}>
+        <div
+          className={cn(
+            "s-grid s-grid-cols-1 s-gap-2",
+            adaptColumns ? adaptiveGridClasses : uncappedGridClasses
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 CardGrid.displayName = "CardGrid";

@@ -1,10 +1,9 @@
-import { parse } from "csv-parse/sync";
-import { readFileSync } from "fs";
-
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { parse } from "csv-parse/sync";
+import { readFileSync } from "fs";
 
 import type { ArgumentSpecs } from "./helpers";
 import { makeScript } from "./helpers";

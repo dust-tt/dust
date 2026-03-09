@@ -1,7 +1,3 @@
-import { Chip, Separator, Spinner, Tooltip } from "@dust-tt/sparkle";
-import sortBy from "lodash/sortBy";
-import { useCallback, useMemo, useState } from "react";
-
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -12,11 +8,22 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  AttachmentChip,
+  Chip,
+  DocumentIcon,
+  Separator,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import sortBy from "lodash/sortBy";
+import { useCallback, useMemo, useState } from "react";
 
 interface SkillInfoTabProps {
   skill: SkillType;
@@ -32,6 +39,7 @@ export function SkillInfoTab({
   showDescription = true,
 }: SkillInfoTabProps) {
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
+  const { hasFeature } = useFeatureFlags();
 
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
@@ -71,6 +79,7 @@ export function SkillInfoTab({
   const showSeparator =
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
+    (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
     sortedMCPServerViews.length > 0 ||
     shouldLoadSpaces;
 
@@ -87,17 +96,18 @@ export function SkillInfoTab({
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
-            Instructions
+            Guidelines
           </div>
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}
+            className="max-h-150 overflow-y-auto"
           />
         </div>
       )}
       {knowledgeItems.length > 0 && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Knowledge
           </div>
@@ -108,6 +118,24 @@ export function SkillInfoTab({
                 node={item.node}
                 title={item.label}
                 color="primary"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {hasFeature("sandbox_tools") && skill.fileAttachments.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Files
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {skill.fileAttachments.map((file) => (
+              <AttachmentChip
+                key={file.fileId}
+                label={file.fileName}
+                icon={{ visual: DocumentIcon }}
+                color="primary"
+                size="xs"
               />
             ))}
           </div>

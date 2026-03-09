@@ -1,9 +1,9 @@
-import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
-import React from "react";
-
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
+import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 interface UnsupportedContentRendererProps {
   contentType: string;

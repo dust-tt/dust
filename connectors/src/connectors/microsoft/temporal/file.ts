@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
@@ -14,7 +14,7 @@ import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mi
 import {
   deleteAllSheets,
   handleSpreadSheet,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import {
   handleCsvFile,

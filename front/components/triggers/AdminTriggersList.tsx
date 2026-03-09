@@ -1,7 +1,3 @@
-import { classNames, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
-
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { AddTriggerMenu } from "@app/components/triggers/AddTriggerMenu";
@@ -19,6 +15,9 @@ import type {
 } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import { cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
 
 type RowData = {
   webhookSource: WebhookSourceWithSystemViewAndUsageType;
@@ -32,7 +31,7 @@ const NameCell = ({ row }: { row: RowData }) => {
   return (
     <DataTable.CellContent grow>
       <div
-        className={classNames(
+        className={cn(
           "flex flex-row items-center gap-3 py-3",
           webhookSource.systemView ? "" : "opacity-50"
         )}

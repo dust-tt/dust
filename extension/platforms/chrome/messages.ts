@@ -1,8 +1,8 @@
 import type {
   AuthService,
   OAuthAuthorizeResponse,
-} from "@app/shared/services/auth";
-import type { CaptureOptions } from "@app/shared/services/capture";
+} from "@extension/shared/services/auth";
+import type { CaptureOptions } from "@extension/shared/services/capture";
 
 export type AuthBackgroundResponseError = {
   success: false;
@@ -16,6 +16,7 @@ export type AuthBackgroundResponseSuccess = {
 export type AuthBackgroundMessage = {
   type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
   connection?: string;
+  organizationId?: string;
   refreshToken?: string;
 };
 
@@ -77,12 +78,14 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
  */
 
 export const sendAuthMessage = (
-  connection?: string
+  connection?: string,
+  organizationId?: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   return new Promise((resolve, reject) => {
     const message: AuthBackgroundMessage = {
       type: "AUTHENTICATE",
       connection,
+      organizationId,
     };
     chrome.runtime.sendMessage(
       message,

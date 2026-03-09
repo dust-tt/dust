@@ -1,5 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -37,6 +35,7 @@ import { isPersonalAuthenticationRequiredErrorContent } from "@app/types/assista
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
   | "approved"

@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetSpaceDetails } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 interface UsePokeSpaceDetailsProps {
   disabled?: boolean;
@@ -15,6 +14,7 @@ export function usePokeSpaceDetails({
   owner,
   spaceId,
 }: UsePokeSpaceDetailsProps) {
+  const { fetcher } = useFetcher();
   const spaceDetailsFetcher: Fetcher<PokeGetSpaceDetails> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/spaces/${spaceId}/details`,

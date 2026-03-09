@@ -1,12 +1,7 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
@@ -19,6 +14,11 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSkillResponseBody = {
   skill: SkillType;
@@ -44,20 +44,26 @@ export type DeleteSkillResponseBody = {
   success: boolean;
 };
 
-// Request body schema for PATCH
-const PatchSkillRequestBodySchema = t.type({
-  name: t.string,
-  agentFacingDescription: t.string,
-  userFacingDescription: t.string,
-  instructions: t.string,
-  icon: t.union([t.string, t.null]),
-  tools: t.array(
-    t.type({
-      mcpServerViewId: t.string,
-    })
-  ),
-  attachedKnowledge: t.array(AttachedKnowledgeSchema),
-});
+// Request body schema for PATCH.
+const PatchSkillRequestBodySchema = t.intersection([
+  t.type({
+    name: t.string,
+    agentFacingDescription: t.string,
+    userFacingDescription: t.string,
+    instructions: t.string,
+    icon: t.union([t.string, t.null]),
+    tools: t.array(
+      t.type({
+        mcpServerViewId: t.string,
+      })
+    ),
+    attachedKnowledge: t.array(AttachedKnowledgeSchema),
+  }),
+  // TODO(2026-03-02): make mandatory once always sent by the client.
+  t.partial({
+    fileAttachments: t.array(t.type({ fileId: t.string })),
+  }),
+]);
 
 type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
 
@@ -86,8 +92,8 @@ async function handler(
     });
   }
 
-  const skillResource = await SkillResource.fetchById(auth, sId);
-  if (!skillResource) {
+  const skill = await SkillResource.fetchById(auth, sId);
+  if (!skill) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -101,18 +107,18 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const skill = skillResource.toJSON(auth);
+      const serializedSkill = skill.toJSON(auth);
 
       if (withRelations === "true") {
-        const usage = await skillResource.fetchUsage(auth);
-        const editors = await skillResource.listEditors(auth);
-        const editedByUser = await skillResource.fetchEditedByUser(auth);
-        const extendedSkill = skill.extendedSkillId
-          ? await SkillResource.fetchById(auth, skill.extendedSkillId)
+        const usage = await skill.fetchUsage(auth);
+        const editors = await skill.listEditors(auth);
+        const editedByUser = await skill.fetchEditedByUser(auth);
+        const extendedSkill = serializedSkill.extendedSkillId
+          ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
           : null;
 
         const skillWithRelations: SkillWithRelationsType = {
-          ...skill,
+          ...serializedSkill,
           relations: {
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -125,7 +131,7 @@ async function handler(
           skill: skillWithRelations,
         });
       }
-      return res.status(200).json({ skill });
+      return res.status(200).json({ skill: serializedSkill });
     }
 
     case "PATCH": {
@@ -156,7 +162,7 @@ async function handler(
       }
 
       // Check if user can write.
-      if (!skillResource.canWrite(auth)) {
+      if (!skill.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -169,7 +175,7 @@ async function handler(
       // Check for existing active skill with the same name (excluding current skill).
       const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
-      if (existingSkill && existingSkill.id !== skillResource.id) {
+      if (existingSkill && existingSkill.id !== skill.id) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -209,8 +215,9 @@ async function handler(
         });
       }
 
+      const { attachedKnowledge, fileAttachments } = body;
+
       // Validate all data source views from attached knowledge exist and user has access.
-      const { attachedKnowledge } = body;
       const dataSourceViewIds = uniq(
         attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
       );
@@ -248,22 +255,67 @@ async function handler(
         }
       );
 
+      // Validate file attachments if provided (gated behind sandbox_tools).
+      let files: FileResource[] | undefined;
+      if (fileAttachments) {
+        const featureFlags = await getFeatureFlags(
+          auth.getNonNullableWorkspace()
+        );
+        if (
+          !featureFlags.includes("sandbox_tools") &&
+          fileAttachments.length > 0
+        ) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: "File attachments are not supported.",
+            },
+          });
+        }
+
+        const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
+        files = await FileResource.fetchByIds(auth, fileAttachmentIds);
+        if (files.length !== fileAttachmentIds.length) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
+            },
+          });
+        }
+
+        for (const file of files) {
+          if (!file.isReady || file.useCase !== "skill_attachment") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `File ${file.sId} is not ready or not a skill_attachment.`,
+              },
+            });
+          }
+        }
+      }
+
       // When saving a suggested skill, automatically activate it.
-      const shouldActivate = skillResource.status === "suggested";
+      const shouldActivate = skill.status === "suggested";
 
       if (shouldActivate) {
         logger.info(
           {
-            skillId: skillResource.sId,
+            skillId: skill.sId,
             workspaceId: owner.sId,
           },
           "Suggested skill accepted"
         );
       }
 
-      await skillResource.updateSkill(auth, {
+      await skill.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        fileAttachments: files,
         icon: body.icon,
         instructions: body.instructions,
         mcpServerViews,
@@ -274,13 +326,13 @@ async function handler(
       });
 
       return res.status(200).json({
-        skill: skillResource.toJSON(auth),
+        skill: skill.toJSON(auth),
       });
     }
 
     case "DELETE": {
       // Check if user can write.
-      if (!skillResource.canWrite(auth)) {
+      if (!skill.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -290,17 +342,17 @@ async function handler(
         });
       }
 
-      if (skillResource.status === "suggested") {
+      if (skill.status === "suggested") {
         logger.info(
           {
-            skillId: skillResource.sId,
+            skillId: skill.sId,
             workspaceId: owner.sId,
           },
           "Suggested skill rejected"
         );
       }
 
-      await skillResource.archive(auth);
+      await skill.archive(auth);
 
       return res.status(200).json({ success: true });
     }

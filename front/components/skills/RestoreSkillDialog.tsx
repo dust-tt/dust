@@ -1,3 +1,6 @@
+import { useRestoreSkill } from "@app/lib/swr/skill_configurations";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,10 +11,6 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useRestoreSkill } from "@app/lib/swr/skill_configurations";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface RestoreSkillDialogProps {
   skill: SkillType;

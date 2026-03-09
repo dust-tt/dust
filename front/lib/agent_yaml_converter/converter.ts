@@ -1,5 +1,3 @@
-import * as yaml from "js-yaml";
-
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
@@ -13,6 +11,7 @@ import type {
   AgentYAMLEditor,
   AgentYAMLSkill,
   AgentYAMLSlackIntegration,
+  AgentYAMLSpace,
   AgentYAMLTableConfiguration,
   AgentYAMLTag,
 } from "@app/lib/agent_yaml_converter/schemas";
@@ -24,11 +23,13 @@ import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/in
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import * as yaml from "js-yaml";
 
 export class AgentYAMLConverter {
   static async fromBuilderFormData(
     auth: Authenticator,
-    formData: AgentBuilderFormData
+    formData: AgentBuilderFormData,
+    spaces: AgentYAMLSpace[]
   ): Promise<Result<AgentYAMLConfig, Error>> {
     try {
       const actionsResult = await this.convertActions(auth, formData.actions);
@@ -58,6 +59,7 @@ export class AgentYAMLConverter {
         tags: this.convertTags(formData.agentSettings.tags),
         editors: this.convertEditors(formData.agentSettings.editors),
         toolset: actionsResult.value,
+        spaces,
         skills: skills.length > 0 ? skills : undefined,
         slack_integration: this.convertSlackIntegration(formData.agentSettings),
       };
@@ -444,7 +446,7 @@ export class AgentYAMLConverter {
     }
 
     try {
-      const parsedYaml = yaml.load(yamlString);
+      const parsedYaml = yaml.load(yamlString, { schema: yaml.JSON_SCHEMA });
       const result = agentYAMLConfigSchema.safeParse(parsedYaml);
 
       if (!result.success) {

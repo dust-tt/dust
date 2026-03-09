@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -28,6 +26,7 @@ import type {
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostRenderConversationRequestBody = {
   agentId: string;
@@ -104,7 +103,14 @@ async function handler(
         });
       }
 
-      const conversationRes = await getConversation(auth, cId, true);
+      const [conversationRes, agentConfiguration] = await Promise.all([
+        getConversation(auth, cId, true),
+        getAgentConfiguration(auth, {
+          agentId,
+          variant: "full",
+        }),
+      ]);
+
       if (conversationRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
@@ -116,10 +122,6 @@ async function handler(
       }
       const conversation: ConversationType = conversationRes.value;
 
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId,
-        variant: "full",
-      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
@@ -158,7 +160,7 @@ async function handler(
       const userMessage: UserMessageType = lastUserMessage;
 
       // Build tools list and prompt similar to the agent loop.
-      const attachments = listAttachments(conversation);
+      const attachments = await listAttachments(auth, { conversation });
       const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration,
         conversation,
@@ -293,6 +295,7 @@ async function handler(
         excludeActions,
         excludeImages,
         onMissingAction,
+        agentConfiguration,
       });
 
       if (convoRes.isErr()) {

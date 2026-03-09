@@ -1,23 +1,30 @@
-import moment from "moment-timezone";
-
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME,
   ENABLE_SKILL_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
+  SEARCH_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   areDataSourcesConfigured,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_SEARCH_FILES_ACTION_NAME,
+} from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type {
+  StructuredSystemPrompt,
   SystemPromptContext,
   SystemPromptSections,
 } from "@app/lib/api/llm/types/options";
@@ -35,6 +42,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
+import moment from "moment-timezone";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -83,7 +91,6 @@ export function constructProjectContextSection(
   if (!conversation?.spaceId) {
     return null;
   }
-
   return `# PROJECT CONTEXT
 
 This conversation is associated with a project. The project provides:
@@ -95,10 +102,17 @@ This conversation is associated with a project. The project provides:
 ## Using Project Tools
 
 **project_manager**: Use these tools to manage persistent project files, metadata, and conversations
-**search_project_context**: Use this tool to semantically search across all project files when you need to:
+**${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
+
+## Tool Usage Priority
+
+When answering questions that require searching for information, follow this priority order:
+1. **First**, use \`${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
+2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` to search across the broader company data sources.
 
 ## Project Files vs Conversation Attachments
 - **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
@@ -270,9 +284,9 @@ function constructAttachmentsSection(): string {
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_CAT_FILE_ACTION_NAME)}\`;\n` +
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
-    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
+    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
     " contents of this attachment will be considered in the search.\n" +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
@@ -389,6 +403,10 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
+    memoriesContext,
+    toolsetsContext,
+    userContext,
+    workspaceContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -401,16 +419,24 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
+    memoriesContext?: string;
+    toolsetsContext?: string;
+    userContext?: string;
+    workspaceContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
 
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
-  // Only agents with fully static instructions (no per-user data, no dynamic content) are marked
-  // stable across calls. Other global agents (e.g. @dust) bake in per-user memories and conditional
-  // sections, so they use "context" until that dynamic content is extracted.
+  // Global agents with fully static instructions (no per-user data baked in) use the tuple form
+  // [instructions, context] which enables extended prompt caching. Per-user dynamic content like
+  // memories is passed as a separate context section so it doesn't pollute instruction caching.
+  // Only enabled for `deep-dive` and `dust(-x)` agents.
   const hasStaticInstructions =
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.COPILOT ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.COPILOT_EDGE ||
+    isDustLikeAgent(agentConfiguration.sId);
 
   const instructionsContent = constructInstructionsSection({
     agentConfiguration,
@@ -418,58 +444,87 @@ export function constructPromptMultiActions(
     agentsList,
   });
 
-  const contextSections: SystemPromptContext[] = [
-    {
-      role: "context" as const,
-      content: constructContextSection({
-        agentConfiguration,
-        errorContext,
-        model,
-        owner,
-        userMessage,
-      }),
-    },
-    {
-      role: "context" as const,
-      content: constructProjectContextSection(conversation) ?? "",
-    },
-    {
-      role: "context" as const,
-      content: constructToolsSection({
-        hasAvailableActions,
-        model,
-        agentConfiguration,
-        serverToolsAndInstructions,
-      }),
-    },
-    {
-      role: "context" as const,
-      content: constructSkillsSection({
-        enabledSkills,
-        equippedSkills,
-      }),
-    },
-    { role: "context" as const, content: constructAttachmentsSection() },
-    { role: "context" as const, content: constructPastedContentSection() },
-    {
-      role: "context" as const,
-      content: constructGuidelinesSection({
-        agentConfiguration,
-      }),
-    },
-  ].filter((s) => s.content.trim() !== "");
+  const contextSection = constructContextSection({
+    agentConfiguration,
+    errorContext,
+    model,
+    owner,
+    userMessage,
+  });
+  const projectContextSection =
+    constructProjectContextSection(conversation) ?? "";
+  const toolsSection = constructToolsSection({
+    hasAvailableActions,
+    model,
+    agentConfiguration,
+    serverToolsAndInstructions,
+  });
+  const skillsSection = constructSkillsSection({
+    enabledSkills,
+    equippedSkills,
+  });
+  const attachmentsSection = constructAttachmentsSection();
+  const pastedContentSection = constructPastedContentSection();
+  const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
   if (hasStaticInstructions) {
-    // Tuple form: instructions first, then context. Enables extended caching.
-    return [
-      [{ role: "instruction", content: instructionsContent }],
-      contextSections,
-    ];
+    // Structured form with 3 cache tiers, ordered from most stable to most volatile.
+    //
+    // Instructions (long cache): stable per agent config — agent instructions,
+    // tools (directives + server listing), skills, format docs, and guidelines.
+    //
+    // Shared context (short cache): workspace-scoped data shared across users —
+    // date, project context, toolsets, workspace info. A cache breakpoint here
+    // lets different users in the same workspace share this prefix.
+    //
+    // Ephemeral context (no breakpoint): per-user data — memories, user profile.
+    const fullInstructions = [
+      instructionsContent,
+      toolsSection,
+      skillsSection,
+      attachmentsSection,
+      pastedContentSection,
+      guidelinesSection,
+    ]
+      .filter((s) => s.trim() !== "")
+      .join("\n");
+
+    const sharedContext: SystemPromptContext[] = [
+      { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: projectContextSection },
+      { role: "context" as const, content: toolsetsContext ?? "" },
+      { role: "context" as const, content: workspaceContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
+
+    const ephemeralContext: SystemPromptContext[] = [
+      { role: "context" as const, content: memoriesContext ?? "" },
+      { role: "context" as const, content: userContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
+
+    const structured: StructuredSystemPrompt = {
+      instructions: [{ role: "instruction", content: fullInstructions }],
+      sharedContext,
+      ephemeralContext,
+    };
+
+    return structured;
   }
 
-  // Flat context-only form: instructions go into context alongside everything else.
-  return [
-    { role: "context", content: instructionsContent },
-    ...contextSections,
-  ];
+  // Flat context-only form: everything goes into context. Original section order.
+  const allSections: SystemPromptContext[] = [
+    { role: "context" as const, content: instructionsContent },
+    { role: "context" as const, content: contextSection },
+    { role: "context" as const, content: projectContextSection },
+    { role: "context" as const, content: toolsSection },
+    { role: "context" as const, content: skillsSection },
+    { role: "context" as const, content: attachmentsSection },
+    { role: "context" as const, content: pastedContentSection },
+    { role: "context" as const, content: guidelinesSection },
+    { role: "context" as const, content: toolsetsContext ?? "" },
+    { role: "context" as const, content: memoriesContext ?? "" },
+    { role: "context" as const, content: userContext ?? "" },
+    { role: "context" as const, content: workspaceContext ?? "" },
+  ].filter((s) => s.content.trim() !== "");
+
+  return allSections;
 }

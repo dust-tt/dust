@@ -1,22 +1,4 @@
-import type {
-  ListScrollLocation,
-  VirtuosoMessageListMethods,
-} from "@virtuoso.dev/message-list";
-import {
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-} from "@virtuoso.dev/message-list";
-import debounce from "lodash/debounce";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
@@ -32,16 +14,6 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
-import { useConversationEvents } from "@app/hooks/useConversationEvents";
-import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
-import type { DustError } from "@app/lib/error";
-import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import {
   useConversation,
   useConversationFeedbacks,
@@ -49,16 +21,32 @@ import {
   useConversationMessages,
   useConversationParticipants,
   useConversations,
-} from "@app/lib/swr/conversations";
+} from "@app/hooks/conversations";
+import { useConversationEvents } from "@app/hooks/useConversationEvents";
+import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
+import { clientFetch } from "@app/lib/egress/client";
+import type { DustError } from "@app/lib/error";
+import { serializeMention } from "@app/lib/mentions/format";
+import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import type {
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  ButlerDoneEvent,
+  ButlerSuggestionCreatedEvent,
+  ButlerThinkingEvent,
   ConversationTitleEvent,
+  ConversationWithoutContentType,
   LightMessageType,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
@@ -69,9 +57,29 @@ import {
   toMentionType,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import type {
+  ListScrollLocation,
+  VirtuosoMessageListMethods,
+} from "@virtuoso.dev/message-list";
+import {
+  VirtuosoMessageList,
+  VirtuosoMessageListLicense,
+} from "@virtuoso.dev/message-list";
+import debounce from "lodash/debounce";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { findFirstUnreadMessageIndex } from "./utils";
 
@@ -88,6 +96,7 @@ interface ConversationViewerProps {
   setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
+  clientSideMCPServerIds?: string[];
 }
 
 function easeOutQuint(x: number): number {
@@ -113,6 +122,7 @@ export const ConversationViewer = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   setPlanLimitReached,
+  clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const ref =
     useRef<
@@ -159,12 +169,7 @@ export const ConversationViewer = ({
     }
   }, [shouldShowPushNotificationActivation, askForPermission]);
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const {
     isLoadingInitialData,
@@ -192,6 +197,7 @@ export const ConversationViewer = ({
     user,
     conversationId,
   });
+  const submitInFlightRef = useRef(false);
 
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
@@ -202,6 +208,7 @@ export const ConversationViewer = ({
   );
 
   // Setup the initial list data when the conversation is loaded.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
     // Consider this scenario:
@@ -306,6 +313,64 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
   });
 
+  const [suggestionsByMessageSId, setSuggestionsByMessageSId] = useState(
+    () => new Map<string, ButlerSuggestionPublicType[]>()
+  );
+
+  const [isButlerThinking, setIsButlerThinking] = useState(false);
+
+  const handleSuggestionAction = useCallback(
+    async (
+      suggestionSId: string,
+      status: "accepted" | "dismissed"
+    ): Promise<void> => {
+      // Look up the suggestion before removing it so we can act on acceptance.
+      let matchedSuggestion: ButlerSuggestionPublicType | undefined;
+      for (const suggestions of suggestionsByMessageSId.values()) {
+        matchedSuggestion = suggestions.find((s) => s.sId === suggestionSId);
+        if (matchedSuggestion) {
+          break;
+        }
+      }
+
+      // If accepting a call_agent or create_frame suggestion, submit the message with the agent mention.
+      if (
+        status === "accepted" &&
+        (matchedSuggestion?.suggestionType === "call_agent" ||
+          matchedSuggestion?.suggestionType === "create_frame")
+      ) {
+        const { agentSId, agentName, prompt } = matchedSuggestion.metadata;
+        void submitMessage({
+          input: `${serializeMention({ name: agentName, sId: agentSId })} ${prompt}`,
+          mentions: [{ configurationId: agentSId }],
+          contentFragments: { uploaded: [], contentNodes: [] },
+        });
+      }
+
+      // Optimistic update: remove the suggestion from local state.
+      setSuggestionsByMessageSId((prev) => {
+        const next = new Map<string, ButlerSuggestionPublicType[]>();
+        for (const [msgSId, suggestions] of prev) {
+          const filtered = suggestions.filter((s) => s.sId !== suggestionSId);
+          if (filtered.length > 0) {
+            next.set(msgSId, filtered);
+          }
+        }
+        return next;
+      });
+
+      await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/butler_suggestions/${suggestionSId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+    },
+    [conversationId, owner.sId, suggestionsByMessageSId, submitMessage]
+  );
+
   // Hooks related to conversation events streaming.
 
   const debouncedMarkAsRead = useMemo(
@@ -325,7 +390,10 @@ export const ConversationViewer = ({
           | AgentMessageNewEvent
           | AgentMessageDoneEvent
           | AgentGenerationCancelledEvent
-          | ConversationTitleEvent;
+          | ConversationTitleEvent
+          | ButlerSuggestionCreatedEvent
+          | ButlerThinkingEvent
+          | ButlerDoneEvent;
       } = JSON.parse(eventStr);
       const event = eventPayload.data;
 
@@ -373,18 +441,12 @@ export const ConversationViewer = ({
                 );
 
                 void mutateConversations(
-                  (currentData) => {
-                    if (!currentData?.conversations) {
-                      return currentData;
-                    }
-                    return {
-                      conversations: currentData.conversations.map((c) =>
-                        c.sId === conversationId
-                          ? { ...c, hasError: false, unread: false }
-                          : c
-                      ),
-                    };
-                  },
+                  (currentData: ConversationWithoutContentType[] | undefined) =>
+                    currentData?.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, hasError: false, unread: false }
+                        : c
+                    ),
                   { revalidate: false }
                 );
               }
@@ -445,18 +507,10 @@ export const ConversationViewer = ({
 
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
-              (currentData) => {
-                if (currentData?.conversations) {
-                  return {
-                    ...currentData,
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId
-                        ? { ...c, title: event.title }
-                        : c
-                    ),
-                  };
-                }
-              },
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === conversationId ? { ...c, title: event.title } : c
+                ),
               { revalidate: false }
             );
 
@@ -468,26 +522,36 @@ export const ConversationViewer = ({
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
-              (currentData) => {
-                if (!currentData?.conversations) {
-                  return currentData;
-                }
-                return {
-                  conversations: currentData.conversations.map((c) =>
-                    c.sId === event.conversationId
-                      ? { ...c, hasError: event.status === "error" }
-                      : c
-                  ),
-                };
-              },
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === event.conversationId
+                    ? { ...c, hasError: event.status === "error" }
+                    : c
+                ),
               { revalidate: false }
             );
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
+          case "butler_thinking":
+            setIsButlerThinking(true);
+            break;
+          case "butler_done":
+            setIsButlerThinking(false);
+            break;
+          case "butler_suggestion_created":
+            setIsButlerThinking(false);
+            setSuggestionsByMessageSId((prev) => {
+              const { suggestion } = event;
+              const existing = prev.get(suggestion.sourceMessageSId) ?? [];
+              const next = new Map(prev);
+              next.set(suggestion.sourceMessageSId, [...existing, suggestion]);
+              return next;
+            });
+            break;
           default:
             ((t: never) => {
-              console.error("Unknown event type", t);
+              logger.error({ event: t }, "Unknown event type");
             })(event);
         }
       }
@@ -524,135 +588,148 @@ export const ConversationViewer = ({
           message: "No ref",
         });
       }
-      const messageData = {
-        input,
-        mentions: mentions.map(toMentionType),
-        contentFragments,
-        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
-        skipToolsValidation: agentBuilderContext?.skipToolsValidation,
-      };
 
-      const lastMessageRank = Math.max(
-        ...ref.current.data.get().map((m) => m.rank)
-      );
-
-      let rank =
-        lastMessageRank +
-        // Content fragments are prepended as "message" in the conversation, before the user message.
-        // We need to account for their ranks as well.
-        contentFragments.contentNodes.length +
-        contentFragments.uploaded.length +
-        // +1 for the user message
-        1;
-
-      const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
-        input,
-        mentions,
-        user,
-        rank,
-        contentFragments,
-      });
-
-      const placeholderAgentMessages: VirtuosoMessage[] = [];
-      for (const mention of mentions) {
-        if (isRichAgentMention(mention)) {
-          // +1 per agent message mentioned
-          rank += 1;
-          placeholderAgentMessages.push(
-            createPlaceholderAgentMessage({
-              userMessage: placeholderUserMsg,
-              mention,
-              rank,
-            })
-          );
-        }
-      }
-
-      // An agent will answer immediately only if it is explicitely mentioned.
-      // In that case, we want to scroll to put the user message at the top.
-      const isMentioningAgent = mentions.some(isRichAgentMention);
-
-      const nbMessages = ref.current.data.get().length;
-      ref.current.data.append(
-        [placeholderUserMsg, ...placeholderAgentMessages],
-        isMentioningAgent
-          ? () => {
-              return {
-                index: nbMessages, // Avoid jumping around when the agent message is generated.
-                align: "start",
-                behavior: customSmoothScroll,
-              };
-            }
-          : (params) => {
-              if (params.scrollLocation.bottomOffset >= 0) {
-                return {
-                  index: "LAST",
-                  align: "end",
-                  behavior: customSmoothScroll,
-                };
-              } else {
-                return false;
-              }
-            }
-      );
-
-      const result = await submitMessage(messageData);
-
-      if (result.isErr()) {
-        if (result.error.type === "plan_limit_reached_error") {
-          setPlanLimitReached?.(true);
-        } else {
-          sendNotification({
-            title: result.error.title,
-            description: result.error.message,
-            type: "error",
-          });
-        }
-
-        // If the API errors, the original data will be rolled back by SWR automatically.
-        console.error("Failed to post message:", result.error);
+      if (submitInFlightRef.current) {
         return new Err({
           code: "internal_error",
-          name: "FailedToPostMessage",
-          message: `Failed to post message ${result.error}`,
+          name: "AlreadySubmitting",
+          message: "Already submitting",
         });
       }
 
-      const {
-        message: messageFromBackend,
-        contentFragments: contentFragmentsFromBackend,
-      } = result.value;
+      submitInFlightRef.current = true;
 
-      // map() is how we update the state of virtuoso messages.
-      ref.current.data.map((m) =>
-        m.rank === placeholderUserMsg.rank
-          ? {
-              ...messageFromBackend,
-              contentFragments: contentFragmentsFromBackend,
-            }
-          : m
-      );
+      try {
+        const messageData = {
+          input,
+          mentions: mentions.map(toMentionType),
+          contentFragments,
+          clientSideMCPServerIds:
+            clientSideMCPServerIds ??
+            agentBuilderContext?.clientSideMCPServerIds,
+          skipToolsValidation: agentBuilderContext?.skipToolsValidation,
+        };
 
-      void mutateConversations(
-        (currentData) => {
-          if (!currentData?.conversations) {
-            return currentData;
+        const lastMessageRank = Math.max(
+          ...ref.current.data.get().map((m) => m.rank)
+        );
+
+        let rank =
+          lastMessageRank +
+          // Content fragments are prepended as "message" in the conversation, before the user message.
+          // We need to account for their ranks as well.
+          contentFragments.contentNodes.length +
+          contentFragments.uploaded.length +
+          // +1 for the user message
+          1;
+
+        const placeholderUserMsg: VirtuosoMessage =
+          createPlaceholderUserMessage({
+            input,
+            mentions,
+            user,
+            rank,
+            contentFragments,
+          });
+
+        const placeholderAgentMessages: VirtuosoMessage[] = [];
+        for (const mention of mentions) {
+          if (isRichAgentMention(mention)) {
+            // +1 per agent message mentioned
+            rank += 1;
+            placeholderAgentMessages.push(
+              createPlaceholderAgentMessage({
+                userMessage: placeholderUserMsg,
+                mention,
+                rank,
+              })
+            );
           }
-          return {
-            conversations: currentData.conversations.map((c) =>
+        }
+
+        // An agent will answer immediately only if it is explicitely mentioned.
+        // In that case, we want to scroll to put the user message at the top.
+        const isMentioningAgent = mentions.some(isRichAgentMention);
+
+        const nbMessages = ref.current.data.get().length;
+        ref.current.data.append(
+          [placeholderUserMsg, ...placeholderAgentMessages],
+          isMentioningAgent
+            ? () => {
+                return {
+                  index: nbMessages, // Avoid jumping around when the agent message is generated.
+                  align: "start",
+                  behavior: customSmoothScroll,
+                };
+              }
+            : (params) => {
+                if (params.scrollLocation.bottomOffset >= 0) {
+                  return {
+                    index: "LAST",
+                    align: "end",
+                    behavior: customSmoothScroll,
+                  };
+                } else {
+                  return false;
+                }
+              }
+        );
+
+        const result = await submitMessage(messageData);
+
+        if (result.isErr()) {
+          if (result.error.type === "plan_limit_reached_error") {
+            setPlanLimitReached?.(true);
+          } else {
+            sendNotification({
+              title: result.error.title,
+              description: result.error.message,
+              type: "error",
+            });
+          }
+
+          // If the API errors, the original data will be rolled back by SWR automatically.
+          logger.error({ err: result.error }, "Failed to post message");
+          return new Err({
+            code: "internal_error",
+            name: "FailedToPostMessage",
+            message: `Failed to post message ${result.error}`,
+          });
+        }
+
+        const {
+          message: messageFromBackend,
+          contentFragments: contentFragmentsFromBackend,
+        } = result.value;
+
+        // map() is how we update the state of virtuoso messages.
+        ref.current.data.map((m) =>
+          m.rank === placeholderUserMsg.rank
+            ? {
+                ...messageFromBackend,
+                contentFragments: contentFragmentsFromBackend,
+              }
+            : m
+        );
+
+        void mutateConversations(
+          (currentData: ConversationWithoutContentType[] | undefined) =>
+            currentData?.map((c) =>
               c.sId === conversationId
                 ? { ...c, updated: new Date().getTime() }
                 : c
             ),
-          };
-        },
-        { revalidate: false }
-      );
+          { revalidate: false }
+        );
 
-      return new Ok(undefined);
+        return new Ok(undefined);
+      } finally {
+        submitInFlightRef.current = false;
+      }
     },
     [
       agentBuilderContext?.clientSideMCPServerIds,
+      clientSideMCPServerIds,
       agentBuilderContext?.skipToolsValidation,
       conversationId,
       mutateConversations,
@@ -727,6 +804,9 @@ export const ConversationViewer = ({
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
+      isButlerThinking,
+      suggestionsByMessageSId,
+      handleSuggestionAction,
       additionalMarkdownComponents,
       additionalMarkdownPlugins,
       isProjectMember,
@@ -742,6 +822,9 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    isButlerThinking,
+    suggestionsByMessageSId,
+    handleSuggestionAction,
     additionalMarkdownComponents,
     additionalMarkdownPlugins,
     isProjectMember,

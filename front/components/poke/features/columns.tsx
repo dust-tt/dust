@@ -1,6 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type {
   FeatureFlagStage,
@@ -8,6 +5,8 @@ import type {
 } from "@app/types/shared/feature_flags";
 import { FEATURE_FLAG_STAGE_LABELS } from "@app/types/shared/feature_flags";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
+import { Chip } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;

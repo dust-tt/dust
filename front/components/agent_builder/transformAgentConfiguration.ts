@@ -1,15 +1,20 @@
-import uniqueId from "lodash/uniqueId";
-
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import uniqueId from "lodash/uniqueId";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
@@ -17,7 +22,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
  * as they will be populated reactively in the component.
  */
 export function transformAgentConfigurationToFormData(
-  agentConfiguration: LightAgentConfigurationType
+  agentConfiguration: AgentConfigurationType
 ): AgentBuilderFormData {
   return {
     agentSettings: {
@@ -57,12 +62,18 @@ export function transformAgentConfigurationToFormData(
 export function getDefaultAgentFormData({
   user,
   owner,
+  hasCopilot,
 }: {
   user: UserType;
   owner: WorkspaceType;
+  hasCopilot?: boolean;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = getLargeWhitelistedModel(owner);
+  const preferredModel = hasCopilot
+    ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+    : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  const fallbackModel = hasCopilot
+    ? getSmallWhitelistedModel(owner)
+    : getLargeWhitelistedModel(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
   // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
@@ -112,17 +123,28 @@ export function transformTemplateToFormData(
   owner: WorkspaceType,
   hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
-  const defaultFormData = getDefaultAgentFormData({ user, owner });
+  const hasCopilotAccess =
+    hasFeature("agent_builder_copilot") &&
+    (owner.role === "admin" ||
+      (hasFeature("agent_builder_copilot_builders") &&
+        owner.role === "builder"));
+  const defaultFormData = getDefaultAgentFormData({
+    user,
+    owner,
+    hasCopilot: hasCopilotAccess,
+  });
 
   return {
     ...defaultFormData,
-    // Don't constrain copilot with preset instructions, let it generate them.
-    instructions: hasFeature("agent_builder_copilot")
+    // Don't constrain copilot with preset instructions when the user has copilot access.
+    instructions: hasCopilotAccess
       ? defaultFormData.instructions
       : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
-      name: template.handle ?? defaultFormData.agentSettings.name,
+      name: hasCopilotAccess
+        ? defaultFormData.agentSettings.name
+        : (template.handle ?? defaultFormData.agentSettings.name),
       description:
         template.userFacingDescription ??
         defaultFormData.agentSettings.description,
@@ -176,7 +198,7 @@ export function convertActionsForFormData(
  * resets editors to current user, and defaults to private scope.
  */
 export function transformDuplicateAgentToFormData(
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentConfigurationType,
   user: UserType
 ): AgentBuilderFormData {
   const baseFormData =

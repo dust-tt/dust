@@ -1,6 +1,5 @@
-import type { StoredUser } from "@app/shared/services/auth";
-import { useAuth } from "@app/ui/components/auth/AuthProvider";
-import { useTheme } from "@app/ui/hooks/useTheme";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import {
   Avatar,
   DropdownMenu,
@@ -16,18 +15,22 @@ import {
   LightModeIcon,
   LogoutIcon,
 } from "@dust-tt/sparkle";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useMemo } from "react";
 
-interface UserDropdownMenuProps {
-  handleLogout: () => void;
-  user: StoredUser;
-}
+export const UserDropdownMenu = () => {
+  const { theme, setTheme } = useTheme();
+  const { user, workspace, handleLogout, handleSelectOrganization } =
+    useExtensionAuth();
 
-export const UserDropdownMenu = ({
-  user,
-  handleLogout,
-}: UserDropdownMenuProps) => {
-  const { theme, updateTheme } = useTheme();
-  const { workspace, handleSelectWorkspace } = useAuth();
+  const hasMultipleOrgs = useMemo(
+    () => !!user?.organizations && user.organizations.length > 1,
+    [user]
+  );
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
@@ -48,21 +51,14 @@ export const UserDropdownMenu = ({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {workspace && (
+        {hasMultipleOrgs && workspace && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={workspace.sId}>
-              {user.workspaces.map((w) => {
-                return (
-                  <DropdownMenuRadioItem
-                    key={w.sId}
-                    onClick={() => void handleSelectWorkspace(w)}
-                    label={w.name}
-                    value={w.sId}
-                  />
-                );
-              })}
-            </DropdownMenuRadioGroup>
+            <WorkspacePickerRadioGroup
+              user={user}
+              workspace={workspace}
+              onSelectOrganization={handleSelectOrganization}
+            />
           </>
         )}
         <DropdownMenuLabel label="Preferences" />
@@ -73,17 +69,17 @@ export const UserDropdownMenu = ({
               <DropdownMenuRadioItem
                 value="light"
                 label="Light"
-                onClick={() => void updateTheme("light")}
+                onClick={() => setTheme("light")}
               />
               <DropdownMenuRadioItem
                 value="dark"
                 label="Dark"
-                onClick={() => void updateTheme("dark")}
+                onClick={() => setTheme("dark")}
               />
               <DropdownMenuRadioItem
                 value="system"
                 label="System"
-                onClick={() => void updateTheme("system")}
+                onClick={() => setTheme("system")}
               />
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>

@@ -12,6 +12,7 @@ import {
   proxyActivities,
   workflowInfo,
 } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { chunk } from "lodash";
 import PQueue from "p-queue";
 

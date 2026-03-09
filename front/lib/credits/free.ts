@@ -1,6 +1,3 @@
-import assert from "assert";
-import type Stripe from "stripe";
-
 import type { Authenticator } from "@app/lib/auth";
 import {
   getSubscriptionInvoices,
@@ -15,6 +12,8 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import type Stripe from "stripe";
 
 const BRACKET_1_USERS = 10;
 const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5

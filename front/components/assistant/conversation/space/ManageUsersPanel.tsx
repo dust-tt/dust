@@ -1,11 +1,17 @@
+import type { MemberRowData } from "@app/components/members/MemberSelectionTable";
+import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type {
+  LightWorkspaceType,
+  SpaceUserType,
+  UserType,
+} from "@app/types/user";
 import {
-  Avatar,
   Button,
-  Checkbox,
   CheckIcon,
-  ListGroup,
-  ListItem,
-  SearchInput,
+  DataTable,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -13,77 +19,67 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useUpdateSpace } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
-
-interface ManageUsersPanelProps {
+interface BaseManageUsersPanelProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   owner: LightWorkspaceType;
+}
+
+interface SpaceMembersMode extends BaseManageUsersPanelProps {
+  mode: "space-members";
   space: SpaceType;
   currentProjectMembers: SpaceUserType[];
   onSuccess?: () => void | Promise<void>;
 }
 
-export function ManageUsersPanel({
-  isOpen,
-  setIsOpen,
-  owner,
-  space,
-  currentProjectMembers,
-  onSuccess,
-}: ManageUsersPanelProps) {
-  const [searchText, setSearchText] = useState("");
+interface EditorsOnlyMode extends BaseManageUsersPanelProps {
+  mode: "editors-only";
+  editors: UserType[];
+  onEditorsChange: (editors: UserType[]) => void;
+  title?: string;
+  buildersOnly?: boolean;
+}
+
+type ManageUsersPanelProps = SpaceMembersMode | EditorsOnlyMode;
+
+export function ManageUsersPanel(props: ManageUsersPanelProps) {
+  const { isOpen, setIsOpen, owner, mode } = props;
+
   const [isSaving, setIsSaving] = useState(false);
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
 
-  // Fetch workspace members
-  const { members, isLoading } = useSearchMembers({
-    workspaceId: owner.sId,
-    searchTerm: searchText,
-    pageIndex: 0,
-    pageSize: 100,
-  });
+  const buildersOnly = mode === "editors-only" ? props.buildersOnly : undefined;
 
-  // Current selected members and editors (persists even when members disappear from search)
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
+  const [selectedUsers, setSelectedUsers] = useState<UserType[]>([]);
 
-  // Initialize current members/editors from props when modal opens
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
-    setCurrentMembers(new Set(currentProjectMembers.map((m) => m.sId)));
-    setCurrentEditors(
-      new Set(currentProjectMembers.filter((m) => m.isEditor).map((m) => m.sId))
-    );
-  }, [isOpen, currentProjectMembers]);
+    if (mode === "space-members") {
+      setCurrentMembers(new Set(props.currentProjectMembers.map((m) => m.sId)));
+      setCurrentEditors(
+        new Set(
+          props.currentProjectMembers
+            .filter((m) => m.isEditor)
+            .map((m) => m.sId)
+        )
+      );
+    } else if (mode === "editors-only") {
+      setCurrentMembers(new Set(props.editors.map((e) => e.sId)));
+      setSelectedUsers(props.editors);
+    }
+  }, [isOpen]);
 
-  const toggleUser = (userId: string) => {
-    setCurrentMembers((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) {
-        next.delete(userId);
-        // Also remove from editors if they were an editor
-        setCurrentEditors((prevEditors) => {
-          const nextEditors = new Set(prevEditors);
-          nextEditors.delete(userId);
-          return nextEditors;
-        });
-      } else {
-        next.add(userId);
+  const toggleEditor = useCallback(
+    (userId: string) => {
+      if (!currentMembers.has(userId)) {
+        return;
       }
-      return next;
-    });
-  };
-
-  const toggleEditor = (userId: string) => {
-    // Only toggle if they're a member
-    if (currentMembers.has(userId)) {
       setCurrentEditors((prev) => {
         const next = new Set(prev);
         if (next.has(userId)) {
@@ -93,149 +89,145 @@ export function ManageUsersPanel({
         }
         return next;
       });
-    }
-  };
+    },
+    [currentMembers]
+  );
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    // Members are those who are not editors, editors are separate
-    const memberIds = Array.from(currentMembers).filter(
-      (id) => !currentEditors.has(id)
-    );
-    const editorIds = Array.from(currentEditors);
+    if (mode === "space-members") {
+      const memberIds = Array.from(currentMembers).filter(
+        (id) => !currentEditors.has(id)
+      );
+      const editorIds = Array.from(currentEditors);
 
-    if (editorIds.length === 0) {
+      if (editorIds.length === 0) {
+        setIsOpen(false);
+        sendNotification({
+          title: "At least one editor is required.",
+          description: "You cannot remove the last editor.",
+          type: "error",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const updatedSpace = await doUpdateSpace(
+        props.space,
+        {
+          isRestricted: props.space.isRestricted,
+          memberIds,
+          editorIds,
+          managementMode: "manual",
+          name: props.space.name,
+        },
+        {
+          title: "Successfully updated project members",
+          description: "Project members were successfully updated.",
+        }
+      );
+
+      if (updatedSpace) {
+        await props.onSuccess?.();
+        setIsOpen(false);
+      }
+    } else if (mode === "editors-only") {
+      props.onEditorsChange(selectedUsers);
       setIsOpen(false);
-      sendNotification({
-        title: "At least one editor is required.",
-        description: "You cannot remove the last editor.",
-        type: "error",
-      });
-      setIsSaving(false);
-      return;
     }
 
-    // Call the API to update the space with new members
-    const updatedSpace = await doUpdateSpace(space, {
-      isRestricted: space.isRestricted,
-      memberIds,
-      editorIds,
-      managementMode: "manual",
-      name: space.name,
-    });
-
-    if (updatedSpace) {
-      // Notify parent component to refetch members list
-      await onSuccess?.();
-      setIsOpen(false);
-    }
     setIsSaving(false);
   };
 
   const handleClose = () => {
-    setSearchText("");
     setIsOpen(false);
   };
 
-  // Get selected users data for button label
-  const selectedMembersCount = currentMembers.size;
-  const saveButtonLabel =
-    "Save" + (selectedMembersCount > 0 ? ` (${selectedMembersCount})` : "");
+  const handleSelectionChange = (
+    newMembers: Set<string>,
+    users: UserType[]
+  ) => {
+    setCurrentMembers(newMembers);
+    setSelectedUsers(users);
 
-  // Determine if at least one editor is selected
-  const selectedEditorsCount = currentEditors.size;
+    if (mode === "space-members") {
+      setCurrentEditors((prevEditors) => {
+        const nextEditors = new Set(prevEditors);
+        for (const editorId of prevEditors) {
+          if (!newMembers.has(editorId)) {
+            nextEditors.delete(editorId);
+          }
+        }
+        return nextEditors;
+      });
+    }
+  };
 
-  const canSave = selectedEditorsCount > 0 && !isSaving;
+  const editorColumn: ColumnDef<MemberRowData>[] = useMemo(() => {
+    if (mode !== "space-members") {
+      return [];
+    }
+    return [
+      {
+        id: "editor",
+        header: "",
+        meta: {
+          className: "w-28",
+        },
+        cell: (info: CellContext<MemberRowData, unknown>) => {
+          const { sId } = info.row.original;
+          const isMember = currentMembers.has(sId);
+          const isEditor = currentEditors.has(sId);
+
+          if (!isMember) {
+            return null;
+          }
+
+          return (
+            <DataTable.CellContent>
+              <Button
+                size="xs"
+                variant={isEditor ? "highlight" : "outline"}
+                label={isEditor ? "Editor" : "Set as editor"}
+                icon={isEditor ? CheckIcon : undefined}
+                onClick={(e) => {
+                  toggleEditor(sId);
+                  e.stopPropagation();
+                }}
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ];
+  }, [mode, currentMembers, currentEditors, toggleEditor]);
+
+  const initialMembers = mode === "editors-only" ? props.editors : undefined;
+
+  const canSave =
+    !isSaving && (mode !== "space-members" || currentEditors.size > 0);
+
+  const sheetTitle =
+    mode === "space-members"
+      ? `Manage Members of ${props.space.name}`
+      : (props.title ?? "Manage Editors");
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="lg" side="right">
         <SheetHeader>
-          <SheetTitle>Manage Members of {space.name}</SheetTitle>
+          <SheetTitle>{sheetTitle}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <SearchInput
-            name="user-search"
-            value={searchText}
-            onChange={setSearchText}
-            placeholder="Search users..."
-            className="mt-2"
+          <MemberSelectionTable
+            owner={owner}
+            selectedMemberIds={currentMembers}
+            onSelectionChange={handleSelectionChange}
+            extraColumns={editorColumn}
+            buildersOnly={buildersOnly}
+            initialMembers={initialMembers}
           />
-          <div className="flex min-h-0 flex-1 flex-col">
-            <ListGroup>
-              {isLoading ? (
-                <div className="flex items-center justify-center p-4">
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Loading users...
-                  </span>
-                </div>
-              ) : (
-                members.map((user) => {
-                  const isMember = currentMembers.has(user.sId);
-                  const isEditor = currentEditors.has(user.sId);
-                  return (
-                    <ListItem
-                      key={user.sId}
-                      itemsAlignment="center"
-                      onClick={() => toggleUser(user.sId)}
-                    >
-                      <div className="flex w-full items-center gap-3">
-                        <Checkbox
-                          checked={isMember}
-                          onCheckedChange={(checked) => {
-                            if (checked !== "indeterminate") {
-                              toggleUser(user.sId);
-                            }
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                        />
-                        <Avatar
-                          name={user.fullName}
-                          visual={user.image}
-                          size="sm"
-                          isRounded={true}
-                        />
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
-                            {user.fullName}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
-                            {user.email}
-                          </span>
-                        </div>
-                      </div>
-                      {isMember && isEditor && (
-                        <Button
-                          size="xs"
-                          variant="highlight"
-                          label="Editor"
-                          icon={CheckIcon}
-                          onClick={(e) => {
-                            toggleEditor(user.sId);
-                            e.stopPropagation();
-                          }}
-                        />
-                      )}
-                      {isMember && !isEditor && (
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          label="Set as editor"
-                          onClick={(e) => {
-                            toggleEditor(user.sId);
-                            e.stopPropagation();
-                          }}
-                        />
-                      )}
-                    </ListItem>
-                  );
-                })
-              )}
-            </ListGroup>
-          </div>
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
@@ -244,14 +236,15 @@ export function ManageUsersPanel({
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: saveButtonLabel,
+            label: "Save",
             variant: "highlight",
             onClick: handleSave,
             disabled: !canSave,
             isLoading: isSaving,
-            tooltip: !canSave
-              ? "Please select at least one editor to save."
-              : undefined,
+            tooltip:
+              !canSave && mode === "space-members"
+                ? "Please select at least one editor to save."
+                : undefined,
           }}
         />
       </SheetContent>

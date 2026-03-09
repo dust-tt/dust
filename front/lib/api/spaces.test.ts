@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getProjectConversationsDatasourceName } from "@app/lib/api/projects";
 import {
@@ -12,7 +10,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -29,6 +27,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({
@@ -507,6 +506,79 @@ describe("createSpaceAndGroup", () => {
       }
     });
 
+    it("should allow creating a project when workspace limit is reached", async () => {
+      const plan = adminAuth.getNonNullablePlan();
+      const originalMaxVaults = plan.limits.vaults.maxVaults;
+
+      const testMaxVaults = 3;
+      plan.limits.vaults.maxVaults = testMaxVaults;
+
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      try {
+        const allSpaces = await SpaceResource.listWorkspaceSpaces(
+          adminAuth,
+          undefined
+        );
+        const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
+        const spacesToCreate = Math.max(
+          0,
+          testMaxVaults - regularSpaces.length
+        );
+
+        for (let i = 0; i < spacesToCreate; i++) {
+          const result = await createSpaceAndGroup(
+            adminAuth,
+            {
+              name: `Limit Test Space ${i}`,
+              isRestricted: true,
+              spaceKind: "regular",
+              managementMode: "manual",
+              memberIds: [],
+            },
+            { ignoreWorkspaceLimit: false }
+          );
+          expect(result.isOk()).toBe(true);
+        }
+
+        // Creating another regular space should fail
+        const limitResult = await createSpaceAndGroup(adminAuth, {
+          name: "Would Exceed Limit",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        });
+        expect(limitResult.isErr()).toBe(true);
+        if (limitResult.isErr()) {
+          expect(limitResult.error).toBeInstanceOf(DustError);
+          expect(limitResult.error.code).toBe("limit_reached");
+        }
+
+        // Creating a project should still succeed (limit is not checked for projects)
+        const projectResult = await createSpaceAndGroup(adminAuth, {
+          name: "Project When At Limit",
+          isRestricted: false,
+          spaceKind: "project",
+          managementMode: "manual",
+          memberIds: [],
+        });
+        expect(projectResult.isOk()).toBe(true);
+        if (projectResult.isOk()) {
+          expect(projectResult.value.kind).toBe("project");
+          expect(projectResult.value.name).toBe("Project When At Limit");
+        }
+      } finally {
+        plan.limits.vaults.maxVaults = originalMaxVaults;
+        createConnectorSpy.mockRestore();
+      }
+    });
+
     it("should return error when invalid group IDs are provided", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Invalid Group Space",
@@ -552,11 +624,80 @@ describe("createSpaceAndGroup", () => {
         memberIds: [],
       });
 
-      // Note: The function doesn't trim the name itself, but the plugin does
-      // This test verifies the function accepts the name as-is
+      // The function trims the name before saving
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.name).toBe("  Trimmed Space Name  ");
+        expect(result.value.name).toBe("Trimmed Space Name");
+      }
+    });
+
+    it("should prevent duplicate space names (case-insensitive)", async () => {
+      // Create first space
+      const firstResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(firstResult.isOk()).toBe(true);
+
+      // Try to create another space with same name but different case
+      const duplicateResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "test space",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+
+      expect(duplicateResult.isErr()).toBe(true);
+      if (duplicateResult.isErr()) {
+        expect(duplicateResult.error).toBeInstanceOf(DustError);
+        expect(duplicateResult.error.code).toBe("space_already_exists");
+      }
+    });
+
+    it("should prevent duplicate space names with leading/trailing whitespace", async () => {
+      // Create first space
+      const firstResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Whitespace Test",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(firstResult.isOk()).toBe(true);
+
+      // Try to create another space with same name but with whitespace
+      const duplicateResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "  Whitespace Test  ",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+
+      expect(duplicateResult.isErr()).toBe(true);
+      if (duplicateResult.isErr()) {
+        expect(duplicateResult.error).toBeInstanceOf(DustError);
+        expect(duplicateResult.error.code).toBe("space_already_exists");
       }
     });
 

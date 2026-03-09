@@ -1,6 +1,17 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "root": true,
+  "plugins": [
+    "./biome-plugins/noRawSql.grit",
+    "./biome-plugins/noBulkLodash.grit",
+    "./biome-plugins/noDirectSparkleNotification.grit",
+    "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
+    "./biome-plugins/noMcpServerInstructions.grit",
+    "./biome-plugins/enforceClientTypesInPublicApi.grit",
+    "./biome-plugins/nextjsPageComponentNaming.grit",
+    "./biome-plugins/nextjsNoDataFetchingInGetssp.grit",
+    "./biome-plugins/tooLongIndexName.grit"
+  ],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -25,7 +36,7 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "lefthook.yml"
+      "!!**/.git"
     ]
   },
   "formatter": {
@@ -46,43 +57,61 @@
       "sdks/js/**",
       "viz/**",
       "extension/**",
-      "cli/**",
+      "cli/dust-cli/**",
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "rules": {
       "recommended": false,
       "correctness": {
-        "noUnusedImports": "error",
+        "noUnusedImports": { "fix": "safe", "level": "error" },
         "noUnusedVariables": "error"
       },
       "style": {
         "useBlockStatements": "error",
         "useImportType": "error"
       },
-      "nursery": {
+      "suspicious": {
         "noImportCycles": "error"
       }
     }
   },
   "overrides": [
     {
-      "includes": ["cli/**", "sparkle/**"],
+      "includes": ["**", "!front/pages/**"],
+      "plugins": ["./biome-plugins/noNextImports.grit"]
+    },
+    {
+      "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"
       }
     },
     {
-      "includes": ["front-spa/**"],
+      "includes": ["front-spa/**", "front/**"],
       "linter": {
         "rules": {
           "correctness": {
             "useHookAtTopLevel": "error",
-            "useExhaustiveDependencies": "warn"
+            "useExhaustiveDependencies": "error"
           }
         }
+      }
+    },
+    {
+      "includes": [
+        "front/migrations/**",
+        "front/mailing/**",
+        "connectors/migrations/**"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     },
     {
@@ -134,11 +163,12 @@
       "sdks/js/**",
       "viz/**",
       "extension/**",
-      "cli/**",
+      "cli/dust-cli/**",
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
-      "front-spa/**"
+      "front-spa/**",
+      "front/**"
     ],
     "enabled": true,
     "actions": {

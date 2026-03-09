@@ -1,24 +1,4 @@
 import url from "node:url";
-
-import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import {
-  discoverAuthorizationServerMetadata,
-  discoverOAuthProtectedResourceMetadata,
-  registerClient,
-  selectResourceURL,
-} from "@modelcontextprotocol/sdk/client/auth.js";
-import type { OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import assert from "assert";
-import tracer from "dd-trace";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -44,10 +24,28 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import {
+  discoverAuthorizationServerMetadata,
+  discoverOAuthProtectedResourceMetadata,
+  registerClient,
+  selectResourceURL,
+} from "@modelcontextprotocol/sdk/client/auth.js";
+import type { OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op } from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -121,21 +119,19 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     auth: Authenticator,
     options?: ResourceFindOptions<RemoteMCPServerModel>
   ) {
-    return tracer.trace("RemoteMCPServerResource.baseFetch", async () => {
-      const { where, ...otherOptions } = options ?? {};
+    const { where, ...otherOptions } = options ?? {};
 
-      const servers = await RemoteMCPServerModel.findAll({
-        where: {
-          ...where,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        ...otherOptions,
-      });
-
-      return servers.map(
-        (server) => new this(RemoteMCPServerModel, server.get())
-      );
+    const servers = await RemoteMCPServerModel.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      ...otherOptions,
     });
+
+    return servers.map(
+      (server) => new this(RemoteMCPServerModel, server.get())
+    );
   }
 
   static async fetchByIds(
@@ -171,10 +167,20 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.length > 0 ? servers[0] : null;
   }
 
-  static async listByWorkspace(auth: Authenticator) {
-    return tracer.trace("RemoteMCPServerResource.listByWorkspace", async () => {
-      return this.baseFetch(auth);
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<RemoteMCPServerResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.baseFetch(auth, {
+      where: { id: { [Op.in]: ids } },
     });
+  }
+
+  static async listByWorkspace(auth: Authenticator) {
+    return this.baseFetch(auth);
   }
 
   // Admin operations - don't use in non-temporal code.
@@ -447,37 +453,49 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       }
     }
 
-    // Try DCR.
-    const fullInformation = await registerClient(serverUrl, {
-      metadata,
-      clientMetadata,
-      fetchFn,
-    });
+    try {
+      // Try DCR.
+      const fullInformation = await registerClient(serverUrl, {
+        metadata,
+        clientMetadata,
+        fetchFn,
+      });
 
-    const supportedTokenAuthMethods =
-      metadata.token_endpoint_auth_methods_supported;
+      const supportedTokenAuthMethods =
+        metadata.token_endpoint_auth_methods_supported;
 
-    const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
-      "client_secret_post"
-    )
-      ? "client_secret_post"
-      : supportedTokenAuthMethods?.includes("client_secret_basic")
-        ? "client_secret_basic"
-        : undefined;
+      const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
+        "client_secret_post"
+      )
+        ? "client_secret_post"
+        : supportedTokenAuthMethods?.includes("client_secret_basic")
+          ? "client_secret_basic"
+          : undefined;
 
-    const connectionMetadata: MCPOAuthConnectionMetadataType = {
-      authorization_endpoint: metadata.authorization_endpoint,
-      token_endpoint: metadata.token_endpoint,
-      token_endpoint_auth_method: tokenEndpointAuthMethod,
-      client_id: fullInformation.client_id,
-      resource: resource
-        ? url.format(resource, { fragment: false })
-        : undefined,
-      scope: clientMetadata.scope,
-      client_secret: fullInformation.client_secret,
-    };
-
-    return new Ok(connectionMetadata);
+      const connectionMetadata: MCPOAuthConnectionMetadataType = {
+        authorization_endpoint: metadata.authorization_endpoint,
+        token_endpoint: metadata.token_endpoint,
+        token_endpoint_auth_method: tokenEndpointAuthMethod,
+        client_id: fullInformation.client_id,
+        resource: resource
+          ? url.format(resource, { fragment: false })
+          : undefined,
+        scope: clientMetadata.scope,
+        client_secret: fullInformation.client_secret,
+      };
+      return new Ok(connectionMetadata);
+    } catch (e) {
+      logger.error(
+        { error: e },
+        "Failed to register client, this server might requires a pre-approval process."
+      );
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Failed to register client, this server might requires a pre-approval process. Please contact support@dust.com."
+        )
+      );
+    }
   }
 
   // Serialization.
@@ -499,11 +517,26 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       currentTime.getTime() - createdAt.getTime()
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const shouldRedact =
+      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES;
+
     const secret = this.sharedSecret
-      ? differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
+      ? shouldRedact
         ? redactString(this.sharedSecret, 4)
         : this.sharedSecret
       : null;
+
+    const headers =
+      this.customHeaders && shouldRedact
+        ? Object.fromEntries(
+            Object.entries(this.customHeaders).map(([key, value]) => [
+              key,
+              value !== null && value !== undefined
+                ? redactString(String(value), 4)
+                : value,
+            ])
+          )
+        : this.customHeaders;
 
     return {
       sId: this.sId,
@@ -523,7 +556,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       lastError: this.lastError,
       sharedSecret: secret,
-      customHeaders: this.customHeaders,
+      customHeaders: headers,
       documentationUrl: null,
     };
   }

@@ -1,11 +1,10 @@
-import type { Attributes, ModelStatic } from "sequelize";
-
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import type { Attributes, ModelStatic } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

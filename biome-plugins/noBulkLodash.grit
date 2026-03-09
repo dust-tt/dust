@@ -1,0 +1,13 @@
+engine biome(1.0)
+language js
+
+// Disallows bulk lodash imports (e.g., import { debounce } from 'lodash').
+// Requires individual imports (e.g., import debounce from 'lodash/debounce').
+// Matches exact 'lodash' string which in practice only appears in import sources.
+`"lodash"` as $source where {
+    register_diagnostic(
+        span = $source,
+        message = "Bulk lodash imports increase bundle size (~70KB). Use individual imports instead (e.g., import debounce from 'lodash/debounce').",
+        severity = "error"
+    )
+}

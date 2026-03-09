@@ -1,16 +1,3 @@
-import {
-  Avatar,
-  Button,
-  ChevronRightIcon,
-  Chip,
-  classNames,
-  DataTable,
-  MovingMailIcon,
-  Page,
-} from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
-import React, { useMemo, useState } from "react";
-
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -18,6 +5,19 @@ import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Avatar,
+  Button,
+  ChevronRightIcon,
+  Chip,
+  cn,
+  DataTable,
+  MovingMailIcon,
+  Page,
+} from "@dust-tt/sparkle";
+import type { CellContext } from "@tanstack/react-table";
+import type React from "react";
+import { useMemo, useState } from "react";
 
 type RowData = MembershipInvitationType & {
   onClick: () => void;
@@ -128,7 +128,7 @@ export function InvitationsList({
         {isInvitationsLoading && (
           <div className="flex flex-col gap-2">
             <div
-              className={classNames(
+              className={cn(
                 "flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t py-2 text-xs sm:text-sm",
                 "border-border-dark bg-background dark:border-border-dark-night dark:bg-background-night"
               )}

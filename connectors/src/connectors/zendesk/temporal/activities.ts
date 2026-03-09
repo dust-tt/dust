@@ -31,6 +31,7 @@ import {
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 /**

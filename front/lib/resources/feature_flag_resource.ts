@@ -1,5 +1,3 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -9,6 +7,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

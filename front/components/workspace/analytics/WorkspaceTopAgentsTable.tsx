@@ -1,3 +1,10 @@
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { LinkWrapper } from "@app/lib/platform";
+import { useWorkspaceTopAgents } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import {
   Button,
   DataTable,
@@ -7,16 +14,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { DownloadIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { clientFetch } from "@app/lib/egress/client";
-import { LinkWrapper } from "@app/lib/platform";
-import {
-  useFeatureFlags,
-  useWorkspaceTopAgents,
-} from "@app/lib/swr/workspaces";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
 
 interface TopAgentRowData {
   agentId: string;
@@ -69,7 +66,7 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
       cell: (info: TopAgentInfo) => (
         <DataTable.BasicCellContent
           className="text-center"
-          label={`${info.row.original.messageCount}`}
+          label={info.row.original.messageCount.toLocaleString()}
         />
       ),
     },
@@ -81,7 +78,9 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
         sizeRatio: 15,
       },
       cell: (info: TopAgentInfo) => (
-        <DataTable.BasicCellContent label={`${info.row.original.userCount}`} />
+        <DataTable.BasicCellContent
+          label={info.row.original.userCount.toLocaleString()}
+        />
       ),
     },
   ];
@@ -104,7 +103,7 @@ export function WorkspaceTopAgentsTable({
       disabled: !workspaceId,
     });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId });
+  const { hasFeature } = useFeatureFlags();
   const showExport = hasFeature("analytics_csv_export");
 
   const [isDownloading, setIsDownloading] = useState(false);

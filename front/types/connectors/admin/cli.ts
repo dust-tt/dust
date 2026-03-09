@@ -199,10 +199,11 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
  */
 export const GongCommandSchema = t.type({
   majorCommand: t.literal("gong"),
-  command: t.literal("force-resync"),
-  args: t.type({
-    connectorId: t.union([t.number, t.undefined]),
-    fromTs: t.union([t.number, t.undefined]),
+  command: t.union([t.literal("force-resync"), t.literal("delete-transcript")]),
+  args: t.partial({
+    connectorId: t.number,
+    fromTs: t.number,
+    callId: t.string,
   }),
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
@@ -729,6 +730,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("remove-organization-tag"),
     t.literal("add-ticket-tag"),
     t.literal("remove-ticket-tag"),
+    t.literal("set-rate-limit"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -740,6 +742,7 @@ export const ZendeskCommandSchema = t.type({
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    rateLimitTps: t.union([t.number, t.undefined]),
     tag: t.union([t.string, t.undefined]),
     include: t.union([t.literal("true"), t.undefined]),
     exclude: t.union([t.literal("true"), t.undefined]),

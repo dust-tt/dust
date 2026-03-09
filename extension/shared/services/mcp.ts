@@ -1,4 +1,4 @@
-import type { DustAPI } from "@dust-tt/client";
+import type { WorkspaceType } from "@app/types/user";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
@@ -10,7 +10,7 @@ export abstract class McpService {
    * Primary method for workspace-scoped MCP implementation
    */
   abstract getOrCreateServer(
-    dustAPI: DustAPI,
+    owner: WorkspaceType,
     onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }>;
 
@@ -20,7 +20,7 @@ export abstract class McpService {
    */
   abstract connectServer(
     server: McpServer,
-    dustAPI: DustAPI,
+    owner: WorkspaceType,
     onServerIdReceived: (serverId: string) => void
   ): Promise<void>;
 

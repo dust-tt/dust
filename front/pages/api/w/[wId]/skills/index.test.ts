@@ -1,6 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import {
   SkillConfigurationModel,
@@ -10,6 +7,8 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -20,6 +19,8 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
@@ -693,6 +694,145 @@ describe("POST /api/w/[wId]/skills", () => {
     });
     expect(skillConfiguration).not.toBeNull();
     expect(skillConfiguration!.requestedSpaceIds).toEqual([regularSpace.id]);
+  });
+});
+
+describe("POST /api/w/[wId]/skills - file attachments", () => {
+  it("creates a skill with file attachments when sandbox_tools is enabled", async () => {
+    const { req, res, workspace, user, authenticator } = await setupTest(
+      "POST",
+      "builder"
+    );
+
+    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+
+    const file1 = await FileFactory.create(workspace, user, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+    const file2 = await FileFactory.create(workspace, user, {
+      contentType: "application/json",
+      fileName: "schema.json",
+      fileSize: 200,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+
+    req.body = {
+      name: "Skill With Files",
+      agentFacingDescription: "A skill with file attachments",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      fileAttachments: [{ fileId: file1.sId }, { fileId: file2.sId }],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const data = res._getJSONData();
+    expect(data.skill.fileAttachments).toHaveLength(2);
+
+    const fileNames = data.skill.fileAttachments.map(
+      (f: { fileName: string }) => f.fileName
+    );
+    expect(fileNames).toContain("template.txt");
+    expect(fileNames).toContain("schema.json");
+
+    // Verify persistence.
+    const createdSkill = await SkillResource.fetchById(
+      authenticator,
+      data.skill.sId
+    );
+    expect(createdSkill).not.toBeNull();
+    expect(createdSkill!.toJSON(authenticator).fileAttachments).toHaveLength(2);
+  });
+
+  it("rejects file attachments when sandbox_tools is not enabled", async () => {
+    const { req, res, workspace, user } = await setupTest("POST", "admin");
+
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+
+    req.body = {
+      name: "Skill With Files",
+      agentFacingDescription: "A skill with file attachments",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      fileAttachments: [{ fileId: file.sId }],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error.message).toContain(
+      "File attachments are not supported"
+    );
+  });
+
+  it("succeeds without file attachments when sandbox_tools is not enabled", async () => {
+    const { req, res } = await setupTest("POST", "admin");
+
+    req.body = {
+      name: "Skill Without Files",
+      agentFacingDescription: "A normal skill",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().skill.fileAttachments).toHaveLength(0);
+  });
+
+  it("rejects file attachments with wrong use case", async () => {
+    const { req, res, workspace, user } = await setupTest("POST", "admin");
+
+    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "text/plain",
+      fileName: "conversation-file.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    req.body = {
+      name: "Skill With Wrong File",
+      agentFacingDescription: "Description",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      fileAttachments: [{ fileId: file.sId }],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "not ready or not a skill_attachment"
+    );
   });
 });
 

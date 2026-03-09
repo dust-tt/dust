@@ -9,7 +9,16 @@ import { Ok } from "../lib/result";
 import { installAllDependencies } from "../lib/setup";
 
 // Directories that have node_modules to refresh
-const NODE_MODULES_DIRS = ["", "sdks/js", "front", "connectors", "sparkle", "front-spa"];
+const NODE_MODULES_DIRS = [
+  "",
+  "sdks/js",
+  "front",
+  "connectors",
+  "sparkle",
+  "front-spa",
+  "extension",
+  "viz",
+];
 
 export const refreshCommand = withEnvironment("refresh", async (env) => {
   const worktreePath = getWorktreeDir(env.name);

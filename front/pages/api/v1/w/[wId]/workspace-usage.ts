@@ -1,15 +1,3 @@
-import type {
-  GetWorkspaceUsageRequestType,
-  GetWorkspaceUsageResponseType,
-  UsageTableType,
-} from "@dust-tt/client";
-import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
-import { parse as parseCSV } from "csv-parse/sync";
-import { endOfMonth } from "date-fns/endOfMonth";
-import JSZip from "jszip";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -24,6 +12,18 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import type {
+  GetWorkspaceUsageRequestType,
+  GetWorkspaceUsageResponseType,
+  UsageTableType,
+} from "@dust-tt/client";
+import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
+import { parse as parseCSV } from "csv-parse/sync";
+import { endOfDay } from "date-fns/endOfDay";
+import { endOfMonth } from "date-fns/endOfMonth";
+import JSZip from "jszip";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger
@@ -249,7 +249,7 @@ function resolveDates(query: GetWorkspaceUsageRequestType) {
     case "range":
       return {
         startDate: parseDate(query.start),
-        endDate: parseDate(query.end),
+        endDate: endOfDay(parseDate(query.end)),
       };
     default:
       assertNever(query);

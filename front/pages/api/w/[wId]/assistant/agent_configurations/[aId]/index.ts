@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
@@ -15,6 +11,9 @@ import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assist
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;

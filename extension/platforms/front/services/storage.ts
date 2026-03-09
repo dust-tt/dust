@@ -1,4 +1,4 @@
-import type { StorageService } from "@app/shared/services/storage";
+import type { StorageService } from "@extension/shared/services/storage";
 
 type StorageListener = (changes: Record<string, any>) => void;
 

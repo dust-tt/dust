@@ -1,6 +1,3 @@
-import type Stripe from "stripe";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import {
   createEnterpriseCreditPurchase,
@@ -16,14 +13,16 @@ import {
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeCreditPurchaseOneOffInvoice,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
+  makeCreditPurchaseOneOffInvoice,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
+import type Stripe from "stripe";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const MONTH_SECONDS = 30 * 24 * 60 * 60;
 const NOW = 1700000000; // Fixed timestamp for tests

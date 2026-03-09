@@ -92,7 +92,9 @@ export const getConfig = async ({
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
-        "@app": path.resolve(__dirname, "../../"),
+        "@extension": path.resolve(__dirname, "../../"),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
+        "@app": path.resolve(__dirname, "../../../front"),
         redis: false,
       },
       fallback: {
@@ -105,6 +107,8 @@ export const getConfig = async ({
         events: false,
         net: false,
         redis: false,
+        zlib: false,
+        assert: require.resolve("assert"),
         http: require.resolve("stream-http"),
         https: require.resolve("https-browserify"),
       },
@@ -132,6 +136,7 @@ export const getConfig = async ({
             loader: "ts-loader",
             options: {
               configFile: resolvePath("../../tsconfig.json"),
+              transpileOnly: true,
             },
           },
           exclude: /node_modules/,
@@ -151,6 +156,15 @@ export const getConfig = async ({
         COMMIT_HASH: getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
+          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
+        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
+          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
@@ -176,6 +190,14 @@ export const getConfig = async ({
           {
             from: resolvePath("../../ui/main.html"),
             to: path.join(buildDirPath, "main.html"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.html"),
+            to: path.join(buildDirPath, "request-mic.html"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.js"),
+            to: path.join(buildDirPath, "request-mic.js"),
           },
           {
             context: resolvePath("../../ui/images"),

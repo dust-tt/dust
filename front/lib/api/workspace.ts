@@ -1,6 +1,3 @@
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -15,7 +12,10 @@ import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  type WorkspaceConversationKillSwitchValue,
+  WorkspaceResource,
+} from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -29,8 +29,8 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { md5 } from "@app/types/shared/utils/hashing";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -40,6 +40,8 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";
@@ -192,7 +194,7 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Omit<GroupKind, "system">;
+    groupKind?: Exclude<GroupKind, "system">;
     buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
@@ -406,12 +408,18 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
+type WorkspaceKillSwitchValue =
+  | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
+  | WorkspaceConversationKillSwitchValue;
+
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
+  killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
+  phoneCountry?: string;
 }
 
 export async function updateWorkspaceMetadata(
@@ -579,7 +587,7 @@ export async function getWorkspaceAdministrationVersionLock(
   const hash = md5(`workspace_administration_${workspace.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
   // OK because we need to setup a lock
-  // eslint-disable-next-line dust/no-raw-sql
+  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },

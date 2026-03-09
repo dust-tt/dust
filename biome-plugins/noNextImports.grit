@@ -1,0 +1,38 @@
+engine biome(1.0)
+language js
+
+// Prevents direct imports from 'next' or 'next/*' packages in shared code.
+// Enforces platform abstraction layer for code sharing between NextJS and Vite SPA.
+// Each known next/* subpath is listed explicitly because GritQL in Biome
+// does not support regex matching on string literal nodes reliably.
+// Multiple import forms are matched to cover default, named, type, and namespace imports.
+// Note: Due to Biome GritQL bug #5801, named imports with multiple specifiers
+// may not be caught.
+or {
+    `import $_ from $source`,
+    `import { $_ } from $source`,
+    `import type $_ from $source`,
+    `import type { $_ } from $source`,
+    `import * as $_ from $source`,
+} where {
+    $source <: or {
+        `"next"`,
+        `"next/app"`,
+        `"next/document"`,
+        `"next/dynamic"`,
+        `"next/font/google"`,
+        `"next/font/local"`,
+        `"next/head"`,
+        `"next/image"`,
+        `"next/link"`,
+        `"next/navigation"`,
+        `"next/router"`,
+        `"next/script"`,
+        `"next/server"`
+    },
+    register_diagnostic(
+        span = $source,
+        message = "Direct import from 'next' or 'next/*' is not allowed in shared code. Use platform abstractions from '@app/lib/platform' instead.",
+        severity = "error"
+    )
+}

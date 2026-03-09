@@ -1,14 +1,3 @@
-import {
-  Button,
-  Page,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  SliderToggle,
-} from "@dust-tt/sparkle";
-import { useCallback, useMemo } from "react";
-import { useWatch } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -21,6 +10,16 @@ import type {
   TagsFilter,
   TagsFilterMode,
 } from "@app/types/data_source_view";
+import {
+  Button,
+  Page,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  SliderToggle,
+} from "@dust-tt/sparkle";
+import { useCallback, useMemo } from "react";
+import { useWatch } from "react-hook-form";
 
 export function DataSourceViewTagsFilterDropdown() {
   const { owner } = useAgentBuilderContext();

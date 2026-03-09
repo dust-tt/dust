@@ -1,10 +1,10 @@
+import { clientEventSource, clientFetch } from "@app/lib/egress/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import type { EventSourcePolyfill } from "event-source-polyfill";
 
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
-
-const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
-const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes.
+const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
 
 /**
  * Browser-specific MCP transport implementation.
@@ -14,11 +14,15 @@ const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
  * - Uses fetch with credentials for HTTP POST (sends results back to Dust)
  */
 export class BrowserMCPTransport implements Transport {
-  private eventSource: EventSource | null = null;
+  private eventSource: EventSourcePolyfill | null = null;
   private lastEventId: string | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private serverId: string | null = null;
   private isClosing = false;
+
+  // Set to true when we receive the "done" event from the server, indicating a normal stream close
+  // (timeout) rather than an actual error.
+  private isServerClosing = false;
 
   // Required by Transport interface.
   public onmessage?: (message: JSONRPCMessage) => void;
@@ -26,11 +30,17 @@ export class BrowserMCPTransport implements Transport {
   public onerror?: (error: Error) => void;
   public sessionId?: string;
 
+  private readonly handleBeforeUnload = () => {
+    this.isClosing = true;
+  };
+
   constructor(
     private readonly workspaceId: string,
     private readonly serverName: string,
     private readonly onServerIdReceived: (serverId: string) => void
-  ) {}
+  ) {
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
 
   /**
    * Register the MCP server.
@@ -176,23 +186,28 @@ export class BrowserMCPTransport implements Transport {
       this.eventSource = null;
     }
 
-    // Build URL with query parameters.
-    const base = getApiBaseUrl() || window.location.origin;
-    const url = new URL(`/api/w/${this.workspaceId}/mcp/requests`, base);
-    url.searchParams.set("serverId", this.serverId);
+    // Build relative URL with query parameters.
+    const params = new URLSearchParams();
+    params.set("serverId", this.serverId);
     if (this.lastEventId) {
-      url.searchParams.set("lastEventId", this.lastEventId);
+      params.set("lastEventId", this.lastEventId);
     }
 
-    // Create native EventSource (uses session cookies automatically).
-    this.eventSource = new EventSource(url.toString(), {
-      withCredentials: true,
-    });
+    this.eventSource = clientEventSource(
+      `/api/sse/w/${this.workspaceId}/mcp/requests?${params.toString()}`,
+      // The MCP SSE connection is idle most of the time (waiting for requests
+      // from Dust). Disable the polyfill's heartbeat timeout so it doesn't
+      // treat silence as a dead connection (default is 45s).
+      { heartbeatTimeout: HEARTBEAT_INTERVAL_MS * 2 }
+    );
 
     this.eventSource.onmessage = (event) => {
       try {
         if (event.data === "done") {
-          // Ignore this event.
+          // Server is closing the stream normally (timeout). Flag it so the onerror handler can
+          // reconnect immediately without treating it as a real error.
+          this.isServerClosing = true;
+
           return;
         }
 
@@ -240,25 +255,36 @@ export class BrowserMCPTransport implements Transport {
       // Close the existing connection to prevent automatic reconnects.
       this.eventSource?.close();
 
-      console.error(
-        "[BrowserMCPTransport] Error in MCP EventSource connection"
-      );
-      this.onerror?.(new Error("SSE connection error"));
+      const isNormalClose = this.isServerClosing;
+      this.isServerClosing = false;
 
-      // Attempt to reconnect after a delay.
-      setTimeout(() => {
-        if (!this.isClosing && this.serverId) {
-          console.log(
-            "[BrowserMCPTransport] Attempting to reconnect to SSE..."
+      if (isNormalClose) {
+        // Server closed the stream after its idle timeout. This is expected.
+        // Reconnect immediately, no error to propagate.
+        void this.connectToRequestsStream().catch((reconnectError) => {
+          console.error(
+            "[BrowserMCPTransport] Failed to reconnect:",
+            reconnectError
           );
-          void this.connectToRequestsStream().catch((reconnectError) => {
-            console.error(
-              "[BrowserMCPTransport] Failed to reconnect:",
-              reconnectError
-            );
-          });
-        }
-      }, RECONNECT_DELAY_MS);
+        });
+      } else {
+        // Actual connection error. Propagate and reconnect after a delay.
+        console.error(
+          "[BrowserMCPTransport] Error in MCP EventSource connection"
+        );
+        this.onerror?.(new Error("SSE connection error"));
+
+        setTimeout(() => {
+          if (!this.isClosing && this.serverId) {
+            void this.connectToRequestsStream().catch((reconnectError) => {
+              console.error(
+                "[BrowserMCPTransport] Failed to reconnect after error:",
+                reconnectError
+              );
+            });
+          }
+        }, RECONNECT_DELAY_MS);
+      }
     };
 
     this.eventSource.onopen = () => {
@@ -315,6 +341,8 @@ export class BrowserMCPTransport implements Transport {
    */
   async close(): Promise<void> {
     this.isClosing = true;
+
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
 
     // Clear heartbeat timer.
     if (this.heartbeatTimer) {

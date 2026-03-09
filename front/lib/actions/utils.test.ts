@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import {
   hasUserAlwaysApprovedTool,
@@ -11,6 +9,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("Tool validation utilities", () => {
   let user: UserResource;

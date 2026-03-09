@@ -1,7 +1,6 @@
+import logger from "@app/logger/logger";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useRef } from "react";
-
-import logger from "@app/logger/logger";
 
 interface ConversationDraft {
   text: string;

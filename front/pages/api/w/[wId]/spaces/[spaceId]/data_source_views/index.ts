@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,
@@ -24,6 +20,9 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSpaceDataSourceViewsResponseBody<
   IncludeDetails extends boolean = boolean,

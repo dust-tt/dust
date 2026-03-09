@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { Chip } from "@sparkle/components/Chip";
 import { cn } from "@sparkle/lib/utils";
 import React, { useState } from "react";
@@ -195,7 +193,7 @@ function JsonValue({
 
       return (
         <span
-          className={`${VALUE_CLASSES} s-whitespace-pre-wrap s-break-normal`}
+          className={cn(VALUE_CLASSES, "s-whitespace-pre-wrap s-break-normal")}
         >
           {isExpanded ? value : value.substring(0, MAX_STRING_LENGTH)}
           {!isExpanded && "…"}{" "}
@@ -212,7 +210,9 @@ function JsonValue({
     }
 
     return (
-      <span className={`${VALUE_CLASSES} s-whitespace-pre-wrap s-break-normal`}>
+      <span
+        className={cn(VALUE_CLASSES, "s-whitespace-pre-wrap s-break-normal")}
+      >
         {value}
       </span>
     );

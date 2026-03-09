@@ -1,3 +1,30 @@
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
+import {
+  useConversationParticipants,
+  useConversationParticipationOptions,
+  useJoinConversation,
+} from "@app/hooks/conversations";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import config from "@app/lib/api/config";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+  getProjectRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   ArrowRightIcon,
   Avatar,
@@ -6,45 +33,22 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  SidekickIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { ReactElement } from "react";
-import React from "react";
 import { useCallback, useEffect, useState } from "react";
-
-import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
-import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
-import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
-import { getSpaceIcon } from "@app/lib/spaces";
-import {
-  useConversationParticipants,
-  useConversationParticipationOptions,
-  useJoinConversation,
-} from "@app/lib/swr/conversations";
-import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getConversationRoute,
-  getProjectRoute,
-  setQueryParam,
-} from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
-import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -114,6 +118,19 @@ export function useConversationMenu() {
   };
 }
 
+interface ConversationMenuProps {
+  activeConversationId: string | null;
+  conversation?: ConversationWithoutContentType;
+  owner: WorkspaceType;
+  trigger: ReactElement;
+  isConversationDisplayed: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerPosition?: { x: number; y: number };
+  displayOpenInBrowser?: boolean;
+  openDetailsInNewTab?: boolean;
+}
+
 export function ConversationMenu({
   activeConversationId,
   conversation,
@@ -123,33 +140,50 @@ export function ConversationMenu({
   isOpen,
   onOpenChange,
   triggerPosition,
-}: {
-  activeConversationId: string | null;
-  conversation?: ConversationWithoutContentType;
-  owner: WorkspaceType;
-  trigger: ReactElement;
-  isConversationDisplayed: boolean;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  triggerPosition?: { x: number; y: number };
-}) {
+  displayOpenInBrowser,
+  openDetailsInNewTab,
+}: ConversationMenuProps) {
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const router = useAppRouter();
+
+  const canTurnIntoAgent =
+    hasFeature("agent_builder_shrink_wrap") &&
+    !!conversation &&
+    !!user &&
+    isBuilder(owner);
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 
   const handleSeeAgentDetails = (agentId: string) => {
+    if (openDetailsInNewTab) {
+      const agentDetailsUrl = getConversationRoute(
+        owner.sId,
+        activeConversationId,
+        `agentDetails=${agentId}`,
+        config.getApiBaseUrl()
+      );
+      window.open(agentDetailsUrl, "_blank");
+      return;
+    }
     onOpenChangeAgentModal(true);
     setQueryParam(router, "agentDetails", agentId);
   };
 
   const handleSeeUserDetails = (userId: string) => {
+    if (openDetailsInNewTab) {
+      const userDetailsUrl = getConversationRoute(
+        owner.sId,
+        activeConversationId,
+        `userDetails=${userId}`,
+        config.getApiBaseUrl()
+      );
+      window.open(userDetailsUrl, "_blank");
+      return;
+    }
     onOpenChangeUserModal(true);
     setQueryParam(router, "userDetails", userId);
   };
@@ -172,10 +206,7 @@ export function ConversationMenu({
   const { spaces: projects } = useSpaces({
     kinds: ["project"],
     workspaceId: owner.sId,
-    disabled:
-      shouldWaitBeforeFetching ||
-      !hasFeature("projects") ||
-      !!conversation?.spaceId,
+    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
   });
 
   const moveConversationToProject = useMoveConversationToProject(owner);
@@ -188,16 +219,12 @@ export function ConversationMenu({
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  const shareLink =
-    baseUrl !== undefined
-      ? getConversationRoute(
-          owner.sId,
-          activeConversationId,
-          undefined,
-          baseUrl
-        )
-      : undefined;
+  const conversationLink = getConversationRoute(
+    owner.sId,
+    activeConversationId,
+    undefined,
+    config.getApiBaseUrl()
+  );
 
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(
@@ -215,9 +242,13 @@ export function ConversationMenu({
   );
 
   const copyConversationLink = useCallback(async () => {
-    await navigator.clipboard.writeText(shareLink ?? "");
+    await navigator.clipboard.writeText(conversationLink ?? "");
     sendNotification({ type: "success", title: "Link copied !" });
-  }, [shareLink, sendNotification]);
+  }, [conversationLink, sendNotification]);
+
+  const openConversationInBrowser = () => {
+    window.open(conversationLink, "_blank");
+  };
 
   if (!activeConversationId) {
     return null;
@@ -284,7 +315,7 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-          {hasFeature("projects") && conversation?.spaceId === null && (
+          {hasFeature("projects") && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
@@ -293,18 +324,20 @@ export function ConversationMenu({
               />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {projects.map((project) => (
-                    <DropdownMenuItem
-                      key={project.sId}
-                      icon={getSpaceIcon(project)}
-                      label={project.name}
-                      onClick={async () =>
-                        conversation
-                          ? moveConversationToProject(conversation, project)
-                          : Promise.resolve(false)
-                      }
-                    />
-                  ))}
+                  {projects
+                    .filter((project) => project.sId !== conversation?.spaceId)
+                    .map((project) => (
+                      <DropdownMenuItem
+                        key={project.sId}
+                        icon={getSpaceIcon(project)}
+                        label={project.name}
+                        onClick={async () =>
+                          conversation
+                            ? moveConversationToProject(conversation, project)
+                            : Promise.resolve(false)
+                        }
+                      />
+                    ))}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
@@ -312,14 +345,25 @@ export function ConversationMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               icon={ContactsUserIcon}
-              label="Participant list"
+              label="Participants"
               disabled={
                 !conversationParticipants?.users.length &&
-                !conversationParticipants?.agents.length
+                !conversationParticipants?.agents.length &&
+                !canJoin
               }
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
+                {canJoin && (
+                  <>
+                    <DropdownMenuItem
+                      label="Join"
+                      onClick={joinConversation}
+                      icon={PlusCircleIcon}
+                    />
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 {conversationParticipants?.agents.map((agent) => (
                   <DropdownMenuItem
                     key={agent.configurationId}
@@ -353,18 +397,32 @@ export function ConversationMenu({
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-          {shareLink && (
+          {displayOpenInBrowser && conversationLink && (
+            <DropdownMenuItem
+              label="Open in a browser tab"
+              onClick={openConversationInBrowser}
+              icon={ExternalLinkIcon}
+            />
+          )}
+          {conversationLink && (
             <DropdownMenuItem
               label="Copy the link"
               onClick={copyConversationLink}
               icon={LinkIcon}
             />
           )}
-          {canJoin && (
+          {canTurnIntoAgent && (
             <DropdownMenuItem
-              label="Join"
-              onClick={joinConversation}
-              icon={PlusCircleIcon}
+              label="Turn conversation into an agent"
+              icon={SidekickIcon}
+              onClick={() => {
+                const route = getAgentBuilderRoute(
+                  owner.sId,
+                  "new",
+                  `conversationId=${conversation.sId}`
+                );
+                void router.push(route);
+              }}
             />
           )}
           {canLeave && (

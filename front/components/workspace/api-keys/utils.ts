@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import type { GroupType } from "@app/types/groups";
 import {
   AGENT_GROUP_PREFIX,
@@ -7,6 +5,7 @@ import {
   SKILL_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
+import { z } from "zod";
 
 /**
  * Schema for monthly cap input in dollars (as string from input).

@@ -1,6 +1,3 @@
-import { mergeAttributes, Node } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
-
 import type {
   BaseKnowledgeItem,
   KnowledgeItem,
@@ -10,6 +7,8 @@ import {
   isFullKnowledgeItem,
   KnowledgeNodeView,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { mergeAttributes, Node } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 
 export interface KnowledgeNodeAttributes {
   selectedItems: KnowledgeItem[];

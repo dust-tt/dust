@@ -1,7 +1,21 @@
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import type { SidebarNavigation } from "@app/components/navigation/config";
+import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { UserMenu } from "@app/components/UserMenu";
+import type { AppStatus } from "@app/lib/api/status";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
+import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import type { SubscriptionType } from "@app/types/plan";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
-  classNames,
-  cn,
   CollapseButton,
+  cn,
   LinkWrapper,
   NavigationList,
   NavigationListItem,
@@ -13,23 +27,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-
-import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import type { SidebarNavigation } from "@app/components/navigation/config";
-import { getTopNavigationTabs } from "@app/components/navigation/config";
-import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
-import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { UserMenu } from "@app/components/UserMenu";
-import type { AppStatus } from "@app/lib/api/status";
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
-import { useAppStatus } from "@app/lib/swr/useAppStatus";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType } from "@app/types/plan";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -63,18 +60,9 @@ export const NavigationSidebar = React.forwardRef<
     return "";
   }, [router.isReady, router.pathname]);
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
-  const { showNavigationLoader } = useNavigationLoading();
-
-  const handleTabClick = (href?: string) => {
-    if (href && href !== router.asPath) {
-      showNavigationLoader();
-    }
-  };
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(
@@ -119,7 +107,6 @@ export const NavigationSidebar = React.forwardRef<
                       tooltip={tab.hideLabel ? tab.label : undefined}
                       icon={tab.icon}
                       href={tab.href}
-                      onClick={() => handleTabClick(tab.href)}
                     />
                   </div>
                 ))}
@@ -161,7 +148,6 @@ export const NavigationSidebar = React.forwardRef<
                                 icon={menu.icon}
                                 href={menu.href}
                                 target={menu.target}
-                                onClick={() => handleTabClick(menu.href)}
                               />
                             </React.Fragment>
                           ))}
@@ -181,7 +167,7 @@ export const NavigationSidebar = React.forwardRef<
       )}
       {user && (
         <div
-          className={classNames(
+          className={cn(
             "flex items-center border-t px-2 py-2",
             "border-border-dark dark:border-border-darker-night",
             "text-foreground dark:text-foreground-night"

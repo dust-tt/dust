@@ -1,11 +1,3 @@
-import {
-  Button,
-  CheckCircleIcon,
-  ContentMessage,
-  DocumentTextIcon,
-} from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
 import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
@@ -13,6 +5,13 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Button,
+  CheckCircleIcon,
+  ContentMessage,
+  DocumentTextIcon,
+} from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
   triggeringUser: UserType | null;

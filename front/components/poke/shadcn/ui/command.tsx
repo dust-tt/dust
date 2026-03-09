@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +10,6 @@ import {
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import * as React from "react";
-
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 const CommandContext = React.createContext<{
   selectedIndex: number;
@@ -111,6 +110,7 @@ const CommandDialog = ({
   }, [open, onOpenChange, selectedIndex]);
 
   // Reset selection when dialog opens/closes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     setSelectedIndex(0);
   }, [open]);

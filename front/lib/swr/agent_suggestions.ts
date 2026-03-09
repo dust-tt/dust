@@ -1,12 +1,9 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -15,6 +12,8 @@ import type {
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useAgentSuggestions({
   agentConfigurationId,
@@ -31,6 +30,7 @@ export function useAgentSuggestions({
   limit?: number;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<GetSuggestionsResponseBody> = fetcher;
 
   const urlParams = new URLSearchParams();
@@ -71,12 +71,6 @@ export function usePatchAgentSuggestions({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSuggestions } = useAgentSuggestions({
-    agentConfigurationId,
-    workspaceId,
-    state: ["pending"],
-    disabled: true,
-  });
 
   const patchSuggestions = useCallback(
     async (
@@ -112,7 +106,6 @@ export function usePatchAgentSuggestions({
           return null;
         }
 
-        void mutateSuggestions();
         const data = await res.json();
         return data;
       } catch {
@@ -123,7 +116,7 @@ export function usePatchAgentSuggestions({
         return null;
       }
     },
-    [agentConfigurationId, mutateSuggestions, sendNotification, workspaceId]
+    [agentConfigurationId, sendNotification, workspaceId]
   );
 
   return { patchSuggestions };

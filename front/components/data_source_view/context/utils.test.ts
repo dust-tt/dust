@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
   addNodeToTree,
   isNodeSelected,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
+import { describe, expect, it } from "vitest";
 
 // Helper function to create tree items
 const createTreeItem = (

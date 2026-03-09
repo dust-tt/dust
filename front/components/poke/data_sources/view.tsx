@@ -1,27 +1,4 @@
 import {
-  BracesIcon,
-  Button,
-  Chip,
-  ContentMessage,
-  ContextItem,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ExternalLinkIcon,
-  LinkWrapper,
-  MagnifyingGlassIcon,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import { JsonViewer } from "@textea/json-viewer";
-import { useState } from "react";
-
-import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
@@ -43,6 +20,28 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  BracesIcon,
+  Button,
+  Chip,
+  ContentMessage,
+  ContextItem,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ExternalLinkIcon,
+  LinkWrapper,
+  MagnifyingGlassIcon,
+  ScrollArea,
+  ScrollBar,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import { JsonViewer } from "@textea/json-viewer";
+import { useState } from "react";
 
 export function ViewDataSourceTable({
   connector,

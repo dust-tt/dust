@@ -1,11 +1,17 @@
+import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
+  InvitationsLookupRequestBodyType,
+  InvitationsLookupResponse,
+  ShareTokenLookupRequestBodyType,
+  ShareTokenLookupResponse,
   UserLookupRequestBodyType,
   UserLookupResponse,
   WorkspaceLookupRequestBodyType,
@@ -13,8 +19,10 @@ import type {
 } from "@app/pages/api/lookup/[resource]";
 import type { RegionRedirectError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface UserLookup {
   email: string;
@@ -122,47 +130,65 @@ async function lookupInOtherRegion(
   }
 }
 
-export async function lookupWorkspace(
+const WORKSPACE_REGION_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours.
+
+async function _lookupWorkspaceUncached(
   wId: string
-): Promise<Result<RegionType | null, Error>> {
+): Promise<RegionType | null> {
   const body: WorkspaceLookupRequestBodyType = {
     workspace: wId,
   };
 
   const localLookup = await handleLookupWorkspace(body);
   if (localLookup.workspace) {
-    return new Ok(config.getCurrentRegion());
+    return config.getCurrentRegion();
   }
 
   const { url, name } = config.getOtherRegionInfo();
 
+  // eslint-disable-next-line no-restricted-globals
+  const otherRegionResponse = await fetch(`${url}/api/lookup/workspace`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.getLookupApiSecret()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data: WorkspaceLookupResponse = await otherRegionResponse.json();
+  if (isAPIErrorResponse(data)) {
+    throw new Error(data.error.message);
+  }
+
+  return data.workspace ? name : null;
+}
+
+const _lookupWorkspaceCached = cacheWithRedis(
+  _lookupWorkspaceUncached,
+  (wId) => `workspace-region:${wId}`,
+  { ttlMs: WORKSPACE_REGION_CACHE_TTL_MS }
+);
+
+const _invalidateWorkspaceRegionCache = invalidateCacheWithRedis(
+  _lookupWorkspaceUncached,
+  (wId) => `workspace-region:${wId}`
+);
+
+export async function invalidateWorkspaceRegionCache(
+  wId: string
+): Promise<void> {
+  await _invalidateWorkspaceRegionCache(wId);
+}
+
+export async function lookupWorkspace(
+  wId: string
+): Promise<Result<RegionType | null, Error>> {
   try {
-    // eslint-disable-next-line no-restricted-globals
-    const otherRegionResponse = await fetch(`${url}/api/lookup/workspace`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.getLookupApiSecret()}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data: WorkspaceLookupResponse = await otherRegionResponse.json();
-    if (isAPIErrorResponse(data)) {
-      return new Err(new Error(data.error.message));
-    }
-
-    if (data.workspace) {
-      return new Ok(name);
-    }
-
-    return new Ok(null);
+    const region = await _lookupWorkspaceCached(wId);
+    return new Ok(region);
   } catch (error) {
-    if (error instanceof Error) {
-      return new Err(error);
-    }
-
-    return new Err(new Error("Unknown error in lookupInOtherRegion"));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -195,6 +221,88 @@ export async function checkUserRegionAffinity(
 
   // User does not have affinity to any region.
   return new Ok({ hasAffinity: false });
+}
+
+export async function handleLookupInvitations(
+  email: string
+): Promise<InvitationsLookupResponse> {
+  const invitationResources =
+    await MembershipInvitationResource.listPendingForEmail({ email });
+
+  const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
+    (invitation) => ({
+      workspaceName: invitation.workspace.name,
+      initialRole: invitation.initialRole,
+      createdAt: invitation.createdAt.getTime(),
+      token: getMembershipInvitationToken(invitation.toJSON()),
+      isExpired: invitation.isExpired(),
+    })
+  );
+
+  return { pendingInvitations };
+}
+
+export async function fetchInvitationsFromOtherRegion(
+  email: string
+): Promise<Result<PendingInvitationOption[], Error>> {
+  const { url } = config.getOtherRegionInfo();
+
+  const body: InvitationsLookupRequestBodyType = { email };
+
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    const otherRegionResponse = await fetch(`${url}/api/lookup/invitations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: InvitationsLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    // Tag each invitation with the other region's URL so the client can redirect there.
+    const invitations = data.pendingInvitations.map((inv) => ({
+      ...inv,
+      regionUrl: url,
+    }));
+
+    return new Ok(invitations);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+export async function lookupShareToken(
+  token: string
+): Promise<Result<RegionType | null, Error>> {
+  const { url, name } = config.getOtherRegionInfo();
+  const body: ShareTokenLookupRequestBodyType = { token };
+
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    const otherRegionResponse = await fetch(`${url}/api/lookup/share-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: ShareTokenLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    return new Ok(data.exists ? name : null);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
 
 /**

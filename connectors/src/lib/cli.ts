@@ -2,14 +2,14 @@ import { getConnectorManager } from "@connectors/connectors";
 import { confluence } from "@connectors/connectors/confluence/lib/cli";
 import { github } from "@connectors/connectors/github/lib/cli";
 import { gong } from "@connectors/connectors/gong/lib/cli";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { salesforce } from "@connectors/connectors/salesforce/lib/cli";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import {

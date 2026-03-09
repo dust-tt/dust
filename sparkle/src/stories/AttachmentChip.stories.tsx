@@ -6,7 +6,7 @@ import { DocumentIcon, DocumentTextIcon, FolderIcon } from "@sparkle/icons/app";
 import { DriveLogo, NotionLogo } from "@sparkle/logo";
 
 const meta = {
-  title: "Components/AttachmentChip",
+  title: "Conversation/AttachmentChip",
   component: AttachmentChip,
   parameters: {
     layout: "centered",

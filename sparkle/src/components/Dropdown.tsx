@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { Button } from "@sparkle/components/Button";
@@ -18,6 +16,7 @@ import {
   SearchInput,
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
+import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -222,19 +221,32 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName;
 
+interface DropdownMenuSubContentProps
+  extends React.ComponentPropsWithoutRef<
+    typeof DropdownMenuPrimitive.SubContent
+  > {
+  dropdownHeaders?: React.ReactNode;
+}
+
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, children, ...props }, ref) => (
+  DropdownMenuSubContentProps
+>(({ className, children, dropdownHeaders, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
       menuStyleClasses.container,
       "s-flex s-flex-col s-p-0 s-shadow-lg",
+      dropdownHeaders && "s-h-80 xs:s-h-96",
       className
     )}
     {...props}
   >
+    {dropdownHeaders && (
+      <div className="s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night">
+        {dropdownHeaders}
+      </div>
+    )}
     <ScrollArea
       className="s-w-full s-flex-1"
       hideScrollBar={false}
@@ -316,24 +328,10 @@ const DropdownMenuContent = React.forwardRef<
       </DropdownMenuPrimitive.Content>
     );
 
-    const [container, setContainer] = React.useState<Element | undefined>(
-      mountPortalContainer
-    );
-
-    React.useEffect(() => {
-      if (mountPortal && !container) {
-        const dialogElements = document.querySelectorAll(
-          ".s-sheet[role=dialog][data-state=open]"
-        );
-        const defaultContainer = dialogElements[dialogElements.length - 1];
-        setContainer(defaultContainer);
-      }
-    }, []);
+    const container = useSheetContainer(mountPortalContainer);
 
     return mountPortal ? (
-      <DropdownMenuPrimitive.Portal
-        container={mountPortalContainer ?? container}
-      >
+      <DropdownMenuPrimitive.Portal container={container}>
         {content}
       </DropdownMenuPrimitive.Portal>
     ) : (
@@ -816,25 +814,14 @@ const DropdownTooltipTrigger = React.forwardRef<
       </TooltipPrimitive.Content>
     );
 
-    const [container, setContainer] = React.useState<Element | undefined>(
-      mountPortalContainer
-    );
-
-    React.useEffect(() => {
-      if (mountPortal && !container) {
-        const dialogElements = document.querySelectorAll(
-          ".s-sheet[role=dialog][data-state=open]"
-        );
-        const defaultContainer = dialogElements[dialogElements.length - 1];
-        setContainer(defaultContainer);
-      }
-    }, [mountPortal, container]);
+    const container = useSheetContainer(mountPortalContainer);
 
     return (
       <TooltipPrimitive.Provider delayDuration={300}>
         <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
-            {children}
+            {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
+            <span className="s-block s-w-full">{children}</span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>

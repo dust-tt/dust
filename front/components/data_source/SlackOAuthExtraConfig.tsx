@@ -1,7 +1,6 @@
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { Input } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 
 export function SlackOAuthExtraConfig({
   extraConfig,

@@ -11,6 +11,13 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
     },
   },
   {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
     type: "tool_call",
     content: {
       id: "EmptyToolCall1",
@@ -27,6 +34,7 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
     content: {
       inputTokens: 100,
       outputTokens: 20,
+      reasoningTokens: 0,
       cachedTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 120,

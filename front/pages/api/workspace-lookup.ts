@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -10,6 +8,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetWorkspaceLookupResponseBody = {
   workspace: LightWorkspaceType;

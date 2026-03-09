@@ -1,6 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolDefinition,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -14,11 +16,11 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function createSalesloftTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  _agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SALESLOFT_TOOLS_METADATA> = {
-    get_actions: async ({ include_due_actions_only }) => {
-      const bearerToken = await getBearerToken(auth, agentLoopContext);
+    get_actions: async ({ include_due_actions_only }, extra) => {
+      const bearerToken = getBearerToken(extra);
       if (!bearerToken) {
         return new Err(
           new MCPError(

@@ -35,6 +35,7 @@ type KnownModelLLMId =
   | "gpt-4.1-mini-2025-04-14"
   | "gpt-5.1"
   | "gpt-5.2"
+  | "gpt-5.4"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -55,6 +56,7 @@ type KnownModelLLMId =
   | "claude-sonnet-4-5-20250929"
   | "claude-opus-4-5-20251101"
   | "claude-opus-4-6"
+  | "claude-sonnet-4-6"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"
@@ -63,6 +65,7 @@ type KnownModelLLMId =
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
   | "gemini-3-pro-preview"
+  | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
@@ -76,6 +79,9 @@ type KnownModelLLMId =
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
+  | "accounts/fireworks/models/kimi-k2p5" // fireworks
+  | "accounts/fireworks/models/minimax-m2p5" // fireworks
+  | "accounts/fireworks/models/glm-5" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -217,6 +223,7 @@ export const supportedAudioFileFormats = {
   "audio/x-m4a": [".m4a", ".mp4"],
   "audio/ogg": [".ogg"],
   "audio/wav": [".wav"],
+  "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
 } as const;
 
@@ -273,10 +280,14 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
 >();
 
 const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
+const FrameSlideshowContentTypeSchema = z.literal(
+  "application/vnd.dust.frame.slideshow"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
+  FrameSlideshowContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -658,16 +669,18 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_copilot"
+  | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "ashby_tool"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
+  | "conversation_butler"
+  | "conversation_branches"
   | "project_butler"
   | "projects"
   | "databricks_tool"
@@ -679,9 +692,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dust_academy"
   | "dust_internal_global_agents"
+  | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "front_tool"
+  | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
@@ -700,20 +714,19 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
-  | "salesloft_tool"
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
-  | "statuspage_tool"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
+  | "conversations_slack_notifications"
+  | "anthropic_reasoning_token_count"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -735,12 +748,14 @@ const LightWorkspaceSchema = z.object({
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 export type WorkspaceType = z.infer<typeof WorkspaceSchema>;
+/** @deprecated Use WorkspaceType + separate extension config endpoint instead. */
 export type ExtensionWorkspaceType = z.infer<typeof ExtensionWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
+/** @deprecated Use WorkspaceSchema + separate extension config endpoint instead. */
 const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
   blacklistedDomains: z.array(z.string()).nullable(),
 });
@@ -779,6 +794,7 @@ const ActionGeneratedFileSchema = z.object({
   contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
+  isInProjectContext: z.boolean().optional(),
 });
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
@@ -1215,6 +1231,8 @@ const NotificationRunAgentContentSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   query: z.string(),
+  childConversationUrl: z.string().nullable().optional(),
+  childConversationEventsUrl: z.string().nullable().optional(),
 });
 
 const NotificationRunAgentChainOfThoughtSchema = z.object({
@@ -1608,6 +1626,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_network_error"
   | "unexpected_response_format"
   | "user_not_found"
+  | "unprocessable_entity"
   | "workspace_auth_error"
   | "workspace_not_found"
   | "workspace_user_not_found"
@@ -2771,6 +2790,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   // See also front/types/files.ts.
   | "folders_document"
   | "project_context"
+  | "skill_attachment"
 >();
 
 export const FileTypeSchema = z.object({
@@ -2808,6 +2828,7 @@ export type FileUploadedRequestResponseType = z.infer<
 export const PublicFrameResponseBodySchema = z.object({
   accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  projectUrl: z.string().nullable(),
   file: FileTypeSchema,
 });
 
@@ -2974,6 +2995,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTimeIcon"
   | "AsanaLogo"
   | "AshbyLogo"
+  | "AttioLogo"
+  | "BigQueryLogo"
   | "ToolsIcon"
   | "CanvaLogo"
   | "CommandLineIcon"
@@ -2986,10 +3009,12 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GithubLogo"
   | "GitlabLogo"
   | "GmailLogo"
+  | "GongLogo"
   | "GoogleSpreadsheetLogo"
   | "GranolaLogo"
   | "GuruLogo"
   | "HubspotLogo"
+  | "IntercomLogo"
   | "JiraLogo"
   | "LinearLogo"
   | "MicrosoftExcelLogo"
@@ -3002,6 +3027,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"
+  | "SalesloftLogo"
+  | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
   | "StatuspageLogo"
@@ -3061,7 +3088,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
-  | "ActionFingerprintIcon"
+  | "ActionIdentityIcon"
   | "ActionFireIcon"
   | "ActionFlagIcon"
   | "ActionFlightLandIcon"
@@ -3216,6 +3243,30 @@ export const GetMCPServerViewsQuerySchema = z.object({
 export type GetMCPServerViewsQueryType = z.infer<
   typeof GetMCPServerViewsQuerySchema
 >;
+
+export const CallMCPToolRequestBodySchema = z.object({
+  toolName: z.string(),
+  arguments: z.record(z.unknown()).optional(),
+});
+
+export type CallMCPToolRequestBodyType = z.infer<
+  typeof CallMCPToolRequestBodySchema
+>;
+
+const CallMCPToolContentBlockSchema = z.object({
+  type: z.string(),
+  text: z.string().optional(),
+});
+
+export const CallMCPToolResponseSchema = z.object({
+  success: z.literal(true),
+  result: z.object({
+    content: z.array(CallMCPToolContentBlockSchema),
+    isError: z.boolean(),
+  }),
+});
+
+export type CallMCPToolResponseType = z.infer<typeof CallMCPToolResponseSchema>;
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,

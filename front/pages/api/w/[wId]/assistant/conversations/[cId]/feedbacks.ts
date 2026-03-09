@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
@@ -8,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

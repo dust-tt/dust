@@ -67,9 +67,10 @@ describe("registry", () => {
   });
 
   describe("WARM_SERVICES", () => {
-    it("excludes sparkle and sdk from warm services", () => {
+    it("excludes sparkle, sdk, and viz from warm services", () => {
       expect(WARM_SERVICES).not.toContain("sparkle");
       expect(WARM_SERVICES).not.toContain("sdk");
+      expect(WARM_SERVICES).not.toContain("viz");
     });
 
     it("includes all other services", () => {
@@ -82,13 +83,15 @@ describe("registry", () => {
       expect(WARM_SERVICES).toContain("front-spa-app");
     });
 
-    it("has 7 services (all except sparkle and sdk)", () => {
+    it("has 7 services (all except sparkle, sdk, and viz)", () => {
       expect(WARM_SERVICES).toHaveLength(7);
     });
 
     it("is derived from SERVICE_REGISTRY", () => {
       const registryServices = Object.keys(SERVICE_REGISTRY) as ServiceName[];
-      const expectedWarm = registryServices.filter((s) => s !== "sparkle" && s !== "sdk");
+      const expectedWarm = registryServices.filter(
+        (s) => s !== "sparkle" && s !== "sdk" && s !== "viz"
+      );
       expect(WARM_SERVICES.sort()).toEqual(expectedWarm.sort());
     });
   });

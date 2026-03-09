@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
 import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
@@ -10,10 +7,15 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types/oauth/lib";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+import type { ParsedUrlQuery } from "querystring";
 
 /**
  * OAuth provider for Slack Tools MCP server.
@@ -58,7 +60,6 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "im:read",
             "mpim:read",
             // Semantic search scopes.
-            "search:read",
             "search:read.public",
             "search:read.private",
             "search:read.mpim",
@@ -67,6 +68,11 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "users:read.email",
             "users:read",
             "usergroups:read",
+            // The following scopes are needed to use the official Slack MCP, and could be helpful if we switch to that later
+            "canvases:read",
+            "canvases:write",
+            "search:read.files",
+            "search:read.users",
           ];
         default:
           assert(

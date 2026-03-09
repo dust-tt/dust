@@ -3,7 +3,7 @@ import { MAX_PAGE_IDS_PER_CHILD_WORKFLOW } from "@connectors/connectors/notion/t
 import {
   syncResultPageChildWorkflow,
   syncResultPageDatabaseChildWorkflow,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/notion/temporal/workflows/children";
 import type { ModelId } from "@connectors/types";
 import {

@@ -1,13 +1,3 @@
-import {
-  AnimatedText,
-  Card,
-  cn,
-  ContentMessage,
-  Markdown,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useEffect, useRef } from "react";
-
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { MCPImageGenerationGroupedDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -22,6 +12,15 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  AnimatedText,
+  Card,
+  ContentMessage,
+  cn,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;

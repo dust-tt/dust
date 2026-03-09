@@ -1,7 +1,6 @@
-import { useState } from "react";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { convertUrlToPoke } from "@app/lib/utils/url-to-poke";
+import { useState } from "react";
 
 export function PokefyPage() {
   useSetPokePageTitle("Pokefy");
@@ -44,6 +43,7 @@ export function PokefyPage() {
         setError("No poke page available for this URL");
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (err) {
       setError("Invalid URL format");
     }

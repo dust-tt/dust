@@ -7,18 +7,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isProjectConversation } from "@app/types/assistant/conversation";
-import type { FileUseCase } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-// Use cases that are not allowed for copying.
-const DISALLOWED_USE_CASES: FileUseCase[] = [
-  "avatar",
-  "upsert_document",
-  "upsert_table",
-  "folders_document",
-];
 
 export interface ProjectSpaceContext {
   space: SpaceResource;
@@ -167,25 +158,6 @@ export async function getWritableProjectContext(
 }
 
 /**
- * Helper to validate if a file has a Dust-generated content type.
- * Accepts Dust-specific content types (vnd.dust.*).
- */
-function isDustContentType(contentType: string, useCase: FileUseCase): boolean {
-  // Reject Dust-specific content types (includes vnd.dust.section.json,
-  // vnd.dust.attachment.*, vnd.dust.frame, vnd.dust.tool-output.*).
-  if (contentType.includes("vnd.dust.")) {
-    return true;
-  }
-
-  // Reject disallowed use cases (avatar, etc.).
-  if (DISALLOWED_USE_CASES.includes(useCase)) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Validates a source file for copying to project context.
  * Checks that:
  * - File exists and is ready
@@ -238,15 +210,6 @@ export async function validateSourceFileForCopy(
       new MCPError("Cannot copy files external to the project", {
         tracked: false,
       })
-    );
-  }
-
-  if (isDustContentType(sourceFile.contentType, sourceFile.useCase)) {
-    return new Err(
-      new MCPError(
-        "Only basic content types (txt, pdf, etc.) can be copied. Dust-generated files are not allowed.",
-        { tracked: false }
-      )
     );
   }
 

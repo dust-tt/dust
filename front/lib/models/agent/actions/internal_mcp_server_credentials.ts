@@ -1,8 +1,7 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class InternalMCPServerCredentialModel extends WorkspaceAwareModel<InternalMCPServerCredentialModel> {
   declare createdAt: CreationOptional<Date>;
@@ -11,6 +10,7 @@ export class InternalMCPServerCredentialModel extends WorkspaceAwareModel<Intern
   declare internalMCPServerId: string;
   declare sharedSecret: string | null;
   declare customHeaders: Record<string, string> | null;
+  declare encryptedKey: string | null;
 }
 
 InternalMCPServerCredentialModel.init(
@@ -35,6 +35,11 @@ InternalMCPServerCredentialModel.init(
     },
     customHeaders: {
       type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    encryptedKey: {
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
     },

@@ -1,12 +1,13 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   ALLOWED_HEADERS,
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
+import { getSseRedirectPathname } from "@app/lib/api/sse_redirect";
 import logger from "@app/logger/logger";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
   // Block TRACE requests
@@ -71,12 +72,62 @@ export function middleware(request: NextRequest) {
       return handleCors(response, request);
     }
 
+    // SSE routing: redirect old SSE event paths to /api/sse/ prefix so the ingress can route them
+    // to dedicated front-sse pods. This lives in middleware (not next.config.js redirects)
+    // because next.config.js redirects run before middleware and therefore lack CORS headers, which
+    // breaks cross-origin clients (Chrome extension, SDK).
+    const sseRedirectPathname = getSseRedirectPathname(url);
+    if (sseRedirectPathname) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = sseRedirectPathname;
+      const response = NextResponse.redirect(redirectUrl, 307);
+      return handleCors(response, request);
+    }
+
     // Handle actual request.
     const response = NextResponse.next();
     return handleCors(response, request);
   }
 
+  // Redirect /poke/* to the poke SPA app (the poke server handles its own auth).
+  if (url === "/poke" || url.startsWith("/poke/")) {
+    const pokeAppUrl = process.env.POKE_APP_URL;
+    if (pokeAppUrl) {
+      const pathAfterPoke = url.slice("/poke".length); // includes leading slash or empty
+      return NextResponse.redirect(`${pokeAppUrl}${pathAfterPoke}`, 302);
+    }
+  }
+
+  // Redirect SPA paths to the main SPA app.
+  if (isSpaPath(url)) {
+    const appUrl = process.env.NEXT_PUBLIC_DUST_APP_URL;
+    if (appUrl) {
+      const queryString = request.nextUrl.search; // includes leading '?' or empty
+      return NextResponse.redirect(`${appUrl}${url}${queryString}`, 302);
+    }
+  }
+
   return NextResponse.next();
+}
+
+// Paths served by the SPA app (front-spa) — redirect these to the SPA origin.
+const SPA_PATH_PREFIXES = [
+  "/w",
+  "/invite-choose",
+  "/no-workspace",
+  "/sso-enforced",
+  "/logout",
+  "/login-error",
+  "/maintenance",
+  "/oauth",
+  "/share",
+  "/email",
+];
+
+function isSpaPath(pathname: string): boolean {
+  return SPA_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 }
 
 function handleCors(
@@ -146,6 +197,7 @@ function setCorsHeaders(
     "Access-Control-Allow-Headers",
     ALLOWED_HEADERS.join(", ")
   );
+  response.headers.set("Access-Control-Expose-Headers", "X-Reload-Required");
 
   return undefined;
 }

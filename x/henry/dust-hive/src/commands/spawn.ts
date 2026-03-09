@@ -19,13 +19,19 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { type Settings, getBranchName, loadSettings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
 import { createTestDatabase, isTestPostgresRunning } from "../lib/test-postgres";
-import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
+import {
+  cleanupPartialEnvironment,
+  createWorktree,
+  createWorktreeFromExistingBranch,
+  getMainRepoPath,
+} from "../lib/worktree";
 import { openCommand } from "./open";
 import { warmCommand } from "./warm";
 
 interface SpawnOptions {
   name?: string;
   branchName?: string;
+  reuseExistingBranch?: boolean;
   noOpen?: boolean;
   noAttach?: boolean;
   warm?: boolean;
@@ -140,16 +146,26 @@ async function setupWorktree(
   metadata: EnvironmentMetadata,
   worktreePath: string,
   workspaceBranch: string,
+  reuseExistingBranch: boolean,
   settings: Settings
 ): Promise<Result<void, CommandError>> {
   try {
-    await createWorktree(
-      metadata.repoRoot,
-      worktreePath,
-      workspaceBranch,
-      metadata.baseBranch,
-      settings
-    );
+    if (reuseExistingBranch) {
+      await createWorktreeFromExistingBranch(
+        metadata.repoRoot,
+        worktreePath,
+        workspaceBranch,
+        settings
+      );
+    } else {
+      await createWorktree(
+        metadata.repoRoot,
+        worktreePath,
+        workspaceBranch,
+        metadata.baseBranch,
+        settings
+      );
+    }
   } catch (error) {
     await deleteEnvironmentDir(metadata.name).catch((e) =>
       logger.warn(`Cleanup failed: ${errorMessage(e)}`)
@@ -275,7 +291,13 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   await tryCreateTestDatabase(name);
 
   // Phase 2: Setup worktree
-  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch, settings);
+  const worktreeResult = await setupWorktree(
+    metadata,
+    worktreePath,
+    workspaceBranch,
+    Boolean(options.reuseExistingBranch),
+    settings
+  );
   if (!worktreeResult.ok) return worktreeResult;
 
   // Phase 3: Start build watchers (sparkle and SDK)

@@ -1,3 +1,13 @@
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   Button,
   DocumentIcon,
@@ -14,17 +24,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  getAgentBuilderRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
-import type { LightWorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
-
 interface CreateDropdownProps {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
@@ -40,7 +39,7 @@ export const CreateDropdown = ({
     owner,
   });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   return (
     <DropdownMenu>

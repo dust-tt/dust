@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { Tooltip } from "@sparkle/components/Tooltip";
 import {
   ArrowUpOnSquareIcon,

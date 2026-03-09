@@ -1,5 +1,4 @@
-import { defineConfig } from "vite";
-import { mergeConfig } from "vite";
+import { defineConfig, mergeConfig } from "vite";
 
 import baseConfig from "../../../../vite.config.mjs";
 

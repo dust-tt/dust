@@ -128,6 +128,7 @@ async function processProjectSpace(
         );
       }
 
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
       // Create new metadata
@@ -200,6 +201,7 @@ makeScript(
         },
         // WORKSPACE_ISOLATION_BYPASS: This script operates across all workspaces to ensure project connectors are created
         // @ts-expect-error -- It's a one-off script that operates across all workspaces
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         attributes: ["id", "workspaceId"],
       });

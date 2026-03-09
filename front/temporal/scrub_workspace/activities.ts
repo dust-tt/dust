@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
@@ -27,6 +25,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -40,6 +39,8 @@ import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -126,6 +127,7 @@ export async function scrubWorkspaceData({
   await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
+  await deleteSkills(auth);
   await deleteOnboardingTasks(auth);
   await deleteTags(auth);
   await deleteDatasources(auth);
@@ -179,7 +181,6 @@ export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const conversations = await ConversationResource.listAll(auth, {
     includeDeleted: true,
-    includeTest: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
@@ -231,6 +232,10 @@ async function archiveAssistants(auth: Authenticator) {
 
 async function deleteAgentMemories(auth: Authenticator) {
   await AgentMemoryResource.deleteAllForWorkspace(auth);
+}
+
+async function deleteSkills(auth: Authenticator) {
+  await SkillResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteOnboardingTasks(auth: Authenticator) {
@@ -325,9 +330,9 @@ async function cleanupCustomerio(auth: Authenticator) {
   );
 
   // Finally, fetch all the subscriptions for the workspaces.
-  const subscriptionsByWorkspaceSid =
-    await SubscriptionResource.fetchActiveByWorkspaces(
-      Object.values(workspaceById)
+  const subscriptionsByWorkspaceModelId =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      Object.values(workspaceById).map((w) => w.id)
     );
 
   // Process the workspace users in chunks of 4.
@@ -347,7 +352,7 @@ async function cleanupCustomerio(auth: Authenticator) {
         );
         if (
           workspacesOfUser.some((w) => {
-            const subscription = subscriptionsByWorkspaceSid[w.sId];
+            const subscription = subscriptionsByWorkspaceModelId[w.id];
             return (
               subscription &&
               ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(

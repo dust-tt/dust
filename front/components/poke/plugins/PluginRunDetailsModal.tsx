@@ -1,4 +1,11 @@
 import {
+  getStatusIcon,
+  PluginRunStatusChip,
+} from "@app/components/poke/plugins/PluginRunStatusChip";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { PluginRunType } from "@app/types/poke/plugins";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import {
   cn,
   Dialog,
   DialogContainer,
@@ -8,15 +15,8 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { Clock, User } from "lucide-react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import {
-  getStatusIcon,
-  PluginRunStatusChip,
-} from "@app/components/poke/plugins/PluginRunStatusChip";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PluginRunType } from "@app/types/poke/plugins";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 interface PluginRunDetailsModalProps {
   onClose: () => void;

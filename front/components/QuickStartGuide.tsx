@@ -1,4 +1,7 @@
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import { Image } from "@app/lib/platform";
 import {
+  CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
   Icon,
@@ -8,10 +11,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
-
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import { Image } from "@app/lib/platform";
 
 export function QuickStartGuide() {
   const { isOpen, onOpenChange } = useURLSheet("quickGuide");

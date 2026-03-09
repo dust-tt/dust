@@ -1,3 +1,13 @@
+import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
+import { emptyArray } from "@app/lib/swr/swr";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Sheet,
   SheetContainer,
@@ -9,17 +19,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
-import { emptyArray } from "@app/lib/swr/swr";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-} from "@app/types/data_source_view";
-import type { SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 
 // We need to stabilize the initial state of the selection configurations,
 // to avoid resetting state when swr revalidates initialSelectedDataSources
@@ -134,6 +133,7 @@ export default function SpaceManagedDataSourcesViewsModal({
     }
   }, [initialConfigurations, spaceDataSourceViews]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
       setHasChanged(true);

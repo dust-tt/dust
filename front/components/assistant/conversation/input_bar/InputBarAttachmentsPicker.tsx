@@ -1,23 +1,3 @@
-import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
-import {
-  AttachmentIcon,
-  Button,
-  CloudArrowUpIcon,
-  DoubleIcon,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuFilters,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Icon,
-  Input,
-  MagnifyingGlassIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
-
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -49,6 +29,29 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  AttachmentIcon,
+  Button,
+  ChevronRightIcon,
+  CloudArrowUpIcon,
+  DoubleIcon,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  type DropdownMenuFilterOption,
+  DropdownMenuFilters,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  Icon,
+  Input,
+  MagnifyingGlassIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   if (dataSource.connectorProvider === "webcrawler") {
@@ -66,11 +69,13 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
+  type: "dropdown" | "subdropdown";
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
+  onFileChange?: () => void;
 }
 
 const PAGE_SIZE = 25;
@@ -196,6 +201,8 @@ export const InputBarAttachmentsPicker = ({
   buttonSize = "xs",
   conversation,
   space,
+  type,
+  onFileChange,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -256,6 +263,7 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setSelectedDataSourcesAndTools({});
@@ -392,30 +400,57 @@ export const InputBarAttachmentsPicker = ({
   );
 
   const allUnselected = selectedFilterKeys.length === 0;
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+
   return (
-    <DropdownMenu
+    <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
+        if (type === "subdropdown") {
+          setIsOpen(open);
+        }
         if (open) {
           setSearch("");
         }
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          icon={AttachmentIcon}
-          size={buttonSize}
-          disabled={disabled || isLoading}
-          onClick={() => setIsOpen(!isOpen)}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      {type === "dropdown" ? (
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            icon={AttachmentIcon}
+            size={buttonSize}
+            disabled={disabled || isLoading}
+            onClick={() => setIsOpen(!isOpen)}
+          />
+        </DropdownMenuTrigger>
+      ) : (
+        <DropdownMenuSubTrigger
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+        >
+          <AttachmentIcon className="w-5 h-5" />
+          Attach knowledge
+          <ChevronRightIcon className="w-5 h-5" />
+        </DropdownMenuSubTrigger>
+      )}
+      <ContentWrapper
         className="h-80 w-80 xs:h-96 xs:w-96"
         collisionPadding={15}
-        align="start"
-        onInteractOutside={() => setIsOpen(false)}
         onEscapeKeyDown={() => setIsOpen(false)}
+        {...(type === "subdropdown"
+          ? {
+              onClick: (e) => e.stopPropagation(),
+            }
+          : {
+              align: "start",
+              onInteractOutside: () => setIsOpen(false),
+            })}
         dropdownHeaders={
           <>
             <Input
@@ -423,6 +458,7 @@ export const InputBarAttachmentsPicker = ({
               ref={fileInputRef}
               style={{ display: "none" }}
               onChange={async (e) => {
+                onFileChange?.();
                 setIsOpen(false);
                 await fileUploaderService.handleFileChange(e);
                 if (fileInputRef.current) {
@@ -560,7 +596,7 @@ export const InputBarAttachmentsPicker = ({
             </div>
           </div>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </ContentWrapper>
+    </Wrapper>
   );
 };

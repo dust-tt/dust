@@ -405,10 +405,10 @@ import { Err } from "@app/types/shared/result";
 
 // withAuth pattern - extracts token and provides consistent error handling
 export async function withAuth<T>(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (token: string) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
-  const token = extra.authInfo?.token;
+  const token = authInfo?.token;
   if (!token) {
     return new Err(new MCPError("No access token provided"));
   }
@@ -684,7 +684,7 @@ Before marking implementation complete:
 - **GitHub**: `lib/api/actions/servers/github/` - Function-based tools with auth closure
 - **Snowflake**: `lib/api/actions/servers/snowflake/` - Constant tools with token from authInfo
 - **Google Calendar**: `lib/api/actions/servers/google_calendar/` - Complex tools with helpers
-- **Agent Copilot Context**: `lib/api/actions/servers/agent_copilot_context/` - Internal tools without OAuth
+- **Agent Sidekick Context**: `lib/api/actions/servers/agent_sidekick_context/` - Internal tools without OAuth
 - **Agent Copilot Agent State**: `lib/api/actions/servers/agent_copilot_agent_state/` - Simple internal server
 
 ---

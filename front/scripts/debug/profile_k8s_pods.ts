@@ -1,6 +1,5 @@
-import { execSync } from "child_process";
-
 import { makeScript } from "@app/scripts/helpers";
+import { execSync } from "child_process";
 
 function execKubectl(command: string): string {
   try {

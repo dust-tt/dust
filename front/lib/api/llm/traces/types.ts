@@ -13,6 +13,7 @@ interface LLMTraceContextBase {
   /** Type of operation that triggered the LLM call */
   operationType:
     | "agent_builder_description_suggestion"
+    | "butler_analyze_conversation"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_instruction_suggestion"
     | "agent_builder_name_suggestion"
@@ -30,7 +31,9 @@ interface LLMTraceContextBase {
     | "skills_similarity_checker"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
+    | "user_project_digest"
     | "voice_agent_finder"
+    | "web_content_summarization"
     | "workspace_tags_suggestion";
 
   workspaceId?: string;

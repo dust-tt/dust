@@ -1,11 +1,10 @@
-import type { Fetcher } from "swr";
-
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
 import type { GetBotDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources/bot-data-sources";
 import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useDataSourceUsage({
   owner,
@@ -14,6 +13,7 @@ export function useDataSourceUsage({
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
 }) {
+  const { fetcher } = useFetcher();
   const usageFetcher: Fetcher<GetDataSourceUsageResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${dataSource.sId}/usage`,
@@ -40,6 +40,7 @@ export function useNotionLastSyncedUrls({
   isError: boolean;
   mutate: () => Promise<void>;
 } {
+  const { fetcher } = useFetcher();
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_sync`,
     fetcher
@@ -60,6 +61,7 @@ export function useBotDataSources({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const botDataSourcesFetcher: Fetcher<GetBotDataSourcesResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(

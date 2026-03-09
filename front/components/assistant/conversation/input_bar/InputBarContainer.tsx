@@ -1,28 +1,6 @@
-import {
-  ArrowUpIcon,
-  Button,
-  Chip,
-  cn,
-  TextIcon,
-  Toolbar,
-  VoicePicker,
-} from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -44,6 +22,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { isChromeExtension } from "@app/lib/utils/extension";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -60,12 +39,41 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
+import {
+  ArrowUpIcon,
+  Button,
+  CameraIcon,
+  Chip,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  GlobeAltIcon,
+  PlusIcon,
+  TextIcon,
+  Toolbar,
+  VoicePicker,
+} from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
+import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { InputBarContext } from "./InputBarContext";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
   "attachment",
   "agents-list",
   "agents-list-with-actions",
+  "turn-into-agent",
   "voice",
   "fullscreen",
 ] as const;
@@ -80,6 +88,7 @@ export interface InputBarContainerProps {
   space?: SpaceType;
   disableAutoFocus: boolean;
   disableInput: boolean;
+  disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => { text: string } | null;
   isSubmitting: boolean;
@@ -109,6 +118,7 @@ const InputBarContainer = ({
   stickyMentions,
   actions,
   disableAutoFocus,
+  disableUserMentions,
   isSubmitting,
   disableInput,
   fileUploaderService,
@@ -126,11 +136,13 @@ const InputBarContainer = ({
   user,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
+
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -139,6 +151,7 @@ const InputBarContainer = ({
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
       const editorInstance = editorRef.current;
@@ -170,6 +183,7 @@ const InputBarContainer = ({
     [editorRef]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const insertPastedAttachmentChip = useCallback(
     ({
       fileId,
@@ -238,6 +252,7 @@ const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
@@ -291,6 +306,7 @@ const InputBarContainer = ({
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown,
     disableAutoFocus,
+    disableUserMentions,
     onUrlDetected: handleUrlDetected,
     owner,
     conversationId: conversation?.sId,
@@ -417,14 +433,12 @@ const InputBarContainer = ({
     };
   }, [editor, editorService, saveDraft]);
 
-  const disableTextInput = isSubmitting || disableInput;
-
-  // Disable the editor when disableTextInput is true.
+  // Disable the editor when disableInput is true.
   useEffect(() => {
     if (editor) {
-      editor.setEditable(!disableTextInput);
+      editor.setEditable(!disableInput);
     }
-  }, [editor, disableTextInput]);
+  }, [editor, disableInput]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -476,6 +490,7 @@ const InputBarContainer = ({
         }
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !nodeOrUrlCandidate ||
@@ -531,7 +546,7 @@ const InputBarContainer = ({
 
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
-  const { animate } = useContext(InputBarContext);
+  const { animate, captureActions } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
       // Schedule focus to avoid flushing during render lifecycle.
@@ -540,6 +555,7 @@ const InputBarContainer = ({
   }, [animate, editorService]);
 
   // Restore draft when switching conversations (including new conversations).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !editor ||
@@ -551,8 +567,14 @@ const InputBarContainer = ({
     }
 
     const draft = getDraft();
+    const editorContainsOnlyStickyMentions =
+      !editorService.isEmpty() &&
+      editorService.getTrimmedText() === stickyMentionsTextContent.current;
     // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
-    if (draft && editorService.isEmpty()) {
+    if (
+      draft &&
+      (editorService.isEmpty() || editorContainsOnlyStickyMentions)
+    ) {
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.setContent(draft.text));
     }
@@ -565,7 +587,7 @@ const InputBarContainer = ({
     getDraft,
   ]);
 
-  useHandleMentions(
+  const { stickyMentionsTextContent } = useHandleMentions(
     editorService,
     stickyMentions,
     selectedAgent,
@@ -588,6 +610,8 @@ const InputBarContainer = ({
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const isRecording = voiceTranscriberService.status === "recording";
 
+  const displayCaptureActionsDropdown = captureActions && isChromeExtension();
+
   return (
     <div
       id="InputBarContainer"
@@ -601,13 +625,13 @@ const InputBarContainer = ({
     >
       <div className="flex w-0 flex-grow flex-col">
         <EditorContent
-          disabled={disableTextInput}
+          disabled={disableInput}
           editor={editor}
           className={classNames(
             contentEditableClasses,
             "scrollbar-hide",
             "overflow-y-auto",
-            disableTextInput && "cursor-not-allowed",
+            disableInput && "cursor-not-allowed",
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
@@ -633,7 +657,7 @@ const InputBarContainer = ({
                       : undefined
                   }
                   target="_blank"
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -651,7 +675,7 @@ const InputBarContainer = ({
                       : undefined
                   }
                   target="_blank"
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined
@@ -669,7 +693,7 @@ const InputBarContainer = ({
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -681,7 +705,7 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined
@@ -726,36 +750,38 @@ const InputBarContainer = ({
                     className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") && (
-                    <>
-                      <input
-                        accept={getSupportedFileExtensions().join(",")}
-                        onChange={async (e) => {
-                          await fileUploaderService.handleFileChange(e);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                          editorService.focusEnd();
-                        }}
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        type="file"
-                        multiple={true}
-                      />
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableTextInput}
-                        buttonSize={buttonSize}
-                        conversation={conversation}
-                        space={space}
-                      />
-                    </>
-                  )}
+                  {actions.includes("attachment") &&
+                    !displayCaptureActionsDropdown && (
+                      <>
+                        <input
+                          accept={getSupportedFileExtensions().join(",")}
+                          onChange={async (e) => {
+                            await fileUploaderService.handleFileChange(e);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                            editorService.focusEnd();
+                          }}
+                          ref={fileInputRef}
+                          style={{ display: "none" }}
+                          type="file"
+                          multiple={true}
+                        />
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="dropdown"
+                        />
+                      </>
+                    )}
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
@@ -764,7 +790,7 @@ const InputBarContainer = ({
                       onSelect={onMCPServerViewSelect}
                       selectedSkills={selectedSkills}
                       onSkillSelect={onSkillSelect}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                       buttonSize={buttonSize}
                     />
                   )}
@@ -781,7 +807,7 @@ const InputBarContainer = ({
                       showFooterButtons={actions.includes(
                         "agents-list-with-actions"
                       )}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                     />
                   )}
                 </div>
@@ -796,11 +822,62 @@ const InputBarContainer = ({
                       elapsedSeconds={voiceTranscriberService.elapsedSeconds}
                       onRecordStart={voiceTranscriberService.startRecording}
                       onRecordStop={voiceTranscriberService.stopRecording}
-                      disabled={disableTextInput}
+                      disabled={disableInput}
                       size={buttonSize}
                       showStopLabel={!isMobile}
                     />
                   )}
+                {displayCaptureActionsDropdown && (
+                  <DropdownMenu
+                    open={isCaptureDropdownOpen}
+                    onOpenChange={setIsCaptureDropdownOpen}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost-secondary"
+                        icon={PlusIcon}
+                        size={buttonSize}
+                        disabled={disableInput}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {actions.includes("attachment") && (
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="subdropdown"
+                          onFileChange={() => setIsCaptureDropdownOpen(false)}
+                        />
+                      )}
+                      <DropdownMenuItem
+                        icon={GlobeAltIcon}
+                        label="Attach page content"
+                        disabled={
+                          captureActions.isCapturing ||
+                          fileUploaderService.isProcessingFiles
+                        }
+                        onClick={() => captureActions.onCapture("text")}
+                      />
+                      <DropdownMenuItem
+                        icon={CameraIcon}
+                        label="Take screenshot"
+                        disabled={
+                          captureActions.isCapturing ||
+                          fileUploaderService.isProcessingFiles
+                        }
+                        onClick={() => captureActions.onCapture("screenshot")}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <Button
                   size={buttonSize}
                   isLoading={
@@ -811,7 +888,8 @@ const InputBarContainer = ({
                   variant="highlight"
                   disabled={
                     isEmpty ||
-                    disableTextInput ||
+                    isSubmitting ||
+                    disableInput ||
                     voiceTranscriberService.status !== "idle"
                   }
                   onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

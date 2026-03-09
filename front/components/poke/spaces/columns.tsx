@@ -1,10 +1,9 @@
-import { LinkWrapper } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 export function makeColumnsForSpaces(
   owner: WorkspaceType

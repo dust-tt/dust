@@ -1,114 +1,92 @@
-import { DustAPI } from "@dust-tt/client";
-
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import config from "@app/lib/api/config";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getFastModelConfig } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import logger from "@app/logger/logger";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { getHeaderFromUserEmail } from "@app/types/user";
 
 const MAX_CHARACTERS_TO_SUMMARIZE = 100_000;
+const browserSummaryAgentInstructions = `<primary_goal>
+You are a web page summary agent. Your primary role is to summarize web page content.
+You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
+Your goal is to remove the noise without altering meaning or removing important information. You may use a bullet-points-heavy format.
+Provide URLs for sub-pages that that are relevant to the summary.
+</primary_goal>`;
 
-export async function summarizeWithAgent({
+/**
+ * Uses a direct LLM call via runMultiActionsAgent.
+ * This avoids creating a conversation and streaming through the Dust API, instead making a direct
+ * LLM call for faster summarization.
+ */
+export async function summarizeWithLLM({
   auth,
-  agentLoopRunContext,
-  summaryAgentId,
   content,
+  agentLoopRunContext,
 }: {
   auth: Authenticator;
-  agentLoopRunContext: AgentLoopRunContextType;
-  summaryAgentId: string;
   content: string;
+  agentLoopRunContext: AgentLoopRunContextType;
 }): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const user = auth.user();
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(
-    config.getDustAPIConfig(),
-    {
-      ...prodCredentials,
-      extraHeaders: { ...getHeaderFromUserEmail(user?.email) },
-    },
-    logger
-  );
-
-  const mainAgent = agentLoopRunContext.agentConfiguration;
-  const mainConversation = agentLoopRunContext.conversation;
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
-  const originMessage = agentLoopRunContext.agentMessage;
-  let parentOrigin: UserMessageOrigin | null = null;
-  const parentMessage = mainConversation.content
-    .flat()
-    .find((m) => m.sId === originMessage.parentMessageId);
-  if (parentMessage && isUserMessageType(parentMessage)) {
-    parentOrigin = parentMessage.context.origin ?? null;
-  }
-
-  const convRes = await api.createConversation({
-    title: `Summary of web page content (main conversation: ${mainConversation.sId})`,
-    visibility: "unlisted",
-    depth: mainConversation.depth + 1,
-    message: {
-      content: `Summarize the following web page content.\n\n` + toSummarize,
-      mentions: [{ configurationId: summaryAgentId }],
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        username: mainAgent.name,
-        fullName: `@${mainAgent.name}`,
-        email: null,
-        profilePictureUrl: mainAgent.pictureUrl,
-        origin: parentOrigin,
-        selectedMCPServerViewIds: null,
-      },
-      agenticMessageData: {
-        // `run_agent` type will skip adding the conversation to the user history.
-        type: "run_agent",
-        originMessageId: originMessage.sId,
-      },
-    },
-  });
-
-  if (convRes.isErr() || !convRes.value.message) {
-    return new Err(new Error("Failed to create summary conversation"));
-  }
-
-  const { conversation, message } = convRes.value;
-  const streamRes = await api.streamAgentAnswerEvents({
-    conversation,
-    userMessageId: message.sId,
-    options: {
-      maxReconnectAttempts: 5,
-      reconnectDelay: 5000,
-      autoReconnect: true,
-    },
-  });
-  if (streamRes.isErr()) {
+  const model = getFastModelConfig(owner);
+  if (!model) {
     return new Err(
-      new Error(`Failed to stream summary: ${streamRes.error.message}`)
+      new Error("Failed to find a whitelisted model to generate summary")
     );
   }
 
-  let finalContent = "";
+  const conversation: ModelConversationTypeMultiActions = {
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Summarize the following web page content.\n\n${toSummarize}`,
+          },
+        ],
+        name: "",
+      },
+    ],
+  };
 
-  for await (const event of streamRes.value.eventStream) {
-    if (
-      event.type === "generation_tokens" &&
-      event.classification === "tokens"
-    ) {
-      finalContent += event.text;
-    } else if (event.type === "agent_message_success") {
-      break;
+  const res = await runMultiActionsAgent(
+    auth,
+    {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      functionCall: null, // No function call needed, just text generation
+      temperature: 0.3,
+      useCache: false,
+    },
+    {
+      conversation,
+      prompt: browserSummaryAgentInstructions,
+      specifications: [], // No tools needed for simple summarization
+    },
+    {
+      context: {
+        operationType: "web_content_summarization",
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+        ...(agentLoopRunContext && {
+          conversationId: agentLoopRunContext.conversation.sId,
+        }),
+      },
     }
+  );
+
+  if (res.isErr()) {
+    return new Err(res.error);
   }
 
-  finalContent = finalContent.trim();
-  if (!finalContent) {
-    return new Err(new Error("Summary agent returned empty content"));
+  const summary = res.value.generation?.trim();
+  if (!summary) {
+    return new Err(new Error("LLM returned empty summary"));
   }
-  return new Ok(finalContent);
+
+  return new Ok(summary);
 }

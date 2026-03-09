@@ -1,5 +1,3 @@
-import isNumber from "lodash/isNumber";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   deleteWorkspaceRetentionDaysMetadata,
@@ -14,6 +12,7 @@ import {
 } from "@app/temporal/scrub_workspace/config";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import isNumber from "lodash/isNumber";
 
 export const workspaceRetentionPlugin = createPlugin({
   manifest: {

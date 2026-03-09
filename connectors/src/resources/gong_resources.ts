@@ -31,6 +31,9 @@ const GC_FREQUENCY_MS = daysToMs(1); // Every day.
 // We use 3 hours as a semi-arbitrary upper bound for the delay.
 const TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS = hoursToMs(3);
 
+export const MAX_EXCLUDE_KEYWORDS = 50;
+export const MAX_EXCLUDE_KEYWORD_LENGTH = 100;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
@@ -86,6 +89,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       baseUrl: this.baseUrl,
       retentionPeriodDays: this.retentionPeriodDays,
       lastGarbageCollectionTimestamp: this.lastGarbageCollectionTimestamp,
+      permissionProfileId: this.permissionProfileId,
     };
   }
 
@@ -126,12 +130,47 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     });
   }
 
+  async setPermissionProfileId(
+    permissionProfileId: string | null
+  ): Promise<void> {
+    await this.update({
+      permissionProfileId,
+    });
+  }
+
   async setRetentionPeriodDays(
     retentionPeriodDays: number | null
   ): Promise<void> {
     await this.update({
       retentionPeriodDays,
     });
+  }
+
+  async setExcludeTitleKeywords(
+    keywords: string[]
+  ): Promise<Result<void, Error>> {
+    // Validation
+    if (keywords.some((k) => k.length > MAX_EXCLUDE_KEYWORD_LENGTH)) {
+      return new Err(
+        new Error(
+          `Keywords must be ${MAX_EXCLUDE_KEYWORD_LENGTH} characters or less`
+        )
+      );
+    }
+    if (keywords.length > MAX_EXCLUDE_KEYWORDS) {
+      return new Err(
+        new Error(`Maximum ${MAX_EXCLUDE_KEYWORDS} keywords allowed`)
+      );
+    }
+
+    // Normalize to lowercase when storing
+    const normalizedKeywords =
+      keywords.length > 0 ? keywords.map((k) => k.toLowerCase()) : null;
+    await this.update({
+      excludeTitleKeywords: normalizedKeywords,
+    });
+
+    return new Ok(undefined);
   }
 
   /**
@@ -328,6 +367,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
       where: {
+        id: this.id,
         connectorId: this.connectorId,
       },
       transaction,
@@ -401,6 +441,41 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       },
       limit,
     });
+    return transcripts.map((t) => new this(this.model, t.get()));
+  }
+
+  /**
+   * Fetches transcripts in batches for pagination.
+   */
+  static async fetchBatch(
+    connector: ConnectorResource,
+    {
+      limit,
+      lastId,
+      orderBy = "ASC",
+    }: {
+      limit: number;
+      lastId?: number;
+      orderBy?: "ASC" | "DESC";
+    }
+  ): Promise<GongTranscriptResource[]> {
+    const whereClause: {
+      connectorId: number;
+      id?: { [Op.gt]: number };
+    } = {
+      connectorId: connector.id,
+    };
+
+    if (lastId !== undefined) {
+      whereClause.id = { [Op.gt]: lastId };
+    }
+
+    const transcripts = await GongTranscriptModel.findAll({
+      where: whereClause,
+      order: [["id", orderBy]],
+      limit,
+    });
+
     return transcripts.map((t) => new this(this.model, t.get()));
   }
 

@@ -1,17 +1,3 @@
-import {
-  Button,
-  ContentMessage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Hoverable,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-import React from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
@@ -31,8 +17,20 @@ import {
   SEARCH_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  Button,
+  ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Hoverable,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import { useEffect, useMemo } from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 function isRemoteDatabaseItem(item: DataSourceBuilderTreeItemType): boolean {
   return (
@@ -71,9 +69,8 @@ export function ProcessingMethodSection() {
   } = useController<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-  const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<CapabilityFormData>();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
@@ -131,6 +128,7 @@ export function ProcessingMethodSection() {
     return [mcpServerViewsWithKnowledge, warning];
   }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (serversToDisplay && sources.in.length > 0 && !mcpServerView) {
       const allTablesOrDatabases = sources.in.every(

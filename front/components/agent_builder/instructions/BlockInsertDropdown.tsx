@@ -1,3 +1,7 @@
+import type {
+  BlockSuggestion,
+  BlockInsertDropdownView as DropdownView,
+} from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import {
   cn,
   DropdownMenu,
@@ -5,12 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import type {
-  BlockInsertDropdownView as DropdownView,
-  BlockSuggestion,
-} from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface BlockInsertDropdownProps {
   blockDropdownState: DropdownView & {
@@ -51,6 +51,7 @@ export const BlockInsertDropdown = ({
     }
   }, [triggerRect]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     updateTriggerPosition();
   }, [triggerRect, updateTriggerPosition]);

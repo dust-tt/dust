@@ -1,3 +1,7 @@
+import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
+import { useDebounce } from "@app/hooks/useDebounce";
+import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
+import type { LinearTeam } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import {
   Button,
   Chip,
@@ -11,11 +15,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
-
-import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
-import { useDebounce } from "@app/hooks/useDebounce";
-import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
-import type { LinearTeam } from "@app/lib/triggers/built-in-webhooks/linear/types";
 
 export function CreateWebhookLinearConnection({
   owner,

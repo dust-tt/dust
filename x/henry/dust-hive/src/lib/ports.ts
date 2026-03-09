@@ -16,6 +16,7 @@ export const PORT_OFFSETS = {
   core: 1,
   connectors: 2,
   oauth: 6,
+  viz: 7,
   frontSpaPoke: 10,
   frontSpaApp: 11,
   postgres: 432,
@@ -39,6 +40,7 @@ const PortAllocationSchema = z
     core: z.number(),
     connectors: z.number(),
     oauth: z.number(),
+    viz: z.number().optional(),
     frontSpaPoke: z.number().optional(),
     frontSpaApp: z.number().optional(),
     postgres: z.number(),
@@ -50,6 +52,7 @@ const PortAllocationSchema = z
   })
   .transform((data) => ({
     ...data,
+    viz: data.viz ?? data.base + PORT_OFFSETS.viz,
     frontSpaPoke: data.frontSpaPoke ?? data.base + PORT_OFFSETS.frontSpaPoke,
     frontSpaApp: data.frontSpaApp ?? data.base + PORT_OFFSETS.frontSpaApp,
   }));
@@ -64,6 +67,7 @@ export function calculatePorts(base: number): PortAllocation {
     core: base + PORT_OFFSETS.core,
     connectors: base + PORT_OFFSETS.connectors,
     oauth: base + PORT_OFFSETS.oauth,
+    viz: base + PORT_OFFSETS.viz,
     frontSpaPoke: base + PORT_OFFSETS.frontSpaPoke,
     frontSpaApp: base + PORT_OFFSETS.frontSpaApp,
     postgres: base + PORT_OFFSETS.postgres,

@@ -1,9 +1,6 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { cn } from "@sparkle/lib";
 import React from "react";
-
-import { ScrollArea, ScrollBar } from "../components";
 
 interface IconSwatchProps {
   icon: React.ComponentType<{ className?: string }>;

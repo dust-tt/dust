@@ -1,19 +1,18 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
-} from "@app/platforms/chrome/messages";
-import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
+} from "@extension/platforms/chrome/messages";
+import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getConnectionDetails,
-  getDustDomain,
-} from "@app/shared/services/auth";
-import type { StorageService } from "@app/shared/services/storage";
-import { datadogLogs } from "@datadog/browser-logs";
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+  getRegionInfoFromClaims,
+} from "@extension/shared/services/auth";
+import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
@@ -21,16 +20,6 @@ const log = console.error;
 export class ChromeAuthService extends AuthService {
   constructor(storage: StorageService) {
     super(storage);
-  }
-
-  // Internal methods.
-
-  // We store the basic user information with list of workspaces and currently selected
-  // workspace in Chrome storage.
-  async saveUser(user: StoredUser) {
-    await this.storage.set("user", user);
-
-    return user;
   }
 
   // Refresh token sends a message to the background script to call the workos refresh token endpoint.
@@ -68,11 +57,16 @@ export class ChromeAuthService extends AuthService {
   }
 
   // Login sends a message to the background script to call the workos login endpoint.
-  // It saves the tokens in the extension and schedules a token refresh.
-  // Then it calls the /me route to get the user info.
-  async login({ forcedConnection }: { forcedConnection?: string }) {
+  // It saves the tokens and auth metadata (regionInfo).
+  async login({
+    forcedConnection,
+    organizationId,
+  }: {
+    forcedConnection?: string;
+    organizationId?: string;
+  }) {
     try {
-      const response = await sendAuthMessage(forcedConnection);
+      const response = await sendAuthMessage(forcedConnection, organizationId);
       if (!response.success) {
         log(`Authentication error: ${response.error}`);
         throw new Error(response.error);
@@ -85,42 +79,11 @@ export class ChromeAuthService extends AuthService {
 
       const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
 
-      const dustDomain = getDustDomain(claims);
-      const connectionDetails = getConnectionDetails(claims);
+      const regionInfo = getRegionInfoFromClaims(claims);
 
-      if (
-        response.authentication_method === "SSO" &&
-        !connectionDetails.connectionStrategy
-      ) {
-        connectionDetails.connectionStrategy = response.authentication_method;
-      }
+      await this.storage.set("regionInfo", regionInfo);
 
-      const res = await this.fetchMe({
-        accessToken: tokens.accessToken,
-        dustDomain,
-      });
-      if (res.isErr()) {
-        return res;
-      }
-      const workspaces = res.value.user.workspaces;
-
-      const selectedWorkspace =
-        workspaces.find((w) => w.sId === res.value.user.selectedWorkspace) ||
-        workspaces[0];
-
-      const user = await this.saveUser({
-        ...res.value.user,
-        ...connectionDetails,
-        dustDomain,
-        selectedWorkspace: selectedWorkspace?.sId ?? null,
-      });
-      datadogLogs.setUser({
-        id: user.sId,
-      });
-      if (workspaces.length === 1) {
-        datadogLogs.setGlobalContext({ workspaceId: workspaces[0].sId });
-      }
-      return new Ok({ tokens, user });
+      return new Ok({ tokens, regionInfo });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
@@ -179,20 +142,5 @@ export class ChromeAuthService extends AuthService {
       refreshToken: refreshToken || "",
       expiresAt,
     };
-  }
-
-  async getStoredUser() {
-    const result = await this.storage.get<StoredUser>("user");
-
-    if (result) {
-      datadogLogs.setUser({
-        id: result.sId,
-      });
-      if (result.selectedWorkspace) {
-        datadogLogs.setGlobalContext({ workspaceId: result.selectedWorkspace });
-      }
-    }
-
-    return result ?? null;
   }
 }

@@ -1,11 +1,3 @@
-import type {
-  GetSpaceMembersResponseBody,
-  PostSpaceMembersResponseBody,
-} from "@dust-tt/client";
-import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
-import uniqBy from "lodash/uniqBy";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
@@ -15,6 +7,13 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type {
+  GetSpaceMembersResponseBody,
+  PostSpaceMembersResponseBody,
+} from "@dust-tt/client";
+import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
+import uniqBy from "lodash/uniqBy";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger

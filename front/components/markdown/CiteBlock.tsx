@@ -1,8 +1,7 @@
+import { IconForAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
-
-import { IconForAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 
 import type { MCPReferenceCitation } from "./MCPReferenceCitation";
 

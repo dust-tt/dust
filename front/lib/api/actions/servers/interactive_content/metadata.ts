@@ -1,14 +1,14 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   frameContentType,
+  frameSlideshowContentType,
   INTERACTIVE_CONTENT_FILE_FORMATS,
 } from "@app/types/files";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const INTERACTIVE_CONTENT_SERVER_NAME = "interactive_content" as const;
 
@@ -50,7 +50,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
         )
         .describe(
           "The MIME type for the Interactive Content file. Use " +
-            `'${frameContentType}' for Frame components (React/JSX).`
+            `'${frameContentType}' for visualizations and dashboards. Use ` +
+            `'${frameSlideshowContentType}' for presentations and slideshows.`
         ),
       mode: z
         .enum(["template", "inline"])

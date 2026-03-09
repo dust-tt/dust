@@ -1,6 +1,5 @@
-import type { ColumnDef, Row } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type { ColumnDef, Row } from "@tanstack/react-table";
 
 export type SubscriptionsDisplayType = {
   id: string;

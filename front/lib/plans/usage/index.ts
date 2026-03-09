@@ -1,5 +1,3 @@
-import type Stripe from "stripe";
-
 import { reportActiveSeats } from "@app/lib/plans/stripe";
 import { reportMonthlyActiveUsers } from "@app/lib/plans/usage/mau";
 import type {
@@ -15,6 +13,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import type Stripe from "stripe";
 
 export function getUsageToReportForSubscriptionItem(
   item: Stripe.SubscriptionItem

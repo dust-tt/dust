@@ -1,10 +1,9 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
-import { Button, Spinner } from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
 import {
   downloadFile,
   ImageZoomDialog,
 } from "@sparkle/components/ImageZoomDialog";
+import { Spinner } from "@sparkle/components/Spinner";
 import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -18,7 +17,7 @@ export type ImagePreviewTitlePositionType =
   (typeof IMAGE_PREVIEW_TITLE_POSITIONS)[number];
 
 const containerVariants = cva(
-  cn("s-cursor-pointer s-overflow-hidden s-rounded-xl"),
+  cn("s-cursor-pointer s-overflow-hidden s-rounded-2xl"),
   {
     variants: {
       variant: {

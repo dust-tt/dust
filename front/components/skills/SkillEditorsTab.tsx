@@ -1,6 +1,3 @@
-import { Button, PlusIcon } from "@dust-tt/sparkle";
-
-import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
 import {
   useSkillEditors,
@@ -38,12 +35,6 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
     }
   };
 
-  const onAddEditor = async (user: UserType) => {
-    if (isCurrentUserEditor) {
-      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4">
       <MembersList
@@ -61,20 +52,6 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
         onRemoveMemberClick={onRemoveMember}
         onRowClick={function noRefCheck() {}}
       />
-
-      {isCurrentUserEditor && (
-        <div>
-          <AddEditorDropdown
-            owner={owner}
-            editors={editors}
-            onAddEditor={onAddEditor}
-            trigger={
-              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
-            }
-            buildersOnly
-          />
-        </div>
-      )}
     </div>
   );
 }

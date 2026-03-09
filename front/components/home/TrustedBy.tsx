@@ -1,14 +1,15 @@
-import { Button } from "@dust-tt/sparkle";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@app/components/home/ContentComponents";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button } from "@dust-tt/sparkle";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
@@ -53,6 +54,7 @@ const LOGO_SETS = {
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -83,6 +85,7 @@ const LOGO_SETS = {
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -180,6 +183,7 @@ const LOGO_SETS = {
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
     ],
     eu: [
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
@@ -207,6 +211,7 @@ export default function TrustedBy({
   showTitle = true,
 }: TrustedByProps) {
   const { geoData } = useGeolocation();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -217,10 +222,13 @@ export default function TrustedBy({
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  const regionParam = searchParams?.get("region");
   const region =
-    mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
-      ? "eu"
-      : "us";
+    regionParam === "us" || regionParam === "eu"
+      ? regionParam
+      : mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
+        ? "eu"
+        : "us";
 
   const logos = LOGO_SETS[logoSet][region];
 

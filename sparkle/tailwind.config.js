@@ -399,7 +399,15 @@ module.exports = {
       keyframes: {
         pulse: {
           "0%, 100%": { boxShadow: "0 0 0 0 var(--pulse-color)" },
-          "50%": { boxShadow: "0 0 0 6px var(--pulse-color)" },
+          "50%": { boxShadow: "0 0 0 4px var(--pulse-color)" },
+        },
+        "ring-pulse": {
+          "0%, 100%": {
+            boxShadow: `0 0 0 0 ${customColors.blue[500]}50`,
+          },
+          "50%": {
+            boxShadow: `0 0 0 3px ${customColors.blue[500]}50`,
+          },
         },
         "opacity-pulse": {
           "0%, 100%": { opacity: "1" },
@@ -513,7 +521,9 @@ module.exports = {
       animation: {
         "shiny-text": "shiny-text 2s infinite",
         pulse: "pulse var(--duration) ease-out infinite",
-        "opacity-pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "ring-pulse": "ring-pulse 3s ease-out infinite",
+        "opacity-pulse":
+          "opacity-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "background-position-spin":
           "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",

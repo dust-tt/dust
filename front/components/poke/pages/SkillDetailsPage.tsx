@@ -1,14 +1,5 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  LinkWrapper,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import { JsonViewer } from "@textea/json-viewer";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -18,6 +9,15 @@ import {
   usePokeSkillDetails,
   usePokeSkillVersions,
 } from "@app/poke/swr/skill_details";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  LinkWrapper,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { JsonViewer } from "@textea/json-viewer";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();
@@ -75,6 +75,15 @@ export function SkillDetailsPage() {
           editedByUser={editedByUser}
           spaces={spaces}
         />
+        <div className="flex flex-grow flex-col">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: sId,
+              resourceType: "skills",
+              workspace: owner,
+            }}
+          />
+        </div>
       </div>
 
       <div className="mt-4 flex flex-row gap-4">

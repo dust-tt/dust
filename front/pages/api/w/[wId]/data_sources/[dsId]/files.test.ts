@@ -1,10 +1,9 @@
-import { Readable } from "stream";
-import { describe, expect, it, vi } from "vitest";
-
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Readable } from "stream";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./files";
 
@@ -58,27 +57,6 @@ const CORE_VALIDATE_CSV_FAKE_RESPONSE = {
   },
 };
 
-// Mock environment config
-vi.mock("@dust-tt/types", async (importOriginal) => {
-  const mod = (await importOriginal()) as Record<string, any>;
-  return {
-    ...mod,
-    EnvironmentConfig: {
-      ...mod.EnvironmentConfig,
-      getEnvVariable: vi.fn((key: string) => {
-        switch (key) {
-          case "DUST_PRIVATE_UPLOADS_BUCKET":
-            return "test-private-bucket";
-          case "DUST_UPLOAD_BUCKET":
-            return "test-public-bucket";
-          default:
-            return process.env[key];
-        }
-      }),
-    },
-  };
-});
-
 vi.mock(import("@app/lib/api/config"), (() => ({
   default: {
     getCoreAPIConfig: vi.fn().mockReturnValue({
@@ -86,7 +64,8 @@ vi.mock(import("@app/lib/api/config"), (() => ({
       apiKey: "foo",
     }),
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:3011"),
+    getApiBaseUrl: vi.fn().mockReturnValue("http://localhost:3000"),
   },
 })) as any);
 

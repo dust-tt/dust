@@ -1,8 +1,7 @@
-import { cn, LoadingBlock } from "@dust-tt/sparkle";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { CombinedInsightsContent } from "@app/components/observability/CombinedInsightsContent";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
 interface AgentBuilderInsightsProps {
   agentConfigurationSId: string;

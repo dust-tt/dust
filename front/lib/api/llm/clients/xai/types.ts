@@ -1,5 +1,3 @@
-import flatMap from "lodash/flatMap";
-
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import {
@@ -10,6 +8,7 @@ import {
   GROK_4_FAST_NON_REASONING_MODEL_ID,
   GROK_4_MODEL_ID,
 } from "@app/types/assistant/models/xai";
+import flatMap from "lodash/flatMap";
 
 export const XAI_PROVIDER_ID = "xai";
 

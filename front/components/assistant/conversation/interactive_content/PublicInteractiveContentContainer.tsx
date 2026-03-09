@@ -1,15 +1,15 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { PublicFrameRenderer } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import Custom404 from "@app/pages/404";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import { Spinner } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
+  vizUrl: string;
 }
 
 /**
@@ -19,6 +19,7 @@ interface PublicInteractiveContentContainerProps {
 export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
+  vizUrl,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
     shareToken,
@@ -40,12 +41,14 @@ export function PublicInteractiveContentContainer({
 
     switch (frameMetadata.contentType) {
       case frameContentType:
+      case frameSlideshowContentType:
         return (
           <PublicFrameRenderer
             fileId={frameMetadata.sId}
             fileName={frameMetadata.fileName}
             shareToken={shareToken}
             workspaceId={workspaceId}
+            vizUrl={vizUrl}
           />
         );
 

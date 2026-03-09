@@ -1,7 +1,6 @@
-import { useCallback, useState } from "react";
-
 import { useLeaveProject } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 interface UseLeaveProjectDialogProps {
   owner: LightWorkspaceType;

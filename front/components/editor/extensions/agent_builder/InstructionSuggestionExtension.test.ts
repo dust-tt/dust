@@ -1,14 +1,8 @@
-import type { Editor } from "@tiptap/core";
-import type { Node as PMNode } from "@tiptap/pm/model";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import {
   BLOCK_ID_ATTRIBUTE,
   BlockIdExtension,
 } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
-import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
   diffBlockContent,
@@ -17,9 +11,15 @@ import {
   InstructionSuggestionExtension,
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import type { Editor } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 function getDeletions(editor: Editor) {
   return Array.from(
@@ -56,11 +56,15 @@ describe("InstructionSuggestionExtension", () => {
   let editor: Editor;
 
   beforeEach(() => {
-    editor = EditorFactory([
-      InstructionBlockExtension,
-      InstructionSuggestionExtension,
-      BlockIdExtension,
-    ]);
+    editor = EditorFactory(
+      [
+        InstructionBlockExtension,
+        InstructionSuggestionExtension,
+        BlockIdExtension,
+        ListItemExtension,
+      ],
+      { starterKit: { listItem: false } }
+    );
   });
 
   afterEach(() => {
@@ -274,7 +278,7 @@ describe("InstructionSuggestionExtension", () => {
       expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
 
-    it("should correctly map positions when accepting multiple suggestions", () => {
+    it("should correctly map positions when accepting multiple suggestions individually", () => {
       // Create two paragraphs.
       editor.commands.setContent("First paragraph\n\nSecond paragraph", {
         contentType: "markdown",
@@ -306,6 +310,38 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).toContain("New second");
       expect(text).not.toContain("First paragraph");
       expect(text).not.toContain("Second paragraph");
+    });
+
+    it("should accept all suggestions at once and remove all from plugin state", () => {
+      editor.commands.setContent("First paragraph\n\nSecond paragraph", {
+        contentType: "markdown",
+      });
+
+      const [blockId1, blockId2] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "batch-1",
+        targetBlockId: blockId1,
+        content: "<p>Updated first</p>",
+      });
+
+      editor.commands.applySuggestion({
+        id: "batch-2",
+        targetBlockId: blockId2,
+        content: "<p>Updated second</p>",
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(2);
+
+      editor.commands.acceptAllSuggestions();
+
+      const text = editor.getText();
+      expect(text).toContain("Updated first");
+      expect(text).toContain("Updated second");
+      expect(text).not.toContain("First paragraph");
+      expect(text).not.toContain("Second paragraph");
+
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
   });
 
@@ -543,17 +579,6 @@ describe("InstructionSuggestionExtension", () => {
       expect(editor.getText().trim()).toContain("URL");
     });
 
-    it("should escape inline unmatched HTML tags with zero-width space", () => {
-      const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
-      // <p> and <code> are recognized but inline (not at start of line)
-      expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");
-    });
-
-    it("should escape inline unrecognized tags with zero-width space", () => {
-      const escaped = preprocessMarkdownForEditor("Test <URL>");
-      expect(escaped).toBe("Test <\u200BURL>");
-    });
-
     it("should handle multiple inline unrecognized tags", () => {
       const escaped = preprocessMarkdownForEditor(
         "Use <URL> and <PLACEHOLDER> here"
@@ -565,11 +590,48 @@ describe("InstructionSuggestionExtension", () => {
       expect(escaped).toBe("Use <\u200BURL> and <\u200BPLACEHOLDER> here");
     });
 
+    it("should escape HTML comments so content after is preserved", () => {
+      const markdown = "Hello\n\n<!-- Comment -->\n\nEverything here gets lost";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // All < escaped; comment start becomes <ZWS!--
+      expect(escaped).toContain("\u200B!--");
+
+      // Editor parses without losing content
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      const text = editor.getText();
+      expect(text).toContain("Hello");
+      expect(text).toContain("Everything here gets lost");
+    });
+
+    it("should not collapse between HTML comment and following instruction block", () => {
+      const markdown = "<!-- test -->\n\n<foo>\nhello\n</foo>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      // Comment stays escaped; <foo> is on its own line and gets un-escaped
+      expect(escaped).toContain("\u200B!-- test -->");
+      expect(escaped).toContain("<foo>");
+      expect(escaped).toContain("</foo>");
+      expect(escaped).not.toContain("--><foo>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
+    it("should escape inline unmatched HTML tags with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor("Test <p> and <code>");
+      expect(escaped).toBe("Test <\u200Bp> and <\u200Bcode>");
+    });
+
+    it("should escape inline unrecognized tags with zero-width space", () => {
+      const escaped = preprocessMarkdownForEditor("Test <URL>");
+      expect(escaped).toBe("Test <\u200BURL>");
+    });
+
     it("should escape tags whose first word matches TAG_NAME_PATTERN even with spaces", () => {
       const escaped = preprocessMarkdownForEditor(
         "Example: <Prompt Good Practices>\nSome content here"
       );
-      // "Prompt" matches TAG_NAME_PATTERN, " Good Practices" is rest — inline so escaped
       expect(escaped).toBe(
         "Example: <\u200BPrompt Good Practices>\nSome content here"
       );
@@ -579,7 +641,6 @@ describe("InstructionSuggestionExtension", () => {
       const escaped = preprocessMarkdownForEditor(
         "Example: <do>Provide a concise summary</do> <don't>Include opinions</don't>"
       );
-      // These are inline (preceded by text), so they get zero-width space
       expect(escaped).toBe(
         "Example: <\u200Bdo>Provide a concise summary<\u200B/do> <\u200Bdon't>Include opinions<\u200B/don't>"
       );
@@ -595,16 +656,31 @@ describe("InstructionSuggestionExtension", () => {
         "",
         "But Example: <do>this</do> is inline",
       ].join("\n");
-
       const escaped = preprocessMarkdownForEditor(markdown);
 
-      // Block-level <rules> preserved, inline <do> gets zero-width space
       expect(escaped).toContain("<rules>");
       expect(escaped).toContain("</rules>");
       expect(escaped).toContain("<\u200Bdo>");
       expect(escaped).toContain(
         "But Example: <\u200Bdo>this<\u200B/do> is inline"
       );
+    });
+
+    it("should preserve nested different-tag blocks", () => {
+      const markdown = [
+        "<rules>",
+        "Outer content",
+        "<do>Follow this</do>",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).not.toContain("\u200Brules");
+      expect(escaped).not.toContain("\u200Bdo");
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("<do>");
+      expect(escaped).toContain("</do>");
+      expect(escaped).toContain("</rules>");
     });
 
     it("should preserve nested same-tag blocks", () => {
@@ -616,24 +692,107 @@ describe("InstructionSuggestionExtension", () => {
         "</rules>",
         "</rules>",
       ].join("\n");
-
       const escaped = preprocessMarkdownForEditor(markdown);
 
-      // All four tags preserved (no zero-width space in rules tags)
       expect(escaped).not.toContain("\u200Brules");
       expect(escaped).not.toContain("\u200B/rules");
       expect(escaped).toContain("<rules>");
       expect(escaped).toContain("</rules>");
     });
 
+    it("should preserve nested indented blocks", () => {
+      const markdown = "<agent>\n  <bar>\n    hello\n  </bar>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
+    it("should handle triple nesting with mixed indentation", () => {
+      const markdown =
+        "<agent>\n\t<bar>\n  \t\t<baz>\n    nested\n  \t\t</baz>\n\t</bar>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("<baz>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("nested");
+    });
+
+    it("should handle adjacent nested blocks at same level", () => {
+      const markdown =
+        "<agent>\n  <bar>first</bar>\n  <baz>second</baz>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("<baz>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("first");
+      expect(editor.getText()).toContain("second");
+    });
+
+    it("should un-escape single-line nested blocks (same as collapsed)", () => {
+      const markdown = "<agent><bar>hello</bar></agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("</bar>");
+      expect(escaped).toContain("</agent>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hello");
+    });
+
+    it("should handle closing tag with trailing spaces before newline", () => {
+      const markdown = "<agent>\n  <bar>hi</bar>   \n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+      expect(escaped).toContain("</bar>");
+      expect(escaped).toContain("</agent>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("hi");
+    });
+
+    it("should handle document starting with newlines before instruction block", () => {
+      const markdown = "\n\n<agent>\n  <bar>x</bar>\n</agent>";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("<agent>");
+      expect(escaped).toContain("<bar>");
+
+      editor.commands.setContent(escaped, { contentType: "markdown" });
+      expect(editor.getText()).toContain("x");
+    });
+
+    it("should escape processing instructions (general fallback)", () => {
+      const escaped = preprocessMarkdownForEditor(
+        '<?xml version="1.0"?>\nSome content'
+      );
+      expect(escaped).toContain("\u200B?");
+      expect(escaped).toContain("Some content");
+    });
+
+    it("should escape invalid tag names (general fallback)", () => {
+      const escaped = preprocessMarkdownForEditor("Use <1> or <_private>");
+      expect(escaped).toContain("\u200B");
+    });
+
     it("should escape orphan closing tag when count is already zero", () => {
       const markdown = ["<rules>", "Content", "</rules>", "</rules>"].join(
         "\n"
       );
-
       const escaped = preprocessMarkdownForEditor(markdown);
-
-      // First pair preserved; extra </rules> has no matching opening (count 0)
       expect(escaped).toContain("<\u200B/rules>");
     });
 
@@ -641,7 +800,6 @@ describe("InstructionSuggestionExtension", () => {
       const markdown = ['<rules id="test">', "Some content", "</rules>"].join(
         "\n"
       );
-
       const escaped = preprocessMarkdownForEditor(markdown);
 
       expect(escaped).toContain('<\u200Brules id="test">');
@@ -669,18 +827,89 @@ describe("InstructionSuggestionExtension", () => {
     it("should escape unmatched tags regardless of position (matching only)", () => {
       const markdown = "Paragraph\n\n<br>\nMore text";
       const escaped = preprocessMarkdownForEditor(markdown);
-      // <br> has no </br> pair — escaped regardless of position
       expect(escaped).toContain("\u200Bbr");
     });
 
     it("should preserve block-level recognized tags", () => {
       const markdown = "\n<p>\nSome paragraph\n</p>";
       const escaped = preprocessMarkdownForEditor(markdown);
-
-      // Step 1 adds blank line before <p> (single \n → \n\n)
       expect(escaped).toContain("\n\n<p>");
-      // </p> at end of string has no trailing \n, so no blank line is added
       expect(escaped).toContain("</p>");
+    });
+
+    it("should not double-escape when ZWS already present (round-trip safe)", () => {
+      const once = preprocessMarkdownForEditor("Test <URL>");
+      expect(once).toBe("Test <\u200BURL>");
+
+      const twice = preprocessMarkdownForEditor(once);
+      expect(twice).toBe(once);
+    });
+
+    it("should remain idempotent after multiple passes", () => {
+      const input = "Use <URL> and <PLACEHOLDER> here";
+      let result = preprocessMarkdownForEditor(input);
+      for (let i = 0; i < 3; i++) {
+        result = preprocessMarkdownForEditor(result);
+      }
+      expect(result).toBe("Use <\u200BURL> and <\u200BPLACEHOLDER> here");
+    });
+
+    it("should preserve whitespace and newlines in content", () => {
+      const markdown = [
+        "  leading spaces",
+        "",
+        "<rules>",
+        "  indented",
+        "",
+        "  more",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("  leading spaces");
+      expect(escaped).toContain("  indented");
+      expect(escaped).toContain("  more");
+      expect(escaped).toContain("<rules>");
+      expect(escaped).toContain("</rules>");
+    });
+
+    it("should preserve blank lines inside instruction blocks", () => {
+      const markdown = [
+        "<rules>",
+        "line one",
+        "",
+        "line two",
+        "",
+        "",
+        "line three",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("line one\n\nline two");
+      expect(escaped).toContain("line two\n\n\nline three");
+    });
+
+    it("should preserve trailing whitespace and tabs in content", () => {
+      const markdown = [
+        "<rules>",
+        "line with trailing   ",
+        "\tindented with tab",
+        "</rules>",
+      ].join("\n");
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("line with trailing   ");
+      expect(escaped).toContain("\tindented with tab");
+    });
+
+    it("should not strip existing blank lines around instruction blocks", () => {
+      const markdown = "Hello\n\n<rules>\ncontent\n</rules>\n\nMore text";
+      const escaped = preprocessMarkdownForEditor(markdown);
+
+      expect(escaped).toContain("\n\n<rules>");
+      expect(escaped).toContain("</rules>\n\n");
+      expect(escaped).toContain("More text");
     });
   });
 
@@ -836,6 +1065,197 @@ describe("InstructionSuggestionExtension", () => {
       expect(changes).toEqual([
         { fromA: 0, toA: 0, fromB: 0, toB: newNode.content.size },
       ]);
+    });
+
+    it("should return a single full change for cross-type replacement", () => {
+      const { schema } = editor.state;
+      const oldNode = schema.node("bulletList", null, [
+        schema.node("listItem", null, [
+          schema.node("paragraph", null, [schema.text("Item one")]),
+        ]),
+      ]);
+      const newNode = makeParagraph("Replaced text");
+
+      const changes = diffBlockContent(oldNode, newNode, schema);
+      expect(changes).toEqual([
+        {
+          fromA: 0,
+          toA: oldNode.content.size,
+          fromB: 0,
+          toB: newNode.content.size,
+        },
+      ]);
+    });
+  });
+
+  describe("cross-type block replacement", () => {
+    it("should show decorations when replacing a bulletList with a paragraph", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      // Find the bulletList's block-id.
+      let bulletBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "bulletList") {
+          bulletBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(bulletBlockId).not.toBeNull();
+
+      const result = editor.commands.applySuggestion({
+        id: "cross-type-1",
+        targetBlockId: bulletBlockId!,
+        content: "<p>Replaced text</p>",
+      });
+
+      expect(result).toBe(true);
+      expect(getActiveSuggestionIds(editor.state)).toContain("cross-type-1");
+
+      // Should produce decorations (deletion of old content, addition of new).
+      const deletions = getDeletions(editor);
+      const additions = getAdditions(editor);
+      expect(deletions.length).toBeGreaterThanOrEqual(1);
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+      expect(deletions[0].suggestionId).toBe("cross-type-1");
+      expect(additions[0].suggestionId).toBe("cross-type-1");
+    });
+
+    it("should show new block type in preview for cross-type replacement (paragraph → heading)", () => {
+      editor.commands.setContent("Output Guidelines", {
+        contentType: "markdown",
+      });
+      const [targetBlockId] = getBlockIds(editor);
+      expect(targetBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "cross-type-preview",
+        targetBlockId: targetBlockId!,
+        content: "<h2>Output Guidelines</h2>",
+      });
+
+      // Addition widget should render the full new node (h2), not just text in a span.
+      const additionEls = editor.view.dom.querySelectorAll(
+        ".suggestion-addition"
+      );
+      expect(additionEls.length).toBeGreaterThanOrEqual(1);
+      const h2 = additionEls[0].querySelector("h2");
+      expect(h2).not.toBeNull();
+      expect(h2?.textContent?.trim()).toBe("Output Guidelines");
+    });
+
+    it("should accept a cross-type replacement (bulletList → paragraph)", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      let bulletBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "bulletList") {
+          bulletBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(bulletBlockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "cross-type-accept",
+        targetBlockId: bulletBlockId!,
+        content: "<p>Replaced text</p>",
+      });
+
+      editor.commands.acceptSuggestion("cross-type-accept");
+
+      expect(editor.getText()).toContain("Replaced text");
+      expect(editor.getText()).not.toContain("Item one");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should reject a cross-type replacement and keep original content", () => {
+      editor.commands.setContent("- Item one\n- Item two", {
+        contentType: "markdown",
+      });
+
+      let bulletBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "bulletList") {
+          bulletBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(bulletBlockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "cross-type-reject",
+        targetBlockId: bulletBlockId!,
+        content: "<p>Replaced text</p>",
+      });
+
+      editor.commands.rejectSuggestion("cross-type-reject");
+
+      expect(editor.getText()).toContain("Item one");
+      expect(editor.getText()).toContain("Item two");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+  });
+
+  describe("nested list marker parsing (ListItemExtension)", () => {
+    it("should not throw on consecutive bullet markers: '- - text'", () => {
+      expect(() => {
+        editor.commands.setContent("- - Clearly indicate the source", {
+          contentType: "markdown",
+        });
+      }).not.toThrow();
+    });
+
+    it("should not throw on ordered list inside bullet: '- 1. Hello'", () => {
+      expect(() => {
+        editor.commands.setContent("- 1. Hello\nWorld", {
+          contentType: "markdown",
+        });
+      }).not.toThrow();
+
+      expect(editor.getText()).toContain("Hello");
+      expect(editor.getText()).toContain("World");
+    });
+
+    it("should preserve the nested content text", () => {
+      editor.commands.setContent("- - Clearly indicate the source", {
+        contentType: "markdown",
+      });
+
+      const text = editor.getText();
+      expect(text).toContain("Clearly indicate the source");
+    });
+
+    it("should handle mixed valid and nested markers", () => {
+      const markdown = [
+        "3. Data Analysis and Presentation:",
+        "- - Clearly indicate the source origin for all information.",
+        "- Format key metrics as follows:",
+      ].join("\n");
+
+      expect(() => {
+        editor.commands.setContent(markdown, { contentType: "markdown" });
+      }).not.toThrow();
+
+      const text = editor.getText();
+      expect(text).toContain("Clearly indicate the source");
+      expect(text).toContain("Format key metrics");
+    });
+
+    it("should handle triple nested markers: '- - - text'", () => {
+      expect(() => {
+        editor.commands.setContent("- - - deeply nested", {
+          contentType: "markdown",
+        });
+      }).not.toThrow();
+
+      expect(editor.getText()).toContain("deeply nested");
     });
   });
 });
@@ -1091,6 +1511,174 @@ describe("Root-targeting suggestions", () => {
       expect(additions.length).toBeGreaterThanOrEqual(1);
       expect(deletions[0].suggestionId).toBe("child-bullet-deco");
       expect(additions[0].suggestionId).toBe("child-bullet-deco");
+    });
+
+    it("should preserve all blocks when suggestion has multi-block content targeting root", () => {
+      editor.commands.setContent("Old text", { contentType: "markdown" });
+
+      // Simulates the copilot returning multi-block HTML without data-type attribute.
+      // parseHTMLToBlock must return the instructionsRoot (not just the first child)
+      // so that both the heading and paragraph are preserved.
+      editor.commands.applySuggestion({
+        id: "multi-block-root",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toContain(
+        "multi-block-root"
+      );
+
+      // Document unchanged (decoration-only).
+      expect(editor.getText()).toContain("Old text");
+
+      // Both blocks should appear in addition decorations.
+      const additions = getAdditions();
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+
+      const addedText = additions.map((a) => a.text).join("");
+      expect(addedText).toContain("Role");
+      expect(addedText).toContain("Hello");
+      expect(additions[0].suggestionId).toBe("multi-block-root");
+    });
+
+    it("should accept multi-block suggestion targeting root and replace all content", () => {
+      editor.commands.setContent("Old text", { contentType: "markdown" });
+
+      editor.commands.applySuggestion({
+        id: "multi-block-accept",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      editor.commands.acceptSuggestion("multi-block-accept");
+
+      const text = editor.getText();
+      expect(text).toContain("Role");
+      expect(text).toContain("Hello");
+      expect(text).not.toContain("Old text");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should reject multi-block suggestion targeting root and keep original content", () => {
+      editor.commands.setContent("Keep me", { contentType: "markdown" });
+
+      editor.commands.applySuggestion({
+        id: "multi-block-reject",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      editor.commands.rejectSuggestion("multi-block-reject");
+
+      expect(editor.getText()).toContain("Keep me");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should render per-block inline diffs for multi-block root suggestion", () => {
+      editor.commands.setContent("## Role\n\nHello", {
+        contentType: "markdown",
+      });
+
+      // Small edits within each block: "Role" → "Role1", "Hello" → "Hello5".
+      editor.commands.applySuggestion({
+        id: "per-block-diff",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: `<div data-type="instructions-root"><h2>Role1</h2><p>Hello5</p></div>`,
+      });
+
+      editor.commands.setHighlightedSuggestion("per-block-diff");
+
+      const deletions = getDeletions();
+      const additions = getAdditions();
+
+      // No deletions expected (only insertions of "1" and "5").
+      expect(deletions).toHaveLength(0);
+
+      // Two separate additions: "1" after "Role" and "5" after "Hello".
+      expect(additions).toHaveLength(2);
+      expect(additions[0].text).toBe("1");
+      expect(additions[0].suggestionId).toBe("per-block-diff");
+      expect(additions[1].text).toBe("5");
+      expect(additions[1].suggestionId).toBe("per-block-diff");
+    });
+
+    it("should render addition widget for entirely new block added at root", () => {
+      editor.commands.setContent("## Role", { contentType: "markdown" });
+
+      // Add a second block that doesn't exist in the original.
+      editor.commands.applySuggestion({
+        id: "new-block",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: `<div data-type="instructions-root"><h2>Role</h2><p>New paragraph</p></div>`,
+      });
+
+      editor.commands.setHighlightedSuggestion("new-block");
+
+      const deletions = getDeletions();
+      const additions = getAdditions();
+
+      // "Role" is unchanged, so no deletions.
+      expect(deletions).toHaveLength(0);
+
+      // The new paragraph should appear as an addition.
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+      const addedText = additions.map((a) => a.text).join("");
+      expect(addedText).toContain("New paragraph");
+    });
+
+    it("should render deletion for removed block at root", () => {
+      editor.commands.setContent("## Role\n\nHello", {
+        contentType: "markdown",
+      });
+
+      // Replace with only the heading, removing the paragraph.
+      editor.commands.applySuggestion({
+        id: "remove-block",
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: `<div data-type="instructions-root"><h2>Role</h2></div>`,
+      });
+
+      editor.commands.setHighlightedSuggestion("remove-block");
+
+      const deletions = getDeletions();
+
+      // The paragraph "Hello" should be marked as deleted.
+      expect(deletions.length).toBeGreaterThanOrEqual(1);
+      const deletedText = deletions.map((d) => d.text).join("");
+      expect(deletedText).toContain("Hello");
+    });
+
+    it("should use only the first block when multi-block HTML targets a specific block", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      // Find the paragraph's block-id (not the root).
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      // Send multi-block HTML but targeting a specific paragraph.
+      // parseHTMLToBlock should unwrap to the first child (the heading),
+      // not return the instructionsRoot.
+      editor.commands.applySuggestion({
+        id: "multi-block-specific",
+        targetBlockId: paragraphBlockId!,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toContain(
+        "multi-block-specific"
+      );
+
+      // Accept and verify only the first block (heading) is used.
+      editor.commands.acceptSuggestion("multi-block-specific");
+
+      const text = editor.getText();
+      expect(text).toContain("Role");
+      expect(text).not.toContain("Hello");
+      expect(text).not.toContain("Hello world");
     });
   });
 });

@@ -1,7 +1,6 @@
+import { H2, P } from "@app/components/home/ContentComponents";
 import { ChevronUpIcon, Separator } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { H2, P } from "@app/components/home/ContentComponents";
 
 interface FeatureItem {
   id: string;

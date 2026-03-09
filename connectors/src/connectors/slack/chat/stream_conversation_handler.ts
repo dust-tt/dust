@@ -1,11 +1,12 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
 import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeToolAuthenticationBlock,
   makeToolValidationBlock,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
@@ -16,9 +17,11 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
+import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { redisClient } from "@connectors/types/shared/redis_client";
 import type {
   AgentActionPublicType,
   ConversationPublicType,
@@ -36,6 +39,7 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { throttle } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -72,6 +76,45 @@ export const SlackBlockIdToolValidationSchema = t.intersection([
     workspaceId: t.string,
   }),
 ]);
+
+export function getAuthResponseUrlRedisKey(
+  workspaceId: string,
+  messageId: string
+) {
+  return `slack:auth:response_url:${workspaceId}:${messageId}`;
+}
+
+/**
+ * Deletes the auth ephemeral via response_url (stored in Redis by the webhook
+ * handler when the user clicks "Authenticate") and posts a success message.
+ * Ephemerals can only be modified via response_url, not chat.delete.
+ */
+async function cleanupAuthEphemeral(
+  pendingAuthEphemeral: { redisKey: string; serverName: string },
+  slackClient: WebClient,
+  slackChannelId: string,
+  slackUserId: string,
+  slackMessageTs: string
+): Promise<void> {
+  const redis = await redisClient({ origin: "slack_auth" });
+  const responseUrl = await redis.get(pendingAuthEphemeral.redisKey);
+  if (!responseUrl) {
+    return;
+  }
+  const proxyFetch = createProxyAwareFetch();
+  await proxyFetch(responseUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ delete_original: true }),
+  });
+  await redis.del(pendingAuthEphemeral.redisKey);
+  await slackClient.chat.postEphemeral({
+    channel: slackChannelId,
+    user: slackUserId,
+    text: `Authentication for \`${pendingAuthEphemeral.serverName}\` successful ✅`,
+    thread_ts: slackMessageTs,
+  });
+}
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -153,7 +196,10 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-
+  let pendingPersonalAuth: {
+    redisKey: string;
+    serverName: string;
+  } | null = null;
   let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
   let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
@@ -229,11 +275,36 @@ async function streamAgentAnswerToSlack(
           connector.workspaceId,
           conversation.sId
         );
+
+        if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "Personal authentication required",
+            blocks: makeToolAuthenticationBlock({
+              agentName: event.metadata.agentName,
+              serverName: event.metadata.mcpServerDisplayName,
+              conversationUrl,
+              value: JSON.stringify({
+                workspaceId: connector.workspaceId,
+                messageId: event.messageId,
+              }),
+            }),
+            thread_ts: slackMessageTs,
+          });
+
+          pendingPersonalAuth = {
+            redisKey: getAuthResponseUrlRedisKey(
+              connector.workspaceId,
+              event.messageId
+            ),
+            serverName: event.metadata.mcpServerDisplayName,
+          };
+        }
+
         await throttledPostSlackMessageUpdate({
           messageUpdate: {
-            text:
-              "The agent took an action that requires personal authentication. " +
-              `Please go to <${conversationUrl}|the conversation> to authenticate.`,
+            text: "Agent is waiting for authentication…",
             assistantName,
             agentConfigurations,
           },
@@ -244,7 +315,7 @@ async function streamAgentAnswerToSlack(
             eventType: event.type,
           },
         });
-        return new Ok(undefined);
+        break;
       }
 
       case "user_message_error": {
@@ -256,6 +327,11 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_error": {
+        // tool_personal_auth_required is always followed by a tool_error;
+        // ignore it so the stream stays open while the user authenticates.
+        if (pendingPersonalAuth) {
+          break;
+        }
         return new Err(
           new Error(
             `Tool message error: code: ${event.error.code} message: ${event.error.message}`
@@ -271,6 +347,16 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_action_success": {
+        if (pendingPersonalAuth && slackUserId && !slackUserInfo.is_bot) {
+          await cleanupAuthEphemeral(
+            pendingPersonalAuth,
+            slackClient,
+            slackChannelId,
+            slackUserId,
+            slackMessageTs
+          );
+          pendingPersonalAuth = null;
+        }
         actions.push(event.action);
         break;
       }

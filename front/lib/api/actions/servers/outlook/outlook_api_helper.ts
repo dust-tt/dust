@@ -1,6 +1,5 @@
-import { z } from "zod";
-
 import logger from "@app/logger/logger";
+import { z } from "zod";
 
 const localLogger = logger.child({ module: "outlook_api_helper" });
 

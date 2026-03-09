@@ -1,9 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationErrorType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { isOverflowingDBString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   conversation_access_restricted: 403,
@@ -12,6 +11,7 @@ const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   user_already_participant: 400,
   message_not_found: 404,
   message_deletion_not_authorized: 403,
+  branch_not_found: 404,
 };
 
 export function apiErrorForConversation(

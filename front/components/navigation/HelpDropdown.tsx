@@ -1,4 +1,16 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { serializeMention } from "@app/lib/mentions/format";
+import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute } from "@app/lib/utils/router";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
+import { isAgentMention } from "@app/types/assistant/mentions";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
+  BookOpenIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
@@ -13,18 +25,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
-
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { serializeMention } from "@app/lib/mentions/format";
-import { useAppRouter } from "@app/lib/platform";
-import { getConversationRoute } from "@app/lib/utils/router";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
-import { isAgentMention } from "@app/types/assistant/mentions";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 
 export function HelpDropdown({
   owner,
@@ -44,7 +44,10 @@ export function HelpDropdown({
   const { setSelectedAgent } = useContext(InputBarContext);
 
   const handleAskHelp = () => {
-    if (router.pathname === "/w/[wId]/conversation/[cId]") {
+    if (
+      router.pathname === "/w/[wId]/conversation/[cId]" ||
+      router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/)
+    ) {
       // If we're on /conversation/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
       setSelectedAgent({
@@ -142,6 +145,12 @@ export function HelpDropdown({
           label="Guides & Documentation"
           icon={DocumentIcon}
           href="https://docs.dust.tt"
+          target="_blank"
+        />
+        <DropdownMenuItem
+          label="Dust Academy"
+          icon={BookOpenIcon}
+          href="https://dust.tt/academy"
           target="_blank"
         />
         <DropdownMenuItem

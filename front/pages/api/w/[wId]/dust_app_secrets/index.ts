@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   getDustAppSecret,
@@ -12,7 +10,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { encrypt } from "@app/types/shared/utils/hashing";
+import { encrypt } from "@app/types/shared/utils/encryption";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];
@@ -96,7 +95,12 @@ async function handler(
       // Sanitize the secret name to be alphanumeric and underscores only
       const sanitizedSecretName = postSecretName.replace(/[^a-zA-Z0-9_]/g, "_");
 
-      const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
+      // We feed the workspace sid as key that will be added to the salt.
+      const encryptedValue = encrypt({
+        text: secretValue,
+        key: owner.sId,
+        useCase: "developer_secret",
+      });
 
       let postSecret = await getDustAppSecret(auth, sanitizedSecretName);
 

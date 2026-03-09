@@ -1,9 +1,3 @@
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useEffect, useMemo, useState } from "react";
-
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,
@@ -11,6 +5,8 @@ import {
   BlogPostGrid,
   BlogTagFilter,
   FeaturedPost,
+  SEO_PAGE_SIZE,
+  SeoArticleList,
 } from "@app/components/blog/BlogComponents";
 import { BlogPagination } from "@app/components/blog/BlogPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -19,6 +15,11 @@ import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
@@ -46,6 +47,7 @@ export const getServerSideProps: GetServerSideProps<
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogListing({ posts }: BlogListingPageProps) {
   const router = useRouter();
   const initialTag = isString(router.query.tag) ? router.query.tag : null;
@@ -79,21 +81,31 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     return posts.filter((post) => post.tags.includes(selectedTag));
   }, [posts, selectedTag]);
 
-  // Featured post is the first non-SEO post.
+  // Split into regular and SEO articles.
+  const regularPosts = useMemo(
+    () => filteredPosts.filter((p) => !p.isSeoArticle),
+    [filteredPosts]
+  );
+  const seoPosts = useMemo(
+    () => filteredPosts.filter((p) => p.isSeoArticle),
+    [filteredPosts]
+  );
+
+  // Featured post is the first regular post (only on unfiltered view).
   const featuredPost = useMemo(() => {
     if (selectedTag) {
       return null;
     }
-    return filteredPosts.find((post) => !post.isSeoArticle) ?? null;
-  }, [filteredPosts, selectedTag]);
+    return regularPosts[0] ?? null;
+  }, [regularPosts, selectedTag]);
 
   // Remaining pool excludes the featured post.
   const remainingPool = useMemo(() => {
     if (!featuredPost) {
-      return filteredPosts;
+      return regularPosts;
     }
-    return filteredPosts.filter((post) => post.id !== featuredPost.id);
-  }, [filteredPosts, featuredPost]);
+    return regularPosts.filter((post) => post.id !== featuredPost.id);
+  }, [regularPosts, featuredPost]);
 
   const totalPages = Math.max(
     1,
@@ -103,16 +115,16 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
   const startIndex = (currentPage - 1) * BLOG_PAGE_SIZE;
   const endIndex = startIndex + BLOG_PAGE_SIZE;
 
-  // Sort within each page: regular articles first, SEO articles at the bottom.
-  const paginatedPosts = useMemo(() => {
-    const pageSlice = remainingPool.slice(startIndex, endIndex);
-    return [...pageSlice].sort((a, b) => {
-      if (a.isSeoArticle !== b.isSeoArticle) {
-        return a.isSeoArticle ? 1 : -1;
-      }
-      return 0;
-    });
-  }, [remainingPool, startIndex, endIndex]);
+  const paginatedPosts = useMemo(
+    () => remainingPool.slice(startIndex, endIndex),
+    [remainingPool, startIndex, endIndex]
+  );
+
+  const seoStartIndex = (currentPage - 1) * SEO_PAGE_SIZE;
+  const paginatedSeoPosts = useMemo(
+    () => seoPosts.slice(seoStartIndex, seoStartIndex + SEO_PAGE_SIZE),
+    [seoPosts, seoStartIndex]
+  );
 
   const showFeatured = featuredPost && currentPage === 1;
 
@@ -164,6 +176,8 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
             />
           </div>
         )}
+
+        <SeoArticleList posts={paginatedSeoPosts} />
       </BlogLayout>
     </>
   );

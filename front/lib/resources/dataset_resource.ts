@@ -1,10 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { AppResource } from "@app/lib/resources/app_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -13,6 +6,12 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { DatasetType } from "@app/types/dataset";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

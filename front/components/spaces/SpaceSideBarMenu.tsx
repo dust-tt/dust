@@ -1,21 +1,3 @@
-import {
-  BoltIcon,
-  Button,
-  CloudArrowLeftRightIcon,
-  CommandLineIcon,
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-  PlusIcon,
-  ToolsIcon,
-  Tree,
-} from "@dust-tt/sparkle";
-import type { ReturnTypeOf } from "@octokit/core/types";
-import sortBy from "lodash/sortBy";
-import uniqBy from "lodash/uniqBy";
-import type { ComponentType, ReactElement } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -27,6 +9,7 @@ import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -49,7 +32,6 @@ import {
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
   DataSourceViewCategory,
@@ -65,6 +47,22 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  CloudArrowLeftRightIcon,
+  CommandLineIcon,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  PlusIcon,
+  ToolsIcon,
+  Tree,
+} from "@dust-tt/sparkle";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
+import type { ComponentType, ReactElement } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -113,9 +111,7 @@ export default function SpaceSideBarMenu({
     return uniqBy(spacesAsAdmin.concat(spacesAsUser), "sId");
   }, [spacesAsAdmin, spacesAsUser]);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   if (isSpacesAsAdminLoading || isSpacesAsUserLoading || !spacesAsUser) {
     return <></>;
@@ -273,7 +269,7 @@ const SystemSpaceMenu = ({
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
-  hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
+  hasFeature: ReturnType<typeof useFeatureFlags>["hasFeature"];
 }) => {
   return (
     <NavigationList>
@@ -346,7 +342,7 @@ const SpaceMenu = ({
   owner: LightWorkspaceType;
   space: SpaceType;
   isMember: boolean;
-  hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
+  hasFeature: ReturnType<typeof useFeatureFlags>["hasFeature"];
 }) => {
   return (
     <Tree variant="navigator">
@@ -369,7 +365,7 @@ const SpaceMenuItem = ({
   owner: LightWorkspaceType;
   space: SpaceType;
   isMember: boolean;
-  hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
+  hasFeature: ReturnType<typeof useFeatureFlags>["hasFeature"];
 }) => {
   const router = useAppRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();

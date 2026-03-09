@@ -1,4 +1,4 @@
-name: Format Check (Biome)
+name: Format/lint checks (Biome)
 
 on:
   push:
@@ -15,6 +15,8 @@ on:
       - "**/*.yaml"
       - biome.json
       - "**/biome.json"
+      - "biome-plugins/**"
+      - ".grit/**"
       - package.json
       - package-lock.json
       - .github/workflows/format-check.yml
@@ -29,10 +31,16 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.22.0
           cache: "npm"
           cache-dependency-path: ./package-lock.json
       - name: Install Biome
-        run: npm install -g @biomejs/biome@2.3.14
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Grit CLI
+        run: |
+          curl -fsSL https://docs.grit.io/install | bash
+          echo "$HOME/.grit/bin" >> $GITHUB_PATH
       - name: Format Check
         run: npm run biome
+      - name: GritQL Plugin Tests
+        run: npm run test:grit

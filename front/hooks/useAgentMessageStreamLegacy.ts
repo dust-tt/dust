@@ -1,5 +1,3 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
-
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -21,6 +19,7 @@ import { isLightAgentMessageWithActionsType } from "@app/types/assistant/convers
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo, useReducer, useRef } from "react";
 
 type AgentStateClassification =
   | "placeholder"

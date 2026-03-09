@@ -1,7 +1,3 @@
-import { Storage } from "@google-cloud/storage";
-import * as t from "io-ts";
-import { v4 as uuidv4 } from "uuid";
-
 import config from "@app/lib/file_storage/config";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -13,6 +9,9 @@ import {
 } from "@app/types/api/public/data_sources";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { Storage } from "@google-cloud/storage";
+import * as t from "io-ts";
+import { v4 as uuidv4 } from "uuid";
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,

@@ -1,5 +1,3 @@
-import { FaviconIcon, GlobeAltIcon, LinkWrapper } from "@dust-tt/sparkle";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -9,6 +7,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import { FaviconIcon, GlobeAltIcon, LinkWrapper } from "@dust-tt/sparkle";
 
 export function MCPBrowseActionDetails({
   toolOutput,

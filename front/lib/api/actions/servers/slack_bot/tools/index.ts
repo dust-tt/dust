@@ -1,17 +1,17 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  executeGetUser,
-  executeListPublicChannels,
-  executeListUsers,
-  executePostMessage,
-  getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import type {
   ToolDefinition,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  executeListPublicChannels,
+  executeListUserGroups,
+  executePostMessage,
+  executeSearchUser,
+  getSlackClient,
+} from "@app/lib/api/actions/servers/slack/helpers";
 import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
@@ -48,32 +48,35 @@ export function createSlackBotTools(
       }
     },
 
-    list_users: async ({ nameFilter }, { authInfo }) => {
+    search_user: async ({ query, search_all }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeListUsers({ nameFilter, accessToken });
+        return await executeSearchUser(query, search_all ?? false, {
+          accessToken,
+          mcpServerId,
+        });
       } catch (error) {
         return new Err(
-          new MCPError(`Error listing users: ${normalizeError(error)}`)
+          new MCPError(`Error searching user: ${normalizeError(error)}`)
         );
       }
     },
 
-    get_user: async ({ userId }, { authInfo }) => {
+    list_user_groups: async (_params, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeGetUser({ userId, accessToken });
+        return await executeListUserGroups({ accessToken });
       } catch (error) {
         return new Err(
-          new MCPError(`Error retrieving user info: ${normalizeError(error)}`)
+          new MCPError(`Error listing user groups: ${normalizeError(error)}`)
         );
       }
     },

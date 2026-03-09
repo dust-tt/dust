@@ -1,16 +1,16 @@
-import type { PublicFrameResponseBodyType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getConversationRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
+import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger
@@ -69,7 +69,10 @@ async function handler(
   const { file, shareScope } = result;
 
   // Only allow conversation Frame files.
-  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -138,8 +141,14 @@ async function handler(
         })
       : false;
 
+  const spaceId = file.useCaseMetadata?.spaceId;
+  const space =
+    spaceId && auth ? await SpaceResource.fetchById(auth, spaceId) : null;
+  const canRead = space && space.isProject() && auth && space.canRead(auth);
+
   // Generate access token for viz rendering.
   const accessToken = generateVizAccessToken({
+    contentType: file.contentType,
     fileToken: token,
     userId: user?.sId,
     shareScope,
@@ -158,6 +167,9 @@ async function handler(
           config.getAppUrl()
         )
       : null,
+    // Only return the project URL if the user can read the project.
+    projectUrl:
+      canRead && spaceId ? getProjectRoute(workspace.sId, spaceId) : null,
   });
 }
 

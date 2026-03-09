@@ -1,3 +1,16 @@
+import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
+import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { SuggestionDataTable } from "@app/components/poke/suggestions/table";
+import { TriggerDataTable } from "@app/components/poke/triggers/table";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
+import { decodeSqids } from "@app/lib/utils";
+import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   Button,
   ContextItem,
@@ -18,19 +31,6 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-
-import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
-import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
-import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { TriggerDataTable } from "@app/components/poke/triggers/table";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { decodeSqids } from "@app/lib/utils";
-import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 
 export function AssistantDetailsPage() {
   const owner = useWorkspace();
@@ -146,6 +146,13 @@ export function AssistantDetailsPage() {
             />
           </div>
 
+          <div className="mt-4">
+            <SuggestionDataTable
+              owner={owner}
+              agentId={agentConfigurations[0].sId}
+            />
+          </div>
+
           <Page.Vertical align="stretch">
             <ContextItem.List>
               {agentConfigurations.map((a) => {
@@ -243,7 +250,9 @@ export function AssistantDetailsPage() {
                         </div>
                         <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold">Instructions:</span>
+                            <span className="font-bold">
+                              Instructions markdown:
+                            </span>
                             <LinkWrapper
                               href={`/poke/${owner.sId}/assistants/${a.sId}/instructions`}
                             >
@@ -258,6 +267,16 @@ export function AssistantDetailsPage() {
                           <TextArea
                             placeholder=""
                             value={a.instructions ?? ""}
+                            onChange={() => {
+                              // noop
+                            }}
+                          />
+                        </div>
+                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                          <span className="font-bold">Instructions HTML:</span>
+                          <TextArea
+                            placeholder=""
+                            value={a.instructionsHtml ?? ""}
                             onChange={() => {
                               // noop
                             }}

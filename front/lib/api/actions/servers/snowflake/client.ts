@@ -1,5 +1,11 @@
 import { createPrivateKey } from "node:crypto";
-
+import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   Connection,
   ConnectionOptions,
@@ -8,14 +14,6 @@ import type {
 } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
-import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { EnvironmentConfig } from "@app/types/shared/utils/config";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isString } from "@app/types/shared/utils/general";
-
 // Maximum duration (in seconds) a query is allowed to run before being cancelled.
 const QUERY_TIMEOUT_SECONDS = 120;
 
@@ -23,6 +21,11 @@ interface SnowflakeColumn {
   name: string;
   type: string;
   nullable: boolean;
+}
+
+interface SnowflakeSemanticViewInfo {
+  dimensions: Array<{ name: string; dataType: string; tableName: string }>;
+  metrics: Array<{ name: string; dataType: string; tableName: string }>;
 }
 
 interface SnowflakeQueryResult {
@@ -76,11 +79,18 @@ export class SnowflakeClient {
   private account: string;
   private warehouse: string;
   private auth: SnowflakeClientAuth;
+  private queryTag?: string;
 
-  constructor(account: string, auth: SnowflakeClientAuth, warehouse: string) {
+  constructor(
+    account: string,
+    auth: SnowflakeClientAuth,
+    warehouse: string,
+    queryTag?: string
+  ) {
     this.account = account.trim();
     this.warehouse = warehouse.trim();
     this.auth = auth;
+    this.queryTag = queryTag;
   }
 
   /**
@@ -110,6 +120,11 @@ export class SnowflakeClient {
         ),
       };
 
+      // Set query tag for agent-level tracking in Snowflake.
+      if (this.queryTag) {
+        connectionOptions.queryTag = this.queryTag;
+      }
+
       if (this.auth.type === "oauth") {
         connectionOptions.authenticator = "OAUTH";
         connectionOptions.token = this.auth.token;
@@ -134,20 +149,29 @@ export class SnowflakeClient {
             return;
           }
           settled = true;
+
+          // Reject immediately on timeout. `conn.destroy()` can hang in some network/DNS failure
+          // modes, so only attempt it as best-effort cleanup.
+          reject(
+            new Error(
+              "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+            )
+          );
+
           try {
             conn.destroy((err: SnowflakeError | undefined) => {
               if (err) {
-                reject(err as unknown as Error);
-                return;
+                logger.warn(
+                  { error: err },
+                  "Error destroying Snowflake connection after timeout"
+                );
               }
-              reject(
-                new Error(
-                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
-                )
-              );
             });
           } catch (e) {
-            reject(e instanceof Error ? e : new Error(String(e)));
+            logger.warn(
+              { error: e },
+              "Exception destroying Snowflake connection after timeout"
+            );
           }
         }, connectTimeoutMs);
 
@@ -361,6 +385,23 @@ export class SnowflakeClient {
       tables.push(...views);
     }
 
+    // Also get semantic views (failure is non-fatal - some schemas may not have semantic views)
+    const semanticViewsResult = await this.executeStatement(
+      `SHOW SEMANTIC VIEWS IN SCHEMA "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"`
+    );
+    if (semanticViewsResult.isOk()) {
+      const semanticViews = semanticViewsResult.value.rows
+        .map((row) => {
+          const name = getRowStringMultiKey(row, "name", "NAME");
+          if (!name) {
+            return null;
+          }
+          return { name, kind: "SEMANTIC_VIEW" };
+        })
+        .filter((v): v is { name: string; kind: string } => v !== null);
+      tables.push(...semanticViews);
+    }
+
     return new Ok(tables);
   }
 
@@ -439,6 +480,47 @@ export class SnowflakeClient {
     }
 
     return new Ok(undefined);
+  }
+
+  async describeSemanticView(
+    database: string,
+    schema: string,
+    semanticView: string
+  ): Promise<Result<SnowflakeSemanticViewInfo, Error>> {
+    const escapedName = `"${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"."${escapeSnowflakeIdentifier(semanticView)}"`;
+
+    const dimensionsResult = await this.executeStatement(
+      `SHOW SEMANTIC DIMENSIONS IN ${escapedName}`
+    );
+    if (dimensionsResult.isErr()) {
+      return dimensionsResult;
+    }
+
+    const dimensions = dimensionsResult.value.rows
+      .map((row) => ({
+        name: getRowStringMultiKey(row, "name", "NAME") ?? "",
+        dataType: getRowStringMultiKey(row, "data_type", "DATA_TYPE") ?? "",
+        tableName: getRowStringMultiKey(row, "table_name", "TABLE_NAME") ?? "",
+      }))
+      .filter((d) => d.name !== "");
+
+    // Metrics query is non-fatal - some semantic views may only have dimensions.
+    const metricsResult = await this.executeStatement(
+      `SHOW SEMANTIC METRICS IN ${escapedName}`
+    );
+
+    const metrics = metricsResult.isOk()
+      ? metricsResult.value.rows
+          .map((row) => ({
+            name: getRowStringMultiKey(row, "name", "NAME") ?? "",
+            dataType: getRowStringMultiKey(row, "data_type", "DATA_TYPE") ?? "",
+            tableName:
+              getRowStringMultiKey(row, "table_name", "TABLE_NAME") ?? "",
+          }))
+          .filter((m) => m.name !== "")
+      : [];
+
+    return new Ok({ dimensions, metrics });
   }
 
   async readOnlyQuery(

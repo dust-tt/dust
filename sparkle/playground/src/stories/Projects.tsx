@@ -7,8 +7,11 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   CheckDoubleIcon,
+  CodeSlashIcon,
   Cog6ToothIcon,
   ContactsUserIcon,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -19,6 +22,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FullscreenExitIcon,
+  FullscreenIcon,
   HeartIcon,
   LightbulbIcon,
   ListSelectIcon,
@@ -32,6 +37,7 @@ import {
   NavigationListItemAction,
   PencilSquareIcon,
   PlusIcon,
+  PuzzleIcon,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -51,11 +57,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { ProfilePanel } from "../components/Profile";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   type Agent,
   type Conversation,
@@ -127,6 +136,9 @@ function DustMain() {
   >("new-conversation");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<"templates" | null>(null);
+  const [selectedTemplateForBuilder, setSelectedTemplateForBuilder] =
+    useState<Template | null>(null);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -148,6 +160,8 @@ function DustMain() {
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showProfileView, setShowProfileView] = useState(false);
+  const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   // Initialize space members with generated members when a space is first selected
@@ -200,6 +214,7 @@ function DustMain() {
   // Auto-select newly created space when it's added to the spaces array
   useEffect(() => {
     if (lastCreatedSpaceId && spaces.find((s) => s.id === lastCreatedSpaceId)) {
+      setSelectedView(null);
       setSelectedSpaceId(lastCreatedSpaceId);
       setSelectedConversationId(null);
       setLastCreatedSpaceId(null);
@@ -309,18 +324,32 @@ function DustMain() {
     });
   }, [searchText, sortedCollaborators]);
 
+  // Derive count and hasActivity deterministically from space ID.
+  const getSpaceActivity = (space: Space) => {
+    const charCode = space.id.charCodeAt(space.id.length - 1);
+    const count = charCode % 3 === 0 ? (charCode % 9) + 1 : undefined;
+    const hasActivity = count ? true : charCode % 2 !== 0;
+    return { count, hasActivity };
+  };
+
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
-      // Determine if restricted based on space ID
-      const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
-      const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
+      const actA = getSpaceActivity(a);
+      const actB = getSpaceActivity(b);
 
-      // First sort by type: Open (false) first, Restricted (true) second
-      if (isRestrictedA !== isRestrictedB) {
-        return isRestrictedA ? 1 : -1;
+      // 1. Items with count come first, highest count first
+      const countA = actA.count ?? 0;
+      const countB = actB.count ?? 0;
+      if (countA !== countB) {
+        return countB - countA;
       }
 
-      // Then sort alphabetically by name
+      // 2. Items with hasActivity (but no count) come next
+      if (actA.hasActivity !== actB.hasActivity) {
+        return actA.hasActivity ? -1 : 1;
+      }
+
+      // 3. Alphabetical by name
       return a.name.localeCompare(b.name);
     });
   }, [spaces]);
@@ -438,7 +467,7 @@ function DustMain() {
                     />
                   ))
                 ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                     No participants
                   </div>
                 )}
@@ -461,9 +490,11 @@ function DustMain() {
 
   if (!user) {
     return (
-      <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
+      <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
         <div className="s-text-center">
-          <p className="s-text-foreground">Loading...</p>
+          <p className="s-text-foreground dark:s-text-foreground-night">
+            Loading...
+          </p>
         </div>
       </div>
     );
@@ -510,11 +541,121 @@ function DustMain() {
                 icon={ChatBubbleBottomCenterTextIcon}
                 label="New"
               />
+              <DropdownMenu
+                open={isAgentsDropdownOpen}
+                onOpenChange={setIsAgentsDropdownOpen}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={MoreIcon}
+                    aria-label="More options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel label="Agents" />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger
+                      icon={PlusIcon}
+                      label="Build an agent"
+                    />
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        icon={PencilSquareIcon}
+                        label="From scratch"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                      <DropdownMenuItem
+                        icon={LightbulbIcon}
+                        label="Browse templates"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsAgentsDropdownOpen(false);
+                          setShowProfileView(false);
+                          setSelectedView("templates");
+                          setSelectedConversationId(null);
+                          setSelectedSpaceId(null);
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Open YAML"
+                        icon={CodeSlashIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuItem
+                    label="Edit agent"
+                    icon={PencilSquareIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage agents"
+                    icon={ContactsUserIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Skills" />
+                  <DropdownMenuItem
+                    label="New skill"
+                    icon={PlusIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage skills"
+                    icon={PuzzleIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label="Edit conversations"
+                    icon={ListSelectIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Clear conversation history"
+                    icon={TrashIcon}
+                    variant="warning"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
                 label="Inbox"
-                className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                className="s-border-b s-border-t s-border-border dark:s-border-border-night s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
                 actionOnHover={false}
                 action={
                   <Button
@@ -539,8 +680,9 @@ function DustMain() {
                     status={status}
                     moreMenu={getConversationMoreMenu(conversation)}
                     onClick={() => {
-                      // Clear previousSpaceId when navigating from sidebar
+                      setShowProfileView(false);
                       setPreviousSpaceId(null);
+                      setSelectedView(null);
                       setSelectedConversationId(conversation.id);
                       setSelectedSpaceId(null);
                     }}
@@ -552,9 +694,10 @@ function DustMain() {
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Rooms"
+                  label="Projects"
                   type="collapse"
                   defaultOpen={true}
+                  visibleItems={4}
                   action={
                     <>
                       <Button
@@ -608,10 +751,7 @@ function DustMain() {
                     // Deterministically assign open or restricted status based on space ID
                     const isRestricted =
                       space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                    // Deterministically assign count to some spaces based on space ID
-                    const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                    const count =
-                      spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                    const { count, hasActivity } = getSpaceActivity(space);
                     return (
                       <NavigationListItem
                         key={space.id}
@@ -619,6 +759,7 @@ function DustMain() {
                         icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
                         selected={space.id === selectedSpaceId}
                         count={count}
+                        hasActivity={hasActivity}
                         moreMenu={
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -645,6 +786,8 @@ function DustMain() {
                           </DropdownMenu>
                         }
                         onClick={() => {
+                          setShowProfileView(false);
+                          setSelectedView(null);
                           setSelectedSpaceId(space.id);
                           setSelectedConversationId(null);
                         }}
@@ -725,7 +868,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -744,7 +887,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -763,7 +906,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -782,7 +925,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -800,7 +943,7 @@ function DustMain() {
           value="spaces"
           className="s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground">
+          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
             Spaces - TBD
           </div>
         </TabsContent>
@@ -808,7 +951,7 @@ function DustMain() {
           value="admin"
           className="s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground">
+          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
             Admin - TBD
           </div>
         </TabsContent>
@@ -848,6 +991,9 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setShowProfileView(true);
+                setSelectedConversationId(null);
+                setSelectedSpaceId(null);
               }}
             />
             <DropdownMenuItem
@@ -947,6 +1093,7 @@ function DustMain() {
 
   // Handle back button from conversation view
   const handleConversationBack = () => {
+    setShowProfileView(false);
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
@@ -1035,11 +1182,21 @@ function DustMain() {
 
   // Main content
   const mainContent =
-    // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
+    // Priority 0: Show profile when opened from user menu
+    showProfileView && user ? (
+      <ProfilePanel user={user} />
+    ) : // Priority 1: Show template selection when Browse templates is clicked
+    selectedView === "templates" ? (
+      <div className="s-h-full s-overflow-auto">
+        <TemplateSelection
+          onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
+        />
+      </div>
+    ) : // Priority 2: Show conversation view if a conversation is selected (not "new-conversation")
     selectedConversationId &&
-    selectedConversationId !== "new-conversation" &&
-    selectedConversation &&
-    user ? (
+      selectedConversationId !== "new-conversation" &&
+      selectedConversation &&
+      user ? (
       <ConversationView
         conversation={selectedConversation}
         locutor={user}
@@ -1050,7 +1207,7 @@ function DustMain() {
         onBack={handleConversationBack}
         projectTitle={selectedSpace?.name}
       />
-    ) : // Priority 2: Show space view if a space is selected
+    ) : // Priority 3: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
       <GroupConversationView
         space={selectedSpace}
@@ -1068,10 +1225,10 @@ function DustMain() {
             : []
         }
         onConversationClick={(conversation) => {
-          // Store the current space ID before navigating to conversation
+          setShowProfileView(false);
+          setSelectedView(null);
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
-          // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
         onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
         onUpdateSpaceName={handleUpdateSpaceName}
@@ -1079,15 +1236,15 @@ function DustMain() {
         spacePublicSettings={spacePublicSettings}
       />
     ) : (
-      // Priority 3: Show welcome/new conversation view
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
+      // Priority 4: Show welcome/new conversation view
+      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground">
+          <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
             Welcome, Edouard!{" "}
           </div>
           <InputBar placeholder="Ask a question" />
           <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <div className="s-heading-lg s-text-foreground">
+            <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
               Universal search
             </div>
             <SearchInput
@@ -1098,13 +1255,15 @@ function DustMain() {
               className="s-w-full"
             />
           </div>
-          <div className="s-heading-lg s-text-foreground">Chat with…</div>
+          <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+            Chat with…
+          </div>
         </div>
       </div>
     );
 
   return (
-    <div className="s-flex s-h-screen s-w-full s-bg-background">
+    <div className="s-flex s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
       <SidebarLayout
         ref={sidebarLayoutRef}
         sidebar={sidebarContent}
@@ -1122,6 +1281,28 @@ function DustMain() {
         }}
         onNext={handleRoomNameNext}
       />
+      <Dialog
+        open={selectedTemplateForBuilder !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTemplateForBuilder(null);
+        }}
+      >
+        <DialogContent
+          size="full"
+          className="s-flex s-h-full s-max-h-full s-rounded-none s-p-0 s-overflow-hidden"
+        >
+          {selectedTemplateForBuilder && (
+            <AgentBuilderView
+              template={{
+                handle: selectedTemplateForBuilder.handle,
+                emoji: selectedTemplateForBuilder.emoji,
+                backgroundColor: selectedTemplateForBuilder.backgroundColor,
+              }}
+              onClose={() => setSelectedTemplateForBuilder(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <InviteUsersScreen
         isOpen={isInviteUsersScreenOpen}
         spaceId={inviteSpaceId}

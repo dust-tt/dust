@@ -29,6 +29,13 @@ export interface ReasoningDeltaEvent {
   metadata: LLMClientMetadata & { encrypted_content?: string };
 }
 
+// Tool call deltas are not streamed to the UI but they are used internally
+// as heartbeat to know the LLM is still active.
+export interface ToolCallDeltaEvent {
+  type: "tool_call_delta";
+  metadata: LLMClientMetadata;
+}
+
 // Output items
 export interface ToolCall {
   id: string;
@@ -105,6 +112,7 @@ export type LLMEvent =
   | ResponseIdEvent
   | TextDeltaEvent
   | ReasoningDeltaEvent
+  | ToolCallDeltaEvent
   | ToolCallEvent
   | TextGeneratedEvent
   | ReasoningGeneratedEvent

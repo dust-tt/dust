@@ -1,5 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-
 import type {
   AgentBuilderSkillsType,
   MCPFormData,
@@ -22,6 +20,7 @@ import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { useCallback, useMemo, useState } from "react";
 
 type UseSkillSelectionProps = {
   alreadyAddedSkillIds: Set<string>;
@@ -69,6 +68,7 @@ export const useSkillSelection = ({
     );
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
       if (selectedSkillIds.has(skill.sId)) {

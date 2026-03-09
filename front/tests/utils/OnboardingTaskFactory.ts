@@ -1,9 +1,8 @@
-import { faker } from "@faker-js/faker";
-
 import type { Authenticator } from "@app/lib/auth";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import type { OnboardingTaskKind } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { ONBOARDING_TASK_KINDS } from "@app/lib/resources/storage/models/onboarding_tasks";
+import { faker } from "@faker-js/faker";
 
 export class OnboardingTaskFactory {
   static async create(

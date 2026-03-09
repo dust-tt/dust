@@ -199,10 +199,11 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
  */
 export const GongCommandSchema = t.type({
   majorCommand: t.literal("gong"),
-  command: t.literal("force-resync"),
-  args: t.type({
-    connectorId: t.union([t.number, t.undefined]),
-    fromTs: t.union([t.number, t.undefined]),
+  command: t.union([t.literal("force-resync"), t.literal("delete-transcript")]),
+  args: t.partial({
+    connectorId: t.number,
+    fromTs: t.number,
+    callId: t.string,
   }),
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
@@ -213,6 +214,13 @@ export const GongForceResyncResponseSchema = t.type({
 });
 export type GongForceResyncResponseType = t.TypeOf<
   typeof GongForceResyncResponseSchema
+>;
+
+export const GongDeleteTranscriptResponseSchema = t.type({
+  callId: t.string,
+});
+export type GongDeleteTranscriptResponseType = t.TypeOf<
+  typeof GongDeleteTranscriptResponseSchema
 >;
 /**
  * </Gong>
@@ -232,6 +240,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("upsert-file"),
     t.literal("update-core-parents"),
     t.literal("restart-google-webhooks"),
+    t.literal("start-full-sync"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
@@ -416,6 +425,7 @@ export const MicrosoftCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("start-full-sync"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
@@ -624,6 +634,7 @@ export const SlackCommandSchema = t.type({
     t.literal("whitelist-bot"),
     t.literal("whitelist-domains"),
     t.literal("check-channel"),
+    t.literal("delete-conversation"),
   ]),
   args: t.record(
     t.string,
@@ -775,6 +786,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("remove-organization-tag"),
     t.literal("add-ticket-tag"),
     t.literal("remove-ticket-tag"),
+    t.literal("set-rate-limit"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -786,6 +798,7 @@ export const ZendeskCommandSchema = t.type({
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    rateLimitTps: t.union([t.number, t.undefined]),
     tag: t.union([t.string, t.undefined]),
     include: t.union([t.literal("true"), t.undefined]),
     exclude: t.union([t.literal("true"), t.undefined]),
@@ -886,6 +899,7 @@ export const AdminResponseSchema = t.union([
   ConfluenceResolveSpaceFromUrlResponseSchema,
   ConfluenceSkipPageResponseSchema,
   ConfluenceUpsertPageResponseSchema,
+  GongDeleteTranscriptResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,
   IntercomCheckMissingConversationsResponseSchema,

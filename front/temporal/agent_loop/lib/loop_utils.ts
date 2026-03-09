@@ -1,10 +1,9 @@
-import assert from "assert";
-
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import assert from "assert";
 
 /**
  * Cuts the conversation messages to properly handle post / edit / retry

@@ -1,18 +1,20 @@
-import tracer from "dd-trace";
-import { EventEmitter } from "events";
-import type { RedisClientType } from "redis";
-import { commandOptions, createClient } from "redis";
-
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { createRedisStreamClient } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import tracer from "@app/logger/tracer";
+import { EventEmitter } from "events";
+import type { RedisClientType } from "redis";
+import { commandOptions } from "redis";
 
 type EventCallback = (event: EventPayload | "close") => void;
 
 // Conservative value to prevent memory spikes during deployment reconnection bursts.
 // Clients automatically paginate if more history is needed.
 const HISTORY_FETCH_COUNT = 50;
+
+const MAX_PUBLISH_ATTEMPTS = 5;
 
 export type EventPayload = {
   id: string;
@@ -29,6 +31,7 @@ export type EventPayload = {
  */
 class RedisHybridManager {
   private static instance: RedisHybridManager;
+  private static paddingCounter = 0;
   private subscriptionClient: RedisClientType | null = null;
   private streamAndPublishClient: RedisClientType | null = null;
   private subscribers: Map<string, Set<EventCallback>> = new Map();
@@ -52,32 +55,22 @@ class RedisHybridManager {
     return RedisHybridManager.instance;
   }
 
-  /**
-   * Get or initialize the Redis client
-   */
   private async getSubscriptionClient(): Promise<RedisClientType> {
     if (!this.subscriptionClient) {
-      const { REDIS_URI } = process.env;
-      if (!REDIS_URI) {
-        throw new Error("REDIS_URI is not defined");
-      }
-
-      this.subscriptionClient = createClient({
-        url: REDIS_URI,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
+      this.subscriptionClient = await createRedisStreamClient({
+        origin: "conversation_events",
+        options: {
+          socket: {
+            reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
           },
         },
       });
 
-      // Set up error handler
       this.subscriptionClient.on("error", (err) => {
         logger.error({ error: err }, "Redis subscription client error");
         this.scheduleSubscriptionReconnect();
       });
 
-      // Set up reconnect handler
       this.subscriptionClient.on("connect", async () => {
         logger.debug("Redis subscription client connected");
 
@@ -86,11 +79,8 @@ class RedisHybridManager {
           this.pubSubReconnectTimer = null;
         }
 
-        // Resubscribe to all active channels
         await this.resubscribeToChannels();
       });
-
-      await this.subscriptionClient.connect();
     }
 
     return this.subscriptionClient;
@@ -98,31 +88,24 @@ class RedisHybridManager {
 
   private async getStreamAndPublishClient(): Promise<RedisClientType> {
     if (!this.streamAndPublishClient) {
-      const { REDIS_URI } = process.env;
-      if (!REDIS_URI) {
-        throw new Error("REDIS_URI is not defined");
-      }
-
-      this.streamAndPublishClient = createClient({
-        url: REDIS_URI,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
+      this.streamAndPublishClient = await createRedisStreamClient({
+        origin: "message_events",
+        options: {
+          socket: {
+            reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
           },
-        },
-        isolationPoolOptions: {
-          min: 1,
-          max: 100, // Pool of 100 connections for concurrent stream operations.
+          isolationPoolOptions: {
+            min: 1,
+            max: 100,
+          },
         },
       });
 
-      // Set up error handler
       this.streamAndPublishClient.on("error", (err) => {
         logger.error({ error: err }, "Redis stream and publish client error");
         this.scheduleStreamAndPublishReconnect();
       });
 
-      // Set up reconnect handler
       this.streamAndPublishClient.on("connect", () => {
         logger.debug("Redis stream and publish client connected");
         if (this.streamReconnectTimer) {
@@ -130,8 +113,6 @@ class RedisHybridManager {
           this.streamReconnectTimer = null;
         }
       });
-
-      await this.streamAndPublishClient.connect();
     }
 
     return this.streamAndPublishClient;
@@ -209,53 +190,75 @@ class RedisHybridManager {
     const streamName = this.getStreamName(channelName);
     const pubSubChannelName = this.getPubSubChannelName(channelName);
 
-    const startTime = Date.now();
+    let lastError: unknown | undefined = undefined;
 
-    try {
-      // Publish to stream for history
-      const eventId = await streamAndPublishClient.xAdd(streamName, "*", {
-        payload: data,
-      });
+    // Try to publish the event up to MAX_PUBLISH_ATTEMPTS times to avoid losing events in case of a temporary Redis error.
+    for (let i = 0; i < MAX_PUBLISH_ATTEMPTS; ++i) {
+      // Generate a unique event ID in redis expected format with a padding static counter to avoid collisions
+      // Redis expected format is: <timestamp>-<number> and eventId should be unique AND incrementing.
+      // The padding counter is used to ensure that the eventId is unique and incrementing when the timestamp is the same.
+      // We recompute the eventId for each attempt to avoid race conditions with other clients publishing events.
+      const startTime = Date.now();
+      const eventId = `${startTime}-${RedisHybridManager.paddingCounter}`;
 
-      // Set expiration on the stream
-      await streamAndPublishClient.expire(streamName, ttl);
+      // Increment the padding counter and wrap around to avoid overflow
+      RedisHybridManager.paddingCounter =
+        (RedisHybridManager.paddingCounter + 1) % 1000;
 
       const eventPayload: EventPayload = {
         id: eventId,
         message: { payload: data },
       };
 
-      // Publish to pub/sub for real-time updates
-      await streamAndPublishClient.publish(
-        pubSubChannelName,
-        // Mimick the format of the event from the stream so that the subscriber can use the same logic
-        JSON.stringify(eventPayload)
-      );
+      try {
+        // Publish to stream for history, set expiration on stream and publish to pub/sub in a single pipeline to avoid 3 round trips to Redis (3 => 1).
+        // Using Promise.all is the idiomatic way to do this in node-redis https://redis.io/docs/latest/develop/clients/nodejs/transpipe/#execute-a-pipeline
+        await Promise.all([
+          streamAndPublishClient.xAdd(streamName, eventId, {
+            payload: data,
+          }),
+          streamAndPublishClient.expire(streamName, ttl),
+          streamAndPublishClient.publish(
+            pubSubChannelName,
+            // Mimick the format of the event from the stream so that the subscriber can use the same logic
+            JSON.stringify(eventPayload)
+          ),
+        ]);
 
-      const duration = Date.now() - startTime;
-      logger.debug(
-        {
-          duration,
-          pubSubChannelName,
-          streamName,
-          origin,
-        },
-        "Redis hybrid publish completed"
-      );
-
-      return eventId;
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          pubSubChannelName,
-          streamName,
-          origin,
-        },
-        "Error publishing to Redis"
-      );
-      throw error;
+        return eventId;
+      } catch (error) {
+        lastError = error;
+        logger.warn(
+          {
+            error,
+            pubSubChannelName,
+            streamName,
+            origin,
+            attempt: i + 1,
+            maxAttempts: MAX_PUBLISH_ATTEMPTS,
+            eventId,
+          },
+          "Error publishing to Redis, retrying..."
+        );
+        // Sleep for at least 5ms to avoid flooding the Redis stream with events.
+        // Add jitter to avoid re-conflicting when restarting
+        // increase jitter for each failure to avoid even more conflicts
+        await new Promise((resolve) =>
+          setTimeout(resolve, 5 + Math.floor(Math.random() * 5 * (i + 1)))
+        );
+      }
     }
+
+    logger.error(
+      {
+        error: lastError,
+        pubSubChannelName,
+        streamName,
+        origin,
+      },
+      "Error publishing to Redis, giving up after all attempts."
+    );
+    throw lastError;
   }
 
   /**

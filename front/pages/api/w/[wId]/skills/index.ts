@@ -1,13 +1,8 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -19,6 +14,11 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isBuilder } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSkillsResponseBody = {
   skills: SkillType[];
@@ -49,20 +49,36 @@ export const AttachedKnowledgeSchema = t.type({
 });
 
 // Request body schema for POST.
-const PostSkillRequestBodySchema = t.type({
-  name: t.string,
-  agentFacingDescription: t.string,
-  userFacingDescription: t.string,
-  instructions: t.string,
-  icon: t.union([t.string, t.null]),
-  tools: t.array(
+const PostSkillRequestBodySchema = t.intersection([
+  t.type({
+    name: t.string,
+    agentFacingDescription: t.string,
+    userFacingDescription: t.string,
+    instructions: t.string,
+    icon: t.union([t.string, t.null]),
+    tools: t.array(
+      t.type({
+        mcpServerViewId: t.string,
+      })
+    ),
+    extendedSkillId: t.union([t.string, t.null]),
+    attachedKnowledge: t.array(AttachedKnowledgeSchema),
+  }),
+  t.partial({
+    fileAttachments: t.array(t.type({ fileId: t.string })),
+    isDefault: t.boolean,
+  }),
+  t.union([
     t.type({
-      mcpServerViewId: t.string,
-    })
-  ),
-  extendedSkillId: t.union([t.string, t.null]),
-  attachedKnowledge: t.array(AttachedKnowledgeSchema),
-});
+      source: t.literal("github"),
+      sourceMetadata: t.type({ repoUrl: t.string, filePath: t.string }),
+    }),
+    t.partial({
+      source: t.union([t.literal("web_app"), t.literal("local_file")]),
+      sourceMetadata: t.null,
+    }),
+  ]),
+]);
 
 type PostSkillRequestBody = t.TypeOf<typeof PostSkillRequestBodySchema>;
 
@@ -202,8 +218,9 @@ async function handler(
         });
       }
 
+      const { attachedKnowledge, fileAttachments } = body;
+
       // Validate all data source views from attached knowledge exist and user has access.
-      const { attachedKnowledge } = body;
       const dataSourceViewIds = uniq(
         attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
       );
@@ -263,6 +280,50 @@ async function handler(
         });
       }
 
+      // Validate file attachments if provided (gated behind sandbox_tools).
+      let files: FileResource[] | undefined;
+      if (fileAttachments) {
+        const featureFlags = await getFeatureFlags(
+          auth.getNonNullableWorkspace()
+        );
+        if (
+          !featureFlags.includes("sandbox_tools") &&
+          fileAttachments.length > 0
+        ) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: "File attachments are not supported.",
+            },
+          });
+        }
+
+        const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
+        files = await FileResource.fetchByIds(auth, fileAttachmentIds);
+        if (files.length !== fileAttachmentIds.length) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
+            },
+          });
+        }
+
+        for (const file of files) {
+          if (!file.isReady || file.useCase !== "skill_attachment") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `File ${file.sId} is not ready or not a skill_attachment.`,
+              },
+            });
+          }
+        }
+      }
+
       // Generate icon suggestion if not provided.
       let icon = body.icon;
       if (!icon) {
@@ -281,7 +342,7 @@ async function handler(
         }
       }
 
-      const skillResource = await SkillResource.makeNew(
+      const skill = await SkillResource.makeNew(
         auth,
         {
           status: "active",
@@ -293,15 +354,26 @@ async function handler(
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,
           icon,
+          source: body.source ?? "web_app",
+          sourceMetadata: body.sourceMetadata ?? null,
+          isDefault: body.isDefault ?? false,
         },
         {
           mcpServerViews,
           attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+          fileAttachments: files,
         }
       );
 
+      // Update file useCaseMetadata with the newly created skill's sId.
+      if (files) {
+        await FileResource.bulkSetUseCaseMetadata(auth, files, {
+          skillId: skill.sId,
+        });
+      }
+
       return res.status(200).json({
-        skill: skillResource.toJSON(auth),
+        skill: skill.toJSON(auth),
       });
     }
 

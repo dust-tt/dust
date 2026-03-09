@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientInformationFull,
@@ -5,8 +7,12 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 
-import config from "@app/lib/api/config";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
+export class MCPOAuthProviderError extends Error {
+  constructor(method: string) {
+    super(`MCPOAuthProvider: ${method} not implemented`);
+    this.name = "MCPOAuthProviderError";
+  }
+}
 
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
@@ -15,20 +21,18 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     this.token = tokens;
   }
   get redirectUrl(): string {
-    throw new Error(
-      "Method redirectUrl not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("redirectUrl");
   }
 
   get clientMetadata(): OAuthClientMetadata {
     return {
       redirect_uris: [finalizeUriForProvider("mcp")],
       client_name: "Dust",
-      client_uri: config.getClientFacingUrl(),
+      client_uri: config.getStaticWebsiteUrl(),
       logo_uri: "https://avatars.githubusercontent.com/u/116068963?s=200&v=4",
       contacts: ["support@dust.com"],
-      tos_uri: config.getClientFacingUrl() + "/terms",
-      policy_uri: config.getClientFacingUrl() + "/privacy",
+      tos_uri: config.getStaticWebsiteUrl() + "/terms",
+      policy_uri: config.getStaticWebsiteUrl() + "/privacy",
       software_id: "dust",
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
@@ -45,26 +49,18 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   }
 
   saveTokens() {
-    throw new Error(
-      "Method saveTokens not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("saveTokens");
   }
 
   redirectToAuthorization() {
-    throw new Error(
-      "Method redirectToAuthorization not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("redirectToAuthorization");
   }
 
   saveCodeVerifier() {
-    throw new Error(
-      "Method saveCodeVerifier not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("saveCodeVerifier");
   }
 
   codeVerifier(): string | Promise<string> {
-    throw new Error(
-      "Method codeVerifier not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("codeVerifier");
   }
 }

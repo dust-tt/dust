@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 

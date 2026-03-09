@@ -1,8 +1,4 @@
-import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
-import { useEffect, useMemo, useRef } from "react";
-import { useCookies } from "react-cookie";
-
+import config from "@app/lib/api/config";
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -14,9 +10,12 @@ import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+import { useEffect, useMemo, useRef } from "react";
+import { useCookies } from "react-cookie";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
 
 const EXCLUDED_PATHS = [
   "/poke",
@@ -29,18 +28,51 @@ const EXCLUDED_PATHS = [
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
+  // When true, skip fetching user data and assume cookies are accepted.
+  // Use in authenticated contexts (e.g. SPA) where the user is always logged in.
+  authenticated?: boolean;
 }
 
-export function PostHogTracker({ children }: PostHogTrackerProps) {
+export function PostHogTracker({
+  children,
+  authenticated,
+}: PostHogTrackerProps) {
+  // Always render PostHogProvider to avoid unmounting/remounting the entire
+  // tree when tracking state changes. Tracking is controlled via
+  // posthog.opt_in_capturing() / posthog.opt_out_capturing() instead.
+  return (
+    <PostHogProvider client={posthog}>
+      <PostHogTrackerInner authenticated={authenticated} />
+      {children}
+    </PostHogProvider>
+  );
+}
+
+/**
+ * Inner component that handles all PostHog side-effects (initialization,
+ * identification, opt-in/opt-out, workspace grouping, pageview tracking).
+ * Separated from PostHogTracker so that user/subscription loading never
+ * affects the children tree structure.
+ */
+interface PostHogTrackerInnerProps {
+  authenticated?: boolean;
+}
+
+function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
-  // Only fetch user if session indicator is present to avoid 401 errors on public pages.
-  const { user } = useUser({ disabled: !hasSession });
+  // Skip useUser in authenticated contexts — user is always logged in so
+  // hasCookiesAccepted is always true and we don't need user data for consent.
+  const { user } = useUser({
+    disabled: !!authenticated || !hasSession,
+  });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
-  const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
+  const hasAcceptedCookies = authenticated
+    ? true
+    : hasCookiesAccepted(cookieValue, user);
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
@@ -87,33 +119,44 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     return pathname.startsWith(path) || pathname.endsWith(path);
   });
 
-  const shouldTrack = isTrackablePage && hasAcceptedCookies;
-
   const lastIdentifiedWorkspaceId = useRef<string | null>(null);
   const lastPlanPropertiesString = useRef<string | null>(null);
   const hasInitialized = useRef(false);
+  const hasUpgradedPersistence = useRef(false);
+  const lastIdentifiedUserId = useRef<string | null>(null);
 
-  // Initialize PostHog once
+  // Phase 1: Initialize PostHog with memory-only persistence (no cookies).
+  // This captures events for all visitors including anonymous ad traffic,
+  // without setting any cookies or using localStorage (GDPR-compliant).
   useEffect(() => {
-    if (!POSTHOG_KEY || posthog.__loaded || hasInitialized.current) {
+    if (
+      !POSTHOG_KEY ||
+      !isTrackablePage ||
+      posthog.__loaded ||
+      hasInitialized.current
+    ) {
       return;
     }
 
     posthog.init(POSTHOG_KEY, {
-      api_host: "/subtle1",
+      api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
-      opt_out_capturing_by_default: !shouldTrack,
+      persistence: "memory",
       capture_pageview: true,
       capture_pageleave: false,
       autocapture: false,
+      disable_session_recording: true,
       property_denylist: ["$ip"],
       before_send: (event) => {
         if (!event) {
           return null;
         }
 
-        // Read marketing parameters from sessionStorage (populated by useStripUtmParams).
+        // Inject marketing parameters from sessionStorage/cookies into every
+        // event. This is needed because memory persistence can't auto-capture
+        // UTM params across page loads, and URLs may have been stripped by
+        // useStripUtmParams.
         const storedParams = getStoredUTMParams();
         for (const param of MARKETING_PARAMS) {
           const storedValue = storedParams[param];
@@ -122,14 +165,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
           }
         }
 
-        // Strip query parameters from URLs for privacy.
-        if (event.properties.$current_url) {
-          event.properties.$current_url =
-            event.properties.$current_url.split("?")[0];
-        }
-        if (event.properties.$pathname) {
-          event.properties.$pathname = event.properties.$pathname.split("?")[0];
-        }
         return event;
       },
       session_recording: {
@@ -140,54 +175,50 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     });
 
     hasInitialized.current = true;
-  }, [shouldTrack]);
+  }, [isTrackablePage]);
 
-  // Handle opt-in and user identification (once per user via localStorage)
-  const prevShouldTrack = useRef(shouldTrack);
+  // Phase 2: Upgrade to full cookie persistence and enable session recording
+  // once the user has accepted cookies (consent banner or login).
   useEffect(() => {
-    if (!posthog.__loaded || !hasInitialized.current) {
+    if (
+      !posthog.__loaded ||
+      !hasInitialized.current ||
+      !hasAcceptedCookies ||
+      hasUpgradedPersistence.current
+    ) {
       return;
     }
 
-    const trackingStateChanged = prevShouldTrack.current !== shouldTrack;
-    if (!trackingStateChanged) {
+    posthog.set_config({
+      persistence: "localStorage+cookie",
+      disable_session_recording: false,
+    });
+    posthog.startSessionRecording();
+    hasUpgradedPersistence.current = true;
+  }, [hasAcceptedCookies]);
+
+  // Identify user after consent is given. Handles both cases:
+  // consent-then-login and login-then-consent.
+  useEffect(() => {
+    if (
+      !posthog.__loaded ||
+      !hasInitialized.current ||
+      !hasAcceptedCookies ||
+      !user
+    ) {
       return;
     }
 
-    if (shouldTrack) {
-      const initializedUserId =
-        typeof window !== "undefined"
-          ? localStorage.getItem(POSTHOG_INITIALIZED_KEY)
-          : null;
-      const needsInitialization = user
-        ? initializedUserId !== user.sId
-        : !initializedUserId;
-
-      if (needsInitialization) {
-        posthog.opt_in_capturing();
-
-        if (user) {
-          posthog.identify(user.sId);
-        }
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem(
-            POSTHOG_INITIALIZED_KEY,
-            user?.sId ?? "anonymous"
-          );
-        }
-      }
-    } else {
-      posthog.opt_out_capturing();
+    if (lastIdentifiedUserId.current !== user.sId) {
+      posthog.identify(user.sId);
+      lastIdentifiedUserId.current = user.sId;
     }
+  }, [hasAcceptedCookies, user]);
 
-    prevShouldTrack.current = shouldTrack;
-  }, [shouldTrack, user]);
-
-  // Group users by workspace and set workspace properties (admin only)
+  // Group users by workspace and set workspace properties (admin only).
   const lastUserRole = useRef<string | null>(null);
   useEffect(() => {
-    if (!posthog.__loaded || !workspaceId || !shouldTrack) {
+    if (!posthog.__loaded || !workspaceId || !hasAcceptedCookies) {
       return;
     }
 
@@ -216,14 +247,14 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   }, [
     workspaceId,
     planProperties,
-    shouldTrack,
+    hasAcceptedCookies,
     isAdmin,
     currentWorkspace?.role,
   ]);
 
   // Track pageviews on route changes.
   useEffect(() => {
-    if (!posthog.__loaded || !shouldTrack) {
+    if (!posthog.__loaded || !isTrackablePage) {
       return;
     }
 
@@ -245,11 +276,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.events, router.pathname, shouldTrack]);
+  }, [router.events, router.pathname, isTrackablePage]);
 
-  if (isTrackablePage && hasAcceptedCookies) {
-    return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
-  }
-
-  return <>{children}</>;
+  return null;
 }

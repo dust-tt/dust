@@ -1,6 +1,3 @@
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -11,13 +8,22 @@ import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgsWithTiming,
+  AgentLoopExecutionData,
+} from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  startActiveObservation,
+  updateActiveObservation,
+} from "@langfuse/tracing";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 
@@ -44,16 +50,23 @@ export async function runToolActivity(
   const auth = authResult.value;
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
-  // during the same step. Each tool would otherwise fetch the same conversation independently.
-  const runAgentDataRes = await getAgentLoopData(authType, {
-    ...runAgentArgs,
-    caching: {
-      useCachedGetConversation: true,
-      unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
-      ttlMs: CONVERSATION_CACHE_TTL_MS,
-    },
-  });
+  const [runAgentDataRes, action] = await startActiveObservation(
+    "get-agent-loop-data",
+    () =>
+      Promise.all([
+        // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
+        // during the same step. Each tool would otherwise fetch the same conversation independently.
+        getAgentLoopDataWithAuth(auth, {
+          ...runAgentArgs,
+          caching: {
+            useCachedGetConversation: true,
+            unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
+            ttlMs: CONVERSATION_CACHE_TTL_MS,
+          },
+        }),
+        AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
+      ])
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -67,6 +80,7 @@ export async function runToolActivity(
     }
     throw runAgentDataRes.error;
   }
+  assert(action, "Action not found");
 
   // Heartbeating here as retrieving the agent loop data takes some time.
   heartbeat();
@@ -75,7 +89,6 @@ export async function runToolActivity(
     agentConfiguration,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentDataRes.value;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -91,12 +104,54 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  const action = await AgentMCPActionResource.fetchByModelIdWithAuth(
-    auth,
-    actionId
-  );
-  assert(action, "Action not found");
+  return startActiveObservation(
+    `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
+    () => {
+      updateActiveObservation(
+        {
+          input: {
+            actionId,
+            toolName: action.toolConfiguration.name,
+            mcpServerName: action.toolConfiguration.mcpServerName,
+          },
+        },
+        { asType: "tool" }
+      );
 
+      return executeToolStreaming(auth, {
+        action,
+        agentConfiguration,
+        agentMessage,
+        conversation,
+        deferredEvents,
+        runIds,
+        step,
+      });
+    },
+    { asType: "tool" }
+  );
+}
+
+async function executeToolStreaming(
+  auth: Authenticator,
+  {
+    action,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+    deferredEvents,
+    runIds,
+    step,
+  }: {
+    action: AgentMCPActionResource;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
+    conversation: AgentLoopExecutionData["conversation"];
+    deferredEvents: ToolExecutionResult["deferredEvents"];
+    runIds?: string[];
+    step: number;
+  }
+): Promise<ToolExecutionResult> {
   const abortSignal = Context.current().cancellationSignal;
 
   const eventStream = runToolWithStreaming(
@@ -115,6 +170,15 @@ export async function runToolActivity(
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
+        updateActiveObservation(
+          {
+            output: { status: "error", errorCode: event.error.code },
+            level: "ERROR",
+            statusMessage: event.error.message,
+          },
+          { asType: "tool" }
+        );
+
         // For tool errors, send immediately.
         await updateResourceAndPublishEvent(auth, {
           event: {
@@ -130,13 +194,23 @@ export async function runToolActivity(
             },
             isLastBlockingEventForStep: true,
           },
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });
 
         return { deferredEvents };
+
       case "tool_early_exit":
+        updateActiveObservation(
+          {
+            output: { status: "early_exit", isError: event.isError },
+            level: event.isError ? "ERROR" : "WARNING",
+            statusMessage: event.text ?? "Early exit",
+          },
+          { asType: "tool" }
+        );
+
         let updatedAgentMessage = agentMessage;
         if (!event.isError && event.text && !agentMessage.content) {
           // Save and post the tool's text content only if the execution stopped
@@ -199,7 +273,7 @@ export async function runToolActivity(
                 runIds: runIds ?? [],
               },
 
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });
@@ -209,12 +283,20 @@ export async function runToolActivity(
       case "tool_personal_auth_required":
       case "tool_file_auth_required":
       case "tool_approve_execution":
+        updateActiveObservation(
+          {
+            output: { status: event.type },
+            level: "WARNING",
+          },
+          { asType: "tool" }
+        );
+
         // Batched for publishing after all parallel tools complete to avoid partial UI state.
         deferredEvents.push({
           event,
           context: {
             agentMessageId: agentMessage.sId,
-            agentMessageRowId: agentMessageRow.id,
+            agentMessageRowId: agentMessage.agentMessageId,
             conversationId: conversation.sId,
             step,
             workspaceId: conversation.owner.id,
@@ -229,6 +311,13 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_success":
+        updateActiveObservation(
+          {
+            output: { status: "success" },
+          },
+          { asType: "tool" }
+        );
+
         await updateResourceAndPublishEvent(auth, {
           event: {
             type: "agent_action_success",
@@ -237,7 +326,7 @@ export async function runToolActivity(
             messageId: agentMessage.sId,
             action: event.action,
           },
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });
@@ -246,7 +335,7 @@ export async function runToolActivity(
       case "tool_notification":
         await updateResourceAndPublishEvent(auth, {
           event,
-          agentMessageRow,
+          agentMessage,
           conversation,
           step,
         });

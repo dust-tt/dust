@@ -8,6 +8,7 @@ import type {
   HeadProps,
   ImageProps,
   RouterEvents,
+  RouterEventType,
   ScriptProps,
   TransitionOptions,
   UrlObject,
@@ -16,6 +17,7 @@ import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import {
   Children,
   isValidElement,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -104,29 +106,31 @@ function urlToString(url: string | UrlObject): string {
  * Global event emitter for router events in SPA
  * This mimics Next.js router events to work with NavigationLoadingContext
  */
-type RouterEventCallback = (...args: unknown[]) => void;
+type RouterEventHandler = (url: string) => void;
 
-const routerEventListeners: Map<string, Set<RouterEventCallback>> = new Map();
+const routerEventListeners: Map<string, Set<RouterEventHandler>> = new Map();
 
 function createRouterEvents(): RouterEvents {
   return {
-    on: (event: string, callback: RouterEventCallback) => {
+    on: (event: RouterEventType, handler: RouterEventHandler) => {
       if (!routerEventListeners.has(event)) {
         routerEventListeners.set(event, new Set());
       }
-      routerEventListeners.get(event)!.add(callback);
+      routerEventListeners.get(event)!.add(handler);
     },
-    off: (event: string, callback: RouterEventCallback) => {
-      routerEventListeners.get(event)?.delete(callback);
+    off: (event: RouterEventType, handler: RouterEventHandler) => {
+      routerEventListeners.get(event)?.delete(handler);
     },
-    emit: (event: string, ...args: unknown[]) => {
-      routerEventListeners.get(event)?.forEach((callback) => callback(...args));
+    emit: (event: RouterEventType, ...args: unknown[]) => {
+      routerEventListeners
+        .get(event)
+        ?.forEach((handler) => handler(String(args[0] ?? "")));
     },
   };
 }
 
 // Singleton events object so all useAppRouter calls share the same listeners
-const routerEvents = createRouterEvents();
+export const routerEvents = createRouterEvents();
 
 export function useAppRouter(): AppRouter {
   const navigate = useSafeNavigate();
@@ -143,54 +147,6 @@ export function useAppRouter(): AppRouter {
       return () => window.removeEventListener("popstate", handlePopState);
     }
   }, [location]);
-
-  // Emit router events when location changes
-  // Track previous location to detect hash-only changes and skip initial mount
-  const previousLocationRef = useRef<{
-    pathname: string;
-    search: string;
-    hash: string;
-  } | null>(null);
-
-  // Track location for route change events
-  useEffect(() => {
-    if (location) {
-      const currentLocation = {
-        pathname: location.pathname,
-        search: location.search,
-        hash: window.location.hash,
-      };
-
-      const previousLocation = previousLocationRef.current;
-
-      // Skip initial mount - don't emit event on first render
-      if (previousLocation !== null) {
-        // Only emit if pathname or search changed (not hash - that's handled by hashchange listener)
-        if (
-          previousLocation.pathname !== currentLocation.pathname ||
-          previousLocation.search !== currentLocation.search
-        ) {
-          const fullUrl = `${currentLocation.pathname}${currentLocation.search}${currentLocation.hash}`;
-          queueMicrotask(() => {
-            routerEvents.emit("routeChangeComplete", fullUrl);
-          });
-        }
-      }
-
-      previousLocationRef.current = currentLocation;
-    }
-  }, [location]);
-
-  // Listen for hash changes (React Router doesn't track these)
-  useEffect(() => {
-    const handleHashChange = () => {
-      const fullUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      routerEvents.emit("hashChangeComplete", fullUrl);
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
 
   const push = useCallback(
     async (
@@ -273,20 +229,20 @@ export function useAppRouter(): AppRouter {
   // In SPA mode, router is always ready (no SSR hydration needed)
   const isReady = true;
 
-  return {
-    push,
-    replace,
-    back,
-    reload,
-    pathname,
-    asPath: pathname + search + hash,
-    query,
-    isReady,
-    events: routerEvents,
-    // beforePopState is a noop in SPA mode (not supported in React Router)
-    // TODO: Check usage in AppContentLayout and remove it.
-    beforePopState: () => {},
-  };
+  return useMemo(
+    () => ({
+      push,
+      replace,
+      back,
+      reload,
+      pathname,
+      asPath: pathname + search + hash,
+      query,
+      isReady,
+      events: routerEvents,
+    }),
+    [push, replace, back, reload, pathname, search, hash, query]
+  );
 }
 
 /**
@@ -306,7 +262,8 @@ export function Head({ children }: HeadProps) {
 
       if (child.type === "title") {
         const previousTitle = document.title;
-        document.title = Children.toArray(props.children).join("") ?? "";
+        document.title =
+          Children.toArray(props.children as ReactNode).join("") ?? "";
         cleanupFns.push(() => {
           document.title = previousTitle;
         });

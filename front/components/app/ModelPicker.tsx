@@ -1,3 +1,6 @@
+import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
+import { useProviders } from "@app/lib/swr/apps";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -10,10 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-
-import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
-import { useProviders } from "@app/lib/swr/apps";
-import type { WorkspaceType } from "@app/types/user";
 
 export default function ModelPicker({
   owner,

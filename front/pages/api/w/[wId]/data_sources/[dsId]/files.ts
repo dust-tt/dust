@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type {
   UpsertDocumentArgs,
@@ -12,6 +10,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
 import type { FileType } from "@app/types/files";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;

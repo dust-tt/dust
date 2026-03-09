@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { normalizeError } from "@connectors/types";
 import type { LoggerInterface, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";

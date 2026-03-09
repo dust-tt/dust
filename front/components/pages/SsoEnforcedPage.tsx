@@ -1,12 +1,11 @@
-import { Button, Logo } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import config from "@app/lib/api/config";
+import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
+import Custom404 from "@app/pages/404";
+import { Button, Logo } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 export function SsoEnforcedPage() {
-  const router = useAppRouter();
   const workspaceId = useSearchParam("workspaceId");
   const returnTo = useSearchParam("returnTo");
   const { user } = useUser();
@@ -20,16 +19,14 @@ export function SsoEnforcedPage() {
     if (!organization) {
       return null;
     }
-    const base = `${getApiBaseUrl()}/api/workos/login?organizationId=${organization.id}`;
+    const base = `${config.getApiBaseUrl()}/api/workos/login?organizationId=${organization.id}`;
     return returnTo ? `${base}&returnTo=${encodeURIComponent(returnTo)}` : base;
   }, [organization, returnTo]);
 
   // Redirect to 404 if no workspaceId or no matching org.
-  useEffect(() => {
-    if (!workspaceId || (user && !organization)) {
-      void router.replace("/404");
-    }
-  }, [workspaceId, user, organization, router]);
+  if (!workspaceId || (user && !organization)) {
+    return <Custom404 />;
+  }
 
   if (!loginUrl) {
     return null;

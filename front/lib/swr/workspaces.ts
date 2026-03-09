@@ -1,14 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
@@ -21,7 +17,6 @@ import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analy
 import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
-import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
@@ -34,10 +29,11 @@ import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
 import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
-import type { RegionRedirectError } from "@app/types/error";
-import type { APIErrorResponse } from "@app/types/error";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useEffect, useMemo } from "react";
+import type { Fetcher } from "swr";
 
 // Type guard to check if response is a region redirect
 export function isRegionRedirect(data: unknown): data is RegionRedirectError {
@@ -50,6 +46,15 @@ export function isRegionRedirect(data: unknown): data is RegionRedirectError {
   );
 }
 
+function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "redirectUrl" in data &&
+    typeof data.redirectUrl === "string"
+  );
+}
+
 export function useWorkspace({
   owner,
   disabled,
@@ -57,6 +62,7 @@ export function useWorkspace({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const workspaceFetcher: Fetcher<GetWorkspaceResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
@@ -79,6 +85,7 @@ export function useWorkspaceSubscriptions({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
@@ -101,6 +108,7 @@ export function useWorkspaceAnalytics({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -130,6 +138,7 @@ export function useWorkspaceUsageMetrics({
   interval?: "day" | "week";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
 
@@ -155,6 +164,7 @@ export function useWorkspaceActiveUsersMetrics({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}`;
 
@@ -180,6 +190,7 @@ export function useWorkspaceContextOrigin({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceContextOriginResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/source?days=${days}`;
 
@@ -205,6 +216,7 @@ export function useWorkspaceTools({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceToolsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/tools?days=${days}`;
 
@@ -232,6 +244,7 @@ export function useWorkspaceToolUsage({
   serverName?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
   const params = new URLSearchParams({ days: String(days) });
   if (serverName) {
@@ -263,6 +276,7 @@ export function useWorkspaceTopUsers({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceTopUsersResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/top-users?days=${days}&limit=${limit}`;
 
@@ -290,6 +304,7 @@ export function useWorkspaceTopAgents({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceTopAgentsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/top-agents?days=${days}&limit=${limit}`;
 
@@ -315,6 +330,7 @@ export function useWorkspaceAnalyticsOverview({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceAnalyticsOverviewResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/overview?days=${days}`;
 
@@ -338,6 +354,7 @@ export function useWorkspaceActiveSubscription({
   owner: LightWorkspaceType | undefined;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
@@ -366,43 +383,6 @@ export function useWorkspaceActiveSubscription({
   };
 }
 
-export function useFeatureFlags({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const featureFlagsFetcher: Fetcher<GetWorkspaceFeatureFlagsResponseType> =
-    fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/feature-flags`,
-    featureFlagsFetcher,
-    {
-      disabled,
-      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
-    }
-  );
-
-  const hasFeature = useCallback(
-    (flag: WhitelistableFeature | null | undefined) => {
-      if (!flag) {
-        return true;
-      }
-      return !!data?.feature_flags.includes(flag);
-    },
-    [data]
-  );
-
-  return {
-    featureFlags: data?.feature_flags ?? emptyArray(),
-    isFeatureFlagsLoading: !error && !data,
-    isFeatureFlagsError: error,
-    hasFeature,
-  };
-}
-
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
@@ -420,6 +400,7 @@ export function useWorkspaceProgrammaticCost({
   filter?: Partial<Record<GroupByType, string[]>>;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
 
   const queryParams = new URLSearchParams();
@@ -459,6 +440,7 @@ export function useWorkspaceSeatAvailability({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const seatAvailabilityFetcher: Fetcher<GetSeatAvailabilityResponseBody> =
     fetcher;
 
@@ -483,6 +465,7 @@ export function usePerSeatPricing({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const pricingFetcher: Fetcher<GetSubscriptionPricingResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -505,6 +488,7 @@ export function useWorkspaceVerifiedDomains({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const verifiedDomainsFetcher: Fetcher<GetWorkspaceVerifiedDomainsResponseBody> =
     fetcher;
 
@@ -529,6 +513,7 @@ export function useSubscriptionTrialInfo({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const trialInfoFetcher: Fetcher<GetSubscriptionTrialInfoResponseBody> =
     fetcher;
 
@@ -552,6 +537,7 @@ export function useWorkspaceSeatsCount({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const seatsCountFetcher: Fetcher<GetWorkspaceSeatsCountResponseBody> =
     fetcher;
 
@@ -574,6 +560,7 @@ interface UseAuthContextResult<T> {
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
   authContextError: APIErrorResponse | Error | undefined;
+  mutateAuthContext: () => Promise<T | undefined>;
 }
 
 export function useAuthContext(options?: {
@@ -593,8 +580,8 @@ export function useAuthContext(
   options: { workspaceId?: string; disabled?: boolean } = {}
 ) {
   const { workspaceId, disabled } = options;
-  const [isRedirecting, setIsRedirecting] = useState(false);
-  const regionContext = useRegionContextSafe();
+  const { fetcher } = useFetcher();
+  const regionContext = useRegionContext();
 
   const url = workspaceId
     ? `/api/w/${workspaceId}/auth-context`
@@ -617,34 +604,24 @@ export function useAuthContext(
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+    if (regionRedirect) {
+      regionContext.setRegionInfo(
+        {
+          name: regionRedirect.region,
+          url: regionRedirect.url,
+        },
+        { keepInStorage: true }
+      );
       void mutate();
     }
   }, [regionRedirect, mutate, regionContext]);
 
-  // Handle login redirect.
-  useEffect(() => {
-    if (error && !regionRedirect) {
-      if (error.error?.type === "not_authenticated") {
-        setIsRedirecting(true);
-        window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
-          window.location.pathname + window.location.search
-        )}`;
-      }
-      // For all other errors, let the consuming component handle the display.
-    }
-  }, [error, regionRedirect]);
-
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading:
-      isFetching || !!isRegionRedirectResponse || isRedirecting,
+    isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
     authContextError: error,
+    mutateAuthContext: mutate,
   };
 }
 
@@ -653,6 +630,7 @@ export function useSubscriptionStatus({
 }: {
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const statusFetcher: Fetcher<GetSubscriptionStatusResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -669,6 +647,7 @@ export function useSubscriptionStatus({
 }
 
 export function useWelcomeData({ workspaceId }: { workspaceId: string }) {
+  const { fetcher } = useFetcher();
   const welcomeFetcher: Fetcher<GetWelcomeResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -686,6 +665,7 @@ export function useWelcomeData({ workspaceId }: { workspaceId: string }) {
 }
 
 export function useVerifyData({ workspaceId }: { workspaceId: string }) {
+  const { fetcher } = useFetcher();
   const verifyFetcher: Fetcher<GetVerifyResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -711,7 +691,8 @@ export function useJoinData({
   token: string | null;
   conversationId: string | null;
 }) {
-  const regionContext = useRegionContextSafe();
+  const { fetcher } = useFetcher();
+  const regionContext = useRegionContext();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -733,23 +714,42 @@ export function useJoinData({
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+    if (regionRedirect) {
+      regionContext.setRegionInfo(
+        {
+          name: regionRedirect.region,
+          url: regionRedirect.url,
+        },
+        { keepInStorage: true }
+      );
       void mutate();
     }
   }, [regionRedirect, mutate, regionContext]);
 
+  // The join API returns { redirectUrl: "..." } (e.g. for invalid/expired
+  // tokens). This is not a standard API error response, so the fetcher wraps
+  // it in new Error(jsonText) — we parse it back out here.
+  const redirectUrl = useMemo(() => {
+    if (!error || isRegionRedirectResponse || !(error instanceof Error)) {
+      return null;
+    }
+    const parsed = safeParseJSON(error.message);
+    if (parsed.isOk() && isRedirectResponse(parsed.value)) {
+      return parsed.value.redirectUrl;
+    }
+    return null;
+  }, [error, isRegionRedirectResponse]);
+
   return {
     joinData: data ?? null,
-    isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
-    isJoinDataError: isRegionRedirectResponse ? undefined : error,
+    isJoinDataLoading:
+      (!error && !data) || !!isRegionRedirectResponse || !!redirectUrl,
+    redirectUrl,
   };
 }
 
 export function usePendingInvitations() {
+  const { fetcher } = useFetcher();
   const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsLookupResponseBody> =
     fetcher;
 
@@ -765,6 +765,7 @@ export function usePendingInvitations() {
 }
 
 export function useWorkspaceLookup({ flow }: { flow: string | null }) {
+  const { fetcher } = useFetcher();
   const workspaceLookupFetcher: Fetcher<GetWorkspaceLookupResponseBody> =
     fetcher;
 

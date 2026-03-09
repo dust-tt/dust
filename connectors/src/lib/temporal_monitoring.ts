@@ -100,8 +100,11 @@ export class ActivityInboundLogInterceptor
     }
     // startToClose timeouts do not log an error by default; this code
     // ensures that the error is logged and the activity is marked as
-    // failed.
+    // failed. The flag prevents the finally block from logging a
+    // duplicate "Activity failed" entry.
+    let startToCloseTimeoutLogged = false;
     const startToCloseTimer = setTimeout(() => {
+      startToCloseTimeoutLogged = true;
       const error = new DustConnectorWorkflowError(
         "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
         "workflow_timeout_failure"
@@ -111,6 +114,7 @@ export class ActivityInboundLogInterceptor
         {
           error,
           dustError: error,
+          errorType: error.type,
           durationMs: this.context.info.startToCloseTimeoutMs,
           attempt: this.context.info.attempt,
           connectorId,
@@ -119,6 +123,11 @@ export class ActivityInboundLogInterceptor
         },
         "Activity failed"
       );
+
+      statsDClient.increment("activity_failed.count", 1, [
+        ...tags,
+        `error_type:${error.type}`,
+      ]);
     }, this.context.info.startToCloseTimeoutMs);
 
     // We already trigger a monitor after 20 failures, but when the pod crashes (e.g.: OOM or segfault), the attempt never gets logged.
@@ -258,38 +267,27 @@ export class ActivityInboundLogInterceptor
     } finally {
       clearTimeout(startToCloseTimer);
       const durationMs = new Date().getTime() - startTime.getTime();
-      if (error) {
+      if (error && !startToCloseTimeoutLogged) {
         let errorType = "unhandled_internal_activity_error";
-        if (error instanceof DustConnectorWorkflowError) {
-          // This is a Dust error.
+        const isDustError = error instanceof DustConnectorWorkflowError;
+        if (isDustError) {
           errorType = error.type;
-          this.logger.error(
-            {
-              error,
-              dustError: error,
-              durationMs,
-              attempt: this.context.info.attempt,
-              connectorId,
-              workspaceId,
-              dataSourceId,
-            },
-            "Activity failed"
-          );
-        } else {
-          // Unknown error type.
-          this.logger.error(
-            {
-              error: redactErrorForLogs(error),
-              error_stack: error?.stack,
-              durationMs: durationMs,
-              attempt: this.context.info.attempt,
-              connectorId,
-              workspaceId,
-              dataSourceId,
-            },
-            "Unhandled activity error"
-          );
         }
+
+        this.logger.error(
+          {
+            error: isDustError ? error : redactErrorForLogs(error),
+            dustError: isDustError ? error : undefined,
+            error_stack: error?.stack,
+            errorType,
+            durationMs,
+            attempt: this.context.info.attempt,
+            connectorId,
+            workspaceId,
+            dataSourceId,
+          },
+          "Activity failed"
+        );
 
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);

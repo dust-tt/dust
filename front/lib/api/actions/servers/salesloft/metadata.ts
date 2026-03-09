@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const SALESLOFT_TOOL_NAME = "salesloft" as const;
 
@@ -40,10 +39,9 @@ export const SALESLOFT_SERVER = {
     version: "1.0.0",
     description: "Access Salesloft cadences, tasks, and actions.",
     authorization: null,
-    icon: "ActionDocumentTextIcon",
-    documentationUrl: null,
+    icon: "SalesloftLogo",
+    documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
     instructions: null,
-    developerSecretSelection: "required",
   },
   tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
     name: t.name,

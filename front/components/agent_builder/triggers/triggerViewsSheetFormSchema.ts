@@ -1,7 +1,6 @@
-import { z } from "zod";
-
 import { ScheduleFormSchema } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { WebhookFormSchema } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
+import { z } from "zod";
 
 export const TriggerViewsSheetFormSchema = z.discriminatedUnion("type", [
   z.object({

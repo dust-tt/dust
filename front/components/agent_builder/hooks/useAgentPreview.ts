@@ -1,7 +1,3 @@
-import isEqual from "lodash/isEqual";
-import { useCallback, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
@@ -9,15 +5,20 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import isEqual from "lodash/isEqual";
+import { useCallback, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 export function useDraftAgent() {
   const { owner, user } = useAgentBuilderContext();
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
@@ -57,6 +58,7 @@ export function useDraftAgent() {
         owner,
         agentConfigurationId: null,
         isDraft: true,
+        fetcherWithBody,
       });
 
       if (!aRes.isOk()) {
@@ -75,7 +77,7 @@ export function useDraftAgent() {
       setDraftAgent(newDraft);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, user, sendNotification, getValues]);
+    }, [owner, user, sendNotification, getValues, fetcherWithBody]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -144,6 +146,7 @@ export function useDraftConversation({
             : mention
         );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return new Err({
           code: "internal_error",
@@ -190,6 +193,7 @@ export function useDraftConversation({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetConversation = useCallback(() => {
     setConversation(undefined);
   }, [setConversation]);

@@ -1,22 +1,11 @@
+import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { frontSequelize } from "@app/lib/resources/storage";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-
 import { TriggerModel } from "./triggers";
 import { WebhookRequestModel } from "./webhook_request";
-
-// Single source of truth for webhook request trigger statuses
-export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
-  "workflow_start_succeeded",
-  "workflow_start_failed",
-  "not_matched",
-  "rate_limited",
-] as const;
-
-export type WebhookRequestTriggerStatus =
-  (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
 
 /**
  * WebhookRequestTrigger model maps webhook requests to triggers.

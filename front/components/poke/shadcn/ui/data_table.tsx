@@ -1,3 +1,13 @@
+import { PokeDataTableFacetedFilter } from "@app/components/poke/shadcn/ui/data_table_faceted_filter";
+import { PokeDataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
+import {
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableHead,
+  PokeTableHeader,
+  PokeTableRow,
+} from "@app/components/poke/shadcn/ui/table";
 import { Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
@@ -15,17 +25,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
-
-import { PokeDataTableFacetedFilter } from "@app/components/poke/shadcn/ui/data_table_faceted_filter";
-import { PokeDataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
-import {
-  PokeTable,
-  PokeTableBody,
-  PokeTableCell,
-  PokeTableHead,
-  PokeTableHeader,
-  PokeTableRow,
-} from "@app/components/poke/shadcn/ui/table";
 
 interface Facet {
   columnId: string;

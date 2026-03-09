@@ -1,5 +1,6 @@
 import type { SlackChannelModel } from "@connectors/lib/models/slack";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 export function getWeekStart(date: Date): Date {

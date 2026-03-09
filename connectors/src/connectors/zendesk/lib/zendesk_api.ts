@@ -43,6 +43,7 @@ import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { z } from "zod";
 

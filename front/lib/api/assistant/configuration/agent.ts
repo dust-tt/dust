@@ -1,13 +1,3 @@
-import assert from "assert";
-import { tracer } from "dd-trace";
-import type { Transaction } from "sequelize";
-import {
-  Op,
-  Sequelize,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
@@ -24,7 +14,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -36,6 +26,7 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -46,6 +37,8 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -53,17 +46,20 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentFetchVariant,
   AgentModelConfigurationType,
   AgentStatus,
+  GlobalAgentContext,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -73,6 +69,14 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+import {
+  Op,
+  QueryTypes,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
@@ -103,11 +107,11 @@ export async function createPendingAgentConfiguration(
         name: PENDING_AGENT_PLACEHOLDER_NAME,
         description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
         instructions: null,
-        providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
         temperature: 0.7,
         reasoningEffort:
-          CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+          CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
         maxStepsPerRun: 8,
         pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
         workspaceId: owner.id,
@@ -122,7 +126,16 @@ export async function createPendingAgentConfiguration(
       transaction: t,
     });
     await auth.refresh({ transaction: t });
-    await group.setMembers(auth, { users: [user.toJSON()], transaction: t });
+    if (!group.canWrite(auth)) {
+      throw new DustError(
+        "unauthorized",
+        "User does not have write permission for the agent editors group."
+      );
+    }
+    await group.dangerouslySetMembers(auth, {
+      users: [user.toJSON()],
+      transaction: t,
+    });
   });
 
   return { sId };
@@ -231,9 +244,11 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
   {
     agentIds,
     variant,
+    globalAgentContext,
   }: {
     agentIds: string[];
     variant: V;
+    globalAgentContext?: GlobalAgentContext;
   }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
@@ -251,36 +266,43 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let globalAgents: AgentConfigurationType[] = [];
     if (globalAgentIds.length > 0) {
-      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant, {
+        globalAgentContext,
+      });
     }
 
     const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      const latestVersions = (await AgentConfigurationModel.findAll({
-        attributes: [
-          "sId",
-          [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-        ],
-        where: {
-          workspaceId: owner.id,
-          sId: workspaceAgentIds,
-        },
-        group: ["sId"],
-        raw: true,
-      })) as unknown as { sId: string; max_version: number }[];
+      // Use window function for optimal performance - single query, single pass
+      const query = `
+        SELECT *
+        FROM (
+          SELECT *,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY "sId"
+                    ORDER BY version DESC
+                  ) as rn
+          FROM agent_configurations
+          WHERE "workspaceId" = :workspaceId
+            AND "sId" IN (:agentIds)
+        ) ranked_agents
+        WHERE rn = 1
+        ORDER BY version DESC
+      `;
 
-      const agentModels = await AgentConfigurationModel.findAll({
-        where: {
-          workspaceId: owner.id,
-          [Op.or]: latestVersions.map((v) => ({
-            sId: v.sId,
-            version: v.max_version,
-          })),
-        },
-        order: [["version", "DESC"]],
-      });
+      const agentModels =
+        (await AgentConfigurationModel.sequelize?.query(query, {
+          type: QueryTypes.SELECT,
+          replacements: {
+            workspaceId: owner.id,
+            agentIds: workspaceAgentIds,
+          },
+          model: AgentConfigurationModel,
+          mapToModel: true,
+        })) ?? [];
+
       const allowedAgentModels = await filterAgentsByRequestedSpaces(
         auth,
         agentModels
@@ -309,7 +331,13 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     agentId,
     agentVersion,
     variant,
-  }: { agentId: string; agentVersion?: number; variant: V }
+    globalAgentContext,
+  }: {
+    agentId: string;
+    agentVersion?: number;
+    variant: V;
+    globalAgentContext?: GlobalAgentContext;
+  }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null
@@ -332,6 +360,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
       variant,
+      globalAgentContext,
     });
     return (
       (agent as V extends "light"
@@ -415,6 +444,15 @@ export async function createAgentConfiguration(
     await isSelfHostedImageWithValidContentType(pictureUrl);
   if (!isValidPictureUrl) {
     return new Err(new Error("Invalid picture url."));
+  }
+
+  if (model.responseFormat) {
+    const formatValidation = validateResponseFormat(model.responseFormat);
+    if (!formatValidation.isValid) {
+      return new Err(
+        new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+      );
+    }
   }
 
   let version = 0;
@@ -669,7 +707,11 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, { users: editors, transaction: t });
+          // No need to check on permission here since it was done a few lines above.
+          await group.dangerouslySetMembers(auth, {
+            users: editors,
+            transaction: t,
+          });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -699,7 +741,21 @@ export async function createAgentConfiguration(
               throw result.error;
             }
           }
-          const setMembersRes = await group.setMembers(auth, {
+
+          if (!group.canWrite(auth)) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
+            );
+            throw new DustError(
+              "unauthorized",
+              "You are not authorized to manage the editors of this agent"
+            );
+          }
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
@@ -734,7 +790,6 @@ export async function createAgentConfiguration(
       name: agent.name,
       description: agent.description,
       instructions: agent.instructions,
-      instructionsHtml: agent.instructionsHtml,
       userFavorite,
       model: {
         providerId: agent.providerId,
@@ -802,6 +857,12 @@ export async function createAgentConfiguration(
     }
     if (error instanceof SyntaxError) {
       return new Err(new Error(error.message));
+    }
+    if (error instanceof DustError) {
+      return new Err(error);
+    }
+    if (error instanceof Error) {
+      return new Err(error);
     }
     throw error;
   }
@@ -1133,6 +1194,15 @@ export async function archiveAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const agentConfig = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfig) {
+    throw new Error(`Could not find agent ${agentConfigurationId}`);
+  }
+
   // Disable all triggers for this agent before archiving
   const triggers = await TriggerResource.listByAgentConfigurationId(
     auth,
@@ -1162,6 +1232,17 @@ export async function archiveAgentConfiguration(
       },
     }
   );
+
+  // Suspend all editor group memberships for this agent
+  if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      agentConfig
+    );
+    if (editorGroupRes.isOk()) {
+      await editorGroupRes.value.suspendMembers(auth);
+    }
+  }
 
   const affectedCount = updated[0];
   return affectedCount > 0;
@@ -1199,8 +1280,15 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  // Re-enable all triggers for this agent after restoring
+  // Restore all editor group memberships (set suspended → active) and re-enable triggers
   if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(auth, {
+      id: latestConfig.id,
+    } as LightAgentConfigurationType);
+    if (editorGroupRes.isOk()) {
+      await editorGroupRes.value.restoreMembers(auth);
+    }
+
     const triggers = await TriggerResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId
@@ -1330,6 +1418,52 @@ export async function unsafeHardDeleteAgentConfiguration(
 }
 
 /**
+ * Batch-deletes pending agent configurations and their editor groups.
+ */
+export async function batchHardDeletePendingAgentConfigurations(
+  agents: AgentConfigurationModel[],
+  workspaceId: number
+) {
+  const agentIds = agents.map((a) => a.id);
+
+  // Find all editor group IDs for this batch.
+  const groupAgents = await GroupAgentModel.findAll({
+    where: { agentConfigurationId: agentIds, workspaceId },
+  });
+  const groupIds = groupAgents.map((ga) => ga.groupId);
+
+  await withTransaction(async (t) => {
+    if (groupIds.length > 0) {
+      await GroupMembershipModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupAgentModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupModel.destroy({
+        where: { id: groupIds, workspaceId },
+        transaction: t,
+      });
+    }
+
+    // Delete agent suggestions before agents (FK constraint)
+    await AgentSuggestionModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    await AgentConfigurationModel.destroy({
+      where: { id: agentIds, workspaceId },
+      transaction: t,
+    });
+  });
+}
+
+/**
  * Updates the permissions (editors) for an agent configuration.
  */
 export async function updateAgentPermissions(
@@ -1367,12 +1501,19 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // The canWrite check for agent_editors groups (allowing members and admins)
-  // is implicitly handled by addMembers and removeMembers.
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, {
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can add group members"
+            )
+          );
+        }
+        const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
           users: usersToAdd,
           transaction: t,
         });
@@ -1382,10 +1523,22 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.removeMembers(auth, {
-          users: usersToRemove,
-          transaction: t,
-        });
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can remove group members"
+            )
+          );
+        }
+        const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
+          auth,
+          {
+            users: usersToRemove,
+            transaction: t,
+          }
+        );
         if (removeRes.isErr()) {
           return removeRes;
         }
@@ -1523,31 +1676,7 @@ export async function updateAgentConfigurationScope(
   return new Ok(undefined);
 }
 
-export async function updateAgentRequirements(
-  auth: Authenticator,
-  {
-    agentModelId,
-    newSpaceIds,
-  }: { agentModelId: ModelId; newSpaceIds: ModelId[] },
-  { transaction }: { transaction?: Transaction }
-): Promise<Result<boolean, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const updated = await AgentConfigurationModel.update(
-    {
-      requestedSpaceIds: newSpaceIds,
-    },
-    {
-      where: {
-        workspaceId: owner.id,
-        id: agentModelId,
-      },
-      transaction,
-    }
-  );
-
-  return new Ok(updated[0] > 0);
-}
+export { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 
 export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,

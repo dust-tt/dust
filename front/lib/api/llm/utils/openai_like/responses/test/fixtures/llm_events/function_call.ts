@@ -2,6 +2,34 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 
 export const functionCallLLMEvents: LLMEvent[] = [
   {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
     type: "tool_call",
     content: {
       id: "call_TNG5uqSoWvdMD4MFV6wKCwZT",

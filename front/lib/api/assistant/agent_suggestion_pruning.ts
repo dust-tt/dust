@@ -1,14 +1,9 @@
-import { JSDOM } from "jsdom";
-
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
@@ -20,6 +15,7 @@ import {
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   parseAgentSuggestionData,
 } from "@app/types/suggestions/agent_suggestion";
+import { JSDOM } from "jsdom";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
@@ -345,11 +341,12 @@ function getDescendantBlockIds(
  * Conflict rules:
  * - Same block ID: New suggestion replaces old one
  * - Parent-child hierarchy: Parent change invalidates child suggestions
- * - instructions-root: Full rewrite invalidates all block suggestions
+ * - instructions-root (new): Full rewrite invalidates all block suggestions
+ * - instructions-root (existing): Block-level new suggestions invalidate existing root (mutually exclusive)
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentConfigurationType,
   newSuggestions: Array<{ sId: string; targetBlockId: string }>
 ): Promise<void> {
   if (newSuggestions.length === 0) {
@@ -415,6 +412,12 @@ export async function pruneConflictingInstructionSuggestions(
 
     // Conflict 2: Child block (existing targets a descendant that will be replaced)
     if (allDescendantBlockIds.has(existingTargetId)) {
+      toMarkOutdated.push(existingSugg);
+      continue;
+    }
+
+    // Conflict 3: Existing is instructions-root but new suggestions are block-level.
+    if (existingTargetId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
       toMarkOutdated.push(existingSugg);
     }
   }

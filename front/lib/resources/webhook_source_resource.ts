@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
@@ -24,6 +16,13 @@ import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
 } from "@app/types/triggers/webhooks";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 

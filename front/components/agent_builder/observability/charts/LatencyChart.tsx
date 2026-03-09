@@ -1,14 +1,3 @@
-import { useMemo } from "react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
 import {
   CHART_HEIGHT,
   LATENCY_LEGEND,
@@ -26,6 +15,16 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { useMemo } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 interface LatencyData extends LatencyPoint {
   date: string;

@@ -1,10 +1,9 @@
-import type { estypes } from "@elastic/elasticsearch";
-import { Client, errors as esErrors } from "@elastic/elasticsearch";
-
 import config from "@app/lib/api/config";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { estypes } from "@elastic/elasticsearch";
+import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 let esClient: Client | null = null;
 

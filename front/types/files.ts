@@ -25,11 +25,16 @@ export type FileUseCase =
   | "upsert_table"
   // Project context: case in which a file is uploaded to a project's shared
   // context datasource. Accessible to all conversations within the project.
-  | "project_context";
+  | "project_context"
+  // Skill attachment: file attached to a skill configuration, synced to the
+  // sandbox at /dust/skills/<skill-name>/<filename>.
+  | "skill_attachment";
 
 export type FileUseCaseMetadata = {
   conversationId?: string;
+  skillId?: string;
   spaceId?: string;
+  sourceConversationId?: string;
   generatedTables?: string[];
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
@@ -343,6 +348,8 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
   "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  // Legacy MIME type for WAV files, still reported by some browsers.
+  "audio/x-wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
@@ -361,6 +368,7 @@ export const FILE_FORMATS = {
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
+export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -372,11 +380,12 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
     exts: [".js", ".jsx", ".ts", ".tsx"],
     isSafeToDisplay: true,
   },
+  [frameSlideshowContentType]: {
+    cat: "code",
+    exts: [".js", ".jsx", ".ts", ".tsx"],
+    isSafeToDisplay: true,
+  },
 } as const satisfies Record<string, FileFormat>;
-
-export function isInteractiveContentContentType(contentType: string): boolean {
-  return Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).includes(contentType);
-}
 
 // Define a type for Interactive Content file content types.
 export type InteractiveContentFileContentType =
@@ -441,7 +450,7 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInteractiveContentFileContentType(
+export function isInteractiveContentType(
   contentType: string
 ): contentType is InteractiveContentFileContentType {
   return !!INTERACTIVE_CONTENT_FILE_FORMATS[
@@ -453,7 +462,7 @@ export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isInteractiveContentFileContentType(contentType) ||
+    isInteractiveContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }
@@ -578,6 +587,39 @@ export function getSupportedNonImageMimeTypes() {
       )
     )
   );
+}
+
+// Browsers may report incorrect MIME types for certain file extensions.
+// For example, it seems that it's likely that Windows, with Excel installed,
+// reports .csv files as application/vnd.ms-excel, which causes them
+// to be routed to the Tika text extraction pipeline instead of the native CSV parser.
+const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
+  string,
+  SupportedFileContentType
+> = {
+  ".csv": "text/csv",
+  ".tsv": "text/tsv",
+};
+
+export function stripMimeParameters(contentType: string): string {
+  return contentType.split(";")[0];
+}
+
+// This function overrides the browser-reported content type with a more accurate one based on the file extension, if applicable.
+export function resolveFileContentType(
+  browserContentType: string,
+  fileName: string
+): string {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex !== -1) {
+    const extension = fileName.slice(dotIndex).toLowerCase();
+    const override = EXTENSION_CONTENT_TYPE_OVERRIDES[extension];
+    if (override) {
+      return override;
+    }
+  }
+
+  return stripMimeParameters(browserContentType);
 }
 
 export function isPdfContentType(contentType: string): boolean {

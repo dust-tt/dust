@@ -42,15 +42,17 @@ class EventCoalescer {
     event,
     key,
     step,
+    flushIntervalMs,
   }: {
     conversationId: string;
     event: GenerationTokensEvent;
     key: string;
     step: number;
+    flushIntervalMs: number;
   }): void {
     const timer = setTimeout(() => {
       void this.flush(key);
-    }, FLUSH_INTERVAL_MS);
+    }, flushIntervalMs);
 
     this.buffers.set(key, {
       latestEvent: event,
@@ -70,11 +72,13 @@ class EventCoalescer {
     event,
     key,
     step,
+    flushIntervalMs = FLUSH_INTERVAL_MS,
   }: {
     conversationId: string;
     event: AgentMessageEvents;
     key: string;
     step: number;
+    flushIntervalMs?: number;
   }): Promise<void> {
     // Non-token events: flush any pending tokens for this key, then publish immediately.
     const isGenerationTokensEvent = event.type === "generation_tokens";
@@ -97,14 +101,20 @@ class EventCoalescer {
     const existing = this.buffers.get(key);
     if (!existing) {
       // First token in window, start new buffer.
-      this.createBuffer({ key, conversationId, step, event });
+      this.createBuffer({ key, conversationId, step, event, flushIntervalMs });
     } else {
       // If classification changed, flush existing buffer and start fresh.
       if (existing.latestEvent.classification !== event.classification) {
         await this.flush(key);
 
         // Start new buffer with this token classification.
-        this.createBuffer({ key, conversationId, step, event });
+        this.createBuffer({
+          key,
+          conversationId,
+          step,
+          event,
+          flushIntervalMs,
+        });
         return;
       }
 

@@ -64,9 +64,6 @@ export interface AppRouter {
   query: Record<string, string | string[] | undefined>;
   isReady: boolean;
   events: RouterEvents;
-  beforePopState: (
-    cb: (state: { url: string; as: string; options: unknown }) => boolean
-  ) => void;
 }
 
 /**

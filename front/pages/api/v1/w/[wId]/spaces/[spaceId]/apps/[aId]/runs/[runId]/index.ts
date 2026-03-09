@@ -1,6 +1,3 @@
-import type { RunAppResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -12,6 +9,8 @@ import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { RunType } from "@app/types/run";
+import type { RunAppResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {

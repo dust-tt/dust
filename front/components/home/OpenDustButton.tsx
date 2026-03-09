@@ -1,11 +1,10 @@
-import { ArrowRightIcon, Button } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { ArrowRightIcon, Button } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 interface OpenDustButtonProps {
   variant?: "highlight" | "outline";

@@ -1,3 +1,10 @@
+import config from "@app/lib/api/config";
+import { useAppRouter } from "@app/lib/platform";
+import { isDevelopment } from "@app/types/shared/env";
+import type {
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+} from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -8,25 +15,19 @@ import {
   Label,
 } from "@dust-tt/sparkle";
 
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { isDevelopment } from "@app/types/shared/env";
-import type {
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@app/types/user";
-
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;
   workspace: LightWorkspaceType;
+  onSelectOrganization?: (organizationId: string) => void;
+  onSelectWorkspace?: (workspaceSId: string) => void;
 }
 
 export const WorkspacePickerRadioGroup = ({
   user,
   workspace,
+  onSelectOrganization,
+  onSelectWorkspace,
 }: WorkspacePickerRadioGroupProps) => {
-  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
 
   const organizations = user.organizations;
@@ -43,12 +44,13 @@ export const WorkspacePickerRadioGroup = ({
                 value={org.externalId || ""}
                 onClick={async () => {
                   if (org.externalId && org.externalId !== workspace.sId) {
-                    await setNavigationSelection({
-                      lastWorkspaceId: org.externalId,
-                    });
-                    await router.push(
-                      `${getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
-                    );
+                    if (onSelectOrganization) {
+                      onSelectOrganization(org.id);
+                    } else {
+                      await router.push(
+                        `${config.getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
+                      );
+                    }
                   }
                 }}
               >
@@ -64,10 +66,11 @@ export const WorkspacePickerRadioGroup = ({
                   value={ws.sId}
                   onClick={async () => {
                     if (ws.sId !== workspace.sId) {
-                      await setNavigationSelection({
-                        lastWorkspaceId: ws.sId,
-                      });
-                      await router.push(`/w/${ws.sId}/`);
+                      if (onSelectWorkspace) {
+                        onSelectWorkspace(ws.sId);
+                      } else {
+                        await router.push(`/w/${ws.sId}/`);
+                      }
                     }
                   }}
                 >

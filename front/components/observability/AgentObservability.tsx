@@ -1,14 +1,3 @@
-import {
-  Button,
-  CardGrid,
-  ContentMessage,
-  LoadingBlock,
-  safeLazy,
-  Spinner,
-  ValueCard,
-} from "@dust-tt/sparkle";
-import { Suspense } from "react";
-
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import {
@@ -16,6 +5,16 @@ import {
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  CardGrid,
+  ContentMessage,
+  LoadingBlock,
+  Spinner,
+  safeLazy,
+  ValueCard,
+} from "@dust-tt/sparkle";
+import { Suspense } from "react";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 
@@ -39,6 +38,13 @@ const SourceChart = safeLazy(() =>
       default: mod.SourceChart,
     })
   )
+);
+const SkillUsageChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/SkillUsageChart"
+  ).then((mod) => ({
+    default: mod.SkillUsageChart,
+  }))
 );
 const ToolUsageChart = safeLazy(() =>
   import(
@@ -163,7 +169,7 @@ export function AgentObservability({
             <Spinner />
           </div>
         ) : (
-          <CardGrid>
+          <CardGrid adaptColumns>
             <ValueCard
               title="Active Users"
               className="h-24"
@@ -228,6 +234,13 @@ export function AgentObservability({
         </Suspense>
         <Suspense fallback={<ChartFallback />}>
           <ToolUsageChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <SkillUsageChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}

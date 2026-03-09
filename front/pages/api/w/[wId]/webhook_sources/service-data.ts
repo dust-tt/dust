@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -17,6 +15,7 @@ import {
   isWebhookProvider,
   WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetServiceDataResponseType<
   P extends WebhookProvider = WebhookProvider,

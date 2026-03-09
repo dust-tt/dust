@@ -1,10 +1,8 @@
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListPluginsForScopeResponseBody } from "@app/pages/api/poke/plugins/";
@@ -15,6 +13,7 @@ import type { PokeListPluginRunsResponseBody } from "@app/pages/api/poke/plugins
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Fetcher } from "swr";
 
 export function usePokeListPluginForResourceType({
   disabled,
@@ -23,6 +22,7 @@ export function usePokeListPluginForResourceType({
   disabled?: boolean;
   pluginResourceTarget: PluginResourceTarget;
 }) {
+  const { fetcher } = useFetcher();
   const workspacesFetcher: Fetcher<PokeListPluginsForScopeResponseBody> =
     fetcher;
 
@@ -57,6 +57,7 @@ export function usePokePluginManifest({
   disabled?: boolean;
   pluginId: string;
 }) {
+  const { fetcher } = useFetcher();
   const pluginManifestFetcher: Fetcher<PokeGetPluginDetailsResponseBody> =
     fetcher;
 
@@ -84,6 +85,7 @@ export function usePokePluginAsyncArgs({
   pluginId: string;
   pluginResourceTarget: PluginResourceTarget;
 }) {
+  const { fetcher } = useFetcher();
   const pluginAsyncArgsFetcher: Fetcher<PokeGetPluginAsyncArgsResponseBody> =
     fetcher;
 
@@ -191,6 +193,7 @@ export function usePokePluginRuns({
   resourceType,
   resourceId,
 }: PokePluginRunsFetchProps) {
+  const { fetcher } = useFetcher();
   const pluginRunsFetcher: Fetcher<PokeListPluginRunsResponseBody> = fetcher;
 
   const urlParams = new URLSearchParams();

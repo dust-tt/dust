@@ -160,6 +160,7 @@ async function main(): Promise<void> {
   await DustProjectConversationModel.sync({ alter: true });
 
   // enable the `unaccent` extension
+  // biome-ignore lint/plugin/noRawSql: DB setup requires raw SQL for extensions
   await connectorsSequelize.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
   await addSearchVectorTrigger(
@@ -198,6 +199,7 @@ async function addSearchVectorTrigger(
   functionName: string
 ) {
   // this creates/updates a function that will be called on every insert/update
+  // biome-ignore lint/plugin/noRawSql: add function
   await sequelizeConnection.query(`
       CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$
       begin
@@ -210,6 +212,7 @@ async function addSearchVectorTrigger(
     `);
 
   // this creates/updates a trigger that will call the function above
+  // biome-ignore lint/plugin/noRawSql: DB setup requires raw SQL for triggers
   await sequelizeConnection.query(`
       DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = '${triggerName}') THEN

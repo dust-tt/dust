@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { internalDeleteFile } from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import type { LightGoogleDrive } from "@connectors/connectors/google_drive/temporal/activities/common/types";

@@ -1,10 +1,9 @@
-import type { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
-
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
 // https://github.com/mistralai/client-ts#error-handling
 export const handleError = (

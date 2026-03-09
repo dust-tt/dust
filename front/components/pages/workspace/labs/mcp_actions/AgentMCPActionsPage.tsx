@@ -1,3 +1,16 @@
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAppRouter, usePathParams } from "@app/lib/platform";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useMCPActions } from "@app/lib/swr/mcp_actions";
+import { getConversationRoute } from "@app/lib/utils/router";
+import { isString } from "@app/types/shared/utils/general";
 import {
   ActionCodeBoxIcon,
   Avatar,
@@ -11,28 +24,14 @@ import {
   Pagination,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect } from "react";
-
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AppContentLayout } from "@app/components/sparkle/AppContentLayout";
-import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter, usePathParams } from "@app/lib/platform";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useMCPActions } from "@app/lib/swr/mcp_actions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getConversationRoute } from "@app/lib/utils/router";
-import { isString } from "@app/types/shared/utils/general";
+import { useCallback, useEffect, useMemo } from "react";
 
 export function AgentMCPActionsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const router = useAppRouter();
   const { agentId } = usePathParams();
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const { agentConfiguration: agent, isAgentConfigurationLoading } =
     useAgentConfiguration({
@@ -56,13 +55,10 @@ export function AgentMCPActionsPage() {
 
   // Redirect if feature flag is not enabled.
   useEffect(() => {
-    if (
-      !isFeatureFlagsLoading &&
-      !featureFlags.includes("labs_mcp_actions_dashboard")
-    ) {
+    if (!featureFlags.includes("labs_mcp_actions_dashboard")) {
       void router.replace(`/w/${owner.sId}/labs`);
     }
-  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
+  }, [featureFlags, owner.sId, router]);
 
   // Redirect if agent not found.
   useEffect(() => {
@@ -109,21 +105,25 @@ export function AgentMCPActionsPage() {
   };
 
   const isPageLoading =
-    isFeatureFlagsLoading ||
     !featureFlags.includes("labs_mcp_actions_dashboard") ||
     isAgentConfigurationLoading ||
     !agent;
 
+  const pageTitle = agent
+    ? `Dust - MCP Actions for ${agent.name}`
+    : "Dust - MCP Actions";
+
+  const navChildren = useMemo(
+    () => <AgentSidebarMenu owner={owner} />,
+    [owner]
+  );
+
+  useSetContentWidth("centered");
+  useSetPageTitle(pageTitle);
+  useSetNavChildren(navChildren);
+
   return (
-    <AppContentLayout
-      contentWidth="centered"
-      subscription={subscription}
-      owner={owner}
-      pageTitle={
-        agent ? `Dust - MCP Actions for ${agent.name}` : "Dust - MCP Actions"
-      }
-      navChildren={<AgentSidebarMenu owner={owner} />}
-    >
+    <>
       {isPageLoading ? (
         <div className="flex h-full items-center justify-center">
           <Spinner />
@@ -284,6 +284,6 @@ export function AgentMCPActionsPage() {
           </Page>
         </>
       )}
-    </AppContentLayout>
+    </>
   );
 }

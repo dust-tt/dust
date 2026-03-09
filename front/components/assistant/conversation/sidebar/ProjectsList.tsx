@@ -1,39 +1,32 @@
-import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
-import { memo, useCallback, useContext, useRef, useState } from "react";
-
 import {
   ProjectMenu,
   useProjectMenu,
 } from "@app/components/assistant/conversation/ProjectMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useConversation } from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-
-interface ProjectsListProps {
-  owner: WorkspaceType;
-  summary: GetBySpacesSummaryResponseBody["summary"];
-  titleFilter: string;
-}
+import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
+import { memo, useCallback, useContext, useRef, useState } from "react";
 
 const ProjectListItem = memo(
   ({
     space,
     unreadCount,
+    hasUnread,
     owner,
     moveConversationToProject,
   }: {
     space: SpaceType;
     unreadCount: number;
+    hasUnread: boolean;
     owner: WorkspaceType;
     moveConversationToProject: (
       conversation: ConversationWithoutContentType,
@@ -114,6 +107,7 @@ const ProjectListItem = memo(
         icon={getSpaceIcon(space)}
         selected={isSpaceSelected && !isDragOver}
         label={space.name}
+        hasActivity={hasUnread}
         count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.
@@ -132,7 +126,7 @@ const ProjectListItem = memo(
             space={space}
             owner={owner}
             trigger={<NavigationListItemAction />}
-            isProjectDisplayed={router.query.cId === space.sId}
+            isProjectDisplayed={activeConversationId === space.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}
@@ -145,21 +139,20 @@ const ProjectListItem = memo(
 
 ProjectListItem.displayName = "ProjectListItem";
 
-export function ProjectsList({
+export function renderProjectsList({
   owner,
   summary,
   titleFilter,
-}: ProjectsListProps) {
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const moveConversationToProject = useMoveConversationToProject(owner);
-
-  if (!hasFeature("projects")) {
-    return null;
-  }
-
+  moveConversationToProject,
+}: {
+  owner: WorkspaceType;
+  summary: GetBySpacesSummaryResponseBody["summary"];
+  titleFilter: string;
+  moveConversationToProject: (
+    conversation: ConversationWithoutContentType,
+    space: SpaceType
+  ) => Promise<boolean>;
+}) {
   if (!summary || summary.length === 0) {
     return null;
   }
@@ -176,17 +169,19 @@ export function ProjectsList({
     return null;
   }
 
-  return (
-    <>
-      {filteredSummary.map(({ space, unreadConversations }) => (
-        <ProjectListItem
-          key={space.sId}
-          space={space}
-          unreadCount={unreadConversations.length}
-          owner={owner}
-          moveConversationToProject={moveConversationToProject}
-        />
-      ))}
-    </>
+  return filteredSummary.map(
+    ({ space, unreadConversations, nonParticipantUnreadConversations }) => (
+      <ProjectListItem
+        key={space.sId}
+        space={space}
+        unreadCount={unreadConversations.length}
+        hasUnread={
+          unreadConversations.length > 0 ||
+          nonParticipantUnreadConversations.length > 0
+        }
+        owner={owner}
+        moveConversationToProject={moveConversationToProject}
+      />
+    )
   );
 }

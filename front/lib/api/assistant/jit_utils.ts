@@ -1,6 +1,4 @@
 // Okay to use public API types because here front is talking to core API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import type {
   ContentNodeAttachmentType,
@@ -8,28 +6,30 @@ import type {
 } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
 } from "@app/lib/api/assistant/conversation/attachments";
+import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import {
-  isInteractiveContentFileContentType,
-  isLLMVisionSupportedImageContentType,
-} from "@app/types/files";
+  isAgentMessageType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
-export function listAttachments(
-  conversation: ConversationType
-): ConversationAttachmentType[] {
-  const attachments: ConversationAttachmentType[] = [];
+export async function listAttachments(
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationType }
+): Promise<ConversationAttachmentType[]> {
+  // Using a map to avoid duplicated, order matters, project files should override directly attached files as they could have be moved from conversation to project.
+  const attachments: Map<string, ConversationAttachmentType> = new Map();
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
     if (isContentFragmentType(m)) {
-      // Skip images handled by vision APIs; SVG is text-based so we list it.
-      if (isLLMVisionSupportedImageContentType(m.contentType)) {
-        continue;
-      }
-
       // Only list the latest version of a content fragment.
       if (m.contentFragmentVersion !== "latest") {
         continue;
@@ -37,30 +37,54 @@ export function listAttachments(
 
       const attachment = getAttachmentFromContentFragment(m);
       if (attachment) {
-        attachments.push(attachment);
+        attachments.set(m.contentFragmentId, attachment);
       }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        // Interactive Content files should not be shown in the JIT.
-        if (isInteractiveContentFileContentType(f.contentType)) {
-          continue;
-        }
-
-        attachments.push(
-          getAttachmentFromToolOutput({
+        attachments.set(
+          f.fileId,
+          getAttachmentFromFile({
             fileId: f.fileId,
             contentType: f.contentType,
             title: f.title,
             snippet: f.snippet,
+            isInProjectContext: f.isInProjectContext ?? false,
           })
         );
       }
     }
   }
 
-  return attachments;
+  if (isProjectConversation(conversation)) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      logger.warn(
+        { conversationId: conversation.sId, spaceId: conversation.spaceId },
+        "Space not found for conversation"
+      );
+    } else {
+      const files = await FileResource.listByProject(auth, {
+        projectId: space.sId,
+      });
+
+      for (const f of files) {
+        attachments.set(
+          f.sId,
+          getAttachmentFromFile({
+            fileId: f.sId,
+            contentType: f.contentType,
+            title: f.fileName,
+            snippet: f.snippet,
+            isInProjectContext: true,
+          })
+        );
+      }
+    }
+  }
+
+  return Array.from(attachments.values());
 }
 
 /**

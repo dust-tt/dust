@@ -20,6 +20,7 @@ import {
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { chunk } from "lodash";
 
 const {

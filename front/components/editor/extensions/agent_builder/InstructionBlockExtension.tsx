@@ -1,16 +1,4 @@
-import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
-import { InputRule } from "@tiptap/core";
-import { mergeAttributes, Node } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
-import type { NodeViewProps } from "@tiptap/react";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react";
-import React, { useEffect, useRef, useState } from "react";
-
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import {
   CLOSING_TAG_REGEX,
   INSTRUCTION_BLOCK_REGEX,
@@ -19,6 +7,19 @@ import {
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
+import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
+import { InputRule, mergeAttributes, Node } from "@tiptap/core";
+import { Slice } from "@tiptap/pm/model";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import type { NodeViewProps } from "@tiptap/react";
+import {
+  NodeViewContent,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -280,6 +281,73 @@ export const InstructionBlockExtension =
       return ReactNodeViewRenderer(InstructionBlockComponent);
     },
 
+    addProseMirrorPlugins() {
+      const instructionBlockName = this.name;
+
+      return [
+        new Plugin({
+          key: new PluginKey("instructionBlockCopyContext"),
+          props: {
+            // When copying text from inside an instruction block, ProseMirror
+            // builds a Slice that includes the surrounding nodes as context
+            // (stored in data-pm-slice). On paste, this context causes a new
+            // instruction block to be re-created, duplicating the XML tags.
+            //
+            // Copying just "test" from inside <example>test</example> produces:
+            //
+            //   instructionsRoot        (context — childCount: 1)
+            //     └── instructionBlock  (context — childCount: 1)
+            //           └── paragraph("test")  ← actual selection
+            //
+            // We strip the single-child instructionsRoot/instructionBlock
+            // wrappers so the clipboard only contains: paragraph("test").
+            //
+            // Copying the whole block (including the XML tag) produces:
+            //
+            //   instructionsRoot                (childCount: 3)
+            //     ├── paragraph()               ← before the block
+            //     ├── instructionBlock
+            //     │     └── paragraph("test")
+            //     └── paragraph()               ← after the block
+            //
+            // Here instructionsRoot has 3 children, so childCount !== 1 and
+            // the slice is left unchanged — the full block is preserved.
+            transformCopied(slice) {
+              let { content, openStart, openEnd } = slice;
+
+              // Peel off wrapper nodes that are instructionsRoot or
+              // instructionBlock when they are part of the open (context) portion
+              // of the slice — i.e. not explicitly selected.
+              while (openStart > 0 && openEnd > 0 && content.childCount === 1) {
+                if (!content.firstChild) {
+                  break;
+                }
+                const firstChild = content.firstChild;
+                const name = firstChild.type.name;
+
+                if (
+                  name !== instructionBlockName &&
+                  name !== "instructionsRoot"
+                ) {
+                  break;
+                }
+
+                content = firstChild.content;
+                openStart--;
+                openEnd--;
+              }
+
+              if (content !== slice.content) {
+                return new Slice(content, openStart, openEnd);
+              }
+
+              return slice;
+            },
+          },
+        }),
+      ];
+    },
+
     addInputRules() {
       return [
         new InputRule({
@@ -504,20 +572,21 @@ export const InstructionBlockExtension =
         }
 
         const tagName = match[1] || "instructions";
+        const content = match[2];
 
         let tokens;
         try {
           // Attempt to tokenize nested content with original text in a try-catch
           // Sometimes we can't tokenize with non-breakable-space content, hence
           // the .trim() fallback
-          tokens = lexer.blockTokens(match[2]);
+          tokens = lexer.blockTokens(content);
         } catch (error) {
           try {
-            tokens = lexer.blockTokens(match[2].trim());
+            tokens = lexer.blockTokens(content.trim());
             logger.warn("Marked lexer state corruption, passed with trim()", {
               error: normalizeError(error),
               sourceString: src,
-              match2: match[2],
+              match2: content,
             });
           } catch (error) {
             // Marked lexer state corruption - fallback to treating as undefined, so we still at least display the content
@@ -527,7 +596,7 @@ export const InstructionBlockExtension =
               {
                 error: normalizeError(error),
                 sourceString: src,
-                match2: match[2].trim(),
+                match2: content.trim(),
               }
             );
             return undefined;
@@ -540,7 +609,7 @@ export const InstructionBlockExtension =
           attrs: {
             type: tagName.toLowerCase(),
           },
-          text: match[2],
+          text: content,
           tokens,
         };
       },
@@ -548,6 +617,17 @@ export const InstructionBlockExtension =
 
     parseMarkdown: (token, helpers) => {
       const tagType = token.attrs?.type ?? "instructions";
+      const rawContent = helpers.parseChildren(token.tokens ?? []);
+
+      // instructionsRoot: parseHTMLToken wraps malformed/unmatched tags via generateJSON(html,
+      // baseExtensions). Since the schema is doc > instructionsRoot > block+, ProseMirror wraps
+      // the fragment in instructionsRoot, which then appears as a child here. We unwrap it to
+      // preserve its block children rather than dropping them.
+      const content = rawContent.flatMap((node) =>
+        node.type === INSTRUCTIONS_ROOT_NODE_NAME
+          ? (node.content ?? [])
+          : [node]
+      );
 
       return {
         type: "instructionBlock",
@@ -555,8 +635,10 @@ export const InstructionBlockExtension =
           type: tagType,
           isCollapsed: false,
         },
-        // The content markdown will be parsed by the markdown parser
-        content: helpers.parseChildren(token.tokens ?? []),
+        // When tags contain only whitespace (e.g. "<foo>\n</foo>"), blockTokens("\n") produces
+        // tokens that parseChildren can't convert to valid blocks, returning an empty array. This
+        // violates the "block+" schema and crashes ProseMirror. Fall back to an empty paragraph.
+        content: content.length > 0 ? content : [{ type: "paragraph" }],
       };
     },
 

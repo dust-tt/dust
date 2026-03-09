@@ -49,6 +49,7 @@ import {
   formatHubSpotObjectsAsText,
   formatHubSpotSearchResults,
   formatHubSpotUpdateSuccess,
+  formatOwnersAsText,
   formatTransformedPropertiesAsText,
 } from "@app/lib/api/actions/servers/hubspot/rendering";
 import { Err, Ok } from "@app/types/shared/result";
@@ -127,7 +128,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       }
       return new Ok([
         { type: "text" as const, text: "Owners retrieved successfully." },
-        { type: "text" as const, text: JSON.stringify(owners, null, 2) },
+        { type: "text" as const, text: formatOwnersAsText(owners) },
       ]);
     });
   },
@@ -145,7 +146,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
           type: "text" as const,
           text: `Found ${owners.length} owner(s) matching "${searchQuery}".`,
         },
-        { type: "text" as const, text: JSON.stringify(owners, null, 2) },
+        { type: "text" as const, text: formatOwnersAsText(owners) },
       ]);
     });
   },
@@ -333,8 +334,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
-  export_crm_objects_csv: async (input, extra) => {
-    const token = extra.authInfo?.token;
+  export_crm_objects_csv: async (input, { authInfo }) => {
+    const token = authInfo?.token;
     if (!token) {
       return new Err(new MCPError("Missing HubSpot access token"));
     }

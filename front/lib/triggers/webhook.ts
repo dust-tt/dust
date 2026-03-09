@@ -4,7 +4,6 @@ import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -24,6 +23,7 @@ import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client
 import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type {
   TriggerType,
+  WebhookRequestTriggerStatus,
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
@@ -58,14 +58,14 @@ export function checkSignature({
   algorithm,
   secret,
   headers,
-  body,
+  rawBody,
   provider,
 }: {
   headerName: string | null;
   algorithm: "sha1" | "sha256" | "sha512" | null;
   secret: string;
   headers: Record<string, string>;
-  body: unknown;
+  rawBody: string;
   provider: WebhookProvider | null;
 }): Result<
   void,
@@ -75,7 +75,7 @@ export function checkSignature({
     const verifyRes = FathomClient.verifyWebhook({
       secret,
       headers,
-      body: JSON.stringify(body),
+      body: rawBody,
     });
 
     if (verifyRes.isErr()) {
@@ -108,10 +108,8 @@ export function checkSignature({
     });
   }
 
-  const stringifiedBody = JSON.stringify(body);
-
   const isValid = verifySignature({
-    signedContent: stringifiedBody,
+    signedContent: rawBody,
     secret: secret,
     signature,
     algorithm,
@@ -718,11 +716,13 @@ export async function processWebhookRequest(
     webhookRequest,
     headers,
     body,
+    rawBody,
   }: {
     webhookSource: WebhookSourceResource;
     webhookRequest: WebhookRequestResource;
     headers: Record<string, string>;
     body: Record<string, unknown>;
+    rawBody: string;
   }
 ): Promise<Result<void, Error>> {
   const localLogger = logger.child({
@@ -737,7 +737,7 @@ export async function processWebhookRequest(
       algorithm: webhookSource.signatureAlgorithm,
       secret: webhookSource.secret,
       headers,
-      body,
+      rawBody,
       provider: webhookSource.provider,
     });
 
@@ -813,9 +813,11 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   {
     trigger,
     limit = 15,
+    status,
   }: {
     trigger: TriggerType;
     limit?: number;
+    status?: WebhookRequestTriggerStatus;
   }
 ): Promise<
   {
@@ -834,6 +836,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
     {
       triggerId: trigger.id,
       limit,
+      status,
     }
   );
 

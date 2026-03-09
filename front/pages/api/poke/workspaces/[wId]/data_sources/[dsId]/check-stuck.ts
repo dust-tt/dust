@@ -1,7 +1,3 @@
-import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
-import { ScheduleNotFoundError } from "@temporalio/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -23,6 +19,9 @@ import {
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
+import { ScheduleNotFoundError } from "@temporalio/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PendingActivityInfo = {
   activityId: string;
@@ -150,6 +149,7 @@ async function checkWorkflowStuck(
     const handle = client.workflow.getHandle(workflowId);
     description = await handle.describe();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     return null;
   }

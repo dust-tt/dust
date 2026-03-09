@@ -1,5 +1,3 @@
-import { useCallback, useContext, useMemo } from "react";
-
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -7,6 +5,7 @@ import { useDataSourceBuilderContext } from "@app/components/data_source_view/co
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
 import { SPACE_KINDS } from "@app/types/space";
+import { useCallback, useContext, useMemo } from "react";
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];

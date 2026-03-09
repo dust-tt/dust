@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -24,6 +20,9 @@ import {
   WEBHOOK_PRESETS,
   WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export const PostWebhookSourcesSchema = WebhookSourcesSchema;
 
@@ -200,7 +199,7 @@ async function handler(
       if (provider && connectionId && remoteMetadata) {
         // Allow redirection to public URL in local dev for webhook registrations.
         const baseUrl =
-          process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getClientFacingUrl();
+          process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getApiBaseUrl();
         const webhookUrl = buildWebhookUrl({
           apiBaseUrl: baseUrl,
           workspaceId: workspace.sId,

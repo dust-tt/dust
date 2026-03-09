@@ -1,9 +1,7 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Common } from "googleapis";
 import { describe, expect, it } from "vitest";
-
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 import { handleFileAccessError } from "./index";
 

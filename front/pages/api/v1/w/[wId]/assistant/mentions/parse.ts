@@ -1,7 +1,3 @@
-import type { ParseMentionsResponseBodyType } from "@dust-tt/client";
-import { ParseMentionsRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +6,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ParseMentionsResponseBodyType } from "@dust-tt/client";
+import { ParseMentionsRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger

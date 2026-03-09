@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
-import { Button, Icon, Separator } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { Icon } from "@sparkle/components/Icon";
+import { Separator } from "@sparkle/components/Separator";
 import {
   Sheet,
   SheetClose,

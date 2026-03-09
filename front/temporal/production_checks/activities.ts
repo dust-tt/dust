@@ -1,12 +1,11 @@
-import { Context } from "@temporalio/activity";
-import { v4 as uuidv4 } from "uuid";
-
 import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_active_workflows_for_connectors";
 import { checkActiveWorkflowsForFront } from "@app/lib/production_checks/checks/check_active_workflows_for_front";
 import { checkConnectorsLastSyncSuccess } from "@app/lib/production_checks/checks/check_connectors_last_sync_success";
 import { checkDataSourcesConsistency } from "@app/lib/production_checks/checks/check_data_sources_consistency";
+import { checkEndedBackendOnlySubscriptions } from "@app/lib/production_checks/checks/check_ended_backend_only_subscriptions";
 import { checkExcessCredits } from "@app/lib/production_checks/checks/check_excess_credits";
 import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/check_extraneous_workflows_for_paused_connectors";
+import { checkMembershipActiveUsersConsistency } from "@app/lib/production_checks/checks/check_membership_active_users_consistency";
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
 import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
@@ -19,6 +18,8 @@ import type {
   CheckFailurePayload,
   CheckSuccessPayload,
 } from "@app/types/production_checks";
+import { Context } from "@temporalio/activity";
+import { v4 as uuidv4 } from "uuid";
 
 export const REGISTERED_CHECKS: Check[] = [
   {
@@ -69,6 +70,16 @@ export const REGISTERED_CHECKS: Check[] = [
   {
     name: "check_excess_credits",
     check: checkExcessCredits,
+    everyHour: 24,
+  },
+  {
+    name: "check_ended_backend_only_subscriptions",
+    check: checkEndedBackendOnlySubscriptions,
+    everyHour: 24,
+  },
+  {
+    name: "check_membership_active_users_consistency",
+    check: checkMembershipActiveUsersConsistency,
     everyHour: 24,
   },
 ];

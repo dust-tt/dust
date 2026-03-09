@@ -1,9 +1,44 @@
+import {
+  DUST_SANDBOX_IMAGE_ID,
+  type SandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
+// Pluggable base URL resolver (e.g. RegionContext in the SPA).
+let baseUrlResolver: (() => string) | null = null;
+
+export function setBaseUrlResolver(fn: (() => string) | null): void {
+  baseUrlResolver = fn;
+}
+
+// Returns the resolver's URL if set, or empty string.
+// Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
+export function getBaseUrl(): string {
+  return baseUrlResolver?.() || "";
+}
+
+// Pluggable default RequestInit resolver (e.g. credentials/headers per context).
+let defaultInitResolver: (() => RequestInit) | null = null;
+
+export function setDefaultInitResolver(fn: (() => RequestInit) | null): void {
+  defaultInitResolver = fn;
+}
+
+export function getDefaultInit(): RequestInit | null {
+  return defaultInitResolver?.() ?? null;
+}
+
 const config = {
+  // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
+  // otherwise falls back to getClientFacingUrl().
+  getApiBaseUrl: (): string => {
+    return baseUrlResolver?.() || config.getClientFacingUrl();
+  },
+
+  // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
@@ -21,16 +56,15 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
-  // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
+  getStaticWebsiteUrl: (): string => {
+    return config.getClientFacingUrl();
+  },
+  // URL for the main app pages (/w/..., /share/..., etc.).
   // Use this for page URLs, not API endpoints.
-  // TODO(spa): make NEXT_PUBLIC_DUST_APP_URL mandatory, remove allowRelativeUrl parameter.
-  getAppUrl: (allowRelativeUrl: boolean = false): string => {
+  getAppUrl: (): string => {
     // Using process.env here to make sure the function is usable on the client side.
     if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
-      if (allowRelativeUrl) {
-        return "";
-      }
-      return config.getClientFacingUrl();
+      throw new Error("NEXT_PUBLIC_DUST_APP_URL is required");
     }
 
     return process.env.NEXT_PUBLIC_DUST_APP_URL;
@@ -44,7 +78,7 @@ const config = {
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
-      config.getClientFacingUrl()
+      config.getApiBaseUrl()
     );
   },
   getDustApiAudience: (): string => {
@@ -97,6 +131,9 @@ const config = {
   },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  },
+  getPostHogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
   },
   getCustomerIoSiteId: (): string => {
     return EnvironmentConfig.getEnvVariable("CUSTOMERIO_SITE_ID");
@@ -154,6 +191,9 @@ const config = {
   },
   getAcademyJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_ACADEMY_JWT_SECRET");
+  },
+  getSandboxJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_SANDBOX_JWT_SECRET");
   },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
@@ -268,8 +308,8 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
   },
   // Public viz URL (used by Gotenberg which routes through egress proxy).
-  getVizPublicUrl: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("VIZ_PUBLIC_URL");
+  getVizPublicUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("VIZ_PUBLIC_URL");
   },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
@@ -326,6 +366,12 @@ const config = {
   },
   getApolloApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
+  },
+  getRedisUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_URI");
+  },
+  getRedisCacheUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_CACHE_URI");
   },
   getContentfulSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
@@ -400,12 +446,9 @@ const config = {
   getTemporalAgentNamespace: () => {
     return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
   },
-  // Northflank sandbox.
-  getNorthflankApiToken: () => {
-    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");
-  },
-  getNorthflankProjectId: () => {
-    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
+  // Deployment component name. Set via DD_SERVICE in helm values per deployment.
+  getServiceName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DD_SERVICE");
   },
   // Email.
   getEmailWebhookSecret: (): string => {
@@ -414,6 +457,41 @@ const config = {
   getProductionDustWorkspaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "PRODUCTION_DUST_WORKSPACE_ID"
+    );
+  },
+  // Email validation secret for HMAC signing of action approval tokens.
+  getEmailValidationSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");
+  },
+  // Secret for signing gated asset download tokens (ebooks, whitepapers, etc.).
+  getGatedAssetsTokenSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
+  },
+  // Secrets for secure storage of keys and bearer tokens.
+  getDeveloperSecretsSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPERS_SECRETS_SECRET");
+  },
+  getMCPServerCredentialsSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_MCP_SERVER_CREDENTIALS_SECRET"
+    );
+  },
+  // E2B Sandbox.
+  getE2BSandboxConfig: (): {
+    apiKey: string;
+    imageId: SandboxImageId;
+    domain: string | undefined;
+  } => {
+    const apiKey = EnvironmentConfig.getEnvVariable("E2B_API_KEY");
+    return {
+      apiKey,
+      imageId: DUST_SANDBOX_IMAGE_ID,
+      domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
+    };
+  },
+  getSandboxGcpArtifactServiceAccountPath: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT"
     );
   },
 };

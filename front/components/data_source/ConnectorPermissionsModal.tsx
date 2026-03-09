@@ -1,3 +1,55 @@
+import type { ConfirmDataType } from "@app/components/Confirm";
+import { ConfirmContext } from "@app/components/Confirm";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
+import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
+import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
+import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { RegionInfo } from "@app/lib/api/regions/config";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_UI_CONFIGURATIONS,
+  getConnectorPermissionsConfigurableBlocked,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers_ui";
+import {
+  getDisplayNameForDataSource,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  useConnectorConfig,
+  useConnectorPermissions,
+  useOAuthMetadata,
+} from "@app/lib/swr/connectors";
+import { useSlackIsLegacy } from "@app/lib/swr/oauth";
+import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodeWithParent,
+  UpdateConnectorRequestBody,
+} from "@app/types/connectors/connectors_api";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+} from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import { isOAuthProvider } from "@app/types/oauth/lib";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -25,68 +77,10 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import type React from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
-
-import type { ConfirmDataType } from "@app/components/Confirm";
-import { ConfirmContext } from "@app/components/Confirm";
-import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
-import { ContentNodeTree } from "@app/components/ContentNodeTree";
-import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
-import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
-import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
-import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
-import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
-import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  CONNECTOR_UI_CONFIGURATIONS,
-  getConnectorPermissionsConfigurableBlocked,
-  isConnectorPermissionsEditable,
-} from "@app/lib/connector_providers_ui";
-import {
-  getDisplayNameForDataSource,
-  isRemoteDatabase,
-} from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  useConnectorConfig,
-  useConnectorPermissions,
-} from "@app/lib/swr/connectors";
-import { useSlackIsLegacy } from "@app/lib/swr/oauth";
-import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
-import {
-  useFeatureFlags,
-  useWorkspaceActiveSubscription,
-} from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodeWithParent,
-  UpdateConnectorRequestBody,
-} from "@app/types/connectors/connectors_api";
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-} from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
-import { isOAuthProvider } from "@app/types/oauth/lib";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
@@ -104,7 +98,8 @@ export async function handleUpdatePermissions(
   dataSource: DataSourceType,
   owner: LightWorkspaceType,
   extraConfig: Record<string, string>,
-  sendNotification: (notification: NotificationType) => void
+  sendNotification: (notification: NotificationType) => void,
+  regionInfo: RegionInfo | null
 ) {
   const provider = connector.type;
 
@@ -112,6 +107,7 @@ export async function handleUpdatePermissions(
     owner,
     provider,
     extraConfig,
+    regionInfo,
   });
   if (connectionRes.isErr()) {
     sendNotification({
@@ -267,13 +263,40 @@ function UpdateConnectionOAuthModal({
   const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   const { user } = useAuth();
 
   const { connectorProvider, editedByUser } = dataSource;
 
   const isSlack = connectorProvider === "slack";
+  const isMicrosoft = connectorProvider === "microsoft";
+
+  // Fetch existing OAuth metadata when modal is open
+  const { metadata, isMetadataLoading } = useOAuthMetadata({
+    dataSource,
+    owner,
+    disabled: !isOpen || !dataSource.connectorId || !isMicrosoft,
+  });
+
+  // Populate extraConfig from metadata on first load only
+  // This preserves user's unsaved changes when closing/reopening the modal
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  useEffect(() => {
+    if (isOpen && !isMetadataLoading && isMicrosoft) {
+      if (metadata?.client_id) {
+        // Convert metadata to string Record
+        // extraConfig is needed only in the Service Principal case) (i.e., when client_id is present in metadata)
+        const stringMetadata: Record<string, string> = {};
+        for (const [key, value] of Object.entries(metadata)) {
+          if (typeof value === "string") {
+            stringMetadata[key] = value;
+          }
+        }
+        setExtraConfig(stringMetadata);
+      }
+    }
+  }, [isOpen, metadata, isMetadataLoading, isMicrosoft, dataSource.sId]);
 
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
@@ -437,7 +460,8 @@ function UpdateConnectionOAuthModal({
           </div>
         )}
         {connectorUIConfiguration.oauthExtraConfigComponent &&
-          showSlackOauthExtraComponent && (
+          ((isMicrosoft && !isMetadataLoading) ||
+            showSlackOauthExtraComponent) && (
             <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
               setExtraConfig={setExtraConfig}
@@ -678,6 +702,7 @@ export function ConnectorPermissionsModal({
   readOnly,
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
+  const regionContext = useRegionContext();
 
   const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
@@ -720,7 +745,7 @@ export function ConnectorPermissionsModal({
       disabled: !canUpdatePermissions,
     });
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags();
   const advancedNotionManagement =
     dataSource.connectorProvider === "notion" &&
     featureFlags.includes("advanced_notion_management");
@@ -732,6 +757,7 @@ export function ConnectorPermissionsModal({
     return node.parentInternalIds ?? [];
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const initialTreeSelectionModel = useMemo(
     () =>
       allSelectedResources.reduce<
@@ -863,6 +889,7 @@ export function ConnectorPermissionsModal({
     [selectedNodes, initialTreeSelectionModel]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setModalToShow(initialModalState);
@@ -1103,7 +1130,8 @@ export function ConnectorPermissionsModal({
                     dataSource,
                     owner,
                     extraConfig,
-                    sendNotification
+                    sendNotification,
+                    regionContext.regionInfo
                   );
                   closeModal(false);
                 }}

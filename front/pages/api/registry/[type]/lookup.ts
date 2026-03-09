@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
@@ -12,6 +10,7 @@ import type { CoreAPISearchFilter } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 type LookupDataSourceResponseBody = {
   project_id: number;
@@ -85,6 +84,15 @@ async function handler(
   // run
 
   const allowConversationsDataSources = req.query.is_system_run === "true";
+
+  logger.info(
+    {
+      type: req.query.type,
+      workspaceId: userWorkspaceId,
+      allowConversationsDataSources,
+    },
+    "Received registry lookup request"
+  );
 
   switch (req.method) {
     case "GET":
@@ -186,6 +194,19 @@ async function handleDataSourceView(
   dataSourceViewId: string,
   allowConversationsDataSources: boolean
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
+  logger.info(
+    {
+      dataSourceView: {
+        id: dataSourceViewId,
+      },
+      workspace: {
+        id: auth.getNonNullableWorkspace().id,
+        sId: auth.getNonNullableWorkspace().sId,
+      },
+    },
+    "Looking up registry with dataSourceView"
+  );
+
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     dataSourceViewId
@@ -234,7 +255,7 @@ async function handleDataSource(
         sId: auth.getNonNullableWorkspace().sId,
       },
     },
-    "Looking up registry with data source id"
+    "Looking up registry with DataSource"
   );
 
   const dataSource = await DataSourceResource.fetchByNameOrId(

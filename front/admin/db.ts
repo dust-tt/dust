@@ -33,6 +33,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
@@ -49,6 +50,7 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
+  SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
@@ -58,6 +60,8 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
+import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
+import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import {
   AppModel,
@@ -66,6 +70,7 @@ import {
   ProviderModel,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -92,6 +97,7 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
@@ -194,9 +200,15 @@ export function loadAllModels() {
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
+    SkillFileAttachmentModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
     UserProjectDigestModel,
+    AcademyQuizAttemptModel,
+    AcademyChapterVisitModel,
+    SandboxModel,
+    ConversationButlerSuggestionModel,
+    ConversationBranchModel,
   ];
 }
 

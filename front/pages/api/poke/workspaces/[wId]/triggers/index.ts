@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -12,6 +10,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type TriggerWithProviderType = TriggerType & {
   provider?: WebhookProvider | null;

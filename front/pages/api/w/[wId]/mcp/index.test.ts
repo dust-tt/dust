@@ -1,20 +1,17 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
-
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
-
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it, vi } from "vitest";
 import handler from "./index";
 
 // Mock the data_sources module to spy on upsertTable
@@ -265,14 +262,15 @@ describe("POST /api/w/[wId]/mcp/", () => {
   });
 
   it("should create an internal MCP server with bearer token credentials", async () => {
-    const { req, res, workspace } = await setupTest("admin", "POST");
+    const { req, res, authenticator } = await setupTest("admin", "POST");
 
-    await FeatureFlagFactory.basic("slab_mcp", workspace);
+    const sharedSecret = "test-secret-123";
+
     req.body = {
-      name: "slab" as InternalMCPServerNameType,
+      name: "slab" satisfies InternalMCPServerNameType,
       serverType: "internal",
       includeGlobal: true,
-      sharedSecret: "test-secret-123",
+      sharedSecret,
       customHeaders: [
         { key: "X-Custom-Header", value: "custom-value" },
         { key: "Authorization", value: "Bearer should-be-kept" },
@@ -296,19 +294,76 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(responseData.server.customHeaders["X-Custom-Header"]).toContain("•");
 
     const server = responseData.server;
-    const credential = await InternalMCPServerCredentialModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        internalMCPServerId: server.sId,
-      },
-    });
+    const credentials =
+      await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+        authenticator,
+        server.sId
+      );
 
-    expect(credential).toBeDefined();
-    expect(credential?.sharedSecret).toBe("test-secret-123");
-    expect(credential?.customHeaders).toEqual({
+    expect(credentials).toBeDefined();
+    expect(credentials?.sharedSecret).toBeTruthy();
+    expect(credentials?.sharedSecret).toBe(sharedSecret);
+    expect(credentials?.customHeaders).toEqual({
       Authorization: "Bearer should-be-kept",
       "X-Custom-Header": "custom-value",
     });
+  });
+});
+
+describe("POST /api/w/[wId]/mcp/ - name conflict", () => {
+  it("should return 400 when creating a remote server with includeGlobal and name conflicts in global space", async () => {
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "POST"
+    );
+
+    // Create a remote server and add its view to the global space.
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "Test Server",
+      url: "https://existing.example.com",
+    });
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(authenticator);
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        authenticator,
+        existingServer.sId
+      );
+    expect(systemView).not.toBeNull();
+    await MCPServerViewResource.create(authenticator, {
+      systemView: systemView!,
+      space: globalSpace,
+    });
+
+    // Try to create another remote server with the same name and includeGlobal.
+    // The mock returns name: "Test Server" which conflicts.
+    req.body = {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("Test Server");
+  });
+
+  it("should succeed when creating a remote server with includeGlobal and no name conflict", async () => {
+    const { req, res } = await setupTest("admin", "POST");
+
+    // No existing servers in global space, so "Test Server" from the mock
+    // should not conflict.
+    req.body = {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    expect(res._getJSONData().success).toBe(true);
   });
 });
 

@@ -1,4 +1,4 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -14,6 +14,7 @@ const UserMessageOriginSchema = t.union([
   t.literal("web"),
   t.literal("agent_copilot"),
   t.literal("project_kickoff"),
+  t.literal("extension"),
 ]);
 
 export const MessageBaseSchema = t.type({

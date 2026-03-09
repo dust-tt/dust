@@ -1,5 +1,5 @@
 use crate::api::api_state::APIState;
-use crate::search_stores::search_store::{NodesSearchFilter, NodesSearchOptions};
+use crate::search_stores::search_store::{NodesSearchFilter, NodesSearchOptions, SearchNodesError};
 use crate::utils::{error_response, APIResponse};
 use axum::extract::State;
 use axum::Json;
@@ -37,6 +37,14 @@ pub async fn nodes_search(
             warning_code,
         ),
         Err(e) => {
+            if e.downcast_ref::<SearchNodesError>().is_some() {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "cursor_sort_mismatch",
+                    "The cursor was generated with a different sort configuration",
+                    Some(e),
+                );
+            }
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",

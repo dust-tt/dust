@@ -1,11 +1,4 @@
-import { Button, DustLogo } from "@dust-tt/sparkle";
-import { cva } from "class-variance-authority";
-import Head from "next/head";
-import Link from "next/link";
-import Script from "next/script";
-import { useCallback, useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
@@ -21,9 +14,17 @@ import {
   shouldCheckGeolocation,
 } from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button, DustLogo } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
+import Head from "next/head";
+import Link from "next/link";
+import Script from "next/script";
+import { useCallback, useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 export interface LandingLayoutProps {
   shape: number;
@@ -64,6 +65,12 @@ export default function LandingLayout({
   useEffect(() => {
     setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
   }, [cookies]);
+
+  // Verify actual auth state when session cookie is present. SWR deduplicates
+  // this call with the one in OpenDustButton, so there's no extra request.
+  const { isAuthenticated, isLoading: isAuthLoading } = useLandingAuthContext({
+    hasSessionCookie: hasSession,
+  });
 
   const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
 
@@ -138,7 +145,7 @@ export default function LandingLayout({
             </div>
             <MainNavigation />
             <div className="flex flex-grow justify-end gap-4">
-              {hasSession ? (
+              {hasSession && (isAuthLoading || isAuthenticated) ? (
                 <OpenDustButton
                   variant="highlight"
                   size="sm"
@@ -189,7 +196,7 @@ export default function LandingLayout({
           className={classNames(
             "flex w-full flex-col",
             fullWidth ? "" : "container",
-            "gap-24 px-6 pb-12",
+            "gap-6 px-6 pb-12 md:gap-24",
             hideNavigation ? "pt-6" : "pt-24",
             "xl:gap-16",
             "2xl:gap-24"
@@ -377,6 +384,7 @@ const Header = () => {
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
   utmParam?: string;
+  baseUrl?: string;
 }
 
 const logoVariants = cva("", {
@@ -394,11 +402,13 @@ const logoVariants = cva("", {
 export const PublicWebsiteLogo = ({
   size = "default",
   utmParam,
+  baseUrl,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
+  const href = `${baseUrl ?? ""}/home${utmParam ? `?${utmParam}` : ""}`;
 
   return (
-    <Link href={`/home${utmParam ? `?${utmParam}` : ""}`}>
+    <Link href={href}>
       <DustLogo className={className} />
     </Link>
   );

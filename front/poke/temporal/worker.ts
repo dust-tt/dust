@@ -1,6 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -9,6 +6,8 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/poke/temporal/activities";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 export async function runPokeWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();

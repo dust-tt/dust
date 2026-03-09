@@ -1,5 +1,3 @@
-import { Octokit } from "@octokit/core";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
@@ -11,6 +9,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
+import { Octokit } from "@octokit/core";
+
+// Events that are only supported on organization webhooks, not repository webhooks.
+const ORG_ONLY_EVENTS = ["projects_v2_item"];
 
 export class GitHubWebhookService implements RemoteWebhookService<"github"> {
   async getServiceData(
@@ -96,6 +98,9 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
       const webhookIds: Record<string, string> = {};
       const errors: string[] = [];
 
+      // Filter out org-only events for repository webhooks.
+      const repoEvents = events.filter((e) => !ORG_ONLY_EVENTS.includes(e));
+
       // Create webhooks for repositories
       for (const repository of repositories) {
         const fullName = repository.fullName;
@@ -135,7 +140,7 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
               repo,
               name: "web",
               active: true,
-              events,
+              events: repoEvents,
               config: {
                 url: webhookUrl,
                 content_type: "json",

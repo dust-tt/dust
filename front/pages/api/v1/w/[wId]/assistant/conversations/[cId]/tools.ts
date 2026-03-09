@@ -1,3 +1,10 @@
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   GetMCPServerViewsResponseType,
   PatchConversationResponseType,
@@ -6,19 +13,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-
 type FetchConversationToolsResponse = GetMCPServerViewsResponseType;
 
 const ConversationToolActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
   mcp_server_view_id: z.string(),
+  agent_configuration_id: z.string().optional(),
 });
 
 export type ConversationToolActionRequest = z.infer<
@@ -87,7 +87,8 @@ async function handler(
         });
       }
 
-      const { action, mcp_server_view_id } = parseResult.data;
+      const { action, mcp_server_view_id, agent_configuration_id } =
+        parseResult.data;
 
       const mcpServerViewRes = await MCPServerViewResource.fetchById(
         auth,
@@ -108,6 +109,15 @@ async function handler(
         conversation: conversationWithoutContent,
         mcpServerViews: [mcpServerViewRes],
         enabled: action === "add",
+        ...(agent_configuration_id
+          ? {
+              source: "agent_enabled",
+              agentConfigurationId: agent_configuration_id,
+            }
+          : {
+              source: "conversation",
+              agentConfigurationId: null,
+            }),
       });
       if (r.isErr()) {
         return apiError(req, res, {

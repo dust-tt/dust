@@ -1,6 +1,4 @@
 // Okay to use public API types because it's internal stuff mostly.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { default as config } from "@app/lib/api/config";
 import {
@@ -29,6 +27,8 @@ import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 /**
  * Creates a dust_project connector and associated data source for a project space.

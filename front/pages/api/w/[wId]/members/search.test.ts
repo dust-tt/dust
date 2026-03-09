@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -7,6 +5,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./search";
 

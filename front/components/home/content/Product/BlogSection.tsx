@@ -1,5 +1,3 @@
-import React from "react";
-
 import {
   Carousel,
   CarouselContent,
@@ -9,6 +7,8 @@ import {
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 interface BlogPost {
   title: string;

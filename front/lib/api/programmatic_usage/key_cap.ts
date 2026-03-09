@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
 import {
@@ -16,6 +14,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 

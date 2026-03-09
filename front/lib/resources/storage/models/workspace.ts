@@ -1,12 +1,11 @@
-import type { CreationOptional, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { SubscriptionModel } from "@app/lib/models/plan";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspaceSegmentationType } from "@app/types/user";
+import type { CreationOptional, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
 // TODO(2025-10-16 flav) Move this away from the resource storage layer.

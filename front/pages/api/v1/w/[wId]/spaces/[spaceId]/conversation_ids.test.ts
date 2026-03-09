@@ -1,6 +1,3 @@
-import { describe, it } from "vitest";
-import { expect } from "vitest";
-
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -10,6 +7,7 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it } from "vitest";
 
 import handler from "./conversation_ids";
 

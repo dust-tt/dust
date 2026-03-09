@@ -1,23 +1,3 @@
-import {
-  Button,
-  DocumentPlusIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  Input,
-  Page,
-  PlusIcon,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  Spinner,
-  TextArea,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -38,6 +18,26 @@ import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  DocumentPlusIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  Input,
+  Page,
+  PlusIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+  TextArea,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const MAX_NAME_CHARS = 32;
 
@@ -268,6 +268,7 @@ export const DocumentUploadOrEditModal = ({
     await handleUpload();
   }, [isValidDocument, handleUpload, documentState, sendNotification]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       // Enforce single file upload

@@ -1,19 +1,12 @@
-import assert from "assert";
-
-import { DEFAULT_CONVERSATION_SEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type {
-  ContentNodeAttachmentType,
-  ConversationAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
-import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { getConversationDataSourceViews } from "@app/lib/api/assistant/jit/utils";
+import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import assert from "assert";
 
 /**
  * Get MCP server configurations for conversation-specific tools.
@@ -21,26 +14,28 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
  */
 export async function getConversationMCPServers(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  agentConfigurationId?: string
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const servers: ServerSideMCPServerConfigurationType[] = [];
-
   const conversationMCPServerViews =
-    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+    await ConversationResource.fetchMCPServerViews(auth, conversation, {
+      onlyEnabled: true,
+      agentConfigurationId,
+    });
 
-  for (const conversationMCPServerView of conversationMCPServerViews) {
-    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
-      auth,
-      conversationMCPServerView.mcpServerViewId
-    );
+  // Batch-fetch all MCP server views.
+  const mcpServerViewIds = conversationMCPServerViews.map(
+    (v) => v.mcpServerViewId
+  );
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    mcpServerViewIds
+  );
 
-    if (!mcpServerViewResource) {
-      continue;
-    }
-
+  return mcpServerViews.map((mcpServerViewResource) => {
     const mcpServerView = mcpServerViewResource.toJSON();
 
-    servers.push({
+    return {
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
@@ -61,10 +56,8 @@ export async function getConversationMCPServers(
         mcpServerView.serverType === "internal"
           ? mcpServerView.server.sId
           : null,
-    });
-  }
-
-  return servers;
+    };
+  });
 }
 
 /**
@@ -94,7 +87,7 @@ export async function getConversationFilesServer(
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
-    name: "conversation_files",
+    name: CONVERSATION_FILES_SERVER_NAME,
     description: "Access and include files from the conversation",
     dataSources: null,
     tables: null,
@@ -107,93 +100,5 @@ export async function getConversationFilesServer(
     mcpServerViewId: conversationFilesView.sId,
     dustAppConfiguration: null,
     internalMCPServerId: conversationFilesView.mcpServerId,
-  };
-}
-
-/**
- * Get the conversation_search MCP server for semantic search over conversation files.
- * Only created if conversation has searchable attachments.
- */
-export async function getConversationSearchServer(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  attachments: ConversationAttachmentType[]
-): Promise<ServerSideMCPServerConfigurationType | null> {
-  const filesUsableAsRetrievalQuery = attachments.filter((f) => f.isSearchable);
-
-  if (filesUsableAsRetrievalQuery.length === 0) {
-    return null;
-  }
-
-  const retrievalView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "search"
-    );
-
-  assert(
-    retrievalView,
-    "MCP server view not found for search. Ensure auto tools are created."
-  );
-
-  // Get datasource views for child conversations.
-  const fileIdToDataSourceViewMap = await getConversationDataSourceViews(
-    auth,
-    conversation,
-    attachments
-  );
-
-  const contentNodeAttachments: ContentNodeAttachmentType[] = [];
-  for (const f of filesUsableAsRetrievalQuery) {
-    if (isContentNodeAttachmentType(f)) {
-      contentNodeAttachments.push(f);
-    }
-  }
-
-  const dataSources: DataSourceConfiguration[] = contentNodeAttachments.map(
-    (f) => ({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      dataSourceViewId: f.nodeDataSourceViewId,
-      filter: {
-        parents: {
-          in: [f.nodeId],
-          not: [],
-        },
-        tags: null,
-      },
-    })
-  );
-
-  const dataSourceIds = new Set(
-    [...fileIdToDataSourceViewMap.values()].map(
-      (dataSourceView) => dataSourceView.sId
-    )
-  );
-
-  for (const dataSourceViewId of dataSourceIds.values()) {
-    dataSources.push({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      dataSourceViewId,
-      filter: { parents: null, tags: null },
-    });
-  }
-
-  return {
-    id: -1,
-    sId: generateRandomModelSId(),
-    type: "mcp_server_configuration",
-    name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-    description: "Semantic search over all files from the conversation",
-    dataSources,
-    tables: null,
-    childAgentId: null,
-    timeFrame: null,
-    jsonSchema: null,
-    secretName: null,
-    dustProject: null,
-    additionalConfiguration: {},
-    mcpServerViewId: retrievalView.sId,
-    dustAppConfiguration: null,
-    internalMCPServerId: retrievalView.mcpServerId,
   };
 }

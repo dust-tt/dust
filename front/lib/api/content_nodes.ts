@@ -1,6 +1,4 @@
 // Public Api types are okay to use here as it's about internal types between connector and front.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -9,6 +7,8 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
@@ -35,6 +35,15 @@ export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
 
 export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
   INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
+] as readonly string[];
+
+// Table-like mime types that are NOT remote databases (Snowflake/BigQuery).
+export const NON_REMOTE_DATABASE_TABLE_MIME_TYPES = [
+  INTERNAL_MIME_TYPES.NOTION.DATABASE,
+  INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+  INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
+  INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
+  INTERNAL_MIME_TYPES.GENERIC.TABLE,
 ] as readonly string[];
 
 export const UNTITLED_TITLE = "Untitled Document";

@@ -1,14 +1,14 @@
-import { LinkWrapper } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface MCPServerView {
   sId: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
+  serverType: string;
   server: {
     sId: string;
     name: string;
@@ -44,6 +44,17 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Server name" />
+      ),
+    },
+    {
+      accessorKey: "server.sId",
+      cell: ({ row }) => {
+        const { server } = row.original;
+
+        return `${server.sId}`;
+      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Server ID" />
       ),
     },
     {

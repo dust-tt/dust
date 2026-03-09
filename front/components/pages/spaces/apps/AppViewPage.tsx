@@ -1,18 +1,6 @@
-import {
-  BracesIcon,
-  Button,
-  DocumentTextIcon,
-  PlayIcon,
-  Spinner,
-  StopIcon,
-} from "@dust-tt/sparkle";
-import { useRef, useState } from "react";
-import { useSWRConfig } from "swr";
-
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { extractConfig } from "@app/lib/config";
 import { clientFetch } from "@app/lib/egress/client";
@@ -33,6 +21,16 @@ import type {
 import type { CoreAPIError } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import type { BlockType } from "@app/types/run";
+import {
+  BracesIcon,
+  Button,
+  DocumentTextIcon,
+  PlayIcon,
+  Spinner,
+  StopIcon,
+} from "@dust-tt/sparkle";
+import { useRef, useState } from "react";
+import { useSWRConfig } from "swr";
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 
@@ -101,7 +99,7 @@ export function AppViewPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder } = useAuth();
+  const { isAdmin, isBuilder } = useAuth();
   const readOnly = !isBuilder;
 
   const { app, isAppLoading, isAppError } = useApp({
@@ -361,12 +359,7 @@ export function AppViewPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="specification"
-    >
+    <>
       <div className="mt-8 flex flex-auto flex-col">
         <div className="mb-4 flex flex-row items-center space-x-2">
           <NewBlock
@@ -535,6 +528,6 @@ export function AppViewPage() {
         ) : null}
       </div>
       <div ref={bottomRef} className="mt-4"></div>
-    </DustAppPageLayout>
+    </>
   );
 }

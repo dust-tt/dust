@@ -1,6 +1,3 @@
-import sanitizeHtml from "sanitize-html";
-import { validate as validateUuid } from "uuid";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -15,18 +12,21 @@ import {
 } from "@app/lib/api/actions/servers/ashby/helpers";
 import {
   ASHBY_TOOLS_METADATA,
+  CREATE_REFERRAL_TOOL_NAME,
   GET_REFERRAL_FORM_TOOL_NAME,
 } from "@app/lib/api/actions/servers/ashby/metadata";
 import {
   renderCandidateList,
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
+  renderJobPostingList,
   renderReferralForm,
-  renderReportInfo,
+  renderReport,
 } from "@app/lib/api/actions/servers/ashby/rendering";
 import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
-import { toCsv } from "@app/lib/api/csv";
 import { Err, Ok } from "@app/types/shared/result";
+import sanitizeHtml from "sanitize-html";
+import { validate as validateUuid } from "uuid";
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
@@ -135,7 +135,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const response = result.value;
 
-    if (!response.success || !response.results) {
+    const { success, results } = response;
+
+    if (!success || !results) {
       return new Err(
         new MCPError(
           `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
@@ -143,53 +145,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const reportData = response.results.reportData;
+    const renderedOutputs = await renderReport(results, { reportId });
 
-    if (reportData.data.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Report ${reportId} returned no data.`,
-        },
-      ]);
-    }
-
-    const {
-      columnNames,
-      data: [_headerRow, ...dataRows],
-    } = reportData;
-
-    const csvRows = dataRows.map((row) => {
-      const csvRow: Record<string, string> = {};
-      columnNames.forEach((fieldName, index) => {
-        const value = row[index];
-        csvRow[fieldName] =
-          value === null || value === undefined ? "" : String(value);
-      });
-      return csvRow;
-    });
-
-    const csvContent = await toCsv(csvRows);
-    const base64Content = Buffer.from(csvContent).toString("base64");
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: renderReportInfo(
-          { ...response, results: response.results },
-          reportId
-        ),
-      },
-      {
-        type: "resource" as const,
-        resource: {
-          uri: `ashby-report-${reportId}.csv`,
-          mimeType: "text/csv",
-          blob: base64Content,
-          _meta: { text: `Ashby report data (${dataRows.length} rows)` },
-        },
-      },
-    ]);
+    return new Ok(renderedOutputs);
   },
 
   get_interview_feedback: async ({ email, name }, extra) => {
@@ -440,7 +398,128 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     ]);
   },
 
-  create_referral: async ({ fieldSubmissions }, extra) => {
+  list_job_postings: async ({ location, department, listedOnly }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const result = await client.listJobPostings({
+      location,
+      department,
+      listedOnly,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list job postings: ${result.error.message}`)
+      );
+    }
+
+    if (!result.value.success) {
+      return new Err(new MCPError("Failed to list job postings from Ashby."));
+    }
+
+    const postings = result.value.results;
+
+    if (postings.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No job postings found matching the criteria.",
+        },
+      ]);
+    }
+
+    const postingsText = renderJobPostingList(postings);
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${postings.length} job posting(s):\n\n${postingsText}`,
+      },
+    ]);
+  },
+
+  update_job_posting: async (
+    {
+      jobPostingId,
+      title,
+      descriptionHtml,
+      workplaceType,
+      suppressDescriptionOpening,
+      suppressDescriptionClosing,
+    },
+    extra
+  ) => {
+    if (!title && !descriptionHtml && !workplaceType) {
+      return new Err(
+        new MCPError(
+          "At least one of title, descriptionHtml, or workplaceType " +
+            "must be provided.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const updateResult = await client.updateJobPosting({
+      jobPostingId,
+      title,
+      description: descriptionHtml
+        ? { type: "text/html", content: sanitizeHtml(descriptionHtml) }
+        : undefined,
+      workplaceType,
+      suppressDescriptionOpening,
+      suppressDescriptionClosing,
+    });
+
+    if (updateResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to update job posting: ${updateResult.error.message}`
+        )
+      );
+    }
+
+    if (!updateResult.value.success || !updateResult.value.results) {
+      const errorMessage =
+        updateResult.value.errorInfo?.message ??
+        updateResult.value.errors?.join(", ") ??
+        "Unknown error";
+      return new Err(
+        new MCPError(`Failed to update job posting: ${errorMessage}`)
+      );
+    }
+
+    const updatedFields = [
+      title ? "title" : null,
+      descriptionHtml ? "description" : null,
+      workplaceType ? "workplace type" : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Successfully updated job posting ${updatedFields}.\n\n` +
+          `Job Posting ID: ${updateResult.value.results.id}\n` +
+          `Title: ${updateResult.value.results.title}`,
+      },
+    ]);
+  },
+
+  [CREATE_REFERRAL_TOOL_NAME]: async ({ fieldSubmissions }, extra) => {
     const clientResult = await getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;

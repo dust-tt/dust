@@ -1,5 +1,3 @@
-import type { Attributes } from "sequelize";
-
 import { PlanModel } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
@@ -7,6 +5,7 @@ import {
   FREE_TRIAL_PHONE_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import type { Attributes } from "sequelize";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
@@ -53,6 +52,7 @@ export const FREE_NO_PLAN_DATA: PlanAttributes = {
   maxDataSourcesDocumentsSizeMb: 0,
   trialPeriodDays: 0,
   canUseProduct: false,
+  isByok: false,
 };
 
 /**
@@ -85,6 +85,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 0,
     canUseProduct: false,
+    isByok: false,
   },
   {
     code: FREE_UPGRADED_PLAN_CODE,
@@ -111,6 +112,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 0,
     canUseProduct: true,
+    isByok: false,
   },
   {
     code: FREE_TRIAL_PHONE_PLAN_CODE,
@@ -137,6 +139,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 0,
     canUseProduct: true,
+    isByok: false,
   },
 ];
 

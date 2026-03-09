@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,biome-format,front-eslint,connectors-lint-test-filenames,connectors-typecheck,connectors-biome-lint git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,biome-format,front-biome-lint,connectors-lint-test-filenames,connectors-typecheck,connectors-biome-lint git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -61,12 +61,8 @@ pre-commit:
 
     # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
     package-lock-check:
-      glob: "*/{package,package-lock}.json"
-      run: |
-        if ! scripts/check-package-lock-sync.sh; then
-          echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
-          exit 1
-        fi
+      glob: "**/package*.json"
+      run: scripts/check-package-lock-sync.sh
       priority: 1
 
     # Front directory checks
@@ -82,12 +78,6 @@ pre-commit:
       root: front/
       run: npm run tsgo
 
-    front-circular:
-      tags: front
-      glob: "*.{js,jsx,ts,tsx}"
-      root: front/
-      run: npm run lint:circular
-
     front-docs-check:
       tags: front
       glob: "front/pages/api/v1/**/*"
@@ -101,24 +91,26 @@ pre-commit:
       root: connectors/
       run: npm run tsgo
 
+    # Core (Rust) format check
+    core-fmt:
+      tags: core
+      glob: "*.rs"
+      root: core/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
+    # Dust Sandbox (Rust) format check
+    dust-sandbox-fmt:
+      tags: dust-sandbox
+      glob: "*.rs"
+      root: cli/dust-sandbox/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
-      glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
+      glob: "*.{js,jsx,ts,tsx,css,scss,md}"
+      # Rust projects' .md files are not covered by biome.
+      exclude: "{core,cli/dust-sandbox}/**"
       run: npm run biome:lefthook -- {staged_files}
-      stage_fixed: true
-
-    # Front eslint check
-    front-eslint:
-      tags: front
-      glob: "*.{js,jsx,ts,tsx}"
-      root: front
-      run: npm run lint:lefthook -- {staged_files}
-      stage_fixed: true
-
-    # Connectors biome lint check
-    connectors-biome-lint:
-      tags: connectors
-      glob: "*.{js,jsx,ts,tsx}"
-      root: connectors/
-      run: npm run lint:lefthook -- {staged_files}
       stage_fixed: true

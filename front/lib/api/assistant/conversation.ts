@@ -1,8 +1,4 @@
-import assert from "assert";
-import type { NextApiRequest } from "next";
-import type { Transaction } from "sequelize";
-import { col } from "sequelize";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -10,22 +6,28 @@ import {
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
+import {
+  createAgentMessages,
+  createUserMessage,
+} from "@app/lib/api/assistant/conversation/messages";
 import {
   canAgentBeUsedInProjectConversation,
-  createAgentMessages,
-  createUserMentions,
-  createUserMessage,
   updateConversationRequirements,
-} from "@app/lib/api/assistant/conversation/mentions";
+} from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+
 import {
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspaceActor,
+  makeMessageRateLimitKeyForWorkspaceActorPerHour,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
-  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
-  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -49,6 +51,7 @@ import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/pr
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -56,7 +59,10 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
   getTimeframeSecondsFromLiteral,
@@ -65,6 +71,10 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchOrSignalButlerWorkflow,
+  signalButlerComplete,
+} from "@app/temporal/butler/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -85,11 +95,9 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
-import {
   isAgentMessageType,
   isProjectConversation,
+  isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
@@ -108,8 +116,12 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { md5 } from "@app/types/shared/utils/hashing";
+import assert from "assert";
+import type { NextApiRequest } from "next";
+import type { Transaction } from "sequelize";
+import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
@@ -190,31 +202,8 @@ export async function createConversation(
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
     metadata: conversation.metadata,
+    branchId: null,
   };
-}
-
-export async function updateConversationTitle(
-  auth: Authenticator,
-  {
-    conversationId,
-    title,
-  }: {
-    conversationId: string;
-    title: string;
-  }
-): Promise<Result<undefined, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  await conversation.updateTitle(title);
-
-  return new Ok(undefined);
 }
 
 /**
@@ -446,8 +435,7 @@ async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
-  // OK because we need to setup a lock
-  // eslint-disable-next-line dust/no-raw-sql
+  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
@@ -566,7 +554,10 @@ export async function postUserMessage(
     });
   }
 
-  if (isProjectConversation(conversation)) {
+  const featureFlags = await getFeatureFlags(owner);
+  const isPartOfProject = isProjectConversation(conversation);
+
+  if (isPartOfProject) {
     // Check if the user is a member of the space.
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
@@ -602,7 +593,7 @@ export async function postUserMessage(
       agentIds: mentions
         .filter(isAgentMention)
         .map((mention) => mention.configurationId),
-      variant: "light",
+      variant: "extra_light",
     }),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
@@ -620,6 +611,7 @@ export async function postUserMessage(
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
+  let shouldCreateBranch = false;
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
@@ -647,7 +639,6 @@ export async function postUserMessage(
       });
     }
 
-    const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       supportedModelConfig?.featureFlag &&
@@ -661,6 +652,17 @@ export async function postUserMessage(
         },
       });
     }
+
+    // If the conversation is part of a project and the conversation branches feature flag is enabled.
+    // When the agent is not usable, we will create a branch.
+    if (isPartOfProject && featureFlags.includes("conversation_branches")) {
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: agentConfig,
+        conversation,
+      });
+
+      shouldCreateBranch = shouldCreateBranch || !canAgentBeUsed;
+    }
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -669,6 +671,48 @@ export async function postUserMessage(
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
+
+    // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
+    // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
+    // - Message has user mentions, we don't support multiple users in a branch yet.
+    // - Conversation has no content, we cannot create a branch as the start of the conversation.
+    // - Last message in conversation has no content should never happen, but we will log an error and continue.
+    // If we do not create a branch, the user will receive a notification that the agent is not usable.
+    if (shouldCreateBranch) {
+      if (user === null) {
+        // Should never happen, but we will log an error and continue.
+        logger.error("User is null, cannot create branch without a user.");
+      } else if (mentions.some(isUserMention)) {
+        logger.info(
+          "Message has user mentions, for now we do not support branching with user mentions."
+        );
+      } else if (conversation.content.length === 0) {
+        logger.info(
+          "Conversation has no content, cannot create branch as the start of the conversation."
+        );
+      } else if (
+        conversation.content[conversation.content.length - 1].length === 0
+      ) {
+        logger.error(
+          "Last message in conversation has no content, cannot create branch."
+        );
+      } else {
+        const branch = await ConversationBranchResource.makeNew(
+          auth,
+          {
+            conversationId: conversation.id,
+            previousMessageId:
+              conversation.content[conversation.content.length - 1].at(-1)!.id,
+            state: "open",
+            userId: user.id,
+          },
+          t
+        );
+
+        // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+        conversation.branchId = branch.sId;
+      }
+    }
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -684,7 +728,11 @@ export async function postUserMessage(
     let nextMessageRank =
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
+          workspaceId: owner.id,
           conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
         },
         transaction: t,
       })) ?? -1) + 1;
@@ -710,19 +758,6 @@ export async function postUserMessage(
       },
       transaction: t,
     });
-
-    // If a user is mentioned, we want to make sure the conversation has a title.
-    // This ensures that mentioned users receive a notification with a conversation title.
-    if (mentions.some(isUserMention)) {
-      await ensureConversationTitle(auth, {
-        conversation,
-        userMessage: {
-          ...userMessageWithoutMentions,
-          richMentions: [],
-          mentions: [],
-        },
-      });
-    }
 
     const richMentions = await createUserMentions(auth, {
       mentions,
@@ -766,6 +801,19 @@ export async function postUserMessage(
       agentMessages,
     };
   });
+
+  // If a user is mentioned, we want to make sure the conversation has a title.
+  // This ensures that mentioned users receive a notification with a conversation title.
+  if (mentions.some(isUserMention)) {
+    await ensureConversationTitle(auth, {
+      conversation,
+      userMessage: {
+        ...userMessage,
+        richMentions: [],
+        mentions: [],
+      },
+    });
+  }
 
   const conversationRes = await ConversationResource.fetchById(
     auth,
@@ -817,6 +865,23 @@ export async function postUserMessage(
         })
       : Promise.resolve(undefined),
   ]);
+
+  if (featureFlags.includes("conversation_butler") && isPartOfProject) {
+    // Fire-and-forget: butler failures must not block message posting.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+
+    if (agentMessages.length === 0) {
+      void signalButlerComplete({
+        authType: auth.toJSON(),
+        conversationId: conversation.sId,
+        messageId: userMessage.sId,
+      });
+    }
+  }
 
   return new Ok({
     userMessage,
@@ -1029,7 +1094,11 @@ export async function editUserMessage(
           const nextMessageRank =
             ((await MessageModel.max<number | null, MessageModel>("rank", {
               where: {
+                workspaceId: owner.id,
                 conversationId: conversation.id,
+                branchId: conversation.branchId
+                  ? getResourceIdFromSId(conversation.branchId)
+                  : null,
               },
               transaction: t,
             })) ?? -1) + 1;
@@ -1127,6 +1196,27 @@ export async function editUserMessage(
     agentMessages
   );
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block message editing.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+
+    if (agentMessages.length === 0) {
+      void signalButlerComplete({
+        authType: auth.toJSON(),
+        conversationId: conversation.sId,
+        messageId: userMessage.sId,
+      });
+    }
+  }
+
   return new Ok({
     userMessage,
     agentMessages,
@@ -1190,6 +1280,8 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+  const owner = auth.getNonNullableWorkspace();
+
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1274,7 +1366,7 @@ export async function retryAgentMessage(
       // Check if agent is still available to the user.
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: message.configuration.sId,
-        variant: "light",
+        variant: "extra_light",
       });
       if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
         throw new AgentMessageError(
@@ -1385,6 +1477,19 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block retries.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+  }
+
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
@@ -1490,7 +1595,11 @@ export async function postNewContentFragment(
     const nextMessageRank =
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
+          workspaceId: owner.id,
           conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
         },
         transaction: t,
       })) ?? -1) + 1;
@@ -1499,6 +1608,9 @@ export async function postNewContentFragment(
         sId: messageId,
         rank: nextMessageRank,
         conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
         contentFragmentId: contentFragment.id,
         workspaceId: owner.id,
       },
@@ -1524,6 +1636,24 @@ export async function postNewContentFragment(
     conversationId: conversation.sId,
     message: messageRow,
   });
+
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block content fragment posting.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId,
+    });
+    void signalButlerComplete({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId,
+    });
+  }
 
   return new Ok(render);
 }
@@ -1618,7 +1748,7 @@ export async function softDeleteAgentMessage(
     conversation,
   }: {
     message: AgentMessageType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
@@ -1869,13 +1999,28 @@ async function isMessagesLimitReached(
     };
   }
 
+  const actorHourlyRemainingMessages = await rateLimiter({
+    key: makeMessageRateLimitKeyForWorkspaceActorPerHour(owner, actor),
+    maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
+    timeframeSeconds: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
+    logger,
+  });
+
+  if (actorHourlyRemainingMessages <= 0) {
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     return checkProgrammaticUsageRateLimit(auth);
   }
 
   // Checking rate limit
-  const activeSeats =
-    await MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    owner.sId
+  );
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

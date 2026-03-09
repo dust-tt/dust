@@ -1,6 +1,3 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import * as fs from "fs";
-
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -12,6 +9,8 @@ import { Authenticator } from "@app/lib/auth";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import * as fs from "fs";
 
 interface ServerMetadataDump {
   name: string;

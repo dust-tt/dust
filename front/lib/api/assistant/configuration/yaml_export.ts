@@ -13,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { APIErrorWithStatusCode } from "@app/types/error";
@@ -56,12 +57,22 @@ export async function exportAgentConfigurationAsYAML(
     });
   }
 
-  const [{ dataSourceViews, mcpServerViews }, skills, editorsResult] =
-    await Promise.all([
-      getAccessibleSourcesAndAppsForActions(auth),
-      SkillResource.listByAgentConfiguration(auth, agentConfiguration),
-      GroupResource.findEditorGroupForAgent(auth, agentConfiguration),
-    ]);
+  const [
+    { dataSourceViews, mcpServerViews },
+    skills,
+    editorsResult,
+    spaceResources,
+  ] = await Promise.all([
+    getAccessibleSourcesAndAppsForActions(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfiguration),
+    GroupResource.findEditorGroupForAgent(auth, agentConfiguration),
+    SpaceResource.fetchByIds(auth, agentConfiguration.requestedSpaceIds),
+  ]);
+
+  const spaces = spaceResources.map((space) => ({
+    space_id: space.sId,
+    name: space.name,
+  }));
 
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
@@ -143,7 +154,8 @@ export async function exportAgentConfigurationAsYAML(
 
   const yamlConfigResult = await AgentYAMLConverter.fromBuilderFormData(
     auth,
-    formData
+    formData,
+    spaces
   );
 
   if (yamlConfigResult.isErr()) {

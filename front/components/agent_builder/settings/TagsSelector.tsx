@@ -1,3 +1,8 @@
+import { useCreateTag, useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
+import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -14,12 +19,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { KeyboardEvent } from "react";
 import { useMemo, useState } from "react";
-
-import { useCreateTag, useTags } from "@app/lib/swr/tags";
-import { tagsSorter } from "@app/lib/utils";
-import type { TagType } from "@app/types/tag";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
 
 interface TagsSelectorProps {
   owner: WorkspaceType;
@@ -80,6 +79,7 @@ export const TagsSelector = ({
       setSuggestedTags(suggestions);
       setLastSuggestedInstructions(instructions);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       setSuggestedTags([]);
       setLastSuggestedInstructions(instructions);

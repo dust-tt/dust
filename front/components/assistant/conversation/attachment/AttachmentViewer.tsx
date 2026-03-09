@@ -1,24 +1,9 @@
-import {
-  ArrowDownOnSquareIcon,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ExternalLinkIcon,
-  Markdown,
-  Spinner,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
-
 import type {
   FileAttachmentCitation,
   MCPAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { getIcon } from "@app/components/resources/resources_icons";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
   getInternalMCPServerIconByName,
   isInternalMCPServerName,
@@ -31,32 +16,41 @@ import {
 } from "@app/lib/swr/files";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ArrowDownOnSquareIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ExternalLinkIcon,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { InputBarContext } from "../input_bar/InputBarContext";
+
+interface AttachmentViewerProps {
+  viewerOpen: boolean;
+  setViewerOpen: (open: boolean) => void;
+  attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
+  owner: LightWorkspaceType;
+}
 
 export const AttachmentViewer = ({
   viewerOpen,
   setViewerOpen,
   attachmentCitation,
-  conversationId,
   owner,
-}: {
-  viewerOpen: boolean;
-  setViewerOpen: (open: boolean) => void;
-  attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
-  conversationId?: string | null;
-  owner: LightWorkspaceType;
-}) => {
-  const fileUploaderService = useFileUploaderService({
-    owner: owner,
-    useCase: "conversation",
-    useCaseMetadata: {
-      conversationId: conversationId ?? undefined,
-    },
-  });
-
+}: AttachmentViewerProps) => {
   const [text, setText] = useState<string | undefined>();
 
   const isAudio = isAudioContentType(attachmentCitation);
   const isMarkdown = attachmentCitation.contentType === "text/markdown";
+
+  const { fileUploaderService } = useContext(InputBarContext);
 
   // For input bar attachments, try to get the local file blob for reading content directly.
   // For fragments/mcp, we always fetch from server.
@@ -100,6 +94,7 @@ export const AttachmentViewer = ({
 
   const isLoading = isAudio ? isProcessedContentLoading : isFileContentLoading;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const processedContent = useMemo(
     () => {
       if (isProcessedContentLoading) {
@@ -161,6 +156,15 @@ export const AttachmentViewer = ({
     </>
   );
 
+  const markdownViewer = isMarkdown && text && (
+    <Markdown content={text} isStreaming={false} isLastMessage />
+  );
+
+  // this also display the transcript for audio
+  const textViewer = !isMarkdown && (
+    <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
+  );
+
   const canDownload = !!fileId;
   const onClickDownload = () => {
     const downloadUrl = canDownload
@@ -210,12 +214,8 @@ export const AttachmentViewer = ({
             </div>
           )}
           {!isLoading && audioPlayer}
-          {!isLoading && isMarkdown && text && (
-            <Markdown content={text} isStreaming={false} isLastMessage />
-          )}
-          {!isLoading && !isMarkdown && !isAudio && (
-            <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
-          )}
+          {!isLoading && markdownViewer}
+          {!isLoading && textViewer}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

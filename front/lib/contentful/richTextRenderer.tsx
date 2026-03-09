@@ -1,3 +1,14 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { LessonLink } from "@app/components/academy/LessonLink";
+import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
+import {
+  isBlockOrInline,
+  isTextNode,
+} from "@app/lib/contentful/tableOfContents";
+import { isDevelopment } from "@app/types/shared/env";
+import { isString } from "@app/types/shared/utils/general";
+import { slugify } from "@app/types/shared/utils/string_utils";
 import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import type { Block, Document, Inline } from "@contentful/rich-text-types";
@@ -7,15 +18,9 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { LessonLink } from "@app/components/academy/LessonLink";
-import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
-import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import {
-  isBlockOrInline,
-  isTextNode,
-} from "@app/lib/contentful/tableOfContents";
-import { isString } from "@app/types/shared/utils/general";
-import { slugify } from "@app/types/shared/utils/string_utils";
+const DUST_FRAME_SHARE_URL_REGEXP = new RegExp(
+  `^(https?://(?:[a-z0-9-]+\\.)?(?:dust\\.tt${isDevelopment() ? "|localhost:3011" : ""})/share/frame/[a-f0-9-]+)`
+);
 
 function getYouTubeVideoId(text: string): string | null {
   const normalizedText = text.trim();
@@ -38,14 +43,45 @@ function getYouTubeVideoId(text: string): string | null {
   return null;
 }
 
+function getDustFrameUrl(text: string): string | null {
+  const normalizedText = text.trim();
+  const match = normalizedText.match(DUST_FRAME_SHARE_URL_REGEXP);
+  return match ? match[1] : null;
+}
+
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
-    <div className="my-8 overflow-hidden rounded-lg">
+    <div
+      style={{ maxWidth: "1000px" }}
+      className="mx-auto my-8 overflow-hidden rounded-lg"
+    >
       <div className="relative aspect-video w-full">
         <iframe
           src={`https://www.youtube.com/embed/${videoId}`}
           className="absolute inset-0 h-full w-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  );
+}
+
+interface DustFrameEmbedProps {
+  frameUrl: string;
+}
+
+function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
+  return (
+    <div
+      style={{ maxWidth: "1000px" }}
+      className="mx-auto my-8 overflow-hidden rounded-lg"
+    >
+      <div className="relative aspect-video w-full">
+        <iframe
+          src={frameUrl}
+          title="Dust Frame"
+          className="absolute inset-0 h-full w-full border-none"
           allowFullScreen
         />
       </div>
@@ -129,7 +165,7 @@ function ContentfulLightboxImage({
 
   return (
     <>
-      <figure className="mx-auto my-8 max-w-3xl">
+      <figure className="mx-auto my-8 max-w-4xl">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -224,11 +260,18 @@ const renderOptions: Options = {
       "mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
     ),
     [BLOCKS.PARAGRAPH]: (node, children) => {
-      // Check if paragraph contains only a YouTube URL
       const text = getParagraphText(node);
+
+      // Check if paragraph contains only a YouTube URL
       const youtubeId = getYouTubeVideoId(text);
       if (youtubeId) {
         return <YouTubeEmbed videoId={youtubeId} />;
+      }
+
+      // Check if the paragraph contains only a Dust Frame URL.
+      const frameUrl = getDustFrameUrl(text);
+      if (frameUrl) {
+        return <DustFrameEmbed frameUrl={frameUrl} />;
       }
 
       return (
@@ -282,7 +325,7 @@ const renderOptions: Options = {
           "rounded-lg border border-border"
         )}
       >
-        <table className={cn("w-full border-collapse")}>
+        <table className={cn("w-full min-w-[600px] border-collapse")}>
           <tbody>{children}</tbody>
         </table>
       </div>
@@ -360,6 +403,13 @@ const renderOptions: Options = {
       if (youtubeId) {
         return <YouTubeEmbed videoId={youtubeId} />;
       }
+
+      // Check if it's a Dust Frame URL and embed it.
+      const frameUrl = getDustFrameUrl(url);
+      if (frameUrl) {
+        return <DustFrameEmbed frameUrl={frameUrl} />;
+      }
+
       const isExternal = url.startsWith("http");
       return (
         <A

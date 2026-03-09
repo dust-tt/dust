@@ -1,8 +1,7 @@
-import type { PaginationState } from "@tanstack/react-table";
-import { useMemo } from "react";
-
 import type { HistoryOptions } from "@app/hooks/useHashParams";
 import { useHashParam } from "@app/hooks/useHashParams";
+import type { PaginationState } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 const defaultPageSize = 25;
 
@@ -25,6 +24,7 @@ export const usePaginationFromUrl = ({
   const pageIndex = pageIndexParam ? parseInt(pageIndexParam) : 0;
   const pageSize = pageSizeParam ? parseInt(pageSizeParam) : initialPageSize;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const res = useMemo(() => {
     const pagination: PaginationState = { pageIndex, pageSize };
 

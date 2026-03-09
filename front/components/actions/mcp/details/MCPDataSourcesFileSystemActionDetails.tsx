@@ -1,15 +1,3 @@
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import {
-  ActionPinDistanceIcon,
-  Breadcrumbs,
-  Citation,
-  CitationIcons,
-  CitationTitle,
-  DocumentIcon,
-  Icon,
-  Markdown,
-} from "@dust-tt/sparkle";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
@@ -21,6 +9,17 @@ import {
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/core_api";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import {
+  ActionPinDistanceIcon,
+  Breadcrumbs,
+  Citation,
+  CitationIcons,
+  CitationTitle,
+  DocumentIcon,
+  Icon,
+  Markdown,
+} from "@dust-tt/sparkle";
 
 export function DataSourceNodeContentDetails({
   toolOutput,

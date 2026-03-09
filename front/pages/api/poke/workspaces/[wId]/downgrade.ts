@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
@@ -12,6 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type DowngradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;

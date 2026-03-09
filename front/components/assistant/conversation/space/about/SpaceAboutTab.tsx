@@ -1,21 +1,8 @@
-import {
-  Button,
-  ContentMessage,
-  Input,
-  ScrollArea,
-  SearchInput,
-  SliderToggle,
-  TextArea,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useContext, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
 import { ConfirmContext } from "@app/components/Confirm";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { useArchiveProject } from "@app/hooks/useArchiveProject";
 import {
   useProjectMetadata,
   useSpaceInfo,
@@ -26,6 +13,28 @@ import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EmptyCTA,
+  EmptyCTAButton,
+  EyeIcon,
+  EyeSlashIcon,
+  Input,
+  MoreIcon,
+  ScrollArea,
+  SearchInput,
+  SliderToggle,
+  TextArea,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
@@ -78,7 +87,7 @@ export function SpaceAboutTab({
   }, [projectMetadata, form]);
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
@@ -87,9 +96,13 @@ export function SpaceAboutTab({
   });
 
   const onSaveName = async () => {
+    const newProjectName = projectName.trim();
+    if (!newProjectName || newProjectName === space.name.trim()) {
+      return;
+    }
     const confirmed = await confirm({
       title: "Update project name?",
-      message: `The project name will be changed to "${projectName}".`,
+      message: `The project name will be changed to "${newProjectName}".`,
       validateVariant: "warning",
     });
 
@@ -97,16 +110,23 @@ export function SpaceAboutTab({
       return;
     }
 
-    const updated = await doUpdate(space, {
-      isRestricted,
-      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
-      managementMode: "manual",
-      name: projectName,
-    });
+    const updated = await doUpdate(
+      space,
+      {
+        isRestricted,
+        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: newProjectName,
+      },
+      {
+        title: "Successfully updated project name",
+        description: "Project name was successfully updated.",
+      }
+    );
 
     if (updated) {
-      await mutateSpaceInfo();
+      await mutateSpaceInfoRegardlessOfQueryParams();
       // Optimistically update the space name in the sidebar without refetching
       void mutateSpaceSummary();
       setIsEditingName(false);
@@ -128,7 +148,20 @@ export function SpaceAboutTab({
     setIsEditingDescription(false);
   };
 
-  const handleVisibilityToggle = async () => {
+  const { archiveProject, unarchiveProject } = useArchiveProject({
+    owner,
+    spaceId: space.sId,
+  });
+
+  const handleArchiveToggle = useCallback(async () => {
+    if (projectMetadata?.archivedAt) {
+      await unarchiveProject();
+    } else {
+      await archiveProject();
+    }
+  }, [archiveProject, unarchiveProject, projectMetadata?.archivedAt]);
+
+  const handleVisibilityToggle = useCallback(async () => {
     const newIsPublic = !isPublic;
     const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
@@ -145,31 +178,85 @@ export function SpaceAboutTab({
       return;
     }
 
-    const updated = await doUpdate(space, {
-      isRestricted: !newIsPublic,
-      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
-      managementMode: "manual",
-      name: space.name,
-    });
+    const updated = await doUpdate(
+      space,
+      {
+        isRestricted: !newIsPublic,
+        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: space.name,
+      },
+      {
+        title: "Successfully updated project visibility",
+        description: "Project visibility was successfully updated.",
+      }
+    );
 
     if (updated) {
-      await mutateSpaceInfo();
+      await mutateSpaceInfoRegardlessOfQueryParams();
     }
-  };
+  }, [
+    confirm,
+    doUpdate,
+    isPublic,
+    projectMembers,
+    space,
+    mutateSpaceInfoRegardlessOfQueryParams,
+  ]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
-        <div className="heading-2xl">Settings</div>
+        <div className="flex gap-2">
+          <h2 className="heading-2xl flex-1 text-foreground dark:text-foreground-night">
+            Settings
+          </h2>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" icon={MoreIcon} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                icon={projectMetadata?.archivedAt ? EyeIcon : EyeSlashIcon}
+                label={
+                  projectMetadata?.archivedAt
+                    ? "Unarchive project"
+                    : "Archive project"
+                }
+                variant="warning"
+                onClick={handleArchiveToggle}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {space.archivedAt && (
+          <EmptyCTA
+            action={
+              <EmptyCTAButton
+                icon={EyeIcon}
+                label="Unarchive"
+                onClick={handleArchiveToggle}
+                disabled={!isProjectEditor}
+                tooltip={
+                  !isProjectEditor
+                    ? "You need to be an editor to unarchive this project."
+                    : undefined
+                }
+              />
+            }
+            message="This project has been archived. Unarchive it to continue creating new conversations."
+          />
+        )}
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Name</div>
           <div className="flex w-full min-w-0 gap-2">
             <Input
               value={projectName}
+              disabled={!isProjectEditor}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setProjectName(e.target.value);
-                setIsEditingName(e.target.value !== space.name);
+                setIsEditingName(e.target.value.trim() !== space.name.trim());
               }}
               placeholder="Enter project name"
               containerClassName="flex-1"
@@ -205,7 +292,7 @@ export function SpaceAboutTab({
                   ? "Loading..."
                   : "Describe what this project is about..."
               }
-              disabled={isProjectMetadataLoading}
+              disabled={isProjectMetadataLoading || !isProjectEditor}
               minRows={3}
               resize="vertical"
               className="flex-1"
@@ -276,6 +363,7 @@ export function SpaceAboutTab({
                 selectedMembers={projectMembers}
                 searchSelectedMembers={searchSelectedMembers}
                 isEditor={isProjectEditor}
+                mutateSpaceInfo={() => mutateSpaceInfoRegardlessOfQueryParams()}
               />
             </ScrollArea>
           </>
@@ -289,7 +377,7 @@ export function SpaceAboutTab({
               className="flex w-full"
             >
               <div className="flex flex-col gap-y-4">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground dark:text-foreground-night">
                   Deleting this project will permanently remove all its content,
                   including conversations, folders, websites, and data sources.
                   This action cannot be undone. All assistants using tools that

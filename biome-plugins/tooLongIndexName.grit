@@ -1,0 +1,23 @@
+engine biome(1.0)
+language js
+
+// Validates Sequelize model index names don't exceed PostgreSQL's 63-char limit.
+//
+// Auto-generated index names follow: {tableName}_{field1}_{field2}
+// where tableName is typically modelName + 's', and fields are snake_cased.
+//
+// GritQL cannot compute camelCase→snake_case conversion or string lengths,
+// so this rule uses a heuristic: only flag models whose name is >= 40 chars,
+// where auto-generated index names are likely to exceed the 63-char limit
+// (e.g. 40-char model + "s_" + two 12-char fields = 67 chars).
+`$_.init($schema, { $options })` as $call where {
+    $options <: contains `indexes: [ $_ ]`,
+    $options <: contains `modelName: $name` where {
+        $name <: r".{42,}"
+    },
+    register_diagnostic(
+        span = $name,
+        message = "Ensure Sequelize index names don't exceed PostgreSQL's 63-character limit. Auto-generated names follow the pattern: {modelName}s_{field1}_{field2}.",
+        severity = "hint"
+    )
+}

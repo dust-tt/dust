@@ -1,9 +1,3 @@
-import type { ScheduleOptions } from "@temporalio/client";
-import {
-  ScheduleNotFoundError,
-  ScheduleOverlapPolicy,
-} from "@temporalio/client";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
@@ -15,6 +9,11 @@ import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { ScheduleOptions } from "@temporalio/client";
+import {
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
+} from "@temporalio/client";
 
 function getTriggerScheduleOptions(
   auth: Authenticator,

@@ -28,12 +28,13 @@ export async function createAndLogMembership({
   origin,
 }: {
   user: UserResource;
-  workspace: WorkspaceModel | LightWorkspaceType;
+  workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
 }) {
   const w =
-    workspace instanceof WorkspaceModel
+    workspace instanceof WorkspaceModel ||
+    workspace instanceof WorkspaceResource
       ? renderLightWorkspaceType({ workspace })
       : workspace;
   const m = await MembershipResource.createMembership({
@@ -278,8 +279,8 @@ export async function handleRegularSignupFlow(
     }
 
     const workspaceSubscription =
-      await SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace: existingWorkspace })
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        existingWorkspace.id
       );
 
     if (!workspaceSubscription) {

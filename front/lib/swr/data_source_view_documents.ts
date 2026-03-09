@@ -1,11 +1,9 @@
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/documents/[documentId]";
@@ -17,6 +15,7 @@ import type {
 } from "@app/types/api/public/data_sources";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useDataSourceViewDocument({
   dataSourceView,
@@ -29,6 +28,7 @@ export function useDataSourceViewDocument({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceViewDocumentResponseBody> =
     fetcher;
   const url =

@@ -1,17 +1,3 @@
-import {
-  ActionVolumeUpIcon,
-  DocumentIcon,
-  DoubleIcon,
-  DoubleQuotesIcon,
-  FaviconIcon,
-  FolderIcon,
-  Icon,
-  ImageIcon,
-  TableIcon,
-} from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
-import React from "react";
-
 import type {
   Attachment,
   AttachmentCitation,
@@ -42,6 +28,20 @@ import {
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  ActionVolumeUpIcon,
+  DocumentIcon,
+  DoubleIcon,
+  DoubleQuotesIcon,
+  FaviconIcon,
+  FolderIcon,
+  Icon,
+  ImageIcon,
+  TableIcon,
+} from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export const isTextualContentType = (
   attachmentCitation: AttachmentCitation

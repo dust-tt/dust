@@ -1,18 +1,20 @@
-import type { MutableRefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { isChromeExtension } from "@app/lib/utils/extension";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // We are using webm with Opus codec
 // In general browsers are using a 48 kbps bitrate
 // A 1-minute recording will be around 400kB
 // 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
 const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
+
+const MICROPHONE_POPUP_TIMEOUT_MS = 60_000; // 1 minute
 
 type VoiceTranscriberStatus =
   | "idle"
@@ -179,12 +181,22 @@ export function useVoiceTranscriberService({
       recorder.start();
 
       setStatus("recording");
-    } catch {
+    } catch (err) {
+      const isPermissionError =
+        err instanceof DOMException &&
+        (err.name === "NotAllowedError" ||
+          err.name === "PermissionDeniedError");
+
       sendNotification({
         type: "error",
-        title: "Microphone permission required.",
-        description: "Please allow microphone access and try again.",
+        title: isPermissionError
+          ? "Microphone permission required."
+          : "Could not start recording.",
+        description: isPermissionError
+          ? "Please allow microphone access and try again."
+          : "Your browser may not support voice recording.",
       });
+      setStatus("idle");
     }
   }, [sendNotification, startLevelMetering, status]);
 
@@ -249,7 +261,8 @@ export function useVoiceTranscriberService({
     setStatus("transcribing");
 
     try {
-      const file = buildAudioFile(chunksRef.current);
+      const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
+      const file = buildAudioFile(chunksRef.current, mimeType);
       chunksRef.current = [];
 
       if (file.size <= MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES) {
@@ -328,24 +341,102 @@ const stopRecorder = (recorder: MediaRecorder | null) => {
   }
 };
 
-const buildAudioFile = (chunks: Blob[]) => {
-  const blob = new Blob(chunks, { type: "audio/webm" });
-  const filename = `voice-${new Date().toISOString()}.webm`;
+const buildAudioFile = (chunks: Blob[], mimeType: string) => {
+  const blob = new Blob(chunks, { type: mimeType });
+  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+  const filename = `voice-${new Date().toISOString()}.${ext}`;
 
-  return new File([blob], filename, { type: "audio/webm" });
+  return new File([blob], filename, { type: mimeType });
 };
 
-const requestMicrophone = async (): Promise<MediaStream> => {
+const getMicrophonePermissionState = async (): Promise<PermissionState> => {
+  const status = await navigator.permissions.query({
+    name: "microphone",
+  });
+  return status.state;
+};
+
+const openMicrophoneAccessPopup = async (): Promise<void> => {
+  const createdWindow = await chrome.windows.create({
+    url: `chrome-extension://${chrome.runtime.id}/request-mic.html`,
+    type: "popup",
+    width: 400,
+    height: 400,
+  });
+
+  if (!createdWindow?.id) {
+    return;
+  }
+
+  const windowId = createdWindow.id;
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.windows.onRemoved.removeListener(onWindowClose);
+      chrome.windows.remove(windowId);
+      reject(new Error("Microphone access popup timed out"));
+    }, MICROPHONE_POPUP_TIMEOUT_MS);
+
+    function onWindowClose(closedWindowId: number) {
+      if (closedWindowId === windowId) {
+        clearTimeout(timeout);
+        chrome.windows.onRemoved.removeListener(onWindowClose);
+        resolve();
+      }
+    }
+
+    chrome.windows.onRemoved.addListener(onWindowClose);
+  });
+};
+
+const extensionRequestMicrophonePermission = async (): Promise<MediaStream> => {
+  const state = await getMicrophonePermissionState();
+
+  if (state === "denied") {
+    // Open extension settings so user can manually re-enable microphone
+    await chrome.tabs.create({
+      url: `chrome://settings/content/siteDetails?site=chrome-extension%3A%2F%2F${chrome.runtime.id}%2F`,
+    });
+    throw new DOMException("Microphone permission denied", "NotAllowedError");
+  }
+
+  if (state === "prompt") {
+    // Side panel can't show the prompt — fall back to popup window
+    await openMicrophoneAccessPopup();
+    return navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+  // Permission is already granted
   return navigator.mediaDevices.getUserMedia({ audio: true });
 };
+
+export const requestMicrophone = async (): Promise<MediaStream> => {
+  if (isChromeExtension()) {
+    return extensionRequestMicrophonePermission();
+  }
+  return navigator.mediaDevices.getUserMedia({ audio: true });
+};
+
+// Safari/iOS does not support audio/webm — fall back to audio/mp4.
+const PREFERRED_MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4"];
+
+function getSupportedMimeType(): string {
+  for (const mime of PREFERRED_MIME_TYPES) {
+    if (MediaRecorder.isTypeSupported(mime)) {
+      return mime;
+    }
+  }
+  // Let the browser pick a default.
+  return "";
+}
 
 const createRecorder = (
   stream: MediaStream,
   chunksRef: MutableRefObject<Blob[]>
 ): MediaRecorder => {
-  const recorder = new MediaRecorder(stream, {
-    mimeType: "audio/webm;codecs=opus",
-  });
+  const mimeType = getSupportedMimeType();
+  const recorder = mimeType
+    ? new MediaRecorder(stream, { mimeType })
+    : new MediaRecorder(stream);
   chunksRef.current = [];
   recorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) {

@@ -1,10 +1,4 @@
 // Okay to use public API types because it's internal stuff mostly.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import {
-  DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
-  isDustMimeType,
-  isSupportedPlainTextContentType,
-} from "@dust-tt/client";
 
 import type {
   UpsertDocumentArgs,
@@ -30,9 +24,9 @@ import type {
   AllSupportedFileContentType,
   FileUseCase,
 } from "@app/types/files";
-import { isSupportedAudioContentType } from "@app/types/files";
 import {
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
+  isSupportedAudioContentType,
   isSupportedImageContentType,
   TABLE_PREFIX,
 } from "@app/types/files";
@@ -40,6 +34,12 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import {
+  DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
+  isDustMimeType,
+  isSupportedPlainTextContentType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+} from "@dust-tt/client";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (
@@ -115,6 +115,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   try {
     section = JSON.parse(content);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     return new Err<DustError>({
       name: "dust_error",
@@ -427,7 +428,7 @@ const getProcessingFunction = ({
   }
 
   // Interactive Content files should not be processed.
-  if (isInteractiveContentFileContentType(contentType)) {
+  if (isInteractiveContentType(contentType)) {
     return undefined;
   }
 

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   PRESTOP_GRACE_PERIOD_MS,
   PRESTOP_LB_PROPAGATION_MS,
@@ -13,6 +11,7 @@ import { getWakeLockDetails, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { withLogging } from "@app/logger/withlogging";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PRESTOP_LOG_INTERVAL_MS = 1000; // 1 second log interval.
 const PRESTOP_LOG_MAX_LOCKS = 3; // Show top 3 longest running wake locks.

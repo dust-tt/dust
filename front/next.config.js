@@ -12,19 +12,19 @@ const showReactScan = isDev && process.env.REACT_SCAN === "true";
 
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.ads-twitter.com apis.google.com ${showReactScan ? "unpkg.com" : ""};`,
-  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.hsappstatic.net *.hubspotusercontent-eu1.net import-cdn.default.com *.ads-twitter.com *.vector.co apis.google.com ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.ads-twitter.com apis.google.com ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.hsappstatic.net *.hubspotusercontent-eu1.net import-cdn.default.com *.ads-twitter.com *.vector.co apis.google.com ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
-  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com forms.default.com nucleus.default.com *.default.com *.novu.co wss://*.novu.co *.vector.co;`,
-  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.default.com *.hsforms.com *.youtube.com *.youtube-nocookie.com *.google.com docs.google.com drive.google.com view.officeapps.live.com${isDev ? " http://localhost:3007" : ""};`,
+  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com forms.default.com nucleus.default.com *.default.com *.novu.co wss://*.novu.co *.vector.co;`,
+  `frame-src 'self' dust.tt *.dust.tt *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.default.com *.hsforms.com *.youtube.com *.youtube-nocookie.com *.google.com docs.google.com drive.google.com view.officeapps.live.com${isDev ? " http://localhost:3007 http://localhost:3011" : ""};`,
   `font-src 'self' data: dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.gstatic.com *.wistia.net fonts.cdnfonts.com migaku-public-data.migaku.com;`,
   `media-src 'self' data:;`,
   `object-src 'none';`,
   `form-action 'self' *.hsforms.com;`,
   `base-uri 'self';`,
-  `frame-ancestors 'self' https://app.contentful.com;`,
+  `frame-ancestors 'self' https://dust.tt https://*.dust.tt https://app.contentful.com${isDev ? " http://localhost:3000 http://localhost:3007" : ""};`,
   `manifest-src 'self';`,
   `worker-src 'self' blob:;`,
   // Only upgrade insecure requests in production - in development we use HTTP
@@ -50,8 +50,7 @@ const config = {
     ],
   },
   transpilePackages: ["@uiw/react-textarea-code-editor"],
-  // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
-  swcMinify: false,
+  swcMinify: true,
   onDemandEntries: {
     // Keep dev-compiled pages around longer to avoid re-compiles on nav
     maxInactiveAge: 1000 * 60 * 60, // 1 hour
@@ -60,14 +59,19 @@ const config = {
   experimental: {
     // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
-    esmExternals: false,
-    instrumentationHook: true,
+    // In production (webpack), disable ESM externals for safer CJS-only resolution.
+    // In dev, use the default (true) for turbopack compatibility and faster builds.
+    ...(!isDev && { esmExternals: false }),
+    instrumentationHook: !isDev,
     // Ensure dd-trace and other dependencies are included in standalone build.
-    // Paths are relative to front/ directory. With npm workspaces, deps are hoisted to root node_modules.
+    // Paths are relative to front/ directory. With npm workspaces, deps may be hoisted to root
+    // node_modules or kept in front/node_modules depending on version conflicts.
     outputFileTracingIncludes: {
       "/**": [
         "../node_modules/dd-trace/**/*",
         "../node_modules/@datadog/**/*",
+        "./node_modules/dd-trace/**/*",
+        "./node_modules/@datadog/**/*",
         // Include entire Redux ecosystem to avoid issues with partial inclusion.
         "../node_modules/redux/**/*",
         "../node_modules/@reduxjs/**/*",
@@ -341,6 +345,11 @@ const config = {
         destination: "/home/security",
         permanent: true,
       },
+      {
+        source: "/enterprise",
+        destination: "/home/enterprise",
+        permanent: true,
+      },
       // Redirect all solutions pages from /solutions/* to /home/solutions/*
       {
         source: "/solutions/customer-support",
@@ -392,7 +401,7 @@ const config = {
       {
         source: "/skip",
         destination:
-          "/landing/skip?utm_source=podcast&utm_campaign=skip&utm_event=listener",
+          "/landing/skip?utm_source=podcast&utm_medium=audio&utm_campaign=skip&utm_content=listener",
         permanent: false,
       },
     ];

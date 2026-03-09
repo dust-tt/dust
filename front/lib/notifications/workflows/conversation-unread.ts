@@ -1,24 +1,20 @@
-import { workflow } from "@novu/framework";
-import assert from "assert";
-import uniqBy from "lodash/uniqBy";
-import { Op } from "sequelize";
-import z from "zod";
-
 import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
   getConversationsDataRetention,
 } from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
-import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
+  ensureSlackNotificationsReady,
   getNovuClient,
   getUserNotificationDelay,
+  type NotificationAllowedTags,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -53,6 +49,11 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
+import { workflow } from "@novu/framework";
+import assert from "assert";
+import uniqBy from "lodash/uniqBy";
+import { Op } from "sequelize";
+import z from "zod";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -115,6 +116,7 @@ const ConversationDetailsSchema = z.object({
   hasUnreadMentions: z.boolean(),
   hasConversationRetentionPolicy: z.boolean(),
   hasAgentRetentionPolicies: z.boolean(),
+  newMessageContent: z.string().nullable(),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
@@ -161,6 +163,7 @@ const getConversationDetails = async ({
         hasUnreadMentions: false,
         hasConversationRetentionPolicy: false,
         hasAgentRetentionPolicies: false,
+        newMessageContent: null,
       });
     }
     auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -208,6 +211,10 @@ const getConversationDetails = async ({
   let authorIsAgent: boolean;
   let avatarUrl: string | undefined;
   let mentionedUserIds: string[] = [];
+  const messageContent =
+    message.type === "agent_message" || message.type === "user_message"
+      ? message.content
+      : "";
 
   if (isContentFragmentType(message)) {
     // Content fragments don't have author info.
@@ -269,10 +276,11 @@ const getConversationDetails = async ({
     hasUnreadMentions,
     hasConversationRetentionPolicy,
     hasAgentRetentionPolicies,
+    newMessageContent: messageContent,
   });
 };
 
-const shouldSkipConversation = async ({
+export const shouldSkipConversation = async ({
   subscriberId,
   payload,
   triggerShouldSkip,
@@ -532,6 +540,68 @@ const generateUnreadMessagesSummary = async ({
   );
 };
 
+export const getEmailSummary = async ({
+  details,
+  subscriberId,
+  payload,
+}: {
+  details: ConversationDetailsType;
+  subscriberId: string;
+  payload: ConversationUnreadPayloadType;
+}): Promise<string | null> => {
+  if (details.hasConversationRetentionPolicy) {
+    return "Summary not generated due to data retention policy on conversations in this workspace.";
+  }
+
+  if (details.hasAgentRetentionPolicies) {
+    return "Summary not generated due to data retention policy on agents in this conversation.";
+  }
+
+  // Generate summary of unread messages
+  const summaryResult = await generateUnreadMessagesSummary({
+    subscriberId,
+    payload,
+  });
+
+  if (summaryResult.isErr()) {
+    switch (summaryResult.error.code) {
+      case "generation_failed":
+      case "conversation_not_found":
+      case "no_unread_messages_found":
+      case "internal_error":
+      case "no_whitelisted_model_found":
+      case "user_not_found":
+        break;
+      default:
+        assertNever(summaryResult.error.code);
+    }
+    return null;
+  }
+  return summaryResult.value;
+};
+
+export const getMessagePreview = (
+  details: ConversationDetailsType
+): string | undefined => {
+  if (details.hasConversationRetentionPolicy) {
+    return "> Preview not available due to data retention policy on conversations in this workspace.";
+  }
+  if (details.hasAgentRetentionPolicies) {
+    return "> Preview not available due to data retention policy on agents in this conversation.";
+  }
+  if (details.newMessageContent) {
+    const stripped = stripMarkdown(details.newMessageContent);
+    const trimmed = stripped.trim();
+    const truncated =
+      trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
+    // Replace newlines with "> \n" to maintain blockquote formatting on each line
+    return truncated
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+  }
+};
+
 export const conversationUnreadWorkflow = workflow(
   CONVERSATION_UNREAD_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
@@ -598,6 +668,59 @@ export const conversationUnreadWorkflow = workflow(
             triggerShouldSkip: false,
             hasUnreadMessages: details.hasUnreadMessages,
           }),
+      }
+    );
+
+    await step.chat(
+      "slack-notification",
+      async () => {
+        // details is guaranteed non-null here because skip prevents execution otherwise.
+        const d = details!;
+        const conversationUrl = getConversationRoute(
+          payload.workspaceId,
+          payload.conversationId,
+          undefined,
+          config.getAppUrl()
+        );
+
+        // Create message preview
+        const messagePreview = getMessagePreview(d);
+
+        const baseMessage = d.authorIsAgent
+          ? `${d.author} replied in "${d.subject}"`
+          : `New message from ${d.author} in "${d.subject}"`;
+
+        const message = messagePreview
+          ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
+          : `${baseMessage}\n<${conversationUrl}|View conversation>`;
+
+        return {
+          body: message,
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          const shouldSkip = await shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+            triggerShouldSkip: false,
+            hasUnreadMessages: details.hasUnreadMessages,
+          });
+          if (shouldSkip) {
+            return true;
+          }
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
+            return true;
+          }
+          return false;
+        },
       }
     );
 
@@ -680,60 +803,16 @@ export const conversationUnreadWorkflow = workflow(
               return;
             }
 
-            if (detailsResult.value.hasConversationRetentionPolicy) {
-              conversations.push({
-                id: payload.conversationId,
-                title: detailsResult.value.subject,
-                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
-                summary:
-                  "Summary not generated due to data retention policy on conversations in this workspace.",
-              });
-              return;
-            }
-
-            if (detailsResult.value.hasAgentRetentionPolicies) {
-              conversations.push({
-                id: payload.conversationId,
-                title: detailsResult.value.subject,
-                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
-                summary:
-                  "Summary not generated due to data retention policy on agents in this conversation.",
-              });
-              return;
-            }
-
-            // Generate summary of unread messages
-            const summaryResult = await generateUnreadMessagesSummary({
-              subscriberId: subscriber.subscriberId,
+            const summary = await getEmailSummary({
+              details: detailsResult.value,
+              subscriberId: subscriber.subscriberId ?? "",
               payload,
             });
-
-            if (summaryResult.isErr()) {
-              switch (summaryResult.error.code) {
-                case "generation_failed":
-                case "conversation_not_found":
-                case "no_unread_messages_found":
-                case "internal_error":
-                case "no_whitelisted_model_found":
-                case "user_not_found":
-                  break;
-                default:
-                  assertNever(summaryResult.error.code);
-              }
-              conversations.push({
-                id: payload.conversationId,
-                title: detailsResult.value.subject,
-                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
-                summary: null,
-              });
-              return;
-            }
-
             conversations.push({
               id: payload.conversationId,
               title: detailsResult.value.subject,
               hasUnreadMentions: detailsResult.value.hasUnreadMentions,
-              summary: summaryResult.value,
+              summary,
             });
           },
           { concurrency: 8 }
@@ -802,7 +881,7 @@ const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
  * Note: If a user is the only human participant in the conversation, they are
  * always notified regardless of their preference.
  */
-const filterParticipantsByNotifyCondition = async ({
+export const filterParticipantsByNotifyCondition = async ({
   participants,
   mentionedUserIds,
   totalParticipantCount,

@@ -22,9 +22,6 @@
  * tool registration.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { describe, expect, it } from "vitest";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -38,6 +35,8 @@ import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { describe, expect, it } from "vitest";
 
 interface ServerMetadataSnapshot {
   name: string;
@@ -249,6 +248,30 @@ describe("MCP Servers Metadata Snapshot", () => {
       throw new Error(
         `Failed to extract metadata from ${serversWithErrors.length} server(s):\n${errorDetails}`
       );
+    }
+  });
+
+  it("should have stable tool stakes across all servers", () => {
+    const allStakes: Record<string, Record<string, MCPToolStakeLevelType>> = {};
+
+    for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
+      const stakes = getInternalMCPServerToolStakes(serverName);
+      allStakes[serverName] = sortToolsStakes(stakes) ?? {};
+    }
+
+    try {
+      expect(allStakes).toMatchSnapshot();
+    } catch (error) {
+      const hint =
+        "\n\nTool stakes changed. Review the diff above and run:\n" +
+        "  NODE_ENV=test npm test -- --update lib/actions/" +
+        "mcp_internal_actions/mcp_servers_metadata.test.ts\n" +
+        "to update the snapshot.";
+
+      if (error instanceof Error) {
+        error.message += hint;
+      }
+      throw error;
     }
   });
 });

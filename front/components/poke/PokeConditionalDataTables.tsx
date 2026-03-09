@@ -1,9 +1,8 @@
-import { Button, Spinner } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import type { useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Button, Spinner } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 type MutatorType<TData> = ReturnType<
   typeof useSWRWithDefaults<string, TData>

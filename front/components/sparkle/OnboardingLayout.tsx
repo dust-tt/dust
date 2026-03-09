@@ -1,10 +1,8 @@
-import { BarHeader, Page } from "@dust-tt/sparkle";
-import React from "react";
-
-import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { Head, Script } from "@app/lib/platform";
 import { getFaviconPath } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { BarHeader, Page } from "@dust-tt/sparkle";
+import type React from "react";
 
 export default function OnboardingLayout({
   owner,
@@ -74,12 +72,10 @@ export default function OnboardingLayout({
         />
       </Head>
 
-      <ThemeProvider>
-        <Page>
-          <BarHeader title={headerTitle} rightActions={headerRightActions} />
-          {children}
-        </Page>
-      </ThemeProvider>
+      <Page>
+        <BarHeader title={headerTitle} rightActions={headerRightActions} />
+        {children}
+      </Page>
 
       <Script id="google-tag-manager" strategy="afterInteractive">
         {`

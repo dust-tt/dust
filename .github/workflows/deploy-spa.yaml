@@ -7,8 +7,8 @@ on:
         description: "SPA to deploy"
         type: choice
         options:
-          - poke
           - app
+          - poke
         required: true
       env:
         description: "The environment to use for API endpoints (prod or edge)"
@@ -49,11 +49,21 @@ on:
         required: false
 
 concurrency:
-  group: deploy-spa-${{ inputs.app }}
+  group: deploy-spa-${{ inputs.app }}-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prevent edge deploys from main
+        if: ${{ github.ref == 'refs/heads/main' && inputs.env == 'edge' }}
+        run: |
+          echo "Error: Cannot deploy with env 'edge' from the main branch"
+          exit 1
+
   prepare:
+    needs: [check-branch]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
@@ -72,6 +82,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Notify SPA Deploy Start
+        if: ${{ !inputs.thread_ts }}
         id: build_message
         uses: ./.github/actions/slack-notify
         with:
@@ -80,7 +91,6 @@ jobs:
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: ${{ inputs.thread_ts }}
 
   deploy:
     needs: [prepare, notify-start]
@@ -95,6 +105,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
+          node-version: "22.22.0"
           build-sdks: "true"
           build-sparkle: "true"
 
@@ -104,16 +115,18 @@ jobs:
           NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
-          NEXT_PUBLIC_COMMIT_HASH: ${{ github.sha }}
+          NEXT_PUBLIC_COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
         run: |
           set -a
           source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
-          # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            export NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt
-          else
-            export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}.app-dust-tt.pages.dev
+          # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches.
+          # Apply the same sanitization Cloudflare Pages uses for branch aliases:
+          # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+            export NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt
           fi
+          export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
           # Map all NEXT_PUBLIC_* to VITE_* for SPA
           for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
             export "VITE_${var#NEXT_PUBLIC_}=${!var}"
@@ -122,6 +135,7 @@ jobs:
           npm run build:${{ inputs.app }}
 
       - name: Upload sourcemaps to Datadog
+        if: ${{ github.ref_name == 'main' }}
         working-directory: front-spa
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
@@ -138,34 +152,53 @@ jobs:
             --release-version=${{ github.sha }} \
             --service=${{ inputs.app }}-spa-browser
 
-      - name: Deploy
+      - name: Deploy to preview branch
+        id: cf_deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
-          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt
+          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=${{ github.ref_name == 'main' && format('staging-{0}', github.sha) || github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive preview URL from Cloudflare deployment URL
+        id: preview_url
+        run: |
+          # Cloudflare deployment URL looks like: https://<branch-alias>.<project>.pages.dev
+          # We extract the branch alias and transform to our proxy: https://<branch-alias>--<app>.preview.dust.tt
+          CF_URL="${{ steps.cf_deploy.outputs.deployment-url }}"
+          # Extract the branch alias (everything before .<project>.pages.dev)
+          BRANCH_ALIAS=$(echo "$CF_URL" | sed -E 's|https://([^.]+)\..+\.pages\.dev|\1|')
+          PREVIEW_URL="https://${BRANCH_ALIAS}--${{ inputs.app }}.preview.dust.tt"
+          echo "url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist-${{ inputs.app }}
+          path: front-spa/dist/${{ inputs.app }}
+          retention-days: 1
 
       - name: Summary
         run: |
           echo "### SPA Deployed :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **App**: ${{ inputs.app }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: https://${{ inputs.app }}.dust.tt" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.preview_url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify Deploy Success
         uses: ./.github/actions/slack-notify
         with:
-          step: "spa_success"
+          step: ${{ 'spa_preview_success' }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          preview_url: ${{ github.ref_name == 'main' && format('https://{0}.dust.tt', inputs.app) || format('https://{0}.{1}-dust-tt.pages.dev', github.ref_name, inputs.app) }}
+          preview_url: ${{ steps.preview_url.outputs.url }}
 
       - name: Notify Failure
         if: failure()

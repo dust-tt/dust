@@ -1,321 +1,125 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { useMcpServer } from "@app/shared/hooks/useMcpServer";
-import {
-  createPlaceholderUserMessage,
-  postConversation,
-  postMessage,
-  updateConversationWithOptimisticData,
-} from "@app/shared/lib/conversation";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { getRandomGreetingForName } from "@app/shared/lib/greetings";
-import type { ContentFragmentsType } from "@app/shared/lib/types";
-import type { StoredUser } from "@app/shared/services/auth";
-import { AgentFavorites } from "@app/ui/components/agents/AgentFavorites";
-import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
-import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
-import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
-import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
-import { AssistantInputBar } from "@app/ui/components/input_bar/InputBar";
-import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
-import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
-import type {
-  AgentMentionType,
-  ContentFragmentType,
-  ExtensionWorkspaceType,
-} from "@dust-tt/client";
-import { cn, Page, useSendNotification } from "@dust-tt/sparkle";
-import { useCallback, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { InputBarContextProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { SubscriptionType } from "@app/types/plan";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface ConversationContainerProps {
+  workspace: LightWorkspaceType;
+  user: UserType;
+  subscription: SubscriptionType;
   conversationId: string | null;
-  owner: ExtensionWorkspaceType;
-  user: StoredUser;
+  conversation?: ConversationWithoutContentType;
+  serverId?: string;
 }
 
-export function ConversationContainer({
-  conversationId,
-  owner,
+export const ConversationContainer = ({
+  workspace,
   user,
-}: ConversationContainerProps) {
-  const navigate = useNavigate();
+  subscription,
+  conversationId,
+  conversation,
+  serverId,
+}: ConversationContainerProps) => {
   const platform = usePlatform();
+  const { currentPanel } = useConversationSidePanelContext();
+  const fileUploaderService = useFileUploaderService(
+    platform.capture,
+    conversationId
+  );
 
-  const [includeContent, setIncludeContent] = useState<boolean | undefined>();
-
-  useEffect(() => {
-    if (includeContent === undefined) {
-      return;
-    }
-    void platform.setConversationsContext({
-      [conversationId ?? "new"]: {
-        includeCurrentPage: includeContent,
-      },
-    });
-  }, [includeContent, conversationId]);
-
-  useEffect(() => {
-    const doAsync = async () => {
-      const context = await platform.getConversationContext(
-        conversationId ?? "new"
-      );
-      setIncludeContent(context.includeCurrentPage);
-    };
-    void doAsync();
-  }, [conversationId]);
-
-  const [planLimitReached, setPlanLimitReached] = useState(false);
-  const [stickyMentions, setStickyMentions] = useState<AgentMentionType[]>([]);
-  const dustAPI = useDustAPI();
-
-  const { animate, setAnimate } = useContext(InputBarContext);
-  const sendNotification = useSendNotification();
-
-  const { conversation, mutateConversation } = usePublicConversation({
-    conversationId,
-  });
-
-  useEffect(() => {
-    if (animate) {
-      setTimeout(() => setAnimate(false), 500);
-    }
-  });
-
-  const { serverId } = useMcpServer();
-
-  const { submit: handlePostMessage, isSubmitting: isPostingMessage } =
-    useSubmitFunction(
-      useCallback(
-        async (
-          input: string,
-          mentions: AgentMentionType[],
-          contentFragments: ContentFragmentsType
-        ) => {
-          if (!conversationId) {
-            return;
-          }
-          const messageData = {
-            input,
-            mentions,
-            contentFragments,
-            mcpServerIds: serverId ? [serverId] : [],
-          };
-          try {
-            await mutateConversation(
-              async (currentConversation) => {
-                const result = await postMessage(platform, {
-                  dustAPI,
-                  conversationId,
-                  messageData,
-                });
-
-                if (result.isOk()) {
-                  const { message, contentFragments: createdContentFragments } =
-                    result.value;
-
-                  // Save content fragment IDs for tab contents to the local storage.
-                  await platform.saveFilesContentFragmentIds({
-                    conversationId,
-                    uploadedFiles: contentFragments.uploaded,
-                    createdContentFragments,
-                  });
-
-                  return updateConversationWithOptimisticData(
-                    currentConversation,
-                    message
-                  );
-                }
-
-                if (result.error.type === "plan_limit_reached_error") {
-                  setPlanLimitReached(true);
-                } else {
-                  sendNotification({
-                    title: result.error.title,
-                    description: result.error.message,
-                    type: "error",
-                  });
-                }
-
-                throw result.error;
-              },
-              {
-                optimisticData: (currentConversation) => {
-                  const placeholderMessage = createPlaceholderUserMessage({
-                    input,
-                    mentions,
-                    user,
-                  });
-                  return updateConversationWithOptimisticData(
-                    currentConversation,
-                    placeholderMessage
-                  );
-                },
-                revalidate: false,
-                // Rollback optimistic update on errors.
-                rollbackOnError: true,
-                populateCache: true,
-              }
-            );
-          } catch (err) {
-            // If the API errors, the original data will be
-            // rolled back by SWR automatically.
-            console.error("Failed to post message:", err);
-          }
-        },
-        [
-          conversationId,
-          platform,
-          dustAPI,
-          mutateConversation,
-          sendNotification,
-          user,
-          serverId,
-        ]
-      )
-    );
-
-  const {
-    submit: handlePostConversation,
-    isSubmitting: isPostingConversation,
-  } = useSubmitFunction(
-    useCallback(
-      async (
-        input: string,
-        mentions: AgentMentionType[],
-        contentFragments: ContentFragmentsType
-      ) => {
-        const conversationRes = await postConversation(platform, {
-          dustAPI,
-          messageData: {
-            input,
-            mentions,
-            contentFragments,
-            mcpServerIds: serverId ? [serverId] : [],
-          },
+  const handleCapture = useCallback(
+    (type: "text" | "screenshot") => {
+      if (type === "text") {
+        void fileUploaderService.uploadContentTab({
+          includeContent: true,
+          includeCapture: false,
         });
-        if (conversationRes.isErr()) {
-          if (conversationRes.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: conversationRes.error.title,
-              description: conversationRes.error.message,
-              type: "error",
-            });
-          }
-        } else {
-          // Get all content fragments from the conversation.
-          const createdContentFragments: ContentFragmentType[] = [];
-          for (const versions of conversationRes.value.content) {
-            const latestVersion = versions[versions.length - 1];
-            if (latestVersion.type === "content_fragment") {
-              createdContentFragments.push(latestVersion);
-            }
-          }
-          // Save the content fragment IDs for tab contents to the local storage.
-          await platform.saveFilesContentFragmentIds({
-            conversationId: conversationRes.value.sId,
-            uploadedFiles: contentFragments.uploaded,
-            createdContentFragments,
-          });
+        return;
+      }
 
-          await platform.setConversationsContext({
-            [conversationRes.value.sId]: {
-              includeCurrentPage: !!includeContent,
-            },
-            new: { includeCurrentPage: false },
-          });
-
-          navigate(`/conversations/${conversationRes.value.sId}`, {
-            replace: true,
-          });
-        }
-      },
-      [owner, sendNotification, includeContent, serverId]
-    )
-  );
-
-  const onStickyMentionsChange = useCallback(
-    (mentions: AgentMentionType[]) => {
-      setStickyMentions(mentions);
+      void fileUploaderService.uploadContentTab({
+        includeContent: false,
+        includeCapture: true,
+      });
     },
-    [setStickyMentions]
+    [fileUploaderService.uploadContentTab]
   );
 
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
-  }, [user]);
+  const captureActions = useMemo(
+    () => ({
+      onCapture: handleCapture,
+      isCapturing: fileUploaderService.isCapturing,
+    }),
+    [handleCapture, fileUploaderService.isCapturing]
+  );
 
-  if (conversationId) {
-    return (
-      <GenerationContextProvider>
-        <div className="flex h-full flex-col">
-          <div className="flex-1">
-            <ConversationViewer
-              conversationId={conversationId}
-              owner={owner}
-              user={user}
-              onStickyMentionsChange={onStickyMentionsChange}
-            />
-          </div>
-          <div
-            id="agent-input-header"
-            className={cn(
-              "sticky bottom-0 z-20 w-full pb-4",
-              "bg-background text-foreground",
-              "dark:bg-background-night dark:text-foreground-night"
-            )}
-          >
-            <AssistantInputBar
-              owner={owner}
-              onSubmit={handlePostMessage}
-              stickyMentions={stickyMentions}
-              isTabIncluded={!!includeContent}
-              setIncludeTab={(includeTab) => {
-                setIncludeContent(includeTab);
-              }}
-              isSubmitting={isPostingMessage}
-              conversation={conversation ?? undefined}
-            />
-          </div>
+  const clientSideMCPServerIds = useMemo(
+    () => (serverId ? [serverId] : undefined),
+    [serverId]
+  );
 
-          <ReachedLimitPopup
-            isOpened={planLimitReached}
-            onClose={() => setPlanLimitReached(false)}
-            isTrialing={false}
-          />
-        </div>
-      </GenerationContextProvider>
-    );
+  // Reset fileBlobs when conversationId changes.
+  // We intentionally avoid using a key prop as it would remount
+  // the entire page subtree just to reset a single array.
+  const [prevConversationId, setPrevConversationId] = useState(conversationId);
+  if (conversationId !== prevConversationId) {
+    setPrevConversationId(conversationId);
+    fileUploaderService.resetUpload();
   }
 
+  useEffect(() => {
+    void platform.messaging?.sendMessage({
+      type: "INPUT_BAR_STATUS",
+      available: true,
+    });
+
+    const cleanup = platform.messaging?.addMessageListener(
+      (message: AttachSelectionMessage) => {
+        if (message.type === "EXT_ATTACH_TAB") {
+          void fileUploaderService.uploadContentTab(message);
+        }
+      }
+    );
+
+    return () => {
+      void platform.messaging?.sendMessage({
+        type: "INPUT_BAR_STATUS",
+        available: false,
+      });
+      cleanup?.();
+    };
+  }, [platform.messaging, fileUploaderService.uploadContentTab]);
+
   return (
-    <GenerationContextProvider>
-      <div className="flex h-full flex-col">
-        <div className="w-full pb-4">
-          <Page.Header title={greeting} />
-        </div>
-        <div id="agent-input-header" className="w-full pb-4">
-          <AssistantInputBar
-            owner={owner}
-            onSubmit={handlePostConversation}
-            stickyMentions={stickyMentions}
-            isTabIncluded={!!includeContent}
-            setIncludeTab={(includeTab) => {
-              setIncludeContent(includeTab);
-            }}
-            isSubmitting={isPostingConversation}
-            conversation={conversation ?? undefined}
-          />
-        </div>
-        <AgentFavorites user={user} />
-        <ReachedLimitPopup
-          isOpened={planLimitReached}
-          onClose={() => setPlanLimitReached(false)}
-          isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
+    <InputBarContextProvider
+      captureActions={captureActions}
+      fileUploaderService={fileUploaderService}
+    >
+      <div className={currentPanel ? "hidden" : "flex flex-col h-full w-full"}>
+        <ConversationContainerVirtuoso
+          owner={workspace}
+          user={user}
+          subscription={subscription}
+          conversationId={conversationId}
+          clientSideMCPServerIds={clientSideMCPServerIds}
         />
       </div>
-    </GenerationContextProvider>
+      {conversation && currentPanel && (
+        <div className="flex h-full w-full flex-col">
+          <ConversationSidePanelContent
+            owner={workspace}
+            conversation={conversation}
+            currentPanel={currentPanel}
+          />
+        </div>
+      )}
+    </InputBarContextProvider>
   );
-}
+};

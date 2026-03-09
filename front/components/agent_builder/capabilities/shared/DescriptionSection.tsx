@@ -1,6 +1,5 @@
-import { TextArea } from "@dust-tt/sparkle";
-
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { TextArea } from "@dust-tt/sparkle";
 
 interface DescriptionSectionProps {
   title: string;

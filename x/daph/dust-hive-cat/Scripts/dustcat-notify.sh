@@ -32,12 +32,16 @@ if tmux list-sessions &>/dev/null; then
         ACTIVE_WINDOW=$(tmux display-message -t "${TARGET}" -p '#{window_active}' 2>/dev/null)
         ACTIVE_PANE=$(tmux display-message -t "${TARGET}" -p '#{pane_active}' 2>/dev/null)
 
-        # Check if Alacritty is the frontmost app
+        # Read configured terminal app from preferences
+        TERMINAL_APP=$(defaults read com.dust.dusthivecat terminalApp 2>/dev/null || echo "Alacritty")
+        TERMINAL_LOWER=$(echo "$TERMINAL_APP" | tr '[:upper:]' '[:lower:]')
+
+        # Check if the configured terminal is the frontmost app
         FRONTMOST=$(osascript -e 'tell application "System Events" to get name of first process whose frontmost is true' 2>/dev/null)
         FRONTMOST_LOWER=$(echo "$FRONTMOST" | tr '[:upper:]' '[:lower:]')
 
-        # If pane is active AND Alacritty is focused, user is already looking — skip
-        if [ "$ACTIVE_WINDOW" = "1" ] && [ "$ACTIVE_PANE" = "1" ] && [ "$FRONTMOST_LOWER" = "alacritty" ]; then
+        # If pane is active AND terminal is focused, user is already looking — skip
+        if [ "$ACTIVE_WINDOW" = "1" ] && [ "$ACTIVE_PANE" = "1" ] && [ "$FRONTMOST_LOWER" = "$TERMINAL_LOWER" ]; then
             exit 0
         fi
     else

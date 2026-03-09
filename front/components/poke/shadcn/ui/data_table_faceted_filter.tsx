@@ -1,14 +1,3 @@
-import {
-  CheckIcon,
-  PlusCircleIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "@dust-tt/sparkle";
-import { Separator } from "@radix-ui/react-select";
-import type { Column } from "@tanstack/react-table";
-import * as React from "react";
-
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { PokeBadge } from "@app/components/poke/shadcn/ui/badge";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
@@ -19,6 +8,16 @@ import {
   PokeCommandList,
   PokeCommandSeparator,
 } from "@app/components/poke/shadcn/ui/command";
+import {
+  CheckIcon,
+  PlusCircleIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@dust-tt/sparkle";
+import { Separator } from "@radix-ui/react-select";
+import type { Column } from "@tanstack/react-table";
+import type * as React from "react";
 
 interface PokeDataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;

@@ -1,9 +1,8 @@
-import type { ReactNode } from "react";
-import { createContext, useContext, useMemo, useState } from "react";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import type { ReactNode } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 export type ObservabilityMode = "timeRange" | "version";
 
@@ -27,6 +26,7 @@ export function ObservabilityProvider({ children }: { children: ReactNode }) {
   const [selectedVersion, setSelectedVersion] =
     useState<AgentVersionMarker | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(
     () => ({
       mode,

@@ -1,9 +1,49 @@
+import { datadogLogs } from "@datadog/browser-logs";
+
+// Benign errors filtered from Datadog Logs.
+// See: https://github.com/DataDog/browser-sdk/issues/1616
+const IGNORED_LOG_MESSAGES = [
+  "ResizeObserver loop completed with undelivered notifications",
+  "ResizeObserver loop limit exceeded",
+];
+
+/**
+ * Initialize Datadog Logs so that `datadogLogger` calls from front components
+ * are forwarded to Datadog instead of being silently swallowed.
+ */
+export function initDatadogLogs() {
+  const clientToken = import.meta.env?.VITE_DATADOG_CLIENT_TOKEN;
+
+  if (!clientToken) {
+    return;
+  }
+
+  datadogLogs.init({
+    clientToken,
+    site: "datadoghq.eu",
+    service: `${import.meta.env?.VITE_DATADOG_SERVICE || "front"}-browser`,
+    env: import.meta.env?.MODE === "production" ? "prod" : "dev",
+    version: import.meta.env?.VITE_COMMIT_HASH || "",
+    forwardErrorsToLogs: true,
+    sessionSampleRate: 100,
+    beforeSend: (log) => {
+      if (
+        typeof log.message === "string" &&
+        IGNORED_LOG_MESSAGES.some((m) => log.message.includes(m))
+      ) {
+        return false;
+      }
+      return true;
+    },
+  });
+}
+
 /**
  * Initialize Datadog RUM (Real User Monitoring)
  * This should be called early in the app initialization
  */
 export function initDatadogRUM() {
-  const clientToken = import.meta.env.VITE_DATADOG_CLIENT_TOKEN;
+  const clientToken = import.meta.env?.VITE_DATADOG_CLIENT_TOKEN;
 
   // Only initialize if we have a client token
   if (!clientToken || !window.DD_RUM) {
@@ -11,13 +51,13 @@ export function initDatadogRUM() {
   }
 
   window.DD_RUM.onReady(() => {
-    window.DD_RUM?.init({
+    (window.DD_RUM as any)?.init({
       clientToken,
       applicationId: "5e9735e7-87c8-4093-b09f-49d708816bfd",
       site: "datadoghq.eu",
-      service: `${import.meta.env.VITE_DATADOG_SERVICE || "front"}-browser`,
-      env: import.meta.env.MODE === "production" ? "prod" : "dev",
-      version: import.meta.env.VITE_COMMIT_HASH || "",
+      service: `${import.meta.env?.VITE_DATADOG_SERVICE || "front"}-browser`,
+      env: import.meta.env?.MODE === "production" ? "prod" : "dev",
+      version: import.meta.env?.VITE_COMMIT_HASH || "",
       allowedTracingUrls: [
         "https://dust.tt",
         "https://eu.dust.tt",
@@ -26,10 +66,10 @@ export function initDatadogRUM() {
       ],
       traceSampleRate: 5,
       traceContextInjection: "sampled",
-      sessionSampleRate: 100,
+      sessionSampleRate: 20,
       sessionReplaySampleRate: 5,
       defaultPrivacyLevel: "mask-user-input",
-      beforeSend: (event) => {
+      beforeSend: (event: any) => {
         // This error is benign, happens often in the wild but has 0 effect on the user.
         // See: https://github.com/DataDog/browser-sdk/issues/1616.
         if (

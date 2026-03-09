@@ -1,5 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -22,6 +20,7 @@ import {
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;

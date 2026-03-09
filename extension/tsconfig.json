@@ -7,7 +7,7 @@
     "jsx": "react-jsx",
     "composite": false,
     "declaration": false,
-    "noEmit": false,
+    "noEmit": true,
     "isolatedModules": true,
     "outDir": "./build",
     "rootDir": "./",
@@ -21,9 +21,10 @@
     "noImplicitAny": true,
     "types": ["chrome", "react", "react-dom"],
     "paths": {
-      "@app/*": ["./*"]
+      "@extension/*": ["./*"],
+      "@app/*": ["../front/*"]
     }
   },
-  "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
+  "include": ["./global.d.ts", "./css.d.ts", "./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
   "exclude": ["node_modules", "build"]
 }

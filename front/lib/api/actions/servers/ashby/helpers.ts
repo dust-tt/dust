@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering";
 import type {
   AshbyCandidate,
@@ -103,10 +104,10 @@ export async function findUniqueCandidate(
 }
 
 export async function withAuth<T>(
-  extra: ToolHandlerExtra,
+  { authInfo }: ToolHandlerExtra,
   action: (token: string) => Promise<Result<T, MCPError>>
 ): Promise<Result<T, MCPError>> {
-  const token = extra.authInfo?.token;
+  const token = authInfo?.token;
   if (!token) {
     return new Err(new MCPError("No access token provided"));
   }
@@ -123,17 +124,8 @@ function normalizeTitle(title: string): string {
 
 export async function resolveAshbyUser(
   client: AshbyClient,
-  extra: ToolHandlerExtra
+  { auth }: ToolHandlerExtra
 ): Promise<Result<AshbyUser, MCPError>> {
-  const auth = extra.auth;
-  if (!auth) {
-    return new Err(
-      new MCPError("Authentication context not available.", {
-        tracked: false,
-      })
-    );
-  }
-
   const user = auth.user();
   if (!user) {
     return new Err(

@@ -31,16 +31,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   agent_builder_copilot: {
-    description: "Enable Copilot in Agent Builder",
+    description: "Enable Sidekick in Agent Builder (admins only by default)",
+    stage: "dust_only",
+  },
+  agent_builder_copilot_builders: {
+    description: "Allow workspace builders to use Sidekick in Agent Builder",
     stage: "dust_only",
   },
   agent_builder_shrink_wrap: {
     description: "Enable 'Turn into agent' button on agent messages",
     stage: "dust_only",
-  },
-  ashby_tool: {
-    description: "Ashby tool for ATS integration",
-    stage: "on_demand",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
@@ -134,10 +134,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
-  salesloft_tool: {
-    description: "Salesloft MCP tool",
-    stage: "dust_only",
-  },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
     stage: "on_demand",
@@ -163,10 +159,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Monday MCP tool",
     stage: "rolling_out",
   },
-  front_tool: {
-    description:
-      "Front MCP tool for managing support conversations, messages, and customer interactions.",
-    stage: "rolling_out",
+  gemini_3_1_pro_feature: {
+    description: "Access to Gemini 3.1 Pro model in the agent builder",
+    stage: "on_demand",
   },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
@@ -198,10 +193,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
-  slab_mcp: {
-    description: "Slab MCP server",
-    stage: "on_demand",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
@@ -223,25 +214,32 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  statuspage_tool: {
-    description: "Statuspage MCP tool for incident management",
-    stage: "on_demand",
-  },
-  dust_academy: {
-    description: "Access to Dust Academy learning content",
-    stage: "on_demand",
-  },
   sandbox_tools: {
     description:
       "Sandbox MCP tool for executing code in isolated Linux containers",
     stage: "dust_only",
   },
-  dust_spa: {
-    description: "Redirect all pages to Dust SPA",
-    stage: "dust_only",
-  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
+    stage: "dust_only",
+  },
+  conversation_butler: {
+    description:
+      "Enable conversation butler for automated conversation management",
+    stage: "dust_only",
+  },
+  conversations_slack_notifications: {
+    description: "Enable slack notifications",
+    stage: "dust_only",
+  },
+  anthropic_reasoning_token_count: {
+    description:
+      "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
+    // Not really on_demand but we want to be able to enable it for customers
+    stage: "on_demand",
+  },
+  conversation_branches: {
+    description: "Enable conversation branches",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

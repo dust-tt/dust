@@ -1,7 +1,4 @@
-import { Citation, CitationImage } from "@dust-tt/sparkle";
-import React from "react";
-import { visit } from "unist-util-visit";
-
+import config from "@app/lib/api/config";
 import { FILE_ID_REGEX } from "@app/lib/files";
 import {
   getFileProcessedUrl,
@@ -10,6 +7,10 @@ import {
 } from "@app/lib/swr/files";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Citation, CitationImage } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
+import { visit } from "unist-util-visit";
 
 interface ImgProps {
   src: string;
@@ -29,10 +30,7 @@ export function Img({ src, alt, owner }: ImgProps) {
     return null;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  if (!baseUrl) {
-    return null;
-  }
+  const baseUrl = config.getApiBaseUrl();
 
   const viewSuffix = getFileProcessedUrl(owner, fileId);
   const downloadSuffix = getProcessedFileDownloadUrl(owner, fileId);

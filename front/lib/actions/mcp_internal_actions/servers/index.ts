@@ -1,5 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -7,11 +5,11 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
-import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
 import { default as agentManagementServer } from "@app/lib/api/actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
+import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
+import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
@@ -74,6 +72,7 @@ import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/w
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
  * Check if we are in advanced search mode,

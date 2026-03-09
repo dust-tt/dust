@@ -1,13 +1,13 @@
-import type { RequestMethod } from "node-mocks-http";
-import { assert, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { RequestMethod } from "node-mocks-http";
+import { assert, describe, expect, it } from "vitest";
 
 import handler from "./tools";
 
@@ -29,6 +29,7 @@ async function setupTest(
   // Set up common query parameters
   req.query.wId = workspace.sId;
   req.query.cId = conversation.sId;
+  req.url = `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/tools`;
 
   return {
     auth: authenticator,
@@ -52,6 +53,31 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
     expect(responseData.tools).toEqual([]);
   });
 
+  it("should return 503 when the conversation is kill-switched", async () => {
+    const { req, res, workspace, conversation } = await setupTest(
+      "admin",
+      "GET"
+    );
+
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      killSwitched: {
+        conversationIds: [conversation.sId],
+      },
+    });
+    if (updateResult.isErr()) {
+      throw updateResult.error;
+    }
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(503);
+    const responseData = res._getJSONData();
+    expect(responseData.error.type).toBe("service_unavailable");
+    expect(responseData.error.message).toBe(
+      "Access to this conversation has been disabled for emergency maintenance."
+    );
+  });
+
   it("should return enabled tools for a conversation", async () => {
     const { req, res, workspace, globalSpace, conversation, auth } =
       await setupTest("admin", "GET");
@@ -70,7 +96,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       systemView: systemView1,
       space: globalSpace,
     });
-    assert(mcpServerView1, "MCP server view not found");
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
@@ -81,18 +106,21 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       systemView: systemView2,
       space: globalSpace,
     });
-    assert(mcpServerView2, "MCP server view not found");
 
     // Create conversation relationships - one enabled, one disabled
     await ConversationResource.upsertMCPServerViews(auth, {
       conversation: conversation,
       mcpServerViews: [mcpServerView1],
       enabled: true,
+      source: "conversation",
+      agentConfigurationId: null,
     });
     await ConversationResource.upsertMCPServerViews(auth, {
       conversation: conversation,
       mcpServerViews: [mcpServerView2],
       enabled: false,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     await handler(req, res);
@@ -184,6 +212,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         conversation: conversation,
         mcpServerViews: [mcpServerView],
         enabled: false,
+        source: "conversation",
+        agentConfigurationId: null,
       });
 
       req.body = {
@@ -227,6 +257,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         conversation: conversation,
         mcpServerViews: [mcpServerView],
         enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
       });
 
       req.body = {
@@ -279,6 +311,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         conversation: conversation,
         mcpServerViews: [mcpServerView],
         enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
       });
 
       req.body = {

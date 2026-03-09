@@ -1,3 +1,7 @@
+import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
   Input,
@@ -6,13 +10,9 @@ import {
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
-import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface ScheduleEditionNameInputProps {
   isEditor: boolean;

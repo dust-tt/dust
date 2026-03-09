@@ -1,7 +1,6 @@
-import { classNames } from "@dust-tt/sparkle";
-import type { FC } from "react";
-
 import { H2 } from "@app/components/home/ContentComponents";
+import { cn } from "@dust-tt/sparkle";
+import type { FC } from "react";
 
 export interface DemoVideoProps {
   sectionTitle?: string;
@@ -37,7 +36,7 @@ export const DemoVideoSection: FC<DemoVideoSectionProps> = ({
           <H2>{demoVideo.sectionTitle}</H2>
         </div>
       )}
-      <div className={classNames("mx-auto w-full")}>
+      <div className={cn("mx-auto w-full")}>
         <div className="relative w-full rounded-2xl pt-[56.25%]">
           {/* 16:9 aspect ratio */}
           <iframe

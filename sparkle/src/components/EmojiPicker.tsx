@@ -1,5 +1,5 @@
 import type { EmojiMartData } from "@emoji-mart/data";
-import data from "@emoji-mart/data";
+import emojiData from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
 import React from "react";
@@ -16,7 +16,7 @@ EmojiPicker.defaults = {
 };
 
 function EmojiPicker({
-  data,
+  data = emojiData as EmojiMartData,
   onEmojiSelect,
   previewPosition,
   theme,
@@ -31,4 +31,4 @@ function EmojiPicker({
   );
 }
 
-export { data as DataEmojiMart, EmojiMartData, EmojiPicker };
+export { emojiData as DataEmojiMart, EmojiMartData, EmojiPicker };

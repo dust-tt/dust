@@ -1,6 +1,3 @@
-import { Separator } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-
 import { MCPServerViewForm } from "@app/components/actions/mcp/create/MCPServerViewForm";
 import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/InternalMCPBearerTokenForm";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
@@ -13,6 +10,8 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Separator } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 type MCPServerDetailsInfoProps = {
   mcpServerView: MCPServerViewType | null;
@@ -80,7 +79,7 @@ export function MCPServerDetailsInfo({
       {isRemoteMCPServerType(mcpServerView.server) ? (
         <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
       ) : requiresBearerToken ? (
-        <InternalMCPBearerTokenForm />
+        <InternalMCPBearerTokenForm serverName={mcpServerView.server.name} />
       ) : null}
       <div className="mt-2">
         <ToolsList owner={owner} mcpServerView={mcpServerView} />

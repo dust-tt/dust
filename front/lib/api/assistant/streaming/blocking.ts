@@ -6,8 +6,8 @@ import {
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
-import type { AgenticMessageData } from "@app/types/assistant/conversation";
 import type {
+  AgenticMessageData,
   AgentMessageType,
   ConversationType,
   UserMessageContext,
@@ -60,6 +60,7 @@ async function waitForAgentCompletion(
         try {
           unsub();
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (error) {
           // Ignore individual unsubscribe errors to ensure all subscriptions are cleaned up.
         }
@@ -117,6 +118,7 @@ async function waitForAgentCompletion(
 
           subscriptions.push(unsubscribe);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (error) {
           expectedMessageIds.delete(agentMessage.sId);
         }

@@ -1,6 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import type {
   IncludeResultResourceType,
   WarningResourceType,
@@ -14,6 +11,7 @@ import type { CoreAPIDocument } from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export function makeIncludeWarningResource(
   documents: CoreAPIDocument[],

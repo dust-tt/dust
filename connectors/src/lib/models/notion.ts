@@ -483,6 +483,7 @@ NotionConnectorResourcesToCheckCacheEntryModel.init(
   },
   {
     sequelize: connectorsSequelize,
+    // biome-ignore lint/plugin/tooLongIndexName: previous error
     modelName: "notion_connector_resources_to_check_cache_entries",
     indexes: [
       {

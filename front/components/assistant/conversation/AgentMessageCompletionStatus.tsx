@@ -1,12 +1,12 @@
-import { ChevronRightIcon, cn, Icon } from "@dust-tt/sparkle";
-import React from "react";
-
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
+import { ChevronRightIcon, cn, Icon } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export const AgentMessageCompletionStatus = ({
   agentMessage,

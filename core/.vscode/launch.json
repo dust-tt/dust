@@ -37,6 +37,23 @@
         }
       },
       "args": []
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug oauth",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=oauth",
+          "--manifest-path=${workspaceFolder}/Cargo.toml"
+        ],
+        "filter": {
+          "name": "oauth",
+          "kind": "bin"
+        }
+      },
+      "args": []
     }
   ]
 }

@@ -1,17 +1,3 @@
-import {
-  ActionDocumentTextIcon,
-  ClockIcon,
-  cn,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContentMessage,
-  GlobeAltIcon,
-  MagnifyingGlassIcon,
-  Markdown,
-} from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
@@ -39,6 +25,7 @@ import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/d
 import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
+import { MCPSandboxActionDetails } from "@app/components/actions/mcp/details/MCPSandboxActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
@@ -100,12 +87,26 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { isSupportedImageContentType } from "@app/types/files";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ActionDocumentTextIcon,
+  ClockIcon,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ContentBlockWrapper,
+  ContentMessage,
+  cn,
+  GlobeAltIcon,
+  MagnifyingGlassIcon,
+  Markdown,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
@@ -373,6 +374,10 @@ export function MCPActionDetails({
     return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
   }
 
+  if (internalMCPServerName === "sandbox") {
+    return <MCPSandboxActionDetails {...toolOutputDetailsProps} />;
+  }
+
   return (
     <GenericActionDetails
       owner={owner}
@@ -469,7 +474,7 @@ export function GenericActionDetails({
                         >
                           <img
                             className="h-full w-full rounded-xl object-cover"
-                            src={`${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
+                            src={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />
                         </div>
@@ -478,7 +483,7 @@ export function GenericActionDetails({
                     return (
                       <div key={file.fileId}>
                         <a
-                          href={`${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
+                          href={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -516,8 +521,10 @@ const RenderToolItemMarkdown = ({
   }
 
   return (
-    <ContentMessage variant="primary" size="lg">
-      <Markdown content={text} />
-    </ContentMessage>
+    <ContentBlockWrapper content={text}>
+      <ContentMessage variant="primary" size="lg">
+        <Markdown content={text} />
+      </ContentMessage>
+    </ContentBlockWrapper>
   );
 };

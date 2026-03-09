@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
@@ -7,17 +5,20 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useEffect } from "react";
 
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;
   owner: LightWorkspaceType;
   onKnowledgeItemsChange?: (items: KnowledgeItem[]) => void;
+  className?: string;
 }
 
 export function SkillInstructionsReadOnlyEditor({
   content,
   owner,
   onKnowledgeItemsChange,
+  className,
 }: SkillInstructionsReadOnlyEditorProps) {
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
@@ -44,7 +45,11 @@ export function SkillInstructionsReadOnlyEditor({
 
   return (
     <SpacesProvider owner={owner}>
-      <SkillInstructionsEditorContent editor={editor} isReadOnly />
+      <SkillInstructionsEditorContent
+        editor={editor}
+        isReadOnly
+        className={className}
+      />
     </SpacesProvider>
   );
 }

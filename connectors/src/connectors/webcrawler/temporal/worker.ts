@@ -5,6 +5,7 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import { getWorkflowConfig } from "@connectors/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
@@ -12,9 +13,14 @@ import { WebCrawlerQueueNames } from "./config";
 
 export async function runWebCrawlerWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+  const workflowConfig = getWorkflowConfig({
+    workerName: "webcrawler",
+    getWorkflowsPath: () => require.resolve("./workflows"),
+  });
+
   const workers = await Promise.all([
     Worker.create({
-      workflowsPath: require.resolve("./workflows"),
+      ...workflowConfig,
       activities,
       taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
       connection,
@@ -35,7 +41,7 @@ export async function runWebCrawlerWorker() {
       },
     }),
     Worker.create({
-      workflowsPath: require.resolve("./workflows"),
+      ...workflowConfig,
       activities,
       taskQueue: WebCrawlerQueueNames.NEW_WEBSITE,
       connection,
@@ -56,7 +62,7 @@ export async function runWebCrawlerWorker() {
       },
     }),
     Worker.create({
-      workflowsPath: require.resolve("./workflows"),
+      ...workflowConfig,
       activities,
       taskQueue: WebCrawlerQueueNames.FIRECRAWL,
       connection,

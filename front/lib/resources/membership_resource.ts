@@ -1,13 +1,3 @@
-import type {
-  Attributes,
-  FindOptions,
-  IncludeOptions,
-  InferAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
@@ -19,7 +9,11 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -33,6 +27,15 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  Attributes,
+  FindOptions,
+  IncludeOptions,
+  InferAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -201,6 +204,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       where: { ...findOptions.where, ...paginationWhereClause },
       // WORKSPACE_ISOLATION_BYPASS: We could fetch via workspaceId or via userIds, check is done above
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -306,6 +310,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
       // optional.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     // Then, we only keep the latest membership for each (user, workspace).
@@ -363,6 +368,51 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  private static readonly roleCacheKeyResolver = ({
+    userModelId,
+    workspaceModelId,
+  }: {
+    userModelId: ModelId;
+    workspaceModelId: ModelId;
+  }) => `role:user:${userModelId}:workspace:${workspaceModelId}`;
+
+  private static async _getActiveRoleForUserInWorkspaceUncached({
+    userModelId,
+    workspaceModelId,
+  }: {
+    userModelId: ModelId;
+    workspaceModelId: ModelId;
+  }): Promise<MembershipRoleType | "none"> {
+    const membership = await MembershipModel.findOne({
+      attributes: ["role"],
+      where: {
+        userId: userModelId,
+        workspaceId: workspaceModelId,
+        startAt: {
+          [Op.lte]: new Date(),
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        },
+      },
+    });
+    return membership?.role ?? "none";
+  }
+
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
+  private static getActiveRoleForUserInWorkspaceCached = cacheWithRedis(
+    MembershipResource._getActiveRoleForUserInWorkspaceUncached,
+    (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
+      MembershipResource.roleCacheKeyResolver(params),
+    { cacheNullValues: false }
+  );
+
+  private static invalidateRoleCache = invalidateCacheWithRedis(
+    MembershipResource._getActiveRoleForUserInWorkspaceUncached,
+    (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
+      MembershipResource.roleCacheKeyResolver(params)
+  );
+
   static async getActiveRoleForUserInWorkspace({
     user,
     workspace,
@@ -371,23 +421,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
-  }): Promise<Attributes<MembershipModel>["role"] | "none"> {
-    const membership = await this.model.findOne({
-      attributes: ["role"],
-      where: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: {
-          [Op.lte]: new Date(),
-        },
-        endAt: {
-          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
-        },
-      },
-      transaction,
+  }): Promise<MembershipRoleType | "none"> {
+    if (transaction) {
+      return this._getActiveRoleForUserInWorkspaceUncached({
+        userModelId: user.id,
+        workspaceModelId: workspace.id,
+      });
+    }
+    return this.getActiveRoleForUserInWorkspaceCached({
+      userModelId: user.id,
+      workspaceModelId: workspace.id,
     });
-
-    return membership?.role ?? "none";
   }
 
   static async getActiveMembershipOfUserInWorkspace({
@@ -447,6 +491,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           startAt: {
             [Op.lte]: toDate,
           },
+          firstUsedAt: {
+            [Op.ne]: null,
+          },
         }
       : {};
 
@@ -462,17 +509,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where,
       distinct: true,
       col: "userId",
-      include: [
-        {
-          model: UserModel,
-          required: true,
-          where: {
-            lastLoginAt: {
-              [Op.ne]: null,
-            },
-          },
-        },
-      ],
       transaction,
     });
   }
@@ -498,11 +534,68 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  /**
+   * Computes the number of active members at each given timestamp (end of day).
+   * Fetches all memberships overlapping the date range in a single query,
+   * then counts distinct users in-memory for each day.
+   */
+  static async countActiveMembersPerDay({
+    workspace,
+    timestampsMs,
+  }: {
+    workspace: LightWorkspaceType;
+    timestampsMs: readonly number[];
+  }): Promise<Map<number, number>> {
+    const result = new Map<number, number>();
+    if (timestampsMs.length === 0) {
+      return result;
+    }
+
+    const sorted = [...timestampsMs].sort((a, b) => a - b);
+    const rangeStartDate = new Date(sorted[0]);
+    // Use end of day for the last timestamp to capture the full day.
+    const rangeEndDate = new Date(sorted[sorted.length - 1]);
+    rangeEndDate.setUTCHours(23, 59, 59, 999);
+
+    // Fetch all memberships that overlap with [rangeStart, rangeEnd]:
+    // startAt <= rangeEnd AND (endAt IS NULL OR endAt >= rangeStart).
+    // Include userId to deduplicate users with multiple membership records.
+    const memberships = await MembershipModel.findAll({
+      attributes: ["userId", "startAt", "endAt"],
+      where: {
+        workspaceId: workspace.id,
+        startAt: { [Op.lte]: rangeEndDate },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: rangeStartDate }],
+        },
+      },
+    });
+
+    // O(timestamps x memberships) -- acceptable: timestamps is bounded by the
+    // analytics period (typically <= 90 days) and memberships by workspace size
+    // (typically < 5000). Use a Set to count distinct users per day.
+    for (const ts of timestampsMs) {
+      const dayEnd = new Date(ts);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+      const dayStart = new Date(ts);
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const activeUserIds = new Set<number>();
+      for (const m of memberships) {
+        if (m.startAt <= dayEnd && (!m.endAt || m.endAt >= dayStart)) {
+          activeUserIds.add(m.userId);
+        }
+      }
+      result.set(ts, activeUserIds.size);
+    }
+
+    return result;
+  }
+
   // Seat counting with caching - used to track active seats in a workspace
   private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;
 
-  static async countActiveSeatsInWorkspace(
+  private static async _countActiveSeatsInWorkspaceUncached(
     workspaceId: string
   ): Promise<number> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -516,16 +609,52 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  static countActiveSeatsInWorkspaceCached = cacheWithRedis(
-    MembershipResource.countActiveSeatsInWorkspace,
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
+  private static countActiveSeatsInWorkspaceCached = cacheWithRedis(
+    MembershipResource._countActiveSeatsInWorkspaceUncached,
     MembershipResource.seatsCacheKeyResolver,
-    { ttlMs: 60 * 10 * 1000 } // 10 minutes
+    { cacheNullValues: false }
   );
 
-  static invalidateActiveSeatsCache = invalidateCacheWithRedis(
-    MembershipResource.countActiveSeatsInWorkspace,
+  private static invalidateActiveSeatsCache = invalidateCacheWithRedis(
+    MembershipResource._countActiveSeatsInWorkspaceUncached,
     MembershipResource.seatsCacheKeyResolver
   );
+
+  static async countActiveSeatsInWorkspace(
+    workspaceId: string
+  ): Promise<number> {
+    return this.countActiveSeatsInWorkspaceCached(workspaceId);
+  }
+
+  protected override async update(
+    blob: Partial<Attributes<MembershipModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      this.workspaceId,
+    ]);
+    if (workspace) {
+      const workspaceId = workspace.sId;
+      invalidateCacheAfterCommit(transaction, () =>
+        MembershipResource.invalidateActiveSeatsCache(workspaceId)
+      );
+    }
+
+    return result;
+  }
+
+  async markFirstUse(): Promise<boolean> {
+    if (this.firstUsedAt !== null) {
+      return false;
+    }
+
+    await this.update({ firstUsedAt: new Date() });
+
+    return true;
+  }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
@@ -559,9 +688,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
-    return this.model.destroy({
+    const result = await this.model.destroy({
       where: { workspaceId: workspace.id },
     });
+
+    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+
+    return result;
   }
 
   /**
@@ -608,6 +741,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         workspaceId: workspace.id,
         role,
         origin,
+        firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }
     );
@@ -628,7 +762,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Invalidate the active seats cache for this workspace.
-    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    const workspaceId = workspace.sId;
+    const userModelId = user.id;
+    const workspaceModelId = workspace.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+      await MembershipResource.invalidateRoleCache({
+        userModelId,
+        workspaceModelId,
+      });
+    });
 
     return new MembershipResource(MembershipModel, newMembership.get());
   }
@@ -641,6 +784,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         userId: userIds,
       },
       // WORKSPACE_ISOLATION_BYPASS: fetch by userIds
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return membershipModels.map(
@@ -655,16 +799,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     endAt = new Date(),
     transaction,
+    allowLastAdminRevocation = false,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     endAt?: Date;
     transaction?: Transaction;
+    allowLastAdminRevocation?: boolean;
   }): Promise<
     Result<
       { role: MembershipRoleType; startAt: Date; endAt: Date },
       {
-        type: "not_found" | "already_revoked" | "invalid_end_at";
+        type: "not_found" | "already_revoked" | "invalid_end_at" | "last_admin";
       }
     >
   > {
@@ -682,6 +828,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (membership.endAt) {
       return new Err({ type: "already_revoked" });
     }
+
+    // Prevent revoking the last admin of a workspace.
+    if (membership.role === "admin" && !allowLastAdminRevocation) {
+      const adminsCount = await this.getMembersCountForWorkspace({
+        workspace,
+        activeOnly: true,
+        rolesFilter: ["admin"],
+        transaction,
+      });
+
+      if (adminsCount < 2) {
+        return new Err({ type: "last_admin" });
+      }
+    }
+
     await MembershipModel.update(
       { endAt },
       { where: { id: membership.id }, transaction }
@@ -698,7 +859,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           });
 
         if (workOSMemberships.data.length > 0) {
-          await workos.userManagement.deactivateOrganizationMembership(
+          await workos.userManagement.deleteOrganizationMembership(
             workOSMemberships.data[0].id
           );
         }
@@ -709,7 +870,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
             userId: user.id,
             error,
           },
-          "Failed to deactivate WorkOS membership"
+          "Failed to delete WorkOS membership"
         );
       }
     }
@@ -724,7 +885,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Invalidate the active seats cache for this workspace.
-    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    const workspaceId = workspace.sId;
+    const userModelId = user.id;
+    const workspaceModelId = workspace.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+      await MembershipResource.invalidateRoleCache({
+        userModelId,
+        workspaceModelId,
+      });
+    });
+
+    // We do not invalidate GroupMembership here
+    // because WorkspaceMembership is tested before GroupMembership
+    // in  lib/auth
 
     return new Ok({
       role: membership.role,
@@ -816,6 +990,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         { role: newRole },
         { where: { id: membership.id }, transaction }
       );
+
+      const workspaceId = workspace.sId;
+      const userModelId = user.id;
+      const workspaceModelId = workspace.id;
+      invalidateCacheAfterCommit(transaction, async () => {
+        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+        await MembershipResource.invalidateRoleCache({
+          userModelId,
+          workspaceModelId,
+        });
+      });
 
       await this.updateWorkOSMembershipRole({
         user,
@@ -976,12 +1161,29 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      this.workspaceId,
+    ]);
+
     await this.model.destroy({
       where: {
         id: this.id,
         workspaceId: this.workspaceId,
       },
       transaction,
+    });
+
+    const workspaceId = workspace?.sId;
+    const userModelId = this.userId;
+    const workspaceModelId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, async () => {
+      if (workspaceId) {
+        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+      }
+      await MembershipResource.invalidateRoleCache({
+        userModelId,
+        workspaceModelId,
+      });
     });
 
     return new Ok(undefined);

@@ -235,7 +235,8 @@ export async function getRepoIssuesPage(
       throw new ProviderWorkflowError(
         "github",
         `401 - Transient BadCredentialErrror`,
-        "transient_upstream_activity_error"
+        "transient_upstream_activity_error",
+        err
       );
     }
 
@@ -307,7 +308,8 @@ export async function getIssue(
       throw new ProviderWorkflowError(
         "github",
         `401 - Transient BadCredentialErrror`,
-        "transient_upstream_activity_error"
+        "transient_upstream_activity_error",
+        err
       );
     }
 

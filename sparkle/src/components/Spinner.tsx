@@ -248,4 +248,4 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
   );
 };
 
-export default Spinner;
+export { Spinner };

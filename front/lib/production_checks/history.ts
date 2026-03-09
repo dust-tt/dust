@@ -1,7 +1,3 @@
-import type { Client, WorkflowExecutionInfo } from "@temporalio/client";
-import { defaultPayloadConverter } from "@temporalio/common";
-import assert from "assert";
-
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
@@ -18,6 +14,9 @@ import type {
   CheckSummaryStatus,
 } from "@app/types/production_checks";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { Client, WorkflowExecutionInfo } from "@temporalio/client";
+import { defaultPayloadConverter } from "@temporalio/common";
+import assert from "assert";
 
 const COMPLETED_CHECKS_QUERY = `(WorkflowType = "${WORKFLOW_TYPE_RUN_ALL_CHECKS}" OR WorkflowType = "${WORKFLOW_TYPE_RUN_SINGLE_CHECK}") AND ExecutionStatus = "Completed"`;
 

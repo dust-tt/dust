@@ -1,3 +1,18 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import type {
+  BenefitsProps,
+  MetricProps,
+} from "@app/components/home/content/Solutions/BenefitsSection";
+import type {
+  CustomerStory,
+  QuoteProps,
+} from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import type {
+  HeroProps,
+  pageSettingsProps,
+} from "@app/components/home/content/Solutions/configs/utils";
+import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
+import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CheckCircleIcon,
   MagicIcon,
@@ -5,21 +20,6 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-
-import type {
-  BenefitsProps,
-  MetricProps,
-} from "@app/components/home/content/Solutions/BenefitsSection";
-import type {
-  HeroProps,
-  pageSettingsProps,
-} from "@app/components/home/content/Solutions/configs/utils";
-import type {
-  CustomerStory,
-  QuoteProps,
-} from "@app/components/home/content/Solutions/CustomerStoriesSection";
-import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
-import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {

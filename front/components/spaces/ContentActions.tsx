@@ -1,20 +1,8 @@
-import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  DocumentPileIcon,
-  ExternalLinkIcon,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import capitalize from "lodash/capitalize";
-import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
-import React, { useCallback, useImperativeHandle, useState } from "react";
-
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
-import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import {
   getDisplayNameForDataSource,
   isFolder,
@@ -35,6 +23,17 @@ import {
 } from "@app/types/sheets";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  DocumentPileIcon,
+  ExternalLinkIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import capitalize from "lodash/capitalize";
+import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
+import React, { useCallback, useImperativeHandle, useState } from "react";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"

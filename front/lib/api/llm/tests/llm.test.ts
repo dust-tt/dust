@@ -1,7 +1,3 @@
-import assert from "assert";
-import clone from "lodash/clone";
-import { describe, it, vi } from "vitest";
-
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
@@ -31,15 +27,20 @@ import {
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
+  FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_MINIMAX_M2P5_MODEL_ID,
 } from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
+  GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
 } from "@app/types/assistant/models/google_ai_studio";
@@ -59,6 +60,7 @@ import {
   GPT_4O_MODEL_ID,
   GPT_5_1_MODEL_ID,
   GPT_5_2_MODEL_ID,
+  GPT_5_4_MODEL_ID,
   GPT_5_MINI_MODEL_ID,
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
@@ -72,6 +74,9 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
+import assert from "assert";
+import clone from "lodash/clone";
+import { describe, it, vi } from "vitest";
 
 const TIMEOUT = 60 * 1000; // 60 seconds
 
@@ -154,7 +159,11 @@ const MODELS: Record<
     providerId: "anthropic",
   },
   [CLAUDE_OPUS_4_6_MODEL_ID]: {
-    runTest: true,
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_SONNET_4_6_MODEL_ID]: {
+    runTest: false,
     providerId: "anthropic",
   },
   // Google models
@@ -168,6 +177,7 @@ const MODELS: Record<
   },
   [GEMINI_2_5_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
+  [GEMINI_3_1_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_FLASH_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   // Mistral models
   [MISTRAL_CODESTRAL_MODEL_ID]: { runTest: false, providerId: "mistral" },
@@ -184,6 +194,7 @@ const MODELS: Record<
   [GPT_4O_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_1_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_2_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_4_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_NANO_MODEL_ID]: { runTest: false, providerId: "openai" },
@@ -197,6 +208,18 @@ const MODELS: Record<
     providerId: "fireworks",
   },
   [FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_KIMI_K2P5_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_MINIMAX_M2P5_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_GLM_5_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
   },

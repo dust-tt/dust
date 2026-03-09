@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
   Collapsible,
   CollapsibleContent,
@@ -5,8 +7,6 @@ import {
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
-
-import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 
 interface SnowflakeSetupInstructionsProps {
   useCase: MCPOAuthUseCase | null;
@@ -17,7 +17,7 @@ export function SnowflakeSetupInstructions({
 }: SnowflakeSetupInstructionsProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const redirectUri = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/oauth/snowflake/finalize`;
+  const redirectUri = `${config.getApiBaseUrl()}/oauth/snowflake/finalize`;
 
   return (
     <div className="w-full pt-4">

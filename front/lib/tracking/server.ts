@@ -1,9 +1,9 @@
-import * as _ from "lodash";
-
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import { PostHogServerSideTracking } from "@app/lib/tracking/posthog/server";
+import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -19,26 +19,53 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import * as _ from "lodash";
 
 import type { UserResource } from "../resources/user_resource";
 
 export class ServerSideTracking {
-  static trackSignup(_: { user: UserType }) {
-    // Do nothing for now
+  static trackSignup({
+    user,
+    utmParams,
+    userCreated,
+  }: {
+    user: UserType;
+    utmParams?: UTMParams;
+    userCreated?: boolean;
+  }) {
+    try {
+      CustomerioServerSideTracking.trackSignup({ user });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track signup on Customer.io"
+      );
+    }
+
+    try {
+      PostHogServerSideTracking.trackSignup({ user, utmParams, userCreated });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track signup on PostHog"
+      );
+    }
   }
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
     try {
-      const subscriptionByWorkspaceId =
-        await SubscriptionResource.fetchActiveByWorkspaces(user.workspaces);
+      const subscriptionByWorkspaceModelId =
+        await SubscriptionResource.fetchActiveByWorkspacesModelId(
+          user.workspaces.map((w) => w.id)
+        );
 
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
-            const seats =
-              await MembershipResource.countActiveSeatsInWorkspaceCached(
-                workspace.sId
-              );
+            const seats = await MembershipResource.countActiveSeatsInWorkspace(
+              workspace.sId
+            );
             return { sId: workspace.sId, seats };
           })
         ),
@@ -53,20 +80,20 @@ export class ServerSideTracking {
       const workspacesToTrackOnCustomerIo = user.workspaces
         .map((ws) => {
           const subscriptionStartInt =
-            subscriptionByWorkspaceId[ws.sId].startDate;
+            subscriptionByWorkspaceModelId[ws.id].startDate;
           const subscriptionStartAt = subscriptionStartInt
             ? new Date(subscriptionStartInt)
             : null;
 
           const requestCancelAtInt =
-            subscriptionByWorkspaceId[ws.sId].requestCancelAt;
+            subscriptionByWorkspaceModelId[ws.id].requestCancelAt;
           const requestCancelAt = requestCancelAtInt
             ? new Date(requestCancelAtInt)
             : null;
 
           return {
             ...ws,
-            planCode: subscriptionByWorkspaceId[ws.sId].getPlan().code,
+            planCode: subscriptionByWorkspaceModelId[ws.id].getPlan().code,
             seats: seatsByWorkspaceId[ws.sId].seats,
             subscriptionStartAt,
             requestCancelAt,

@@ -1,7 +1,5 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
-import type { Tooltip } from "@sparkle/components";
 import { BUTTON_VARIANTS, Button } from "@sparkle/components/Button";
+import type { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { type ComponentType, type MouseEventHandler } from "react";

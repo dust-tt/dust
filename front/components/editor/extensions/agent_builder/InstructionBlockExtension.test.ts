@@ -1,8 +1,11 @@
-import type { Editor } from "@tiptap/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import type { Editor } from "@tiptap/core";
+import type { Slice } from "@tiptap/pm/model";
+import { TextSelection } from "@tiptap/pm/state";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("InstructionBlockExtension", () => {
   let editor: Editor;
@@ -246,6 +249,11 @@ code block
           isCollapsed: false,
           type: "instructions_toto",
         },
+        content: [
+          {
+            type: "paragraph",
+          },
+        ],
         type: "instructionBlock",
       },
       {
@@ -256,7 +264,7 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions_toto>
 
-
+&nbsp;
 
 </instructions_toto>
 
@@ -362,6 +370,62 @@ Toto:
 &nbsp;`);
   });
 
+  it("should not throw on tags with only whitespace content", () => {
+    expect(() => {
+      editor.commands.setContent("<foo>\n</foo>\n\nHello", {
+        contentType: "markdown",
+      });
+    }).not.toThrow();
+
+    const text = editor.getText();
+    expect(text).toContain("Hello");
+  });
+
+  it("should handle instruction blocks with attributes in top-level and nested contexts", () => {
+    // Test the exact production scenario with attributes.
+    // Tags with attributes should stay escaped (ZWS-prefixed), preserving the attribute text
+    // while tags without attributes (like nested <rule>) become instruction blocks.
+    expect(() => {
+      editor.commands.setContent(
+        `Hello
+
+<task type="main">
+This is task content with attributes
+<rule type="foo">
+This is rule content with attributes
+</rule>
+<rule>
+This rule has no attributes
+</rule>
+</task>`,
+        {
+          contentType: "markdown",
+        }
+      );
+    }).not.toThrow();
+
+    // Should have parsed content without crashing
+    const json = editor.getJSON();
+    expect(json.content).toBeDefined();
+    expect(json.content?.length).toBeGreaterThan(0);
+
+    // Verify content is preserved in the markdown output
+    const markdown = editor.getMarkdown();
+    expect(markdown).toBeDefined();
+
+    // Top-level text should always be preserved
+    expect(markdown).toContain("Hello");
+
+    // Content inside attribute-bearing tags should be preserved as text
+    expect(markdown).toContain("This is task content with attributes");
+    expect(markdown).toContain("This is rule content with attributes");
+
+    // Content inside attribute-free tags should be preserved (either as instruction block or text)
+    expect(markdown).toContain("This rule has no attributes");
+
+    // Most importantly: no crash and no invalid node structures
+  });
+
   it("should work on deep-nested instruction blocks with NBSP", () => {
     editor.commands.setContent(
       // Contains NBSP before the `1. something`
@@ -392,5 +456,123 @@ Toto:
 </prompt>
 
 &nbsp;`);
+  });
+});
+
+describe("InstructionBlockExtension transformCopied", () => {
+  let editor: Editor;
+
+  // Helper: creates an editor with the instructionsRoot wrapper (like the
+  // real agent-builder editor) so that the document structure is:
+  // doc > instructionsRoot > block+
+  const createInstructionsEditor = () =>
+    EditorFactory(
+      [
+        InstructionsDocumentExtension,
+        InstructionsRootExtension,
+        InstructionBlockExtension,
+      ],
+      { starterKit: { document: false } }
+    );
+
+  afterEach(() => {
+    editor?.destroy();
+  });
+
+  /**
+   * Extract the transformCopied prop from the instructionBlockCopyContext
+   * plugin registered by InstructionBlockExtension.
+   */
+  function getTransformCopied(ed: Editor) {
+    const plugins = ed.state.plugins;
+    const plugin = plugins.find((p) =>
+      (p as any).key?.includes("instructionBlockCopyContext")
+    );
+    expect(plugin).toBeDefined();
+    return (plugin as any).props.transformCopied as (slice: Slice) => Slice;
+  }
+
+  it("should strip instructionBlock/instructionsRoot context when copying inner text", () => {
+    editor = createInstructionsEditor();
+    editor.commands.setContent("<example>test</example>", {
+      contentType: "markdown",
+    });
+
+    // Select the text "test" inside the instruction block.
+    // doc structure: doc > instructionsRoot > instructionBlock > paragraph("test")
+    // We need to find the text position inside the paragraph.
+    const doc = editor.state.doc;
+    let textFrom = -1;
+    let textTo = -1;
+    doc.descendants((node, pos) => {
+      if (node.isText && node.text === "test") {
+        textFrom = pos;
+        textTo = pos + node.nodeSize;
+      }
+    });
+    expect(textFrom).toBeGreaterThan(0);
+
+    // Create a text selection and get the slice (simulates what ProseMirror
+    // does on Cmd+C).
+    const selection = TextSelection.create(doc, textFrom, textTo);
+    const slice = selection.content();
+
+    // Before transformCopied: the slice should contain instructionsRoot and
+    // instructionBlock wrappers in its open context.
+    expect(slice.openStart).toBeGreaterThanOrEqual(2);
+
+    // Apply transformCopied.
+    const transformCopied = getTransformCopied(editor);
+    const result = transformCopied(slice);
+
+    // After: instructionsRoot and instructionBlock should be stripped.
+    // The result should just be paragraph-level content.
+    expect(result.openStart).toBeLessThan(slice.openStart);
+
+    // Verify no instructionBlock or instructionsRoot in the result's content tree.
+    let hasBlockWrapper = false;
+    result.content.descendants((node) => {
+      if (
+        node.type.name === "instructionBlock" ||
+        node.type.name === "instructionsRoot"
+      ) {
+        hasBlockWrapper = true;
+      }
+    });
+    expect(hasBlockWrapper).toBe(false);
+  });
+
+  it("should preserve full block when copying the whole instruction block", () => {
+    editor = createInstructionsEditor();
+    editor.commands.setContent("before\n\n<example>test</example>\n\nafter", {
+      contentType: "markdown",
+    });
+
+    // Select everything — this includes the instruction block and surrounding
+    // paragraphs, so the instructionsRoot will have multiple children.
+    editor.commands.selectAll();
+    const slice = editor.state.selection.content();
+
+    const transformCopied = getTransformCopied(editor);
+    const result = transformCopied(slice);
+
+    // The slice should be unchanged — the full block structure is preserved.
+    expect(result).toBe(slice);
+  });
+
+  it("should not modify slices that don't contain instruction blocks", () => {
+    editor = createInstructionsEditor();
+    editor.commands.setContent("just plain text", {
+      contentType: "markdown",
+    });
+
+    editor.commands.selectAll();
+    const slice = editor.state.selection.content();
+
+    const transformCopied = getTransformCopied(editor);
+    const result = transformCopied(slice);
+
+    // No instruction block in the content — slice should be unchanged.
+    expect(result).toBe(slice);
   });
 });

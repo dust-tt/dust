@@ -1,11 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import type {
-  CallToolResult,
-  ServerNotification,
-  ServerRequest,
-} from "@modelcontextprotocol/sdk/types.js";
-
 import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -18,6 +10,13 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+  CallToolResult,
+  ServerNotification,
+  ServerRequest,
+} from "@modelcontextprotocol/sdk/types.js";
 
 export function registerTool(
   auth: Authenticator,

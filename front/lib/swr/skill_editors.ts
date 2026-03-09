@@ -1,15 +1,14 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillEditorsResponseBody,
   PatchSkillEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/skills/[sId]/editors";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useSkillEditors({
   owner,
@@ -20,6 +19,7 @@ export function useSkillEditors({
   skillId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const editorsFetcher: Fetcher<GetSkillEditorsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
@@ -14,6 +12,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeGetAgentDetails = {
   agentConfigurations: AgentConfigurationType[];

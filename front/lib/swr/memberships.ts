@@ -1,7 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Fetcher } from "swr";
-
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -10,6 +7,8 @@ import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/s
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Fetcher } from "swr";
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -40,6 +39,7 @@ export function useMembers({
   pagination?: PaginationParams;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const defaultUrl = useMemo(() => {
     const params = new URLSearchParams();
     appendPaginationParams(params, pagination);
@@ -74,6 +74,7 @@ export function useWorkspaceInvitations(
   owner: LightWorkspaceType,
   { includeExpired = false }: { includeExpired?: boolean } = {}
 ) {
+  const { fetcher } = useFetcher();
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -102,10 +103,11 @@ export function useSearchMembers({
   searchTerm: string;
   pageIndex: number;
   pageSize: number;
-  groupKind?: Omit<GroupKind, "system">;
+  groupKind?: Exclude<GroupKind, "system">;
   buildersOnly?: boolean;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
@@ -162,6 +164,7 @@ export function useMembersLookup({
   memberIds: number[];
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const membersLookupFetcher: Fetcher<MembersLookupResponseBody> = fetcher;
 
   const query =

@@ -25,7 +25,10 @@ const EXTENSION_WHITELIST = [
   ".phtml", // PHP template
   ".twig", // PHP template
   ".module", // Drupal module
+  ".cls", // Salesforce Apex class
+  ".cls-meta.xml", // Salesforce Apex class metadata
 
+  ".xml", // XML
   ".xhtml", // XML/HTML
   ".xsd", // XML Schema Definition
 
@@ -64,6 +67,8 @@ const EXTENSION_WHITELIST = [
   ".avsc", // Apache Avro schema definition
   ".avdl", // Apache Avro IDL definition
 
+  ".item", // Talend files, a data integration/ETL platform.
+
   // Build & Dependencies
   ".gradle",
   ".lock", // Text-based lock files
@@ -71,6 +76,10 @@ const EXTENSION_WHITELIST = [
   ".just", // Justfile
   ".dockerfile",
   ".editorconfig",
+
+  // Shaders files.
+  ".shader",
+  ".hshader",
 
   // Infrastructure as Code
   ".tf", // Terraform

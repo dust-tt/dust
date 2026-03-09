@@ -1,7 +1,6 @@
+import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { DropzoneOverlay } from "@dust-tt/sparkle";
 import { useDropzone } from "react-dropzone";
-
-import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 
 interface DropzoneContainerProps {
   children: React.ReactNode;

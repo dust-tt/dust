@@ -1,8 +1,3 @@
-import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Country } from "react-phone-number-input";
-
-import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -14,13 +9,20 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
-import { useVerifyData } from "@app/lib/swr/workspaces";
+import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
+import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Country } from "react-phone-number-input";
 
 type Step = "phone" | "code";
 
 export function VerifyPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
+  const { mutateAuthContext } = useAuthContext({
+    workspaceId: workspace.sId,
+  });
 
   const {
     verifyData,
@@ -162,6 +164,10 @@ export function VerifyPage() {
         setPhoneError(data.api_error?.message ?? "Failed to start trial");
         return;
       }
+
+      // Revalidate the auth context so the SPA picks up the new subscription
+      // (canUseProduct is now true) and doesn't redirect back to /trial.
+      await mutateAuthContext();
 
       void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
     } catch {
@@ -307,46 +313,44 @@ function PhoneInputStep({
   onSubmit,
 }: PhoneInputStepProps) {
   return (
-    <ThemeProvider>
-      <Page>
-        <div className="flex h-full flex-col justify-center">
-          <Page.Horizontal>
-            <Page.Vertical sizing="grow" gap="lg">
-              <Page.Header
-                title="Phone number"
-                icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-              />
-              <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
-                To start your free trial, we need to verify your account with an
-                SMS code. <br />
-                Your number will only be used for this verification.
-              </p>
+    <Page>
+      <div className="flex h-full flex-col justify-center">
+        <Page.Horizontal>
+          <Page.Vertical sizing="grow" gap="lg">
+            <Page.Header
+              title="Phone number"
+              icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
+            />
+            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+              To start your free trial, we need to verify your account with an
+              SMS code. <br />
+              Your number will only be used for this verification.
+            </p>
 
-              <div className="flex w-full max-w-xl flex-col gap-4">
-                <div className="flex w-full flex-col gap-2">
-                  <PhoneNumberInput
-                    phoneNumber={phoneNumber}
-                    countryCode={countryCode}
-                    onPhoneNumberChange={onPhoneNumberChange}
-                    onCountryCodeChange={onCountryCodeChange}
-                  />
-                  <p className="min-h-5 text-sm text-red-500">{error}</p>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    onClick={onSubmit}
-                    variant="primary"
-                    label={isLoading ? "Sending..." : "Send code"}
-                    disabled={isLoading}
-                  />
-                </div>
+            <div className="flex w-full max-w-xl flex-col gap-4">
+              <div className="flex w-full flex-col gap-2">
+                <PhoneNumberInput
+                  phoneNumber={phoneNumber}
+                  countryCode={countryCode}
+                  onPhoneNumberChange={onPhoneNumberChange}
+                  onCountryCodeChange={onCountryCodeChange}
+                />
+                <p className="min-h-5 text-sm text-red-500">{error}</p>
               </div>
-            </Page.Vertical>
-          </Page.Horizontal>
-        </div>
-      </Page>
-    </ThemeProvider>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={onSubmit}
+                  variant="primary"
+                  label={isLoading ? "Sending..." : "Send code"}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+          </Page.Vertical>
+        </Page.Horizontal>
+      </div>
+    </Page>
   );
 }
 

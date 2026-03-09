@@ -1,3 +1,19 @@
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
+import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { canShowAgentConversationActions } from "@app/types/assistant/assistant";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BracesIcon,
   Button,
@@ -17,23 +33,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
-import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-} from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
-
 interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
@@ -47,9 +46,7 @@ export function AgentDetailsButtonBar({
 }: AgentDetailsButtonBarProps) {
   const { user } = useAuth();
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -109,17 +106,19 @@ export function AgentDetailsButtonBar({
         />
       </div>
 
-      <Button
-        icon={ChatBubbleBottomCenterTextIcon}
-        size="sm"
-        variant="outline"
-        tooltip="New conversation"
-        href={getConversationRoute(
-          owner.sId,
-          "new",
-          `agent=${agentConfiguration.sId}`
-        )}
-      />
+      {canShowAgentConversationActions(agentConfiguration.sId) && (
+        <Button
+          icon={ChatBubbleBottomCenterTextIcon}
+          size="sm"
+          variant="outline"
+          tooltip="New conversation"
+          href={getConversationRoute(
+            owner.sId,
+            "new",
+            `agent=${agentConfiguration.sId}`
+          )}
+        />
+      )}
 
       {agentConfiguration.scope !== "global" &&
         !isRestrictedFromAgentCreation && (
@@ -335,7 +334,7 @@ export function AgentDetailsDropdownMenu({
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>
       ) : showTrigger ? (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button icon={MoreIcon} size="sm" variant="ghost" />
           </DropdownMenuTrigger>

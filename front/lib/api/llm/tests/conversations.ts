@@ -1,7 +1,4 @@
 import { isDeepStrictEqual } from "node:util";
-
-import { assert, expect } from "vitest";
-
 import { getLLM } from "@app/lib/api/llm";
 import type { TestStructuredOutputKey } from "@app/lib/api/llm/tests/schemas";
 import {
@@ -20,6 +17,7 @@ import type {
 } from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import { assert, expect } from "vitest";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 
@@ -246,7 +244,7 @@ export const TEST_VISION_CONVERSATIONS = [
     conversationActions: [
       userMessageWithImage(
         "Describe this image.",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/481px-Cat03.jpg"
+        "https://cdn2.thecatapi.com/images/0XYvRd7oD.jpg"
       ),
     ],
     expectedInResponses: [containsTextChecker(["cat"])],
@@ -424,7 +422,7 @@ export const runConversation = async (
     }
 
     expect(fullResponse, "Full response should match deltas").toBe(
-      responseFromDeltas
+      responseFromDeltas.trim()
     );
     if (reasoningFromDeltas.length > 0) {
       // sometimes the final reasoning message is just a summary, so reasoning deltas

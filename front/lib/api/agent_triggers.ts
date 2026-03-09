@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -7,6 +5,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Op } from "sequelize";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching

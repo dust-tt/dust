@@ -1,5 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
@@ -14,12 +12,16 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types/oauth/lib";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
 import { isValidUrl } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
 
 export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
   requiresWorkspaceConnectionForPersonalAuth = true;

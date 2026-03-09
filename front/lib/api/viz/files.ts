@@ -6,9 +6,11 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { MAX_CONVERSATION_DEPTH } from "@app/pages/api/v1/w/[wId]/assistant/conversations";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -99,11 +101,86 @@ async function isAncestorConversation(
 }
 
 /**
+ * Check if a file can be accessed within a project context.
+ */
+export async function canAccessFileInProject(
+  owner: LightWorkspaceType,
+  {
+    file,
+    requestedProjectId,
+  }: { file: FileResource; requestedProjectId: string }
+): Promise<Result<true, Error>> {
+  const { useCase, useCaseMetadata } = file;
+  const isSupportedUsecase =
+    useCase === "tool_output" ||
+    useCase === "conversation" ||
+    useCase === "project_context";
+
+  // Verify supported use case.
+  if (!isSupportedUsecase) {
+    return new Err(new Error("Unsupported file use case"));
+  }
+  const auth = await Authenticator.internalBuilderForWorkspace(owner.sId);
+
+  const requestedProject = await SpaceResource.fetchById(
+    auth,
+    requestedProjectId
+  );
+  if (!requestedProject) {
+    return new Err(new Error("Requested project not found"));
+  }
+
+  switch (useCase) {
+    case "conversation":
+    case "tool_output":
+      if (!useCaseMetadata?.conversationId) {
+        return new Err(new Error("File is not associated with a conversation"));
+      }
+
+      // We need to fetch the conversation to check if it belongs to the requested project
+      // because internalBuilderForWorkspace only has global group access and can't see agents
+      // from other groups that this conversation might reference.
+      const fileConversation = await ConversationResource.fetchById(
+        auth,
+        useCaseMetadata.conversationId,
+        {
+          dangerouslySkipPermissionFiltering: true,
+        }
+      );
+      if (!fileConversation) {
+        return new Err(new Error("File conversation not found"));
+      }
+
+      // File conversation belongs to the requested project.
+      if (fileConversation.spaceId === requestedProject.id) {
+        return new Ok(true);
+      }
+      break;
+
+    case "project_context":
+      if (!useCaseMetadata?.spaceId) {
+        return new Err(new Error("File is not associated with a project"));
+      }
+
+      // File belongs to the requested project.
+      if (useCaseMetadata.spaceId === requestedProject.sId) {
+        return new Ok(true);
+      }
+      break;
+
+    default:
+      assertNever(useCase);
+  }
+
+  return new Err(new Error("Access to file denied"));
+}
+/**
  * Check if a file can be accessed within a conversation context.
  *
- * This function handles two cases:
+ * This function handles three cases:
  * 1. Direct access: File belongs to the same conversation as the frame
  * 2. Hierarchical access: File belongs to a sub-conversation created via run_agent handovers
+ * 3. Project context: File belongs to a the same project as the conversation
  *
  * For the hierarchical case, the current implementation requires traversing conversation chains by
  * following userContextOriginMessageId references, which is fragile and performance-intensive. This
@@ -118,27 +195,21 @@ async function isAncestorConversation(
  */
 export async function canAccessFileInConversation(
   owner: LightWorkspaceType,
-  file: FileResource,
-  requestedConversationId: string
+  {
+    file,
+    requestedConversationId,
+  }: { file: FileResource; requestedConversationId: string }
 ): Promise<Result<true, Error>> {
   const { useCase, useCaseMetadata } = file;
   const isSupportedUsecase =
-    useCase === "tool_output" || useCase === "conversation";
+    useCase === "tool_output" ||
+    useCase === "conversation" ||
+    useCase === "project_context";
 
   // Verify supported use case.
   if (!isSupportedUsecase) {
     return new Err(new Error("Unsupported file use case"));
   }
-
-  if (!useCaseMetadata?.conversationId) {
-    return new Err(new Error("File is not associated with a conversation"));
-  }
-
-  // Direct access, file belongs to the requested conversation.
-  if (useCaseMetadata.conversationId === requestedConversationId) {
-    return new Ok(true);
-  }
-
   const auth = await Authenticator.internalBuilderForWorkspace(owner.sId);
 
   // We only need to verify if the conversation exists, but internalBuilderForWorkspace only has
@@ -155,24 +226,60 @@ export async function canAccessFileInConversation(
     return new Err(new Error("Requested conversation not found"));
   }
 
-  // Check if file belongs to a conversation created through a sub agent run.
-  const fileConversation = await ConversationResource.fetchById(
-    auth,
-    useCaseMetadata.conversationId
-  );
-  if (!fileConversation) {
-    return new Err(new Error("File conversation not found"));
-  }
+  switch (useCase) {
+    case "conversation":
+    case "tool_output":
+      if (!useCaseMetadata?.conversationId) {
+        return new Err(new Error("File is not associated with a conversation"));
+      }
 
-  // Traverse up the conversation hierarchy of the file's conversation.
-  const fileBelongsToSubConversation = await isAncestorConversation(
-    auth,
-    requestedConversation,
-    fileConversation
-  );
+      // Direct access, file belongs to the requested conversation.
+      if (useCaseMetadata.conversationId === requestedConversationId) {
+        return new Ok(true);
+      }
 
-  if (fileBelongsToSubConversation) {
-    return new Ok(true);
+      // Check if file belongs to a conversation created through a sub agent run.
+      const fileConversation = await ConversationResource.fetchById(
+        auth,
+        useCaseMetadata.conversationId
+      );
+      if (!fileConversation) {
+        return new Err(new Error("File conversation not found"));
+      }
+
+      // Traverse up the conversation hierarchy of the file's conversation.
+      const fileBelongsToSubConversation = await isAncestorConversation(
+        auth,
+        requestedConversation,
+        fileConversation
+      );
+
+      if (fileBelongsToSubConversation) {
+        return new Ok(true);
+      }
+      break;
+
+    case "project_context":
+      if (!useCaseMetadata?.spaceId) {
+        return new Err(new Error("File is not associated with a project"));
+      }
+
+      const project = await SpaceResource.fetchById(
+        auth,
+        useCaseMetadata.spaceId
+      );
+      if (!project || !project.isProject()) {
+        return new Err(new Error("Project not found"));
+      }
+
+      // File belongs to the requested project.
+      if (requestedConversation.spaceId === project.id) {
+        return new Ok(true);
+      }
+      break;
+
+    default:
+      assertNever(useCase);
   }
 
   return new Err(new Error("Access to file denied"));

@@ -129,6 +129,7 @@ export interface PluginManifest<
   resourceTypes: R[];
   warning?: string;
   isHidden?: boolean;
+  readonly?: boolean;
   redactResult?: boolean;
 }
 
@@ -212,6 +213,7 @@ export const supportedResourceTypes = [
   "data_source_views",
   "data_sources",
   "mcp_server_views",
+  "skills",
   "spaces",
   "workspaces",
   "agents",

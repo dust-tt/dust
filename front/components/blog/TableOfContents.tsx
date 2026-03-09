@@ -1,8 +1,8 @@
-import React, { useMemo } from "react";
-
 import { useScrollSpy } from "@app/components/blog/useScrollSpy";
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import { classNames } from "@app/lib/utils";
+import type React from "react";
+import { useMemo } from "react";
 
 interface TableOfContentsProps {
   items: TocItem[];

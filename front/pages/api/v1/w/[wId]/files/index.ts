@@ -1,8 +1,3 @@
-import type { FileUploadRequestResponseType } from "@dust-tt/client";
-import { FileUploadUrlRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { isUploadSupported } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,6 +11,10 @@ import {
   isPubliclySupportedUseCase,
   isSupportedFileContentType,
 } from "@app/types/files";
+import type { FileUploadRequestResponseType } from "@dust-tt/client";
+import { FileUploadUrlRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger

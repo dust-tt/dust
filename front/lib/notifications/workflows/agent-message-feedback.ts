@@ -1,6 +1,3 @@
-import { workflow } from "@novu/framework";
-import z from "zod";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { getEditors } from "@app/lib/api/assistant/editors";
@@ -18,6 +15,8 @@ import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { workflow } from "@novu/framework";
+import z from "zod";
 
 const AgentMessageFeedbackPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -427,6 +426,7 @@ export const triggerAgentMessageFeedbackNotification = async (
       });
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     return new Err({
       name: "dust_error",

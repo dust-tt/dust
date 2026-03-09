@@ -1,11 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-
-export const ZENDESK_TOOL_NAME = "zendesk" as const;
 
 export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   get_ticket: {
@@ -102,8 +99,57 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low", // Low because it's a draft.
     displayLabels: {
-      running: "Drafting Zendesk reply",
-      done: "Draft Zendesk reply",
+      running: "Drafting reply to Zendesk",
+      done: "Draft reply to Zendesk",
+    },
+  },
+  post_reply: {
+    description:
+      "Post a public reply to a Zendesk ticket. The reply will be visible to the end user.",
+    schema: {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to reply to."),
+      body: z.string().describe("The content of the reply."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Posting reply to Zendesk",
+      done: "Post reply to Zendesk",
+    },
+  },
+  update_ticket_tags: {
+    description:
+      "Add tags to a Zendesk ticket or completely replace its tags. " +
+      "By default (override=false), adds the provided tags to the existing ones without affecting them. " +
+      "When override=true, all existing tags on the ticket are replaced by the provided list — " +
+      "any tag not included in the list will be permanently removed. " +
+      "To remove a tag: first retrieve the current tags on the ticket, then call this tool with override=true, omitting the tag to remove from the list.",
+    schema: {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to update."),
+      tags: z
+        .array(z.string())
+        .describe(
+          "Tags to add, or the complete new list of tags if override=true."
+        ),
+      override: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, replaces all existing tags with the provided list. It removes any tag not in the list. " +
+            "If false or omitted, adds the tags to the existing ones. Defaults to false."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Updating Zendesk ticket tags",
+      done: "Update Zendesk ticket tags",
     },
   },
 });

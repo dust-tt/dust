@@ -1,17 +1,13 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
-import {
-  Avatar,
-  type Button,
-  ConversationMessageContent,
-  IconButton,
-} from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
+import type { Button } from "@sparkle/components/Button";
+import { ConversationMessageContent } from "@sparkle/components/ConversationMessages";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
+import { IconButton } from "@sparkle/components/IconButton";
 import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

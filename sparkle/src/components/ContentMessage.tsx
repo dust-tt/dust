@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { Button, type ButtonProps } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { cn } from "@sparkle/lib/utils";

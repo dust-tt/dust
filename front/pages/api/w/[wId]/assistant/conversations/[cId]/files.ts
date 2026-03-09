@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listGeneratedFiles } from "@app/lib/api/assistant/conversation/files";
@@ -9,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationFilesResponseBody = {
   files: ActionGeneratedFileType[];

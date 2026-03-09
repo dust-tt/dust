@@ -1,5 +1,3 @@
-import { ApiError, GoogleGenAI } from "@google/genai";
-
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   GOOGLE_AI_STUDIO_PROVIDER_ID,
@@ -25,10 +23,18 @@ import type {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+import { ApiError, GoogleGenAI } from "@google/genai";
 
 import { handleError } from "./utils/errors";
 
-export class GoogleLLM extends LLM {
+interface GoogleGenerateContentRequestParams {
+  conversation: LLMStreamParameters["conversation"];
+  prompt: LLMStreamParameters["prompt"];
+  specifications: LLMStreamParameters["specifications"];
+  forceToolCall: LLMStreamParameters["forceToolCall"];
+}
+
+export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   private client: GoogleGenAI;
   protected modelId: GoogleAIStudioWhitelistedModelId;
 
@@ -52,24 +58,39 @@ export class GoogleLLM extends LLM {
     });
   }
 
-  async *internalStream({
+  protected buildRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): GoogleGenerateContentRequestParams {
+    // Just capture the parameters; content conversion happens in sendRequest
+    return {
+      conversation,
+      prompt,
+      specifications,
+      forceToolCall,
+    };
+  }
+
+  protected async *sendRequest(
+    payload: GoogleGenerateContentRequestParams
+  ): AsyncGenerator<LLMEvent> {
     try {
       const contents = await Promise.all(
-        conversation.messages.map((message) => toContent(message, this.modelId))
+        payload.conversation.messages.map((message) =>
+          toContent(message, this.modelId)
+        )
       );
+
       const generateContentResponses =
         await this.client.models.generateContentStream({
           model: this.modelId,
           contents,
           config: {
             temperature: this.temperature ?? undefined,
-            tools: specifications.map(toTool),
-            systemInstruction: { text: systemPromptToText(prompt) },
+            tools: payload.specifications.map(toTool),
+            systemInstruction: { text: systemPromptToText(payload.prompt) },
             // We only need one
             candidateCount: 1,
             thinkingConfig: toThinkingConfig({
@@ -77,7 +98,10 @@ export class GoogleLLM extends LLM {
               reasoningEffort: this.reasoningEffort,
               useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
             }),
-            toolConfig: toToolConfigParam(specifications, forceToolCall),
+            toolConfig: toToolConfigParam(
+              payload.specifications,
+              payload.forceToolCall
+            ),
             // Structured response format
             responseMimeType: this.responseFormat
               ? "application/json"

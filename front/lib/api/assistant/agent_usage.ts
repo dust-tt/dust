@@ -1,10 +1,6 @@
-import type { estypes } from "@elastic/elasticsearch";
-import _ from "lodash";
-import type { RedisClientType } from "redis";
-
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
-import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -14,6 +10,10 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { estypes } from "@elastic/elasticsearch";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { RedisClientType } from "redis";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
@@ -59,7 +59,8 @@ export async function getAgentsUsage({
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  redis = providedRedis ?? (await getRedisClient({ origin: "agent_usage" }));
+  redis =
+    providedRedis ?? (await getRedisStreamClient({ origin: "agent_usage" }));
   const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
   // agent mention count doesn't exist or wasn't set to expire
@@ -269,7 +270,7 @@ export async function signalAgentUsage({
 }) {
   let redis: RedisClientType | null = null;
 
-  redis = await getRedisClient({ origin: "agent_usage" });
+  redis = await getRedisStreamClient({ origin: "agent_usage" });
   const agentMessageCountKey = _getUsageKey(workspaceId);
   const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 

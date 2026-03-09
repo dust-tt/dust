@@ -1,11 +1,3 @@
-import {
-  continueAsNew,
-  executeChild,
-  proxyActivities,
-  sleep,
-  workflowInfo,
-} from "@temporalio/workflow";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
@@ -24,6 +16,13 @@ import {
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types/shared/model_id";
+import {
+  continueAsNew,
+  executeChild,
+  proxyActivities,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
@@ -121,12 +120,29 @@ export async function workspaceRelocateFrontWorkflow({
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 1) Relocate the workspace, users and plan in the destination region.
+  // 1) Prepare user ID mapping between source and destination regions.
+  const usersForMappingDataPath =
+    await sourceRegionActivities.collectWorkspaceUsersForMapping({
+      destRegion,
+      sourceRegion,
+      workspaceId,
+    });
+
+  const userIdMappingPath =
+    await destinationRegionActivities.prepareDestinationUserMapping({
+      destRegion,
+      sourceRegion,
+      workspaceId,
+      usersDataPath: usersForMappingDataPath,
+    });
+
+  // 2) Relocate the workspace, users and plan in the destination region.
   const coreEntitiesDataPath =
     await sourceRegionActivities.readCoreEntitiesFromSourceRegion({
       destRegion,
       sourceRegion,
       workspaceId,
+      userIdMappingPath,
     });
 
   await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
@@ -136,8 +152,10 @@ export async function workspaceRelocateFrontWorkflow({
     workspaceId,
   });
 
-  const tablesOrder =
-    await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
+  const [tablesOrder, userIdColumnsByTable] = await Promise.all([
+    sourceRegionActivities.getTablesWithWorkspaceIdOrder(),
+    sourceRegionActivities.getUserIdColumnsByTable(),
+  ]);
 
   // 2) Relocate front tables to the destination region.
   for (const tableName of tablesOrder) {
@@ -150,6 +168,8 @@ export async function workspaceRelocateFrontWorkflow({
           tableName,
           destRegion,
           workspaceId,
+          userIdMappingPath,
+          userIdColumns: userIdColumnsByTable[tableName] ?? [],
         },
       ],
       memo,
@@ -190,9 +210,13 @@ export async function workspaceRelocateFrontTableWorkflow({
   tableName,
   destRegion,
   workspaceId,
+  userIdMappingPath,
+  userIdColumns,
 }: RelocationWorkflowBase & {
   tableName: string;
   lastProcessedId?: ModelId;
+  userIdMappingPath?: string | null;
+  userIdColumns?: string[];
 }) {
   // Create activity proxies with dynamic task queues.
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
@@ -211,6 +235,8 @@ export async function workspaceRelocateFrontTableWorkflow({
         workspaceId,
         tableName,
         lastProcessedId: currentId,
+        userIdMappingPath,
+        userIdColumns,
       });
     }
 
@@ -221,6 +247,8 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
+        userIdMappingPath,
+        userIdColumns,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
@@ -690,15 +718,15 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       });
 
     if (dataPath) {
-      const sourceRegionDustFacingUrl =
-        await sourceRegionActivities.getRegionDustFacingUrl();
+      const sourceRegionApiBaseUrl =
+        await sourceRegionActivities.getRegionApiBaseUrl();
 
       await destinationRegionActivities.processDataSourceDocuments({
         destIds,
         dataPath,
         destRegion,
         sourceRegion,
-        sourceRegionDustFacingUrl,
+        sourceRegionApiBaseUrl,
         workspaceId,
       });
     }
@@ -746,15 +774,15 @@ export async function workspaceRelocateDataSourceFoldersWorkflow({
         workspaceId,
       });
 
-    const sourceRegionDustFacingUrl =
-      await sourceRegionActivities.getRegionDustFacingUrl();
+    const sourceRegionApiBaseUrl =
+      await sourceRegionActivities.getRegionApiBaseUrl();
 
     await destinationRegionActivities.processDataSourceFolders({
       destIds,
       dataPath,
       destRegion,
       sourceRegion,
-      sourceRegionDustFacingUrl,
+      sourceRegionApiBaseUrl,
       workspaceId,
     });
 
@@ -802,15 +830,15 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
         limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
     if (dataPath) {
-      const sourceRegionDustFacingUrl =
-        await sourceRegionActivities.getRegionDustFacingUrl();
+      const sourceRegionApiBaseUrl =
+        await sourceRegionActivities.getRegionApiBaseUrl();
 
       await destinationRegionActivities.processDataSourceTables({
         destIds,
         dataPath,
         destRegion,
         sourceRegion,
-        sourceRegionDustFacingUrl,
+        sourceRegionApiBaseUrl,
         workspaceId,
       });
     }

@@ -29,18 +29,21 @@ procs:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       npm run watch
 
   sdks-js:
     cwd: "<CONFIG_DIR>/../sdks/js"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       ./admin/dev.sh
 
   front:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       READY_FILE="../sdks/js/dist/client.esm.js.map"
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
@@ -52,6 +55,7 @@ procs:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       echo "Waiting for front to be ready..."
       until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
       echo "front ready. Starting front-workers."
@@ -61,6 +65,7 @@ procs:
     cwd: "<CONFIG_DIR>/../connectors"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       READY_FILE="../sdks/js/dist/client.esm.js.map"
       echo "Waiting for sdks-js to compile..."
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
@@ -71,42 +76,50 @@ procs:
     cwd: "<CONFIG_DIR>/../front-spa"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       READY_FILE="../sparkle/dist/cjs/index.js"
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       npm run dev:app
-    autostart: false
 
   front-poke:
     cwd: "<CONFIG_DIR>/../front-spa"
     shell: |
       set -euo pipefail
+      echo "Node $(node --version)"
       READY_FILE="../sparkle/dist/cjs/index.js"
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       npm run dev:poke
-    autostart: false
 
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
-    shell: "npm run storybook"
+    shell: |
+      echo "Node $(node --version)"
+      npm run storybook
     autostart: false
 
   sparkle-playground:
     cwd: "<CONFIG_DIR>/../sparkle/playground"
-    shell: "npm install && npm run dev"
+    shell: |
+      echo "Node $(node --version)"
+      npm install && npm run dev
     autostart: false
 
   viz:
     cwd: "<CONFIG_DIR>/../viz"
-    shell: "npm run dev"
+    shell: |
+      echo "Node $(node --version)"
+      npm run dev
     autostart: false
 
   extension:
     cwd: "<CONFIG_DIR>/../extension"
-    shell: "npm run dev:chrome"
+    shell: |
+      echo "Node $(node --version)"
+      npm run dev:chrome
     autostart: false
 
   ngrok:

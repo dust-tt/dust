@@ -1,10 +1,9 @@
-import { cn } from "@dust-tt/sparkle";
-
 import {
   buildColorClass,
   INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ConnectorProvider } from "@app/types/data_source";
+import { cn } from "@dust-tt/sparkle";
 
 const LABEL_COLOR_VARIANT = 900;
 const VALUE_COLOR_VARIANT = 700;
@@ -119,7 +118,9 @@ export function DatasourceRetrievalTreemapContent({
   const groupName = root?.name ?? "";
   const groupValue = typeof root?.value === "number" ? root.value : null;
   const groupLabel =
-    groupValue !== null ? `${groupName} — ${groupValue}` : groupName;
+    groupValue !== null
+      ? `${groupName} — ${groupValue.toLocaleString()}`
+      : groupName;
   const shouldShowGroupLabel =
     shouldShowGroupOutline &&
     groupName.length > 0 &&
@@ -188,7 +189,7 @@ export function DatasourceRetrievalTreemapContent({
                 buildColorClass(baseColor, VALUE_COLOR_VARIANT)
               )}
             >
-              {value}
+              {value.toLocaleString()}
             </div>
           </div>
         </foreignObject>

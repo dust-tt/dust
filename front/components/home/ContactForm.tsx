@@ -1,19 +1,3 @@
-import {
-  Button,
-  Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Input,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
-import { useController, useForm } from "react-hook-form";
-
 import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type {
@@ -29,9 +13,24 @@ import {
 } from "@app/lib/api/hubspot/contactFormSchema";
 import { clientFetch } from "@app/lib/egress/client";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  Button,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useController, useForm } from "react-hook-form";
 
 interface ContactFormProps {
   prefillEmail?: string;
@@ -69,7 +68,7 @@ function useContactFormSubmit() {
     });
 
     try {
-      const response = await clientFetch("/api/contact/submit", {
+      const response = await clientFetch("/api/home/contact/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,6 +114,9 @@ function useContactFormSubmit() {
           user_company_headcount: data.company_headcount_form,
           consent_marketing: consentMarketing,
           gclid: tracking.gclid,
+          fbclid: tracking.fbclid,
+          msclkid: tracking.msclkid,
+          li_fat_id: tracking.li_fat_id,
           utm_source: tracking.utm_source,
           utm_medium: tracking.utm_medium,
           utm_campaign: tracking.utm_campaign,

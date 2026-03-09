@@ -1,3 +1,16 @@
+import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import { useConversationFiles } from "@app/hooks/conversations";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import config from "@app/lib/api/config";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  isInteractiveContentType,
+} from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CitationGrid,
@@ -11,19 +24,6 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useConversationFiles } from "@app/lib/swr/conversations";
-import type { AllSupportedFileContentType } from "@app/types/files";
-import {
-  frameContentType,
-  isInteractiveContentContentType,
-} from "@app/types/files";
-import type { LightWorkspaceType } from "@app/types/user";
-
 interface FileGroup {
   contentType: AllSupportedFileContentType | "other";
   files: ActionGeneratedFileType[];
@@ -34,6 +34,7 @@ interface FileGroup {
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
   [frameContentType]: "Frames",
+  [frameSlideshowContentType]: "Presentations",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -102,7 +103,7 @@ const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
   <CitationGrid variant="grid" className="md:grid-cols-3">
     {files.map((file, index) => {
       const attachmentCitation = markdownCitationToAttachmentCitation({
-        href: `${getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
+        href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
         title: file.title,
         contentType: file.contentType,
         fileId: file.fileId,
@@ -133,9 +134,7 @@ const FileGroupSection = ({
   onFileClick,
   owner,
 }: FileGroupSectionProps) => {
-  const isInteractiveContent = isInteractiveContentContentType(
-    group.contentType
-  );
+  const isInteractiveContent = isInteractiveContentType(group.contentType);
 
   return (
     <div className="space-y-2">

@@ -76,6 +76,8 @@ export type ModelConfigurationType = Omit<
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
   tokenizer: TokenizerConfig;
+  // When true, enterprise plans bypass the feature flag check (both can coexist).
+  enforceEnterpriseAvailability?: boolean;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

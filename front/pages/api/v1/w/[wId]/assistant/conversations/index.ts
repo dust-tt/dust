@@ -1,11 +1,3 @@
-import type {
-  GetConversationsResponseType,
-  PostConversationsResponseType,
-} from "@dust-tt/client";
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
@@ -51,7 +43,15 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isInteractiveContentType } from "@app/types/files";
 import { isEmptyString } from "@app/types/shared/utils/general";
+import type {
+  GetConversationsResponseType,
+  PostConversationsResponseType,
+} from "@dust-tt/client";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export const MAX_CONVERSATION_DEPTH = 4;
 
@@ -426,6 +426,8 @@ async function handler(
             conversation,
             mcpServerViews,
             enabled: true,
+            source: "conversation",
+            agentConfigurationId: null,
           });
           if (r.isErr()) {
             return apiError(req, res, {
@@ -501,7 +503,14 @@ async function handler(
       res.status(200).json({
         conversation: addBackwardCompatibleConversationFields(conversation),
         message: newMessage ?? undefined,
-        contentFragment: newContentFragment ?? undefined,
+        contentFragment:
+          !newContentFragment ||
+          isInteractiveContentType(newContentFragment.contentType)
+            ? undefined
+            : {
+                ...newContentFragment,
+                contentType: newContentFragment.contentType,
+              },
       });
       return;
     case "GET":

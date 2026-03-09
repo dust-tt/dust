@@ -6,7 +6,6 @@ import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -73,7 +72,7 @@ export async function createWorkspaceInternal({
     };
   }
 
-  const workspace = await WorkspaceModel.create({
+  const workspace = await WorkspaceResource.makeNew({
     sId: generateRandomModelSId(),
     name,
     metadata,

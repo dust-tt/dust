@@ -51,6 +51,7 @@ export type ActionGeneratedFileType = {
   hidden?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  isInProjectContext?: boolean;
 };
 
 export type AgentLoopRunContextType = {

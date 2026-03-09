@@ -1,4 +1,20 @@
 import {
+  getModelProviderLogo,
+  REASONING_MODEL_CONFIGS,
+  USED_MODEL_CONFIGS,
+} from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { isModelAvailable } from "@app/lib/assistant";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useWorkspace } from "@app/lib/swr/workspaces";
+import { EMBEDDING_PROVIDER_IDS } from "@app/types/assistant/models/embedding";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
+import {
   Button,
   Cog6ToothIcon,
   ContextItem,
@@ -19,22 +35,6 @@ import {
 import isEqual from "lodash/isEqual";
 import uniqBy from "lodash/uniqBy";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import {
-  getModelProviderLogo,
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/types";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { isModelAvailable } from "@app/lib/assistant";
-import { clientFetch } from "@app/lib/egress/client";
-import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
-import { EMBEDDING_PROVIDER_IDS } from "@app/types/assistant/models/embedding";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import type { PlanType } from "@app/types/plan";
-import type { WorkspaceType } from "@app/types/user";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -74,10 +74,7 @@ export function ProviderManagementModal({
     disabled: !open,
   });
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-    disabled: !open,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(
@@ -131,6 +128,7 @@ export function ProviderManagementModal({
     [providerStates]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleToggleChange = useCallback(
     (provider: ModelProviderIdType) => {
       setProviderStates((prevStates) => ({
@@ -177,6 +175,7 @@ export function ProviderManagementModal({
         // Retrigger a server fetch after a successful update
         await mutateWorkspace();
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotifications({
           type: "error",

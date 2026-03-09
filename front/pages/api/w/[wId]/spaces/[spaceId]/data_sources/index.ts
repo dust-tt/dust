@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
@@ -45,6 +40,10 @@ import type { PlanType } from "@app/types/plan";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { WorkspaceType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 function getConnectorProviderCodec(): t.Mixed {
@@ -408,12 +407,29 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  // Check if there's already a data source with the same name
+  const dustProjectId = dustProject.value.project.project_id.toString();
+  const dustDataSourceId = dustDataSource.value.data_source.data_source_id;
+
+  const rollbackCoreDataSource = async () => {
+    const deleteRes = await coreAPI.deleteDataSource({
+      projectId: dustProjectId,
+      dataSourceId: dustDataSourceId,
+    });
+    if (deleteRes.isErr()) {
+      logger.error(
+        { error: deleteRes.error },
+        "Failed to delete the data source"
+      );
+    }
+  };
+
+  // Check if there's already a data source with the same name.
   const existingDataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dataSourceName
   );
   if (existingDataSource) {
+    await rollbackCoreDataSource();
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -423,23 +439,38 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const dataSourceView =
-    await DataSourceViewResource.createDataSourceAndDefaultView(
-      {
-        assistantDefaultSelected:
-          isConnectorProviderAssistantDefaultSelected(provider),
-        connectorProvider: provider,
-        description: dataSourceDescription,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-        name: dataSourceName,
-        workspaceId: owner.id,
-      },
-      space,
-      auth.user()
-    );
+  // Create the front data source + view. If this throws, rollback the core data source we just
+  // created to avoid leaking a broken entry.
+  let dataSourceView: DataSourceViewResource;
+  try {
+    dataSourceView =
+      await DataSourceViewResource.createDataSourceAndDefaultView(
+        {
+          assistantDefaultSelected:
+            isConnectorProviderAssistantDefaultSelected(provider),
+          connectorProvider: provider,
+          description: dataSourceDescription,
+          dustAPIProjectId: dustProjectId,
+          dustAPIDataSourceId: dustDataSourceId,
+          name: dataSourceName,
+          workspaceId: owner.id,
+        },
+        space,
+        auth.user()
+      );
+  } catch (e) {
+    await rollbackCoreDataSource();
+    throw e;
+  }
 
   const { dataSource } = dataSourceView;
+
+  const rollbackManagedDataSource = async () => {
+    // Best-effort rollback: avoid persisting a broken managed data source if connector creation
+    // fails or we can't verify connection ownership (OAuth issues, invalid connectionId, etc.).
+    await dataSource.delete(auth, { hardDelete: true });
+    await rollbackCoreDataSource();
+  };
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -452,6 +483,7 @@ const handleDataSourceWithProvider = async ({
       connectionId
     );
     if (checkConnectionOwnershipRes.isErr()) {
+      await rollbackManagedDataSource();
       return apiError(req, res, {
         status_code: 400,
         api_error: {
@@ -479,21 +511,7 @@ const handleDataSourceWithProvider = async ({
       "Failed to create the connector"
     );
 
-    // Rollback the data source creation.
-    await dataSource.delete(auth, { hardDelete: true });
-
-    const deleteRes = await coreAPI.deleteDataSource({
-      projectId: dustProject.value.project.project_id.toString(),
-      dataSourceId: dustDataSource.value.data_source.data_source_id,
-    });
-    if (deleteRes.isErr()) {
-      logger.error(
-        {
-          error: deleteRes.error,
-        },
-        "Failed to delete the data source"
-      );
-    }
+    await rollbackManagedDataSource();
 
     switch (connectorsRes.error.type) {
       case "authorization_error":

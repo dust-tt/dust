@@ -1,19 +1,3 @@
-import {
-  DocumentPlusIcon,
-  ExclamationCircleIcon,
-  Input,
-  Page,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -33,6 +17,22 @@ import type { PlanType } from "@app/types/plan";
 import { Err } from "@app/types/shared/result";
 import { isSlugified, truncate } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import {
+  DocumentPlusIcon,
+  ExclamationCircleIcon,
+  Input,
+  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Table {
   name: string;

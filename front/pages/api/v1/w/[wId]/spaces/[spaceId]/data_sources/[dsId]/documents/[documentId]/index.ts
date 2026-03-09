@@ -1,15 +1,5 @@
-import type {
-  DeleteDocumentResponseType,
-  GetDocumentResponseType,
-  UpsertDocumentResponseType,
-} from "@dust-tt/client";
-import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
@@ -29,6 +19,14 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { fileSizeToHumanReadable } from "@app/types/files";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import type {
+  DeleteDocumentResponseType,
+  GetDocumentResponseType,
+  UpsertDocumentResponseType,
+} from "@dust-tt/client";
+import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 // Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
 // (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.
@@ -477,7 +475,7 @@ async function handler(
       // Enforce plan limits: Datasource quota
       try {
         const [activeSeats, quotaUsed] = await Promise.all([
-          MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId),
+          MembershipResource.countActiveSeatsInWorkspace(owner.sId),
           computeWorkspaceOverallSizeCached(auth),
         ]);
 
@@ -592,9 +590,9 @@ async function handler(
         ?.substring(6)
         ?.trim();
 
-      // Use titleInTags if no title is provided.
+      // Use titleInTags if no title is provided, then documentId as last resort (same behavior as uploading in the web app).
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const title = r.data.title?.trim() || titleInTags || UNTITLED_TITLE;
+      const title = r.data.title?.trim() || titleInTags || documentId;
 
       if (!titleInTags) {
         tags.push(`title:${title}`);

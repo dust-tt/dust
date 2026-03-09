@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
@@ -31,12 +29,10 @@ import type {
   ConversationWithoutContentType,
   LegacyLightMessageType,
   LightAgentMessageType,
-  MessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
-import type {
   LightMessageType,
+  MessageType,
   RichMentionWithStatus,
+  UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import {
@@ -55,6 +51,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import assert from "assert";
 
 export function getCompletionDuration(
   created: number,
@@ -64,16 +61,53 @@ export function getCompletionDuration(
   if (!completedTs) {
     return null;
   }
-  // Estimate wait time for the agent message by checking the difference
-  // between action execution duration and full completion time.
-  const waitTime = actions.reduce(
-    (acc, a) =>
-      a.executionDurationMs
-        ? acc + a.updatedAt - a.createdAt - a.executionDurationMs
-        : acc,
+
+  // Assumption: Each action has two phases: wait period, then execution period
+  // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
+  // Where executionStart = updatedAt - executionDurationMs
+  //
+  // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
+
+  const waitRanges: Array<{ start: number; end: number }> = actions
+    .filter((a) => a.executionDurationMs !== null)
+    .map((a) => ({
+      start: a.createdAt,
+      end: a.updatedAt - a.executionDurationMs!,
+    }))
+    .filter((r) => r.end > r.start) // Filter out actions with no wait time
+    .sort((a, b) => a.start - b.start);
+
+  if (waitRanges.length === 0) {
+    return completedTs - created;
+  }
+
+  // Merge overlapping wait periods
+  const mergedWaitRanges: Array<{ start: number; end: number }> = [];
+  let currentRange = waitRanges[0];
+
+  for (let i = 1; i < waitRanges.length; i++) {
+    const range = waitRanges[i];
+    if (range.start <= currentRange.end) {
+      // Overlapping or adjacent - merge by extending the end
+      currentRange = {
+        start: currentRange.start,
+        end: Math.max(currentRange.end, range.end),
+      };
+    } else {
+      // Non-overlapping - save current and start new range
+      mergedWaitRanges.push(currentRange);
+      currentRange = range;
+    }
+  }
+  mergedWaitRanges.push(currentRange);
+
+  // Calculate total wait time
+  const totalWaitTimeMs = mergedWaitRanges.reduce(
+    (sum, range) => sum + (range.end - range.start),
     0
   );
-  return completedTs - created - waitTime;
+
+  return completedTs - created - totalWaitTimeMs;
 }
 
 export function getRichMentionsWithStatusForMessage(

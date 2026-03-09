@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import type {
   ContentNodeAttachmentType,
   ConversationAttachmentType,
@@ -17,6 +15,7 @@ import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { CoreAPI } from "@app/types/core/core_api";
+import assert from "assert";
 
 export async function getTablesFromMultiSheetSpreadsheet(
   auth: Authenticator,

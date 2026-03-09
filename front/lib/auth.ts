@@ -1,17 +1,12 @@
-import assert from "assert";
-import tracer from "dd-trace";
-import memoizer from "lru-memoizer";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
-import type { Transaction } from "sequelize";
-
 import config from "@app/lib/api/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import { SANDBOX_TOKEN_PREFIX } from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
+import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -22,12 +17,14 @@ import {
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type {
@@ -48,6 +45,15 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { isAdmin, isBuilder, isUser } from "@app/types/user";
+import assert from "assert";
+import { TokenExpiredError } from "jsonwebtoken";
+import memoizer from "lru-memoizer";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
+import type { Transaction } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -55,17 +61,22 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
+const SANDBOX_TOKEN_AUTH_METHOD = "sandbox_token" as const;
+
 export type AuthMethodType =
   | "system_api_key"
   | "api_key"
   | "oauth"
   | "session"
+  | typeof SANDBOX_TOKEN_AUTH_METHOD
   | "internal";
 
-// Any token which do not start with sk- is considered an OAuth token.
-export const isOAuthToken = (token: string): boolean => {
-  return !token.startsWith(SECRET_KEY_PREFIX);
-};
+export const isSandboxTokenPrefix = (token: string): boolean =>
+  token.startsWith(SANDBOX_TOKEN_PREFIX);
+
+// Any token which does not start with sk- or sbt- is considered an OAuth token.
+export const isOAuthToken = (token: string): boolean =>
+  !token.startsWith(SECRET_KEY_PREFIX) && !isSandboxTokenPrefix(token);
 
 export interface AuthenticatorType {
   authMethod: AuthMethodType;
@@ -176,6 +187,44 @@ export class Authenticator {
   }
 
   /**
+   * Fetches role, group memberships, and subscription for a user in a workspace.
+   * Runs all three queries in parallel. If the user is not a member (role is
+   * "none"), groups are reset to [] to prevent non-members from getting access
+   * via the global group.
+   */
+  private static async fetchRoleGroupsAndSubscription({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: WorkspaceResource;
+  }): Promise<{
+    role: RoleType;
+    groupModelIds: ModelId[];
+    subscription: SubscriptionResource | null;
+  }> {
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+    const [role, groupModelIds, subscription] = await Promise.all([
+      MembershipResource.getActiveRoleForUserInWorkspace({
+        user,
+        workspace: lightWorkspace,
+      }),
+      GroupResource.dangerouslyListUserGroupsForAuth({
+        user,
+        workspace: lightWorkspace,
+      }),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
+    ]);
+
+    return {
+      role,
+      groupModelIds: Authenticator.isMember(role) ? groupModelIds : [],
+      subscription,
+    };
+  }
+
+  /**
    * Get an Authenticator for the target workspace associated with the authentified user from the
    * workos session.
    *
@@ -198,23 +247,18 @@ export class Authenticator {
       let subscription: SubscriptionResource | null = null;
 
       if (user && workspace) {
-        [role, groupModelIds, subscription] = await Promise.all([
-          MembershipResource.getActiveRoleForUserInWorkspace({
-            user,
-            workspace: renderLightWorkspaceType({ workspace }),
-          }),
-          GroupResource.listUserGroupModelIdsInWorkspace({
-            user,
-            workspace: renderLightWorkspaceType({ workspace }),
-          }),
-          SubscriptionResource.fetchActiveByWorkspace(
-            renderLightWorkspaceType({ workspace })
-          ),
-        ]);
+        const authData = await this.fetchRoleGroupsAndSubscription({
+          user,
+          workspace,
+        });
+        role = authData.role;
+        groupModelIds = authData.groupModelIds;
+        subscription = authData.subscription;
       }
 
       return new Authenticator({
-        authMethod: "session",
+        authMethod:
+          session?.authenticationMethod === "bearer" ? "oauth" : "session",
         workspace,
         user,
         role,
@@ -224,16 +268,22 @@ export class Authenticator {
     });
   }
 
+  /**
+   * Checks if a role indicates workspace membership (role is not "none").
+   */
+  static isMember(role: RoleType): boolean {
+    return role !== "none";
+  }
+
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
     if (this._user && this._workspace) {
-      this._groupModelIds =
-        await GroupResource.listUserGroupModelIdsInWorkspace({
-          user: this._user,
-          workspace: renderLightWorkspaceType({ workspace: this._workspace }),
-          transaction,
-        });
-    } else {
-      return;
+      this._groupModelIds = Authenticator.isMember(this._role)
+        ? await GroupResource.dangerouslyListUserGroupsForAuth({
+            user: this._user,
+            workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+            transaction,
+          })
+        : [];
     }
   }
 
@@ -265,9 +315,7 @@ export class Authenticator {
               workspaceId: workspace.id,
             })
           : [],
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
+        SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
       ]);
     }
 
@@ -302,19 +350,13 @@ export class Authenticator {
     let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
-      [role, groupModelIds, subscription] = await Promise.all([
-        MembershipResource.getActiveRoleForUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        GroupResource.listUserGroupModelIdsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
-      ]);
+      const authData = await this.fetchRoleGroupsAndSubscription({
+        user,
+        workspace,
+      });
+      role = authData.role;
+      groupModelIds = authData.groupModelIds;
+      subscription = authData.subscription;
     }
 
     return new Authenticator({
@@ -339,44 +381,141 @@ export class Authenticator {
       { code: "user_not_found" | "workspace_not_found" | "sso_enforced" }
     >
   > {
-    const user = await UserResource.fetchByWorkOSUserId(token.sub);
+    const [user, workspace] = await Promise.all([
+      UserResource.fetchByWorkOSUserId(token.sub),
+      WorkspaceResource.fetchById(wId),
+    ]);
+
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
-
-    const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
     }
 
-    let role = "none" as RoleType;
-    let groupModelIds: ModelId[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    [role, groupModelIds, subscription] = await Promise.all([
-      MembershipResource.getActiveRoleForUserInWorkspace({
-        user: user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      }),
-      GroupResource.listUserGroupModelIdsInWorkspace({
-        user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      }),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
-    ]);
+    const authData = await this.fetchRoleGroupsAndSubscription({
+      user,
+      workspace,
+    });
 
     return new Ok(
       new Authenticator({
         authMethod: "oauth",
         workspace,
-        groupModelIds,
+        groupModelIds: authData.groupModelIds,
         user,
-        role,
-        subscription,
+        role: authData.role,
+        subscription: authData.subscription,
       })
     );
+  }
+
+  static async fromSandboxToken(
+    claims: SandboxExecTokenPayload,
+    wId: string
+  ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+    if (claims.wId !== wId) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox token workspace does not match the request.",
+        },
+      });
+    }
+
+    const [workspace, user] = await Promise.all([
+      WorkspaceResource.fetchById(wId),
+      UserResource.fetchById(claims.uId),
+    ]);
+
+    if (!workspace) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "The workspace was not found.",
+        },
+      });
+    }
+
+    if (!user) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The user referenced by the sandbox token was not found.",
+        },
+      });
+    }
+
+    const authData = await this.fetchRoleGroupsAndSubscription({
+      user,
+      workspace,
+    });
+
+    if (authData.role === "none") {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The user is not a member of this workspace.",
+        },
+      });
+    }
+
+    // Restrict groups to the conversation's spaces so the sandbox auth can only
+    // access resources visible to the conversation, not everything the user can.
+    const groupModelIds = await this.restrictGroupsToConversationSpaces(
+      authData.groupModelIds,
+      claims.cId,
+      workspace.id
+    );
+
+    return new Ok(
+      new Authenticator({
+        authMethod: SANDBOX_TOKEN_AUTH_METHOD,
+        workspace,
+        user,
+        role: authData.role,
+        groupModelIds,
+        subscription: authData.subscription,
+      })
+    );
+  }
+
+  /**
+   * Given a user's full group IDs, restricts them to only the groups associated
+   * with the conversation's requested spaces. Falls back to the full set if the
+   * conversation is not found or has no requested spaces.
+   */
+  private static async restrictGroupsToConversationSpaces(
+    userGroupIds: ModelId[],
+    conversationId: string,
+    workspaceId: ModelId
+  ): Promise<ModelId[]> {
+    const conversation = await ConversationModel.findOne({
+      where: { sId: conversationId, workspaceId: workspaceId },
+      attributes: ["requestedSpaceIds"],
+    });
+
+    if (!conversation || conversation.requestedSpaceIds.length === 0) {
+      return userGroupIds;
+    }
+
+    const spaceGroups = await GroupSpaceModel.findAll({
+      where: {
+        vaultId: conversation.requestedSpaceIds,
+        workspaceId: workspaceId,
+      },
+      attributes: ["groupId"],
+    });
+
+    const allowedGroupIds = new Set(
+      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+    );
+
+    return userGroupIds.filter((id) => allowedGroupIds.has(id));
   }
 
   /**
@@ -401,12 +540,8 @@ export class Authenticator {
     keyAuth: Authenticator;
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
-      (async () => {
-        return WorkspaceResource.fetchById(wId);
-      })(),
-      (async () => {
-        return WorkspaceResource.fetchByModelId(key.workspaceId);
-      })(),
+      WorkspaceResource.fetchById(wId),
+      WorkspaceResource.fetchByModelId(key.workspaceId),
     ]);
 
     if (!keyWorkspace) {
@@ -425,35 +560,52 @@ export class Authenticator {
       }
     }
 
-    const getSubscriptionForWorkspace = (workspace: WorkspaceResource) =>
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      );
-
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
     let workspaceSubscription: SubscriptionResource | null = null;
     let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
+      const lightWorkspace = renderLightWorkspaceType({ workspace });
+      const lightKeyWorkspace = renderLightWorkspaceType({
+        workspace: keyWorkspace,
+      });
       if (requestedGroupIds && key.isSystem) {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
-            // Key related attributes.
             GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
-            getSubscriptionForWorkspace(keyWorkspace),
-            // Workspace related attributes.
-            getSubscriptionForWorkspace(workspace),
+            SubscriptionResource.fetchActiveByWorkspaceModelId(
+              lightKeyWorkspace.id
+            ),
+            // We need to fetch the subscription separately as requested groups
+            // might not include the global group which is used to fetch the
+            // subscription in fetchRoleGroupsAndSubscription.
+            isKeyWorkspace
+              ? null
+              : SubscriptionResource.fetchActiveByWorkspaceModelId(
+                  lightWorkspace.id
+                ),
           ]);
       } else {
         [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
           [
             GroupResource.listWorkspaceGroupsFromKey(key),
-            getSubscriptionForWorkspace(keyWorkspace),
-            // Workspace related attributes.
-            getSubscriptionForWorkspace(workspace),
+            SubscriptionResource.fetchActiveByWorkspaceModelId(
+              lightKeyWorkspace.id
+            ),
+            isKeyWorkspace
+              ? null
+              : SubscriptionResource.fetchActiveByWorkspaceModelId(
+                  lightWorkspace.id
+                ),
           ]
         );
+      }
+
+      // When the key workspace is the target workspace, both subscriptions
+      // are identical - reuse the one we already fetched.
+      if (isKeyWorkspace) {
+        workspaceSubscription = keySubscription;
       }
     }
     const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
@@ -543,9 +695,7 @@ export class Authenticator {
 
     [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
     ]);
 
     return new Authenticator({
@@ -582,9 +732,7 @@ export class Authenticator {
           return globalGroup ? [globalGroup] : [];
         }
       })(),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
     ]);
 
     return new Authenticator({
@@ -657,9 +805,10 @@ export class Authenticator {
       return null;
     }
 
-    const groupModelIds = await GroupResource.listUserGroupModelIdsInWorkspace({
+    // Membership already verified above (activeMembership found).
+    const groupModelIds = await GroupResource.dangerouslyListUserGroupsForAuth({
       user,
-      workspace: renderLightWorkspaceType({ workspace: owner }),
+      workspace: owner,
     });
 
     return new Authenticator({
@@ -708,6 +857,10 @@ export class Authenticator {
 
   isKey(): boolean {
     return !!this._key;
+  }
+
+  isSandboxToken(): boolean {
+    return this._authMethod === SANDBOX_TOKEN_AUTH_METHOD;
   }
 
   authMethod(): AuthMethodType {
@@ -978,7 +1131,9 @@ export class Authenticator {
 
     const subscription =
       authType.subscriptionId && lightWorkspace
-        ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
+        ? await SubscriptionResource.fetchActiveByWorkspaceModelId(
+            lightWorkspace.id
+          )
         : null;
 
     // Skip mismatch check for no-plan subscriptions: they have ephemeral random sIds
@@ -1057,6 +1212,77 @@ export async function getBearerToken(
   }
 
   return new Ok(parse[1]);
+}
+
+export type BearerTokenError =
+  | "not_authenticated"
+  | "invalid_oauth_token_error"
+  | "expired_oauth_token_error"
+  | "user_not_found";
+
+/**
+ * Attempts to create a SessionWithUser from a bearer token in the request.
+ *
+ * This is used as a fallback in withLogging when no cookie-based session is available.
+ * It validates the bearer token, resolves the user, and synthesizes a SessionWithUser
+ * object so that downstream handlers (getUserFromSession, etc.) work transparently.
+ *
+ * Returns an Err with a BearerTokenError if the token is present but invalid/expired,
+ * or Ok(null) if no bearer token is present, or Ok(session) on success.
+ */
+export async function getSessionFromBearerToken(
+  req: NextApiRequest
+): Promise<Result<SessionWithUser | null, BearerTokenError>> {
+  const bearerTokenRes = await getBearerToken(req);
+  if (bearerTokenRes.isErr()) {
+    return new Ok(null);
+  }
+
+  const bearerToken = bearerTokenRes.value;
+  if (!isOAuthToken(bearerToken)) {
+    return new Ok(null);
+  }
+
+  let workOSDecoded: Result<WorkOSJwtPayload, Error>;
+  try {
+    workOSDecoded = await verifyWorkOSToken(bearerToken);
+  } catch {
+    // verifyWorkOSToken can throw if config is missing (e.g. WORKOS_CLIENT_ID).
+    return new Ok(null);
+  }
+  if (workOSDecoded.isErr()) {
+    if (workOSDecoded.error instanceof TokenExpiredError) {
+      // Token signature was valid but expired — this is definitely a WorkOS token.
+      return new Err("expired_oauth_token_error");
+    }
+    // Verification failed — could be a non-WorkOS token (e.g. viz JWT).
+    // Return null to let the handler do its own auth.
+    return new Ok(null);
+  }
+
+  const user = await getUserFromWorkOSToken(workOSDecoded.value);
+  if (!user) {
+    return new Err("user_not_found");
+  }
+
+  return new Ok({
+    type: "workos",
+    sessionId: "bearer-token",
+    user: {
+      email: user.email,
+      email_verified: true,
+      name: user.name,
+      nickname: user.username,
+      workOSUserId: user.workOSUserId ?? "",
+      given_name: user.firstName,
+      family_name: user.lastName ?? undefined,
+      picture: user.imageUrl ?? undefined,
+    },
+    region: multiRegionsConfig.getCurrentRegion(),
+    organizationId: workOSDecoded.value.org_id,
+    isSSO: false,
+    authenticationMethod: "bearer",
+  });
 }
 
 /**

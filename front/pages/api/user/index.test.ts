@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { computeSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
@@ -28,6 +27,7 @@ describe("GET /api/user", () => {
         createdAt: user.createdAt.getTime(),
         lastLoginAt: user.lastLoginAt?.getTime(),
         organizations: [],
+        selectedWorkspace: workspace.sId,
         workspaces: [
           {
             id: workspace.id,
@@ -68,6 +68,7 @@ describe("GET /api/user", () => {
         createdAt: user.createdAt.getTime(),
         lastLoginAt: user.lastLoginAt?.getTime(),
         organizations: [],
+        selectedWorkspace: workspace.sId,
         workspaces: [
           {
             id: workspace.id,

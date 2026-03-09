@@ -1,3 +1,9 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   ActionBrainIcon,
   ActionGlobeIcon,
@@ -5,23 +11,15 @@ import {
   ActionMagnifyingGlassIcon,
   ActionScanIcon,
   ActionTableIcon,
+  AnchoredPopover,
   Avatar,
+  Button,
   ConfettiBackground,
+  cn,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
-import { AnchoredPopover } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { useMemo, useRef } from "react";
-import { useState } from "react";
-
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { ConnectorProvider } from "@app/types/data_source";
-import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
+import { useMemo, useRef, useState } from "react";
 
 // We want exactly 12 connections in the tour guide to have a clean grid layout.
 const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
@@ -161,9 +159,7 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&

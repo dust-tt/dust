@@ -1,7 +1,3 @@
-import type { RegularButtonProps } from "@dust-tt/sparkle";
-import type { Dispatch, SetStateAction } from "react";
-import type { UseFormReturn } from "react-hook-form";
-
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
@@ -11,6 +7,9 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { RegularButtonProps } from "@dust-tt/sparkle";
+import type { Dispatch, SetStateAction } from "react";
+import type { UseFormReturn } from "react-hook-form";
 
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,

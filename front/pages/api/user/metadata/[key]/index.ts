@@ -1,6 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -8,6 +5,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { UserMetadataType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;

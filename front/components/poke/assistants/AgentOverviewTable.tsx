@@ -1,5 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-
 import {
   PokeTable,
   PokeTableBody,
@@ -9,6 +7,7 @@ import {
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { SpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
+import { Chip } from "@dust-tt/sparkle";
 
 interface AgentOverviewTableProps {
   agentConfiguration: AgentConfigurationType;

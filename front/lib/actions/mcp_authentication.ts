@@ -1,10 +1,10 @@
 import apiConfig from "@app/lib/api/config";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -131,7 +131,7 @@ export class MCPServerRequiresAdminAuthenticationError extends Error {
 
   constructor(mcpServerId: string, provider: OAuthProvider, scope?: string) {
     super(
-      `MCP server ${mcpServerId} requires your admin(s) to setup the connection for your workspace on Dust.`
+      `MCP server ${mcpServerId} requires your admin(s) to setup or reconnect the workspace connection on Dust.`
     );
     this.name = MCPServerRequiresAdminAuthenticationErrorName;
     this.mcpServerId = mcpServerId;

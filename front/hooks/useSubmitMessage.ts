@@ -1,13 +1,16 @@
-import { useCallback } from "react";
-
+import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-import type { SubmitMessageError } from "@app/types/assistant/conversation";
+import type {
+  ClientMessageOrigin,
+  SubmitMessageError,
+} from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
 
 export function useSubmitMessage({
   owner,
@@ -18,12 +21,15 @@ export function useSubmitMessage({
   user: UserType;
   conversationId: string | null;
 }) {
+  const contextOrigin = useClientType();
+
   return useCallback(
     async (messageData: {
       input: string;
       mentions: MentionType[];
       contentFragments: ContentFragmentsType;
       clientSideMCPServerIds?: string[];
+      origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
       if (!conversationId) {
@@ -39,8 +45,10 @@ export function useSubmitMessage({
         mentions,
         contentFragments,
         clientSideMCPServerIds,
+        origin: messageOrigin,
         skipToolsValidation,
       } = messageData;
+      const origin = messageOrigin ?? contextOrigin;
 
       // Create a new content fragment.
       if (
@@ -123,6 +131,7 @@ export function useSubmitMessage({
                 Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC",
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
+              origin,
             },
             mentions,
             skipToolsValidation,
@@ -152,6 +161,6 @@ export function useSubmitMessage({
 
       return new Ok(await mRes.json());
     },
-    [owner, user, conversationId]
+    [owner, user, conversationId, contextOrigin]
   );
 }

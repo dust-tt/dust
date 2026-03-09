@@ -1,7 +1,6 @@
+import { setupGracefulShutdown } from "@app/lib/api/graceful_shutdown";
 import Document, { Head, Html, Main, NextScript } from "next/document";
 import Script from "next/script";
-
-import { setupGracefulShutdown } from "@app/lib/api/graceful_shutdown";
 
 const { NEXT_MANUAL_SIG_HANDLE, NODE_ENV, REACT_SCAN } = process.env;
 

@@ -1,14 +1,14 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare archivedAt: CreationOptional<Date | null>;
 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
@@ -29,6 +29,10 @@ ProjectMetadataModel.init(
     },
     description: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    archivedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },

@@ -1,17 +1,19 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import {
+  handleLookupInvitations,
   handleLookupWorkspace,
   hasEmailLocalRegionAffinity,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type WorkspaceLookupResponse = {
   workspace: {
@@ -23,12 +25,24 @@ export type UserLookupResponse = {
   exists: boolean;
 };
 
+export type InvitationsLookupResponse = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export type ShareTokenLookupResponse = {
+  exists: boolean;
+};
+
 const ExternalUserCodec = t.type({
   email: t.string,
   email_verified: t.boolean,
 });
 
-type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
+type LookupResponseBody =
+  | UserLookupResponse
+  | WorkspaceLookupResponse
+  | InvitationsLookupResponse
+  | ShareTokenLookupResponse;
 
 const UserLookupSchema = t.type({
   user: ExternalUserCodec,
@@ -38,13 +52,34 @@ const WorkspaceLookupSchema = t.type({
   workspace: t.string,
 });
 
+const InvitationsLookupSchema = t.type({
+  email: t.string,
+});
+
+const ShareTokenLookupSchema = t.type({
+  token: t.string,
+});
+
 export type UserLookupRequestBodyType = t.TypeOf<typeof UserLookupSchema>;
 
 export type WorkspaceLookupRequestBodyType = t.TypeOf<
   typeof WorkspaceLookupSchema
 >;
 
-const ResourceType = t.union([t.literal("user"), t.literal("workspace")]);
+export type InvitationsLookupRequestBodyType = t.TypeOf<
+  typeof InvitationsLookupSchema
+>;
+
+export type ShareTokenLookupRequestBodyType = t.TypeOf<
+  typeof ShareTokenLookupSchema
+>;
+
+const ResourceType = t.union([
+  t.literal("user"),
+  t.literal("workspace"),
+  t.literal("invitations"),
+  t.literal("share-token"),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -99,7 +134,8 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid resource type. Must be 'user' or 'workspace'",
+        message:
+          "Invalid resource type. Must be 'user', 'workspace', 'invitations', or 'share-token'",
       },
     });
   }
@@ -143,6 +179,47 @@ async function handler(
           });
         }
         response = await handleLookupWorkspace(bodyValidation.right);
+      }
+      break;
+
+    case "invitations":
+      {
+        const bodyValidation = InvitationsLookupSchema.decode(req.body);
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body for invitations lookup: ${pathError}`,
+            },
+          });
+        }
+        response = await handleLookupInvitations(bodyValidation.right.email);
+      }
+      break;
+
+    case "share-token":
+      {
+        const bodyValidation = ShareTokenLookupSchema.decode(req.body);
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body for share-token lookup: ${pathError}`,
+            },
+          });
+        }
+        const result = await FileResource.fetchByShareToken(
+          bodyValidation.right.token
+        );
+        response = { exists: result.isOk() };
       }
       break;
 

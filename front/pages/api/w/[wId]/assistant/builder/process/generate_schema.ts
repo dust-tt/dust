@@ -1,6 +1,3 @@
-import type { JSONSchema7 } from "json-schema";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,6 +9,8 @@ import {
 } from "@app/types/assistant/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
+import type { JSONSchema7 } from "json-schema";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

@@ -14,8 +14,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { Err, Ok } from "@app/types/shared/result";
+import { decrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decrypt } from "@app/types/shared/utils/hashing";
 
 const MAX_RESPONSE_SIZE = 1_000_000; // 1MB
 
@@ -52,7 +52,11 @@ async function getBearerToken(
   });
 
   const bearerToken = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+    ? decrypt({
+        encrypted: secret.hash,
+        key: auth.getNonNullableWorkspace().sId,
+        useCase: "developer_secret",
+      })
     : null;
 
   return bearerToken;
@@ -109,13 +113,8 @@ async function handleSendRequest(
     body?: string;
     timeout_ms?: number;
   },
-  extra: ToolHandlerExtra
+  { auth, agentLoopContext }: ToolHandlerExtra
 ) {
-  const { auth, agentLoopContext } = extra;
-  if (!auth) {
-    return new Err(new MCPError("Authentication required"));
-  }
-
   const timeoutMs = timeout_ms ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

@@ -1,10 +1,9 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { SLACK_TOOL_LOG_NAME } from "./metadata";
 import type { SlackAIStatus } from "./tools";

@@ -6,10 +6,12 @@ import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers
 import {
   getSteps,
   renderContentFragment,
+  renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
@@ -124,6 +126,9 @@ export function renderAgentSteps(
 
 /**
  * Renders all conversation messages into model messages
+ *
+ * When `agentConfiguration` is provided, agent messages from other agents are rendered as user
+ * messages with system tags, showing only the final output (not the full agentic loop).
  */
 export async function renderAllMessages(
   auth: Authenticator,
@@ -133,12 +138,14 @@ export async function renderAllMessages(
     excludeActions,
     excludeImages,
     onMissingAction,
+    agentConfiguration,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
+    agentConfiguration?: AgentConfigurationType;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -149,21 +156,35 @@ export async function renderAllMessages(
 
     if (isAgentMessageType(m)) {
       if (m.visibility === "visible") {
-        const steps = getSteps(auth, {
-          model,
-          message: m,
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          onMissingAction,
-        });
+        // Check if this is the current agent's message.
+        const isCurrentAgentMessage =
+          !agentConfiguration || m.configuration.sId === agentConfiguration.sId;
 
-        const agentMessages = renderAgentSteps(
-          steps,
-          m,
-          conversation,
-          !!excludeActions
-        );
-        messages.push(...agentMessages);
+        if (isCurrentAgentMessage) {
+          // Render the current agent's messages normally with full agentic loop.
+          const steps = getSteps(auth, {
+            model,
+            message: m,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            onMissingAction,
+          });
+
+          const agentMessages = renderAgentSteps(
+            steps,
+            m,
+            conversation,
+            !!excludeActions
+          );
+          messages.push(...agentMessages);
+        } else {
+          // Render other agent messages as user messages with system tags, showing only the final
+          // output (not the full agentic loop).
+          const userMessage = renderOtherAgentMessageAsUserMessage(m);
+          if (userMessage) {
+            messages.push(userMessage);
+          }
+        }
       }
     } else if (isUserMessageType(m)) {
       if (m.visibility === "visible") {

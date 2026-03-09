@@ -1,7 +1,3 @@
-import { createParser } from "eventsource-parser";
-import * as t from "io-ts";
-import chunk from "lodash/chunk";
-
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
@@ -36,6 +32,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
 import type { LightWorkspaceType } from "@app/types/user";
+import { createParser } from "eventsource-parser";
+import * as t from "io-ts";
+import chunk from "lodash/chunk";
 
 import type { EmbeddingProviderIdType } from "../assistant/models/types";
 

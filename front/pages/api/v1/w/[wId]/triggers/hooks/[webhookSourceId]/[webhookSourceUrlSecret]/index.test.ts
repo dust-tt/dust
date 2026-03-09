@@ -1,9 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
+import { describe, expect, it, vi } from "vitest";
+
+// Mock raw-body to return JSON.stringify(req.body) — the handler disables
+// Next.js body parsing and reads the stream via getRawBody.
+vi.mock("raw-body", () => ({
+  default: vi.fn(async (req: { body: unknown }) =>
+    Buffer.from(JSON.stringify(req.body))
+  ),
+}));
 
 // Shallowly mock file content fragment creation to avoid touching storage.
 vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
@@ -51,9 +58,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "application/json",
-    };
+    req.headers["content-type"] = "application/json";
 
     await handler(req, res);
 
@@ -78,9 +83,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       webhookSourceUrlSecret: "any-secret",
     };
     req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "application/json",
-    };
+    req.headers["content-type"] = "application/json";
 
     await handler(req, res);
 
@@ -116,10 +119,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       webhookSourceId: "webhook_source/whatever",
       webhookSourceUrlSecret: "any-secret",
     };
-    req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "text/plain",
-    };
+    req.headers["content-type"] = "text/plain";
 
     await handler(req, res);
 
@@ -150,9 +150,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       webhookSourceUrlSecret: "invalid-secret", // Using wrong secret
     };
     req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "application/json",
-    };
+    req.headers["content-type"] = "application/json";
 
     await handler(req, res);
 
@@ -183,9 +181,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       // Missing webhookSourceUrlSecret parameter (it will be undefined)
     };
     req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "application/json",
-    };
+    req.headers["content-type"] = "application/json";
 
     await handler(req, res);
 
@@ -220,9 +216,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       webhookSourceUrlSecret: customUrlSecret, // Using the correct secret
     };
     req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "application/json",
-    };
+    req.headers["content-type"] = "application/json";
 
     await handler(req, res);
 
@@ -241,9 +235,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       webhookSourceUrlSecret: undefined,
     };
     req.body = { any: "payload" };
-    req.headers = {
-      "content-type": "application/json",
-    };
+    req.headers["content-type"] = "application/json";
 
     await handler(req, res);
 
@@ -294,10 +286,8 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
         login: "octocat",
       },
     };
-    req.headers = {
-      "content-type": "application/json",
-      "x-github-event": "pull_request", // This is the GitHub event header
-    };
+    req.headers["content-type"] = "application/json";
+    req.headers["x-github-event"] = "pull_request"; // This is the GitHub event header
 
     await handler(req, res);
 

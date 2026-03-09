@@ -1,9 +1,8 @@
-import type { Fetcher } from "swr";
-
 import type { GeoLocationResponse } from "@app/pages/api/geo/location";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "./swr";
+import { useFetcher, useSWRWithDefaults } from "./swr";
 
 const GEO_CACHE_KEY = "dust-geo-location";
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
@@ -14,7 +13,7 @@ interface CachedGeoData {
 }
 
 function getCachedGeoData(): GeoLocationResponse | null {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !window.localStorage) {
     return null;
   }
 
@@ -42,7 +41,7 @@ function getCachedGeoData(): GeoLocationResponse | null {
 }
 
 function setCachedGeoData(data: GeoLocationResponse): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !window.localStorage) {
     return;
   }
 
@@ -59,6 +58,7 @@ function setCachedGeoData(data: GeoLocationResponse): void {
 }
 
 export function useGeolocation({ disabled }: { disabled?: boolean } = {}) {
+  const { fetcher } = useFetcher();
   const cachedData = getCachedGeoData();
   const shouldFetch = !disabled && !cachedData;
 

@@ -1,3 +1,30 @@
+import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
+import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
+import {
+  PokeAlert,
+  PokeAlertDescription,
+} from "@app/components/poke/shadcn/ui/alert";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
+import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
+import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type {
+  NotionCheckUrlResponseType,
+  NotionFindUrlResponseType,
+  ZendeskFetchTicketResponseType,
+} from "@app/types/connectors/admin/cli";
+import type { DataSourceType } from "@app/types/data_source";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -16,35 +43,6 @@ import {
 import { JsonViewer } from "@textea/json-viewer";
 import capitalize from "lodash/capitalize";
 import { useEffect, useState } from "react";
-
-import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
-import {
-  PokeAlert,
-  PokeAlertDescription,
-} from "@app/components/poke/shadcn/ui/alert";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { useAppRouter } from "@app/lib/platform";
-import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
-import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
-import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
-import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type {
-  NotionCheckUrlResponseType,
-  NotionFindUrlResponseType,
-  ZendeskFetchTicketResponseType,
-} from "@app/types/connectors/admin/cli";
-import type { DataSourceType } from "@app/types/data_source";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WorkspaceType } from "@app/types/user";
 
 const maxNotionParentChainDepth = 20;
 

@@ -1,8 +1,3 @@
-import { DataTable, Spinner } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { ParsedUrlQuery } from "querystring";
-import * as React from "react";
-
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
@@ -16,15 +11,19 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAddMCPServerToSpace,
+  useAvailableMCPServers,
   useMCPServerViews,
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_servers";
-import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { DataTable, Spinner } from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { ParsedUrlQuery } from "querystring";
+import * as React from "react";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";

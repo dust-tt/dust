@@ -161,6 +161,7 @@ export function getSteps(
           workspaceId,
           conversationId,
           agentMessageId: message.sId,
+          errorContent: content.content.value,
         },
         "agent message step with error content in renderConversationForModelMultiActions"
       );
@@ -346,6 +347,40 @@ export function renderUserMessage(
       {
         type: "text",
         text: systemContextInstructions + content,
+      },
+    ],
+  };
+}
+
+/**
+ * Renders an agent message from a different agent as a user message with system tags.
+ * Only the final text output is rendered, not the full agentic loop (actions/tool calls).
+ */
+export function renderOtherAgentMessageAsUserMessage(
+  message: AgentMessageType
+): UserMessageTypeModel | null {
+  // Only render if there's actual content
+  const content = message.content?.trim();
+  if (!content) {
+    return null;
+  }
+
+  const agentName = message.configuration.name;
+
+  const systemContext = `<dust_system>
+This is the output of another agent "@${agentName}" that was invoked in this conversation.
+You are seeing the final response only, not the full reasoning or tool execution steps.
+</dust_system>
+
+`;
+
+  return {
+    role: "user" as const,
+    name: agentName,
+    content: [
+      {
+        type: "text",
+        text: systemContext + content,
       },
     ],
   };

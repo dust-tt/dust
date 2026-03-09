@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import { generateSecureSecret } from "@app/lib/resources/string_ids";
+import { describe, expect, it } from "vitest";
 
 describe("generateSecureSecret", () => {
   it("default call generates 64-char alphanumeric string", () => {

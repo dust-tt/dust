@@ -1,8 +1,8 @@
-import { NodeViewWrapper } from "@tiptap/react";
-import React from "react";
-
 import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
 import type { WorkspaceType } from "@app/types/user";
+import { NodeViewWrapper } from "@tiptap/react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 interface MentionComponentProps {
   node: {

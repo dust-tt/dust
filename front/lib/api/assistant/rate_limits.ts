@@ -11,6 +11,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
 export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
+export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR = 3_000;
+export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS = 60 * 60;
 
 type MessageRateLimitActor =
   | {
@@ -38,6 +40,13 @@ export const makeMessageRateLimitKeyForWorkspaceActor = (
     case "user":
       return `workspace:${owner.sId}:user:${actor.id}:post_user_message`;
   }
+};
+
+export const makeMessageRateLimitKeyForWorkspaceActorPerHour = (
+  owner: LightWorkspaceType,
+  actor: MessageRateLimitActor
+) => {
+  return `${makeMessageRateLimitKeyForWorkspaceActor(owner, actor)}:hourly`;
 };
 
 export const makeAgentMentionsRateLimitKeyForWorkspace = (
@@ -86,8 +95,9 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  const activeSeats =
-    await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
   const effectiveLimit = computeEffectiveMessageLimit({
     planCode: plan.code,
     maxMessages,

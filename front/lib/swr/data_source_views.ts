@@ -1,14 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
-
 import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
 import {
   emptyArray,
-  fetcher,
-  fetcherWithBody,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -24,6 +20,8 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -38,6 +36,7 @@ export function useDataSourceViews(
   owner: LightWorkspaceType,
   options = { disabled: false }
 ) {
+  const { fetcher } = useFetcher();
   const { disabled } = options;
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewsResponseBody> =
     fetcher;
@@ -76,6 +75,7 @@ export function useMultipleDataSourceViewsContentNodes({
   // We need to return an invalidation function to avoid stale data.
   invalidate: () => void;
 } {
+  const { fetcherWithBody } = useFetcher();
   const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
     DataSourceViewsAndNodes[]
   >(emptyArray());
@@ -164,6 +164,7 @@ export function useMultipleDataSourceViewsContentNodes({
             }
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (error) {
           setIsNodesError(true);
           break;
@@ -183,7 +184,7 @@ export function useMultipleDataSourceViewsContentNodes({
     if (dataSourceViewsAndInternalIds.length > 0) {
       void fetchData();
     }
-  }, [dataSourceViewsAndInternalIds, owner.sId, viewType]);
+  }, [dataSourceViewsAndInternalIds, owner.sId, viewType, fetcherWithBody]);
 
   return useMemo(
     () => ({
@@ -245,6 +246,7 @@ export function useDataSourceViewContentNodes({
   totalNodesCountIsAccurate: boolean;
   nextPageCursor: string | null;
 } {
+  const { fetcherWithBody } = useFetcher();
   const params = new URLSearchParams();
   if (pagination?.cursor) {
     params.append("cursor", pagination.cursor);
@@ -310,6 +312,7 @@ export function useInfiniteDataSourceViewContentNodes({
   sorting,
   swrOptions,
 }: FetchDataSourceViewContentNodesOptions) {
+  const { fetcherWithBody } = useFetcher();
   const { data, error, isLoading, size, setSize, mutate, isValidating } =
     useSWRInfiniteWithDefaults<
       [string, GetContentNodesOrChildrenRequestBodyType] | null,
@@ -384,6 +387,7 @@ export function useDataSourceViewConnectorConfiguration({
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceConfigurationResponseBody> =
     fetcher;
   const disabled = !dataSourceView;
@@ -414,6 +418,7 @@ export function useDataSourceViewSearchTags({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { fetcherWithBody } = useFetcher();
   const url =
     query.length >= MIN_SEARCH_QUERY_SIZE
       ? `/api/w/${owner.sId}/data_source_views/tags/search`

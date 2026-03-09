@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
@@ -10,6 +8,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type DeleteDataSourceResponseBody = DataSourceType;
 

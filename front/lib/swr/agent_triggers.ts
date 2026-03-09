@@ -1,13 +1,10 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetTriggersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
@@ -26,6 +23,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useAgentTriggers({
   workspaceId,
@@ -36,6 +35,7 @@ export function useAgentTriggers({
   agentConfigurationId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const triggersFetcher: Fetcher<GetTriggersResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
@@ -62,6 +62,7 @@ export function useUserTriggers({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
@@ -113,6 +114,7 @@ export function useDeleteTrigger({
           return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return false;
       }
@@ -128,6 +130,7 @@ export function useTextAsCronRule({
 }: {
   workspace: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const textAsCronRule = useCallback(
     async (naturalDescription: string, signal?: AbortSignal) => {
       let r: PostTextAsCronRuleResponseBody;
@@ -149,7 +152,7 @@ export function useTextAsCronRule({
 
       return new Ok({ cron: r.cronRule, timezone: r.timezone });
     },
-    [workspace]
+    [workspace, fetcher]
   );
 
   return textAsCronRule;
@@ -160,6 +163,7 @@ export function useWebhookFilterGenerator({
 }: {
   workspace: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const generateFilter = useCallback(
     async ({
       naturalDescription,
@@ -194,7 +198,7 @@ export function useWebhookFilterGenerator({
 
       return { filter: r.filter };
     },
-    [workspace]
+    [workspace, fetcher]
   );
 
   return generateFilter;
@@ -211,6 +215,7 @@ export function useTriggerSubscribers({
   triggerId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const subscribersFetcher: Fetcher<GetSubscribersResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
@@ -274,6 +279,7 @@ export function useAddTriggerSubscriber({
           return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -351,6 +357,7 @@ export function useRemoveTriggerSubscriber({
           return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -383,6 +390,7 @@ export function useTriggerEstimation({
   filter?: string | null;
   selectedEvent?: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const key = webhookSourceId
     ? `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation`
     : null;

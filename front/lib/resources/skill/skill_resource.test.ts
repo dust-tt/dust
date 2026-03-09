@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
@@ -7,14 +5,16 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -638,6 +638,57 @@ describe("SkillResource", () => {
       // sharedSpace kept because skill2 still requires it.
       expect(spaceIds).toContain(sharedSpace.id);
       expect(spaceIds).toContain(skill1OnlySpace.id);
+    });
+  });
+
+  describe("archive and restore", () => {
+    it("suspends editor group memberships when archiving and restores them when restoring", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill To Archive",
+      });
+      expect(skill.editorGroup).not.toBeNull();
+      const editorGroup = skill.editorGroup!;
+
+      const membershipsBeforeArchive = await GroupMembershipModel.findAll({
+        where: {
+          groupId: editorGroup.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(membershipsBeforeArchive.length).toBeGreaterThan(0);
+      expect(membershipsBeforeArchive.every((m) => m.status === "active")).toBe(
+        true
+      );
+
+      const { affectedCount: archiveCount } = await skill.archive(
+        testContext.authenticator
+      );
+      expect(archiveCount).toBe(1);
+
+      const membershipsAfterArchive = await GroupMembershipModel.findAll({
+        where: {
+          groupId: editorGroup.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(
+        membershipsAfterArchive.every((m) => m.status === "suspended")
+      ).toBe(true);
+
+      const { affectedCount: restoreCount } = await skill.restore(
+        testContext.authenticator
+      );
+      expect(restoreCount).toBe(1);
+
+      const membershipsAfterRestore = await GroupMembershipModel.findAll({
+        where: {
+          groupId: editorGroup.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(membershipsAfterRestore.every((m) => m.status === "active")).toBe(
+        true
+      );
     });
   });
 

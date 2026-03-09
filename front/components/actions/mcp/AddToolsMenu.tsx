@@ -1,3 +1,12 @@
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import { filterMCPServer } from "@app/lib/mcp";
+import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -9,16 +18,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { filterMCPServer } from "@app/lib/mcp";
-import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types/user";
 
 type AddToolsMenuProps = {
   owner: WorkspaceType;
@@ -68,27 +67,30 @@ export const AddToolsMenu = ({
         className="w-96"
         align="end"
         mountPortalContainer={portalContainer}
+        dropdownHeaders={
+          <DropdownMenuSearchbar
+            autoFocus
+            placeholder="Search tools..."
+            name="search"
+            value={searchText}
+            onChange={setSearchText}
+            disabled={isAvailableMCPServersLoading}
+            button={
+              <Button
+                icon={PlusIcon}
+                label="Add MCP Server"
+                // Empty call is required given onClick passes a MouseEvent
+                onClick={withTracking(
+                  TRACKING_AREAS.TOOLS,
+                  "add_mcp_server",
+                  () => createRemoteMCPServer()
+                )}
+                size="sm"
+              />
+            }
+          />
+        }
       >
-        <DropdownMenuSearchbar
-          placeholder="Search tools..."
-          name="search"
-          value={searchText}
-          onChange={setSearchText}
-          disabled={isAvailableMCPServersLoading}
-          button={
-            <Button
-              icon={PlusIcon}
-              label="Add MCP Server"
-              // Empty call is required given onClick passes a MouseEvent
-              onClick={withTracking(
-                TRACKING_AREAS.TOOLS,
-                "add_mcp_server",
-                () => createRemoteMCPServer()
-              )}
-              size="sm"
-            />
-          }
-        />
         {isAvailableMCPServersLoading && (
           <div className="flex justify-center py-4">
             <Spinner size="sm" />{" "}

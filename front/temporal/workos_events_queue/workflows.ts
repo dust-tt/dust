@@ -1,7 +1,6 @@
+import type * as activities from "@app/temporal/workos_events_queue/activities";
 import { proxyActivities } from "@temporalio/workflow";
 import type { Event } from "@workos-inc/node";
-
-import type * as activities from "@app/temporal/workos_events_queue/activities";
 
 const { handleWorkspaceSubscriptionCreated, processWorkOSEventActivity } =
   proxyActivities<typeof activities>({

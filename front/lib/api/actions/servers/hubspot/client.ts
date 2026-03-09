@@ -1,3 +1,5 @@
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Client } from "@hubspot/api-client";
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
 import { AssociationSpecAssociationCategoryEnum } from "@hubspot/api-client/lib/codegen/crm/objects/models/AssociationSpec";
@@ -6,9 +8,6 @@ import type { SimplePublicObjectInput } from "@hubspot/api-client/lib/codegen/cr
 import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObjectInputForCreate";
 import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/models/PublicOwner";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
-
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const localLogger = logger.child({ module: "hubspot_client" });
 
@@ -753,6 +752,7 @@ export const createNote = async ({
   properties: {
     hs_note_body: string;
     hs_timestamp?: string;
+    hubspot_owner_id?: string;
     [key: string]: any;
   };
   associations?: {
@@ -772,9 +772,16 @@ export const createNote = async ({
     );
   }
 
+  // Use Unix milliseconds for hs_timestamp to ensure proper timeline placement.
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!propertiesForApi.hs_timestamp) {
-    propertiesForApi.hs_timestamp = new Date().toISOString();
+    propertiesForApi.hs_timestamp = Date.now().toString();
+  } else {
+    // Convert ISO 8601 strings to Unix milliseconds.
+    const parsedMs = Date.parse(propertiesForApi.hs_timestamp);
+    if (!isNaN(parsedMs)) {
+      propertiesForApi.hs_timestamp = parsedMs.toString();
+    }
   }
 
   const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
@@ -1505,6 +1512,7 @@ export const getUserActivity = async ({
               break;
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
           } catch (propertyError) {
             continue;
           }
@@ -1791,6 +1799,7 @@ export const listAssociations = async ({
               });
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
           } catch (error) {
             continue;
           }

@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 

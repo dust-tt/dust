@@ -1,11 +1,13 @@
-import { ContextItem, SliderToggle } from "@dust-tt/sparkle";
-import { GooglePdfLogo as GenericPdfLogo } from "@dust-tt/sparkle";
-
 import type { ConnectorOptionsProps } from "@app/lib/connector_providers_ui";
 import {
   useConnectorConfig,
   useTogglePdfEnabled,
 } from "@app/lib/swr/connectors";
+import {
+  ContextItem,
+  GooglePdfLogo as GenericPdfLogo,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 
 export const createConnectorOptionsPdfEnabled = (description: string) => {
   const ConnectorOptionsPdfEnabled = ({

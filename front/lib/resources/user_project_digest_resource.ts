@@ -1,5 +1,3 @@
-import type { Attributes, Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -13,6 +11,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserProjectDigestType } from "@app/types/user_project_digest";
+import type { Attributes, Transaction } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserProjectDigestResource

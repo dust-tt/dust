@@ -1,9 +1,8 @@
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import type { LightWorkspaceType } from "@app/types/user";
 import { MarkdownContentContext } from "@dust-tt/sparkle";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
-
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import type { LightWorkspaceType } from "@app/types/user";
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
@@ -55,13 +54,15 @@ export function getVisualizationPlugin(
   owner: LightWorkspaceType,
   agentConfigurationId: string,
   conversationId: string,
-  messageId: string
+  messageId: string,
+  vizUrl: string
 ) {
   const customRenderer = {
     visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
         <VisualizationActionIframe
           workspaceId={owner.sId}
+          vizUrl={vizUrl}
           visualization={{
             code,
             complete,

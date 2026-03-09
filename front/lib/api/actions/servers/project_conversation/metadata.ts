@@ -1,12 +1,10 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const PROJECT_CONVERSATION_SERVER_NAME = "project_conversation" as const;
 
@@ -51,7 +49,7 @@ export const PROJECT_CONVERSATION_SERVER = {
     documentationUrl: null,
     // These instructions do not belong on the server, they should either be bundled on the
     // instructions since always added programmatically or bundled in a skill.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PROJECT_CONVERSATION_INSTRUCTIONS,
   },
   tools: Object.values(PROJECT_CONVERSATION_TOOLS_METADATA).map((t) => ({

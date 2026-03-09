@@ -92,25 +92,8 @@ async function createConversationForAgentConfiguration({
   lastRunAt: Date | null;
   contentFragment?: ContentFragmentInputWithFileIdType;
 }): Promise<Result<ConversationType, APIErrorWithStatusCode>> {
-  let conversationTitle = `@${agentConfiguration.name} triggered (${trigger.kind})`;
-  switch (trigger.kind) {
-    case "schedule":
-      conversationTitle += ` - ${new Intl.DateTimeFormat(undefined, {
-        timeZone: trigger.configuration.timezone,
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(new Date())}`;
-      break;
-    case "webhook":
-      break;
-    default:
-      assertNever(trigger);
-  }
-
   const newConversation = await createConversation(auth, {
-    title: conversationTitle,
+    title: null,
     visibility: "unlisted",
     triggerId: trigger.id,
     spaceId: null,
@@ -246,6 +229,7 @@ export async function runTriggeredAgentsActivity({
             ? recentActions[recentActions.length - 2].takenAt // -2 to get the last completed action, -1 is the current running action
             : null;
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         // We can ignore this error, schedule might not have run yet.
       }

@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const FRONT_TOOL_NAME = "front" as const;
 
@@ -280,18 +279,8 @@ export const FRONT_SERVER = {
       "Manage support conversations, messages, and customer interactions.",
     authorization: null,
     icon: "FrontLogo",
-    documentationUrl: "https://dev.frontapp.com/reference/introduction",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-    // eslint-disable-next-line dust/no-mcp-server-instructions
-    instructions:
-      "When handling support tickets:\n" +
-      "- Always check customer history before replying using get_customer_history\n" +
-      "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
-      "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
-      "- Use LLM-friendly timeline format for conversation data\n" +
-      "- Include full context (metadata, custom fields) in responses",
-    developerSecretSelection: "required",
+    documentationUrl: "https://docs.dust.tt/docs/front-mcp",
+    instructions: null,
   },
   tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({
     name: t.name,

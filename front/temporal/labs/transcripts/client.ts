@@ -1,9 +1,3 @@
-import type { ScheduleOptions } from "@temporalio/client";
-import {
-  ScheduleNotFoundError,
-  ScheduleOverlapPolicy,
-} from "@temporalio/client";
-
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -14,6 +8,11 @@ import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/transcripts/w
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { ScheduleOptions } from "@temporalio/client";
+import {
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
+} from "@temporalio/client";
 
 function makeScheduleId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource

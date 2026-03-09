@@ -1,0 +1,31 @@
+name: Build & Test (CLI)
+
+on:
+  push:
+    paths:
+      - package-lock.json
+      - cli/dust-cli/**
+      - .github/workflows/build-cli.yml
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+          build-sdks: "true"
+      - name: Typecheck
+        working-directory: cli/dust-cli
+        run: npx tsc --version && npx tsc

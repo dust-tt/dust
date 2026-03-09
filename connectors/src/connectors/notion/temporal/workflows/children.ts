@@ -3,7 +3,7 @@ import {
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
 } from "@connectors/connectors/notion/temporal/config";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 import {

@@ -1,7 +1,6 @@
-import { BookOpenIcon } from "@dust-tt/sparkle";
-
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
+import { BookOpenIcon } from "@dust-tt/sparkle";
 
 export const mediaConfig: IndustryPageConfig = {
   seo: {

@@ -1,11 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  InferAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -26,6 +18,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  Attributes,
+  CreationAttributes,
+  InferAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

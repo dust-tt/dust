@@ -1,16 +1,20 @@
-import type { AgentMessageEventType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+// This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events
+// via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
+import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { AgentMessageEventType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger
@@ -80,7 +84,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 async function handler(
   req: NextApiRequest,
   // This endpoint only returns void as it is used only for streaming, so no need to use @dust-tt/client types.
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
@@ -177,6 +181,24 @@ async function handler(
         let publicEvent: AgentMessageEventType | undefined;
 
         if (event.data.type === "tool_notification") {
+          let output;
+          const { label, output: originalOutput } =
+            event.data.notification._meta.data;
+
+          if (isRunAgentQueryProgressOutput(originalOutput)) {
+            const wId = auth.getNonNullableWorkspace().sId;
+            const { conversationId, agentMessageId } = originalOutput;
+            const childConversationUrl = `${config.getApiBaseUrl()}/api/v1/w/${wId}/assistant/conversations/${conversationId}`;
+            output = {
+              ...originalOutput,
+              childConversationUrl,
+              childConversationEventsUrl: agentMessageId
+                ? `${childConversationUrl}/messages/${agentMessageId}/events`
+                : null,
+            };
+          } else {
+            output = originalOutput;
+          }
           publicEvent = {
             eventId: event.eventId,
             data: {
@@ -185,8 +207,8 @@ async function handler(
                 ...event.data.notification,
                 // For backward compatibility, we need to move the _meta.data to the root level.
                 data: {
-                  label: event.data.notification._meta.data.label,
-                  output: event.data.notification._meta.data.output,
+                  label,
+                  output,
                 },
               },
             },

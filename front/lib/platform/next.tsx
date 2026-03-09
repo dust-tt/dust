@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 /**
  * Next.js platform implementation
  * Used when running in Next.js environment
@@ -10,24 +11,27 @@ import {
 } from "next/navigation";
 import { useRouter as useNextRouter } from "next/router";
 import NextScript from "next/script";
+import { useMemo } from "react";
 
 import { NextLinkWrapper } from "./NextLinkWrapper";
 import type { AppRouter, HeadProps, ImageProps, ScriptProps } from "./types";
 
 export function useAppRouter(): AppRouter {
   const router = useNextRouter();
-  return {
-    push: router.push,
-    replace: router.replace,
-    back: router.back,
-    reload: router.reload,
-    pathname: router.pathname,
-    asPath: router.asPath,
-    query: router.query as Record<string, string | string[] | undefined>,
-    isReady: router.isReady,
-    events: router.events,
-    beforePopState: router.beforePopState,
-  };
+  return useMemo(
+    () => ({
+      push: router.push,
+      replace: router.replace,
+      back: router.back,
+      reload: router.reload,
+      pathname: router.pathname,
+      asPath: router.asPath,
+      query: router.query as Record<string, string | string[] | undefined>,
+      isReady: router.isReady,
+      events: router.events,
+    }),
+    [router]
+  );
 }
 
 export const LinkWrapper = NextLinkWrapper;

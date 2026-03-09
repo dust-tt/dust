@@ -1,5 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -16,6 +14,7 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 export async function launchStoreAgentAnalyticsWorkflow({
   authType,

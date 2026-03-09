@@ -1,12 +1,10 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
@@ -89,9 +87,8 @@ describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
   });
 
   it("should return update headers when headers are provided for an internal server", async () => {
-    const { req, res, auth, workspace } = await setupTest("admin", "PATCH");
+    const { req, res, auth } = await setupTest("admin", "PATCH");
 
-    await FeatureFlagFactory.basic("slab_mcp", workspace);
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
       name: "slab",
       useCase: null,

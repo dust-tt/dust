@@ -1,22 +1,9 @@
-import { LangfuseClient } from "@langfuse/client";
-
-import config from "@app/lib/api/config";
+import { getLangfuseClient } from "@app/lib/api/langfuse_client";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-let langfuseClient: LangfuseClient | null = null;
-
-function getLangfuseClient(): LangfuseClient | null {
-  if (!config.isLangfuseEnabled()) {
-    return null;
-  }
-
-  langfuseClient ??= new LangfuseClient(config.getLangfuseClientConfig());
-
-  return langfuseClient;
-}
+import type { LangfuseClient } from "@langfuse/client";
 
 function hasProperty<K extends string>(
   value: unknown,

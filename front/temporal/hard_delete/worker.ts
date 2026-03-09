@@ -1,6 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -9,7 +6,9 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/hard_delete/activities";
-import { launchPurgeRunExecutionsSchedule } from "@app/temporal/hard_delete/client";
+import { launchHardDeleteSchedule } from "@app/temporal/hard_delete/client";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
@@ -36,7 +35,7 @@ export async function runHardDeleteWorker() {
   });
 
   // Start the schedule.
-  await launchPurgeRunExecutionsSchedule();
+  await launchHardDeleteSchedule();
 
   await worker.run();
 }

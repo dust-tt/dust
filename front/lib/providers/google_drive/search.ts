@@ -1,5 +1,3 @@
-import TurndownService from "turndown";
-
 import { SUPPORTED_MIMETYPES } from "@app/lib/api/actions/servers/google_drive/metadata";
 import {
   PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
@@ -13,6 +11,7 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService({
   headingStyle: "atx",

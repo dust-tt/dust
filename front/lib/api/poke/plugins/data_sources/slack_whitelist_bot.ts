@@ -7,12 +7,19 @@ import type { AdminCommandType } from "@app/types/connectors/admin/cli";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const slackWhitelistBotPlugin = createPlugin({
+function getMetabaseUrl(connectorId: string | null) {
+  const isEU = regionsConfig.getCurrentRegion() === "europe-west1";
+  return isEU
+    ? `https://eu.metabase.dust.tt/question/46-whitelisted-bots-given-connector?connectorId=${connectorId}`
+    : `https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`;
+}
+
+export const slackIndexBotMessagesPlugin = createPlugin({
   manifest: {
-    id: "slack-whitelist-bot",
-    name: "Whitelist Slack Bot",
+    id: "slack-index-bot-messages",
+    name: "Whitelist Slack bot message indexing",
     description:
-      "Whitelist a Slack bot or workflow for agent summoning or message indexing",
+      "Whitelist a Slack bot or workflow so its messages are indexed and searchable in Dust",
     resourceTypes: ["data_sources"],
     args: {
       botName: {
@@ -20,61 +27,17 @@ export const slackWhitelistBotPlugin = createPlugin({
         label: "Bot/Workflow Name",
         description: "Name of the Slack bot or workflow to whitelist",
       },
-      whitelistType: {
-        type: "enum",
-        label: "Whitelist Type",
-        description: "Type of whitelisting to apply",
-        values: [],
-        async: true,
-        multiple: false,
-      },
-      groupIds: {
-        type: "enum",
-        label: "Groups",
-        description: "Groups to associate with the whitelisted bot",
-        async: true,
-        values: [],
-        multiple: true,
-      },
     },
   },
-  isApplicableTo: (auth, resource) => {
+  isApplicableTo: (_auth, resource) => {
     if (!resource) {
       return false;
     }
-
-    // Plugin is available for both slack and slack_bot providers.
-    return ["slack", "slack_bot"].includes(resource.connectorProvider ?? "");
-  },
-  populateAsyncArgs: async (auth, resource) => {
-    if (!resource) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const groups = await GroupResource.listAllWorkspaceGroups(auth);
-
-    // Filter whitelist types based on connector provider
-    // - slack provider: supports both summon_agent and index_messages
-    // - slack_bot provider: only supports summon_agent
-    const availableWhitelistTypes =
-      resource.connectorProvider === "slack"
-        ? ["summon_agent", "index_messages"]
-        : ["summon_agent"];
-
-    return new Ok({
-      whitelistType: availableWhitelistTypes.map((type) => ({
-        value: type,
-        label: type,
-      })),
-      groupIds: groups.map((group) => ({
-        value: group.sId,
-        label: group.name,
-      })),
-    });
+    return resource.connectorProvider === "slack";
   },
   execute: async (auth, resource, args) => {
     const owner = auth.getNonNullableWorkspace();
-    const { botName, whitelistType, groupIds } = args;
+    const { botName } = args;
 
     if (!resource) {
       return new Err(new Error("Data source not found."));
@@ -82,38 +45,6 @@ export const slackWhitelistBotPlugin = createPlugin({
 
     if (!botName.trim()) {
       return new Err(new Error("Bot name is required"));
-    }
-
-    if (!groupIds || groupIds.length === 0) {
-      return new Err(new Error("Groups selection is required"));
-    }
-
-    if (!resource.connectorProvider) {
-      return new Err(new Error("Provider type is required"));
-    }
-
-    // Validate whitelist type based on connector provider
-    if (
-      resource.connectorProvider === "slack_bot" &&
-      whitelistType[0] === "index_messages"
-    ) {
-      return new Err(
-        new Error(
-          "index_messages whitelist type is only available for slack provider, not slack_bot"
-        )
-      );
-    }
-
-    // Always include the Workspace (global) group
-    const workspaceGroupRes =
-      await GroupResource.fetchWorkspaceGlobalGroup(auth);
-    if (workspaceGroupRes.isErr()) {
-      return new Err(new Error("Failed to fetch workspace global group"));
-    }
-
-    // Combine the selected group with the Workspace group (avoid duplicates)
-    if (!groupIds.includes(workspaceGroupRes.value.sId)) {
-      groupIds.push(workspaceGroupRes.value.sId);
     }
 
     const connectorsAPI = new ConnectorsAPI(
@@ -127,9 +58,8 @@ export const slackWhitelistBotPlugin = createPlugin({
       args: {
         botName,
         wId: owner.sId,
-        groupId: groupIds.join(","),
-        whitelistType: whitelistType[0],
-        providerType: resource.connectorProvider,
+        whitelistType: "index_messages",
+        providerType: "slack",
       },
     };
 
@@ -140,17 +70,114 @@ export const slackWhitelistBotPlugin = createPlugin({
       );
     }
 
-    const isEU = regionsConfig.getCurrentRegion() === "europe-west1";
-    const metabaseUrl = isEU
-      ? `https://eu.metabase.dust.tt/question/46-whitelisted-bots-given-connector?connectorId=${resource.connectorId}`
-      : `https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${resource.connectorId}`;
+    return new Ok({
+      display: "textWithLink",
+      value: `Successfully whitelisted Slack bot "${botName}" for message indexing.`,
+      link: getMetabaseUrl(resource.connectorId),
+      linkText: "View all whitelisted bots for this workspace",
+    });
+  },
+});
+
+export const slackWhitelistBotPlugin = createPlugin({
+  manifest: {
+    id: "slack-whitelist-bot-summoning",
+    name: "Whitelist Slack bot agent summoning",
+    description:
+      "Whitelist a Slack bot or workflow so it can summon dust agents",
+    resourceTypes: ["data_sources"],
+    args: {
+      botName: {
+        type: "string",
+        label: "Bot/Workflow Name",
+        description: "Name of the Slack bot or workflow to whitelist",
+      },
+      groupIds: {
+        type: "enum",
+        label: "Groups",
+        description:
+          "Groups the bot can access when summoning agents — only agents belonging to these groups will be available to the bot",
+        async: true,
+        values: [],
+        multiple: true,
+      },
+    },
+  },
+  isApplicableTo: (_auth, resource) => {
+    if (!resource) {
+      return false;
+    }
+    return resource.connectorProvider === "slack_bot";
+  },
+  populateAsyncArgs: async (auth, resource) => {
+    if (!resource) {
+      return new Err(new Error("Data source not found."));
+    }
+
+    const groups = await GroupResource.listAllWorkspaceGroups(auth);
+
+    return new Ok({
+      groupIds: groups.map((group) => ({
+        value: group.sId,
+        label: group.name,
+      })),
+    });
+  },
+  execute: async (auth, resource, args) => {
+    const owner = auth.getNonNullableWorkspace();
+    const { botName, groupIds } = args;
+
+    if (!resource) {
+      return new Err(new Error("Data source not found."));
+    }
+
+    if (!botName.trim()) {
+      return new Err(new Error("Bot name is required"));
+    }
+
+    if (!groupIds || groupIds.length === 0) {
+      return new Err(new Error("Groups selection is required"));
+    }
+
+    // Always include the Workspace (global) group.
+    const workspaceGroupRes =
+      await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (workspaceGroupRes.isErr()) {
+      return new Err(new Error("Failed to fetch workspace global group"));
+    }
+
+    const allGroupIds = groupIds.includes(workspaceGroupRes.value.sId)
+      ? groupIds
+      : [...groupIds, workspaceGroupRes.value.sId];
+
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+
+    const whitelistBotCmd: AdminCommandType = {
+      majorCommand: "slack",
+      command: "whitelist-bot",
+      args: {
+        botName,
+        wId: owner.sId,
+        groupId: allGroupIds.join(","),
+        whitelistType: "summon_agent",
+        providerType: "slack_bot",
+      },
+    };
+
+    const adminCommandRes = await connectorsAPI.admin(whitelistBotCmd);
+    if (adminCommandRes.isErr()) {
+      return new Err(
+        new Error(`Failed to whitelist bot: ${adminCommandRes.error.message}`)
+      );
+    }
 
     return new Ok({
       display: "textWithLink",
-      value:
-        `Successfully whitelisted Slack bot "${botName}" for ${whitelistType} in the ` +
-        "selected group and the Workspace group.",
-      link: metabaseUrl,
+      value: `Successfully whitelisted Slack bot "${botName}" for agent summoning in the selected groups and the Workspace group.`,
+      link: getMetabaseUrl(resource.connectorId),
       linkText: "View all whitelisted bots for this workspace",
     });
   },

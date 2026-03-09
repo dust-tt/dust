@@ -1,20 +1,20 @@
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
@@ -30,6 +30,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     spaceId: conversation?.spaceId ?? null,
   });
   const router = useAppRouter();
+  const isMobile = useIsMobile();
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
 
@@ -80,7 +81,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         <Breadcrumbs
           items={breadcrumbItems}
           className="dd-privacy-mask"
-          truncateLengthEnd={120}
+          truncateLengthMiddle={isMobile ? undefined : 35}
+          truncateLengthEnd={isMobile ? undefined : 120}
         />
         <EditConversationTitleDialog
           isOpen={showRenameDialog}

@@ -1,5 +1,3 @@
-import type { ReactElement } from "react";
-
 import { ComparisonTableSection } from "@app/components/home/content/Competitive/ComparisonTableSection";
 import { CompetitiveHeroSection } from "@app/components/home/content/Competitive/CompetitiveHeroSection";
 import { gleanConfig } from "@app/components/home/content/Competitive/config/gleanConfig";
@@ -11,6 +9,8 @@ import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import { Image } from "@app/lib/platform";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {
@@ -22,6 +22,7 @@ export async function getStaticProps() {
   };
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function GleanLandingPage() {
   return (
     <>
@@ -56,7 +57,14 @@ export default function GleanLandingPage() {
         <ComparisonTableSection
           dustHeader={gleanConfig.comparison.dustHeader}
           competitorHeader={gleanConfig.comparison.competitorHeader}
-          competitorLogo="/static/landing/logos/gray/glean.svg"
+          competitorLogo={
+            <Image
+              src="/static/landing/logos/gray/glean.svg"
+              alt={gleanConfig.comparison.competitorHeader}
+              width={80}
+              height={20}
+            />
+          }
           features={gleanConfig.comparison.features}
         />
       </div>

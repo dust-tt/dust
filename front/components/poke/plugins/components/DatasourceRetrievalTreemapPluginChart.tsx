@@ -1,6 +1,3 @@
-import { useCallback, useMemo } from "react";
-import { Tooltip, Treemap } from "recharts";
-
 import {
   CHART_HEIGHT,
   DEFAULT_PERIOD_DAYS,
@@ -14,6 +11,8 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { DatasourceRetrievalTreemapNode } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import { DatasourceRetrievalTreemapContent } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import { usePokeAgentDatasourceRetrieval } from "@app/poke/swr/agent_details";
+import { useCallback, useMemo } from "react";
+import { Tooltip, Treemap } from "recharts";
 
 interface DatasourceRetrievalTreemapPluginChartProps {
   workspaceId: string;

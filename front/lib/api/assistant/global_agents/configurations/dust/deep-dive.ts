@@ -5,6 +5,7 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { shouldUseOpus } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   getCompanyDataAction,
   getCompanyDataWarehousesAction,
@@ -27,19 +28,17 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
-  getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  getLargeWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import {
-  GPT_5_2_MODEL_CONFIG,
-  GPT_5_MODEL_CONFIG,
-} from "@app/types/assistant/models/openai";
+import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -226,6 +225,10 @@ If you need a capability that is not available in your current tools, first use 
 You may then either:
 - Enable the required toolset on yourself using \`toolsets__enable\` with the provided toolsetId
 - Spawn a sub-agent and pass the required toolset(s) via \`toolsetsToAdd\` so the sub-agent starts with them pre-enabled.
+
+IMPORTANT: For data retrieval, always prefer company data tools over enabling a platform-specific toolset. If the user's company data sources already index data from a platform (e.g. Slack, Notion, Google Drive, GitHub, etc.), use \`semantic_search\` or other company data tools instead of enabling the corresponding toolset. Company data is lower latency, already indexed, and easier to search.
+Only enable a toolset for data retrieval when the needed data is absent from or not indexed in company data sources (e.g. private data, real-time data, or data from a source that isn't connected).
+Toolsets remain valuable for **write operations** (posting a Slack message, creating a Notion page, updating a GitHub issue, etc.) that company data tools cannot perform.
 </additional_tools>
 `
     : "";
@@ -271,6 +274,7 @@ Before outputting ANY user-visible text, reflect on whether you have ran all req
   - Numbered lists only for true sequences or procedures.
   - Tables or code blocks only when they improve clarity; otherwise avoid.
   - NEVER use filler openers ("Here is...", "Summary:"). Write directly.
+  - Never use em dashes (—). Use commas, semicolons, parentheses, or separate sentences instead.
 
 Do not use the interactive_content tool for markdown documents. Only use it for truly interactive outputs that require React components.
 Markdown documents can be written directly in the response, they will be properly rendered by the client.
@@ -292,13 +296,6 @@ const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}
 Your output will be consumed by another AI agent, not a human. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
 Make sure to include all information and details that are relevant to the request, without any noise or redundancy.
 </output_format>`;
-
-const browserSummaryAgentInstructions = `<primary_goal>
-You are a web page summary agent. Your primary role is to summarize web page content.
-You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
-Your goal is to remove the noise without altering meaning or removing important information. You may use a bullet-points-heavy format.
-Provide URLs for sub-pages that that are relevant to the summary.
-</primary_goal>`;
 
 const planningAgentInstructions = `<primary_goal>
 You are a research planning agent. Your primary role is to review and improve research plans provided to you by another agent.
@@ -350,10 +347,10 @@ function getModelConfig(
         }
       : prefer === "openai"
         ? {
-            model: GPT_5_MODEL_CONFIG,
+            model: GPT_5_4_MODEL_CONFIG,
             reasoningEffort: reasoning
               ? "light"
-              : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
+              : GPT_5_4_MODEL_CONFIG.minimumReasoningEffort,
           }
         : assertNever(prefer);
 
@@ -363,10 +360,10 @@ function getModelConfig(
   } =
     prefer === "anthropic"
       ? {
-          model: GPT_5_MODEL_CONFIG,
+          model: GPT_5_4_MODEL_CONFIG,
           reasoningEffort: reasoning
             ? "light"
-            : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
+            : GPT_5_4_MODEL_CONFIG.minimumReasoningEffort,
         }
       : {
           model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -400,23 +397,22 @@ function getModelConfig(
   };
 }
 
-function getFastModelConfig(owner: WorkspaceType): {
-  modelConfiguration: ModelConfigurationType;
-  reasoningEffort: AgentReasoningEffort;
-} | null {
+export function getFastModelConfig(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return {
-      modelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-      reasoningEffort: "none",
-    };
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return {
-      modelConfiguration: GEMINI_2_5_FLASH_MODEL_CONFIG,
-      reasoningEffort: "none",
-    };
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
-  return getModelConfig(owner, "anthropic", false);
+
+  // Otherwise we use whatever the default large model is, using the default reasoning effort.
+  const modelConfig = getModelConfig(owner, "anthropic", false);
+  if (!modelConfig) {
+    return null;
+  }
+  return modelConfig.modelConfiguration;
 }
 
 function getMaxReasoningModelConfig(owner: WorkspaceType): {
@@ -425,7 +421,7 @@ function getMaxReasoningModelConfig(owner: WorkspaceType): {
 } | null {
   if (isProviderWhitelisted(owner, "openai")) {
     return {
-      modelConfiguration: GPT_5_2_MODEL_CONFIG,
+      modelConfiguration: GPT_5_4_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
@@ -455,6 +451,16 @@ export function _getDeepDiveGlobalAgent(
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
 
+  const enterpriseModelConfig =
+    shouldUseOpus(auth) && isProviderWhitelisted(owner, "anthropic")
+      ? {
+          modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+          reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
+        }
+      : null;
+
+  const effectiveModelConfig = enterpriseModelConfig ?? modelConfig;
+
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
@@ -480,7 +486,7 @@ export function _getDeepDiveGlobalAgent(
     canEdit: false,
   };
 
-  if (settings?.status === "disabled_by_admin" || !modelConfig) {
+  if (settings?.status === "disabled_by_admin" || !effectiveModelConfig) {
     return {
       ...deepAgent,
       status: "disabled_by_admin",
@@ -490,10 +496,10 @@ export function _getDeepDiveGlobalAgent(
   }
 
   const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
+    providerId: effectiveModelConfig.modelConfiguration.providerId,
+    modelId: effectiveModelConfig.modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
+    reasoningEffort: effectiveModelConfig.reasoningEffort,
   };
 
   deepAgent.model = model;
@@ -768,22 +774,14 @@ export function _getPlanningAgent(
   };
 }
 
-export function _getBrowserSummaryAgent(
-  auth: Authenticator,
-  { settings }: { settings: GlobalAgentSettingsModel | null }
-): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
+export function _getArchivedBrowserSummaryAgent(): AgentConfigurationType {
   const name = "dust-browser-summary";
   const description = "A agent that summarizes web page content.";
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
 
-  const browserSummaryAgent: Omit<
-    AgentConfigurationType,
-    "status" | "maxStepsPerRun" | "actions"
-  > = {
+  return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
     version: 0,
@@ -791,7 +789,7 @@ export function _getBrowserSummaryAgent(
     versionAuthorId: null,
     name,
     description,
-    instructions: browserSummaryAgentInstructions,
+    instructions: null,
     instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
@@ -803,31 +801,7 @@ export function _getBrowserSummaryAgent(
     tags: [],
     canRead: true,
     canEdit: false,
-  };
-
-  const modelConfig = getFastModelConfig(owner);
-
-  if (!modelConfig || settings?.status === "disabled_by_admin") {
-    return {
-      ...browserSummaryAgent,
-      status: "disabled_by_admin",
-      actions: [],
-      maxStepsPerRun: 0,
-    };
-  }
-
-  const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
-    temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
-  };
-
-  browserSummaryAgent.model = model;
-
-  return {
-    ...browserSummaryAgent,
-    status: "active",
+    status: "archived",
     actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };

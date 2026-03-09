@@ -1,11 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 interface PostJoinProjectResponseBody {
   success: boolean;
@@ -40,6 +41,17 @@ async function handler(
         });
       }
 
+      if (space.managementMode !== "manual") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "You cannot join this project, its members are not managed manually.",
+          },
+        });
+      }
+
       if (space.isMember(auth)) {
         return apiError(req, res, {
           status_code: 400,
@@ -50,19 +62,27 @@ async function handler(
         });
       }
 
-      const memberGroup = space.groups.find((g) => g.kind === "regular");
+      const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+        space,
+        filterOnManagementMode: true,
+      });
 
-      if (!memberGroup) {
+      if (memberGroupSpaces.length !== 1) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Project member group not found.",
+            message:
+              "There should be exactly one member group for the project.",
           },
         });
       }
 
-      const result = await memberGroup.joinGroup(auth);
+      const memberGroupSpace = memberGroupSpaces[0];
+      const user = auth.getNonNullableUser();
+      const result = await memberGroupSpace.addMembers(auth, {
+        users: [user.toJSON()],
+      });
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -72,6 +92,13 @@ async function handler(
           },
         });
       }
+
+      // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
+      const workspace = auth.getNonNullableWorkspace();
+      await GroupResource.invalidateGroupIdsCacheForUser({
+        user: { id: user.id },
+        workspace: { id: workspace.id },
+      });
 
       return res.status(200).json({ success: true });
     }

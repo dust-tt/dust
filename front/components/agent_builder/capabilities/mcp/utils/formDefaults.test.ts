@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getDefaultConfiguration } from "./formDefaults";
 

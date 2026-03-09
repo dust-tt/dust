@@ -1,13 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isDustMimeType } from "@dust-tt/client";
-import ConvertAPI from "convertapi";
-import fs from "fs";
-import type { IncomingMessage } from "http";
-import imageSize from "image-size";
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
-import { fileSync } from "tmp";
-
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,10 +11,10 @@ import type {
   FileUseCase,
   SupportedFileContentType,
 } from "@app/types/files";
-import { isSupportedAudioContentType } from "@app/types/files";
-import { isInteractiveContentFileContentType } from "@app/types/files";
 import {
   extensionsForContentType,
+  isInteractiveContentType,
+  isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
@@ -36,8 +26,18 @@ import {
 } from "@app/types/shared/text_extraction";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isDustMimeType } from "@dust-tt/client";
+import ConvertAPI from "convertapi";
+import fs from "fs";
+import type { IncomingMessage } from "http";
+import imageSize from "image-size";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { fileSync } from "tmp";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
+const PROCESSING_TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
@@ -263,15 +263,16 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
       auth,
       version: "original",
     });
-    const writeStream = file.getWriteStream({
-      auth,
-      version: "processed",
-    });
 
     const processedStream = await new TextExtraction(
       config.getTextExtractionUrl(),
       { enableOcr: true, logger }
     ).fromStream(readStream, file.contentType);
+
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
 
     await pipeline(processedStream, writeStream);
 
@@ -427,19 +428,29 @@ const getProcessingFunction = ({
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
   // Interactive Content file types are not processed.
-  if (isInteractiveContentFileContentType(contentType)) {
+  if (isInteractiveContentType(contentType)) {
     return undefined;
   }
 
   // SVG files are stored as-is without any processing (no resize).
   if (contentType === "image/svg+xml") {
-    if (["conversation", "project_context", "tool_output"].includes(useCase)) {
+    if (
+      [
+        "conversation",
+        "project_context",
+        "skill_attachment",
+        "tool_output",
+      ].includes(useCase)
+    ) {
       return storeRawText;
     }
     return undefined;
   }
 
   if (isSupportedImageContentType(contentType)) {
+    if (useCase === "skill_attachment") {
+      return storeRawText;
+    }
     if (useCase === "conversation" || useCase === "project_context") {
       return makeResizeAndUploadImageToFileStorage(
         CONVERSATION_IMG_MAX_SIZE_PIXELS
@@ -467,6 +478,7 @@ const getProcessingFunction = ({
         "upsert_table",
         "tool_output",
         "project_context",
+        "skill_attachment",
       ].includes(useCase)
     ) {
       return storeRawText;
@@ -499,6 +511,7 @@ const getProcessingFunction = ({
           "upsert_document",
           "folders_document",
           "project_context",
+          "skill_attachment",
         ].includes(useCase)
       ) {
         return extractTextFromFileAndUpload;
@@ -544,6 +557,7 @@ const getProcessingFunction = ({
           "tool_output",
           "folders_document",
           "project_context",
+          "skill_attachment",
         ].includes(useCase)
       ) {
         return storeRawText;
@@ -708,7 +722,25 @@ export async function processAndStoreFile(
     });
   }
 
-  const processingRes = await maybeApplyProcessing(auth, file);
+  const timeoutPromise = new Promise<"timeout">((resolve) => {
+    setTimeout(() => resolve("timeout"), PROCESSING_TIMEOUT_MS);
+  });
+
+  const processingRes = await Promise.race([
+    maybeApplyProcessing(auth, file),
+    timeoutPromise,
+  ]);
+
+  if (processingRes === "timeout") {
+    await file.markAsFailed();
+    return new Err({
+      name: "dust_error",
+      code: "file_too_large",
+      message:
+        "File processing timed out. The file may be too large to process. Please try with a smaller file.",
+    });
+  }
+
   if (processingRes.isErr()) {
     await file.markAsFailed();
     // Unfortunately, there is no better way to catch this image format error.

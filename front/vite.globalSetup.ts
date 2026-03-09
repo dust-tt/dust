@@ -25,14 +25,19 @@ export default async function setup() {
     // Add any other essential vars you need to keep
     FRONT_DATABASE_URI: process.env.FRONT_DATABASE_URI,
     NOVU_SECRET_KEY: "test-secret-key",
+    DUST_PRIVATE_UPLOADS_BUCKET: "test-private-bucket",
+    DUST_UPLOAD_BUCKET: "test-public-bucket",
     REDIS_CACHE_URI: process.env.REDIS_CACHE_URI,
     REDIS_URI: process.env.REDIS_URI,
     NEXT_PUBLIC_DUST_CLIENT_FACING_URL: "http://fake-url",
+    NEXT_PUBLIC_DUST_APP_URL: "http://fake-url",
     ENABLE_BOT_CRAWLING: process.env.ENABLE_BOT_CRAWLING,
     DUST_US_URL: "http://fake-url",
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
     VIZ_JWT_SECRET: "viz-secret-for-tests",
+    DUST_SANDBOX_JWT_SECRET: "sandbox-secret-for-tests",
     REGION: "us-central1",
+    DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
 
     // Variables that modify the behavior of certain tests
     UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,

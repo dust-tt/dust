@@ -1,5 +1,10 @@
 "use client";
 
+import { AcademySearch } from "@app/components/academy/AcademyComponents";
+import { TableOfContents } from "@app/components/blog/TableOfContents";
+import type { TocItem } from "@app/lib/contentful/tableOfContents";
+import type { SearchableItem } from "@app/lib/contentful/types";
+import { LinkWrapper } from "@app/lib/platform";
 import {
   ArrowLeftIcon,
   Button,
@@ -9,12 +14,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { AcademySearch } from "@app/components/academy/AcademyComponents";
-import { TableOfContents } from "@app/components/blog/TableOfContents";
-import type { TocItem } from "@app/lib/contentful/tableOfContents";
-import type { SearchableItem } from "@app/lib/contentful/types";
-import { LinkWrapper } from "@app/lib/platform";
 
 interface AcademySidebarProps {
   searchableItems: SearchableItem[];

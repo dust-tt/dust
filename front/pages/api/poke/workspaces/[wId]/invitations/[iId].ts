@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import type { HandleMembershipInvitationResult } from "@app/lib/api/invitation";
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
@@ -9,6 +7,7 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

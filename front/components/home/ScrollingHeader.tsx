@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
-import React, { useCallback, useEffect, useState } from "react";
-
 import { classNames } from "@app/lib/utils";
+import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useCallback, useEffect, useState } from "react";
 
 // Define your scroll limit here
 const SCROLL_LIMIT_1 = 12;

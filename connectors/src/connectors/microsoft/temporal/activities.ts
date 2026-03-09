@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
@@ -29,6 +29,7 @@ import {
   isAccessBlockedError,
   isGeneralExceptionError,
   isItemNotFoundError,
+  isJSONParsingError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
@@ -38,7 +39,7 @@ import {
   recursiveNodeDeletion,
   syncOneFile,
   updateDescendantsParentsInCore,
-  // biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
@@ -67,11 +68,12 @@ import {
   isDevelopment,
 } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
-import { removeNulls } from "@dust-tt/client";
+import { normalizeError, removeNulls } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { WorkflowNotFoundError } from "@temporalio/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import * as _ from "lodash";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
@@ -237,8 +239,9 @@ export async function getRootNodesToSyncFromResources(
               return null;
             }
             if (error instanceof ExternalOAuthTokenError) {
-              // Do not throw immediately, the token may still be valid for other roots
+              // Do not throw immediately, the token may still be valid for other roots.
               oauthTokenErrors.push(error);
+              return null;
             }
             logger.error(
               {
@@ -319,6 +322,10 @@ export async function getRootNodesToSyncFromResources(
                 },
                 "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
               );
+              return { results: [] };
+            }
+            if (error instanceof ExternalOAuthTokenError) {
+              oauthTokenErrors.push(error);
               return { results: [] };
             }
             throw error;
@@ -1688,6 +1695,37 @@ export async function microsoftGarbageCollectionActivity({
             body: null,
           })),
         };
+      } else if (isJSONParsingError(error)) {
+        logger.error(
+          {
+            connectorId,
+            error: error.message,
+            errorStack: error.stack,
+            chunkSize: chunk.length,
+            chunkUrls: chunk.map((req) => req.url),
+          },
+          "Batch request failed with JSON parsing error, attempting individual requests to identify problematic node"
+        );
+
+        // Try individual GET requests to identify which node is causing the issue
+        // Only for logging purpose at first
+        for (const req of chunk) {
+          try {
+            await getItem(logger, client, req.url);
+          } catch (itemError) {
+            const normalizedError = normalizeError(itemError);
+            logger.error(
+              {
+                connectorId,
+                error: normalizedError.message,
+                url: req.url,
+              },
+              "Individual request failed"
+            );
+          }
+        }
+
+        throw error;
       } else {
         throw error;
       }

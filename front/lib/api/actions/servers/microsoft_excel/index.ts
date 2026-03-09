@@ -1,11 +1,10 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { MICROSOFT_EXCEL_SERVER_NAME } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/microsoft_excel/tools";
 import type { Authenticator } from "@app/lib/auth";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 function createServer(
   auth: Authenticator,

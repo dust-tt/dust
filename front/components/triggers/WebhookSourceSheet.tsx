@@ -1,21 +1,3 @@
-import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
-import {
-  Button,
-  InformationCircleIcon,
-  LockIcon,
-  MultiPageSheet,
-  MultiPageSheetContent,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import _ from "lodash";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type {
@@ -53,6 +35,24 @@ import type {
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
+import {
+  Button,
+  InformationCircleIcon,
+  LockIcon,
+  MultiPageSheet,
+  MultiPageSheetContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 
 export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }

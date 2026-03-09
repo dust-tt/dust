@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { SparkleLinkProps } from "@dust-tt/sparkle";
 import Link from "next/link";
 

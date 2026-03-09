@@ -1,11 +1,9 @@
 // LABS - CAN BE REMOVED ANYTIME
 
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
@@ -13,6 +11,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -20,6 +19,7 @@ export function useLabsTranscriptsConfiguration({
 }: {
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const transcriptsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
     fetcher;
 
@@ -43,6 +43,7 @@ export function useLabsTranscriptsDefaultConfiguration({
   owner: LightWorkspaceType;
   provider: string;
 }) {
+  const { fetcher } = useFetcher();
   const defaultConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
     fetcher;
 
@@ -66,6 +67,7 @@ export function useLabsTranscriptsIsConnectorConnected({
   owner: LightWorkspaceType;
   provider: string;
 }) {
+  const { fetcher } = useFetcher();
   const isConnectorConnectedFetcher: Fetcher<{
     isConnected: boolean;
     dataSource: DataSourceResource | null;

@@ -28,7 +28,6 @@ async function getCoreDataSourceId(
 ): Promise<number | null> {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql
   const [row] = await coreSequelize.query<{ id: number }>(
     `SELECT id
      FROM data_sources
@@ -57,7 +56,6 @@ async function getZendeskTicketNodeBatch({
 }): Promise<{ hasMore: boolean; nextId: number; nodes: ZendeskTicketNode[] }> {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql
   const nodes = await coreSequelize.query<ZendeskTicketNode>(
     `SELECT id, node_id
      FROM data_sources_nodes

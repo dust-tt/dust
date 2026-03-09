@@ -1,4 +1,18 @@
 import {
+  areCredentialOverridesValid,
+  PersonalAuthCredentialOverrides,
+} from "@app/components/oauth/PersonalAuthCredentialOverrides";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  useCreatePersonalConnection,
+  useMCPServerViewsWithPersonalConnections,
+} from "@app/lib/swr/mcp_servers";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
   Button,
   Chip,
   CloudArrowLeftRightIcon,
@@ -14,22 +28,8 @@ import {
   Icon,
   LockIcon,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-import {
-  areCredentialOverridesValid,
-  PersonalAuthCredentialOverrides,
-} from "@app/components/oauth/PersonalAuthCredentialOverrides";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useCreatePersonalConnection,
-  useMCPServerViewsWithPersonalConnections,
-} from "@app/lib/swr/mcp_servers";
-import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface DialogState {
   isOpen: boolean;

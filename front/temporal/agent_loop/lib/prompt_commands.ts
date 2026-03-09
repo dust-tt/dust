@@ -8,6 +8,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
+  createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
   getSkillDataSourceConfigurations,
   getSkillServers,
@@ -26,9 +27,8 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
-// Matches the command (/run or /list) as the second word in the message.
-// The first word is the agent mention text (e.g. "Dust").
-const COMMAND_REGEX = /^\S+\s+\/(run|list)\b/;
+// Matches the command (/run or /list), optionally preceded by an agent mention.
+const COMMAND_REGEX = /^(?:\S+\s+)?\/(run|list)\b/;
 
 // Matches the start of a tool call: tool_name followed by optional whitespace and '('.
 const TOOL_CALL_START_REGEX = /(\w+)\s*\(/g;
@@ -160,7 +160,7 @@ async function listAvailableTools(
       step,
     });
 
-  const attachments = listAttachments(conversation);
+  const attachments = await listAttachments(auth, { conversation });
   const { servers: jitServers } = await getJITServers(auth, {
     agentConfiguration,
     conversation,
@@ -183,16 +183,25 @@ async function listAvailableTools(
     skills: enabledSkills,
   });
 
-  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-    auth,
-    { skills: enabledSkills }
-  );
+  const {
+    documentDataSourceConfigurations,
+    warehouseDataSourceConfigurations,
+  } = await getSkillDataSourceConfigurations(auth, { skills: enabledSkills });
 
   const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-    dataSourceConfigurations,
+    dataSourceConfigurations: documentDataSourceConfigurations,
   });
+  const dataWarehouseServer = await createSkillKnowledgeDataWarehouseServer(
+    auth,
+    {
+      dataSourceConfigurations: warehouseDataSourceConfigurations,
+    }
+  );
   if (fileSystemServer) {
     skillServers.push(fileSystemServer);
+  }
+  if (dataWarehouseServer) {
+    skillServers.push(dataWarehouseServer);
   }
 
   const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
@@ -225,7 +234,6 @@ async function publishSuccessAndFinish(
     agentConfiguration,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -260,7 +268,7 @@ async function publishSuccessAndFinish(
       completedTs,
       agentMessage.actions
     ),
-    prunedContext: agentMessageRow.prunedContext ?? false,
+    prunedContext: agentMessage.prunedContext ?? false,
   } satisfies AgentMessageType;
 
   await updateResourceAndPublishEvent(auth, {
@@ -272,7 +280,7 @@ async function publishSuccessAndFinish(
       message: updatedAgentMessage,
       runIds: [],
     },
-    agentMessageRow,
+    agentMessage,
     conversation,
     step,
   });
@@ -331,7 +339,20 @@ export async function handlePromptCommand(
 }
 
 /**
+ * Format a list of tools as quickReply buttons, each linking to `/list <tool_name>`.
+ */
+function formatToolListWithButtons(tools: MCPToolConfigurationType[]): string {
+  const buttons = tools
+    .map((t) => `:quickReply[${t.name}]{message="/list ${t.name}"}`)
+    .join("\n");
+  return "Click a button to get details on a specific tool:\n\n" + buttons;
+}
+
+/**
  * Handle the /list command: list available tools and publish as success message.
+ * If a filter is provided (e.g. `/list search_term`), find tools whose name
+ * contains that term. If exactly one matches, show its schema. If multiple
+ * match, list them. If none match, show an error.
  */
 async function handleToolListCommand(
   auth: Authenticator,
@@ -339,9 +360,59 @@ async function handleToolListCommand(
   step: number
 ): Promise<null> {
   const availableTools = await listAvailableTools(auth, runAgentData, step);
-  const toolNames = availableTools.map((t) => t.name);
-  const content = "```\n" + toolNames.join("\n") + "\n```";
-  return publishSuccessAndFinish(auth, runAgentData, step, content);
+  const body = getBodyAfterCommand(runAgentData.userMessage.content);
+
+  if (body) {
+    const matchingTools = availableTools.filter((t) =>
+      t.name.toLowerCase().includes(body.toLowerCase())
+    );
+
+    if (matchingTools.length === 0) {
+      const toolNames = availableTools.map((t) => t.name).join(", ");
+      const content = `No tools matching "${body}". Available tools: ${toolNames}`;
+      return publishSuccessAndFinish(auth, runAgentData, step, content);
+    }
+
+    if (matchingTools.length > 1) {
+      return publishSuccessAndFinish(
+        auth,
+        runAgentData,
+        step,
+        formatToolListWithButtons(matchingTools)
+      );
+    }
+
+    // Exactly one match — show its schema.
+    const matchedTool = matchingTools[0];
+
+    // Build a template object from the schema properties with placeholder values.
+    const schema = matchedTool.inputSchema;
+    const properties =
+      (schema.properties as Record<string, { type?: string }> | undefined) ??
+      {};
+    const required = new Set(
+      Array.isArray(schema.required) ? schema.required : []
+    );
+    const templateArgs: Record<string, unknown> = {};
+    for (const [key, prop] of Object.entries(properties)) {
+      const suffix = required.has(key) ? "" : "?";
+      templateArgs[`${key}${suffix}`] = `<${prop.type ?? "any"}>`;
+    }
+
+    const content =
+      (matchedTool.description ? `${matchedTool.description}\n\n` : "") +
+      "```\n" +
+      `/run ${matchedTool.name}(${JSON.stringify(templateArgs, null, 2)})` +
+      "\n```";
+    return publishSuccessAndFinish(auth, runAgentData, step, content);
+  }
+
+  return publishSuccessAndFinish(
+    auth,
+    runAgentData,
+    step,
+    formatToolListWithButtons(availableTools)
+  );
 }
 
 /**
@@ -364,7 +435,6 @@ async function handleToolRunFirstStep(
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -396,7 +466,7 @@ async function handleToolRunFirstStep(
         error,
         runIds,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });

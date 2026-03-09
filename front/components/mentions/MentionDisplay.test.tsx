@@ -1,9 +1,8 @@
-import { render, screen } from "@testing-library/react";
-import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
+import { render, screen } from "@testing-library/react";
+import type React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MentionDisplay } from "./MentionDisplay";
 

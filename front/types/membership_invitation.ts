@@ -25,6 +25,7 @@ export interface PendingInvitationOption {
   initialRole: ActiveRoleType;
   createdAt: number;
   isExpired: boolean;
+  regionUrl?: string;
 }
 
 // Types for the invite form in Poke.

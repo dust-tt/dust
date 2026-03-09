@@ -1,6 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-import querystring from "querystring";
-
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import type {
@@ -12,11 +9,16 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/types/oauth/lib";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
+import type { ParsedUrlQuery } from "querystring";
+import querystring from "querystring";
 
 export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({

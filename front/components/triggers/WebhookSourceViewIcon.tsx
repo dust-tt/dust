@@ -1,6 +1,3 @@
-import type { Avatar } from "@dust-tt/sparkle";
-import type { ComponentProps } from "react";
-
 import {
   getAvatarFromIcon,
   getIcon,
@@ -8,6 +5,8 @@ import {
 } from "@app/components/resources/resources_icons";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { Avatar } from "@dust-tt/sparkle";
+import type { ComponentProps } from "react";
 
 export const WebhookSourceViewIcon = ({
   webhookSourceView,

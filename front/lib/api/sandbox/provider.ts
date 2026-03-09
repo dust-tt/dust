@@ -1,0 +1,120 @@
+/**
+ * Provider-agnostic sandbox abstraction.
+ *
+ * Every sandbox provider (E2B, etc.) must implement the SandboxProvider
+ * interface. The rest of the codebase interacts with sandboxes exclusively
+ * through this contract — swapping providers only requires writing a new
+ * adapter.
+ */
+
+import type {
+  NetworkPolicy,
+  SandboxImageId,
+  SandboxResources,
+} from "@app/lib/api/sandbox/image/types";
+import type { Result } from "@app/types/shared/result";
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+/**
+ * Opaque handle returned by create() and wake().
+ * Contains the provider-assigned identifier used for all subsequent operations.
+ */
+export interface SandboxHandle {
+  providerId: string;
+}
+
+/**
+ * Configuration for provisioning a new sandbox.
+ * Flat structure derived from SandboxImage.toCreateConfig() with optional overrides.
+ */
+export interface SandboxCreateConfig {
+  /** Typed image identifier (name + tag) override - E2B specific but exposed for overrides. */
+  imageId?: SandboxImageId;
+  /** Environment variables for the sandbox runtime. */
+  envVars?: Record<string, string>;
+  /** Network egress policy. */
+  network?: NetworkPolicy;
+  /** Resource allocation for the sandbox. */
+  resources?: SandboxResources;
+}
+
+// ---------------------------------------------------------------------------
+// Execution
+// ---------------------------------------------------------------------------
+
+export interface ExecResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface ExecOptions {
+  /** Working directory for command execution. */
+  workingDirectory?: string;
+  /** Timeout in milliseconds. */
+  timeoutMs?: number;
+  /** Additional environment variables for this execution only. */
+  envVars?: Record<string, string>;
+}
+
+// ---------------------------------------------------------------------------
+// Filesystem
+// ---------------------------------------------------------------------------
+
+export interface FileEntry {
+  path: string;
+  size: number;
+  isDirectory: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown (or returned) when the provider no longer knows about a sandbox.
+ * E.g. E2B killed it after its lifetime expired.
+ */
+export class SandboxNotFoundError extends Error {
+  constructor(providerId: string) {
+    super(`Sandbox ${providerId} not found at provider.`);
+    this.name = "SandboxNotFoundError";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Provider interface
+// ---------------------------------------------------------------------------
+
+/**
+ * Contract that all sandbox providers must satisfy.
+ *
+ * Every method receives the provider-assigned `providerId` (from
+ * SandboxHandle) to identify the target sandbox. Methods return `Result` to
+ * signal recoverable failures — callers never need try/catch.
+ */
+export interface SandboxProvider {
+  create(config: SandboxCreateConfig): Promise<Result<SandboxHandle, Error>>;
+  wake(providerId: string): Promise<Result<SandboxHandle, Error>>;
+  sleep(providerId: string): Promise<Result<void, Error>>;
+  destroy(providerId: string): Promise<Result<void, Error>>;
+
+  exec(
+    providerId: string,
+    command: string,
+    opts?: ExecOptions
+  ): Promise<Result<ExecResult, Error>>;
+
+  writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
+
+  readFile(providerId: string, path: string): Promise<Buffer>;
+
+  listFiles(
+    providerId: string,
+    path: string,
+    opts?: { recursive?: boolean }
+  ): Promise<FileEntry[]>;
+}

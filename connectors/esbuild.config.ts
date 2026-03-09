@@ -14,6 +14,11 @@ const buildTargets: BuildTarget[] = [
     outfile: "dist/start_server.js",
   },
   {
+    name: "Worker",
+    entryPoint: "src/start_worker.ts",
+    outfile: "dist/start_worker.js",
+  },
+  {
     name: "CLI",
     entryPoint: "src/admin/cli.ts",
     outfile: "dist/cli.js",
@@ -28,7 +33,7 @@ async function buildTarget(target: BuildTarget) {
       entryPoints: [target.entryPoint],
       bundle: true,
       platform: "node",
-      target: "node20",
+      target: "node22",
       outfile: target.outfile,
       alias: {
         "@connectors": path.resolve("./src"),
@@ -36,6 +41,7 @@ async function buildTarget(target: BuildTarget) {
       packages: "external",
       logLevel: "info",
       metafile: true,
+      sourcemap: true,
     });
 
     console.log(`✅ ${target.name} built successfully!`);

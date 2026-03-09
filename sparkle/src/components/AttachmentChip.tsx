@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 

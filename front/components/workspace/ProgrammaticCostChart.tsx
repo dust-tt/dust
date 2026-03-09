@@ -1,4 +1,26 @@
 import {
+  CHART_HEIGHT,
+  COST_PALETTE,
+  OTHER_LABEL,
+  USER_MESSAGE_ORIGIN_LABELS,
+} from "@app/components/agent_builder/observability/constants";
+import {
+  getIndexedColor,
+  getSourceColor,
+  isUserMessageOrigin,
+} from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type {
+  AvailableGroup,
+  GetWorkspaceProgrammaticCostResponse,
+  GroupByType,
+} from "@app/lib/api/analytics/programmatic_cost";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import { clientFetch } from "@app/lib/egress/client";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
+import {
   ArrowDownOnSquareIcon,
   Button,
   ChevronLeftIcon,
@@ -23,29 +45,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import {
-  CHART_HEIGHT,
-  COST_PALETTE,
-  OTHER_LABEL,
-  USER_MESSAGE_ORIGIN_LABELS,
-} from "@app/components/agent_builder/observability/constants";
-import {
-  getIndexedColor,
-  getSourceColor,
-  isUserMessageOrigin,
-} from "@app/components/agent_builder/observability/utils";
-import { ChartContainer } from "@app/components/charts/ChartContainer";
-import type { LegendItem } from "@app/components/charts/ChartLegend";
-import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import type {
-  AvailableGroup,
-  GetWorkspaceProgrammaticCostResponse,
-  GroupByType,
-} from "@app/lib/api/analytics/programmatic_cost";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { clientFetch } from "@app/lib/egress/client";
-import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;

@@ -1,6 +1,3 @@
-import type { Part } from "@google/genai";
-import { startObservation } from "@langfuse/tracing";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -26,6 +23,8 @@ import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Part } from "@google/genai";
+import { startObservation } from "@langfuse/tracing";
 
 export function createImageGenerationTools(
   auth: Authenticator,

@@ -100,7 +100,7 @@ export function formatPresentationStructure(
                 });
               }
               lines.push(
-                `  - Table Location: Use {tableObjectId: "${element.objectId}", rowIndex: N, columnIndex: M} for cell operations`
+                `  - Table Location: Use objectId "${element.objectId}" in request + cellLocation: {rowIndex: N, columnIndex: M}`
               );
             }
 

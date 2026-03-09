@@ -8,6 +8,9 @@ type ContactFormEventData = {
   user_company_headcount: string;
   consent_marketing: boolean;
   gclid: string | undefined;
+  fbclid: string | undefined;
+  msclkid: string | undefined;
+  li_fat_id: string | undefined;
   utm_source: string | undefined;
   utm_medium: string | undefined;
   utm_campaign: string | undefined;
@@ -25,6 +28,9 @@ type DataLayer =
       user_email: string;
       company_name: string;
       gclid: string | null;
+      fbclid: string | null;
+      msclkid: string | null;
+      li_fat_id: string | null;
     }
   | ({
       event: "contact_form_submitted";
@@ -32,17 +38,28 @@ type DataLayer =
     } & ContactFormEventData)
   | ({
       event: "contact_form_qualified_lead";
-    } & ContactFormEventData);
-
-interface Signals {
-  identify: (data: { email: string; name: string }) => void;
-}
+    } & ContactFormEventData)
+  | {
+      event: "ebook_form_submitted";
+      user_email: string | undefined;
+      user_first_name: string | undefined;
+      user_last_name: string | undefined;
+      consent_marketing: boolean;
+      gclid: string | undefined;
+      fbclid: string | undefined;
+      msclkid: string | undefined;
+      li_fat_id: string | undefined;
+      utm_source: string | undefined;
+      utm_medium: string | undefined;
+      utm_campaign: string | undefined;
+      utm_content: string | undefined;
+      utm_term: string | undefined;
+    };
 
 declare global {
   interface Window {
     gtag: (command: string, action: string, params: object) => void;
     dataLayer?: DataLayer[];
-    signals?: Signals;
     DD_RUM: {
       clearUser: () => void;
       onReady: (callback: () => void) => void;
@@ -52,8 +69,13 @@ declare global {
   }
   interface ImportMeta {
     env?: {
+      MODE?: string;
       VITE_BASE_PATH?: string;
+      VITE_COMMIT_HASH?: string;
+      VITE_DATADOG_CLIENT_TOKEN?: string;
+      VITE_DATADOG_SERVICE?: string;
       VITE_DUST_CLIENT_FACING_URL?: string;
+      VITE_DUST_REGION?: string;
       VITE_DUST_REGION_STORAGE_KEY?: string;
     };
   }

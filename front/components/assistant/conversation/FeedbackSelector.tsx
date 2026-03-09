@@ -1,3 +1,5 @@
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ButtonGroup,
@@ -15,9 +17,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import React from "react";
-
-import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
-import type { LightWorkspaceType } from "@app/types/user";
 
 export type ThumbReaction = "up" | "down";
 

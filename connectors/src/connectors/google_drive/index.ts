@@ -1,4 +1,4 @@
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
@@ -7,7 +7,7 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
-// biome-ignore lint/nursery/noImportCycles: ignored using `--suppress`
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import {
   launchGoogleDriveFullSyncWorkflow,
@@ -65,6 +65,7 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
@@ -529,6 +530,14 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
             `Google Drive authorization error, please re-authorize. Error: ${e.message}`
+          )
+        );
+      }
+      if (e instanceof GaxiosError && e.response?.status === 429) {
+        return new Err(
+          new ConnectorManagerError(
+            "RATE_LIMIT_ERROR",
+            `Google Drive rate limit error when retrieving content nodes.`
           )
         );
       }

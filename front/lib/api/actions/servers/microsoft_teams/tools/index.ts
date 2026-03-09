@@ -1,15 +1,13 @@
-import sanitizeHtml from "sanitize-html";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   TeamsChannel,
   TeamsChat,
   TeamsMessage,
   TeamsUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
-import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+} from "@app/lib/api/actions/servers/microsoft/utils";
+import { getGraphClient } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_TEAMS_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import {
   renderChannels,
@@ -20,12 +18,13 @@ import config from "@app/lib/api/config";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import sanitizeHtml from "sanitize-html";
 
 const MAX_NUMBER_OF_MESSAGES = 200;
 
 const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
-  search_messages_content: async ({ query }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  search_messages_content: async ({ query }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -64,8 +63,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
     }
   },
 
-  list_teams: async (_params, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  list_teams: async (_params, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -88,8 +87,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
     }
   },
 
-  list_users: async ({ nameFilter, limit }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  list_users: async ({ nameFilter, limit }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -127,8 +126,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
     }
   },
 
-  list_channels: async ({ teamId, nameFilter }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  list_channels: async ({ teamId, nameFilter }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -162,8 +161,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
     }
   },
 
-  list_chats: async ({ limit, chatType, nameFilter }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  list_chats: async ({ limit, chatType, nameFilter }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -175,6 +174,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       let apiCall = client
         .api("/me/chats")
         .orderby("lastMessagePreview/createdDateTime desc")
+        .expand("lastMessagePreview")
         .top(maxLimit);
 
       // Build filter conditions
@@ -208,8 +208,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
     }
   },
 
-  list_messages: async ({ teamId, channelId, fromDate, toDate }, extra) => {
-    const client = await getGraphClient(extra.authInfo);
+  list_messages: async (
+    { teamId, channelId, fromDate, toDate },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
@@ -284,18 +287,13 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       userIds,
       parentMessageId,
     },
-    extra
+    { auth, authInfo, agentLoopContext }
   ) => {
-    const client = await getGraphClient(extra.authInfo);
+    const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
         new MCPError("Failed to authenticate with Microsoft Graph")
       );
-    }
-
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
     }
 
     try {
@@ -424,15 +422,14 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
 
       // Add footer with link to Dust conversation if agent context is available
       let finalContent = messageContent;
-      if (extra.agentLoopContext?.runContext?.agentConfiguration) {
+      if (agentLoopContext?.runContext?.agentConfiguration) {
         const agentUrl = getConversationRoute(
           auth.getNonNullableWorkspace().sId,
           "new",
-          `agentDetails=${extra.agentLoopContext.runContext.agentConfiguration.sId}`,
+          `agentDetails=${agentLoopContext.runContext.agentConfiguration.sId}`,
           config.getAppUrl()
         );
-        const agentName =
-          extra.agentLoopContext.runContext.agentConfiguration.name;
+        const agentName = agentLoopContext.runContext.agentConfiguration.name;
         const footerMessage = `<em>Sent via <a href="${agentUrl}">${agentName} Agent</a> on Dust</em>`;
         finalContent = `${messageContent}<br/><br/>${footerMessage}`;
       }

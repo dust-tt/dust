@@ -1,21 +1,18 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import {
-  Counter,
-  Icon,
-  LinkWrapper,
-  type LinkWrapperProps,
-  ScrollArea,
-  ScrollBar,
-} from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
-import { MoreIcon } from "@sparkle/icons/app";
+import { Counter } from "@sparkle/components/Counter";
+import { Icon } from "@sparkle/components/Icon";
+import {
+  LinkWrapper,
+  type LinkWrapperProps,
+} from "@sparkle/components/LinkWrapper";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -82,6 +79,7 @@ interface NavigationListItemProps
   moreMenu?: React.ReactNode;
   status?: NavigationListItemStatus;
   count?: number;
+  hasActivity?: boolean;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -103,6 +101,7 @@ const NavigationListItem = React.forwardRef<
       moreMenu,
       status = "idle",
       count,
+      hasActivity,
       ...props
     },
     ref
@@ -167,7 +166,12 @@ const NavigationListItem = React.forwardRef<
             {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
             {avatar}
             {label && (
-              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
+              <span
+                className={cn(
+                  "s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8",
+                  hasActivity && "s-font-semibold"
+                )}
+              >
                 {label}
               </span>
             )}
@@ -332,6 +336,8 @@ interface NavigationListCollapsibleSectionProps
   type?: "static" | "collapse" | "collapseAndScroll";
   variant?: "primary" | "secondary";
   children: React.ReactNode;
+  /** Number of children to show when partially collapsed. undefined = show all (current behavior). */
+  visibleItems?: number;
 }
 
 const collapseableStyles = cva(
@@ -381,10 +387,25 @@ const NavigationListCollapsibleSection = React.forwardRef<
       defaultOpen,
       open,
       onOpenChange,
+      visibleItems,
       ...props
     },
     ref
   ) => {
+    const [isShowingAll, setIsShowingAll] = React.useState(false);
+
+    const childArray = React.Children.toArray(children);
+    const hasPartialCollapse =
+      visibleItems !== undefined && visibleItems < childArray.length;
+
+    const visibleChildrenSlice =
+      hasPartialCollapse && !isShowingAll
+        ? childArray.slice(0, visibleItems)
+        : childArray;
+
+    const overflowChildren =
+      hasPartialCollapse && !isShowingAll ? childArray.slice(visibleItems) : [];
+
     const isCollapsible = type !== "static";
     const labelElement = (
       <div className={collapseableStyles({ variant, isCollapsible })}>
@@ -408,6 +429,47 @@ const NavigationListCollapsibleSection = React.forwardRef<
       </div>
     );
 
+    const handleOpenChange = (newOpen: boolean) => {
+      if (!newOpen) {
+        setIsShowingAll(false);
+      }
+      onOpenChange?.(newOpen);
+    };
+
+    const renderedContent = (
+      <div className="s-flex s-flex-col s-gap-0.5">
+        {visibleChildrenSlice}
+        {hasPartialCollapse && (
+          <Collapsible open={isShowingAll} onOpenChange={setIsShowingAll}>
+            <CollapsibleContent>
+              <div className="s-flex s-flex-col s-gap-0.5">
+                {overflowChildren}
+              </div>
+            </CollapsibleContent>
+            <div className="s-px-1.5 s-py-1 s-gap-1 s-flex">
+              {isShowingAll ? (
+                <Button
+                  size="xs"
+                  icon={ChevronUpIcon}
+                  variant="ghost-secondary"
+                  label="Hide"
+                  onClick={() => setIsShowingAll(false)}
+                />
+              ) : (
+                <Button
+                  size="xs"
+                  icon={ChevronDownIcon}
+                  variant="ghost-secondary"
+                  label="Show all"
+                  onClick={() => setIsShowingAll(true)}
+                />
+              )}
+            </div>
+          </Collapsible>
+        )}
+      </div>
+    );
+
     if (type === "static") {
       return (
         <div ref={ref} className={className} {...props}>
@@ -415,7 +477,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
             {labelElement}
             {actionElement}
           </div>
-          <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+          {renderedContent}
         </div>
       );
     }
@@ -423,7 +485,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const collapsibleProps = {
       defaultOpen,
       open,
-      onOpenChange,
+      onOpenChange: handleOpenChange,
       ...props,
     };
 
@@ -436,7 +498,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
           </div>
           <CollapsibleContent>
             <ScrollArea>
-              <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+              {renderedContent}
               <ScrollBar />
             </ScrollArea>
           </CollapsibleContent>
@@ -451,9 +513,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
           <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
           {actionElement}
         </div>
-        <CollapsibleContent>
-          <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
-        </CollapsibleContent>
+        <CollapsibleContent>{renderedContent}</CollapsibleContent>
       </Collapsible>
     );
   }

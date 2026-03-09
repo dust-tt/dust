@@ -1,4 +1,8 @@
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
@@ -11,6 +15,13 @@ export function isModelAvailable(
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null
 ) {
+  if (m.enforceEnterpriseAvailability === true) {
+    return (
+      plan &&
+      (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
+    );
+  }
+
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
   }

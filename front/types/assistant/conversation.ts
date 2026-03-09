@@ -4,6 +4,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 import type { ContentFragmentType } from "../content_fragment";
+import type { ButlerSuggestionPublicType } from "../conversation_butler_suggestion";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
@@ -67,15 +68,23 @@ export type LightMessageType =
  * origin should be easily categorizable as either "programmatic" or "user".
  *
  */
+
+// Origins set explicitly by front-end clients (web app, extension, etc.).
+export type ClientMessageOrigin =
+  | "web"
+  | "project_kickoff"
+  | "extension"
+  | "agent_copilot";
+
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
   // below are API usages dedicated to standard product features.
+  | ClientMessageOrigin
   | "api"
   | "cli"
   | "cli_programmatic"
   | "email"
   | "excel"
-  | "extension"
   | "gsheet"
   | "make"
   | "n8n"
@@ -87,17 +96,14 @@ export type UserMessageOrigin =
   | "transcript"
   | "triggered_programmatic"
   | "triggered"
-  | "web"
   | "zapier"
   | "zendesk"
   // TODO onboarding_conversation, agent_copilot, and project_kickoff aren't message origins. They
   // have been used as a hack but should be removed and most likely handled as message metadata
   // (to be created).
   | "onboarding_conversation"
-  | "agent_copilot"
   // for internal use, for the butler in projects
-  | "project_butler"
-  | "project_kickoff";
+  | "project_butler";
 
 export type UserMessageContext = {
   username: string;
@@ -323,6 +329,7 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
+  branchId: string | null;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -333,6 +340,7 @@ export type ConversationType = ConversationWithoutContentType & {
 export type LightConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
+  branchId: string | null;
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
 
@@ -375,6 +383,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "user_already_participant",
   "message_not_found",
   "message_deletion_not_authorized",
+  "branch_not_found",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
@@ -437,7 +446,42 @@ export type ConversationTitleEvent = {
   title: string;
 };
 
-export type ConversationMCPServerViewType = {
+// Event sent when a butler suggestion is created.
+export type ButlerSuggestionCreatedEvent = {
+  type: "butler_suggestion_created";
+  created: number;
+  suggestion: ButlerSuggestionPublicType;
+};
+
+// Event sent when the butler starts analyzing a conversation.
+export type ButlerThinkingEvent = {
+  type: "butler_thinking";
+  created: number;
+};
+
+// Event sent when the butler finishes analyzing a conversation.
+export type ButlerDoneEvent = {
+  type: "butler_done";
+  created: number;
+};
+
+export const ConversationMCPServerViewOrigins = [
+  "agent_enabled",
+  "conversation",
+] as const;
+
+export type ConversationMCPServerViewOrigin =
+  (typeof ConversationMCPServerViewOrigins)[number];
+
+export function isConversationMCPServerViewOrigin(
+  value: unknown
+): value is ConversationMCPServerViewOrigin {
+  return ConversationMCPServerViewOrigins.includes(
+    value as ConversationMCPServerViewOrigin
+  );
+}
+
+type BaseConversationMCPServerViewType = {
   id: ModelId;
   workspaceId: ModelId;
   conversationId: ModelId;
@@ -447,6 +491,12 @@ export type ConversationMCPServerViewType = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
+  (
+    | { source: "agent_enabled"; agentConfigurationId: string }
+    | { source: "conversation"; agentConfigurationId: null }
+  );
 
 export type MCPActionValidationRequest = Omit<
   MCPApproveExecutionEvent,

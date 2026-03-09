@@ -1,7 +1,3 @@
-import { cn, PuzzleIcon } from "@dust-tt/sparkle";
-import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
-import React from "react";
-
 import {
   getIcon,
   isCustomResourceIconType,
@@ -13,6 +9,9 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { cn, PuzzleIcon } from "@dust-tt/sparkle";
+import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
+import React from "react";
 
 export const SKILL_ICON = PuzzleIcon;
 
@@ -72,4 +71,22 @@ export function hasRelations(
   skill: SkillType & { relations?: SkillRelations }
 ): skill is SkillWithRelationsType {
   return skill.relations !== undefined;
+}
+
+// GitHub skill import types and helpers.
+
+export type DetectedSkillStatus =
+  | "ready"
+  | "name_conflict"
+  | "skill_already_exists"
+  | "invalid";
+
+export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
+  return status === "ready" || status === "skill_already_exists";
+}
+
+export interface DetectedSkillSummary {
+  name: string;
+  status: DetectedSkillStatus;
+  existingSkillId: string | null;
 }

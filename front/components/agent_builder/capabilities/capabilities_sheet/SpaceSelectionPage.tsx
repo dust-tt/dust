@@ -1,18 +1,25 @@
-import { Checkbox, cn, DataTable, Tooltip } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-import React, { useCallback, useMemo } from "react";
-
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SpaceType } from "@app/types/space";
+import type { ProjectType, SpaceType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
+import {
+  Checkbox,
+  cn,
+  ListGroup,
+  ListItem,
+  ListItemSection,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useMemo } from "react";
 
 type SpaceRowData = {
   sId: string;
   name: string;
   description?: string;
-  space: SpaceType;
+  space: SpaceType | ProjectType;
   isSelected: boolean;
   isAlreadyRequested: boolean;
   onToggle: () => void;
@@ -44,9 +51,7 @@ export function SpaceSelectionPageContent({
     return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const isProjectsEnabled = hasFeature("projects");
 
@@ -75,7 +80,7 @@ export function SpaceSelectionPageContent({
   );
 
   const handleSpaceToggle = useCallback(
-    (space: SpaceType) => {
+    (space: SpaceType | ProjectType) => {
       setSelectedSpaces((prev) => {
         const newSpaces = prev.includes(space.sId)
           ? prev.filter((id) => id !== space.sId)
@@ -109,17 +114,17 @@ export function SpaceSelectionPageContent({
 
   const projectsTableData: SpaceRowData[] = useMemo(() => {
     return selectableSpaces
-      .filter((s) => s.kind === "project")
-      .map((space) => {
-        const isAlreadyRequested = alreadyRequestedSpaceIds.has(space.sId);
+      .filter((s): s is ProjectType => isProjectType(s))
+      .map((project) => {
+        const isAlreadyRequested = alreadyRequestedSpaceIds.has(project.sId);
         return {
-          sId: space.sId,
-          name: getSpaceName(space),
-          description: space.description,
-          space,
-          isSelected: selectedSpaceIds.has(space.sId) || isAlreadyRequested,
+          sId: project.sId,
+          name: getSpaceName(project),
+          description: project.description ?? undefined,
+          space: project,
+          isSelected: selectedSpaceIds.has(project.sId) || isAlreadyRequested,
           isAlreadyRequested,
-          onToggle: () => handleSpaceToggle(space),
+          onToggle: () => handleSpaceToggle(project),
         };
       });
   }, [
@@ -129,92 +134,114 @@ export function SpaceSelectionPageContent({
     handleSpaceToggle,
   ]);
 
-  const columns: ColumnDef<SpaceRowData>[] = useMemo(
-    () => [
-      {
-        id: "name",
-        cell: ({ row }) => {
-          const SpaceIcon = getSpaceIcon(row.original.space);
-          const cellContent = (
-            <DataTable.CellContent
-              onClick={
-                row.original.isAlreadyRequested
-                  ? undefined
-                  : row.original.onToggle
-              }
-              grow
-              className={cn(
-                "p-3 hover:bg-muted-background dark:hover:bg-muted-background-night active:bg-primary-100 dark:active:bg-primary-100-night",
-                row.original.isAlreadyRequested
-                  ? "cursor-not-allowed opacity-60"
-                  : "cursor-pointer"
-              )}
-            >
-              <div className="flex flex-row items-center justify-between gap-3">
-                <div className="flex flex-row items-center gap-3 min-w-0">
-                  <SpaceIcon className="h-5 w-5 min-h-5 min-w-5 text-muted-foreground dark:text-muted-foreground-night" />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-foreground dark:text-foreground-night truncate">
-                      {row.original.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night truncate">
-                      {row.original.description}
-                    </span>
-                  </div>
-                </div>
-                <Checkbox
-                  checked={row.original.isSelected}
-                  disabled={row.original.isAlreadyRequested}
-                  onCheckedChange={row.original.onToggle}
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                  size="sm"
-                />
-              </div>
-            </DataTable.CellContent>
-          );
-
-          if (row.original.isAlreadyRequested) {
-            return (
-              <Tooltip
-                label="Used by other resources"
-                side="right"
-                trigger={cellContent}
-              />
-            );
-          }
-
-          return cellContent;
-        },
-        meta: {
-          sizeRatio: 100,
-        },
-      },
-    ],
-    []
-  );
-
   return (
     <div className="flex flex-col gap-4">
       {selectableSpaces.length > 0 ? (
         <div className="flex flex-col">
-          <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
-            Spaces
-          </div>
-          <DataTable
-            data={spacesTableData}
-            columns={columns}
-            className="[&_thead]:hidden [&_td]:pl-0"
-          />
+          <ListItemSection size="sm">Spaces</ListItemSection>
+          <ListGroup>
+            {spacesTableData.map((row) => {
+              const SpaceIcon = getSpaceIcon(row.space);
+              const rowContent = (
+                <ListItem
+                  key={row.sId}
+                  itemsAlignment="center"
+                  onClick={row.isAlreadyRequested ? undefined : row.onToggle}
+                  className={cn(
+                    row.isSelected
+                      ? "bg-primary-50 dark:bg-primary-50-night"
+                      : "",
+                    row.isAlreadyRequested
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer"
+                  )}
+                >
+                  <SpaceIcon className="w-5 h-5 min-w-5 min-h-5" />
+                  <div className="flex min-w-0 flex-1 flex-col items-start">
+                    <span className="heading-sm truncate max-w-full text-foreground">
+                      {row.name}
+                    </span>
+                    <span className="truncate max-w-full text-xs text-muted-foreground">
+                      {row.description}
+                    </span>
+                  </div>
+                  <Checkbox
+                    checked={row.isSelected}
+                    onCheckedChange={row.onToggle}
+                    disabled={row.isAlreadyRequested}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  />
+                </ListItem>
+              );
+
+              if (row.isAlreadyRequested) {
+                return (
+                  <Tooltip
+                    key={row.sId}
+                    label="Used by other resources"
+                    side="right"
+                    trigger={rowContent}
+                  />
+                );
+              }
+
+              return rowContent;
+            })}
+          </ListGroup>
           {isProjectsEnabled && (
             <>
-              <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
-                Projects
-              </div>
-              <DataTable
-                data={projectsTableData}
-                columns={columns}
-                className="[&_thead]:hidden [&_td]:pl-0"
-              />
+              <ListItemSection size="sm">Projects</ListItemSection>
+              <ListGroup>
+                {projectsTableData.map((row) => {
+                  const ProjectIcon = getSpaceIcon(row.space);
+                  const rowContent = (
+                    <ListItem
+                      key={row.sId}
+                      itemsAlignment="center"
+                      onClick={
+                        row.isAlreadyRequested ? undefined : row.onToggle
+                      }
+                      className={cn(
+                        row.isSelected
+                          ? "bg-primary-50 dark:bg-primary-50-night"
+                          : "",
+                        row.isAlreadyRequested
+                          ? "cursor-not-allowed opacity-60"
+                          : "cursor-pointer"
+                      )}
+                    >
+                      <ProjectIcon className="w-5 h-5 min-w-5 min-h-5" />
+                      <div className="flex min-w-0 flex-1 flex-col items-start">
+                        <span className="heading-sm max-w-full truncate text-foreground">
+                          {row.name}
+                        </span>
+                        <span className="truncate max-w-full text-xs text-muted-foreground">
+                          {row.description}
+                        </span>
+                      </div>
+                      <Checkbox
+                        checked={row.isSelected}
+                        onCheckedChange={row.onToggle}
+                        disabled={row.isAlreadyRequested}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      />
+                    </ListItem>
+                  );
+
+                  if (row.isAlreadyRequested) {
+                    return (
+                      <Tooltip
+                        key={row.sId}
+                        label="Used by other resources"
+                        side="right"
+                        trigger={rowContent}
+                      />
+                    );
+                  }
+
+                  return rowContent;
+                })}
+              </ListGroup>
             </>
           )}
         </div>

@@ -7,6 +7,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
 interface LeaveProjectDialogProps {

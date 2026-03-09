@@ -1,9 +1,8 @@
-import { useEffect } from "react";
-
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useEffect } from "react";
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const { toggleNavigationBar } = useDesktopNavigation();

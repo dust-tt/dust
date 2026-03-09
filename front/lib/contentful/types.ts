@@ -1,3 +1,4 @@
+import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { Document } from "@contentful/rich-text-types";
 import type { Asset, Entry, EntrySkeletonType } from "contentful";
 
@@ -244,6 +245,9 @@ export interface CourseSummary {
   estimatedDurationMinutes: number | null;
   image: BlogImage | null;
   createdAt: string;
+  chapterCount: number;
+  chapterSlugs: string[];
+  chapters: { slug: string; title: string }[];
 }
 
 export interface SearchableItem {
@@ -258,10 +262,16 @@ export interface SearchableItem {
   courseSlug?: string | null;
 }
 
+export interface AcademyUser {
+  firstName: string;
+  sId: string;
+}
+
 export interface CourseListingPageProps {
   courses: CourseSummary[];
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
 }
 
 export interface CoursePageProps {
@@ -270,6 +280,8 @@ export interface CoursePageProps {
   chapters: ChapterSummary[];
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
+  fullWidth?: boolean;
   preview?: boolean;
 }
 
@@ -303,6 +315,7 @@ export interface ChapterSummary {
   title: string;
   description: string | null;
   estimatedDurationMinutes: number | null;
+  tocItems: TocItem[];
   createdAt: string;
 }
 
@@ -321,6 +334,7 @@ export interface ChapterPageProps {
   courseAuthor: BlogAuthor | null;
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
   fullWidth?: boolean;
   preview?: boolean;
 }
@@ -397,5 +411,6 @@ export interface LessonPageProps {
   lesson: Lesson;
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
   preview?: boolean;
 }

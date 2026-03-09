@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 

@@ -13,6 +13,7 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
     name: "Get Admins for Workspaces",
     description: "Retrieve admin users for a list of workspaces",
     resourceTypes: ["global"],
+    readonly: true,
     args: {
       workspaceIds: {
         type: "string",

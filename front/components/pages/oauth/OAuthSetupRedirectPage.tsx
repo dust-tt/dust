@@ -1,6 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { useAppRouter, usePathParam, useSearchParam } from "@app/lib/platform";
 import { useOAuthSetup } from "@app/lib/swr/oauth";
 import type {
@@ -9,6 +6,8 @@ import type {
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 import { isOAuthProvider, isOAuthUseCase } from "@app/types/oauth/lib";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function OAuthSetupRedirectPage() {
   const wId = usePathParam("wId");

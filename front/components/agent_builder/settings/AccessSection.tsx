@@ -1,3 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -7,19 +15,11 @@ import {
   EyeIcon,
   EyeSlashIcon,
   SlackLogo,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
-import React from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
-import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { EditorsSheet } from "@app/components/shared/EditorsSheet";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { isBuilder } from "@app/types/user";
 
 export function AccessSection() {
   const { field: scope } = useController<
@@ -42,10 +42,11 @@ export function AccessSection() {
   });
 
   const [showSlackSettings, setShowSlackSettings] = useState(false);
+  const [isEditorsOpen, setIsEditorsOpen] = useState(false);
 
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags();
 
   const restrictAgentsPublishing = featureFlags.includes(
     "restrict_agents_publishing"
@@ -70,11 +71,21 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <EditorsSheet
+        <Button
+          variant="outline"
+          size="sm"
+          icon={UserGroupIcon}
+          label="Editors"
+          onClick={() => setIsEditorsOpen(true)}
+          type="button"
+        />
+        <ManageUsersPanel
+          isOpen={isEditorsOpen}
+          setIsOpen={setIsEditorsOpen}
           owner={owner}
+          mode="editors-only"
           editors={editors || []}
           onEditorsChange={onChangeEditors}
-          description="People who can use and edit the agent."
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

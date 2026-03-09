@@ -1,12 +1,11 @@
-import { ActionIcons, BookOpenIcon } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
-
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import {
   InternalActionIcons,
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { ActionIcons, BookOpenIcon } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 
 export function getSelectedToolIcon(tool: SelectedTool): ComponentType {
   return isCustomResourceIconType(tool.view.server.icon)

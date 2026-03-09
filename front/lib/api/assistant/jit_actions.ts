@@ -4,7 +4,6 @@ import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_util
 import {
   getConversationFilesServer,
   getConversationMCPServers,
-  getConversationSearchServer,
 } from "@app/lib/api/assistant/jit/conversation";
 import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
 import { getProjectConversationServer } from "@app/lib/api/assistant/jit/project_conversation";
@@ -84,10 +83,11 @@ async function getConditionalJITServers(
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const servers: (ServerSideMCPServerConfigurationType | null)[] = [];
 
-  // Get conversation-specific MCP servers (tools).
+  // Get conversation-specific MCP servers (tools), including those activated by this agent.
   const conversationServers = await getConversationMCPServers(
     auth,
-    conversation
+    conversation,
+    agentConfiguration.sId
   );
   servers.push(...conversationServers);
 
@@ -107,7 +107,6 @@ async function getConditionalJITServers(
 
   const conversationFilesServer = await getConversationFilesServer(
     auth,
-
     attachments
   );
   servers.push(conversationFilesServer);
@@ -118,13 +117,6 @@ async function getConditionalJITServers(
     attachments
   );
   servers.push(queryTablesServer);
-
-  const conversationSearchServer = await getConversationSearchServer(
-    auth,
-    conversation,
-    attachments
-  );
-  servers.push(conversationSearchServer);
 
   const folderSearchServers = await getFolderSearchServers(auth, attachments);
   servers.push(...folderSearchServers);

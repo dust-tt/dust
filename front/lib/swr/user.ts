@@ -1,11 +1,9 @@
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
@@ -13,21 +11,26 @@ import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
+import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
   swrOptions?: SWRConfiguration & {
     disabled?: boolean;
   }
 ) {
+  const { fetcher } = useFetcher();
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    "/api/user",
-    userFetcher,
-    swrOptions
-  );
+  const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    ...swrOptions,
+  });
 
   return {
     user: data ? data.user : null,
@@ -44,6 +47,7 @@ export function useUserMetadata(
     workspaceId?: string;
   }
 ) {
+  const { fetcher } = useFetcher();
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
   let url = `/api/user/metadata/${encodeURIComponent(key)}`;
@@ -51,11 +55,12 @@ export function useUserMetadata(
     url += `?workspaceId=${encodeURIComponent(swrOptions.workspaceId)}`;
   }
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    url,
-    userMetadataFetcher,
-    swrOptions
-  );
+  const { data, error, mutate } = useSWRWithDefaults(url, userMetadataFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    ...swrOptions,
+  });
 
   return {
     metadata: data ? data.metadata : null,
@@ -66,6 +71,7 @@ export function useUserMetadata(
 }
 
 export function useUserApprovals(owner: LightWorkspaceType) {
+  const { fetcher } = useFetcher();
   const userApprovalsFetcher: Fetcher<GetUserApprovalsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -176,6 +182,7 @@ export function usePendingInvitations({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsResponseBody> =
     fetcher;
 
@@ -190,5 +197,33 @@ export function usePendingInvitations({
     isPendingInvitationsLoading: !error && !data && !disabled,
     isPendingInvitationsError: error,
     mutatePendingInvitations: mutate,
+  };
+}
+
+export function useSlackNotifications(
+  workspaceId: string,
+  options?: {
+    disabled?: boolean;
+  }
+) {
+  const { fetcher } = useFetcher();
+  const slackNotificationsFetcher: Fetcher<GetSlackNotificationResponseBody> =
+    fetcher;
+
+  const { data, isLoading } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/slack-notifications`,
+    slackNotificationsFetcher,
+    { disabled: options?.disabled }
+  );
+
+  const isSlackSetupLoading = isLoading && !options?.disabled;
+
+  const canConfigureSlack = useMemo(() => {
+    return data?.canConfigure === true;
+  }, [data]);
+
+  return {
+    isSlackSetupLoading,
+    canConfigureSlack,
   };
 }

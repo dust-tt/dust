@@ -3,6 +3,7 @@ import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelConversationTypeMultiActions,
@@ -18,7 +19,6 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
   getInteractionTokenCount,
@@ -43,6 +43,7 @@ export async function renderConversationForModel(
     excludeActions,
     excludeImages,
     onMissingAction = "inject-placeholder",
+    agentConfiguration,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -53,6 +54,7 @@ export async function renderConversationForModel(
     excludeImages?: boolean;
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
+    agentConfiguration?: AgentConfigurationType;
   }
 ): Promise<
   Result<
@@ -72,6 +74,7 @@ export async function renderConversationForModel(
     excludeActions,
     excludeImages,
     onMissingAction,
+    agentConfiguration,
   });
 
   // Tokenize messages and prompt/tools in parallel to reduce latency

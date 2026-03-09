@@ -1,5 +1,3 @@
-import moment from "moment";
-
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type {
   AgentMessageType,
@@ -9,6 +7,7 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
+import moment from "moment";
 
 import type { VirtuosoMessage } from "./types";
 

@@ -1,10 +1,8 @@
-/** biome-ignore-all lint/nursery/noImportCycles: I'm too lazy to fix that now */
-
+import { AnimatedText } from "@sparkle/components/AnimatedText";
 import {
-  AnimatedText,
   LinkWrapper,
   type LinkWrapperProps,
-} from "@sparkle/components/";
+} from "@sparkle/components/LinkWrapper";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";

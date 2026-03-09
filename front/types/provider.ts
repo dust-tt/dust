@@ -24,4 +24,5 @@ export type CredentialsType = {
   XAI_API_KEY?: string;
   FIRECRAWL_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
+  SPIDER_API_KEY?: string;
 };

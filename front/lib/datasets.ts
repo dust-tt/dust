@@ -70,6 +70,7 @@ export function getValueType(value: any): DatasetDataType {
   try {
     parsed = JSON.parse(value);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     return "string";
   }

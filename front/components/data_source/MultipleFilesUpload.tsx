@@ -1,17 +1,3 @@
-import {
-  Button,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { ChangeEvent } from "react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import type {
@@ -31,6 +17,20 @@ import {
 import type { PlanType } from "@app/types/plan";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { ChangeEvent } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 // Helper to check if a file should be treated as a table based on its MIME type
 function isDelimitedFile(file: File): boolean {
@@ -294,6 +294,7 @@ export const MultipleFilesUpload = ({
   }, [handleFileInputBlur]);
 
   // Effect: open file input when the dialog is opened
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !wasOpened) {
       const ref = fileInputRef.current;

@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const getMcpServerViewAccessTokenPlugin = createPlugin({
@@ -11,6 +11,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
     name: "Get MCP Server View Access Token",
     description: "Retrieve the OAuth access token for this MCP server view.",
     resourceTypes: ["mcp_server_views"],
+    readonly: true,
     args: {
       userId: {
         type: "string",

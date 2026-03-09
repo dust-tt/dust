@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { DEFAULT_TOKEN_COUNT_ADJUSTMENT } from "@app/types/assistant/assistant";
@@ -8,12 +6,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 import config from "./api/config";
 
 // Tokenizing large text payloads causes memory stress in core API, leading to OOM issues.
-// We limit batch size to 100 texts per request to prevent memory exhaustion.
-const MAX_BATCH_SIZE = 100;
+// We limit batch size to 50 texts per request to prevent memory exhaustion.
+const MAX_BATCH_SIZE = 50;
 
 // Limit concurrent requests to core API to avoid overloading.
 const TOKENIZATION_CONCURRENCY = 3;

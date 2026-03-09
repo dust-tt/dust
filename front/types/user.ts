@@ -1,4 +1,4 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -48,7 +48,7 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
-  metadata: {
+  metadata?: {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
   workOSOrganizationId?: string | null;
@@ -59,6 +59,7 @@ export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };
 
+/** @deprecated Use WorkspaceType + separate extension config endpoint instead. */
 export type ExtensionWorkspaceType = WorkspaceType & {
   blacklistedDomains: string[] | null;
 };
@@ -98,6 +99,7 @@ export type UserTypeWithWorkspaces = UserType & {
   selectedWorkspace?: string;
 };
 
+/** @deprecated Use UserTypeWithWorkspaces + separate extension config endpoint instead. */
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
   organizations: WorkOSOrganizationType[];

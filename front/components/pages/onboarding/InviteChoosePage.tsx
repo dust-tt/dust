@@ -1,3 +1,6 @@
+import config from "@app/lib/api/config";
+import { useUser } from "@app/lib/swr/user";
+import { usePendingInvitations } from "@app/lib/swr/workspaces";
 import {
   BarHeader,
   Button,
@@ -9,20 +12,20 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { useUser } from "@app/lib/swr/user";
-import { usePendingInvitations } from "@app/lib/swr/workspaces";
-
 export function InviteChoosePage() {
   const { user } = useUser();
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations();
 
-  const handleInvitationSelection = useCallback((token: string) => {
-    window.location.assign(
-      `${getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(token)}`
-    );
-  }, []);
+  const handleInvitationSelection = useCallback(
+    (token: string, regionUrl?: string) => {
+      const baseUrl = regionUrl ?? config.getApiBaseUrl();
+      window.location.assign(
+        `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
+      );
+    },
+    []
+  );
 
   if (isPendingInvitationsLoading) {
     return (
@@ -79,7 +82,10 @@ export function InviteChoosePage() {
                       variant="primary"
                       size="sm"
                       onClick={() =>
-                        handleInvitationSelection(invitation.token)
+                        handleInvitationSelection(
+                          invitation.token,
+                          invitation.regionUrl
+                        )
                       }
                     />
                   </div>

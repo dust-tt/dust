@@ -11,6 +11,7 @@ export const computeWorkspaceStatsPlugin = createPlugin({
     name: "Compute Workspace Statistics",
     description: "Gather statistics for the workspace",
     resourceTypes: ["workspaces"],
+    readonly: true,
     args: {},
   },
   execute: async (auth, workspace) => {

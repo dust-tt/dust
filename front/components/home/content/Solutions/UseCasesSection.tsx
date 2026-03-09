@@ -1,7 +1,6 @@
-import { Div3D, Hover3D } from "@dust-tt/sparkle";
-
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
 
 export interface UseCaseProps {
   sectionTitle?: string;

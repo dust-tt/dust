@@ -1,0 +1,18 @@
+engine biome(1.0)
+language js
+
+// Disallows non-null instructions in MCP server metadata definitions.
+// Tools should be self-explanatory and avoid coupling instructions.
+// Only applies to constants.ts and metadata.ts files.
+//
+// Matches serverInfo objects containing instructions with a non-null value.
+`serverInfo: { $props }` as $info where {
+    $props <: contains `instructions: $val` where {
+        $val <: not `null`,
+        register_diagnostic(
+            span = $val,
+            message = "MCP server instructions should be avoided. Tools should be self-explanatory and straightforward to use: avoid coupling (e.g., 'always use tool A before B'). Proper design eliminates the need for server-level instructions.",
+            severity = "warn"
+        )
+    }
+}

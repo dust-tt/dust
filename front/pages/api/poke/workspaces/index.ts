@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { FindOptions, Order, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -15,12 +11,14 @@ import {
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
+import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
@@ -29,6 +27,9 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { FindOptions, Order, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
@@ -208,10 +209,26 @@ async function handler(
           }
         }
 
+        let isSearchByPhone = false;
+        const e164 = tryParsePhoneNumber(searchTerm);
+        if (e164) {
+          const workspaceModelId =
+            await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
+              e164
+            );
+          if (workspaceModelId) {
+            isSearchByPhone = true;
+            conditions.push({
+              id: workspaceModelId,
+            });
+          }
+        }
+
         if (
           !isSearchByEmail &&
           !isSearchByDomain &&
-          !isSearchByStripeSubscription
+          !isSearchByStripeSubscription &&
+          !isSearchByPhone
         ) {
           conditions.push({
             [Op.or]: [

@@ -1,13 +1,5 @@
-import { useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
-
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
-import {
-  emptyArray,
-  fetcher,
-  fetcherWithBody,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   DataSourceViewWithUsage,
   PokeListDataSourceViews,
@@ -17,11 +9,14 @@ import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function usePokeDataSourceViews({
   disabled,
   owner,
 }: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
   const dataSourceViewsFetcher: Fetcher<PokeListDataSourceViews> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/data_source_views`,
@@ -66,6 +61,7 @@ export function usePokeDataSourceViewContentNodes({
   totalNodesCountIsAccurate: boolean;
   nextPageCursor: string | null;
 } {
+  const { fetcherWithBody } = useFetcher();
   const params = new URLSearchParams();
   if (pagination && pagination.cursor) {
     params.set("cursor", pagination.cursor.toString());

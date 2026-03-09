@@ -1,10 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type {
-  CallToolResult,
-  Notification,
-} from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -17,6 +10,21 @@ import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type {
+  CallToolResult,
+  Notification,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+
+export type SingleResourceToolOutput<
+  T extends {
+    uri: string;
+    mimeType?: string;
+  },
+> = {
+  content: [{ type: "resource"; resource: T }];
+};
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -52,6 +60,7 @@ const ToolGeneratedFileSchema = z.object({
   snippet: z.string().nullable(),
   // Optional UI hint to hide file from generic generated files sections.
   hidden: z.boolean().optional(),
+  isInProjectContext: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
@@ -652,6 +661,9 @@ export const isDataSourceNodeListType = (
 
 const RenderedWarehouseNodeSchema = z.object({
   nodeId: z.string(),
+  // TODO(2026-02-22 aubin): remove optional after a few weeks.
+  // Having an optional here makes the type retro-compatible for the front-end schema check.
+  tableId: z.string().nullable().optional(),
   title: z.string(),
   parentTitle: z.string().nullable(),
   mimeType: z.string(),
@@ -843,9 +855,10 @@ const NotificationRunAgentContentSchema = z.object({
   conversationId: z.string(),
   query: z.string(),
   userMessageId: z.string(),
+  agentMessageId: z.string().nullable(),
 });
 
-type RunAgentQueryProgressOutput = z.infer<
+export type RunAgentQueryProgressOutput = z.infer<
   typeof NotificationRunAgentContentSchema
 >;
 
@@ -1025,6 +1038,25 @@ export const AuthRequiredOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export type AuthRequiredOutputResourceType = z.infer<
+  typeof AuthRequiredOutputResourceSchema
+>;
+
+export const FileAuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_file_auth_required"),
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType_file: z.string(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type FileAuthRequiredOutputResourceType = z.infer<
+  typeof FileAuthRequiredOutputResourceSchema
+>;
+
 export const BlockedAwaitingInputOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_blocked_awaiting_input"),
@@ -1034,6 +1066,10 @@ export const BlockedAwaitingInputOutputResourceSchema = z.object({
   state: z.any(),
 });
 
+export type BlockedAwaitingInputOutputResourceType = z.infer<
+  typeof BlockedAwaitingInputOutputResourceSchema
+>;
+
 export const EarlyExitOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_early_exit"),
@@ -1042,10 +1078,15 @@ export const EarlyExitOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export type EarlyExitOutputResourceType = z.infer<
+  typeof EarlyExitOutputResourceSchema
+>;
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
+  FileAuthRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

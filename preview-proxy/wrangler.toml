@@ -1,0 +1,9 @@
+name = "spa-preview-proxy"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "5a44859b168e553752e336f31cda3ee3"
+
+routes = [
+  { pattern = "*.preview.dust.tt/*", zone_id = "96040ce5ff46a72a1861ce0ec63e6154" },
+  { pattern = "*.preview.dust.tt", zone_id = "96040ce5ff46a72a1861ce0ec63e6154" },
+]

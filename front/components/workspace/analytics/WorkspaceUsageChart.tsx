@@ -1,15 +1,3 @@
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { useState } from "react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   ACTIVE_USERS_PALETTE,
@@ -20,11 +8,25 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useWorkspaceActiveUsersMetrics,
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { Button, ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { DownloadIcon } from "lucide-react";
+import { useCallback, useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 type UsageDisplayMode = "activity" | "users";
 
@@ -78,7 +80,7 @@ function getDescriptionForMode(
     case "activity":
       return `Messages and conversations over the last ${period} days.`;
     case "users":
-      return `Daily, weekly, and monthly active users over the last ${period} days.`;
+      return `Percentage of workspace members active daily, weekly, and monthly over the last ${period} days.`;
   }
 }
 
@@ -117,7 +119,15 @@ interface ActiveUsersMetricsDatum {
   dau: number;
   wau: number;
   mau: number;
+  memberCount: number;
   date?: string;
+}
+
+function toPercentage(count: number, total: number): number {
+  if (total === 0) {
+    return 0;
+  }
+  return Math.round((count / total) * 100);
 }
 
 function isActiveUsersMetricsDatum(
@@ -129,7 +139,8 @@ function isActiveUsersMetricsDatum(
     "timestamp" in data &&
     "dau" in data &&
     "wau" in data &&
-    "mau" in data
+    "mau" in data &&
+    "memberCount" in data
   );
 }
 
@@ -139,6 +150,7 @@ function activeUsersZeroFactory(timestamp: number): ActiveUsersMetricsDatum {
     dau: 0,
     wau: 0,
     mau: 0,
+    memberCount: 0,
   };
 }
 
@@ -169,17 +181,17 @@ function UsageMetricsTooltip({
     const rows = [
       {
         label: "DAU (Daily)",
-        value: row.dau.toLocaleString(),
+        value: `${row.dau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.dau,
       },
       {
         label: "WAU (7-day)",
-        value: row.wau.toLocaleString(),
+        value: `${row.wau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.wau,
       },
       {
         label: "MAU (28-day)",
-        value: row.mau.toLocaleString(),
+        value: `${row.mau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.mau,
       },
     ];
@@ -219,6 +231,35 @@ export function WorkspaceUsageChart({
   period,
 }: WorkspaceUsageChartProps) {
   const [displayMode, setDisplayMode] = useState<UsageDisplayMode>("activity");
+  const { hasFeature } = useFeatureFlags();
+  const showExport = hasFeature("analytics_csv_export");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    setIsDownloading(true);
+    try {
+      const endpoint =
+        displayMode === "activity"
+          ? `/api/w/${workspaceId}/analytics/usage-metrics-export?days=${period}`
+          : `/api/w/${workspaceId}/analytics/active-users-export?days=${period}`;
+      const response = await clientFetch(endpoint);
+      if (!response.ok) {
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        displayMode === "activity"
+          ? `dust_activity_last_${period}_days.csv`
+          : `dust_active_users_last_${period}_days.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [workspaceId, period, displayMode]);
 
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useWorkspaceUsageMetrics({
@@ -252,7 +293,12 @@ export function WorkspaceUsageChart({
     "timeRange",
     period,
     activeUsersZeroFactory
-  );
+  ).map((point) => ({
+    ...point,
+    dau: toPercentage(point.dau, point.memberCount),
+    wau: toPercentage(point.wau, point.memberCount),
+    mau: toPercentage(point.mau, point.memberCount),
+  }));
 
   const data = displayMode === "users" ? activeUsersData : usageData;
   const isLoading =
@@ -264,19 +310,34 @@ export function WorkspaceUsageChart({
 
   const description = getDescriptionForMode(displayMode, period);
 
-  const modeSelector = (
-    <ButtonsSwitchList defaultValue={displayMode} size="xs">
-      <ButtonsSwitch
-        value="activity"
-        label="Activity"
-        onClick={() => setDisplayMode("activity")}
-      />
-      <ButtonsSwitch
-        value="users"
-        label="Users"
-        onClick={() => setDisplayMode("users")}
-      />
-    </ButtonsSwitchList>
+  const canDownload = !isLoading && !isError && data.length > 0;
+
+  const controls = (
+    <div className="flex items-center gap-2">
+      <ButtonsSwitchList defaultValue={displayMode} size="xs">
+        <ButtonsSwitch
+          value="activity"
+          label="Activity"
+          onClick={() => setDisplayMode("activity")}
+        />
+        <ButtonsSwitch
+          value="users"
+          label="Users"
+          onClick={() => setDisplayMode("users")}
+        />
+      </ButtonsSwitchList>
+      {showExport && (
+        <Button
+          icon={DownloadIcon}
+          variant="outline"
+          size="xs"
+          tooltip="Download CSV"
+          onClick={handleDownload}
+          disabled={!canDownload || isDownloading}
+          isLoading={isDownloading}
+        />
+      )}
+    </div>
   );
 
   return (
@@ -290,7 +351,7 @@ export function WorkspaceUsageChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
-      additionalControls={modeSelector}
+      additionalControls={controls}
     >
       <LineChart
         data={data}
@@ -317,6 +378,10 @@ export function WorkspaceUsageChart({
           axisLine={false}
           tickMargin={8}
           allowDecimals={false}
+          domain={displayMode === "users" ? [0, 100] : undefined}
+          tickFormatter={
+            displayMode === "users" ? (v: number) => `${v}%` : undefined
+          }
         />
         <Tooltip
           isAnimationActive={false}

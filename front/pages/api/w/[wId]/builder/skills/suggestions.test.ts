@@ -1,8 +1,7 @@
-import type { RequestMethod } from "node-mocks-http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
+import type { RequestMethod } from "node-mocks-http";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./suggestions";
 

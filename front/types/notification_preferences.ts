@@ -76,6 +76,17 @@ export const NOTIFICATION_CONDITION_OPTIONS = [
 export type NotificationCondition =
   (typeof NOTIFICATION_CONDITION_OPTIONS)[number];
 
+const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS = [
+  "all_projects",
+  "never",
+] as const;
+
+export type ProjectNewConversationNotificationConditionOptions =
+  (typeof PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS)[number];
+
+export const DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION: ProjectNewConversationNotificationConditionOptions =
+  "all_projects";
+
 export const isNotificationCondition = (
   value: unknown
 ): value is NotificationCondition => {
@@ -85,11 +96,24 @@ export const isNotificationCondition = (
   );
 };
 
+export const isProjectNewConversationNotificationConditionOptions = (
+  value: unknown
+): value is ProjectNewConversationNotificationConditionOptions => {
+  return (
+    typeof value === "string" &&
+    PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS.includes(
+      value as ProjectNewConversationNotificationConditionOptions
+    )
+  );
+};
+
 /**
  * User metadata keys for conversation notification preferences.
  */
 export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
   notifyCondition: "conversation_notify_condition",
+  projectNewConversationNotifyCondition:
+    "project_new_conversation_notify_condition",
 } as const;
 
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;

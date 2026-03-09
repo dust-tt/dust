@@ -20,7 +20,10 @@ const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
-import RootLayout from "@app/components/app/RootLayout";
+import { NextLinkWrapper } from "@app/lib/platform/NextLinkWrapper";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
+import { SparkleContext } from "@dust-tt/sparkle";
 
 if (DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
@@ -100,6 +103,7 @@ if (
         );
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // Silently fail if localStorage is not available or throws an error.
       // This can happen in private browsing mode or when cookies are disabled.
@@ -118,15 +122,20 @@ type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <PostHogTracker>
-      <RootLayout>
-        {getLayout(<Component {...pageProps} />, pageProps)}
-      </RootLayout>
-    </PostHogTracker>
+    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+      <PostHogTracker>
+        <SparkleContext.Provider
+          value={{ components: { link: NextLinkWrapper } }}
+        >
+          {getLayout(<Component {...pageProps} />, pageProps)}
+        </SparkleContext.Provider>
+      </PostHogTracker>
+    </FetcherProvider>
   );
 }

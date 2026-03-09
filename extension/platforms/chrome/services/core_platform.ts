@@ -1,8 +1,9 @@
-import { ChromeAuthService } from "@app/platforms/chrome/services/auth";
-import { ChromeBrowserMessagingService } from "@app/platforms/chrome/services/browser_messaging";
-import { ChromeCaptureService } from "@app/platforms/chrome/services/capture";
-import { ChromeStorageService } from "@app/platforms/chrome/services/storage";
-import { CorePlatformService } from "@app/shared/services/platform";
+import { ChromeAuthService } from "@extension/platforms/chrome/services/auth";
+import { ChromeBrowserMessagingService } from "@extension/platforms/chrome/services/browser_messaging";
+import { ChromeCaptureService } from "@extension/platforms/chrome/services/capture";
+import { ChromeMcpService } from "@extension/platforms/chrome/services/mcp";
+import { ChromeStorageService } from "@extension/platforms/chrome/services/storage";
+import { CorePlatformService } from "@extension/shared/services/platform";
 
 export interface PendingUpdate {
   detectedAt: number;
@@ -10,15 +11,21 @@ export interface PendingUpdate {
 }
 
 export class ChromeCorePlatformService extends CorePlatformService {
-  readonly supportsMCP = false;
+  readonly supportsMCP = true;
 
   constructor() {
+    const messaging = new ChromeBrowserMessagingService();
+    const captureService = new ChromeCaptureService();
+    const mcpService = new ChromeMcpService();
+    mcpService.setCaptureService(captureService);
+
     super(
       "chrome",
       ChromeAuthService,
       new ChromeStorageService(),
-      new ChromeCaptureService(),
-      new ChromeBrowserMessagingService()
+      captureService,
+      messaging,
+      mcpService
     );
   }
 

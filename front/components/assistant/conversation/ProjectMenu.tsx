@@ -1,3 +1,20 @@
+import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
+import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
+import { useArchiveProject } from "@app/hooks/useArchiveProject";
+import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import config from "@app/lib/api/config";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
+import {
+  getConversationRoute,
+  getProjectRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   ContactsUserIcon,
@@ -9,29 +26,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  EyeSlashIcon,
   LinkIcon,
   PencilSquareIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { ReactElement } from "react";
-import React from "react";
 import { useCallback, useEffect, useState } from "react";
-
-import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
-import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
-import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
-import { useSpaceInfo } from "@app/lib/swr/spaces";
-import {
-  getConversationRoute,
-  getProjectRoute,
-  setQueryParam,
-} from "@app/lib/utils/router";
-import type { SpaceType } from "@app/types/space";
-import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -143,11 +145,9 @@ export function ProjectMenu({
 
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  const shareLink =
-    baseUrl !== undefined && activeSpaceId
-      ? `${baseUrl}${getProjectRoute(owner.sId, activeSpaceId)}`
-      : undefined;
+  const shareLink = activeSpaceId
+    ? `${config.getApiBaseUrl()}${getProjectRoute(owner.sId, activeSpaceId)}`
+    : undefined;
 
   const spaceName = space?.name ?? spaceInfo?.name ?? "";
   const userName = user?.fullName ?? user?.username ?? "";
@@ -172,13 +172,34 @@ export function ProjectMenu({
     sendNotification({ type: "success", title: "Link copied !" });
   }, [shareLink, sendNotification]);
 
+  const handleArchiveSuccess = useCallback(() => {
+    if (isProjectDisplayed) {
+      void router.push(getConversationRoute(owner.sId));
+    }
+  }, [isProjectDisplayed, owner.sId, router]);
+
+  const { archiveProject } = useArchiveProject({
+    owner,
+    spaceId: activeSpaceId ?? "",
+    onSuccess: handleArchiveSuccess,
+  });
+
   if (!activeSpaceId) {
     return null;
   }
 
   // Determine permissions based on spaceInfo
   const isProject = space?.kind === "project" || spaceInfo?.kind === "project";
-  const canLeave = (spaceInfo?.isMember ?? false) && isProject;
+  const isMember = spaceInfo?.isMember ?? false;
+  const projectEditors =
+    spaceInfo?.members?.filter((member) => member.isEditor) ?? [];
+  const isProjectEditor = projectEditors.some(
+    (member) => member.sId === user.sId
+  );
+  const canLeave =
+    ((isMember && !isProjectEditor) || // regular members can leave the project
+      (isProjectEditor && projectEditors.length > 1)) && // editors can leave if there's at least another editor
+    isProject;
   const canRename = spaceInfo?.canWrite ?? false; // Only admins can rename
 
   return (
@@ -257,6 +278,14 @@ export function ProjectMenu({
               label="Copy the link"
               onClick={copyProjectLink}
               icon={LinkIcon}
+            />
+          )}
+          {isProjectEditor && (
+            <DropdownMenuItem
+              label="Archive"
+              onClick={archiveProject}
+              icon={EyeSlashIcon}
+              variant="warning"
             />
           )}
           {canLeave && (

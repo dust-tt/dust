@@ -1,8 +1,3 @@
-import _ from "lodash";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-import type Stripe from "stripe";
-
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import {
   disableWorkOSSSOAndSCIM,
@@ -21,10 +16,10 @@ import {
   isFreePlan,
   isProPlanPrefix,
   isUpgraded,
+  isWhitelistedBusinessPlan,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
@@ -43,6 +38,11 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import {
   getWorkspaceFirstAdmin,
@@ -55,8 +55,10 @@ import type {
   EnterpriseUpgradeFormType,
   PlanType,
   SubscriptionPerSeatPricing,
+  SubscriptionStatusType,
   SubscriptionType,
 } from "@app/types/plan";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
@@ -65,9 +67,28 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import type Stripe from "stripe";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
+
+type CachedSubscription = {
+  id: number;
+  planId: number;
+  sId: string;
+  status: SubscriptionStatusType;
+  trialing: boolean;
+  stripeSubscriptionId: string | null;
+  startDate: number;
+  endDate: number | null;
+  paymentFailingSince: number | null;
+  plan: PlanType;
+  requestCancelAt: number | null;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -99,6 +120,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       { ...blob },
       { transaction }
     );
+    const workspaceId = subscription.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
     return new SubscriptionResource(
       SubscriptionModel,
       subscription.get(),
@@ -106,15 +131,94 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
-  static async fetchActiveByWorkspace(
-    workspace: LightWorkspaceType,
+  private static readonly subscriptionCacheKeyResolver = (
+    workspaceModelId: ModelId
+  ) => `subscription:active:workspaceId:${workspaceModelId}`;
+
+  private static async _fetchActiveByWorkspaceModelIdUncached(
+    workspaceModelId: ModelId
+  ): Promise<CachedSubscription | null> {
+    const res = await SubscriptionResource.fetchActiveByWorkspacesModelId([
+      workspaceModelId,
+    ]);
+    const subscription = res[workspaceModelId];
+    if (!subscription) {
+      return null;
+    }
+    return {
+      id: subscription.id,
+      planId: subscription.planId,
+      sId: subscription.sId,
+      status: subscription.status,
+      trialing: subscription.trialing ?? false,
+      stripeSubscriptionId: subscription.stripeSubscriptionId,
+      startDate: subscription.startDate?.getTime() ?? Date.now(),
+      endDate: subscription.endDate?.getTime() ?? null,
+      paymentFailingSince: subscription.paymentFailingSince?.getTime() ?? null,
+      plan: subscription.getPlan(),
+      requestCancelAt: subscription.requestCancelAt?.getTime() ?? null,
+    };
+  }
+
+  private static invalidateSubscriptionCache = invalidateCacheWithRedis(
+    SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
+    SubscriptionResource.subscriptionCacheKeyResolver
+  );
+
+  private static fromCachedData(
+    workspaceModelId: ModelId,
+    data: CachedSubscription
+  ): SubscriptionResource {
+    const now = new Date();
+    const blob: Attributes<SubscriptionModel> = {
+      id: data.id,
+      sId: data.sId,
+      status: data.status,
+      workspaceId: workspaceModelId,
+      createdAt: now,
+      updatedAt: now,
+      startDate: data.startDate ? new Date(data.startDate) : now,
+      endDate: data.endDate ? new Date(data.endDate) : null,
+      trialing: data.trialing,
+      paymentFailingSince: data.paymentFailingSince
+        ? new Date(data.paymentFailingSince)
+        : null,
+      planId: data.planId,
+      stripeSubscriptionId: data.stripeSubscriptionId,
+      requestCancelAt: data.requestCancelAt
+        ? new Date(data.requestCancelAt)
+        : null,
+    };
+    return new SubscriptionResource(SubscriptionModel, blob, data.plan);
+  }
+
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
+  private static fetchActiveByWorkspaceModelIdCached = cacheWithRedis(
+    SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
+    SubscriptionResource.subscriptionCacheKeyResolver,
+    { cacheNullValues: false }
+  );
+
+  static async fetchActiveByWorkspaceModelId(
+    workspaceModelId: ModelId,
     transaction?: Transaction
   ): Promise<SubscriptionResource | null> {
-    const res = await SubscriptionResource.fetchActiveByWorkspaces(
-      [workspace],
-      transaction
-    );
-    return res[workspace.sId] ?? null;
+    // Bypass cache when transaction is provided for transactional consistency
+    if (transaction) {
+      const res = await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        [workspaceModelId],
+        transaction
+      );
+      return res[workspaceModelId] ?? null;
+    }
+
+    const cached =
+      await this.fetchActiveByWorkspaceModelIdCached(workspaceModelId);
+    if (!cached) {
+      return null;
+    }
+
+    return this.fromCachedData(workspaceModelId, cached);
   }
 
   static async fetchLastByWorkspace(
@@ -158,10 +262,26 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static async fetchActiveByWorkspaces(
     workspaces: LightWorkspaceType[],
     transaction?: Transaction
-  ): Promise<{ [key: string]: SubscriptionResource }> {
-    const workspaceModelBySid = _.keyBy(workspaces, "sId");
+  ): Promise<Record<string, SubscriptionResource>> {
+    const byModelId = await this.fetchActiveByWorkspacesModelId(
+      workspaces.map((w) => w.id),
+      transaction
+    );
+    const result: Record<string, SubscriptionResource> = {};
+    for (const workspace of workspaces) {
+      const sub = byModelId[workspace.id];
+      if (sub) {
+        result[workspace.sId] = sub;
+      }
+    }
+    return result;
+  }
 
-    const activeSubscriptionByWorkspaceId = _.keyBy(
+  static async fetchActiveByWorkspacesModelId(
+    workspaceModelIds: ModelId[],
+    transaction?: Transaction
+  ): Promise<Record<ModelId, SubscriptionResource>> {
+    const activeSubscriptionByWorkspaceModelId = _.keyBy(
       await this.model.findAll({
         attributes: [
           "endDate",
@@ -175,10 +295,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           "workspaceId",
         ],
         where: {
-          workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
+          workspaceId: workspaceModelIds,
           status: "active",
         },
         // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
@@ -192,29 +313,30 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       "workspaceId"
     );
 
-    const subscriptionResourceByWorkspaceSid: Record<
-      string,
+    const subscriptionResourceByWorkspaceModelId: Record<
+      ModelId,
       SubscriptionResource
     > = {};
 
-    for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
+    for (const workspaceModelId of workspaceModelIds) {
       const activeSubscription =
-        activeSubscriptionByWorkspaceId[workspace.id.toString()];
+        activeSubscriptionByWorkspaceModelId[workspaceModelId.toString()];
 
       const plan = this.determinePlanFromSubscription(
         activeSubscription ?? null,
-        sId
+        workspaceModelId.toString()
       );
 
-      subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
-        SubscriptionModel,
-        activeSubscription?.get() ||
-          this.createFreeNoPlanSubscription(workspace),
-        renderPlanFromModel({ plan })
-      );
+      subscriptionResourceByWorkspaceModelId[workspaceModelId] =
+        new SubscriptionResource(
+          SubscriptionModel,
+          activeSubscription?.get() ||
+            this.createFreeNoPlanSubscription(workspaceModelId),
+          renderPlanFromModel({ plan })
+        );
     }
 
-    return subscriptionResourceByWorkspaceSid;
+    return subscriptionResourceByWorkspaceModelId;
   }
 
   static async fetchByAuthenticator(
@@ -244,7 +366,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       where: { stripeSubscriptionId },
       include: [PlanModel],
 
-      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -294,6 +417,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Internal use to actively down the callstack get the list
       // of workspaces that are active
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
@@ -340,9 +464,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       disableSCIM: true,
     });
 
+    await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
+
     return new SubscriptionResource(
       SubscriptionModel,
-      this.createFreeNoPlanSubscription(workspace),
+      this.createFreeNoPlanSubscription(workspace.id),
       renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
     );
   }
@@ -446,6 +572,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       });
     }
 
+    await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
+
     return new SubscriptionResource(
       SubscriptionModel,
       newSubscription.get(),
@@ -504,6 +632,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
             where: { sId: activeSubscription.sId },
           }
         );
+        await SubscriptionResource.invalidateSubscriptionCache(owner.id);
         return;
       }
       throw new Error(
@@ -548,6 +677,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           },
         }
       );
+      await SubscriptionResource.invalidateSubscriptionCache(owner.id);
       return;
     }
 
@@ -605,6 +735,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         },
       }
     );
+
+    await SubscriptionResource.invalidateSubscriptionCache(owner.id);
 
     return new Ok(undefined);
   }
@@ -807,14 +939,14 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   private static createFreeNoPlanSubscription(
-    workspace: LightWorkspaceType
+    workspaceModelId: ModelId
   ): Attributes<SubscriptionModel> {
     const now = new Date();
     return {
       id: FREE_NO_PLAN_SUBSCRIPTION_ID,
       sId: generateRandomModelSId(),
       status: "ended",
-      workspaceId: workspace.id,
+      workspaceId: workspaceModelId,
       createdAt: now,
       updatedAt: now,
       startDate: now,
@@ -891,39 +1023,105 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return newPlan;
   }
 
+  async markAsEnded(
+    endedStatus: "ended" | "ended_backend_only",
+    transaction?: Transaction
+  ) {
+    const now = new Date();
+
+    await this.update(
+      {
+        status: endedStatus,
+        endDate: now,
+      },
+      transaction
+    );
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
+  }
+
+  // Payment status.
+
+  async clearPaymentFailingStatus(transaction?: Transaction): Promise<void> {
+    await this.update(
+      {
+        paymentFailingSince: null,
+      },
+      transaction
+    );
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
+  }
+
+  async setPaymentFailingStatus(
+    { paymentFailingSince }: { paymentFailingSince: Date },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(
+      {
+        paymentFailingSince,
+      },
+      transaction
+    );
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
+  }
+
+  async markAsCanceled(
+    { endDate }: { endDate: Date | null },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(
+      {
+        endDate,
+        // If the subscription is canceled, we set the requestCancelAt date to now.
+        // If the subscription is reactivated, we unset the requestCancelAt date.
+        requestCancelAt: endDate ? new Date() : null,
+      },
+      transaction
+    );
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
+  }
+
+  async markAsActive(
+    { trialing }: { trialing: boolean },
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ status: "active", trialing }, transaction);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
+  }
+
   /**
    * Helper method to end an active subscription if it exists
    * @param workspaceId The ID of the workspace
    * @returns The active subscription that was ended, or null if none existed
    */
-  static async endActiveSubscription(
-    workspace: LightWorkspaceType
-  ): Promise<SubscriptionModel | null> {
-    const now = new Date();
-
-    // Find active subscription
-    const activeSubscription = await SubscriptionModel.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-    });
+  static async endActiveSubscription(workspace: LightWorkspaceType) {
+    // Find active subscription.
+    const activeSubscription =
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 
     if (activeSubscription) {
-      await withTransaction(async (t) => {
-        // End the subscription
-        const endedStatus = activeSubscription.stripeSubscriptionId
-          ? "ended_backend_only"
-          : "ended";
+      // End the subscription.
+      const endedStatus = activeSubscription.stripeSubscriptionId
+        ? "ended_backend_only"
+        : "ended";
+      await activeSubscription.markAsEnded(endedStatus);
 
-        await activeSubscription.update(
-          {
-            status: endedStatus,
-            endDate: now,
-          },
-          { transaction: t }
-        );
-      });
-
-      // Notify Stripe that we ended the subscription if the subscription was a paid one
-      if (activeSubscription?.stripeSubscriptionId) {
+      // Notify Stripe that we ended the subscription if the subscription was a paid one.
+      if (activeSubscription.stripeSubscriptionId) {
         await cancelSubscriptionImmediately({
           stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
         });

@@ -91,6 +91,25 @@ export const testConnection = async ({
 }: {
   credentials: SnowflakeCredentials;
 }): Promise<Result<string, TestConnectionError>> => {
+  const account = credentials.account.trim();
+  // Users occasionally paste a full URL/hostname; fail fast rather than waiting on DNS/TLS timeouts.
+  if (
+    account.toLowerCase().includes("snowflakecomputing.com") ||
+    account.toLowerCase().startsWith("http://") ||
+    account.toLowerCase().startsWith("https://") ||
+    !/[-0-9]/.test(account) ||
+    account.includes("..") ||
+    account.includes("/") ||
+    account.includes(":")
+  ) {
+    return new Err(
+      new TestConnectionError(
+        "INVALID_ACCOUNT",
+        "Invalid account or region. Use the Snowflake account identifier (e.g., abc123.us-east-1 or myorg-myaccount), not a URL/hostname."
+      )
+    );
+  }
+
   // Connect to snowflake, fetch tables and grants, and close the connection.
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
@@ -272,20 +291,29 @@ export async function connectToSnowflake(
             return;
           }
           settled = true;
+
+          // Reject immediately on timeout. `conn.destroy()` can itself hang in some network/DNS
+          // failure modes, so we treat it as best-effort cleanup only.
+          reject(
+            new Error(
+              "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+            )
+          );
+
           try {
             conn.destroy((err: SnowflakeError | undefined) => {
               if (err) {
-                reject(err as unknown as Error);
-                return;
+                logger.warn(
+                  { error: err },
+                  "Error destroying Snowflake connection after timeout"
+                );
               }
-              reject(
-                new Error(
-                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
-                )
-              );
             });
           } catch (e) {
-            reject(e instanceof Error ? e : new Error(String(e)));
+            logger.warn(
+              { error: e },
+              "Exception destroying Snowflake connection after timeout"
+            );
           }
         },
         isNaN(connectTimeoutMs) ? 15000 : connectTimeoutMs

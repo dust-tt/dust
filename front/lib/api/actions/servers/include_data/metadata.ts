@@ -1,7 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -12,6 +8,9 @@ import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const INCLUDE_DATA_TOOL_NAME = "include_data" as const;
 

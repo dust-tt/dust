@@ -1,13 +1,12 @@
-import type { GetMentionSuggestionsResponseBodyType } from "@dust-tt/client";
-import { GetMentionSuggestionsRequestQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { GetMentionSuggestionsResponseBodyType } from "@dust-tt/client";
+import { GetMentionSuggestionsRequestQuerySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger

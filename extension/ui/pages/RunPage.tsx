@@ -1,18 +1,23 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { postConversation } from "@app/shared/lib/conversation";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { useFileUploaderService } from "@app/ui/hooks/useFileUploaderService";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { Spinner } from "@dust-tt/sparkle";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export const RunPage = () => {
   const platform = usePlatform();
   const navigate = useNavigate();
   const location = useLocation();
-  const dustAPI = useDustAPI();
+  const { user, workspace } = useExtensionAuth();
 
-  const fileUploaderService = useFileUploaderService(platform.capture);
+  const fileUploaderService = useFileUploaderService(platform.capture, null);
+
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner: workspace!,
+    user,
+  });
 
   useEffect(() => {
     const run = async () => {
@@ -27,11 +32,9 @@ export const RunPage = () => {
         includeContent: params.includeContent,
         includeCapture: params.includeCapture,
         includeSelectionOnly: params.includeSelectionOnly,
-        updateBlobs: false,
       });
 
-      const conversationRes = await postConversation(platform, {
-        dustAPI,
+      const conversationRes = await createConversationWithMessage({
         messageData: {
           input: params.text,
           mentions: [{ configurationId: params.configurationId }],
@@ -41,11 +44,12 @@ export const RunPage = () => {
                   title: cf.filename,
                   fileId: cf.fileId || "",
                   url: cf.publicUrl,
-                  kind: cf.kind,
+                  contentType: cf.contentType,
                 }))
               : [],
             contentNodes: [],
           },
+          origin: "extension",
         },
       });
 

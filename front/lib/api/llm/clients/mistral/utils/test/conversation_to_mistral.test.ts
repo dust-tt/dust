@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import {
   sanitizeToolCallId,
   toMessage,
 } from "@app/lib/api/llm/clients/mistral/utils/conversation_to_mistral";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
+import { describe, expect, it } from "vitest";
 
 describe("toMessage", () => {
   describe("user messages", () => {

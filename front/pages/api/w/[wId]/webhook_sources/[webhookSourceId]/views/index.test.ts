@@ -1,6 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -9,6 +6,8 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -229,7 +228,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const responseData = res._getJSONData();
     expect(responseData.error).toEqual({
       type: "workspace_auth_error",
-      message: "Only users of the workspace can access this route.",
+      message: "Only users of the workspace can access this content.",
     });
   });
 });

@@ -1,6 +1,3 @@
-import type { drive_v3 } from "googleapis";
-import { google } from "googleapis";
-
 import type { Authenticator } from "@app/lib/auth";
 import { getTranscriptsGoogleAuth } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -9,6 +6,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { drive_v3 } from "googleapis";
+import { google } from "googleapis";
 
 export async function retrieveRecentGoogleTranscripts(
   {

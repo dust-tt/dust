@@ -1,6 +1,3 @@
-import { DocumentIcon, Icon } from "@dust-tt/sparkle";
-import React, { useContext } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -9,6 +6,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
+import { DocumentIcon, Icon } from "@dust-tt/sparkle";
+import React, { useContext } from "react";
 
 function getActionDisplayName(
   action: BuilderAction,

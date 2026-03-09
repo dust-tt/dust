@@ -1,12 +1,3 @@
-import {
-  Button,
-  ContentMessage,
-  ExclamationCircleIcon,
-  Icon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDismissMention } from "@app/lib/swr/mentions";
@@ -16,6 +7,14 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Button,
+  ContentMessage,
+  ExclamationCircleIcon,
+  Icon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface MentionInvalidProps {
   triggeringUser: UserType | null;

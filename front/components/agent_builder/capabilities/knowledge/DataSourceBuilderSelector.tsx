@@ -1,14 +1,3 @@
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import {
-  Breadcrumbs,
-  Button,
-  CloudArrowLeftRightIcon,
-  cn,
-  SearchInput,
-  Separator,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
@@ -39,6 +28,17 @@ import {
 } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import {
+  Breadcrumbs,
+  Button,
+  CloudArrowLeftRightIcon,
+  cn,
+  SearchInput,
+  Separator,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useMemo, useState } from "react";
 
 type DataSourceBuilderSelectorProps = {
   viewType: ContentNodesViewType;

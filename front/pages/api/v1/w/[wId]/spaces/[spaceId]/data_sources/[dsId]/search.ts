@@ -1,8 +1,3 @@
-import type { DataSourceSearchResponseType } from "@dust-tt/client";
-import { DataSourceSearchQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +6,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { DataSourceSearchResponseType } from "@dust-tt/client";
+import { DataSourceSearchQuerySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger

@@ -1,5 +1,3 @@
-import type { DescribeSObjectResult } from "jsforce";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -21,6 +19,7 @@ import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesfor
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
+import type { DescribeSObjectResult } from "jsforce";
 
 // This interface is needed because SF does not export the type we need
 interface DescribeFieldResult {

@@ -1,7 +1,3 @@
-import assert from "assert";
-import type Stripe from "stripe";
-import { z } from "zod";
-
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getDefaultDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
@@ -21,6 +17,9 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+import type Stripe from "stripe";
+import { z } from "zod";
 
 export const MAX_FREE_CREDITS_DOLLARS = 1_000;
 export const MAX_PAYG_CAP_DOLLARS = 10_000;

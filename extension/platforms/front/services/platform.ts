@@ -1,8 +1,8 @@
-import { FrontAuthService } from "@app/platforms/front/services/auth";
-import { FrontMcpService } from "@app/platforms/front/services/mcp";
-import { FrontStorageService } from "@app/platforms/front/services/storage";
-import type { CaptureActionsProps } from "@app/shared/services/platform";
-import { PlatformService } from "@app/shared/services/platform";
+import { FrontAuthService } from "@extension/platforms/front/services/auth";
+import { FrontMcpService } from "@extension/platforms/front/services/mcp";
+import { FrontStorageService } from "@extension/platforms/front/services/storage";
+import type { CaptureActionsProps } from "@extension/shared/services/platform";
+import { PlatformService } from "@extension/shared/services/platform";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { ComponentType } from "react";
 

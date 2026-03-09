@@ -1,3 +1,7 @@
+import { clientFetch } from "@app/lib/egress/client";
+import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Button,
@@ -14,11 +18,6 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { clientFetch } from "@app/lib/egress/client";
-import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
-import type { DataSourceType } from "@app/types/data_source";
-import type { LightWorkspaceType } from "@app/types/user";
 
 interface SetupNotionPrivateIntegrationModalProps {
   isOpen: boolean;

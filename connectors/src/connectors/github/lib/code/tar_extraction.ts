@@ -63,6 +63,7 @@ function isRetryableStreamError(error: unknown): boolean {
     "ECONNRESET",
     "socket hang up",
     "terminated", // undici fetch stream termination
+    "Bad credentials", // GitHub seems to return this when the OAuth token is actually still valid so we will let it retry
   ];
 
   return retryableMessages.some((msg) =>

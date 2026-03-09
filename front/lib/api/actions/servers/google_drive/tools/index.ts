@@ -1,5 +1,3 @@
-import { Common } from "googleapis";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -28,6 +26,7 @@ import {
 } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Common } from "googleapis";
 
 /**
  * Normalizes GaxiosError code to string for comparison.
@@ -48,7 +47,10 @@ function normalizeCode(code: string | number | undefined): string | undefined {
 export async function handleFileAccessError(
   err: unknown,
   fileId: string,
-  extra: ToolHandlerExtra,
+  {
+    authInfo,
+    agentLoopContext,
+  }: Pick<ToolHandlerExtra, "authInfo" | "agentLoopContext">,
   fileMeta?: { name?: string; mimeType?: string }
 ): Promise<ToolHandlerResult> {
   if (err instanceof Common.GaxiosError) {
@@ -63,7 +65,7 @@ export async function handleFileAccessError(
         message.includes("write access"))
     ) {
       const connectionId =
-        extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
+        agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
         "google_drive";
 
       return new Ok(
@@ -88,7 +90,7 @@ export async function handleFileAccessError(
 
     // Handle 404 errors - try to fetch metadata for better error message
     if (status === "404") {
-      const drive = await getDriveClient(extra.authInfo);
+      const drive = await getDriveClient(authInfo);
       if (drive) {
         try {
           const fileMetadata = await drive.files.get({
@@ -165,9 +167,12 @@ function handleDriveAccessError(err: unknown): ToolHandlerResult {
  * Adds agent attribution to content (comments, replies, etc.).
  * Returns the original content with attribution appended if agent context is available.
  */
-function addAgentAttribution(content: string, extra: ToolHandlerExtra): string {
-  if (extra.agentLoopContext?.runContext?.agentConfiguration) {
-    const agentConfig = extra.agentLoopContext.runContext.agentConfiguration;
+function addAgentAttribution(
+  content: string,
+  { agentLoopContext }: Pick<ToolHandlerExtra, "agentLoopContext">
+): string {
+  if (agentLoopContext?.runContext?.agentConfiguration) {
+    const agentConfig = agentLoopContext.runContext.agentConfiguration;
     return `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
   }
   return content;
@@ -257,9 +262,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
-    extra
+    { authInfo }
   ) => {
-    const drive = await getDriveClient(extra.authInfo);
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
@@ -371,8 +376,8 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  get_spreadsheet: async ({ spreadsheetId }, extra) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+  get_spreadsheet: async ({ spreadsheetId }, { authInfo }) => {
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -397,9 +402,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueRenderOption = "FORMATTED_VALUE",
     },
-    extra
+    { authInfo }
   ) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -421,9 +426,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   },
   list_comments: async (
     { fileId, pageSize = 100, pageToken, includeDeleted = false },
-    extra
+    { authInfo }
   ) => {
-    const drive = await getDriveClient(extra.authInfo);
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
@@ -450,9 +455,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   },
   get_document_structure: async (
     { documentId, offset = 0, limit = 100 },
-    extra
+    { authInfo }
   ) => {
-    const docs = await getDocsClient(extra.authInfo);
+    const docs = await getDocsClient(authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
     }
@@ -472,9 +477,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   },
   get_presentation_structure: async (
     { presentationId, offset = 0, limit = 10 },
-    extra
+    { authInfo }
   ) => {
-    const slides = await getSlidesClient(extra.authInfo);
+    const slides = await getSlidesClient(authInfo);
     if (!slides) {
       return new Err(new MCPError("Failed to authenticate with Google Slides"));
     }
@@ -577,8 +582,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  copy_file: async ({ fileId, name, parentId }, extra) => {
-    const drive = await getDriveClient(extra.authInfo);
+  copy_file: async ({ fileId, name, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
@@ -634,13 +639,16 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     ]);
   },
 
-  create_comment: async ({ fileId, content }, extra) => {
-    const drive = await getDriveClient(extra.authInfo);
+  create_comment: async (
+    { fileId, content },
+    { authInfo, agentLoopContext }
+  ) => {
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
-    const finalContent = addAgentAttribution(content, extra);
+    const finalContent = addAgentAttribution(content, { agentLoopContext });
 
     try {
       const res = await drive.comments.create({
@@ -665,17 +673,20 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
   },
 
-  create_reply: async ({ fileId, commentId, content }, extra) => {
-    const drive = await getDriveClient(extra.authInfo);
+  create_reply: async (
+    { fileId, commentId, content },
+    { authInfo, agentLoopContext }
+  ) => {
+    const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
-    const finalContent = addAgentAttribution(content, extra);
+    const finalContent = addAgentAttribution(content, { agentLoopContext });
 
     try {
       const res = await drive.replies.create({
@@ -703,12 +714,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, fileId, extra);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
   },
 
-  update_document: async ({ documentId, requests }, extra) => {
-    const docs = await getDocsClient(extra.authInfo);
+  update_document: async (
+    { documentId, requests },
+    { authInfo, agentLoopContext }
+  ) => {
+    const docs = await getDocsClient(authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
     }
@@ -737,10 +751,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, documentId, extra, {
-        name: documentId,
-        mimeType: "application/vnd.google-apps.document",
-      });
+      return handleFileAccessError(
+        err,
+        documentId,
+        { authInfo, agentLoopContext },
+        {
+          name: documentId,
+          mimeType: "application/vnd.google-apps.document",
+        }
+      );
     }
   },
 
@@ -753,9 +772,9 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       valueInputOption = "USER_ENTERED",
       insertDataOption = "INSERT_ROWS",
     },
-    extra
+    { authInfo, agentLoopContext }
   ) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -776,15 +795,23 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, spreadsheetId, extra, {
-        name: spreadsheetId,
-        mimeType: "application/vnd.google-apps.spreadsheet",
-      });
+      return handleFileAccessError(
+        err,
+        spreadsheetId,
+        { authInfo, agentLoopContext },
+        {
+          name: spreadsheetId,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+        }
+      );
     }
   },
 
-  update_spreadsheet: async ({ spreadsheetId, requests }, extra) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+  update_spreadsheet: async (
+    { spreadsheetId, requests },
+    { authInfo, agentLoopContext }
+  ) => {
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -813,15 +840,23 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, spreadsheetId, extra, {
-        name: spreadsheetId,
-        mimeType: "application/vnd.google-apps.spreadsheet",
-      });
+      return handleFileAccessError(
+        err,
+        spreadsheetId,
+        { authInfo, agentLoopContext },
+        {
+          name: spreadsheetId,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+        }
+      );
     }
   },
 
-  update_presentation: async ({ presentationId, requests }, extra) => {
-    const slides = await getSlidesClient(extra.authInfo);
+  update_presentation: async (
+    { presentationId, requests },
+    { authInfo, agentLoopContext }
+  ) => {
+    const slides = await getSlidesClient(authInfo);
     if (!slides) {
       return new Err(new MCPError("Failed to authenticate with Google Slides"));
     }
@@ -847,10 +882,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleFileAccessError(err, presentationId, extra, {
-        name: presentationId,
-        mimeType: "application/vnd.google-apps.presentation",
-      });
+      return handleFileAccessError(
+        err,
+        presentationId,
+        { authInfo, agentLoopContext },
+        {
+          name: presentationId,
+          mimeType: "application/vnd.google-apps.presentation",
+        }
+      );
     }
   },
 };

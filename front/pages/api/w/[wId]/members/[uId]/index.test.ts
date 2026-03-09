@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -109,6 +108,64 @@ describe("POST /api/w/[wId]/members/[uId]", () => {
       const data = res._getJSONData();
       expect(data.member).toBeDefined();
       expect(data.member.workspaces[0].role).toBe("builder");
+    });
+
+    it("should return 400 when sole admin tries to revoke themselves", async () => {
+      const { req, res, user } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      req.query.uId = user.sId;
+      req.body = { role: "revoked" };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(400);
+      const data = res._getJSONData();
+      expect(data.error.type).toBe("invalid_request_error");
+      expect(data.error.message).toBe(
+        "Cannot revoke the last admin of a workspace."
+      );
+    });
+
+    it("should return 200 when sole admin revokes a non-admin user", async () => {
+      const { req, res, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+
+      req.query.uId = regularUser.sId;
+      req.body = { role: "revoked" };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    it("should return 200 when revoking an admin with multiple admins present", async () => {
+      const { req, res, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      // Create another admin
+      const otherAdmin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherAdmin, {
+        role: "admin",
+      });
+
+      req.query.uId = otherAdmin.sId;
+      req.body = { role: "revoked" };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
     });
 
     it("should return 403 when non-admin user tries to change own role", async () => {

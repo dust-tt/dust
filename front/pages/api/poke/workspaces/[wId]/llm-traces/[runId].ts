@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { fetchLLMTrace, isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import { Authenticator } from "@app/lib/auth";
@@ -7,6 +5,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 interface GetLLMTraceResponseBody {
   trace: unknown | null;

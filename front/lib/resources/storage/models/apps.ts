@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
@@ -9,6 +6,8 @@ import {
 } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AppVisibility } from "@app/types/app";
 import type { DatasetSchema } from "@app/types/dataset";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {

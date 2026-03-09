@@ -1,17 +1,3 @@
-import {
-  Page,
-  SearchInput,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  UserIcon,
-} from "@dust-tt/sparkle";
-import { UsersIcon } from "@heroicons/react/20/solid";
-import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useEffect, useState } from "react";
-
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
@@ -34,6 +20,19 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import {
+  Page,
+  SearchInput,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  UserIcon,
+} from "@dust-tt/sparkle";
+import { UsersIcon } from "@heroicons/react/20/solid";
+import type { PaginationState } from "@tanstack/react-table";
+import { useCallback, useEffect, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -108,10 +107,12 @@ function WorkspaceMembersList({
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
     setSelectedMember(null);
   }, [setSelectedMember]);

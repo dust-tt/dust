@@ -1,7 +1,3 @@
-import { createHash } from "crypto";
-import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
@@ -12,6 +8,9 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { VerificationStatus } from "@app/types/workspace_verification";
+import { createHash } from "crypto";
+import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceVerificationAttemptResource
@@ -50,9 +49,23 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     const existing = await this.model.findOne({
       where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
       // WORKSPACE_ISOLATION_BYPASS: Global uniqueness check - a verified phone can only be used by one workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return existing !== null;
+  }
+
+  static async findWorkspaceModelIdFromPhoneNumber(
+    phoneNumber: string
+  ): Promise<number | null> {
+    const phoneNumberHash = this.hashPhoneNumber(phoneNumber);
+    const existing = await this.model.findOne({
+      where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
+      // WORKSPACE_ISOLATION_BYPASS: Poke search needs to find workspace across all workspaces by phone hash.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    return existing?.workspaceId ?? null;
   }
 
   static async makeNew(

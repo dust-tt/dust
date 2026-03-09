@@ -1,28 +1,25 @@
-import { TokenExpiredError } from "jsonwebtoken";
-import type { NextApiRequest, NextApiResponse } from "next";
-
-import { getUserWithWorkspaces } from "@app/lib/api/user";
-import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
+import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
   getAPIKey,
   getApiKeyNameFromHeaders,
-  getBearerToken,
   getSession,
-  isOAuthToken,
+  isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import type { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
+import { Err } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import { getUserEmailFromHeaders } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 function getMaintenanceError(
   maintenance: string | number | true | object
@@ -48,6 +45,110 @@ function getMaintenanceError(
       message: `Service is currently unavailable. [${maintenance}]`,
     },
   };
+}
+
+function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this workspace has been disabled for emergency maintenance.",
+    },
+  };
+}
+
+function getConversationKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this conversation has been disabled for emergency maintenance.",
+    },
+  };
+}
+
+const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
+
+function getAssistantConversationIdFromRequest(
+  req: NextApiRequest
+): string | null {
+  if (!req.url?.includes(ASSISTANT_CONVERSATION_ROUTE_FRAGMENT)) {
+    return null;
+  }
+  return isString(req.query.cId) ? req.query.cId : null;
+}
+
+function getConversationKillSwitchErrorForRequest(
+  req: NextApiRequest,
+  killSwitched: unknown
+): APIErrorWithStatusCode | null {
+  const conversationId = getAssistantConversationIdFromRequest(req);
+  if (!conversationId) {
+    return null;
+  }
+
+  return WorkspaceResource.isWorkspaceConversationKillSwitched(
+    killSwitched,
+    conversationId
+  )
+    ? getConversationKillSwitchError()
+    : null;
+}
+
+/**
+ * Checks workspace-level guards: owner/plan existence, canUseProduct, maintenance, and kill switches.
+ * Returns an APIErrorWithStatusCode if any check fails, or null if all pass.
+ */
+function validateWorkspace(
+  req: NextApiRequest,
+  auth: Authenticator,
+  opts: { doesNotRequireCanUseProduct?: boolean } = {}
+): APIErrorWithStatusCode | null {
+  const owner = auth.workspace();
+  const plan = auth.plan();
+  if (!owner || !plan) {
+    return {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    };
+  }
+
+  if (!opts.doesNotRequireCanUseProduct && !plan.limits.canUseProduct) {
+    return {
+      status_code: 403,
+      api_error: {
+        type: "workspace_can_use_product_required_error",
+        message:
+          "Your current plan does not allow API access. Please upgrade your plan.",
+      },
+    };
+  }
+
+  const maintenance = owner.metadata?.maintenance;
+  if (maintenance) {
+    return getMaintenanceError(maintenance);
+  }
+  if (
+    WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
+      owner.metadata?.killSwitched
+    )
+  ) {
+    return getWorkspaceKillSwitchError();
+  }
+  const conversationKillSwitchError = getConversationKillSwitchErrorForRequest(
+    req,
+    owner.metadata?.killSwitched
+  );
+  if (conversationKillSwitchError) {
+    return conversationKillSwitchError;
+  }
+
+  return null;
 }
 
 /**
@@ -120,6 +221,10 @@ export function withSessionAuthenticationForPoke<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
+ * This function now supports both cookie-based sessions and bearer token authentication.
+ * If a session cookie is present, it will be used. Otherwise, it will attempt to authenticate
+ * using a bearer token from the Authorization header.
+ *
  * @param handler
  * @param opts
  * @returns
@@ -129,7 +234,7 @@ export function withSessionAuthenticationForWorkspace<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    session: SessionWithUser
+    session: SessionWithUser | null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
@@ -137,14 +242,14 @@ export function withSessionAuthenticationForWorkspace<T>(
     allowMissingWorkspace?: boolean;
   } = {}
 ) {
-  return withSessionAuthentication(
+  return withLogging(
     async (
       req: NextApiRequestWithContext,
       res: NextApiResponse<WithAPIErrorResponse<T>>,
-      session: SessionWithUser
+      { session }
     ) => {
       const { wId } = req.query;
-      if (typeof wId !== "string" || !wId) {
+      if (!isString(wId)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -154,41 +259,29 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
+      if (!session) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The user does not have an active session or is not authenticated.",
+          },
+        });
+      }
+
+      // Session is either from cookies or synthesized from a bearer token by withLogging.
       const auth = await Authenticator.fromSession(session, wId);
 
-      const owner = auth.workspace();
-      const plan = auth.plan();
-
-      if (opts.allowMissingWorkspace && (!owner || !plan)) {
+      if (opts.allowMissingWorkspace && (!auth.workspace() || !auth.plan())) {
         return handler(req, res, auth, session);
       }
 
-      if (!owner || !plan) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "The workspace was not found.",
-          },
-        });
-      }
-
-      if (
-        !opts.doesNotRequireCanUseProduct &&
-        !auth?.subscription()?.plan.limits.canUseProduct
-      ) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_can_use_product_required_error",
-            message: "The workspace was not found.",
-          },
-        });
-      }
-
-      const maintenance = owner.metadata?.maintenance;
-      if (maintenance) {
-        return apiError(req, res, getMaintenanceError(maintenance));
+      const workspaceError = validateWorkspace(req, auth, {
+        doesNotRequireCanUseProduct: opts.doesNotRequireCanUseProduct,
+      });
+      if (workspaceError) {
+        return apiError(req, res, workspaceError);
       }
 
       const user = auth.user();
@@ -208,20 +301,22 @@ export function withSessionAuthenticationForWorkspace<T>(
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only users of the workspace can access this route.",
+            message: "Only users of the workspace can access this content.",
           },
         });
       }
 
       return handler(req, res, auth, session);
     },
-    opts
+    opts.isStreaming
   );
 }
 
 /**
  * This function is a wrapper for Public API routes that require authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId]/).
+ *
+ * Only accepts bearer tokens and API keys, not cookie-based sessions.
  *
  * @param handler
  * @param opts
@@ -252,10 +347,11 @@ export function withPublicAPIAuthentication<T>(
   return withLogging(
     async (
       req: NextApiRequestWithContext,
-      res: NextApiResponse<WithAPIErrorResponse<T>>
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      { session }
     ) => {
-      const wId = typeof req.query.wId === "string" ? req.query.wId : undefined;
-      if (!wId) {
+      const { wId } = req.query;
+      if (!isString(wId)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -265,8 +361,8 @@ export function withPublicAPIAuthentication<T>(
         });
       }
 
-      const bearerTokenRes = await getBearerToken(req);
-      if (bearerTokenRes.isErr()) {
+      // Require an Authorization header for all public API endpoints.
+      if (!req.headers.authorization) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -276,85 +372,55 @@ export function withPublicAPIAuthentication<T>(
           },
         });
       }
-      const token = bearerTokenRes.value;
 
-      // Authentification with a token.
-      // Straightforward since the token is attached to the user.
-      if (isOAuthToken(token)) {
-        try {
-          const authRes = await handleWorkOSAuth(req, res, token, wId);
-          if (authRes.isErr()) {
-            // If WorkOS errors return an ApiError.
-            return apiError(req, res, authRes.error);
-          }
+      // Sandbox token authentication.
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (token && isSandboxTokenPrefix(token)) {
+        const authRes = await handleSandboxAuth(token, wId);
+        if (authRes.isErr()) {
+          return apiError(req, res, authRes.error);
+        }
+        const auth = authRes.value;
 
-          const auth = authRes.value;
+        return handler(req, res, auth, null);
+      }
 
-          if (auth.user() === null) {
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "user_not_found",
-                message:
-                  "The user does not have an active session or is not authenticated.",
-              },
-            });
-          }
-          if (!auth.isUser()) {
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "workspace_auth_error",
-                message: "Only users of the workspace can access this route.",
-              },
-            });
-          }
+      // Bearer token authentication (resolved by withLogging).
+      // Only accept bearer tokens for the public API, not cookie-based sessions.
+      if (session?.authenticationMethod === "bearer") {
+        const auth = await Authenticator.fromSession(session, wId);
 
-          const owner = auth.workspace();
-          const plan = auth.plan();
-          if (!owner || !plan) {
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "workspace_not_found",
-                message: "The workspace was not found.",
-              },
-            });
-          }
-
-          if (!plan.limits.canUseProduct) {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_can_use_product_required_error",
-                message:
-                  "Your current plan does not allow API access. Please upgrade your plan.",
-              },
-            });
-          }
-
-          req.addResourceToLog?.(auth.getNonNullableUser());
-
-          const maintenance = auth.workspace()?.metadata?.maintenance;
-          if (maintenance) {
-            return apiError(req, res, getMaintenanceError(maintenance));
-          }
-
-          return await handler(req, res, auth, null);
-        } catch (error) {
-          logger.error({ error }, "Failed to verify token");
+        if (auth.user() === null) {
           return apiError(req, res, {
             status_code: 401,
             api_error: {
-              type: "invalid_oauth_token_error",
+              type: "user_not_found",
               message:
-                "The request does not have valid authentication credentials.",
+                "The user does not have an active session or is not authenticated.",
             },
           });
         }
+        if (!auth.isUser()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Only users of the workspace can access this content.",
+            },
+          });
+        }
+
+        const workspaceError = validateWorkspace(req, auth);
+        if (workspaceError) {
+          return apiError(req, res, workspaceError);
+        }
+
+        req.addResourceToLog?.(auth.getNonNullableUser());
+
+        return await handler(req, res, auth, null);
       }
 
-      // Authentification with an API key.
+      // API key authentication.
       const keyRes = await getAPIKey(req);
       if (keyRes.isErr()) {
         return apiError(req, res, keyRes.error);
@@ -368,33 +434,12 @@ export function withPublicAPIAuthentication<T>(
       );
       let { workspaceAuth } = keyAndWorkspaceAuth;
 
-      const owner = workspaceAuth.workspace();
-      const plan = workspaceAuth.plan();
-      if (!owner || !plan) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "The workspace was not found.",
-          },
-        });
+      const workspaceError = validateWorkspace(req, workspaceAuth);
+      if (workspaceError) {
+        return apiError(req, res, workspaceError);
       }
 
-      if (!plan.limits.canUseProduct) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_can_use_product_required_error",
-            message:
-              "Your current plan does not allow API access. Please upgrade your plan.",
-          },
-        });
-      }
-
-      const maintenance = owner.metadata?.maintenance;
-      if (maintenance) {
-        return apiError(req, res, getMaintenanceError(maintenance));
-      }
+      const owner = workspaceAuth.workspace()!;
 
       // Authenticator created from a key has the builder role if the key is associated with
       // the workspace. System keys can bypass this when allowSystemKeyBypassBuilderCheck is set.
@@ -407,7 +452,7 @@ export function withPublicAPIAuthentication<T>(
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only users of the workspace can access this route.",
+            message: "Only users of the workspace can access this content.",
           },
         });
       }
@@ -449,35 +494,25 @@ export function withPublicAPIAuthentication<T>(
 }
 
 /**
- * This function is a wrapper for Public API routes that require authentication without a workspace.
- * It automatically detects whether to use WorkOS authentication based on the token's issuer.
+ * This function is a wrapper for Public API routes that require bearer token authentication
+ * without a workspace context (e.g., /api/v1/me).
+ * Only accepts bearer tokens, not cookie-based sessions or API keys.
+ * The bearer token is validated by withLogging which synthesizes a SessionWithUser.
  */
 export function withTokenAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
-    user: UserTypeWithWorkspaces
+    session: SessionWithUser
   ) => Promise<void> | void
 ) {
   return withLogging(
     async (
       req: NextApiRequestWithContext,
-      res: NextApiResponse<WithAPIErrorResponse<T>>
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      { session }
     ) => {
-      const bearerTokenRes = await getBearerToken(req);
-      if (bearerTokenRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "not_authenticated",
-            message:
-              "The request does not have valid authentication credentials.",
-          },
-        });
-      }
-      const bearerToken = bearerTokenRes.value;
-
-      if (!isOAuthToken(bearerToken)) {
+      if (session?.authenticationMethod !== "bearer") {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -488,134 +523,30 @@ export function withTokenAuthentication<T>(
         });
       }
 
-      try {
-        let user: UserResource | null = null;
-
-        // Try WorkOS token first
-        const workOSDecoded = await verifyWorkOSToken(bearerToken);
-        if (workOSDecoded.isOk()) {
-          user = await getUserFromWorkOSToken(workOSDecoded.value);
-        } else if (
-          workOSDecoded.isErr() &&
-          workOSDecoded.error instanceof TokenExpiredError
-        ) {
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "expired_oauth_token_error",
-              message: "The access token expired.",
-            },
-          });
-        }
-
-        if (workOSDecoded.isErr()) {
-          // We were not able to decode the token for Workos,
-          // so we log the error and return an API error.
-          logger.error(
-            {
-              workOSError: workOSDecoded.error,
-            },
-            "Failed to verify token with WorkOS"
-          );
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "invalid_oauth_token_error",
-              message:
-                "The request does not have valid authentication credentials.",
-            },
-          });
-        }
-
-        if (!user) {
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "user_not_found",
-              message: "The user is not registered.",
-            },
-          });
-        }
-
-        req.addResourceToLog?.(user);
-
-        const isFromExtension = req.headers["x-request-origin"] === "extension";
-        const userWithWorkspaces = await getUserWithWorkspaces(
-          user,
-          isFromExtension
-        );
-
-        const orgId = workOSDecoded.value.org_id;
-        if (orgId) {
-          const workspace = userWithWorkspaces.workspaces.find(
-            (w) => w.workOSOrganizationId === orgId
-          );
-          userWithWorkspaces.selectedWorkspace = workspace?.sId;
-        }
-
-        return await handler(req, res, userWithWorkspaces);
-      } catch (error) {
-        logger.error({ error }, "Failed to verify token");
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_oauth_token_error",
-            message:
-              "The request does not have valid authentication credentials.",
-          },
-        });
-      }
+      return handler(req, res, session);
     }
   );
 }
 
 /**
- * Helper function to handle WorkOS authentication
+ * Verifies a sandbox token and returns an Authenticator for the sandbox user.
  */
-async function handleWorkOSAuth<T>(
-  req: NextApiRequestWithContext,
-  res: NextApiResponse<WithAPIErrorResponse<T>>,
+async function handleSandboxAuth(
   token: string,
   wId: string
 ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
-  const decoded = await verifyWorkOSToken(token);
-  if (decoded.isErr()) {
-    const error = decoded.error;
-    if (error instanceof TokenExpiredError) {
-      return new Err({
-        status_code: 401,
-        api_error: {
-          type: "expired_oauth_token_error",
-          message: "The access token expired.",
-        },
-      });
-    }
-
+  const payload = verifySandboxExecToken(token);
+  if (!payload) {
     return new Err({
       status_code: 401,
       api_error: {
-        type: "invalid_oauth_token_error",
-        message: "The request does not have valid authentication credentials.",
+        type: "invalid_sandbox_token_error",
+        message: "The sandbox token is invalid or expired.",
       },
     });
   }
 
-  const authRes = await Authenticator.fromWorkOSToken({
-    token: decoded.value,
-    wId,
-  });
-  if (authRes.isErr()) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: authRes.error.code,
-        message:
-          "The user does not have an active session or is not authenticated.",
-      },
-    });
-  }
-
-  return new Ok(authRes.value);
+  return Authenticator.fromSandboxToken(payload, wId);
 }
 
 /**

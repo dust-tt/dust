@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -16,6 +14,7 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";
+import { z } from "zod";
 
 export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
   "sha1",

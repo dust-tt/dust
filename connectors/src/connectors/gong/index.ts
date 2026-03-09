@@ -1,9 +1,11 @@
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
+import { fetchPermissionProfileViews } from "@connectors/connectors/gong/lib/permission_profiles";
 import {
   fetchGongConfiguration,
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
+import { launchGongKeywordUpdateWorkflow } from "@connectors/connectors/gong/temporal/client";
 import {
   QUEUE_NAME,
   SCHEDULE_POLICIES,
@@ -21,6 +23,7 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import {
   createSchedule,
   deleteSchedule,
@@ -30,6 +33,7 @@ import {
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
@@ -45,10 +49,16 @@ const TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 
 const ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 
+const PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
+
+const PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
+
+const EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
-function makeGongSyncScheduleId(connector: ConnectorResource): string {
+export function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
@@ -85,6 +95,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         baseUrl: baseUrlRes.value,
         trackersEnabled: false,
         accountsEnabled: false,
+        permissionProfileId: null,
       }
     );
 
@@ -122,6 +133,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           },
         ],
         taskQueue: QUEUE_NAME,
+        typedSearchAttributes: [
+          {
+            key: connectorIdSearchAttribute,
+            value: connector.id,
+          },
+        ],
+        memo: {
+          connectorId: connector.id,
+        },
       },
       scheduleId: makeGongSyncScheduleId(connector),
       policies: SCHEDULE_POLICIES,
@@ -323,6 +343,16 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(configuration.trackersEnabled.toString());
       case ACCOUNTS_CONFIG_KEY:
         return new Ok(configuration.accountsEnabled.toString());
+      case PERMISSION_PROFILE_ID_CONFIG_KEY:
+        return new Ok(configuration.permissionProfileId ?? null);
+      case PERMISSION_PROFILES_CONFIG_KEY: {
+        const views = await fetchPermissionProfileViews(connector);
+        return new Ok(JSON.stringify(views));
+      }
+      case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
+        const keywords = configuration.excludeTitleKeywords;
+        return new Ok(keywords ? keywords.join(",") : null);
+      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -379,6 +409,85 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       }
       case ACCOUNTS_CONFIG_KEY: {
         await configuration.setAccountsEnabled(configValue === "true");
+
+        return new Ok(undefined);
+      }
+      case PERMISSION_PROFILE_ID_CONFIG_KEY: {
+        const profileId = configValue || null;
+        logger.info(
+          {
+            connectorId: connector.id,
+            permissionProfileId: profileId,
+          },
+          "[Gong] Update permission profile."
+        );
+        await configuration.setPermissionProfileId(profileId);
+
+        return new Ok(undefined);
+      }
+      case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
+        const newKeywords = configValue
+          .split(",")
+          .map((k) => k.trim().toLowerCase())
+          .filter((k) => k.length > 0);
+
+        const oldKeywords = configuration.excludeTitleKeywords || [];
+
+        const result = await configuration.setExcludeTitleKeywords(newKeywords);
+        if (result.isErr()) {
+          return result;
+        }
+
+        logger.info(
+          { connectorId: connector.id, oldKeywords, newKeywords },
+          "[Gong] Updated exclude title keywords"
+        );
+
+        const addedKeywords = newKeywords.filter(
+          (kw) => !oldKeywords.includes(kw)
+        );
+
+        if (addedKeywords.length > 0) {
+          logger.info(
+            { connectorId: connector.id, addedKeywords },
+            "[Gong] New keywords added, launching keyword update workflow"
+          );
+
+          const stopResult = await this.stop({
+            reason: "Excluded keywords updated",
+          });
+          if (stopResult.isErr()) {
+            return stopResult;
+          }
+
+          // Capture max transcript ID before launching workflow
+          const maxTranscript = await GongTranscriptResource.fetchBatch(
+            connector,
+            {
+              limit: 1,
+              orderBy: "DESC",
+            }
+          );
+          const currentMaxId = maxTranscript[0]?.id || 0;
+          const GONG_TRANSCRIPT_PAGE_SIZE = 100;
+          const maxTranscriptId = currentMaxId + GONG_TRANSCRIPT_PAGE_SIZE;
+
+          await launchGongKeywordUpdateWorkflow(
+            connector,
+            newKeywords,
+            maxTranscriptId
+          );
+
+          // Resume the schedule with new keywords excluded
+          const resumeResult = await this.resume();
+          if (resumeResult.isErr()) {
+            logger.error(
+              { connectorId: connector.id, error: resumeResult.error },
+              "[Gong] Failed to resume schedule after keyword update"
+            );
+            return resumeResult;
+          }
+        }
 
         return new Ok(undefined);
       }

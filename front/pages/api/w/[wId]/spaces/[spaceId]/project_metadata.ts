@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetProjectMetadataResponseBody = {
   projectMetadata: ProjectMetadataType | null;
@@ -80,10 +79,20 @@ async function handler(
         // Create new metadata
         metadata = await ProjectMetadataResource.makeNew(auth, space, {
           description: body.description ?? null,
+          archivedAt: body.archive ? new Date() : null,
         });
       } else {
         // Update existing metadata
-        await metadata.updateMetadata(body);
+        if (body.archive !== undefined) {
+          if (body.archive) {
+            await metadata.archive();
+          } else {
+            await metadata.unarchive();
+          }
+        }
+        if (body.description !== undefined) {
+          await metadata.updateDescription(body.description);
+        }
       }
 
       return res.status(200).json({

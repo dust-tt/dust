@@ -1,7 +1,6 @@
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
+import { Op } from "sequelize";
 
 export async function getFavoriteStates(
   auth: Authenticator,

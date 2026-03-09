@@ -1,14 +1,18 @@
-import isNil from "lodash/isNil";
-import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillSourceMetadata,
+  SkillSourceType,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration";
+import isNil from "lodash/isNil";
+import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
+import { DataTypes } from "sequelize";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {
@@ -53,6 +57,19 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  source: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  sourceMetadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
+  isDefault: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
 } as const satisfies ModelAttributes;
 
 /**
@@ -89,6 +106,10 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   // Not a foreign key, only global skills can be extended.
   declare extendedSkillId: string | null;
 
+  declare source: SkillSourceType | null;
+  declare sourceMetadata: SkillSourceMetadata | null;
+  declare isDefault: boolean;
+
   declare requestedSpaceIds: number[];
 }
 
@@ -115,6 +136,7 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare mcpServerViewIds: number[];
+  declare fileAttachmentIds: number[];
   declare version: number;
 }
 
@@ -128,6 +150,11 @@ SkillVersionModel.init(
     mcpServerViewIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
+    },
+    fileAttachmentIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+      defaultValue: [],
     },
     version: {
       type: DataTypes.INTEGER,
@@ -236,6 +263,84 @@ MCPServerViewModel.hasMany(SkillMCPServerConfigurationModel, {
 SkillMCPServerConfigurationModel.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   as: "mcpServerView",
+});
+
+// Skill File Attachment (files attached to a skill for sandbox sync)
+export class SkillFileAttachmentModel extends WorkspaceAwareModel<SkillFileAttachmentModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
+  declare fileId: ForeignKey<FileModel["id"]>;
+  declare fileName: string;
+}
+
+SkillFileAttachmentModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    skillConfigurationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: SkillConfigurationModel,
+        key: "id",
+      },
+    },
+    fileId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: FileModel,
+        key: "id",
+      },
+    },
+    fileName: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "skill_file_attachment",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "skillConfigurationId"],
+        name: "idx_skill_file_attachment_workspace_skill_config",
+      },
+      {
+        fields: ["workspaceId", "fileId"],
+        name: "idx_skill_file_attachment_workspace_file",
+        unique: true,
+      },
+    ],
+  }
+);
+
+// Skill config <> File Attachment
+SkillConfigurationModel.hasMany(SkillFileAttachmentModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "fileAttachments",
+});
+SkillFileAttachmentModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  as: "skillConfiguration",
+});
+
+// File Attachment <> File
+SkillFileAttachmentModel.belongsTo(FileModel, {
+  foreignKey: { name: "fileId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "file",
 });
 
 SkillConfigurationModel.hasMany(SkillVersionModel, {

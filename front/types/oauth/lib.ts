@@ -1,7 +1,6 @@
-import * as t from "io-ts";
-
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import * as t from "io-ts";
 
 // Extra config type for OAuth setup - generic key-value pairs for provider-specific config
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);
@@ -388,7 +387,7 @@ export function getProviderRequiredOAuthCredentialInputs({
       }
       return null;
     case "snowflake":
-      if (useCase === "personal_actions" || useCase === "platform_actions") {
+      if (useCase === "personal_actions") {
         const result: OAuthCredentialInputs = {
           snowflake_account: {
             label: "Snowflake Account",
@@ -415,9 +414,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              useCase === "platform_actions"
-                ? "The Snowflake role for all users (e.g., ANALYST)."
-                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
+              "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
@@ -433,6 +430,7 @@ export function getProviderRequiredOAuthCredentialInputs({
         };
         return result;
       }
+      // platform_actions uses static credentials via the registry.
       return null;
     default:
       assertNever(provider);
@@ -513,12 +511,41 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
   // - abc123.us-east-1 (locator with region)
   // - myorg-myaccount (org name format)
   // - myorg-myaccount.privatelink (privatelink)
+  // Users sometimes paste a full hostname/URL; we explicitly reject those.
+  // The connectors/oauth layers expect the account identifier only.
   // Allow alphanumeric, hyphens, underscores, and dots
-  return (
-    typeof s === "string" &&
-    s.trim().length > 0 &&
-    /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(s.trim())
-  );
+  if (typeof s !== "string") {
+    return false;
+  }
+
+  const v = s.trim();
+  if (v.length === 0) {
+    return false;
+  }
+
+  const lower = v.toLowerCase();
+  if (
+    lower.includes("snowflakecomputing.com") ||
+    lower.startsWith("http://") ||
+    lower.startsWith("https://")
+  ) {
+    return false;
+  }
+
+  // Common typos / hostnames.
+  if (v.includes("..") || v.includes("/") || v.includes(":")) {
+    return false;
+  }
+
+  // Snowflake account identifiers are either:
+  // - account locators (include digits), optionally with region/cloud suffix
+  // - org-account format (contains a hyphen)
+  // If it's only letters/underscores/dots, it is almost certainly user input noise.
+  if (!/[-0-9]/.test(v)) {
+    return false;
+  }
+
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(v);
 }
 
 export function isValidSnowflakeRole(s: unknown): s is string {
@@ -539,6 +566,56 @@ export function isValidSnowflakeWarehouse(s: unknown): s is string {
     s.trim().length > 0 &&
     /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
   );
+}
+
+/**
+ * Pure validation function for OAuth credential inputs.
+ * Returns null if all credentials are valid, or the first error message string.
+ */
+export function validateOAuthCredentials({
+  provider,
+  useCase,
+  authCredentials,
+}: {
+  provider: OAuthProvider;
+  useCase: OAuthUseCase | null;
+  authCredentials: OAuthCredentials | null;
+}): string | null {
+  if (!useCase) {
+    return null;
+  }
+
+  const inputs = getProviderRequiredOAuthCredentialInputs({
+    provider,
+    useCase,
+  });
+
+  if (!inputs) {
+    return null;
+  }
+
+  if (!authCredentials) {
+    return "Credentials required";
+  }
+
+  for (const [key, inputData] of Object.entries(inputs)) {
+    if (!isSupportedOAuthCredential(key) || inputData.value) {
+      continue; // Skip unsupported or pre-filled values.
+    }
+
+    const value = authCredentials[key] ?? "";
+    if (inputData.validator) {
+      if (!inputData.validator(value)) {
+        return value.length === 0
+          ? `${inputData.label} is required`
+          : `Invalid ${inputData.label}`;
+      }
+    } else if (!value) {
+      return `${inputData.label} is required`;
+    }
+  }
+
+  return null;
 }
 
 // Credentials Providers
@@ -576,10 +653,16 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
+const SnowflakeAccountSchema = t.refinement(
+  t.string,
+  isValidSnowflakeAccount,
+  "SnowflakeAccount"
+);
+
 // Base schema with common fields
 const SnowflakeBaseCredentialsSchema = t.type({
   username: t.string,
-  account: t.string,
+  account: SnowflakeAccountSchema,
   role: t.string,
   warehouse: t.string,
 });

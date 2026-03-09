@@ -1,6 +1,3 @@
-import { Mistral } from "@mistralai/mistralai";
-import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
-
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { MISTRAL_PROVIDER_ID } from "@app/lib/api/llm/clients/mistral/types";
 import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
@@ -20,8 +17,17 @@ import type {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+import { Mistral } from "@mistralai/mistralai";
+import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
-export class MistralLLM extends LLM {
+/**
+ * Extract the request type from Mistral SDK's chat.stream method.
+ * This infers the type directly from the SDK's actual method signature
+ * rather than manually duplicating the interface.
+ */
+type MistralChatStreamRequest = Parameters<Mistral["chat"]["stream"]>[0];
+
+export class MistralLLM extends LLM<MistralChatStreamRequest> {
   private client: Mistral;
 
   constructor(
@@ -41,29 +47,35 @@ export class MistralLLM extends LLM {
     });
   }
 
-  async *internalStream({
+  protected buildRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    try {
-      const messages = [
-        {
-          role: "system" as const,
-          content: systemPromptToText(prompt),
-        },
-        ...conversation.messages.map(toMessage),
-      ];
+  }: LLMStreamParameters): MistralChatStreamRequest {
+    const messages = [
+      {
+        role: "system" as const,
+        content: systemPromptToText(prompt),
+      },
+      ...conversation.messages.map(toMessage),
+    ];
 
-      const completionEvents = await this.client.chat.stream({
-        model: this.modelId,
-        messages,
-        temperature: this.temperature,
-        stream: true,
-        toolChoice: toToolChoiceParam(specifications, forceToolCall),
-        tools: specifications.map(toTool),
-      });
+    return {
+      model: this.modelId,
+      messages,
+      temperature: this.temperature ?? undefined,
+      stream: true,
+      toolChoice: toToolChoiceParam(specifications, forceToolCall),
+      tools: specifications.map(toTool),
+    };
+  }
+
+  protected async *sendRequest(
+    payload: MistralChatStreamRequest
+  ): AsyncGenerator<LLMEvent> {
+    try {
+      const completionEvents = await this.client.chat.stream(payload);
 
       yield* streamLLMEvents({
         completionEvents,

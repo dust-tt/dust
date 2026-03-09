@@ -1,6 +1,5 @@
-import { createContext, useCallback, useState } from "react";
-
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { createContext, useCallback, useMemo, useState } from "react";
 
 type GeneratingMessage = {
   messageId: string;
@@ -76,15 +75,23 @@ export const GenerationContextProvider = ({
     [generatingMessages, getFirstBlockedActionForMessage]
   );
 
+  const value = useMemo(
+    () => ({
+      generatingMessages,
+      addGeneratingMessage,
+      removeGeneratingMessage,
+      getConversationGeneratingMessages,
+    }),
+    [
+      generatingMessages,
+      addGeneratingMessage,
+      removeGeneratingMessage,
+      getConversationGeneratingMessages,
+    ]
+  );
+
   return (
-    <GenerationContext.Provider
-      value={{
-        generatingMessages,
-        addGeneratingMessage,
-        removeGeneratingMessage,
-        getConversationGeneratingMessages,
-      }}
-    >
+    <GenerationContext.Provider value={value}>
       {children}
     </GenerationContext.Provider>
   );

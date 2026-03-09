@@ -1,6 +1,3 @@
-import { Button, PlusIcon } from "@dust-tt/sparkle";
-
-import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -39,12 +36,6 @@ export function AgentEditorsTab({
     }
   };
 
-  const onAddEditor = async (user: UserType) => {
-    if (isCurrentUserEditor) {
-      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4">
       <MembersList
@@ -62,19 +53,6 @@ export function AgentEditorsTab({
         onRemoveMemberClick={onRemoveMember}
         onRowClick={function noRefCheck() {}}
       />
-
-      {isCurrentUserEditor && (
-        <div>
-          <AddEditorDropdown
-            owner={owner}
-            editors={editors}
-            onAddEditor={onAddEditor}
-            trigger={
-              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
-            }
-          />
-        </div>
-      )}
     </div>
   );
 }

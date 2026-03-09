@@ -1,34 +1,30 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
-import { useUserMetadata } from "@app/lib/swr/user";
-import { setUserMetadataFromClient } from "@app/lib/user";
-
-const HIDE_TRIGGERED_CONVERSATIONS_KEY = "hideTriggeredConversations";
+const LOCAL_STORAGE_KEY = "hideTriggeredConversations";
 
 export const useHideTriggeredConversations = () => {
-  const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
-    useUserMetadata(HIDE_TRIGGERED_CONVERSATIONS_KEY, {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    });
+  const [hideTriggeredConversations, setHideState] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      return localStorage.getItem(LOCAL_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
 
-  const hideTriggeredConversations = metadata?.value === "true";
-
-  const setHideTriggeredConversations = useCallback(
-    async (hide: boolean) => {
-      await setUserMetadataFromClient({
-        key: HIDE_TRIGGERED_CONVERSATIONS_KEY,
-        value: hide ? "true" : "false",
-      });
-      void mutateMetadata();
-    },
-    [mutateMetadata]
-  );
+  const setHideTriggeredConversations = useCallback((hide: boolean) => {
+    setHideState(hide);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, hide ? "true" : "false");
+    } catch {
+      // localStorage may be full or unavailable — silently ignore.
+    }
+  }, []);
 
   return {
     hideTriggeredConversations,
     setHideTriggeredConversations,
-    isLoading: isMetadataLoading,
-    isError: isMetadataError,
   };
 };

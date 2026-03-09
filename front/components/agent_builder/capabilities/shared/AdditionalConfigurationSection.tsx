@@ -1,3 +1,7 @@
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   Checkbox,
@@ -12,13 +16,9 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 function formatKeyForDisplay(key: string): string {
   const segments = key.split(".");

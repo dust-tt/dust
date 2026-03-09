@@ -1,8 +1,7 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 
 export type FeedbackDistributionPoint = {
   timestamp: number;

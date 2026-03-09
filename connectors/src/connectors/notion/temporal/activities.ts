@@ -95,6 +95,7 @@ import {
 } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { chunk } from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";

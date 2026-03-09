@@ -1,11 +1,10 @@
-import type Stripe from "stripe";
-
 import type { Authenticator } from "@app/lib/auth";
 import { countEligibleUsersForCredits } from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import type Stripe from "stripe";
 
 // $50 per user per month for Pro subscriptions.
 const MAX_PRO_CREDIT_PER_USER_MICRO_USD = 50_000_000;
