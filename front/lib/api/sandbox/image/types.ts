@@ -38,7 +38,8 @@ export const DUST_SANDBOX_IMAGE_ID: SandboxImageId = {
 };
 
 export function formatSandboxImageId(id: SandboxImageId): string {
-  return `${id.imageName}_${id.tag}`;
+  // E2B template IDs only allow lowercase alphanumeric characters and hyphens.
+  return `${id.imageName}-${id.tag}`.replace(/[^a-z0-9-]/g, "-");
 }
 
 // ---------------------------------------------------------------------------
