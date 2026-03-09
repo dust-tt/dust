@@ -1272,12 +1272,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerConfigurations = mcpServerConfigurationsByName.flat();
     }
 
-    const instructions = def.fetchInstructions
-      ? await def.fetchInstructions(auth, requestedSpaceIds, {
-          listDiscoverableSkills: () =>
-            this.listDiscoverable(auth, { excludeNames: enabledSkillNames }),
-        })
-      : def.instructions;
+    let instructions;
+    if (def.fetchInstructions) {
+      instructions = await def.fetchInstructions(auth, requestedSpaceIds, {
+        listDiscoverableSkills: () =>
+          this.listDiscoverable(auth, { excludeNames: enabledSkillNames }),
+      });
+    } else {
+      instructions = def.instructions;
+    }
 
     return new SkillResource(
       this.model,
