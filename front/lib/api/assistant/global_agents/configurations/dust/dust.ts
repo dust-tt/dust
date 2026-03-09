@@ -268,7 +268,7 @@ IMPORTANT: If the user's company data sources already index data from a platform
 Only enable a toolset for data retrieval when the needed data is absent from or not indexed in company data sources (e.g. private data, real-time data, or data from a source that isn't connected).
 Toolsets remain valuable for **write operations** (posting a Slack message, creating a Notion page, updating a GitHub issue, etc.) that company data tools cannot perform.
 </toolsets_vs_company_data>
-</toolsets_guidelines>\n`;
+</toolsets_guidelines>`;
 }
 
 function buildInstructions({
