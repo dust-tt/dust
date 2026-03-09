@@ -1274,7 +1274,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const instructions = def.fetchInstructions
       ? await def.fetchInstructions(auth, requestedSpaceIds, {
-          listDiscoverable: () =>
+          listDiscoverableSkills: () =>
             this.listDiscoverable(auth, { excludeNames: enabledSkillNames }),
         })
       : def.instructions;

@@ -7,13 +7,13 @@ import type {
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
 function buildDiscoverSkillsInstructions(
-  defaultSkills: SkillResource[]
+  discoverableSkills: SkillResource[]
 ): string {
-  if (defaultSkills.length === 0) {
+  if (discoverableSkills.length === 0) {
     return "No workspace skills are currently available for discovery.";
   }
 
-  const skillList = defaultSkills
+  const skillList = discoverableSkills
     .map(
       ({ name, agentFacingDescription }) =>
         `- **${name}**: ${agentFacingDescription}`
@@ -40,11 +40,11 @@ export const discoverSkillsSkill = {
   fetchInstructions: async (
     _auth: Authenticator,
     _spaceIds: string[],
-    { listDiscoverable }: FetchInstructionsContext
+    { listDiscoverableSkills }: FetchInstructionsContext
   ) => {
-    const defaultSkills = await listDiscoverable();
+    const discoverableSkills = await listDiscoverableSkills();
 
-    return buildDiscoverSkillsInstructions(defaultSkills);
+    return buildDiscoverSkillsInstructions(discoverableSkills);
   },
   version: 1,
   icon: "PuzzleIcon",
