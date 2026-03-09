@@ -147,7 +147,6 @@ export function AgentBuilderSidekick() {
     startConversation,
     resetConversation,
     clientSideMCPServerIds,
-    suppressAutoStart,
   } = useSidekickPanelContext();
 
   // Auto-start conversation when component mounts
@@ -163,10 +162,6 @@ export function AgentBuilderSidekick() {
           description="There was an issue starting the Sidekick session. Please try again later."
         />
       );
-    }
-
-    if (suppressAutoStart) {
-      return null;
     }
 
     if (isCreatingConversation || !conversation) {
