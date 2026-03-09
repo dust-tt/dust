@@ -118,9 +118,23 @@ final class ConversationListViewModel: ObservableObject {
             }
         }
 
-        return ConversationDateGroup.allCases.compactMap { group in
-            guard let convos = groups[group], !convos.isEmpty else { return nil }
-            return (group.rawValue, convos)
+        var result: [(String, [Conversation])] = []
+
+        // Inbox section: unread or actionRequired conversations, shown first.
+        let inboxConversations = filteredConversations.filter { $0.unread || $0.actionRequired }
+        if !inboxConversations.isEmpty {
+            result.append(("Inbox (\(inboxConversations.count))", inboxConversations))
         }
+
+        let inboxIds = Set(inboxConversations.map(\.sId))
+        for group in ConversationDateGroup.allCases {
+            guard let convos = groups[group], !convos.isEmpty else { continue }
+            let filtered = convos.filter { !inboxIds.contains($0.sId) }
+            if !filtered.isEmpty {
+                result.append((group.rawValue, filtered))
+            }
+        }
+
+        return result
     }
 }

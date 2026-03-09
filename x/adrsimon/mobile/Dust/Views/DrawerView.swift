@@ -72,14 +72,26 @@ struct DrawerView: View {
                                 Button {
                                     onSelectConversation(conversation)
                                 } label: {
-                                    Text(conversation.title ?? "New conversations")
-                                        .sparkleCopySm()
-                                        .foregroundStyle(Color.dustForeground)
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
+                                    HStack(spacing: 6) {
+                                        if conversation.actionRequired {
+                                            Circle()
+                                                .fill(Color.golden400)
+                                                .frame(width: 8, height: 8)
+                                        } else if conversation.unread {
+                                            Circle()
+                                                .fill(Color.highlight500)
+                                                .frame(width: 8, height: 8)
+                                        }
+
+                                        Text(conversation.title ?? "New conversations")
+                                            .sparkleCopySm()
+                                            .foregroundStyle(Color.dustForeground)
+                                            .lineLimit(1)
+                                            .truncationMode(.tail)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
                                 }
                             }
                         } header: {
@@ -91,6 +103,7 @@ struct DrawerView: View {
                                 .padding(.top, 16)
                                 .padding(.bottom, 4)
                         }
+                        .background(Color.clear)
                     }
                 }
             }

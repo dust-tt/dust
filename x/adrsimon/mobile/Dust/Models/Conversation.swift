@@ -13,6 +13,8 @@ struct Conversation: Codable, Identifiable {
     let created: Double
     let updated: Double
     let title: String?
+    let unread: Bool
+    let actionRequired: Bool
 
     var updatedDate: Date {
         updated.dateFromEpochMs
