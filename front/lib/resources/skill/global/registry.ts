@@ -6,7 +6,6 @@ import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_too
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import { mentionUsersSkill } from "@app/lib/resources/skill/global/mention_users";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -41,16 +40,11 @@ type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
   readonly fetchInstructions?: never;
 };
 
-export type FetchInstructionsContext = {
-  listDiscoverableSkills: () => Promise<SkillResource[]>;
-};
-
 type WithDynamicInstructions<T extends BaseGlobalSkillDefinition> = T & {
   readonly instructions?: never;
   readonly fetchInstructions: (
     auth: Authenticator,
-    spaceIds: string[],
-    context: FetchInstructionsContext
+    spaceIds: string[]
   ) => Promise<string>;
 };
 

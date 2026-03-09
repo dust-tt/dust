@@ -489,7 +489,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     options: SkillConfigurationFindOptions = {},
     context: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillIds?: Set<string>;
     } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
@@ -796,11 +795,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }[],
     {
       agentLoopData,
-      enabledSkillIds,
       status,
     }: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillIds?: Set<string>;
       status?: SkillStatus | SkillStatus[];
     } = {}
   ): Promise<SkillResource[]> {
@@ -816,7 +813,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
         },
       },
-      { agentLoopData, enabledSkillIds }
+      { agentLoopData }
     );
   }
 
@@ -834,13 +831,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentConfigurationType,
-    {
-      agentLoopData,
-      enabledSkillIds,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      enabledSkillIds?: Set<string>;
-    } = {}
+    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -853,7 +844,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchBySkillReferences(auth, refs, {
       agentLoopData,
-      enabledSkillIds,
     });
   }
 
@@ -944,22 +934,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * List discoverable skills: custom default skills + non-auto-enabled global
-   * skills, excluding already-enabled skills.
+   * skills.
    */
   static async listDiscoverable(
-    auth: Authenticator,
-    { enabledSkillIds }: { enabledSkillIds?: Set<string> } = {}
+    auth: Authenticator
   ): Promise<SkillResource[]> {
-    const skills = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       where: {
         status: "active",
         isDefault: true,
       },
     });
-
-    return enabledSkillIds
-      ? skills.filter((s) => !enabledSkillIds.has(s.sId))
-      : skills;
   }
 
   /**
@@ -1110,21 +1095,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
-      {
-        agentLoopData,
-        enabledSkillIds: new Set(conversationEnabledSkills.map((s) => s.sId)),
-      }
+      { agentLoopData }
     );
+    const discoverableSkills = await this.listDiscoverable(auth);
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
 
     const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
-    // Skills that are already enabled are not equipped.
+    // Skills that are already enabled or equipped are not discoverable.
     const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const equippedSkills = allAgentSkills.filter(
-      (s) => !enabledSkillIds.has(s.sId)
-    );
+    const agentSkillIds = new Set(allAgentSkills.map((s) => s.sId));
+    const equippedSkills = [
+      ...allAgentSkills.filter((s) => !enabledSkillIds.has(s.sId)),
+      ...discoverableSkills.filter(
+        (s) => !enabledSkillIds.has(s.sId) && !agentSkillIds.has(s.sId)
+      ),
+    ];
 
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
@@ -1237,10 +1224,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     {
       agentLoopData,
-      enabledSkillIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillIds?: Set<string>;
     } = {}
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1272,15 +1257,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerConfigurations = mcpServerConfigurationsByName.flat();
     }
 
-    let instructions;
-    if (def.fetchInstructions) {
-      instructions = await def.fetchInstructions(auth, requestedSpaceIds, {
-        listDiscoverableSkills: () =>
-          this.listDiscoverable(auth, { enabledSkillIds }),
-      });
-    } else {
-      instructions = def.instructions;
-    }
+    const instructions = def.fetchInstructions
+      ? await def.fetchInstructions(auth, requestedSpaceIds)
+      : def.instructions;
 
     return new SkillResource(
       this.model,
