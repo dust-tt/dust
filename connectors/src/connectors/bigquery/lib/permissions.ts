@@ -48,7 +48,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
       (db) => db.internalId
     );
 
-    const allDatabases = fetchDatabases({ credentials });
+    const allDatabases = await fetchDatabases({ credentials });
 
     return new Ok(
       allDatabases.map((row) => {
@@ -76,6 +76,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
 
     const allDatasetsRes = await fetchDatasets({
       credentials,
+      database: { name: databaseName },
     });
     if (allDatasetsRes.isErr()) {
       return new Err(allDatasetsRes.error);
@@ -114,7 +115,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
     );
     const allTablesRes = await fetchTables({
       credentials,
-      dataset: datasetName,
+      dataset: { name: datasetName, database_name: databaseName },
       fetchTablesDescription: false,
     });
     if (allTablesRes.isErr()) {
