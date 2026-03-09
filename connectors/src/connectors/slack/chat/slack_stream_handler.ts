@@ -9,6 +9,8 @@ const ACTIVE_TASK_ID = "active-task-id";
 export class SlackStreamHandler {
   private streamer: ChatStreamer | undefined;
   private hasTask = false;
+  private channelId: string | undefined;
+  private threadTs: string | undefined;
   messageTs: string | undefined;
 
   constructor(private slackClient: WebClient) {}
@@ -16,20 +18,35 @@ export class SlackStreamHandler {
   public start({
     slackChannel,
     slackMessageTs,
+    slackThreadTs,
     slackTeamId,
     slackUserId,
   }: {
     slackChannel: string;
     slackMessageTs: string;
+    slackThreadTs?: string;
     slackTeamId: string;
     slackUserId?: string;
   }) {
+    this.channelId = slackChannel;
+    this.threadTs = slackThreadTs;
     this.streamer = this.slackClient.chatStream({
       channel: slackChannel,
       thread_ts: slackMessageTs,
       recipient_team_id: slackTeamId,
       recipient_user_id: slackUserId ?? undefined,
       buffer_size: 256,
+    });
+  }
+
+  async setThinking(status: string) {
+    if (!this.channelId || !this.threadTs) {
+      return;
+    }
+    await this.slackClient.assistant.threads.setStatus({
+      channel_id: this.channelId,
+      thread_ts: this.threadTs,
+      status,
     });
   }
 
