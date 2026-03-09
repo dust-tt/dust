@@ -73,6 +73,10 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
+      // Revoke the existing invitation so that a brand new one is created
+      // with a fresh createdAt (and therefore a fresh 7-day token).
+      await invitation.revoke();
+
       const invitationRes = await handleMembershipInvitations(
         workspaceAdminAuth,
         {

@@ -16,8 +16,12 @@ export function InvitationsDataTable({
   invitations,
 }: InvitationsDataTableProps) {
   const router = useAppRouter();
-  async function onResendInvitation(invitationId: string): Promise<void> {
-    if (!window.confirm("Are you sure you want to resend this invitation?")) {
+  async function onReinvite(invitationId: string): Promise<void> {
+    if (
+      !window.confirm(
+        "This will revoke the current invitation and send a new one with a fresh 7-day validity. Continue?"
+      )
+    ) {
       return;
     }
 
@@ -29,14 +33,16 @@ export function InvitationsDataTable({
         }
       );
       if (!r.ok) {
-        throw new Error(`Failed to resend invitation: ${r.statusText}`);
+        throw new Error(`Failed to reinvite: ${r.statusText}`);
       }
       const response = await r.json();
-      window.alert("Invitation resent successfully to " + response.email + ".");
+      window.alert(
+        "New invitation sent successfully to " + response.email + "."
+      );
       router.reload();
     } catch (e) {
       console.error(e);
-      window.alert("An error occurred while resending the invitation.");
+      window.alert("An error occurred while reinviting.");
     }
   }
 
@@ -75,10 +81,7 @@ export function InvitationsDataTable({
           <h2 className="text-md mb-4 font-bold">Pending Invitations:</h2>
         </div>
         <PokeDataTable
-          columns={makeColumnsForInvitations(
-            onRevokeInvitation,
-            onResendInvitation
-          )}
+          columns={makeColumnsForInvitations(onRevokeInvitation, onReinvite)}
           data={invitations}
           defaultFilterColumn="inviteEmail"
         />
