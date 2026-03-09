@@ -251,6 +251,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
     stage: "dust_only",
   },
+  discover_skills: {
+    description: "Enable default skills discovery on global agents",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

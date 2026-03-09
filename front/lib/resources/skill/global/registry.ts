@@ -1,10 +1,12 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover_knowledge";
+import { discoverSkillsSkill } from "@app/lib/resources/skill/global/discover_skills";
 import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import { mentionUsersSkill } from "@app/lib/resources/skill/global/mention_users";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -39,11 +41,16 @@ type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
   readonly fetchInstructions?: never;
 };
 
+export type FetchInstructionsContext = {
+  listDefaultSkills: () => Promise<SkillResource[]>;
+};
+
 type WithDynamicInstructions<T extends BaseGlobalSkillDefinition> = T & {
   readonly instructions?: never;
   readonly fetchInstructions: (
     auth: Authenticator,
-    spaceIds: string[]
+    spaceIds: string[],
+    context: FetchInstructionsContext
   ) => Promise<string>;
 };
 
@@ -81,6 +88,7 @@ function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
 // Registry is a simple array.
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   discoverKnowledgeSkill,
+  discoverSkillsSkill,
   discoverToolsSkill,
   framesSkill,
   goDeepSkill,
