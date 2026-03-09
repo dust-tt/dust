@@ -8,7 +8,7 @@
  * Output: x/adrsimon/mobile/SparkleTokens/Sources/SparkleTokens/Generated/
  */
 
-import { writeFileSync, mkdirSync, cpSync, existsSync, unlinkSync } from "fs";
+import { writeFileSync, mkdirSync, cpSync, existsSync, unlinkSync, readdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
@@ -77,6 +77,12 @@ const LOGOS_XCASSETS_DIR = resolve(
   "../../x/adrsimon/mobile/SparkleTokens/Sources/SparkleTokens/Resources/Logos.xcassets"
 );
 const LOGOS_SRC_DIR = resolve(__dirname, "../src/logo/src/dust");
+const ICONS_XCASSETS_DIR = resolve(
+  __dirname,
+  "../../x/adrsimon/mobile/SparkleTokens/Sources/SparkleTokens/Resources/Icons.xcassets"
+);
+const ICONS_APP_SRC_DIR = resolve(__dirname, "../src/icons/src/app");
+const ICONS_ACTIONS_SRC_DIR = resolve(__dirname, "../src/icons/src/actions");
 
 const HEADER = `// DO NOT EDIT — Generated from Sparkle (tailwind.config.js)
 // Run: cd sparkle && node scripts/generate-swift.mjs\n\n`;
@@ -416,6 +422,86 @@ function generateLogos() {
   return { swift: lines.join("\n") + "\n", count: logoFiles.length };
 }
 
+// --- Icons ---
+
+function toPascalCase(str) {
+  return str
+    .replace(/\.svg$/, "")
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+}
+
+function generateIcons() {
+  // Collect all icons: app icons unprefixed, action icons with "Action" prefix
+  const icons = [];
+
+  // App icons (unprefixed)
+  for (const file of readdirSync(ICONS_APP_SRC_DIR).filter((f) => f.endsWith(".svg")).sort()) {
+    icons.push({ src: file, srcDir: ICONS_APP_SRC_DIR, name: toPascalCase(file) });
+  }
+
+  // Action icons (Action-prefixed)
+  for (const file of readdirSync(ICONS_ACTIONS_SRC_DIR).filter((f) => f.endsWith(".svg")).sort()) {
+    icons.push({ src: file, srcDir: ICONS_ACTIONS_SRC_DIR, name: "Action" + toPascalCase(file) });
+  }
+
+  // Create Icons.xcassets
+  mkdirSync(ICONS_XCASSETS_DIR, { recursive: true });
+  writeFileSync(
+    resolve(ICONS_XCASSETS_DIR, "Contents.json"),
+    JSON.stringify({ info: { author: "xcode", version: 1 } }, null, 2)
+  );
+
+  for (const icon of icons) {
+    const srcPath = resolve(icon.srcDir, icon.src);
+    if (!existsSync(srcPath)) {
+      console.warn(`Warning: ${icon.src} not found, skipping`);
+      continue;
+    }
+
+    const imagesetDir = resolve(ICONS_XCASSETS_DIR, `${icon.name}.imageset`);
+    mkdirSync(imagesetDir, { recursive: true });
+
+    cpSync(srcPath, resolve(imagesetDir, icon.src));
+
+    writeFileSync(
+      resolve(imagesetDir, "Contents.json"),
+      JSON.stringify(
+        {
+          images: [{ filename: icon.src, idiom: "universal" }],
+          info: { author: "xcode", version: 1 },
+          properties: {
+            "preserves-vector-representation": true,
+            "template-rendering-intent": "template",
+          },
+        },
+        null,
+        2
+      )
+    );
+  }
+
+  // Generate SparkleIcon.swift
+  let lines = [];
+  lines.push(HEADER);
+  lines.push("import SwiftUI\n");
+  lines.push("/// Type-safe access to Sparkle icons bundled in SparkleTokens.");
+  lines.push("public enum SparkleIcon: String, CaseIterable {");
+
+  for (const icon of icons) {
+    const caseName = icon.name.charAt(0).toLowerCase() + icon.name.slice(1);
+    lines.push(`    case ${caseName} = "${icon.name}"`);
+  }
+
+  lines.push("\n    public var image: Image {");
+  lines.push('        Image(rawValue, bundle: .module)');
+  lines.push("    }");
+  lines.push("}");
+
+  return { swift: lines.join("\n") + "\n", count: icons.length };
+}
+
 // --- Main ---
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -430,10 +516,16 @@ console.log("Generating Logos...");
 const logoResult = generateLogos();
 writeFileSync(resolve(OUTPUT_DIR, "DustLogo.swift"), logoResult.swift);
 
+console.log("Generating Icons...");
+const iconResult = generateIcons();
+writeFileSync(resolve(OUTPUT_DIR, "SparkleIcon.swift"), iconResult.swift);
+
 console.log(
   `Done! Generated tokens in ${OUTPUT_DIR}\n` +
     `  - Colors.swift\n` +
     `  - Typography.swift\n` +
     `  - DustLogo.swift (${logoResult.count} logo variants)\n` +
-    `  - Logos.xcassets (${logoResult.count} image sets)`
+    `  - Logos.xcassets (${logoResult.count} image sets)\n` +
+    `  - SparkleIcon.swift (${iconResult.count} icons)\n` +
+    `  - Icons.xcassets (${iconResult.count} image sets)`
 );

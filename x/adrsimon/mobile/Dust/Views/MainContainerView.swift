@@ -84,8 +84,9 @@ struct MainContainerView: View {
                         Button {
                             isDrawerOpen = true
                         } label: {
-                            Image(systemName: "line.horizontal.3")
-                                .font(.title2)
+                            SparkleIcon.menu.image
+                                .resizable()
+                                .frame(width: 24, height: 24)
                                 .foregroundStyle(Color.dustForeground)
                                 .padding(16)
                         }

@@ -112,7 +112,6 @@ struct ActivityChip: View {
         if phase != .idle {
             HStack(spacing: 6) {
                 icon
-                    .font(.system(size: 12))
 
                 Text(label)
                     .sparkleCopyXs()
@@ -128,7 +127,9 @@ struct ActivityChip: View {
     @ViewBuilder
     private var icon: some View {
         if isBlockingState {
-            Image(systemName: iconName)
+            sparkleIcon.image
+                .resizable()
+                .frame(width: 12, height: 12)
                 .foregroundStyle(labelColor)
         } else {
             ProgressView()
@@ -145,16 +146,16 @@ struct ActivityChip: View {
         }
     }
 
-    private var iconName: String {
+    private var sparkleIcon: SparkleIcon {
         switch phase {
         case .personalAuthRequired:
-            "person.badge.key"
+            .lock
         case .fileAuthRequired:
-            "doc.badge.lock"
+            .lock
         case .approvalRequired:
-            "hand.raised"
+            .stopSign
         default:
-            "arrow.triangle.2.circlepath"
+            .arrowPath
         }
     }
 
@@ -200,12 +201,14 @@ struct ThinkingBubble: View {
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "brain")
-                        .font(.system(size: 11))
+                    SparkleIcon.brain.image
+                        .resizable()
+                        .frame(width: 11, height: 11)
                     Text("Thinking")
                         .sparkleCopyXs()
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 9))
+                    (isExpanded ? SparkleIcon.chevronUp : SparkleIcon.chevronDown).image
+                        .resizable()
+                        .frame(width: 9, height: 9)
                 }
                 .foregroundStyle(Color.dustFaint)
             }

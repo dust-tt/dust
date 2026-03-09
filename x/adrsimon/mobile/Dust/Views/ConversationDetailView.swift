@@ -60,8 +60,9 @@ struct ConversationDetailView: View {
     private var header: some View {
         HStack(spacing: 12) {
             Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .semibold))
+                SparkleIcon.chevronLeft.image
+                    .resizable()
+                    .frame(width: 16, height: 16)
                     .foregroundStyle(Color.dustForeground)
             }
 

@@ -34,8 +34,9 @@ private struct ErrorView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
+            SparkleIcon.exclamationCircle.image
+                .resizable()
+                .frame(width: 48, height: 48)
                 .foregroundStyle(Color.warning)
 
             Text("Something went wrong")
