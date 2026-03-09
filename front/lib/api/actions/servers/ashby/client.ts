@@ -117,7 +117,6 @@ export class AshbyClient {
     return this.parseResponse(endpoint, response, schema);
   }
 
-
   async getReportData(request: AshbyReportSynchronousRequest) {
     return this.postRequest(
       "report.synchronous",
@@ -204,10 +203,7 @@ export class AshbyClient {
     );
   }
 
-  async uploadCandidateResume(
-    candidateId: string,
-    file: AshbyFileAttachment
-  ) {
+  async uploadCandidateResume(candidateId: string, file: AshbyFileAttachment) {
     const formData = new FormData();
     formData.append("candidateId", candidateId);
     const blob = new Blob([new Uint8Array(file.buffer)], {
@@ -215,7 +211,6 @@ export class AshbyClient {
     });
     formData.append("resume", blob, file.filename);
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `${ASHBY_API_BASE_URL}/candidate.uploadResume`,
       {
