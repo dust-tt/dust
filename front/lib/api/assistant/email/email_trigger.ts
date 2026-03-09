@@ -12,7 +12,7 @@ import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -376,25 +376,43 @@ export async function userAndWorkspaceFromEmail({
     });
   }
 
+  // Filter to workspaces with the email_agents feature flag enabled.
+  const eligibleWorkspaceModels: typeof workspaceModels = [];
+  for (const w of workspaceModels) {
+    const lightWorkspace = renderLightWorkspaceType({ workspace: w });
+    const flags = await getFeatureFlags(lightWorkspace);
+    if (flags.includes("email_agents")) {
+      eligibleWorkspaceModels.push(w);
+    }
+  }
+
+  if (eligibleWorkspaceModels.length === 0) {
+    return new Err({
+      type: "workspace_not_found",
+      message:
+        "Email interactions with agents are not enabled for any of your workspaces.",
+    });
+  }
+
   // Pick the best workspace: prefer paying plans, then upgraded free plans,
   // then fall back to the most recently created workspace.
   const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspacesModelId(
-      workspaceModels.map((w) => w.id)
+      eligibleWorkspaceModels.map((w) => w.id)
     );
 
-  const payingWorkspace = workspaceModels.find((w) => {
+  const payingWorkspace = eligibleWorkspaceModels.find((w) => {
     const sub = subscriptionsByWorkspaceId[w.id];
     return sub && !isFreePlan(sub.getPlan().code);
   });
 
-  const upgradedWorkspace = workspaceModels.find((w) => {
+  const upgradedWorkspace = eligibleWorkspaceModels.find((w) => {
     const sub = subscriptionsByWorkspaceId[w.id];
     return sub && isUpgraded(sub.getPlan());
   });
 
   // Ordered by id DESC, so first = most recently created.
-  const mostRecentWorkspace = workspaceModels[0];
+  const mostRecentWorkspace = eligibleWorkspaceModels[0];
 
   const selectedWorkspace =
     payingWorkspace ?? upgradedWorkspace ?? mostRecentWorkspace;
