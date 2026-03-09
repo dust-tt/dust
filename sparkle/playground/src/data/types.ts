@@ -74,6 +74,12 @@ export interface MessageGroupData {
   avatar?: AvatarData;
 }
 
+export interface MessageQuestionData {
+  question: string;
+  options: { id: string; label: string }[];
+  allowOther?: boolean;
+}
+
 export interface ConversationMessage {
   kind: "message";
   id: string;
@@ -83,6 +89,8 @@ export interface ConversationMessage {
   actionCards?: MessageActionCardData[];
   citations?: MessageCitationData[];
   reactions?: MessageReactionData[];
+  /** When set on an agent message, renders an AskUserQuestion block inside the message */
+  question?: MessageQuestionData;
   timestamp: Date;
   ownerId: string; // user ID or agent ID
   ownerType: "user" | "agent";

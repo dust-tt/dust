@@ -36,7 +36,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { ActionCardState, BreadcrumbItem } from "@dust-tt/sparkle";
 import {
-  NewConversationActiveIndicator,
   NewConversationAgentMessage,
   NewConversationContainer,
   NewConversationMessageGroup,
@@ -66,6 +65,7 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
+import { AskUserQuestion } from "./AskUserQuestion";
 import { InputBar } from "./InputBar";
 
 interface ConversationViewProps {
@@ -296,6 +296,16 @@ export function ConversationView({
     return null;
   }, [itemsToDisplay]);
 
+  const lastAgentMessageId = useMemo(() => {
+    for (let index = itemsToDisplay.length - 1; index >= 0; index -= 1) {
+      const item = itemsToDisplay[index];
+      if (item.kind === "message" && item.ownerType === "agent") {
+        return item.id;
+      }
+    }
+    return null;
+  }, [itemsToDisplay]);
+
   const [reactionOverrides, setReactionOverrides] = useState<
     Map<string, MessageReactionData[]>
   >(new Map());
@@ -303,6 +313,13 @@ export function ConversationView({
   const [deletedMessages, setDeletedMessages] = useState<Set<string>>(
     new Set()
   );
+  const [sentQuestionMessages, setSentQuestionMessages] = useState<
+    { id: string; content: string }[]
+  >([]);
+
+  // When there are sent question messages, the last message in the thread is one of them
+  const effectiveLastMessageId =
+    sentQuestionMessages.length > 0 ? null : lastMessageId;
 
   useEffect(() => {
     setReactionOverrides(new Map(baseReactionsById));
@@ -601,15 +618,36 @@ export function ConversationView({
           );
 
           if (currentGroup?.type === "agent") {
+            const isLastAgentMessage = message.id === lastAgentMessageId;
             return (
               <NewConversationAgentMessage
                 key={message.id}
                 citations={citations}
                 onDelete={() => markDeleted(message.id)}
                 hideActions={isDeleted}
-                isLastMessage={message.id === lastMessageId}
+                isLastMessage={message.id === effectiveLastMessageId}
               >
-                {messageContent}
+                <div className="s-flex s-flex-col s-gap-3">
+                  {messageContent}
+                  {isLastAgentMessage && !isDeleted && (
+                    <AskUserQuestion
+                      question="What would you like to do?"
+                      options={[
+                        { id: "explain", label: "Explain the code" },
+                        { id: "refactor", label: "Refactor this" },
+                        { id: "test", label: "Write tests" },
+                        { id: "doc", label: "Add documentation" },
+                      ]}
+                      allowOther
+                      onSelect={(option) =>
+                        setSentQuestionMessages((prev) => [
+                          ...prev,
+                          { id: option.id, content: option.label },
+                        ])
+                      }
+                    />
+                  )}
+                </div>
               </NewConversationAgentMessage>
             );
           }
@@ -638,7 +676,7 @@ export function ConversationView({
               }
               defaultEditValue={message.content ?? message.markdown ?? ""}
               hideActions={isDeleted}
-              isLastMessage={message.id === lastMessageId}
+              isLastMessage={message.id === effectiveLastMessageId}
             >
               {messageContent}
             </NewConversationUserMessage>
@@ -673,19 +711,35 @@ export function ConversationView({
     }
 
     if (item.kind === "activeIndicator") {
-      conversationBlocks.push(
-        <NewConversationActiveIndicator
-          key={item.id}
-          type={item.type}
-          name={item.name}
-          action={item.action}
-          avatar={item.avatar}
-        />
-      );
+      // Skip rendering "is thinking" / "is typing" indicators
+      return;
     }
   });
 
   flushGroup();
+
+  // Append user messages sent from the questionnaire (AskUserQuestionTool style)
+  const locutorAvatar = locutor.portrait
+    ? { visual: locutor.portrait, isRounded: true as const }
+    : undefined;
+  sentQuestionMessages.forEach((msg, index) => {
+    conversationBlocks.push(
+      <NewConversationMessageGroup
+        key={`sent-q-${msg.id}-${index}`}
+        type="locutor"
+        avatar={locutorAvatar ? { ...locutorAvatar, name: undefined } : undefined}
+        name={undefined}
+        renderName={(name) => <span>{name}</span>}
+      >
+        <NewConversationUserMessage
+          isLastMessage={index === sentQuestionMessages.length - 1}
+          hideActions={false}
+        >
+          <span>{msg.content}</span>
+        </NewConversationUserMessage>
+      </NewConversationMessageGroup>
+    );
+  });
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
