@@ -498,39 +498,39 @@ async function handler(
             stripeSubscription &&
             isCreditPurchaseInvoice(invoice) &&
             !isEnterpriseSubscription(stripeSubscription);
-          // When we received a failed payment for a pro credit purchase,
-          // We do NOT want to send an email to the admin telling them
-          // their subscription is going to be cancelled
-          // This is because credits have not been provisioned yet, and we
-          // will end-up voiding the invoice if it continues failing
-          if (isProCreditPurchaseInvoice) {
-            const result = await voidFailedProCreditPurchaseInvoice({
-              auth,
-              invoice,
-            });
-            if (result.isErr()) {
-              // For eng-oncall
-              // This case is supposed to be extremely rare, as there are not a lot of things that can fail
-              // during an invoice void, you will need to inspect the invoice directly in stripe to see what
-              // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
-              // contact Stripe owners in case of doubt
-              logger.error(
-                {
-                  error: result.error,
-                  panic: true,
-                  stripeError: true,
-                  invoiceId: invoice.id,
-                },
-                "[Stripe Webhook] Error handling failed credit purchase"
-              );
-            } else if (result.value.voided) {
-              logger.warn(
-                { invoiceId: invoice.id },
-                "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
-              );
+          // When we received a failed payment for a credit purchase (pro or enterprise),
+          // we do NOT want to set the payment failing status or send an email to the admin
+          // telling them their subscription is going to be cancelled.
+          // Credits have not been provisioned yet — for pro, we void the invoice after
+          // repeated failures; for enterprise, they are paid in arrears or with a 30-day notice.
+          if (isCreditPurchaseInvoice(invoice)) {
+            if (isProCreditPurchaseInvoice) {
+              const result = await voidFailedProCreditPurchaseInvoice({
+                auth,
+                invoice,
+              });
+              if (result.isErr()) {
+                // For eng-oncall
+                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+                // contact Stripe owners in case of doubt
+                logger.error(
+                  {
+                    error: result.error,
+                    panic: true,
+                    stripeError: true,
+                    invoiceId: invoice.id,
+                  },
+                  "[Stripe Webhook] Error handling failed credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.warn(
+                  { invoiceId: invoice.id },
+                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+                );
+              }
             }
-            // On the other hand credit purchase from enterprise are paid in arrears or with a 30days notice
-            // Either way, we want to go through the usual flow for payment failures
           } else {
             const owner = auth.workspace();
             const subscriptionType = auth.subscription();
