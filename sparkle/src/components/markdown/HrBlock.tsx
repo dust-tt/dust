@@ -2,7 +2,7 @@ import {
   type MarkdownNode,
   sameNodePosition,
 } from "@sparkle/components/markdown/utils";
-import { memo } from "react";
+import React, { memo } from "react";
 
 export const HrBlock = memo(
   (_props: { node?: MarkdownNode }) => (

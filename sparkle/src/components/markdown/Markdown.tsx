@@ -53,7 +53,7 @@ function showUnsupportedDirective() {
   };
 }
 
-interface MarkdownProps {
+export interface MarkdownProps {
   content: string;
   isStreaming?: boolean;
   textColor?: string;
