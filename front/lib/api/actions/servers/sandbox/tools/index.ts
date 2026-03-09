@@ -6,6 +6,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
+import config from "@app/lib/api/config";
 import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   createToolManifest,
@@ -106,7 +107,10 @@ export function createSandboxTools(
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
         timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
-        envVars: { DUST_SANDBOX_TOKEN: sandboxToken },
+        envVars: {
+          DUST_SANDBOX_TOKEN: sandboxToken,
+          DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+        },
       });
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));
