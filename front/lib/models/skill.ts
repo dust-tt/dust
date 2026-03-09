@@ -108,7 +108,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
-  declare isDefault: CreationOptional<boolean>;
+  declare isDefault: boolean;
 
   declare requestedSpaceIds: number[];
 }
