@@ -72,7 +72,7 @@ export interface MarkdownProps {
   additionalMarkdownPlugins?: PluggableList;
   canCopyQuotes?: boolean;
   enableAnimation?: boolean;
-  animationDuration?: number;
+  animationDurationSeconds?: number;
   delimiter?: string;
 }
 
@@ -88,7 +88,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   additionalMarkdownPlugins,
   canCopyQuotes = true,
   enableAnimation = false,
-  animationDuration = DEFAULT_ANIMATION_DURATION_SECONDS,
+  animationDurationSeconds = DEFAULT_ANIMATION_DURATION_SECONDS,
   delimiter = DEFAULT_DELIMITER,
 }) => {
   // Derive streaming state: explicit prop takes priority, otherwise derive from isStreaming boolean.
@@ -108,7 +108,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   const animatedContent = useAnimatedText(
     processedContent,
     enableAnimation ? effectiveStreamingState : "none",
-    animationDuration,
+    animationDurationSeconds,
     delimiter
   );
 

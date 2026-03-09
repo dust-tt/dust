@@ -6,7 +6,7 @@ export type StreamingState = "streaming" | "none" | "cancelled";
 export function useAnimatedText(
   text: string,
   streamingState: StreamingState,
-  animationDuration: number,
+  animationDurationSeconds: number,
   delimiter: string
 ) {
   const [cursor, setCursor] = useState(0);
@@ -32,14 +32,14 @@ export function useAnimatedText(
     setDisableAnimation(false);
     const textParts = text.split(delimiter);
 
-    // Animates from startingCursor to textParts.length over animationDuration seconds.
+    // Animates from startingCursor to textParts.length over animationDurationSeconds seconds.
     // Each time new text arrives, the animation restarts from the current cursor.
     // The duration is fixed, so the reveal speed depends on the gap (target - cursor):
     //   - First chunk: small gap (e.g. 29 chars / 1s = ~29 chars/sec) → feels slow/throttled.
     //   - Later chunks: larger gap (e.g. 131 chars / 1s = ~131 chars/sec) → feels smooth
     //     because more chars are crammed into the same duration.
     controlsRef.current = animate(startingCursor, textParts.length, {
-      duration: animationDuration,
+      duration: animationDurationSeconds,
       ease: "easeOut",
       // latest is the interpolated cursor position (number of visible characters).
       onUpdate(latest: number) {
@@ -54,7 +54,7 @@ export function useAnimatedText(
     return () => {
       controlsRef.current?.stop();
     };
-  }, [startingCursor, text, delimiter, animationDuration]);
+  }, [startingCursor, text, delimiter, animationDurationSeconds]);
 
   useEffect(() => {
     // stop animation if streaming is cancelled.
