@@ -1,2 +1,2 @@
--- Backfill change source to 'sidekick' instead of copilot
-UPDATE agent_suggestions SET source='sidekick' WHERE source='copilot';
+-- Script to run before deployment of copilot->sidekick rename
+ALTER TABLE "public"."templates" ADD COLUMN "sidekickInstructions" TEXT;
