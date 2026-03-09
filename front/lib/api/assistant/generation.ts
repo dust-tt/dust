@@ -258,7 +258,6 @@ function constructSkillsSection({
 
     skillsSection += skillInstructions.join("\n");
   }
-  skillsSection += "\n";
 
   // Equipped but not yet enabled skills - show name and description only
   if (equippedSkills && equippedSkills.length > 0) {
