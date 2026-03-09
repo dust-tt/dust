@@ -71,6 +71,7 @@ export interface MarkdownProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   canCopyQuotes?: boolean;
+  enableAnimation?: boolean;
   animationDuration?: number;
   delimiter?: string;
 }
@@ -86,6 +87,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   canCopyQuotes = true,
+  enableAnimation = false,
   animationDuration = DEFAULT_ANIMATION_DURATION,
   delimiter = DEFAULT_DELIMITER,
 }) => {
@@ -105,7 +107,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   // Animate text during streaming for a smooth reveal effect.
   const animatedContent = useAnimatedText(
     processedContent,
-    effectiveStreamingState,
+    enableAnimation ? effectiveStreamingState : "none",
     animationDuration,
     delimiter
   );

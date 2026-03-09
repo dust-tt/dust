@@ -93,6 +93,7 @@ export const AgentMessageMarkdown = ({
       isLastMessage={isLastMessage}
       isStreaming={isStreaming}
       streamingState={streamingState}
+      enableAnimation
       textColor={textColor}
       compactSpacing={compactSpacing}
       forcedTextSize={forcedTextSize}
