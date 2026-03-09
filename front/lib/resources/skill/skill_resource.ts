@@ -1107,13 +1107,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentLoopData,
       }
     );
-    const enabledSkillIds = new Set(
-      conversationEnabledSkills.map((s) => s.sId)
-    );
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
-      { agentLoopData, enabledSkillIds }
+      {
+        agentLoopData,
+        enabledSkillIds: new Set(conversationEnabledSkills.map((s) => s.sId)),
+      }
     );
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
