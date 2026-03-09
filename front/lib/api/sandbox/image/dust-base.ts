@@ -42,7 +42,7 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
  * - Dust sandbox CLI
  */
 export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
-  "dust-sbx-bedrock:latest"
+  "dust-sbx-bedrock:flav-0.11"
 )
   // Set environment variables (these apply during build operations)
   .setBuildEnv({
@@ -59,14 +59,17 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     "sudo mkdir -p /files/conversation && sudo chmod 777 /files/conversation"
   )
   // Create simple netcat-based token server script.
-  .runCmd("mkdir -p /home/user/.bin")
-  .copy(
-    "lib/api/sandbox/image/scripts/token-server.sh",
-    "/home/user/.bin/token-server.sh"
-  )
-  .runCmd("chmod 755 /home/user/.bin/token-server.sh")
+  .runCmd("sudo mkdir -p /home/user/.bin")
+  // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
+  .runCmd(`sudo tee /home/user/.bin/token-server.sh > /dev/null << 'SHELLEOF'
+#!/bin/bash
+while true; do
+  (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
+done
+SHELLEOF`)
+  .runCmd("sudo chmod 755 /home/user/.bin/token-server.sh")
   // Add sentinel file to indicate when mounts are pending.
-  .runCmd("touch /workspace/files/.mount-pending")
+  .runCmd("sudo touch /files/conversation/.mount-pending")
   // Install system tools (git is already in base image)
   .registerTool(
     [
@@ -85,40 +88,40 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   // Register Python runtime (already installed in base image)
   .registerTool({ name: "python", description: "Python interpreter" })
   // Install Python packages
-  .registerTool(
-    [
-      { name: "pandas", description: "Data analysis library" },
-      { name: "numpy", description: "Numerical computing" },
-      { name: "matplotlib", description: "Plotting library" },
-      { name: "requests", description: "HTTP library" },
-      { name: "openpyxl", description: "Excel file support" },
-      { name: "pdfplumber", description: "PDF extraction" },
-    ],
-    {
-      installCmd:
-        "uv pip install --python /opt/venv pandas numpy matplotlib requests openpyxl pdfplumber",
-    }
-  )
+  // .registerTool(
+  //   [
+  //     { name: "pandas", description: "Data analysis library" },
+  //     { name: "numpy", description: "Numerical computing" },
+  //     { name: "matplotlib", description: "Plotting library" },
+  //     { name: "requests", description: "HTTP library" },
+  //     { name: "openpyxl", description: "Excel file support" },
+  //     { name: "pdfplumber", description: "PDF extraction" },
+  //   ]
+  //   // {
+  //   //   installCmd:
+  //   //     "uv pip install --python /opt/venv pandas numpy matplotlib requests openpyxl pdfplumber",
+  //   // }
+  // )
   // Register Bun (already installed in base image)
-  .registerTool({ name: "bun", description: "JavaScript runtime" })
-  // Install Node packages
-  .registerTool(
-    [
-      { name: "typescript", description: "TypeScript compiler" },
-      { name: "tsx", description: "TypeScript executor" },
-    ],
-    { installCmd: "npm install -g typescript tsx" }
-  )
-  // Install Dust sandbox CLI
-  .registerTool(
-    { name: "dsbx", description: "Dust CLI" },
-    {
-      installCmd:
-        "git clone --depth 1 https://github.com/dust-tt/dust.git /tmp/dust && " +
-        "cargo install --path /tmp/dust/cli/dust-sandbox --root /opt/cargo && " +
-        "sudo rm -rf /tmp/dust",
-    }
-  )
+  // .registerTool({ name: "bun", description: "JavaScript runtime" })
+  // // Install Node packages
+  // .registerTool(
+  //   [
+  //     { name: "typescript", description: "TypeScript compiler" },
+  //     { name: "tsx", description: "TypeScript executor" },
+  //   ],
+  //   { installCmd: "npm install -g typescript tsx" }
+  // )
+  // // Install Dust sandbox CLI
+  // .registerTool(
+  //   { name: "dsbx", description: "Dust CLI" },
+  //   {
+  //     installCmd:
+  //       "git clone --depth 1 https://github.com/dust-tt/dust.git /tmp/dust && " +
+  //       "cargo install --path /tmp/dust/cli/dust-sandbox --root /opt/cargo && " +
+  //       "sudo rm -rf /tmp/dust",
+  //   }
+  // )
   // Persist PATH and VIRTUAL_ENV to /etc/profile.d/ so they're available at runtime.
   // E2B's setEnvs() only applies during build, so we write to the filesystem snapshot.
   .runCmd(
