@@ -51,6 +51,32 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
 }
 
 /**
+ * Defense-in-depth: check feature flag before sending email replies.
+ * Duplicates the webhook handler check in case Redis data is manipulated
+ * or context is stored incorrectly.
+ */
+async function isEmailAgentsEnabled(
+  authType: AuthenticatorType
+): Promise<boolean> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    logger.warn("[email] Failed to create authenticator for feature flag check");
+    return false;
+  }
+  const featureFlags = await getFeatureFlags(
+    authResult.value.getNonNullableWorkspace()
+  );
+  if (!featureFlags.includes("email_agents")) {
+    logger.info(
+      { workspaceId: authType.workspaceId },
+      "[email] email_agents feature flag not enabled, skipping reply"
+    );
+    return false;
+  }
+  return true;
+}
+
+/**
  * Check if the agent is blocked on tool validation.
  * If so, send a validation email and re-store the context with fresh TTL.
  * Returns true if blocked (validation email sent), false otherwise.
@@ -174,11 +200,7 @@ export async function sendEmailReplyOnCompletion(
 
     const { auth, agentMessage, conversation } = dataRes.value;
 
-    // Defense-in-depth: check feature flag before sending reply.
-    const featureFlags = await getFeatureFlags(
-      auth.getNonNullableWorkspace()
-    );
-    if (!featureFlags.includes("email_agents")) {
+    if (!(await isEmailAgentsEnabled(authType))) {
       await deleteEmailReplyContext(
         authType.workspaceId,
         agentLoopArgs.agentMessageId
@@ -288,15 +310,7 @@ export async function sendEmailReplyOnError(
       agentLoopArgs.agentMessageId
     );
 
-    // Defense-in-depth: check feature flag before sending reply.
-    const authResult = await Authenticator.fromJSON(authType);
-    if (authResult.isErr()) {
-      return;
-    }
-    const featureFlags = await getFeatureFlags(
-      authResult.value.getNonNullableWorkspace()
-    );
-    if (!featureFlags.includes("email_agents")) {
+    if (!(await isEmailAgentsEnabled(authType))) {
       return;
     }
 
