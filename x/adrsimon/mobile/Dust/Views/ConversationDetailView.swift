@@ -8,11 +8,13 @@ struct ConversationDetailView: View {
     let onBack: () -> Void
 
     @StateObject private var viewModel: ConversationDetailViewModel
+    @StateObject private var inputBarViewModel: InputBarViewModel
 
     init(
         conversation: Conversation,
         workspaceId: String,
         tokenProvider: TokenProvider,
+        user: User,
         currentUserEmail: String,
         onBack: @escaping () -> Void
     ) {
@@ -26,16 +28,30 @@ struct ConversationDetailView: View {
                 tokenProvider: tokenProvider
             )
         )
+        _inputBarViewModel = StateObject(
+            wrappedValue: InputBarViewModel(
+                workspaceId: workspaceId,
+                tokenProvider: tokenProvider,
+                user: user
+            )
+        )
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             messageList
+            InputBarView(
+                viewModel: inputBarViewModel,
+                conversationId: conversation.sId
+            )
         }
         .background(Color.dustBackground)
         .task {
             await viewModel.loadMessages()
+        }
+        .task {
+            await inputBarViewModel.loadAgents()
         }
     }
 

@@ -60,6 +60,7 @@ struct MainContainerView: View {
                             conversation: conversation,
                             workspaceId: workspaceId,
                             tokenProvider: tokenProvider,
+                            user: user,
                             currentUserEmail: user.email,
                             onBack: {
                                 selectedConversation = nil
@@ -67,8 +68,16 @@ struct MainContainerView: View {
                             }
                         )
                         .id(conversation.sId)
-                    } else {
-                        NewConversationView(firstName: user.firstName)
+                    } else if let workspaceId = viewModel.workspace?.sId {
+                        NewConversationView(
+                            firstName: user.firstName,
+                            user: user,
+                            workspaceId: workspaceId,
+                            tokenProvider: tokenProvider,
+                            onConversationCreated: { conversation in
+                                selectedConversation = conversation
+                            }
+                        )
                     }
 
                     if selectedConversation == nil {
