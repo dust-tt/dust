@@ -56,7 +56,7 @@ function loadAssets(): Assets {
   return { agents, users, conversations, feedbacks, suggestions };
 }
 
-describe("copilot seed script integration test", () => {
+describe("sidekick seed script integration test", () => {
   let workspace: LightWorkspaceType;
   let user: UserResource;
   let authenticator: Authenticator;
@@ -155,7 +155,7 @@ describe("copilot seed script integration test", () => {
     // Verify first conversation has 4 messages (2 exchanges)
     const firstConv = await ConversationResource.fetchById(
       authenticator,
-      "CopilotConv01"
+      "SidekickConv01"
     );
     const { messages: firstConvMessages } =
       await firstConv!.fetchMessagesForPage(authenticator, { limit: 100 });

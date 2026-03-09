@@ -62,16 +62,16 @@ export function transformAgentConfigurationToFormData(
 export function getDefaultAgentFormData({
   user,
   owner,
-  hasCopilot,
+  hasSidekick,
 }: {
   user: UserType;
   owner: WorkspaceType;
-  hasCopilot?: boolean;
+  hasSidekick?: boolean;
 }): AgentBuilderFormData {
-  const preferredModel = hasCopilot
+  const preferredModel = hasSidekick
     ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
     : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = hasCopilot
+  const fallbackModel = hasSidekick
     ? getSmallWhitelistedModel(owner)
     : getLargeWhitelistedModel(owner);
 
@@ -123,7 +123,7 @@ export function transformTemplateToFormData(
   owner: WorkspaceType,
   hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
-  const hasCopilotAccess =
+  const hasSidekickAccess =
     hasFeature("agent_builder_copilot") &&
     (owner.role === "admin" ||
       (hasFeature("agent_builder_copilot_builders") &&
@@ -131,18 +131,18 @@ export function transformTemplateToFormData(
   const defaultFormData = getDefaultAgentFormData({
     user,
     owner,
-    hasCopilot: hasCopilotAccess,
+    hasSidekick: hasSidekickAccess,
   });
 
   return {
     ...defaultFormData,
-    // Don't constrain copilot with preset instructions when the user has copilot access.
-    instructions: hasCopilotAccess
+    // Don't constrain sidekick with preset instructions when the user has sidekick access.
+    instructions: hasSidekickAccess
       ? defaultFormData.instructions
       : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
-      name: hasCopilotAccess
+      name: hasSidekickAccess
         ? defaultFormData.agentSettings.name
         : (template.handle ?? defaultFormData.agentSettings.name),
       description:

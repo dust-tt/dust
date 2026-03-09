@@ -1,37 +1,37 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
-import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
-import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
-import { _getCopilotEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick_edge";
-import type { CopilotContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
+import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
+import { _getSidekickEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick_edge";
+import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import {
   MCP_SERVERS_FOR_GLOBAL_AGENTS,
   type MCPServerViewsForGlobalAgentsMap,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { Authenticator } from "@app/lib/auth";
-import type { CopilotConfig } from "@app/tests/sidekick-evals/lib/types";
+import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
-export const RUN_COPILOT_EVAL = process.env.RUN_COPILOT_EVAL === "true";
+export const RUN_SIDEKICK_EVAL = process.env.RUN_SIDEKICK_EVAL === "true";
 export const JUDGE_RUNS = parseInt(process.env.JUDGE_RUNS ?? "3", 10);
 export const PASS_THRESHOLD = parseInt(process.env.PASS_THRESHOLD ?? "2", 10);
 export const FILTER_CATEGORY = process.env.FILTER_CATEGORY;
 export const FILTER_SCENARIO = process.env.FILTER_SCENARIO;
-export const COPILOT_ON_COPILOT = process.env.COPILOT_ON_COPILOT === "true";
-export const COPILOT_AGENT = process.env.COPILOT_AGENT ?? "default";
+export const SIDEKICK_ON_SIDEKICK = process.env.SIDEKICK_ON_SIDEKICK === "true";
+export const SIDEKICK_AGENT = process.env.SIDEKICK_AGENT ?? "default";
 
 export const TIMEOUT_MS = 300_000;
-export const COPILOT_ON_COPILOT_TIMEOUT_MS = 600_000;
+export const SIDEKICK_ON_SIDEKICK_TIMEOUT_MS = 600_000;
 export const MAX_TOOL_CALL_ROUNDS = 5;
 
 export const ONE_HOUR_MS = 3_600_000;
 export const ONE_DAY_MS = 86_400_000;
 
-const COPILOT_MCP_SERVERS = [
-  AGENT_COPILOT_AGENT_STATE_SERVER,
-  AGENT_COPILOT_CONTEXT_SERVER,
+const SIDEKICK_MCP_SERVERS = [
+  AGENT_SIDEKICK_AGENT_STATE_SERVER,
+  AGENT_SIDEKICK_CONTEXT_SERVER,
 ] as const;
 
 const GET_AGENT_CONFIG_SPEC: AgentActionSpecification = {
@@ -45,7 +45,7 @@ const GET_AGENT_CONFIG_SPEC: AgentActionSpecification = {
   },
 };
 
-function getMockCopilotContext(): CopilotContext {
+function getMockSidekickContext(): SidekickContext {
   return {
     mcpServerViews: null,
     langfuseConfig: null,
@@ -89,26 +89,26 @@ const MOCK_MCP_SERVER_VIEWS: MCPServerViewsForGlobalAgentsMap =
     MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [name, null])
   ) as MCPServerViewsForGlobalAgentsMap;
 
-export async function getCopilotConfig(): Promise<{
-  config: CopilotConfig;
+export async function getSidekickConfig(): Promise<{
+  config: SidekickConfig;
   auth: Authenticator;
 }> {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const mockCopilotContext = getMockCopilotContext();
-  let copilotConfig;
-  switch (COPILOT_AGENT) {
+  const mockSidekickContext = getMockSidekickContext();
+  let sidekickConfig;
+  switch (SIDEKICK_AGENT) {
     case "default":
-      copilotConfig = _getCopilotGlobalAgent(auth, {
-        copilotContext: mockCopilotContext,
+      sidekickConfig = _getSidekickGlobalAgent(auth, {
+        sidekickContext: mockSidekickContext,
         preFetchedDataSources: null,
         mcpServerViews: MOCK_MCP_SERVER_VIEWS,
       });
       break;
     case "haiku":
-      copilotConfig = _getCopilotEdgeGlobalAgent(auth, {
-        copilotContext: {
-          ...mockCopilotContext,
+      sidekickConfig = _getSidekickEdgeGlobalAgent(auth, {
+        sidekickContext: {
+          ...mockSidekickContext,
           langfuseConfig: {
             instructions: "",
             modelConfig: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -119,9 +119,9 @@ export async function getCopilotConfig(): Promise<{
       });
       break;
     case "gemini-3-light":
-      copilotConfig = _getCopilotEdgeGlobalAgent(auth, {
-        copilotContext: {
-          ...mockCopilotContext,
+      sidekickConfig = _getSidekickEdgeGlobalAgent(auth, {
+        sidekickContext: {
+          ...mockSidekickContext,
           langfuseConfig: {
             instructions: "",
             modelConfig: GEMINI_3_FLASH_MODEL_CONFIG,
@@ -133,9 +133,9 @@ export async function getCopilotConfig(): Promise<{
       });
       break;
     case "gemini-3-medium":
-      copilotConfig = _getCopilotEdgeGlobalAgent(auth, {
-        copilotContext: {
-          ...mockCopilotContext,
+      sidekickConfig = _getSidekickEdgeGlobalAgent(auth, {
+        sidekickContext: {
+          ...mockSidekickContext,
           langfuseConfig: {
             instructions: "",
             modelConfig: GEMINI_3_FLASH_MODEL_CONFIG,
@@ -148,13 +148,13 @@ export async function getCopilotConfig(): Promise<{
       break;
     default:
       throw new Error(
-        `Unknown COPILOT_AGENT: "${COPILOT_AGENT}". Must be "default", "haiku", "gemini-3-light", or "gemini-3-medium".`
+        `Unknown SIDEKICK_AGENT: "${SIDEKICK_AGENT}". Must be "default", "haiku", "gemini-3-light", or "gemini-3-medium".`
       );
   }
 
   const tools: AgentActionSpecification[] = [GET_AGENT_CONFIG_SPEC];
 
-  for (const server of COPILOT_MCP_SERVERS) {
+  for (const server of SIDEKICK_MCP_SERVERS) {
     for (const tool of server.tools) {
       if (tool.inputSchema) {
         tools.push({
@@ -167,14 +167,14 @@ export async function getCopilotConfig(): Promise<{
   }
 
   const instructions = [
-    copilotConfig.instructions ?? "",
+    sidekickConfig.instructions ?? "",
     MOCK_WORKSPACE_CONTEXT,
   ].join("\n\n");
 
   return {
     config: {
       instructions,
-      model: copilotConfig.model,
+      model: sidekickConfig.model,
       tools,
     },
     auth,

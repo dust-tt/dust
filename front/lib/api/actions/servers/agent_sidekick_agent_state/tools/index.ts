@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
+import { AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import {
   getAgentConfigurationIdFromContext,
   getAgentConfigurationVersionFromContext,
@@ -10,7 +10,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
+const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
   {
     get_agent_info: async (_, { auth, agentLoopContext }) => {
       const agentConfigurationId =
@@ -92,6 +92,6 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
   };
 
 export const TOOLS = buildTools(
-  AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA,
+  AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA,
   handlers
 );

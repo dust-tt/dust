@@ -1237,7 +1237,7 @@ function ReadyToMoveSection() {
               </H3>
               <P size="md" className="text-muted-foreground">
                 Model your cost savings from stack consolidation + productivity
-                gains. Compare against ChatGPT Enterprise, Copilot, and
+                gains. Compare against ChatGPT Enterprise, Sidekick, and
                 build-it-yourself scenarios
               </P>
             </div>

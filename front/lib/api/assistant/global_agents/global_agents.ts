@@ -42,8 +42,8 @@ import {
   _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
-import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
-import { _getCopilotEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick_edge";
+import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
+import { _getSidekickEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick_edge";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import { _getHelperGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/helper";
@@ -73,8 +73,8 @@ import {
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
 import {
-  buildCopilotContext,
-  type CopilotContext,
+  buildSidekickContext,
+  type SidekickContext,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -288,13 +288,13 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
-  [GLOBAL_AGENTS_SID.COPILOT]: {
+  [GLOBAL_AGENTS_SID.SIDEKICK]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: true,
     injectsWorkspaceContext: true,
   },
-  [GLOBAL_AGENTS_SID.COPILOT_EDGE]: {
+  [GLOBAL_AGENTS_SID.SIDEKICK_EDGE]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: true,
@@ -508,7 +508,7 @@ function getGlobalAgent({
   preFetchedDataSources,
   globalAgentSettings,
   mcpServerViews,
-  copilotContext,
+  sidekickContext,
   hasDeepDive,
   globalAgentContext,
 }: {
@@ -517,7 +517,7 @@ function getGlobalAgent({
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   globalAgentSettings: GlobalAgentSettingsModel[];
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-  copilotContext: CopilotContext | null;
+  sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
 }): AgentConfigurationType | null {
@@ -929,17 +929,17 @@ function getGlobalAgent({
         settings,
       });
       break;
-    case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, {
-        copilotContext,
+    case GLOBAL_AGENTS_SID.SIDEKICK:
+      agentConfiguration = _getSidekickGlobalAgent(auth, {
+        sidekickContext,
         preFetchedDataSources,
         mcpServerViews,
         globalAgentContext,
       });
       break;
-    case GLOBAL_AGENTS_SID.COPILOT_EDGE:
-      agentConfiguration = _getCopilotEdgeGlobalAgent(auth, {
-        copilotContext,
+    case GLOBAL_AGENTS_SID.SIDEKICK_EDGE:
+      agentConfiguration = _getSidekickEdgeGlobalAgent(auth, {
+        sidekickContext,
         preFetchedDataSources,
         mcpServerViews,
       });
@@ -1028,11 +1028,11 @@ export async function getGlobalAgents(
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID)
       .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
-      // We only want to fetch copilot global agents if explicitly requested.
+      // We only want to fetch sidekick global agents if explicitly requested.
       .filter(
         (sId) =>
-          sId !== GLOBAL_AGENTS_SID.COPILOT &&
-          sId !== GLOBAL_AGENTS_SID.COPILOT_EDGE
+          sId !== GLOBAL_AGENTS_SID.SIDEKICK &&
+          sId !== GLOBAL_AGENTS_SID.SIDEKICK_EDGE
       );
 
   const flags = await getFeatureFlags(owner);
@@ -1098,14 +1098,14 @@ export async function getGlobalAgents(
   if (!flags.includes("agent_builder_copilot")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
-        sId !== GLOBAL_AGENTS_SID.COPILOT &&
-        sId !== GLOBAL_AGENTS_SID.COPILOT_EDGE
+        sId !== GLOBAL_AGENTS_SID.SIDEKICK &&
+        sId !== GLOBAL_AGENTS_SID.SIDEKICK_EDGE
     );
   }
 
-  const copilotContext =
+  const sidekickContext =
     variant === "full"
-      ? await buildCopilotContext(auth, agentsIdsToFetch)
+      ? await buildSidekickContext(auth, agentsIdsToFetch)
       : null;
 
   // For now we retrieve them all
@@ -1117,7 +1117,7 @@ export async function getGlobalAgents(
       preFetchedDataSources,
       globalAgentSettings,
       mcpServerViews,
-      copilotContext,
+      sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
       globalAgentContext: options?.globalAgentContext,
     })

@@ -338,7 +338,7 @@ const USER_MESSAGE_ORIGINS = [
   "zapier",
   "zendesk",
   "onboarding_conversation",
-  "agent_copilot",
+  "agent_sidekick",
   "project_butler",
   "project_kickoff",
 ] as const;

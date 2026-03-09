@@ -69,7 +69,7 @@ AgentSuggestionModel.init(
     source: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: "Origin of the suggestion such as reinforcement or copilot",
+      comment: "Origin of the suggestion such as reinforcement or sidekick",
     },
   },
   {

@@ -21,7 +21,7 @@ import React, { useState } from "react";
 export interface TemplatesDisplayType {
   id: string;
   name: string;
-  hasCopilotInstructions: boolean;
+  hasSidekickInstructions: boolean;
   visibility: TemplateVisibility;
   tags: TemplateTagCodeType[];
   onClick?: () => void;
@@ -35,7 +35,7 @@ function prepareTemplatesForDisplay(
   return templates.map((t) => ({
     id: t.sId,
     name: t.handle,
-    hasCopilotInstructions: t.hasCopilotInstructions,
+    hasSidekickInstructions: t.hasSidekickInstructions,
     visibility: t.visibility,
     tags: t.tags,
   }));
@@ -72,11 +72,11 @@ export function makeColumnsForTemplates() {
       ),
     },
     {
-      header: "Copilot Instructions",
-      accessorKey: "hasCopilotInstructions",
+      header: "Sidekick Instructions",
+      accessorKey: "hasSidekickInstructions",
       cell: (info: Info) => (
         <DataTable.CellContent>
-          {info.row.original.hasCopilotInstructions ? "Yes" : "No"}
+          {info.row.original.hasSidekickInstructions ? "Yes" : "No"}
         </DataTable.CellContent>
       ),
     },

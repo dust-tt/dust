@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useCopilotSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/sidekick/tools/getAgentConfig";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -11,14 +11,14 @@ import { useFormContext } from "react-hook-form";
 // exclusively used by the Agent Builder Sidekick to access live form state.
 const SERVER_NAME = "agent-builder-sidekick-client";
 
-export interface UseCopilotMCPServerResult {
+export interface UseSidekickMCPServerResult {
   serverId: string | undefined;
   isConnected: boolean;
   isConnecting: boolean;
   error: Error | null;
 }
 
-interface UseCopilotMCPServerOptions {
+interface UseSidekickMCPServerOptions {
   enabled: boolean;
 }
 
@@ -26,12 +26,12 @@ interface UseCopilotMCPServerOptions {
  * React hook that manages a client-side MCP server for the Agent Builder Sidekick.
  * Exposes tools that allow the sidekick to access the live (unsaved) agent builder form state.
  */
-export function useCopilotMCPServer({
+export function useSidekickMCPServer({
   enabled,
-}: UseCopilotMCPServerOptions): UseCopilotMCPServerResult {
+}: UseSidekickMCPServerOptions): UseSidekickMCPServerResult {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
-  const suggestionsContext = useCopilotSuggestions();
+  const suggestionsContext = useSidekickSuggestions();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
@@ -104,7 +104,7 @@ export function useCopilotMCPServer({
 
         // Set up transport error handling.
         transport.onerror = (err) => {
-          console.error("[useCopilotMCPServer] Transport error:", err);
+          console.error("[useSidekickMCPServer] Transport error:", err);
           if (isMounted) {
             setError(err);
           }
@@ -126,7 +126,7 @@ export function useCopilotMCPServer({
           setIsConnecting(false);
         }
       } catch (err) {
-        console.error("[useCopilotMCPServer] Failed to initialize:", err);
+        console.error("[useSidekickMCPServer] Failed to initialize:", err);
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);

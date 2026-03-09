@@ -1,7 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 
-export function useIsAgentBuilderCopilotEnabled(): boolean {
+export function useIsAgentBuilderSidekickEnabled(): boolean {
   const { owner, isAdmin } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags();
   const isBuilder = owner.role === "builder";

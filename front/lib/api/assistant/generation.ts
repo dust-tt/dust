@@ -434,8 +434,8 @@ export function constructPromptMultiActions(
   // Only enabled for `deep-dive` and `dust(-x)` agents.
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.COPILOT ||
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.COPILOT_EDGE ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.SIDEKICK ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.SIDEKICK_EDGE ||
     isDustLikeAgent(agentConfiguration.sId);
 
   const instructionsContent = constructInstructionsSection({

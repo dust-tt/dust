@@ -9,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 function buildTemplateAgentInitMessage({
   handle,
-  copilotInstructions,
+  sidekickInstructions,
   agentFacingDescription,
 }: TemplateResource): string {
   return `<dust_system>
@@ -21,11 +21,11 @@ Here is a brief description of what the agent should do:
 ${agentFacingDescription}
 </description>
 
-Follow the <using_templates> section from your instructions to act on the copilotInstructions below.
+Follow the <using_templates> section from your instructions to act on the sidekickInstructions below.
 
-<copilotInstructions>
-${copilotInstructions}
-</copilotInstructions>
+<sidekickInstructions>
+${sidekickInstructions}
+</sidekickInstructions>
 </dust_system>`;
 }
 
@@ -48,10 +48,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { copilotEdge } = req.query;
+      const { sidekickEdge } = req.query;
       const template = await TemplateResource.fetchByExternalId(templateId);
 
-      if (!template || !template.copilotInstructions) {
+      if (!template || !template.sidekickInstructions) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -61,15 +61,15 @@ async function handler(
         });
       }
 
-      if (copilotEdge !== "true") {
+      if (sidekickEdge !== "true") {
         return res.status(200).json(buildTemplateAgentInitMessage(template));
       }
 
       const result = await fetchLangfuseFirstMessagePrompt(
-        "copilot-edge-first-message-template",
+        "sidekick-edge-first-message-template",
         {
           handle: template.handle,
-          copilotInstructions: template.copilotInstructions,
+          sidekickInstructions: template.sidekickInstructions,
           agentFacingDescription: template.agentFacingDescription ?? "",
         }
       );
@@ -78,7 +78,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to generate copilot prompt.",
+            message: "Failed to generate sidekick prompt.",
           },
         });
       }

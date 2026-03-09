@@ -1516,7 +1516,7 @@ describe("Root-targeting suggestions", () => {
     it("should preserve all blocks when suggestion has multi-block content targeting root", () => {
       editor.commands.setContent("Old text", { contentType: "markdown" });
 
-      // Simulates the copilot returning multi-block HTML without data-type attribute.
+      // Simulates the sidekick returning multi-block HTML without data-type attribute.
       // parseHTMLToBlock must return the instructionsRoot (not just the first child)
       // so that both the heading and paragraph are preserved.
       editor.commands.applySuggestion({

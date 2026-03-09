@@ -1,6 +1,6 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import type { CopilotContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type {
   MCPServerViewsForGlobalAgentsMap,
   PrefetchedDataSourcesType,
@@ -23,7 +23,7 @@ import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
 
-export const COPILOT_INSTRUCTION_SECTIONS = {
+export const SIDEKICK_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
 You are the Dust Agent Sidekick, an AI assistant embedded in the Agent Builder interface.
 Your role is to guide users through agent configuration by generating actionable suggestions they can accept or reject.
@@ -48,7 +48,7 @@ The ONLY exception is the first message of a conversation when it is a new agent
 Step 2: Understand the agent's workflow
 Reason about the agent based on the output of \`get_agent_config\`. Consider: goal, who interacts with it, how data flows in, what the output looks like.
 
-Step 3: Understand the user's intent for the copilot interaction
+Step 3: Understand the user's intent for the sidekick interaction
 If it is not clear, ALWAYS ask the user for clarification.
 You should NEVER start building a plan until the user has clearly defined what their goal is for the interaction.
 
@@ -316,7 +316,7 @@ The following suggestion tools are available, but it is rare that you will need 
 </suggestion_context>`,
 
   responseStyle: `<response_style>
-Keep responses concise and scannable - users move quickly in the copilot tab.
+Keep responses concise and scannable - users move quickly in the sidekick tab.
 
 Format based on content:
 - Sequential steps: Use numbered lists when order matters
@@ -359,7 +359,7 @@ NEVER offer the quickReply button if the question is open-ended or requires mult
 </response_style>`,
 
   templates: `<using_templates>
-Each template will include a <copilotInstructions> section which contains domain-specific guidance for the template, usually structured as:
+Each template will include a <sidekickInstructions> section which contains domain-specific guidance for the template, usually structured as:
 - <Business_Requirements>: Specific clarifying questions that will help you customize the template to the user's needs.
 - <Capabilities_To_Suggest>: Tools and skills to suggest
 - <Knowledge_To_Suggest>: Knowledge to suggest
@@ -424,38 +424,38 @@ You DO NOT need to call list_models, list_skills, or list_tools unless explicitl
 </context_guidance>`,
 };
 
-export function buildCopilotInstructions(): string {
+export function buildSidekickInstructions(): string {
   const parts: string[] = [
-    COPILOT_INSTRUCTION_SECTIONS.primary,
-    COPILOT_INSTRUCTION_SECTIONS.agentWorkflow,
-    COPILOT_INSTRUCTION_SECTIONS.userConfirmationForHeavyWork,
-    COPILOT_INSTRUCTION_SECTIONS.suggestionContext,
-    COPILOT_INSTRUCTION_SECTIONS.instructionsGuidance,
-    COPILOT_INSTRUCTION_SECTIONS.instructionSuggestionFormatting,
-    COPILOT_INSTRUCTION_SECTIONS.skillsToolsGuidance,
-    COPILOT_INSTRUCTION_SECTIONS.knowledgeGuidance,
-    COPILOT_INSTRUCTION_SECTIONS.companyDataGuidance,
-    COPILOT_INSTRUCTION_SECTIONS.templates,
-    COPILOT_INSTRUCTION_SECTIONS.triggersAndSchedules,
-    COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
-    COPILOT_INSTRUCTION_SECTIONS.responseStyle,
-    COPILOT_INSTRUCTION_SECTIONS.contextGuidance,
+    SIDEKICK_INSTRUCTION_SECTIONS.primary,
+    SIDEKICK_INSTRUCTION_SECTIONS.agentWorkflow,
+    SIDEKICK_INSTRUCTION_SECTIONS.userConfirmationForHeavyWork,
+    SIDEKICK_INSTRUCTION_SECTIONS.suggestionContext,
+    SIDEKICK_INSTRUCTION_SECTIONS.instructionsGuidance,
+    SIDEKICK_INSTRUCTION_SECTIONS.instructionSuggestionFormatting,
+    SIDEKICK_INSTRUCTION_SECTIONS.skillsToolsGuidance,
+    SIDEKICK_INSTRUCTION_SECTIONS.knowledgeGuidance,
+    SIDEKICK_INSTRUCTION_SECTIONS.companyDataGuidance,
+    SIDEKICK_INSTRUCTION_SECTIONS.templates,
+    SIDEKICK_INSTRUCTION_SECTIONS.triggersAndSchedules,
+    SIDEKICK_INSTRUCTION_SECTIONS.workflowVisualization,
+    SIDEKICK_INSTRUCTION_SECTIONS.responseStyle,
+    SIDEKICK_INSTRUCTION_SECTIONS.contextGuidance,
   ];
 
   return parts.join("\n\n");
 }
 
-const COPILOT_NEW_AGENT_STATIC_RESPONSE = "What should this agent do?";
+const SIDEKICK_NEW_AGENT_STATIC_RESPONSE = "What should this agent do?";
 
-export function _getCopilotGlobalAgent(
+export function _getSidekickGlobalAgent(
   auth: Authenticator,
   {
-    copilotContext,
+    sidekickContext,
     preFetchedDataSources,
     mcpServerViews,
     globalAgentContext,
   }: {
-    copilotContext: CopilotContext | null;
+    sidekickContext: SidekickContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     globalAgentContext?: GlobalAgentContext;
@@ -468,9 +468,9 @@ export function _getCopilotGlobalAgent(
     mcpServerViews
   );
 
-  const contextAction = copilotContext?.mcpServerViews?.context
+  const contextAction = sidekickContext?.mcpServerViews?.context
     ? buildServerSideMCPServerConfiguration({
-        mcpServerView: copilotContext.mcpServerViews.context,
+        mcpServerView: sidekickContext.mcpServerViews.context,
       })
     : null;
 
@@ -479,12 +479,12 @@ export function _getCopilotGlobalAgent(
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
-  // Use noop model for the first turn of a new agent copilot conversation
+  // Use noop model for the first turn of a new agent sidekick conversation
   // (static response without calling a real LLM).
   // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
   const isNewAgentFromScratchFirstTurn =
-    isFirstTurn && globalAgentContext?.copilotIsNewAgentFromScratch;
+    isFirstTurn && globalAgentContext?.sidekickIsNewAgentFromScratch;
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
@@ -499,14 +499,14 @@ export function _getCopilotGlobalAgent(
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
         ...(isNewAgentFromScratchFirstTurn && {
-          metaData: { staticResponse: COPILOT_NEW_AGENT_STATIC_RESPONSE },
+          metaData: { staticResponse: SIDEKICK_NEW_AGENT_STATIC_RESPONSE },
         }),
       }
     : dummyModelConfiguration;
 
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.SIDEKICK);
 
-  const instructions = buildCopilotInstructions();
+  const instructions = buildSidekickInstructions();
 
   return {
     id: -1,

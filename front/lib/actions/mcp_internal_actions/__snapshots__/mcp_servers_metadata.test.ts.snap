@@ -2,10 +2,10 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
-  "agent_copilot_agent_state": {
+  "agent_sidekick_agent_state": {
     "get_agent_info": "never_ask",
   },
-  "agent_copilot_context": {
+  "agent_sidekick_context": {
     "get_agent_feedback": "never_ask",
     "get_agent_insights": "never_ask",
     "get_agent_template": "never_ask",

@@ -309,7 +309,7 @@ export const salesFAQItems = [
         </a>
         .<h3>RFP handling</h3>
         Dust's <strong>@securitySam</strong> template for RFPs and
-        <strong> @salesCopilot</strong> for prospect requests access your
+        <strong> @salesSidekick</strong> for prospect requests access your
         product specifications, compliance documentation, and previous
         successful responses to generate accurate, consistent answers. Kyriba's
         team saves

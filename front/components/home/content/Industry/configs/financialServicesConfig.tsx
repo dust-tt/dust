@@ -166,7 +166,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Support operations",
-        image: "/static/landing/industry/features/Incident_copilot_slack.webp",
+        image: "/static/landing/industry/features/Incident_sidekick_slack.webp",
         bgColor: "bg-green-100",
         features: [
           {

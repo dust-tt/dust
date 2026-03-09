@@ -14,25 +14,25 @@ const COLLAPSED_RIGHT_PANEL_SIZE = 3;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
 const DEFAULT_RIGHT_PANEL_SIZE = 30;
 const DEFAULT_LEFT_PANEL_SIZE = 70;
-const COPILOT_LEFT_PANEL_SIZE = 50;
-const COPILOT_RIGHT_PANEL_SIZE = 50;
+const SIDEKICK_LEFT_PANEL_SIZE = 50;
+const SIDEKICK_RIGHT_PANEL_SIZE = 50;
 
 interface AgentBuilderLayoutProps {
   leftPanel: React.ReactNode;
   rightPanel: React.ReactNode;
-  copilotEnabled?: boolean;
+  sidekickEnabled?: boolean;
 }
 
 export function AgentBuilderLayout({
   leftPanel,
   rightPanel,
-  copilotEnabled = false,
+  sidekickEnabled = false,
 }: AgentBuilderLayoutProps) {
-  const leftPanelSize = copilotEnabled
-    ? COPILOT_LEFT_PANEL_SIZE
+  const leftPanelSize = sidekickEnabled
+    ? SIDEKICK_LEFT_PANEL_SIZE
     : DEFAULT_LEFT_PANEL_SIZE;
-  const rightPanelSize = copilotEnabled
-    ? COPILOT_RIGHT_PANEL_SIZE
+  const rightPanelSize = sidekickEnabled
+    ? SIDEKICK_RIGHT_PANEL_SIZE
     : DEFAULT_RIGHT_PANEL_SIZE;
   const isMobile = useIsMobile();
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =

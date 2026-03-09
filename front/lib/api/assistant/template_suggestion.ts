@@ -111,7 +111,7 @@ export async function getSuggestedTemplatesForQuery(
     },
     {
       context: {
-        operationType: "copilot_template_suggestion",
+        operationType: "sidekick_template_suggestion",
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
       },

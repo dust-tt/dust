@@ -243,11 +243,11 @@ export const shrinkWrapSuite: TestSuite = {
       scenarioId: "bug-triage-clarificationclarification",
       userMessage: buildShrinkWrapInitialMessage(BUG_TRIAGE_CONVERSATION),
       mockState: BLANK_AGENT,
-      judgeCriteria: `This is a shrink-wrap scenario where the copilot receives a conversation but NO explicit user instruction. The copilot must clarify with the user before making changes.
+      judgeCriteria: `This is a shrink-wrap scenario where the sidekick receives a conversation but NO explicit user instruction. The sidekick must clarify with the user before making changes.
 
-The copilot MUST ask a clarifying question that demonstrates understanding of the conversation (e.g., mentioning bug triage, error investigation, inputs/outputs/workflow). It must NOT call suggest_prompt_edits, suggest_tools, or suggest_knowledge without first getting user confirmation.
+The sidekick MUST ask a clarifying question that demonstrates understanding of the conversation (e.g., mentioning bug triage, error investigation, inputs/outputs/workflow). It must NOT call suggest_prompt_edits, suggest_tools, or suggest_knowledge without first getting user confirmation.
 
-Score 0-1 if the copilot starts building the agent (calling suggest_prompt_edits or suggest_tools) without asking the user first, or asks a generic question without showing understanding of the conversation.`,
+Score 0-1 if the sidekick starts building the agent (calling suggest_prompt_edits or suggest_tools) without asking the user first, or asks a generic question without showing understanding of the conversation.`,
     },
     {
       scenarioId: "bug-triage-report",
@@ -268,7 +268,7 @@ Does this match what you want, or would you like to adjust anything?`,
         "suggest_prompt_edits",
         "suggest_tools",
       ],
-      judgeCriteria: `This is a shrink-wrap scenario: the copilot must analyze a bug triage conversation and suggest a reusable agent configuration.
+      judgeCriteria: `This is a shrink-wrap scenario: the sidekick must analyze a bug triage conversation and suggest a reusable agent configuration.
 
 REQUIRED tool suggestions (suggest_tools must include ALL of these):
 - Datadog (for searching error logs and occurrences)

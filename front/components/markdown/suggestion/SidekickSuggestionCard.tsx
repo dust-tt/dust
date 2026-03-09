@@ -5,7 +5,7 @@ import {
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
-import { useCopilotSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -178,7 +178,7 @@ interface ToolSuggestionCardProps {
 function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
@@ -250,7 +250,7 @@ function SubAgentSuggestionCard({
 }: SubAgentSuggestionCardProps) {
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
   const { owner } = useAgentBuilderContext();
 
@@ -340,7 +340,7 @@ interface SkillSuggestionCardProps {
 function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
@@ -410,7 +410,7 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   const cardState = mapSuggestionStateToCardState(state);
   const modelName =
     relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
   const { control } = useFormContext<AgentBuilderFormData>();
 
   const { field: modelSettingsField } = useController({
@@ -468,7 +468,7 @@ function KnowledgeSuggestionCard({
 }: KnowledgeSuggestionCardProps) {
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
@@ -555,11 +555,11 @@ interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
 
-export function CopilotSuggestionCard({
+export function SidekickSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
   const { focusOnSuggestion, getCommittedInstructionsHtml } =
-    useCopilotSuggestions();
+    useSidekickSuggestions();
 
   switch (agentSuggestion.kind) {
     case "instructions":

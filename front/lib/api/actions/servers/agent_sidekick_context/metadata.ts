@@ -18,7 +18,8 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
+export const AGENT_SIDEKICK_CONTEXT_TOOL_NAME =
+  "agent_sidekick_context" as const;
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
@@ -79,7 +80,7 @@ const ModelSuggestionSchema = z.object({
     .describe("Optional reasoning effort level"),
 });
 
-export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
+export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
   get_available_knowledge: {
     description:
       "Get the list of available knowledge sources that can be added to an agent. " +
@@ -452,7 +453,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   search_agent_templates: {
     description:
       "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
-      "Returns full template details including copilotInstructions.",
+      "Returns full template details including sidekickInstructions.",
     schema: {
       jobType: z
         .string()
@@ -476,7 +477,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   get_agent_template: {
     description:
       "Fetch template-specific guidance for the current agent. " +
-      "Use this tool when the agent was created from a template to retrieve specialized copilotInstructions that define how you should assist with this agent type. " +
+      "Use this tool when the agent was created from a template to retrieve specialized sidekickInstructions that define how you should assist with this agent type. " +
       "These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
     schema: {
       templateId: z.string().describe("The sId of the template to retrieve"),
@@ -528,9 +529,9 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const AGENT_COPILOT_CONTEXT_SERVER = {
+export const AGENT_SIDEKICK_CONTEXT_SERVER = {
   serverInfo: {
-    name: "agent_copilot_context",
+    name: "agent_sidekick_context",
     version: "1.0.0",
     description:
       "Retrieve context about available models, skills, tools, and agent-specific feedback and insights. Create and manage suggestions for agent configuration changes.",
@@ -539,14 +540,14 @@ export const AGENT_COPILOT_CONTEXT_SERVER = {
     documentationUrl: null,
     instructions: null,
   },
-  tools: Object.values(AGENT_COPILOT_CONTEXT_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(AGENT_COPILOT_CONTEXT_TOOLS_METADATA).map((t) => [
+    Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => [
       t.name,
       t.stake,
     ])

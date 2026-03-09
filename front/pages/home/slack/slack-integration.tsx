@@ -162,7 +162,7 @@ function HeroSection() {
             <div className="relative w-full max-w-xl xl:max-w-2xl">
               <div className="relative z-10 mx-auto flex w-full items-center justify-center">
                 <img
-                  src="/static/landing/slack/Incident_copilot_slack.png"
+                  src="/static/landing/slack/Incident_sidekick_slack.png"
                   alt="Slack integration preview showing Dust AI assistant in action"
                   className="h-auto w-full max-w-lg rounded-2xl object-contain lg:max-w-xl xl:max-w-2xl"
                 />

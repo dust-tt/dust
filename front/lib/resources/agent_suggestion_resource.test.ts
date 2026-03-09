@@ -136,13 +136,13 @@ describe("AgentSuggestionResource", () => {
             action: "add",
             skillId: "data_analysis",
           },
-          source: "copilot",
+          source: "sidekick",
         }
       );
 
       expect(suggestion).toBeDefined();
       expect(suggestion.kind).toBe("skills");
-      expect(suggestion.source).toBe("copilot");
+      expect(suggestion.source).toBe("sidekick");
 
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
@@ -167,13 +167,13 @@ describe("AgentSuggestionResource", () => {
             action: "remove",
             skillId: "old_skill",
           },
-          source: "copilot",
+          source: "sidekick",
         }
       );
 
       expect(suggestion).toBeDefined();
       expect(suggestion.kind).toBe("skills");
-      expect(suggestion.source).toBe("copilot");
+      expect(suggestion.source).toBe("sidekick");
 
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
@@ -396,7 +396,7 @@ describe("AgentSuggestionResource", () => {
             },
             analysis: null,
             state: "pending",
-            source: "copilot",
+            source: "sidekick",
           }
         )
       ).rejects.toThrow("User does not have permission to edit this agent");

@@ -344,10 +344,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(ephemeralContext).toHaveLength(0);
   });
 
-  it("should place workspace context in shared tier and user context in ephemeral tier for copilot agent", () => {
-    const copilotConfig = {
+  it("should place workspace context in shared tier and user context in ephemeral tier for sidekick agent", () => {
+    const sidekickConfig = {
       ...agentConfig1,
-      sId: GLOBAL_AGENTS_SID.COPILOT,
+      sId: GLOBAL_AGENTS_SID.SIDEKICK,
       scope: "global" as const,
     };
 
@@ -358,7 +358,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: copilotConfig,
+      agentConfiguration: sidekickConfig,
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
@@ -502,14 +502,16 @@ describe("globalAgentInjectsMemory", () => {
 });
 
 describe("globalAgentInjectsUserContext", () => {
-  it("should return true for copilot agents", () => {
-    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.COPILOT)).toBe(true);
-    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.COPILOT_EDGE)).toBe(
+  it("should return true for sidekick agents", () => {
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
+      true
+    );
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)).toBe(
       true
     );
   });
 
-  it("should return false for non-copilot agents", () => {
+  it("should return false for non-sidekick agents", () => {
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DUST)).toBe(false);
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(
       false
@@ -519,16 +521,16 @@ describe("globalAgentInjectsUserContext", () => {
 });
 
 describe("globalAgentInjectsWorkspaceContext", () => {
-  it("should return true for copilot agents", () => {
-    expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.COPILOT)).toBe(
+  it("should return true for sidekick agents", () => {
+    expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
       true
     );
     expect(
-      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.COPILOT_EDGE)
+      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)
     ).toBe(true);
   });
 
-  it("should return false for non-copilot agents", () => {
+  it("should return false for non-sidekick agents", () => {
     expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DUST)).toBe(
       false
     );

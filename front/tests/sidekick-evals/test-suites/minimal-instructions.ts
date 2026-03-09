@@ -13,7 +13,7 @@ export const minimalInstructionsSuite: TestSuite = {
       userMessage: "Make it better",
       mockState: MINIMAL_INSTRUCTIONS_AGENT,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Intent is vague ("make it better"). Per new workflow: do NOT suggest until intent is clear. Should ask clarifying questions about purpose, audience, use case. Score 0-1 if copilot suggests without clarifying.`,
+      judgeCriteria: `Intent is vague ("make it better"). Per new workflow: do NOT suggest until intent is clear. Should ask clarifying questions about purpose, audience, use case. Score 0-1 if sidekick suggests without clarifying.`,
     },
     {
       scenarioId: "improve-basic",
