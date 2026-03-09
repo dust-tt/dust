@@ -237,7 +237,7 @@ async function handler(
       );
 
       const conditionalJITServerNames = new Set(
-        conditionalServers.map((s) => s.name)
+        conditionalJITServers.map((s) => s.name)
       );
       const stableServerToolsAndInstructions =
         allServerToolsAndInstructions.filter(
