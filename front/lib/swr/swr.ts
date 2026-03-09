@@ -149,7 +149,6 @@ const resHandler = async (res: Response, url: string | URL | Request) => {
       {
         url,
         statusCode: res.status,
-        headers: res.headers,
         errorText:
           errorText.length > 1000 ? errorText.substring(0, 1000) : errorText,
       },
