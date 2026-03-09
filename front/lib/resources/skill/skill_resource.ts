@@ -943,7 +943,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List active custom skills marked as default, excluding already-enabled skills.
+   * List discoverable skills: custom default skills + non-auto-enabled global
+   * skills, excluding already-enabled skills.
    */
   static async listDiscoverable(
     auth: Authenticator,
@@ -956,9 +957,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return enabledSkillNames
-      ? skills.filter((s) => !enabledSkillNames.has(s.name))
-      : skills;
+    return skills.filter(
+      (s) =>
+        !s.isAutoEnabled &&
+        (!enabledSkillNames || !enabledSkillNames.has(s.name))
+    );
   }
 
   /**
