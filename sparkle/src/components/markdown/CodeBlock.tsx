@@ -45,6 +45,103 @@ export const codeBlockVariants = cva(
   }
 );
 
+const codeStyle = {
+  hljs: {
+    display: "block",
+    overflowX: "auto",
+    padding: "1em",
+    color: "var(--s-foreground)",
+    backgroundColor: "transparent",
+    fontSize: "0.875rem",
+  },
+  "hljs-ln": {
+    color: "var(--s-muted-foreground)",
+    fontSize: "0.75rem",
+    paddingRight: "1em",
+    textAlign: "right",
+    userSelect: "none",
+  },
+  "hljs-keyword": {
+    // function, const, let, if, return
+    color: violet[500],
+  },
+  "hljs-function": {
+    color: customColors.blue[600],
+  },
+  "hljs-title": {
+    // Function names
+    color: customColors.blue[600],
+  },
+  "hljs-built_in": {
+    // document, console, Date
+    color: customColors.golden[500],
+  },
+  "hljs-string": {
+    // Regular strings
+    color: customColors.green[500],
+  },
+  "hljs-variable": {
+    // Regular variables
+    color: "var(--s-foreground)",
+  },
+  "hljs-literal": {
+    // true, false, null
+    color: customColors.golden[500],
+  },
+  "hljs-number": {
+    // Numeric values
+    color: customColors.golden[500],
+  },
+  "hljs-comment": {
+    // Comments
+    color: customColors.golden[700],
+  },
+  "hljs-template-variable": {
+    // Template literal variables ${...}
+    color: customColors.rose[500],
+  },
+  "hljs-property": {
+    // Object properties
+    color: "var(--s-foreground)",
+  },
+  "hljs-punctuation": {
+    // Brackets, dots, etc
+    color: "var(--s-foreground)",
+  },
+  "hljs-operator": {
+    // =, +, -, etc
+    color: violet[500],
+  },
+  "hljs-method": {
+    // Method calls
+    color: customColors.blue[600],
+  },
+  "hljs-tag": {
+    // HTML tags
+    color: customColors.rose[500],
+  },
+  "hljs-name": {
+    // Tag names
+    color: customColors.rose[500],
+  },
+  "hljs-attr": {
+    // HTML attributes
+    color: customColors.golden[500],
+  },
+  "hljs-params": {
+    // Function parameters
+    color: "var(--s-foreground)",
+  },
+  // Typography styles
+  "hljs-emphasis": {
+    fontStyle: "italic",
+  },
+  "hljs-strong": {
+    fontWeight: "bold",
+  },
+};
+
+
 interface CodeBlockProps {
   children?: React.ReactNode;
   className?: string;
@@ -70,104 +167,7 @@ export function CodeBlock({
     tsx: "typescript",
     py: "python",
   };
-
   const languageToUse = languageOverrides[language] || language;
-
-  const codeStyle = {
-    hljs: {
-      display: "block",
-      overflowX: "auto",
-      padding: "1em",
-      color: "var(--s-foreground)",
-      backgroundColor: "transparent",
-      fontSize: "0.875rem",
-    },
-    "hljs-ln": {
-      color: "var(--s-muted-foreground)",
-      fontSize: "0.75rem",
-      paddingRight: "1em",
-      textAlign: "right",
-      userSelect: "none",
-    },
-    "hljs-keyword": {
-      // function, const, let, if, return
-      color: violet[500],
-    },
-    "hljs-function": {
-      color: customColors.blue[600],
-    },
-    "hljs-title": {
-      // Function names
-      color: customColors.blue[600],
-    },
-    "hljs-built_in": {
-      // document, console, Date
-      color: customColors.golden[500],
-    },
-    "hljs-string": {
-      // Regular strings
-      color: customColors.green[500],
-    },
-    "hljs-variable": {
-      // Regular variables
-      color: "var(--s-foreground)",
-    },
-    "hljs-literal": {
-      // true, false, null
-      color: customColors.golden[500],
-    },
-    "hljs-number": {
-      // Numeric values
-      color: customColors.golden[500],
-    },
-    "hljs-comment": {
-      // Comments
-      color: customColors.golden[700],
-    },
-    "hljs-template-variable": {
-      // Template literal variables ${...}
-      color: customColors.rose[500],
-    },
-    "hljs-property": {
-      // Object properties
-      color: "var(--s-foreground)",
-    },
-    "hljs-punctuation": {
-      // Brackets, dots, etc
-      color: "var(--s-foreground)",
-    },
-    "hljs-operator": {
-      // =, +, -, etc
-      color: violet[500],
-    },
-    "hljs-method": {
-      // Method calls
-      color: customColors.blue[600],
-    },
-    "hljs-tag": {
-      // HTML tags
-      color: customColors.rose[500],
-    },
-    "hljs-name": {
-      // Tag names
-      color: customColors.rose[500],
-    },
-    "hljs-attr": {
-      // HTML attributes
-      color: customColors.golden[500],
-    },
-    "hljs-params": {
-      // Function parameters
-      color: "var(--s-foreground)",
-    },
-    // Typography styles
-    "hljs-emphasis": {
-      fontStyle: "italic",
-    },
-    "hljs-strong": {
-      fontWeight: "bold",
-    },
-  };
 
   return !inline ? (
     <Suspense fallback={<div />}>
