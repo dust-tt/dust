@@ -333,7 +333,11 @@ export function SpaceConversationsPage() {
                 />
               </>
             )}
-            <TabsTrigger value="settings" icon={Cog6ToothIcon} />
+            <TabsTrigger
+              value="settings"
+              icon={Cog6ToothIcon}
+              tooltip="Settings"
+            />
             <TabsTrigger
               value="alpha"
               label="Alpha"
