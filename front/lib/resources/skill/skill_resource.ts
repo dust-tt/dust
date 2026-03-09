@@ -1303,7 +1303,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         extendedSkillId: null,
         source: null,
         sourceMetadata: null,
-        isDefault: false,
+        isDefault: def.isAutoEnabled !== true,
       },
       {
         // Global skills do not have data source configurations.
@@ -2100,8 +2100,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         (ref.customSkillId !== null && ref.customSkillId === this.id)
     );
 
-    // Allow enabling default skills even if not equipped (discovered via discover_skills).
-    if (!hasSkill && !this.isDefault) {
+    // Allow enabling default skills if the agent has the discover_skills skill.
+    const hasDiscoverSkills =
+      this.isDefault &&
+      refs.some((ref) => ref.globalSkillId === "discover_skills");
+
+    if (!hasSkill && !hasDiscoverSkills) {
       return new Err(
         new Error(
           `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
