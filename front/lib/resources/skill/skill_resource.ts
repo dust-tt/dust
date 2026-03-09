@@ -489,7 +489,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     options: SkillConfigurationFindOptions = {},
     context: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillNames?: Set<string>;
+      enabledSkillIds?: Set<string>;
     } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
@@ -796,11 +796,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }[],
     {
       agentLoopData,
-      enabledSkillNames,
+      enabledSkillIds,
       status,
     }: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillNames?: Set<string>;
+      enabledSkillIds?: Set<string>;
       status?: SkillStatus | SkillStatus[];
     } = {}
   ): Promise<SkillResource[]> {
@@ -816,7 +816,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
         },
       },
-      { agentLoopData, enabledSkillNames }
+      { agentLoopData, enabledSkillIds }
     );
   }
 
@@ -836,10 +836,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     agentConfiguration: AgentConfigurationType,
     {
       agentLoopData,
-      enabledSkillNames,
+      enabledSkillIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillNames?: Set<string>;
+      enabledSkillIds?: Set<string>;
     } = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
@@ -853,7 +853,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchBySkillReferences(auth, refs, {
       agentLoopData,
-      enabledSkillNames,
+      enabledSkillIds,
     });
   }
 
@@ -948,7 +948,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listDiscoverable(
     auth: Authenticator,
-    { enabledSkillNames }: { enabledSkillNames?: Set<string> } = {}
+    { enabledSkillIds }: { enabledSkillIds?: Set<string> } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
       where: {
@@ -957,11 +957,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return skills.filter(
-      (s) =>
-        !s.isAutoEnabled &&
-        (!enabledSkillNames || !enabledSkillNames.has(s.name))
-    );
+    return enabledSkillIds
+      ? skills.filter((s) => !enabledSkillIds.has(s.sId))
+      : skills;
   }
 
   /**
@@ -1109,13 +1107,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentLoopData,
       }
     );
-    const enabledSkillNames = new Set(
-      conversationEnabledSkills.map((s) => s.name)
+    const enabledSkillIds = new Set(
+      conversationEnabledSkills.map((s) => s.sId)
     );
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
-      { agentLoopData, enabledSkillNames }
+      { agentLoopData, enabledSkillIds }
     );
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
@@ -1239,10 +1237,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     {
       agentLoopData,
-      enabledSkillNames,
+      enabledSkillIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
-      enabledSkillNames?: Set<string>;
+      enabledSkillIds?: Set<string>;
     } = {}
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1278,7 +1276,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (def.fetchInstructions) {
       instructions = await def.fetchInstructions(auth, requestedSpaceIds, {
         listDiscoverableSkills: () =>
-          this.listDiscoverable(auth, { enabledSkillNames }),
+          this.listDiscoverable(auth, { enabledSkillIds }),
       });
     } else {
       instructions = def.instructions;
