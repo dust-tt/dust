@@ -11,9 +11,11 @@ import {
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  ExternalLinkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -147,9 +149,9 @@ function AshbyJobPostingUpdateDetails({
   descriptionHtml,
   workplaceType,
 }: AshbyJobPostingUpdateDetailsProps) {
-  const fields: DisplayableInput[] = [
-    { label: "Job Posting ID", value: jobPostingId },
-  ];
+  const jobPostingUrl = `https://app.ashbyhq.com/jobs/${jobPostingId}`;
+
+  const fields: DisplayableInput[] = [];
 
   if (title) {
     fields.push({ label: "New title", value: title });
@@ -165,18 +167,25 @@ function AshbyJobPostingUpdateDetails({
         immediately and visible to candidates.
       </p>
 
-      <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
-        {fields.map(({ label, value }) => (
-          <div key={label} className="px-3 py-2">
-            <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-              {label}
-            </div>
-            <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
-              {value}
-            </div>
+      <Button
+        variant="outline"
+        size="xs"
+        label="View on Ashby"
+        icon={ExternalLinkIcon}
+        href={jobPostingUrl}
+        target="_blank"
+      />
+
+      {fields.map(({ label, value }) => (
+        <div key={label}>
+          <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+            {label}
           </div>
-        ))}
-      </div>
+          <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
+            {value}
+          </div>
+        </div>
+      ))}
 
       {descriptionHtml && (
         <Collapsible>
@@ -184,10 +193,9 @@ function AshbyJobPostingUpdateDetails({
             <span className="text-sm font-medium">New description</span>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div
-              className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-sm dark:bg-muted-night"
-              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-            />
+            <div className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted p-3 text-sm dark:bg-muted-night">
+              {descriptionHtml}
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}
