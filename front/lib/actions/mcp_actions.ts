@@ -726,10 +726,21 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
  */
 async function disambiguateServerNamesBySpace(
   auth: Authenticator,
-  configs: MCPServerConfigurationType[]
-): Promise<MCPServerConfigurationType[]> {
+  {
+    stableConfigs,
+    conditionalJITConfigs,
+  }: {
+    stableConfigs: MCPServerConfigurationType[];
+    conditionalJITConfigs: MCPServerConfigurationType[];
+  }
+): Promise<{
+  stableConfigs: MCPServerConfigurationType[];
+  conditionalJITConfigs: MCPServerConfigurationType[];
+}> {
+  const allConfigs = [...stableConfigs, ...conditionalJITConfigs];
+
   // Build a map of name -> unique viewIds for server-side configs.
-  const viewIdsByName = configs
+  const viewIdsByName = allConfigs
     .filter(isServerSideMCPServerConfiguration)
     .reduce((map, config) => {
       const viewIds = map.get(config.name) ?? new Set<string>();
@@ -748,7 +759,7 @@ async function disambiguateServerNamesBySpace(
   }
 
   if (viewIdsToFetch.length === 0) {
-    return configs;
+    return { stableConfigs, conditionalJITConfigs };
   }
 
   // We fetch the views to get the space names.
@@ -761,7 +772,9 @@ async function disambiguateServerNamesBySpace(
   );
 
   // Apply space prefix to colliding server-side configs.
-  return configs.map((config) => {
+  const disambiguate = (
+    config: MCPServerConfigurationType
+  ): MCPServerConfigurationType => {
     if (
       isServerSideMCPServerConfiguration(config) &&
       collidingNames.has(config.name)
@@ -775,12 +788,17 @@ async function disambiguateServerNamesBySpace(
       }
     }
     return config;
-  });
+  };
+
+  return {
+    stableConfigs: stableConfigs.map(disambiguate),
+    conditionalJITConfigs: conditionalJITConfigs.map(disambiguate),
+  };
 }
 
 /**
  * Deduplicates MCP server configurations by view ID and name.
- * Priority order: agent actions > client-side > skill servers > JIT servers.
+ * Priority order: agent > client-side > skill > stable JIT > conditional JIT.
  */
 function deduplicateMCPServerConfigurations({
   agentActions,
@@ -794,27 +812,218 @@ function deduplicateMCPServerConfigurations({
   skillServers: MCPServerConfigurationType[];
   stableJITServers: MCPServerConfigurationType[];
   conditionalJITServers: MCPServerConfigurationType[];
-}): MCPServerConfigurationType[] {
+}): {
+  stableConfigs: MCPServerConfigurationType[];
+  conditionalJITConfigs: MCPServerConfigurationType[];
+} {
+  // Reference identity is safe here: dedup runs before disambiguation (which
+  // copies objects via .map()), so the original references are preserved.
+  const conditionalJITSet = new Set<MCPServerConfigurationType>(
+    conditionalJITServers
+  );
   const seen = new Set<string>();
-  return [
+
+  const stableConfigs: MCPServerConfigurationType[] = [];
+  const conditionalJITConfigs: MCPServerConfigurationType[] = [];
+
+  for (const config of [
     ...agentActions,
     ...clientSideActions,
     ...skillServers,
     ...stableJITServers,
     ...conditionalJITServers,
-  ].filter((config) => {
+  ]) {
     const viewId = isServerSideMCPServerConfiguration(config)
       ? config.mcpServerViewId
       : config.clientSideMcpServerId;
     const key = `${viewId}:${slugify(config.name)}`;
 
     if (seen.has(key)) {
-      return false;
+      continue;
     }
 
     seen.add(key);
-    return true;
+
+    if (conditionalJITSet.has(config)) {
+      conditionalJITConfigs.push(config);
+    } else {
+      stableConfigs.push(config);
+    }
+  }
+
+  return { stableConfigs, conditionalJITConfigs };
+}
+
+async function listToolsForAction(
+  auth: Authenticator,
+  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
+  preFetchedMcpServerViews: Map<string, MCPServerViewResource>,
+  action: MCPServerConfigurationType
+): Promise<Result<ServerToolsAndInstructions, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  let connectionParams: MCPConnectionParams;
+  if (isServerSideMCPServerConfiguration(action)) {
+    const mcpServerView = preFetchedMcpServerViews.get(action.mcpServerViewId);
+    if (!mcpServerView) {
+      return new Err(new Error(`MCP server view not found for ${action.name}`));
+    }
+    connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
+  } else {
+    connectionParams = makeClientSideMCPConnectionParams(action, {
+      conversationId: agentLoopListToolsContext.conversation.sId,
+      messageId: agentLoopListToolsContext.agentMessage.sId,
+    });
+  }
+
+  const toolsAndInstructionsRes = await listMCPServerToolsAndServerInstructions(
+    auth,
+    action,
+    {
+      ...agentLoopListToolsContext,
+      agentActionConfiguration: action,
+    },
+    connectionParams
+  );
+
+  if (toolsAndInstructionsRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationId: agentLoopListToolsContext.conversation.sId,
+        messageId: agentLoopListToolsContext.agentMessage.sId,
+        actionId: action.sId,
+        mcpServerName: action.name,
+        error: toolsAndInstructionsRes.error,
+      },
+      `Error listing tools from MCP server: ${normalizeError(
+        toolsAndInstructionsRes.error
+      )}`
+    );
+    return new Err(
+      new Error(
+        `An error occurred while listing the available tools for ${action.name}. ` +
+          "Tools from this server are not available for this message. " +
+          "Inform the user of this issue."
+      )
+    );
+  }
+
+  const { instructions, tools: rawToolsFromServer } =
+    toolsAndInstructionsRes.value;
+
+  const processedTools: MCPToolConfigurationType[] = [];
+
+  for (const toolConfig of rawToolsFromServer) {
+    let toolName: string;
+    // Fix the tool name to be valid for the model.
+    try {
+      toolName = getPrefixedToolName(action.name, toolConfig.name);
+    } catch (error) {
+      logger.warn(
+        {
+          workspaceId: owner.sId,
+          conversationId: agentLoopListToolsContext.conversation.sId,
+          messageId: agentLoopListToolsContext.agentMessage.sId,
+          actionId: action.sId,
+          mcpServerName: action.name,
+          toolName: toolConfig.name,
+          error: error,
+        },
+        `Invalid tool name, skipping the tool.`
+      );
+      continue;
+    }
+
+    // Check that all tools arguments names are valid for the model (a-zA-Z0-9_.-).
+    const toolArgumentsNames = Object.keys(
+      toolConfig.inputSchema?.properties ?? {}
+    );
+
+    const invalidArgumentNames = toolArgumentsNames.filter(
+      (argumentName) => !/^[a-zA-Z0-9_.-]+$/.test(argumentName)
+    );
+    if (invalidArgumentNames.length > 0) {
+      logger.warn(
+        {
+          workspaceId: owner.sId,
+          conversationId: agentLoopListToolsContext.conversation.sId,
+          messageId: agentLoopListToolsContext.agentMessage.sId,
+          actionId: action.sId,
+          mcpServerName: action.name,
+          toolName: toolConfig.name,
+          invalidArgumentNames,
+        },
+        `Invalid argument name(s), skipping the tool.`
+      );
+      continue;
+    }
+
+    // This handles the case where the MCP server configuration is using pre-configured
+    // data sources or tables. We add the description to the tool description so that the
+    // model has more information to make the right choice.
+    let extraDescription: string = "";
+    if (action.description) {
+      const hasDataSourceConfiguration =
+        Object.keys(
+          findMatchingSubSchemas(
+            toolConfig.inputSchema,
+            INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+          )
+        ).length > 0;
+
+      const hasTableConfiguration =
+        Object.keys(
+          findMatchingSubSchemas(
+            toolConfig.inputSchema,
+            INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+          )
+        ).length > 0;
+
+      if (hasDataSourceConfiguration && hasTableConfiguration) {
+        // Might be confusing for the model if we end up in this situation,
+        // which is not a use case we have now.
+        extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
+      } else if (hasDataSourceConfiguration) {
+        extraDescription += `\nDescription of the data sources:\n${action.description}`;
+      } else if (hasTableConfiguration) {
+        extraDescription += `\nDescription of the tables:\n${action.description}`;
+      }
+    }
+
+    processedTools.push({
+      ...toolConfig,
+      originalName: toolConfig.name,
+      mcpServerName: action.name,
+      name: toolName,
+      description: (toolConfig.description ?? "") + extraDescription,
+    });
+  }
+
+  return new Ok<ServerToolsAndInstructions>({
+    serverName: action.name,
+    instructions,
+    tools: processedTools,
   });
+}
+
+function aggregateToolListingResults(
+  results: Result<ServerToolsAndInstructions, Error>[]
+): { toolsAndInstructions: ServerToolsAndInstructions[]; errors: string[] } {
+  return results.reduce<{
+    toolsAndInstructions: ServerToolsAndInstructions[];
+    errors: string[];
+  }>(
+    (acc, result) => {
+      if (result.isOk()) {
+        acc.toolsAndInstructions.push(result.value);
+      } else {
+        acc.errors.push(result.error.message);
+      }
+      return acc;
+    },
+    { toolsAndInstructions: [], errors: [] }
+  );
 }
 
 /**
@@ -838,225 +1047,69 @@ export async function tryListMCPTools(
   conditionalJITServerToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
 }> {
-  const owner = auth.getNonNullableWorkspace();
+  const { stableConfigs, conditionalJITConfigs } =
+    deduplicateMCPServerConfigurations({
+      agentActions: agentLoopListToolsContext.agentConfiguration.actions,
+      clientSideActions:
+        agentLoopListToolsContext.clientSideActionConfigurations ?? [],
+      skillServers,
+      stableJITServers,
+      conditionalJITServers,
+    });
 
-  const conditionalJITServerNames = new Set(
-    conditionalJITServers.map((s) => s.name)
-  );
-
-  const deduplicatedConfigs = deduplicateMCPServerConfigurations({
-    agentActions: agentLoopListToolsContext.agentConfiguration.actions,
-    clientSideActions:
-      agentLoopListToolsContext.clientSideActionConfigurations ?? [],
-    skillServers,
-    stableJITServers,
-    conditionalJITServers,
+  // Disambiguate across both groups so cross-group name collisions are detected.
+  const {
+    stableConfigs: stableActions,
+    conditionalJITConfigs: conditionalJITActions,
+  } = await disambiguateServerNamesBySpace(auth, {
+    stableConfigs,
+    conditionalJITConfigs,
   });
 
-  const mcpServerActions = await disambiguateServerNamesBySpace(
-    auth,
-    deduplicatedConfigs
-  );
-
   // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
-  const serverSideViewIds = mcpServerActions
-    .filter((config) => isServerSideMCPServerConfiguration(config))
-    .map((config) => config.mcpServerViewId);
+  const allActions = [...stableActions, ...conditionalJITActions];
   const preFetchedViews = await MCPServerViewResource.fetchByIds(
     auth,
-    serverSideViewIds
+    allActions
+      .filter((config) => isServerSideMCPServerConfiguration(config))
+      .map((config) => config.mcpServerViewId)
   );
   const preFetchedMcpServerViews = new Map(
     preFetchedViews.map((view) => [view.sId, view])
   );
 
-  // Discover all tools exposed by all available MCP servers.
-  const results = await concurrentExecutor(
-    mcpServerActions,
-    async (action) => {
-      let connectionParams: MCPConnectionParams;
-      if (isServerSideMCPServerConfiguration(action)) {
-        const mcpServerView = preFetchedMcpServerViews.get(
-          action.mcpServerViewId
-        );
-        if (!mcpServerView) {
-          return new Err(
-            new Error(`MCP server view not found for ${action.name}`)
-          );
-        }
-        connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
-      } else {
-        connectionParams = makeClientSideMCPConnectionParams(action, {
-          conversationId: agentLoopListToolsContext.conversation.sId,
-          messageId: agentLoopListToolsContext.agentMessage.sId,
-        });
-      }
-
-      const toolsAndInstructionsRes =
-        await listMCPServerToolsAndServerInstructions(
-          auth,
-          action,
-          {
-            ...agentLoopListToolsContext,
-            agentActionConfiguration: action,
-          },
-          connectionParams
-        );
-
-      if (toolsAndInstructionsRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: owner.sId,
-            conversationId: agentLoopListToolsContext.conversation.sId,
-            messageId: agentLoopListToolsContext.agentMessage.sId,
-            actionId: action.sId,
-            mcpServerName: action.name,
-            error: toolsAndInstructionsRes.error,
-          },
-          `Error listing tools from MCP server: ${normalizeError(
-            toolsAndInstructionsRes.error
-          )}`
-        );
-        return new Err(
-          new Error(
-            `An error occurred while listing the available tools for ${action.name}. ` +
-              "Tools from this server are not available for this message. " +
-              "Inform the user of this issue."
-          )
-        );
-      }
-
-      const { instructions, tools: rawToolsFromServer } =
-        toolsAndInstructionsRes.value;
-
-      const processedTools: MCPToolConfigurationType[] = [];
-
-      for (const toolConfig of rawToolsFromServer) {
-        let toolName: string;
-        // Fix the tool name to be valid for the model.
-        try {
-          toolName = getPrefixedToolName(action.name, toolConfig.name);
-        } catch (error) {
-          logger.warn(
-            {
-              workspaceId: owner.sId,
-              conversationId: agentLoopListToolsContext.conversation.sId,
-              messageId: agentLoopListToolsContext.agentMessage.sId,
-              actionId: action.sId,
-              mcpServerName: action.name,
-              toolName: toolConfig.name,
-              error: error,
-            },
-            `Invalid tool name, skipping the tool.`
-          );
-          continue;
-        }
-
-        // Check that all tools arguments names are valid for the model (a-zA-Z0-9_.-).
-        const toolArgumentsNames = Object.keys(
-          toolConfig.inputSchema?.properties ?? {}
-        );
-
-        const invalidArgumentNames = toolArgumentsNames.filter(
-          (argumentName) => !/^[a-zA-Z0-9_.-]+$/.test(argumentName)
-        );
-        if (invalidArgumentNames.length > 0) {
-          logger.warn(
-            {
-              workspaceId: owner.sId,
-              conversationId: agentLoopListToolsContext.conversation.sId,
-              messageId: agentLoopListToolsContext.agentMessage.sId,
-              actionId: action.sId,
-              mcpServerName: action.name,
-              toolName: toolConfig.name,
-              invalidArgumentNames,
-            },
-            `Invalid argument name(s), skipping the tool.`
-          );
-          continue;
-        }
-
-        // This handles the case where the MCP server configuration is using pre-configured data sources
-        // or tables.
-        // We add the description of the data sources or tables to the tool description so that the model
-        // has more information to make the right choice.
-        // This replicates the current behavior of the Retrieval action for example.
-        let extraDescription: string = "";
-        if (action.description) {
-          const hasDataSourceConfiguration =
-            Object.keys(
-              findMatchingSubSchemas(
-                toolConfig.inputSchema,
-                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-              )
-            ).length > 0;
-
-          const hasTableConfiguration =
-            Object.keys(
-              findMatchingSubSchemas(
-                toolConfig.inputSchema,
-                INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
-              )
-            ).length > 0;
-
-          if (hasDataSourceConfiguration && hasTableConfiguration) {
-            // Might be confusing for the model if we end up in this situation,
-            // which is not a use case we have now.
-            extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
-          } else if (hasDataSourceConfiguration) {
-            extraDescription += `\nDescription of the data sources:\n${action.description}`;
-          } else if (hasTableConfiguration) {
-            extraDescription += `\nDescription of the tables:\n${action.description}`;
-          }
-        }
-
-        processedTools.push({
-          ...toolConfig,
-          originalName: toolConfig.name,
-          mcpServerName: action.name,
-          name: toolName,
-          description: (toolConfig.description ?? "") + extraDescription,
-        });
-      }
-
-      // Return the server's instructions and its processed tools.
-      return new Ok<ServerToolsAndInstructions>({
-        serverName: action.name,
-        instructions,
-        tools: processedTools,
-      });
-    },
+  // Discover tools from stable and conditional JIT servers separately.
+  const stableResults = await concurrentExecutor(
+    stableActions,
+    (action) =>
+      listToolsForAction(
+        auth,
+        agentLoopListToolsContext,
+        preFetchedMcpServerViews,
+        action
+      ),
+    { concurrency: 10 }
+  );
+  const conditionalJITResults = await concurrentExecutor(
+    conditionalJITActions,
+    (action) =>
+      listToolsForAction(
+        auth,
+        agentLoopListToolsContext,
+        preFetchedMcpServerViews,
+        action
+      ),
     { concurrency: 10 }
   );
 
-  // Aggregate results
-  const { serverToolsAndInstructions, errors } = results.reduce<{
-    serverToolsAndInstructions: ServerToolsAndInstructions[];
-    errors: string[];
-  }>(
-    (acc, result) => {
-      if (result.isOk()) {
-        acc.serverToolsAndInstructions.push(result.value);
-      } else {
-        acc.errors.push(result.error.message);
-      }
-      return acc;
-    },
-    { serverToolsAndInstructions: [], errors: [] }
-  );
-
-  const stableServerToolsAndInstructions = serverToolsAndInstructions.filter(
-    (s) => !conditionalJITServerNames.has(s.serverName)
-  );
-  const conditionalJITServerToolsAndInstructions =
-    serverToolsAndInstructions.filter((s) =>
-      conditionalJITServerNames.has(s.serverName)
-    );
+  const stable = aggregateToolListingResults(stableResults);
+  const conditional = aggregateToolListingResults(conditionalJITResults);
+  const allErrors = [...stable.errors, ...conditional.errors];
 
   return {
-    stableServerToolsAndInstructions,
-    conditionalJITServerToolsAndInstructions,
-    error: errors.length > 0 ? errors.join("\n") : undefined,
+    stableServerToolsAndInstructions: stable.toolsAndInstructions,
+    conditionalJITServerToolsAndInstructions: conditional.toolsAndInstructions,
+    error: allErrors.length > 0 ? allErrors.join("\n") : undefined,
   };
 }
 
