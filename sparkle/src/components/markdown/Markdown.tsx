@@ -2,8 +2,17 @@ import { Checkbox } from "@sparkle/components/Checkbox";
 import { Chip } from "@sparkle/components/Chip";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import {
+  H1Block,
+  H2Block,
+  H3Block,
+  H4Block,
+  H5Block,
+  H6Block,
+} from "@sparkle/components/markdown/HeadingBlock";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import { MarkdownStyleContext } from "@sparkle/components/markdown/MarkdownStyleContext";
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
 import { PreBlock } from "@sparkle/components/markdown/PreBlock";
 import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
@@ -29,19 +38,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
-export const markdownHeaderClasses = {
-  h1: "s-heading-2xl",
-  h2: "s-heading-xl",
-  h3: "s-heading-lg",
-  h4: "s-text-base s-font-semibold",
-  h5: "s-text-sm s-font-semibold",
-  h6: "s-text-sm s-font-regular s-italic",
-};
-
-const sizes = {
-  p: "s-text-base s-leading-7",
-  ...markdownHeaderClasses,
-};
+export { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
 
 function showUnsupportedDirective() {
   return (tree: any) => {
@@ -84,6 +81,16 @@ export function Markdown({
     return sanitized;
   }, [content, compactSpacing]);
 
+  const styleContextValue = useMemo(
+    () => ({
+      textColor,
+      forcedTextSize,
+      compactSpacing,
+      canCopyQuotes,
+    }),
+    [textColor, forcedTextSize, compactSpacing, canCopyQuotes]
+  );
+
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
   //
@@ -98,141 +105,43 @@ export function Markdown({
   // Minimal test whenever editing this code: ensure that code block content of a streaming message
   // can be selected without blinking.
 
-  // Memoized separately from additionalMarkdownComponents so that base component references
-  // (p, pre, ul, etc.) stay stable across re-renders. ReactMarkdown compares component types
-  // by reference — a new function would remount the entire subtree, destroying stateful children.
+  // Style props flow through MarkdownStyleContext so base component references stay stable
+  // across re-renders. ReactMarkdown compares component types by reference — a new function
+  // would remount the entire subtree, destroying stateful children.
   const baseMarkdownComponents: Components = useMemo(() => {
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       a: LinkBlock,
-      ul: ({ children }) => (
-        <UlBlock
-          textSize={forcedTextSize ? forcedTextSize : sizes.p}
-          textColor={textColor}
-        >
-          {children}
-        </UlBlock>
-      ),
-      ol: ({ children, start }) => (
-        <OlBlock
-          start={start}
-          textColor={textColor}
-          textSize={forcedTextSize ? forcedTextSize : sizes.p}
-        >
-          {children}
-        </OlBlock>
-      ),
-      li: ({ children }) => (
-        <LiBlock
-          textColor={textColor}
-          textSize={forcedTextSize ? forcedTextSize : sizes.p}
-        >
-          {children}
-        </LiBlock>
-      ),
-      p: ({ children }) => (
-        <ParagraphBlock
-          textColor={textColor}
-          textSize={forcedTextSize ? forcedTextSize : sizes.p}
-          compactSpacing={compactSpacing}
-        >
-          {children}
-        </ParagraphBlock>
-      ),
+      ul: UlBlock,
+      ol: OlBlock,
+      li: LiBlock,
+      p: ParagraphBlock,
+      h1: H1Block,
+      h2: H2Block,
+      h3: H3Block,
+      h4: H4Block,
+      h5: H5Block,
+      h6: H6Block,
       table: TableBlock,
       thead: TableHeadBlock,
       tbody: TableBodyBlock,
       th: TableHeaderBlock,
       td: TableDataBlock,
-      h1: ({ children }) => (
-        <h1
-          className={cn(
-            "s-pb-2 s-pt-4",
-            forcedTextSize ? forcedTextSize : sizes.h1,
-            textColor
-          )}
-        >
-          {children}
-        </h1>
-      ),
-      h2: ({ children }) => (
-        <h2
-          className={cn(
-            "s-pb-2 s-pt-4",
-            forcedTextSize ? forcedTextSize : sizes.h2,
-            textColor
-          )}
-        >
-          {children}
-        </h2>
-      ),
-      h3: ({ children }) => (
-        <h3
-          className={cn(
-            "s-pb-2 s-pt-4",
-            forcedTextSize ? forcedTextSize : sizes.h3,
-            textColor
-          )}
-        >
-          {children}
-        </h3>
-      ),
-      h4: ({ children }) => (
-        <h4
-          className={cn(
-            "s-pb-2 s-pt-3",
-            forcedTextSize ? forcedTextSize : sizes.h4,
-            textColor
-          )}
-        >
-          {children}
-        </h4>
-      ),
-      h5: ({ children }) => (
-        <h5
-          className={cn(
-            "s-pb-1.5 s-pt-2.5",
-            forcedTextSize ? forcedTextSize : sizes.h5,
-            textColor
-          )}
-        >
-          {children}
-        </h5>
-      ),
-      h6: ({ children }) => (
-        <h6
-          className={cn(
-            "s-pb-1.5 s-pt-2.5",
-            forcedTextSize ? forcedTextSize : sizes.h6,
-            textColor
-          )}
-        >
-          {children}
-        </h6>
-      ),
       strong: ({ children }) => (
         <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
           {children}
         </strong>
       ),
       input: Input,
-      blockquote: ({ children }) => (
-        <BlockquoteBlock buttonDisplay={canCopyQuotes ? "inside" : null}>
-          {children}
-        </BlockquoteBlock>
-      ),
+      blockquote: BlockquoteBlock,
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
       code: CodeBlockWithExtendedSupport,
     };
-  }, [textColor, compactSpacing, forcedTextSize, canCopyQuotes]);
+  }, []);
 
   // Merge base components with additional directive components.
-  // Even though this creates a new object when additionalMarkdownComponents changes,
-  // the spread copies the same function references from baseMarkdownComponents —
-  // it doesn't re-execute the arrow functions that define them.
-  // So base elements (p, pre, ul…) keep stable identities and won't remount.
   const markdownComponents: Components = useMemo(
     () => ({
       ...baseMarkdownComponents,
@@ -259,22 +168,24 @@ export function Markdown({
   try {
     return (
       <div className="s-w-full">
-        <MarkdownContentContext.Provider
-          value={{
-            content: processedContent,
-            isStreaming,
-            isLastMessage,
-          }}
-        >
-          <ReactMarkdown
-            linkTarget="_blank"
-            components={markdownComponents}
-            remarkPlugins={markdownPlugins}
-            rehypePlugins={rehypePlugins}
+        <MarkdownStyleContext.Provider value={styleContextValue}>
+          <MarkdownContentContext.Provider
+            value={{
+              content: processedContent,
+              isStreaming,
+              isLastMessage,
+            }}
           >
-            {processedContent}
-          </ReactMarkdown>
-        </MarkdownContentContext.Provider>
+            <ReactMarkdown
+              linkTarget="_blank"
+              components={markdownComponents}
+              remarkPlugins={markdownPlugins}
+              rehypePlugins={rehypePlugins}
+            >
+              {processedContent}
+            </ReactMarkdown>
+          </MarkdownContentContext.Provider>
+        </MarkdownStyleContext.Provider>
       </div>
     );
   } catch (_error) {

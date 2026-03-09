@@ -1,4 +1,5 @@
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import { cva } from "class-variance-authority";
 import React from "react";
 
@@ -26,17 +27,16 @@ export const blockquoteVariants = cva(
   }
 );
 
-interface BlockquoteBlockProps {
-  children: React.ReactNode;
-  variant?: "surface";
-  buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
-}
-
 export function BlockquoteBlock({
   children,
   variant = "surface",
-  buttonDisplay = "inside",
-}: BlockquoteBlockProps) {
+}: {
+  children: React.ReactNode;
+  variant?: "surface";
+}) {
+  const { canCopyQuotes } = useMarkdownStyle();
+  const buttonDisplay = canCopyQuotes ? "inside" : null;
+
   const elementAt1 = React.Children.toArray(children)[1];
   const childrenContent =
     elementAt1 && React.isValidElement(elementAt1)
