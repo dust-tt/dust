@@ -3,7 +3,7 @@ import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -172,7 +172,8 @@ function getLimitPromptForCode(
     }
 
     default:
-      assertNever(code);
+      assertNeverAndIgnore(code);
+      return undefined;
   }
 }
 
@@ -194,7 +195,7 @@ export function ReachedLimitPopup({
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
   const router = useAppRouter();
-  const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
+  const limitPrompt = getLimitPromptForCode(
     router,
     owner,
     code,
@@ -202,6 +203,12 @@ export function ReachedLimitPopup({
     () => setIsFairUsageModalOpened(true),
     isAdmin
   );
+
+  if (!limitPrompt) {
+    return null;
+  }
+
+  const { title, children, validateLabel, onValidate } = limitPrompt;
 
   return (
     <>

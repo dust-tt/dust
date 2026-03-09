@@ -36,7 +36,7 @@ import { isOAuthProvider } from "@app/types/oauth/lib";
 import type { PlanType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
@@ -489,7 +489,7 @@ export const AddConnectionMenu = ({
             case undefined:
               return null;
             default:
-              assertNever(c);
+              assertNeverAndIgnore(c);
           }
         })}
 

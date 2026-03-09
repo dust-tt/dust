@@ -66,7 +66,7 @@ import {
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightWorkspaceType,
   UserType,
@@ -295,7 +295,7 @@ export function AgentMessage({
             // Do nothing
             break;
           default:
-            assertNever(eventPayload.data);
+            assertNeverAndIgnore(eventPayload.data);
         }
       },
       [

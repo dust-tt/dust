@@ -17,7 +17,7 @@ import {
   isMarkdownContentType,
   isPdfContentType,
 } from "@app/types/files";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
@@ -269,7 +269,7 @@ function FileContentRenderer({
       }
       return null;
     default:
-      assertNever(previewConfig.category);
+      assertNeverAndIgnore(previewConfig.category);
   }
 }
 

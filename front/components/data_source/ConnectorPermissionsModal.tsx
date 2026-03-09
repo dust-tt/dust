@@ -48,7 +48,7 @@ import type {
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
@@ -1145,7 +1145,7 @@ export function ConnectorPermissionsModal({
           case "dust_project":
             return null;
           default:
-            assertNever(c.type);
+            assertNeverAndIgnore(c.type);
         }
       })}
 
