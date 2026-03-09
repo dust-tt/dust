@@ -22,17 +22,17 @@ final class ConversationDetailViewModel: ObservableObject {
 
     private let conversation: Conversation
     private let workspaceId: String
-    private let accessToken: String
+    private let tokenProvider: TokenProvider
     private var lastValue: Int?
 
     // Streaming tasks
     private var conversationEventsTask: Task<Void, Never>?
     private var messageStreamTask: Task<Void, Never>?
 
-    init(conversation: Conversation, workspaceId: String, accessToken: String) {
+    init(conversation: Conversation, workspaceId: String, tokenProvider: TokenProvider) {
         self.conversation = conversation
         self.workspaceId = workspaceId
-        self.accessToken = accessToken
+        self.tokenProvider = tokenProvider
     }
 
     deinit {
@@ -48,7 +48,7 @@ final class ConversationDetailViewModel: ObservableObject {
             let response = try await ConversationService.fetchMessages(
                 workspaceId: workspaceId,
                 conversationId: conversation.sId,
-                accessToken: accessToken
+                tokenProvider: tokenProvider
             )
             messages = response.messages.sorted(by: ConversationMessage.byRank)
             hasMore = response.hasMore
@@ -72,7 +72,7 @@ final class ConversationDetailViewModel: ObservableObject {
             let response = try await ConversationService.fetchMessages(
                 workspaceId: workspaceId,
                 conversationId: conversation.sId,
-                accessToken: accessToken,
+                tokenProvider: tokenProvider,
                 lastValue: lastValue
             )
             messages.append(contentsOf: response.messages)
@@ -97,7 +97,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
             let stream = StreamingService.eventStream(
                 endpoint: endpoint,
-                accessToken: accessToken
+                tokenProvider: tokenProvider
             )
 
             let decoder = JSONDecoder()
@@ -172,7 +172,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
             let stream = StreamingService.eventStream(
                 endpoint: endpoint,
-                accessToken: accessToken
+                tokenProvider: tokenProvider
             )
 
             let decoder = JSONDecoder()

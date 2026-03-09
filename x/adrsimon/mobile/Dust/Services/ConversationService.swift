@@ -5,20 +5,20 @@ enum ConversationService {
 
     static func fetchConversations(
         workspaceId: String,
-        accessToken: String,
+        tokenProvider: TokenProvider,
         limit: Int = defaultLimit
     ) async throws -> ConversationsResponse {
         let endpoint = AppConfig.Endpoints.conversations(workspaceId: workspaceId)
         let query = buildQuery(endpoint: endpoint, params: [
             "limit": "\(limit)",
         ])
-        return try await APIClient.get(query, accessToken: accessToken, snakeCase: false)
+        return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
     }
 
     static func fetchMessages(
         workspaceId: String,
         conversationId: String,
-        accessToken: String,
+        tokenProvider: TokenProvider,
         limit: Int = 50,
         lastValue: Int? = nil
     ) async throws -> ConversationMessagesResponse {
@@ -36,7 +36,7 @@ enum ConversationService {
             params["lastValue"] = "\(lastValue)"
         }
         let query = buildQuery(endpoint: endpoint, params: params)
-        return try await APIClient.get(query, accessToken: accessToken, snakeCase: false)
+        return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
     }
 
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {

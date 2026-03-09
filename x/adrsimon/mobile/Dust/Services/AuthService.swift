@@ -6,6 +6,7 @@ enum AuthError: LocalizedError {
     case pkceGenerationFailed
     case noAuthorizationCode
     case authenticationCancelled
+    case sessionExpired
 
     var errorDescription: String? {
         switch self {
@@ -15,6 +16,8 @@ enum AuthError: LocalizedError {
             "No authorization code received"
         case .authenticationCancelled:
             "Authentication was cancelled"
+        case .sessionExpired:
+            "Session expired. Please sign in again."
         }
     }
 }
@@ -91,17 +94,6 @@ enum AuthService {
         )
     }
 
-    // MARK: - Token Expiry
-
-    static func isTokenExpired() -> Bool {
-        guard let expiryString = KeychainService.load(.tokenExpiry),
-              let expiryInterval = TimeInterval(expiryString)
-        else {
-            return true
-        }
-        return Date().timeIntervalSince1970 >= expiryInterval
-    }
-
     // MARK: - Keychain Persistence
 
     static func saveTokens(_ response: AuthResponse) {
@@ -129,10 +121,10 @@ enum AuthService {
 
     // MARK: - Dust User
 
-    static func fetchDustUser(accessToken: String) async throws -> DustUser {
-        let response: DustUserResponse = try await APIClient.get(
+    static func fetchDustUser(tokenProvider: TokenProvider) async throws -> DustUser {
+        let response: DustUserResponse = try await APIClient.authenticatedGet(
             AppConfig.Endpoints.user,
-            accessToken: accessToken,
+            tokenProvider: tokenProvider,
             snakeCase: false
         )
         return response.user

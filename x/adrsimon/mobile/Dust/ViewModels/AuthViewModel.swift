@@ -7,7 +7,7 @@ enum AuthState {
     case loading
     case unauthenticated
     case authenticating
-    case authenticated(user: User, accessToken: String)
+    case authenticated(user: User, tokenProvider: TokenProvider)
     case error(String)
 }
 
@@ -120,6 +120,31 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
 
     // MARK: - Private
 
+    private func makeTokenProvider(
+        accessToken: String,
+        refreshToken: String,
+        expiresIn: Int?
+    ) -> TokenProvider {
+        let expiresAt = expiresIn.map { Date().addingTimeInterval(Double($0)) }
+        return TokenProvider(
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: expiresAt,
+            onSessionExpired: { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.handleSessionExpired()
+                }
+            }
+        )
+    }
+
+    private func handleSessionExpired() {
+        guard case .authenticated = state else { return }
+        logger.warning("Session expired — logging out")
+        AuthService.clearTokens()
+        state = .unauthenticated
+    }
+
     private func restoreSession() async {
         guard let tokens = AuthService.loadTokens() else {
             state = .unauthenticated
@@ -129,7 +154,12 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
         do {
             let response = try await AuthService.refreshTokens(refreshToken: tokens.refreshToken)
             AuthService.saveTokens(response)
-            state = .authenticated(user: response.user, accessToken: response.accessToken)
+            let provider = makeTokenProvider(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken,
+                expiresIn: response.expiresIn
+            )
+            state = .authenticated(user: response.user, tokenProvider: provider)
         } catch {
             AuthService.clearTokens()
             state = .unauthenticated
@@ -150,7 +180,12 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
             AuthService.saveTokens(response)
             self.pkcePair = nil
             webAuthSession = nil
-            state = .authenticated(user: response.user, accessToken: response.accessToken)
+            let provider = makeTokenProvider(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken,
+                expiresIn: response.expiresIn
+            )
+            state = .authenticated(user: response.user, tokenProvider: provider)
         } catch {
             self.pkcePair = nil
             webAuthSession = nil

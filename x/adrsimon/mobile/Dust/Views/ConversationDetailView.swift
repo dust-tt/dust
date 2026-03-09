@@ -12,7 +12,7 @@ struct ConversationDetailView: View {
     init(
         conversation: Conversation,
         workspaceId: String,
-        accessToken: String,
+        tokenProvider: TokenProvider,
         currentUserEmail: String,
         onBack: @escaping () -> Void
     ) {
@@ -23,7 +23,7 @@ struct ConversationDetailView: View {
             wrappedValue: ConversationDetailViewModel(
                 conversation: conversation,
                 workspaceId: workspaceId,
-                accessToken: accessToken
+                tokenProvider: tokenProvider
             )
         )
     }
