@@ -1,3 +1,4 @@
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -104,7 +105,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     >,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;
-      mcpServerId: string;
+      // Can be undefined for old actions created before toolServerId was added to the toolConfiguration JSONB.
+      mcpServerId: string | undefined;
     }
   ) {
     super(model, blob);
@@ -945,7 +947,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     const internalMCPServerName = this.metadata.internalMCPServerName;
-    const toolName = this.toolConfiguration.originalName;
+    // Fallback for old actions created before these fields were added to the toolConfiguration JSONB.
+    // Extract the unprefixed tool name from the function call name (e.g. "server__tool" -> "tool").
+    const toolName =
+      this.toolConfiguration.originalName ??
+      this.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+      this.functionCallName;
+    const mcpServerId = this.metadata.mcpServerId ?? null;
 
     const displayLabels = internalMCPServerName
       ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
@@ -967,7 +975,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       functionCallId: this.stepContent.value.value.id,
       internalMCPServerName,
       toolName,
-      mcpServerId: this.metadata.mcpServerId,
+      mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
       step: this.stepContent.step,
