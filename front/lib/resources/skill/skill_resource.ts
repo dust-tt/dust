@@ -27,7 +27,7 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { GlobalSkillDefinition, GlobalSkillId } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -194,7 +194,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
-  private readonly globalSId: string | null;
+  private readonly globalSId: GlobalSkillId | null;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -1095,7 +1095,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration,
       { agentLoopData }
     );
-    const discoverableSkills = await this.listDiscoverable(auth);
+
+    let discoverableSkills: SkillResource[] = [];
+    if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
+      discoverableSkills = await this.listDiscoverable(auth);
+    }
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
