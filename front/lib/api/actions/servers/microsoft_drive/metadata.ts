@@ -11,7 +11,7 @@ const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   search_in_files: {
     description:
-      "Search in files in Microsoft OneDrive and SharePoint using Microsoft Sidekick retrieval API.",
+      "Search in files in Microsoft OneDrive and SharePoint using Microsoft Copilot retrieval API.",
     schema: {
       query: z
         .string()

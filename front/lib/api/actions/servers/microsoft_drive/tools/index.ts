@@ -32,7 +32,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
 
     try {
-      const endpoint = `/sidekick/retrieval`;
+      const endpoint = `/copilot/retrieval`;
 
       const requestBody = {
         queryString: query,
