@@ -30,7 +30,7 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -53,7 +53,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -77,7 +77,7 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -100,7 +100,7 @@ export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -123,7 +123,7 @@ export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -146,7 +146,7 @@ export const GROK_4_1_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -171,7 +171,7 @@ export const GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType =
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
     supportsResponseFormat: false,
-    availableIfUnion: {
+    availableIfOneOf: {
       featureFlag: "xai_feature",
     },
     tokenizer: { type: "tiktoken", base: "o200k_base" },

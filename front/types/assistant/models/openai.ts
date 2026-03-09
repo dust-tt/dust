@@ -356,7 +356,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "openai_o1_feature",
   },
   customAvailableIf: {

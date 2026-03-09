@@ -53,7 +53,7 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -97,7 +97,7 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
 };
@@ -121,7 +121,7 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
 };
@@ -145,7 +145,7 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfUnion: {
+  availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
 };

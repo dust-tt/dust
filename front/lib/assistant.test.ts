@@ -89,7 +89,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return true when featureFlag is enabled", () => {
     const model = createMockModel({
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
@@ -100,7 +100,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return false when featureFlag is not enabled", () => {
     const model = createMockModel({
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = [];
@@ -154,7 +154,7 @@ describe("isModelCustomAvailable", () => {
   it("should return false for large model without upgraded plan", () => {
     const model = createMockModel({
       largeModel: true,
-      availableIfUnion: { enterprise: true },
+      availableIfOneOf: { enterprise: true },
     });
     const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(FREE_NO_PLAN_CODE);
@@ -165,7 +165,7 @@ describe("isModelCustomAvailable", () => {
   it("should return false for large model with null plan", () => {
     const model = createMockModel({
       largeModel: true,
-      availableIfUnion: { enterprise: true },
+      availableIfOneOf: { enterprise: true },
     });
     const featureFlags: WhitelistableFeature[] = [];
     const plan = null;
@@ -175,7 +175,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return false when both featureFlag and customAssistantFeatureFlag are required but only one is enabled", () => {
     const model = createMockModel({
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       customAvailableIf: { featureFlag: "openai_o1_feature" },
       largeModel: false,
     });
@@ -187,7 +187,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return true when both featureFlag and customAssistantFeatureFlag are required and both are enabled", () => {
     const model = createMockModel({
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       customAvailableIf: { featureFlag: "openai_o1_feature" },
       largeModel: false,
     });
@@ -202,7 +202,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return false when large model requires upgraded plan but featureFlag is missing", () => {
     const model = createMockModel({
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: true,
     });
     const featureFlags: WhitelistableFeature[] = [];
@@ -214,7 +214,7 @@ describe("isModelCustomAvailable", () => {
   // enterprise availability tests
   it("should return true when enterprise is set and plan is an enterprise plan", () => {
     const model = createMockModel({
-      availableIfUnion: { enterprise: true },
+      availableIfOneOf: { enterprise: true },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = [];
@@ -225,7 +225,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return true when enterprise is set and plan has ENT_ prefix", () => {
     const model = createMockModel({
-      availableIfUnion: { enterprise: true },
+      availableIfOneOf: { enterprise: true },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = [];
@@ -236,7 +236,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return true when both enterprise and featureFlag are set, with enterprise plan (no featureFlag needed)", () => {
     const model = createMockModel({
-      availableIfUnion: { enterprise: true, featureFlag: "deepseek_feature" },
+      availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = [];
@@ -247,7 +247,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return true when both enterprise and featureFlag are set, with featureFlag enabled (no enterprise plan needed)", () => {
     const model = createMockModel({
-      availableIfUnion: { enterprise: true, featureFlag: "deepseek_feature" },
+      availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
@@ -258,7 +258,7 @@ describe("isModelCustomAvailable", () => {
 
   it("should return false when both enterprise and featureFlag are set but neither condition is met", () => {
     const model = createMockModel({
-      availableIfUnion: { enterprise: true, featureFlag: "deepseek_feature" },
+      availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = [];
@@ -321,7 +321,7 @@ describe("isModelCustomAvailableAndWhitelisted", () => {
   it("should return false when model is not available even if provider is whitelisted", async () => {
     const model = createMockModel({
       providerId: "openai",
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = []; // featureFlag not enabled
@@ -340,7 +340,7 @@ describe("isModelCustomAvailableAndWhitelisted", () => {
     const model = createMockModel({
       providerId: "openai",
       largeModel: true,
-      availableIfUnion: { enterprise: true },
+      availableIfOneOf: { enterprise: true },
     });
     const featureFlags: WhitelistableFeature[] = [];
 
@@ -357,7 +357,7 @@ describe("isModelCustomAvailableAndWhitelisted", () => {
   it("should return false when model requires featureFlag that is not enabled", async () => {
     const model = createMockModel({
       providerId: "openai",
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = []; // featureFlag not enabled
@@ -375,7 +375,7 @@ describe("isModelCustomAvailableAndWhitelisted", () => {
   it("should return true when model requires featureFlag that is enabled and provider is whitelisted", async () => {
     const model = createMockModel({
       providerId: "openai",
-      availableIfUnion: { featureFlag: "deepseek_feature" },
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];

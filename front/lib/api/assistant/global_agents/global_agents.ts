@@ -1087,7 +1087,7 @@ export async function getGlobalAgents(
   }
   // Also hide dust-next variants if the custom model's own feature flag isn't enabled.
   const customModelFlag =
-    CUSTOM_MODEL_CONFIGS[0]?.availableIfUnion?.featureFlag;
+    CUSTOM_MODEL_CONFIGS[0]?.availableIfOneOf?.featureFlag;
   if (customModelFlag && !flags.includes(customModelFlag)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
