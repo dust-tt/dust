@@ -207,7 +207,8 @@ function constructConditionalJITToolsSection({
   }
 
   let section = "\n## CONDITIONAL TOOL SERVERS\n";
-  section += "The following tool servers are also available.\n";
+  section +=
+    "The following tool servers were made available based on the conversation context.\n";
   section += formatToolServerListing(conditionalJITServerToolsAndInstructions);
   section += "\n";
   return section;
