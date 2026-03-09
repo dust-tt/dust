@@ -2,7 +2,7 @@ import {
   createToolManifest,
   toolManifestToJSON,
   toolManifestToYAML,
-} from "./tool_manifest";
+} from "@app/lib/api/sandbox/image/tool_manifest";
 import type {
   BaseImage,
   ContentGenerator,
@@ -13,7 +13,7 @@ import type {
   SandboxImageId,
   SandboxResources,
   ToolEntry,
-} from "./types";
+} from "@app/lib/api/sandbox/image/types";
 
 const DEFAULT_RESOURCES: SandboxResources = {
   vcpu: 1,

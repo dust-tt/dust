@@ -199,10 +199,11 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
  */
 export const GongCommandSchema = t.type({
   majorCommand: t.literal("gong"),
-  command: t.literal("force-resync"),
-  args: t.type({
-    connectorId: t.union([t.number, t.undefined]),
-    fromTs: t.union([t.number, t.undefined]),
+  command: t.union([t.literal("force-resync"), t.literal("delete-transcript")]),
+  args: t.partial({
+    connectorId: t.number,
+    fromTs: t.number,
+    callId: t.string,
   }),
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;

@@ -19,6 +19,7 @@ import {
   renderCandidateList,
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
+  renderJobPostingList,
   renderReferralForm,
   renderReport,
 } from "@app/lib/api/actions/servers/ashby/rendering";
@@ -393,6 +394,127 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         text: renderReferralForm(formResult.value.results, {
           jobs: jobsResult.value,
         }),
+      },
+    ]);
+  },
+
+  list_job_postings: async ({ location, department, listedOnly }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const result = await client.listJobPostings({
+      location,
+      department,
+      listedOnly,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list job postings: ${result.error.message}`)
+      );
+    }
+
+    if (!result.value.success) {
+      return new Err(new MCPError("Failed to list job postings from Ashby."));
+    }
+
+    const postings = result.value.results;
+
+    if (postings.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No job postings found matching the criteria.",
+        },
+      ]);
+    }
+
+    const postingsText = renderJobPostingList(postings);
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${postings.length} job posting(s):\n\n${postingsText}`,
+      },
+    ]);
+  },
+
+  update_job_posting: async (
+    {
+      jobPostingId,
+      title,
+      descriptionHtml,
+      workplaceType,
+      suppressDescriptionOpening,
+      suppressDescriptionClosing,
+    },
+    extra
+  ) => {
+    if (!title && !descriptionHtml && !workplaceType) {
+      return new Err(
+        new MCPError(
+          "At least one of title, descriptionHtml, or workplaceType " +
+            "must be provided.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const updateResult = await client.updateJobPosting({
+      jobPostingId,
+      title,
+      description: descriptionHtml
+        ? { type: "text/html", content: sanitizeHtml(descriptionHtml) }
+        : undefined,
+      workplaceType,
+      suppressDescriptionOpening,
+      suppressDescriptionClosing,
+    });
+
+    if (updateResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to update job posting: ${updateResult.error.message}`
+        )
+      );
+    }
+
+    if (!updateResult.value.success || !updateResult.value.results) {
+      const errorMessage =
+        updateResult.value.errorInfo?.message ??
+        updateResult.value.errors?.join(", ") ??
+        "Unknown error";
+      return new Err(
+        new MCPError(`Failed to update job posting: ${errorMessage}`)
+      );
+    }
+
+    const updatedFields = [
+      title ? "title" : null,
+      descriptionHtml ? "description" : null,
+      workplaceType ? "workplace type" : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Successfully updated job posting ${updatedFields}.\n\n` +
+          `Job Posting ID: ${updateResult.value.results.id}\n` +
+          `Title: ${updateResult.value.results.title}`,
       },
     ]);
   },

@@ -1,9 +1,9 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
 import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
+import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderSidekick";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";

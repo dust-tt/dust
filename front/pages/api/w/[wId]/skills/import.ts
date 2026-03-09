@@ -3,6 +3,7 @@ import {
   detectSkillsFromGitHubRepo,
   isSkillFromGitHubRepo,
 } from "@app/lib/api/skills/github_detection/detect_skills";
+import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/github_detection/github_auth";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -74,7 +75,11 @@ async function handler(
 
       const { repoUrl, names } = bodyValidation.right;
 
-      const result = await detectSkillsFromGitHubRepo({ repoUrl });
+      const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
+      const result = await detectSkillsFromGitHubRepo({
+        repoUrl,
+        accessToken,
+      });
       if (result.isErr()) {
         const error = result.error;
         switch (error.type) {
@@ -203,6 +208,7 @@ async function handler(
                 repoUrl,
                 filePath: skill.skillMdPath,
               },
+              isDefault: false,
             },
             { mcpServerViews: [] }
           );

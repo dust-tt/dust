@@ -231,7 +231,6 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsPromptCaching: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
-  featureFlag: "claude_4_5_opus_feature",
   enforceEnterpriseAvailability: true,
   customBetas: [
     "auto-thinking-2026-01-12",

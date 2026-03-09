@@ -444,3 +444,119 @@ export const AshbyReferralCreateResponseSchema = z.object({
 export type AshbyReferralCreateResponse = z.infer<
   typeof AshbyReferralCreateResponseSchema
 >;
+
+// Job posting list
+
+export const AshbyJobPostingEmploymentTypeSchema = z.enum([
+  "FullTime",
+  "PartTime",
+  "Intern",
+  "Contract",
+  "Temporary",
+]);
+
+export type AshbyJobPostingEmploymentType = z.infer<
+  typeof AshbyJobPostingEmploymentTypeSchema
+>;
+
+export const AshbyJobPostingSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    jobId: z.string(),
+    departmentName: z.string(),
+    teamName: z.string(),
+    locationName: z.string(),
+    locationIds: z
+      .object({
+        primaryLocationId: z.string(),
+        secondaryLocationIds: z.array(z.string()),
+      })
+      .optional(),
+    workplaceType: z.string().optional(),
+    employmentType: z.string(),
+    isListed: z.boolean(),
+    publishedDate: z.string(),
+    applicationDeadline: z.string().optional().nullable(),
+    externalLink: z.string().optional().nullable(),
+    applyLink: z.string(),
+    compensationTierSummary: z.string().optional().nullable(),
+    shouldDisplayCompensationOnJobBoard: z.boolean(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export type AshbyJobPosting = z.infer<typeof AshbyJobPostingSchema>;
+
+export const AshbyJobPostingListRequestSchema = z.object({
+  location: z.string().optional(),
+  department: z.string().optional(),
+  listedOnly: z.boolean().optional(),
+  jobBoardId: z.string().optional(),
+});
+
+export type AshbyJobPostingListRequest = z.infer<
+  typeof AshbyJobPostingListRequestSchema
+>;
+
+export const AshbyJobPostingListResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.array(AshbyJobPostingSchema),
+});
+
+export type AshbyJobPostingListResponse = z.infer<
+  typeof AshbyJobPostingListResponseSchema
+>;
+
+// Job posting update
+
+export const AshbyJobPostingWorkplaceTypeSchema = z.enum([
+  "OnSite",
+  "Hybrid",
+  "Remote",
+]);
+
+export type AshbyJobPostingWorkplaceType = z.infer<
+  typeof AshbyJobPostingWorkplaceTypeSchema
+>;
+
+export const AshbyJobPostingUpdateRequestSchema = z.object({
+  jobPostingId: z.string(),
+  title: z.string().optional(),
+  description: z
+    .object({
+      type: z.literal("text/html"),
+      content: z.string(),
+    })
+    .optional(),
+  workplaceType: AshbyJobPostingWorkplaceTypeSchema.optional(),
+  suppressDescriptionOpening: z.boolean().optional(),
+  suppressDescriptionClosing: z.boolean().optional(),
+});
+
+export type AshbyJobPostingUpdateRequest = z.infer<
+  typeof AshbyJobPostingUpdateRequestSchema
+>;
+
+export const AshbyJobPostingUpdateResponseSchema = z.object({
+  success: z.boolean(),
+  results: z
+    .object({
+      id: z.string(),
+      title: z.string(),
+    })
+    .passthrough()
+    .optional(),
+  errors: z.array(z.string()).optional(),
+  errorInfo: z
+    .object({
+      code: z.string().optional(),
+      message: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export type AshbyJobPostingUpdateResponse = z.infer<
+  typeof AshbyJobPostingUpdateResponseSchema
+>;

@@ -657,7 +657,7 @@ const InputBarContainer = ({
                       : undefined
                   }
                   target="_blank"
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -675,7 +675,7 @@ const InputBarContainer = ({
                       : undefined
                   }
                   target="_blank"
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined
@@ -693,7 +693,7 @@ const InputBarContainer = ({
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -705,7 +705,7 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined

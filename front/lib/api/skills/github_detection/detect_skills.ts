@@ -131,7 +131,7 @@ export async function detectSkillsFromGitHubRepo({
   accessToken,
 }: {
   repoUrl: string;
-  accessToken?: string;
+  accessToken?: string | null;
 }): Promise<Result<DetectedSkill[], SkillDetectionError>> {
   const parseResult = parseGitHubRepoUrl(repoUrl);
   if (parseResult.isErr()) {
