@@ -471,6 +471,24 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const client = clientResult.value;
 
+    // Fetch current job posting info before updating.
+    const infoResult = await client.getJobPostingInfo({ jobPostingId });
+    if (infoResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to fetch job posting info: ${infoResult.error.message}`
+        )
+      );
+    }
+
+    if (!infoResult.value.success || !infoResult.value.results) {
+      return new Err(
+        new MCPError("Failed to fetch job posting info from Ashby.")
+      );
+    }
+
+    const previousPosting = infoResult.value.results;
+
     const updateResult = await client.updateJobPosting({
       jobPostingId,
       title,
@@ -508,13 +526,21 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       .filter(Boolean)
       .join(", ");
 
+    const lines = [
+      `Successfully updated job posting ${updatedFields}.`,
+      "",
+      `Job Posting ID: ${updateResult.value.results.id}`,
+      `Title: ${updateResult.value.results.title}`,
+    ];
+
+    if (previousPosting.descriptionHtml) {
+      lines.push("", "Previous description:", previousPosting.descriptionHtml);
+    }
+
     return new Ok([
       {
         type: "text" as const,
-        text:
-          `Successfully updated job posting ${updatedFields}.\n\n` +
-          `Job Posting ID: ${updateResult.value.results.id}\n` +
-          `Title: ${updateResult.value.results.title}`,
+        text: lines.join("\n"),
       },
     ]);
   },

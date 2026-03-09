@@ -508,6 +508,48 @@ export type AshbyJobPostingListResponse = z.infer<
   typeof AshbyJobPostingListResponseSchema
 >;
 
+// Job posting info
+
+const AshbyDescriptionPartSchema = z.object({
+  html: z.string(),
+  plain: z.string(),
+});
+
+export const AshbyJobPostingInfoRequestSchema = z.object({
+  jobPostingId: z.string(),
+});
+
+export type AshbyJobPostingInfoRequest = z.infer<
+  typeof AshbyJobPostingInfoRequestSchema
+>;
+
+export const AshbyJobPostingInfoSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    descriptionPlain: z.string().optional(),
+    descriptionHtml: z.string().optional(),
+    descriptionParts: z
+      .object({
+        descriptionOpening: AshbyDescriptionPartSchema.optional().nullable(),
+        descriptionBody: AshbyDescriptionPartSchema.optional().nullable(),
+        descriptionClosing: AshbyDescriptionPartSchema.optional().nullable(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export type AshbyJobPostingInfo = z.infer<typeof AshbyJobPostingInfoSchema>;
+
+export const AshbyJobPostingInfoResponseSchema = z.object({
+  success: z.boolean(),
+  results: AshbyJobPostingInfoSchema.optional(),
+});
+
+export type AshbyJobPostingInfoResponse = z.infer<
+  typeof AshbyJobPostingInfoResponseSchema
+>;
+
 // Job posting update
 
 export const AshbyJobPostingWorkplaceTypeSchema = z.enum([
