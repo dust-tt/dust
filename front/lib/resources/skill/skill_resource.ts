@@ -936,9 +936,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * List discoverable skills: custom default skills + non-auto-enabled global
    * skills.
    */
-  static async listDiscoverable(
-    auth: Authenticator
-  ): Promise<SkillResource[]> {
+  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         status: "active",
@@ -1102,21 +1100,36 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
 
-    const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
-    // Skills that are already enabled or equipped are not discoverable.
-    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const agentSkillIds = new Set(allAgentSkills.map((s) => s.sId));
-    const equippedSkills = [
-      ...allAgentSkills.filter((s) => !enabledSkillIds.has(s.sId)),
-      ...discoverableSkills.filter(
-        (s) => !enabledSkillIds.has(s.sId) && !agentSkillIds.has(s.sId)
-      ),
+    const sortByName = (a: SkillResource, b: SkillResource) =>
+      a.name.localeCompare(b.name);
+
+    // Compute the enabled skills: auto-enabled skills + conversation-enabled skills.
+    const enabledSkills = [
+      ...autoEnabledSkills.sort(sortByName),
+      ...conversationEnabledSkills.sort(sortByName),
     ];
 
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
       enabledSkills
     );
+
+    // Compute the equipped skills: agent skills not already enabled +
+    // discoverable skills not already enabled or equipped.
+    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+    const agentEquippedSkills = allAgentSkills
+      .filter((s) => !enabledSkillIds.has(s.sId));
+
+    const agentEquippedSkillIds = new Set(agentEquippedSkills.map((s) => s.sId));
+    const discoveredSkills = discoverableSkills
+      .filter(
+        (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
+      );
+
+    const equippedSkills = [
+      ...agentEquippedSkills.sort(sortByName),
+      ...discoveredSkills.sort(sortByName),
+    ];
 
     return {
       enabledSkills: augmentedEnabledSkills,

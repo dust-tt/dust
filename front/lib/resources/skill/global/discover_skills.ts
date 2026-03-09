@@ -2,6 +2,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 
+// This skill allows discovering skills from the workspace. When equipped on an
+// agent, it causes `listForAgentLoop` to include discoverable skills (custom
+// default skills + non-auto-enabled global skills) in the equipped skills list.
 export const discoverSkillsSkill = {
   sId: "discover_skills",
   name: "Discover Skills",
