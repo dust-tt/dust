@@ -194,7 +194,7 @@ function AshbyJobPostingUpdateDetails({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted p-3 text-sm dark:bg-muted-night">
-              {descriptionHtml}
+              {descriptionHtml.replace(/<(?!\/)/g, "\n<")}
             </div>
           </CollapsibleContent>
         </Collapsible>
