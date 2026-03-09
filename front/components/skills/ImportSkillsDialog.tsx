@@ -120,7 +120,7 @@ export function ImportSkillsDialog({
               const url = e.target.value;
               setRepoUrl(url.trim());
               const trimmed = url.trim();
-              if (trimmed && parseGitHubRepoUrl(trimmed)) {
+              if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
                 triggerDetect(trimmed);
               }
             }}

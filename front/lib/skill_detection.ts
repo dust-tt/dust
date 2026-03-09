@@ -1,3 +1,6 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
 export type DetectedSkillStatus =
   | "ready"
   | "name_conflict"
@@ -14,16 +17,17 @@ export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
   return status === "ready" || status === "skill_already_exists";
 }
 
+export type SkillUrlParseError = { type: "invalid_url"; message: string };
+
 /**
  * Parses a GitHub repository identifier from various formats:
  * - "owner/repo"
  * - "https://github.com/owner/repo"
  * - "https://github.com/owner/repo.git"
- * Returns null if the input is not a valid GitHub repository identifier.
  */
 export function parseGitHubRepoUrl(
   input: string
-): { owner: string; repo: string } | null {
+): Result<{ owner: string; repo: string }, SkillUrlParseError> {
   const trimmed = input.trim();
 
   let normalized: string;
@@ -39,11 +43,17 @@ export function parseGitHubRepoUrl(
   try {
     url = new URL(normalized);
   } catch {
-    return null;
+    return new Err({
+      type: "invalid_url",
+      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
+    });
   }
 
   if (url.hostname !== "github.com") {
-    return null;
+    return new Err({
+      type: "invalid_url",
+      message: `Unsupported hostname "${url.hostname}". Only github.com repositories are supported.`,
+    });
   }
 
   const segments = url.pathname
@@ -52,8 +62,11 @@ export function parseGitHubRepoUrl(
     .filter(Boolean);
 
   if (segments.length < 2 || !segments[0] || !segments[1]) {
-    return null;
+    return new Err({
+      type: "invalid_url",
+      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
+    });
   }
 
-  return { owner: segments[0], repo: segments[1] };
+  return new Ok({ owner: segments[0], repo: segments[1] });
 }

@@ -136,14 +136,11 @@ export async function detectSkillsFromGitHubRepo({
   repoUrl: string;
   accessToken?: string | null;
 }): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
-  const parsed = parseGitHubRepoUrl(repoUrl);
-  if (!parsed) {
-    return new Err({
-      type: "invalid_url",
-      message: `Invalid GitHub repository identifier: "${repoUrl}". Expected "owner/repo".`,
-    });
+  const parsedUrl = parseGitHubRepoUrl(repoUrl);
+  if (parsedUrl.isErr()) {
+    return parsedUrl;
   }
-  const { owner, repo } = parsed;
+  const { owner, repo } = parsedUrl.value;
 
   const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
 
