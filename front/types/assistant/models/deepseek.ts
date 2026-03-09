@@ -19,7 +19,9 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  featureFlag: "deepseek_feature",
+  availableIfOneOf: {
+    featureFlag: "deepseek_feature",
+  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
@@ -39,6 +41,8 @@ export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  featureFlag: "deepseek_feature",
+  availableIfOneOf: {
+    featureFlag: "deepseek_feature",
+  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
