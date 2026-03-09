@@ -233,16 +233,16 @@ async function handler(
         }
       );
 
-      const conditionalJitServerNames = new Set(
+      const conditionalJITServerNames = new Set(
         conditionalServers.map((s) => s.name)
       );
       const stableServerToolsAndInstructions =
         allServerToolsAndInstructions.filter(
-          (a) => !conditionalJitServerNames.has(a.serverName)
+          (a) => !conditionalJITServerNames.has(a.serverName)
         );
-      const conditionalJitServerToolsAndInstructions =
+      const conditionalJITServerToolsAndInstructions =
         allServerToolsAndInstructions.filter((a) =>
-          conditionalJitServerNames.has(a.serverName)
+          conditionalJITServerNames.has(a.serverName)
         );
 
       const availableActions = allServerToolsAndInstructions.flatMap(
@@ -276,7 +276,7 @@ async function handler(
         agentsList,
         conversation,
         stableServerToolsAndInstructions,
-        conditionalJitServerToolsAndInstructions,
+        conditionalJITServerToolsAndInstructions,
         enabledSkills,
         equippedSkills,
       });

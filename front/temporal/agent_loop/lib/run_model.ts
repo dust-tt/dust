@@ -216,20 +216,20 @@ export async function runModel(
     equippedSkills,
     hasConditionalJITTools,
     mcpActions,
-    conditionalJitServerNames,
+    conditionalJITServerNames,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const {
-      stableServers: stableJitServers,
-      conditionalServers: conditionalJitServers,
+      stableServers: stableJITServers,
+      conditionalServers: conditionalJITServers,
     } = await getJITServers(auth, {
       agentConfiguration,
       conversation,
       attachments,
     });
-    const hasConditionalJITTools = conditionalJitServers.length > 0;
-    const jitServers = [...stableJitServers, ...conditionalJitServers];
+    const hasConditionalJITTools = conditionalJITServers.length > 0;
+    const jitServers = [...stableJITServers, ...conditionalJITServers];
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
@@ -285,8 +285,8 @@ export async function runModel(
       )
     );
 
-    const conditionalJitServerNames = new Set(
-      conditionalJitServers.map((s) => s.name)
+    const conditionalJITServerNames = new Set(
+      conditionalJITServers.map((s) => s.name)
     );
 
     return {
@@ -294,7 +294,7 @@ export async function runModel(
       enabledSkills,
       equippedSkills,
       mcpActions,
-      conditionalJitServerNames,
+      conditionalJITServerNames,
       mcpToolsListingError,
     };
   });
@@ -378,10 +378,10 @@ export async function runModel(
   }
 
   const stableServerToolsAndInstructions = mcpActions.filter(
-    (a) => !conditionalJitServerNames.has(a.serverName)
+    (a) => !conditionalJITServerNames.has(a.serverName)
   );
-  const conditionalJitServerToolsAndInstructions = mcpActions.filter((a) =>
-    conditionalJitServerNames.has(a.serverName)
+  const conditionalJITServerToolsAndInstructions = mcpActions.filter((a) =>
+    conditionalJITServerNames.has(a.serverName)
   );
 
   const prompt = constructPromptMultiActions(auth, {
@@ -394,7 +394,7 @@ export async function runModel(
     agentsList,
     conversation,
     stableServerToolsAndInstructions,
-    conditionalJitServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,
     memoriesContext,

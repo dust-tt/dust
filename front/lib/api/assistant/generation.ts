@@ -197,18 +197,18 @@ function constructToolsSection({
   return toolsSection;
 }
 
-function constructConditionalJitToolsSection({
-  conditionalJitServerToolsAndInstructions,
+function constructConditionalJITToolsSection({
+  conditionalJITServerToolsAndInstructions,
 }: {
-  conditionalJitServerToolsAndInstructions?: ServerToolsAndInstructions[];
+  conditionalJITServerToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
-  if (!conditionalJitServerToolsAndInstructions?.length) {
+  if (!conditionalJITServerToolsAndInstructions?.length) {
     return "";
   }
 
   let section = "\n## CONDITIONAL TOOL SERVERS\n";
   section += "The following tool servers are also available.\n";
-  section += formatToolServerListing(conditionalJitServerToolsAndInstructions);
+  section += formatToolServerListing(conditionalJITServerToolsAndInstructions);
   section += "\n";
   return section;
 }
@@ -421,7 +421,7 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     stableServerToolsAndInstructions,
-    conditionalJitServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,
     memoriesContext,
@@ -438,7 +438,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     stableServerToolsAndInstructions?: ServerToolsAndInstructions[];
-    conditionalJitServerToolsAndInstructions?: ServerToolsAndInstructions[];
+    conditionalJITServerToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     memoriesContext?: string;
@@ -487,8 +487,8 @@ export function constructPromptMultiActions(
   const attachmentsSection = constructAttachmentsSection();
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
-  const conditionalJitToolsSection = constructConditionalJitToolsSection({
-    conditionalJitServerToolsAndInstructions,
+  const conditionalJITToolsSection = constructConditionalJITToolsSection({
+    conditionalJITServerToolsAndInstructions,
   });
 
   if (hasStaticInstructions) {
@@ -517,7 +517,7 @@ export function constructPromptMultiActions(
       { role: "context" as const, content: contextSection },
       { role: "context" as const, content: projectContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
-      { role: "context" as const, content: conditionalJitToolsSection },
+      { role: "context" as const, content: conditionalJITToolsSection },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
@@ -546,7 +546,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: pastedContentSection },
     { role: "context" as const, content: guidelinesSection },
     { role: "context" as const, content: toolsetsContext ?? "" },
-    { role: "context" as const, content: conditionalJitToolsSection },
+    { role: "context" as const, content: conditionalJITToolsSection },
     { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
