@@ -15,7 +15,13 @@ export function getSandboxImageNames(): readonly SandboxImageName[] {
   return SANDBOX_IMAGE_NAMES;
 }
 
-const SANDBOX_IMAGE_TAGS = ["edge", "staging", "production", "v0.1.1"] as const;
+const SANDBOX_IMAGE_TAGS = [
+  "edge",
+  "staging",
+  "production",
+  "v0.1.1",
+  "v0.2.0",
+] as const;
 export type SandboxImageTag = (typeof SANDBOX_IMAGE_TAGS)[number];
 
 export function isValidSandboxImageTag(tag: string): tag is SandboxImageTag {
@@ -34,11 +40,12 @@ export interface SandboxImageId {
 // TODO(@jd): Replace with a proper typed link to dust-base
 export const DUST_SANDBOX_IMAGE_ID: SandboxImageId = {
   imageName: "dust-base",
-  tag: "production",
+  tag: "v0.2.0",
 };
 
 export function formatSandboxImageId(id: SandboxImageId): string {
-  return `${id.imageName}_${id.tag}`;
+  // E2B template IDs only allow lowercase alphanumeric characters and hyphens.
+  return `${id.imageName}-${id.tag}`.replace(/[^a-z0-9-]/g, "-");
 }
 
 // ---------------------------------------------------------------------------

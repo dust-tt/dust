@@ -22,7 +22,7 @@ const PRODUCTION_IMAGE_ID: SandboxImageId = {
 function getTestImage(): SandboxImage {
   const result = getSandboxImageFromRegistry({
     imageName: "dust-base",
-    tag: "v0.1.1",
+    tag: "v0.2.0",
   });
   if (result.isErr()) {
     throw new Error("Test setup failed: dust-base image not in registry");
@@ -100,7 +100,7 @@ describe("buildSandboxImage()", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockDockerRegistryFactory).toHaveBeenCalledWith(
-      "dust-sbx-bedrock:v0.1.1"
+      "dust-sbx-bedrock:0.2.0"
     );
     expect(mockDockerRegistryBuilder.runCmd).toHaveBeenCalled();
     expect(mockDockerRegistryBuilder.setWorkdir).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe("buildSandboxImage()", () => {
 
     expect(mockBuild).toHaveBeenCalledWith(
       mockDockerRegistryBuilder,
-      "dust-base_production",
+      "dust-base-production",
       expect.objectContaining({
         apiKey: "test-api-key",
         domain: "custom.e2b.dev",
