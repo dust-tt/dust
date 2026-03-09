@@ -42,7 +42,7 @@ Important rules:
 
 type_text automatically focuses the element before typing.
 delete_text automatically focuses the element before deleting the text.
-For the above reasons do NOT click an element before calling type_text or delete_text.
+For the above reasons in most cases you do NOT need to click an element before calling type_text or delete_text.
 Avoid unnecessary actions.`,
     inputSchema.shape,
     async (input) => {
@@ -74,9 +74,7 @@ Avoid unnecessary actions.`,
             content: [
               {
                 type: "text",
-                text:
-                  typeResponse.error ??
-                  "Unexpected error when typing in element",
+                text: `${typeResponse.error ?? "Unexpected error when typing in element"} ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
               },
             ],
             isError: true,
@@ -86,7 +84,7 @@ Avoid unnecessary actions.`,
           content: [
             {
               type: "text",
-              text: "Text inserted successfully",
+              text: `Text inserted successfully. ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
             },
           ],
         };
@@ -111,9 +109,7 @@ Avoid unnecessary actions.`,
             content: [
               {
                 type: "text",
-                text:
-                  typeResponse.error ??
-                  "Unexpected error when deleting text in element",
+                text: `${typeResponse.error ?? "Unexpected error when deleting text in element"} ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
               },
             ],
             isError: true,
@@ -123,7 +119,7 @@ Avoid unnecessary actions.`,
           content: [
             {
               type: "text",
-              text: "Text deleted successfully",
+              text: `Text deleted successfully. ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
             },
           ],
         };
@@ -148,9 +144,7 @@ Avoid unnecessary actions.`,
             content: [
               {
                 type: "text",
-                text:
-                  clickResponse.error ??
-                  "Unexpected error when clicking element",
+                text: `${clickResponse.error ?? "Unexpected error when clicking element"} ${clickResponse.elementsDiff ? `Elements diff: ${clickResponse.elementsDiff}` : ""}`,
               },
             ],
             isError: true,
@@ -160,7 +154,7 @@ Avoid unnecessary actions.`,
           content: [
             {
               type: "text",
-              text: "Button clicked successfully",
+              text: `Button clicked successfully. ${clickResponse.elementsDiff ? `Elements diff: ${clickResponse.elementsDiff}` : ""}`,
             },
           ],
         };

@@ -93,7 +93,11 @@ export type ClickPageElementMessage = {
   tabId: number;
   elementId: string;
 };
-export type ClickPageElementResponse = { success: boolean; error?: string };
+export type ClickPageElementResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
 
 export type TypeTextMessage = {
   type: "TYPE_TEXT";
@@ -103,7 +107,11 @@ export type TypeTextMessage = {
   variant: "replace" | "append";
 };
 
-export type TypeTextResponse = { success: boolean; error?: string };
+export type TypeTextResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
 
 export type DeleteTextMessage = {
   type: "DELETE_TEXT";
@@ -111,7 +119,11 @@ export type DeleteTextMessage = {
   elementId: string;
 };
 
-export type DeleteTextResponse = { success: boolean; error?: string };
+export type DeleteTextResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {

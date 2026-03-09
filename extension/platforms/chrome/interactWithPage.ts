@@ -414,3 +414,132 @@ export async function typeText(
       assertNever(result);
   }
 }
+
+export async function getPageElementsDiff(
+  tab: chrome.tabs.Tab | undefined
+): Promise<Result<string, Error>> {
+  if (!tab?.id) {
+    return new Err(new Error("No active tab found."));
+  }
+
+  const utilsResult = await ensureDustPageUtils(tab);
+  if (utilsResult.isErr()) {
+    return utilsResult;
+  }
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => {
+      const w = window as unknown as DustWindow;
+
+      if (!w.__dustElementMap || !w.__dustElementSnapshots) {
+        return JSON.stringify({ added: [], edited: [], deleted: [] });
+      }
+
+      const { selector, CONTENT, getElementName } = w.__dustUtils;
+      const {
+        __dustElementMap: elementMap,
+        __dustElementSnapshots: snapshots,
+      } = w;
+
+      // ── Build reverse map: DOM node → elementId ───────────────────────────
+      const domNodeToId = new Map<HTMLElement, string>();
+      for (const [elementId, weakRef] of Object.entries(elementMap)) {
+        const el = weakRef.deref();
+        if (el) {
+          domNodeToId.set(el, elementId);
+        }
+      }
+
+      const added: ElementSnapshot[] = [];
+      const edited: ElementSnapshot[] = [];
+      const seenIds = new Set<string>();
+      let counter = w.__dustElementIdCounter ?? 0;
+
+      const nodes = document.querySelectorAll<HTMLElement>(selector);
+
+      nodes.forEach((el) => {
+        const style = window.getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden") {
+          return;
+        }
+        if (el.getAttribute("aria-hidden") === "true") {
+          return;
+        }
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          return;
+        }
+
+        const tag = el.tagName.toLowerCase();
+        const current: Omit<ElementSnapshot, "elementId"> = {
+          tag,
+          type: CONTENT.includes(tag) ? "content" : "interactive",
+          role: el.getAttribute("role") ?? tag,
+          name: getElementName(el),
+          inputType: el.getAttribute("type"),
+          coords: {
+            x: Math.round(rect.x + rect.width / 2),
+            y: Math.round(rect.y + rect.height / 2),
+          },
+        };
+
+        const existingId = domNodeToId.get(el);
+
+        if (existingId !== undefined) {
+          seenIds.add(existingId);
+          const prev = snapshots[existingId];
+          const changed =
+            prev.role !== current.role ||
+            prev.name !== current.name ||
+            prev.inputType !== current.inputType ||
+            prev.coords.x !== current.coords.x ||
+            prev.coords.y !== current.coords.y;
+
+          if (changed) {
+            const editedElement: ElementSnapshot = {
+              ...current,
+              elementId: existingId,
+            };
+            edited.push(editedElement);
+            snapshots[existingId] = editedElement;
+          }
+        } else {
+          let elementId: string;
+          do {
+            elementId = `element_${counter++}`;
+          } while (elementMap[elementId] !== undefined);
+
+          const newSnapshot: ElementSnapshot = { ...current, elementId };
+          elementMap[elementId] = new WeakRef<HTMLElement>(el);
+          snapshots[elementId] = newSnapshot;
+          domNodeToId.set(el, elementId);
+          seenIds.add(elementId);
+          added.push(newSnapshot);
+        }
+      });
+
+      w.__dustElementIdCounter = counter;
+
+      // ── Deleted: tracked entries not seen in current DOM walk ─────────────
+      const deleted: ElementSnapshot[] = [];
+      for (const elementId of Object.keys(elementMap)) {
+        if (!seenIds.has(elementId)) {
+          deleted.push(snapshots[elementId]);
+          delete elementMap[elementId];
+          delete snapshots[elementId];
+        }
+      }
+
+      return JSON.stringify({ added, edited, deleted });
+    },
+  });
+
+  const result =
+    execution && typeof execution.result === "string"
+      ? execution.result
+      : JSON.stringify({ added: [], edited: [], deleted: [] });
+
+  return new Ok(result);
+}
