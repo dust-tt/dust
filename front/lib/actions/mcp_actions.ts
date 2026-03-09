@@ -772,28 +772,34 @@ async function disambiguateServerNamesBySpace(
   );
 
   // Apply space prefix to colliding server-side configs.
-  const disambiguate = (
-    config: MCPServerConfigurationType
-  ): MCPServerConfigurationType => {
-    if (
-      isServerSideMCPServerConfiguration(config) &&
-      collidingNames.has(config.name)
-    ) {
-      const spaceName = viewIdToSpaceName.get(config.mcpServerViewId);
-      if (spaceName) {
-        return {
-          ...config,
-          name: `${slugify(spaceName)}${TOOL_NAME_SEPARATOR}${config.name}`,
-        };
-      }
-    }
-    return config;
-  };
-
   return {
-    stableConfigs: stableConfigs.map(disambiguate),
-    conditionalJITConfigs: conditionalJITConfigs.map(disambiguate),
+    stableConfigs: stableConfigs.map((c) =>
+      disambiguateConfig(c, collidingNames, viewIdToSpaceName)
+    ),
+    conditionalJITConfigs: conditionalJITConfigs.map((c) =>
+      disambiguateConfig(c, collidingNames, viewIdToSpaceName)
+    ),
   };
+}
+
+function disambiguateConfig(
+  config: MCPServerConfigurationType,
+  collidingNames: Set<string>,
+  viewIdToSpaceName: Map<string, string>
+): MCPServerConfigurationType {
+  if (
+    isServerSideMCPServerConfiguration(config) &&
+    collidingNames.has(config.name)
+  ) {
+    const spaceName = viewIdToSpaceName.get(config.mcpServerViewId);
+    if (spaceName) {
+      return {
+        ...config,
+        name: `${slugify(spaceName)}${TOOL_NAME_SEPARATOR}${config.name}`,
+      };
+    }
+  }
+  return config;
 }
 
 function getDeduplicationKey(config: MCPServerConfigurationType): string {
