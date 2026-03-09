@@ -14,7 +14,7 @@ import {
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -359,7 +359,7 @@ export function useAgentMessageStream({
           break;
 
         default:
-          assertNever(eventType);
+          assertNeverAndIgnore(eventType);
       }
 
       if (customOnEventCallback) {

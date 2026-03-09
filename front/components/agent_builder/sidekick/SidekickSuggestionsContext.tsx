@@ -19,7 +19,7 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentSuggestionType,
@@ -261,7 +261,8 @@ function CopilotSuggestionsProviderContent({
           return { ...suggestion, relations: null };
 
         default:
-          assertNever(suggestion);
+          assertNeverAndIgnore(suggestion);
+          return null;
       }
     },
     [

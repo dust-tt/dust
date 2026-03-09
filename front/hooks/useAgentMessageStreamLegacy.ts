@@ -17,7 +17,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useReducer, useRef } from "react";
 
@@ -251,7 +251,7 @@ function messageReducer(
           newState.agentState = "thinking";
           break;
         default:
-          assertNever(event);
+          assertNeverAndIgnore(event);
       }
       return newState;
     }
@@ -272,7 +272,8 @@ function messageReducer(
       };
 
     default:
-      assertNever(event);
+      assertNeverAndIgnore(event);
+      return state;
   }
 }
 
@@ -351,7 +352,7 @@ export function useAgentMessageStreamLegacy({
       case "created":
         return true;
       default:
-        assertNever(messageStreamState.message.status);
+        assertNeverAndIgnore(messageStreamState.message.status);
     }
   }, [message.status, messageStreamState.message.status]);
 

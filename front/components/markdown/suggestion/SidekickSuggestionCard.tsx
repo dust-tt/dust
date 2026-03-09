@@ -15,7 +15,7 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentKnowledgeSuggestionWithRelationsType,
@@ -54,7 +54,8 @@ function mapSuggestionStateToCardState(
     case "outdated":
       return "disabled";
     default:
-      assertNever(state);
+      assertNeverAndIgnore(state);
+      return "disabled";
   }
 }
 
@@ -580,7 +581,8 @@ export function CopilotSuggestionCard({
     case "knowledge":
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
     default:
-      assertNever(agentSuggestion);
+      assertNeverAndIgnore(agentSuggestion);
+      return null;
   }
 }
 

@@ -23,7 +23,7 @@ import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -306,6 +306,7 @@ function renderOtherAction(
       order: 3,
     };
   } else {
-    return assertNever(action);
+    assertNeverAndIgnore(action);
+    return null;
   }
 }

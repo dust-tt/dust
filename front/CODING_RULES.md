@@ -58,11 +58,25 @@ When branching on a discriminated union or string union, prefer an exhaustive `s
 ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
 are added.
 
+Two variants are available:
+
+- **`assertNever`**: Throws at runtime. Use when missing a case is a bug (server-side code,
+  internal client logic, client-created data).
+- **`assertNeverAndIgnore`**: Does NOT throw at runtime. Use in client-side code that processes
+  API data (event streams, API responses, connector types, etc.) where the server may add new
+  enum values before the client is updated. The unknown value is silently ignored instead of
+  crashing the app.
+
+Both provide the same compile-time exhaustiveness checking. Using the wrong variant is a bug:
+using `assertNever` on API data can crash the app when the server adds a new value, and using
+`assertNeverAndIgnore` on internal logic can silently swallow programming errors.
+
 Example:
 
 ```
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNever, assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
+// Internal logic: use assertNever (crash on missing case)
 type Status = "approved" | "rejected" | "expired";
 
 function titleForStatus(status: Status): string {
@@ -75,6 +89,19 @@ function titleForStatus(status: Status): string {
       return "Expired";
     default:
       return assertNever(status);
+  }
+}
+
+// Processing API data: use assertNeverAndIgnore (gracefully ignore unknown values)
+function handleStreamEvent(event: AgentMessageEvent): State {
+  switch (event.type) {
+    case "generation_tokens":
+      return { ...state, content: state.content + event.text };
+    case "agent_error":
+      return { ...state, status: "error" };
+    default:
+      assertNeverAndIgnore(event);
+      return state;
   }
 }
 ```

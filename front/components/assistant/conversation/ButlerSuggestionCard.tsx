@@ -4,7 +4,7 @@ import type {
   CreateFrameButlerSuggestion,
   RenameTitleButlerSuggestion,
 } from "@app/types/conversation_butler_suggestion";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionFrameIcon,
   Button,
@@ -58,7 +58,7 @@ export function ButlerSuggestionCard({
         />
       );
     default:
-      assertNever(suggestion);
+      assertNeverAndIgnore(suggestion);
   }
 }
 

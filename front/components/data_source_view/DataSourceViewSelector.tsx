@@ -44,7 +44,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -691,7 +691,7 @@ function LimitedSearchContentMessage({
       };
 
     default:
-      assertNever(warningCode);
+      assertNeverAndIgnore(warningCode);
   }
 }
 
