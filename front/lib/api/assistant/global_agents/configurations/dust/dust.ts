@@ -58,6 +58,7 @@ import {
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
+import { QWEN_3_5_MODEL_CONFIG } from "@app/types/assistant/models/ollama";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type {
@@ -502,6 +503,18 @@ export function _getDustGlobalAgent(
     name: "dust",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustLocalGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_LOCAL,
+    name: "dust-local",
+    preferredModelConfiguration: QWEN_3_5_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
   });
 }
 

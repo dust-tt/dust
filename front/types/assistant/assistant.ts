@@ -120,6 +120,7 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_LOCAL = "dust-local",
   DUST_EDGE = "dust-edge",
   DUST_QUICK = "dust-quick",
   DUST_QUICK_MEDIUM = "dust-quick-medium",

@@ -8,6 +8,8 @@ import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { NoopLLM } from "@app/lib/api/llm/clients/noop";
 import { isNoopWhitelistedModelId } from "@app/lib/api/llm/clients/noop/types";
+import { OllamaLLM } from "@app/lib/api/llm/clients/ollama";
+import { isOllamaWhitelistedModelId } from "@app/lib/api/llm/clients/ollama/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import { XaiLLM } from "@app/lib/api/llm/clients/xai";
@@ -34,6 +36,18 @@ export async function getLLM(
   const modelConfig = getModelConfigByModelId(modelId);
   if (!modelConfig) {
     return null;
+  }
+
+  if (isOllamaWhitelistedModelId(modelId)) {
+    return new OllamaLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
+    });
   }
 
   if (isMistralWhitelistedModelId(modelId)) {
