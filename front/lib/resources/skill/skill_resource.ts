@@ -1117,14 +1117,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Compute the equipped skills: agent skills not already enabled +
     // discoverable skills not already enabled or equipped.
     const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const agentEquippedSkills = allAgentSkills
-      .filter((s) => !enabledSkillIds.has(s.sId));
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId)
+    );
 
-    const agentEquippedSkillIds = new Set(agentEquippedSkills.map((s) => s.sId));
-    const discoveredSkills = discoverableSkills
-      .filter(
-        (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
-      );
+    const agentEquippedSkillIds = new Set(
+      agentEquippedSkills.map((s) => s.sId)
+    );
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
+    );
 
     const equippedSkills = [
       ...agentEquippedSkills.sort(sortByName),
