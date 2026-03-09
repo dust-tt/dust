@@ -657,8 +657,8 @@ describe("AgentSuggestionResource", () => {
 
       expect(suggestions).toHaveLength(2);
       expect(suggestions.map((s) => s.source).sort()).toEqual([
-        "copilot",
         "reinforcement",
+        "sidekick",
       ]);
     });
 
