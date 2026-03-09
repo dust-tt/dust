@@ -8,4 +8,5 @@ export * from "./MarkdownStyleContext";
 export * from "./PrettyJsonViewer";
 export * from "./QuickReplyBlock";
 export * from "./TableBlock";
+export type { StreamingState } from "./useAnimatedText";
 export * from "./utils";

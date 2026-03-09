@@ -27,6 +27,10 @@ import {
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
 import {
+  type StreamingState,
+  useAnimatedText,
+} from "@sparkle/components/markdown/useAnimatedText";
+import {
   preserveLineBreaks,
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
@@ -40,6 +44,9 @@ import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
 export { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
+
+const DEFAULT_ANIMATION_DURATION = 2;
+const DEFAULT_DELIMITER = "";
 
 function showUnsupportedDirective() {
   return (tree: any) => {
@@ -56,6 +63,7 @@ function showUnsupportedDirective() {
 export interface MarkdownProps {
   content: string;
   isStreaming?: boolean;
+  streamingState?: StreamingState;
   textColor?: string;
   isLastMessage?: boolean;
   compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
@@ -63,11 +71,14 @@ export interface MarkdownProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   canCopyQuotes?: boolean;
+  animationDuration?: number;
+  delimiter?: string;
 }
 
 export const Markdown: React.FC<MarkdownProps> = ({
   content,
   isStreaming = false,
+  streamingState,
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
@@ -75,7 +86,14 @@ export const Markdown: React.FC<MarkdownProps> = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   canCopyQuotes = true,
+  animationDuration = DEFAULT_ANIMATION_DURATION,
+  delimiter = DEFAULT_DELIMITER,
 }) => {
+  // Derive streaming state: explicit prop takes priority, otherwise derive from isStreaming boolean.
+  // @TODO: remove isStreaming prop and use streamingState prop only
+  const effectiveStreamingState: StreamingState =
+    streamingState ?? (isStreaming ? "streaming" : "none");
+
   const processedContent = useMemo(() => {
     let sanitized = sanitizeContent(content);
     if (compactSpacing) {
@@ -83,6 +101,14 @@ export const Markdown: React.FC<MarkdownProps> = ({
     }
     return sanitized;
   }, [content, compactSpacing]);
+
+  // Animate text during streaming for a smooth reveal effect.
+  const animatedContent = useAnimatedText(
+    processedContent,
+    effectiveStreamingState,
+    animationDuration,
+    delimiter
+  );
 
   const styleContextValue = useMemo(
     () => ({
@@ -166,7 +192,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
           <MarkdownContentContext.Provider
             value={{
               content: processedContent,
-              isStreaming,
+              isStreaming: effectiveStreamingState === "streaming",
               isLastMessage,
             }}
           >
@@ -176,7 +202,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
               remarkPlugins={markdownPlugins}
               rehypePlugins={rehypePlugins}
             >
-              {processedContent}
+              {animatedContent}
             </ReactMarkdown>
           </MarkdownContentContext.Provider>
         </MarkdownStyleContext.Provider>
