@@ -632,6 +632,90 @@ describe("AgentSuggestionResource", () => {
       expect(results[0].state).toBe("pending");
     });
 
+    it("should exclude synthetic suggestions by default", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "reinforcement" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "copilot" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId
+        );
+
+      expect(suggestions).toHaveLength(2);
+      expect(suggestions.map((s) => s.source).sort()).toEqual([
+        "copilot",
+        "reinforcement",
+      ]);
+    });
+
+    it("should return only synthetic suggestions when filtering by source", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "reinforcement" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { sources: ["synthetic"] }
+        );
+
+      expect(suggestions).toHaveLength(1);
+      expect(suggestions[0].source).toBe("synthetic");
+    });
+
+    it("should support filtering by multiple sources", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "reinforcement" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "copilot" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { sources: ["synthetic", "reinforcement"] }
+        );
+
+      expect(suggestions).toHaveLength(2);
+      expect(suggestions.map((s) => s.source).sort()).toEqual([
+        "reinforcement",
+        "synthetic",
+      ]);
+    });
+
     it("should return empty array for non-existent agent", async () => {
       const suggestions =
         await AgentSuggestionResource.listByAgentConfigurationId(
