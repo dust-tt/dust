@@ -139,6 +139,12 @@ const InputBarContainer = ({
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
 
+  // Refs for skill suggestion extension (avoids stale closures since extensions are created once).
+  const onSkillSelectRef = useRef(onSkillSelect);
+  onSkillSelectRef.current = onSkillSelect;
+  const selectedSkillsRef = useRef(selectedSkills);
+  selectedSkillsRef.current = selectedSkills;
+
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
       const editorInstance = editorRef.current;
@@ -296,6 +302,8 @@ const InputBarContainer = ({
     conversationId: conversation?.sId,
     spaceId: space?.sId,
     onInlineText: handleInlineText,
+    onSkillSelectRef,
+    selectedSkillsRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;

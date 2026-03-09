@@ -10,6 +10,7 @@ import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
+import { SkillSuggestionExtension } from "@app/components/editor/extensions/input_bar/SkillSuggestionExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
@@ -21,11 +22,16 @@ import {
   createMentionSuggestion,
   mentionPluginKey,
 } from "@app/components/editor/input_bar/mentionSuggestion";
+import {
+  createSkillSuggestion,
+  skillPluginKey,
+} from "@app/components/editor/input_bar/skillSuggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention, WorkspaceType } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 
@@ -181,6 +187,8 @@ export interface CustomEditorProps {
   }) => void;
   longTextPasteCharsThreshold?: number;
   onInlineText?: (fileId: string, textContent: string) => void;
+  onSkillSelectRef?: React.MutableRefObject<(skill: SkillType) => void>;
+  selectedSkillsRef?: React.MutableRefObject<SkillType[]>;
 }
 
 export const buildEditorExtensions = ({
@@ -189,12 +197,16 @@ export const buildEditorExtensions = ({
   spaceId,
   onInlineText,
   onUrlDetected,
+  onSkillSelectRef,
+  selectedSkillsRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  onSkillSelectRef?: React.MutableRefObject<(skill: SkillType) => void>;
+  selectedSkillsRef?: React.MutableRefObject<SkillType[]>;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -269,6 +281,17 @@ export const buildEditorExtensions = ({
       }),
     }),
     EmojiExtension,
+    ...(onSkillSelectRef && selectedSkillsRef
+      ? [
+          SkillSuggestionExtension.configure({
+            suggestion: createSkillSuggestion({
+              owner,
+              onSkillSelectRef,
+              selectedSkillsRef,
+            }),
+          }),
+        ]
+      : []),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:
@@ -300,6 +323,8 @@ const useCustomEditor = ({
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
+  onSkillSelectRef,
+  selectedSkillsRef,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -310,6 +335,8 @@ const useCustomEditor = ({
         spaceId,
         onInlineText,
         onUrlDetected,
+        onSkillSelectRef,
+        selectedSkillsRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
@@ -376,6 +403,12 @@ const useCustomEditor = ({
             const emojiPluginState = emojiPluginKey.getState(view.state);
             // Let the emoji extension handle the event if its dropdown is currently opened.
             if (emojiPluginState?.active) {
+              return false;
+            }
+
+            const skillPluginState = skillPluginKey.getState(view.state);
+            // Let the skill extension handle the event if its dropdown is currently opened.
+            if (skillPluginState?.active) {
               return false;
             }
 

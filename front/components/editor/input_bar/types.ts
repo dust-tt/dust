@@ -1,6 +1,7 @@
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 
 import type { RichMention, WorkspaceType } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type MentionDropdownOnKeyDown = {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
@@ -30,4 +31,17 @@ export interface EmojiDropdownProps {
   command: (item: { name: string }) => void;
   clientRect?: (() => DOMRect | null) | null;
   onClose?: () => void;
+}
+
+export type SkillDropdownOnKeyDown = {
+  onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+};
+
+export interface SkillDropdownProps {
+  query: string;
+  command: (item: SkillType) => void;
+  clientRect?: (() => DOMRect | null) | null;
+  onClose?: () => void;
+  owner: WorkspaceType;
+  selectedSkillsRef: React.MutableRefObject<SkillType[]>;
 }
