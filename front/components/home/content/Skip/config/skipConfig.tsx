@@ -95,7 +95,7 @@ export const skipConfig: SkipConfig = {
         embedUrl: "https://www.youtube.com/embed/38vCIR2yHoA",
       },
     ],
-    usersCount: "2,000+ teams already using Dust",
+    usersCount: "5,000+ teams already using Dust",
   },
 
   trustedByTitle: "TRUSTED BY AMBITIOUS TEAMS AT:",

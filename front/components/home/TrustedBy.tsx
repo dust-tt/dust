@@ -245,7 +245,7 @@ export default function TrustedBy({
     >
       {showTitle && (
         <H4 className="mb-6 w-full text-center text-foreground">
-          Trusted by <span className="text-blue-500">2,000+</span> organizations
+          Trusted by <span className="text-blue-500">5,000+</span> organizations
         </H4>
       )}
 
