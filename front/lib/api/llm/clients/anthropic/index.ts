@@ -1,6 +1,7 @@
-import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import type { MessageCountTokensParams } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
@@ -18,7 +19,6 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
-import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -29,8 +29,13 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress/server";
+import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { WorkspaceType } from "@app/types/user";
+
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_API_VERSION = "2023-06-01";
 
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
@@ -85,8 +90,38 @@ function buildSystemBlocks(
   return system;
 }
 
+async function* parseSSEStream(
+  body: AsyncIterable<Uint8Array>
+): AsyncGenerator<BetaRawMessageStreamEvent> {
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for await (const chunk of body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") {
+          continue;
+        }
+        const event = JSON.parse(data);
+        // The SDK silently filters non-message events (e.g. "ping") before
+        // yielding them. We must do the same to avoid hitting assertNever.
+        if (event.type === "ping") {
+          continue;
+        }
+        yield event as BetaRawMessageStreamEvent;
+      }
+    }
+  }
+}
+
 export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private client: Anthropic;
+  private apiKey: string;
   private workspace: WorkspaceType;
 
   constructor(
@@ -102,10 +137,8 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       );
     }
 
-    this.client = new Anthropic({
-      apiKey: ANTHROPIC_API_KEY,
-    });
-
+    this.apiKey = ANTHROPIC_API_KEY;
+    this.client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
     this.workspace = auth.getNonNullableWorkspace();
   }
 
@@ -163,7 +196,34 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     payload: BetaMessageStreamParams
   ): AsyncGenerator<LLMEvent> {
     try {
-      const events = this.client.beta.messages.stream(payload);
+      const { betas, ...body } = payload;
+
+      const response = await untrustedFetch(ANTHROPIC_API_URL, {
+        method: "POST",
+        headers: {
+          "x-api-key": this.apiKey,
+          "anthropic-version": ANTHROPIC_API_VERSION,
+          "content-type": "application/json",
+          ...(betas?.length ? { "anthropic-beta": betas.join(",") } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const message =
+          (errorBody as { error?: { message?: string } })?.error?.message ??
+          `HTTP ${response.status}`;
+        logger.error(
+          { status: response.status, errorBody },
+          "AnthropicLLM: HTTP error from Anthropic API"
+        );
+        throw Object.assign(new Error(message), { status: response.status });
+      }
+
+      if (!response.body) {
+        throw new Error("No response body");
+      }
 
       const shouldCountReasoningTokens =
         this.reasoningEffort !== "none" &&
@@ -175,13 +235,14 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
             this.client.messages.countTokens(body)
         : undefined;
 
-      yield* streamLLMEvents(events, this.metadata, countTokens);
+      yield* streamLLMEvents(
+        parseSSEStream(response.body),
+        this.metadata,
+        countTokens
+      );
     } catch (err) {
-      if (err instanceof APIError) {
-        yield handleError(err, this.metadata);
-      } else {
-        yield handleGenericError(err, this.metadata);
-      }
+      logger.error({ err }, "AnthropicLLM: sendRequest error");
+      yield handleGenericError(err, this.metadata);
     }
   }
 }
