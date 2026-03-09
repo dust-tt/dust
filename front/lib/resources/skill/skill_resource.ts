@@ -947,18 +947,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listDiscoverable(
     auth: Authenticator,
-    { excludeNames }: { excludeNames?: Set<string> } = {}
+    { enabledSkillNames }: { enabledSkillNames?: Set<string> } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
       where: {
         status: "active",
         isDefault: true,
       },
-      onlyCustom: true,
     });
 
-    return excludeNames
-      ? skills.filter((s) => !excludeNames.has(s.name))
+    return enabledSkillNames
+      ? skills.filter((s) => !enabledSkillNames.has(s.name))
       : skills;
   }
 
@@ -1276,7 +1275,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (def.fetchInstructions) {
       instructions = await def.fetchInstructions(auth, requestedSpaceIds, {
         listDiscoverableSkills: () =>
-          this.listDiscoverable(auth, { excludeNames: enabledSkillNames }),
+          this.listDiscoverable(auth, { enabledSkillNames }),
       });
     } else {
       instructions = def.instructions;
