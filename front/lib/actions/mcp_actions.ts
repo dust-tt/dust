@@ -796,6 +796,14 @@ async function disambiguateServerNamesBySpace(
   };
 }
 
+function getDeduplicationKey(config: MCPServerConfigurationType): string {
+  const viewId = isServerSideMCPServerConfiguration(config)
+    ? config.mcpServerViewId
+    : config.clientSideMcpServerId;
+
+  return `${viewId}:${slugify(config.name)}`;
+}
+
 /**
  * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent > client-side > skill > stable JIT > conditional JIT.
@@ -816,38 +824,30 @@ function deduplicateMCPServerConfigurations({
   stableConfigs: MCPServerConfigurationType[];
   conditionalJITConfigs: MCPServerConfigurationType[];
 } {
-  // Reference identity is safe here: dedup runs before disambiguation (which
-  // copies objects via .map()), so the original references are preserved.
-  const conditionalJITSet = new Set<MCPServerConfigurationType>(
-    conditionalJITServers
-  );
   const seen = new Set<string>();
-
   const stableConfigs: MCPServerConfigurationType[] = [];
   const conditionalJITConfigs: MCPServerConfigurationType[] = [];
 
+  // Process stable configs first (higher priority).
   for (const config of [
     ...agentActions,
     ...clientSideActions,
     ...skillServers,
     ...stableJITServers,
-    ...conditionalJITServers,
   ]) {
-    const viewId = isServerSideMCPServerConfiguration(config)
-      ? config.mcpServerViewId
-      : config.clientSideMcpServerId;
-    const key = `${viewId}:${slugify(config.name)}`;
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-
-    if (conditionalJITSet.has(config)) {
-      conditionalJITConfigs.push(config);
-    } else {
+    const key = getDeduplicationKey(config);
+    if (!seen.has(key)) {
+      seen.add(key);
       stableConfigs.push(config);
+    }
+  }
+
+  // Then conditional JIT configs (lower priority).
+  for (const config of conditionalJITServers) {
+    const key = getDeduplicationKey(config);
+    if (!seen.has(key)) {
+      seen.add(key);
+      conditionalJITConfigs.push(config);
     }
   }
 
