@@ -1,0 +1,27 @@
+front/pages/api/w/[wId]/content-guard-config/test-connection.ts
+  1b7432d86f3c1695 101
+front/types/error.ts
+  1b7432d86f3c1695 158-159
+front/pages/api/v1/w/[wId]/feature_flags.ts
+  1b7432d86f3c1695 36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "d5c4e3d46c45ed047c85908de9265af92230676f",
+  "prompts": {
+    "1b7432d86f3c1695": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9396ab3-15e7-42ac-b53d-f2eb7a7e8d69",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 2,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
