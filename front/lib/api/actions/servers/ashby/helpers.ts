@@ -4,12 +4,12 @@ import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering";
 import {
-  FILE_FIELD_TYPE,
   type AshbyCandidate,
   type AshbyFieldSubmission,
   type AshbyJob,
   type AshbyReferralFormInfo,
   type AshbyUser,
+  FILE_FIELD_TYPE,
 } from "@app/lib/api/actions/servers/ashby/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -309,10 +309,7 @@ export function extractFileFields(
   const submissionsWithoutFiles: AshbyFieldSubmission[] = [];
 
   for (const submission of submissions) {
-    if (
-      fileFieldPaths.has(submission.path) &&
-      typeof submission.value === "string"
-    ) {
+    if (fileFieldPaths.has(submission.path) && isString(submission.value)) {
       fileFields.push({ fileId: submission.value, path: submission.path });
     } else {
       submissionsWithoutFiles.push(submission);
