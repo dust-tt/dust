@@ -10,13 +10,13 @@ struct MainContainerView: View {
     @State private var isDrawerOpen = false
     @State private var selectedConversation: Conversation?
 
-    private let accessToken: String
+    private let tokenProvider: TokenProvider
 
-    init(user: User, accessToken: String, onLogout: @escaping () -> Void) {
+    init(user: User, tokenProvider: TokenProvider, onLogout: @escaping () -> Void) {
         self.user = user
-        self.accessToken = accessToken
+        self.tokenProvider = tokenProvider
         self.onLogout = onLogout
-        _viewModel = StateObject(wrappedValue: ConversationListViewModel(accessToken: accessToken))
+        _viewModel = StateObject(wrappedValue: ConversationListViewModel(tokenProvider: tokenProvider))
     }
 
     var body: some View {
@@ -59,7 +59,7 @@ struct MainContainerView: View {
                         ConversationDetailView(
                             conversation: conversation,
                             workspaceId: workspaceId,
-                            accessToken: accessToken,
+                            tokenProvider: tokenProvider,
                             currentUserEmail: user.email,
                             onBack: {
                                 selectedConversation = nil

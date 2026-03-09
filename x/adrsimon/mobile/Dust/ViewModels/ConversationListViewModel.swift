@@ -26,16 +26,16 @@ final class ConversationListViewModel: ObservableObject {
     @Published var workspace: Workspace?
     @Published var workspaces: [Workspace] = []
 
-    private let accessToken: String
+    private let tokenProvider: TokenProvider
 
-    init(accessToken: String) {
-        self.accessToken = accessToken
+    init(tokenProvider: TokenProvider) {
+        self.tokenProvider = tokenProvider
     }
 
     func load() async {
         state = .loading
         do {
-            let dustUser = try await AuthService.fetchDustUser(accessToken: accessToken)
+            let dustUser = try await AuthService.fetchDustUser(tokenProvider: tokenProvider)
             workspaces = dustUser.workspaces
 
             let workspaceSId = dustUser.selectedWorkspace ?? dustUser.workspaces.first?.sId
@@ -76,7 +76,7 @@ final class ConversationListViewModel: ObservableObject {
         guard let workspaceSId = workspace?.sId else { return }
         let response = try await ConversationService.fetchConversations(
             workspaceId: workspaceSId,
-            accessToken: accessToken
+            tokenProvider: tokenProvider
         )
         conversations = response.conversations
         state = .loaded

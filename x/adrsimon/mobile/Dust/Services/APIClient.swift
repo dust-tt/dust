@@ -46,7 +46,7 @@ enum APIClient {
         return encoder
     }()
 
-    // MARK: - Public
+    // MARK: - Public (raw access token)
 
     static func get<T: Decodable>(
         _ endpoint: String,
@@ -81,6 +81,50 @@ enum APIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(body)
         _ = try await performRequest(request)
+    }
+
+    // MARK: - Public (TokenProvider with automatic 401 retry)
+
+    static func authenticatedGet<T: Decodable>(
+        _ endpoint: String,
+        tokenProvider: TokenProvider,
+        snakeCase: Bool = true
+    ) async throws -> T {
+        let decoder = snakeCase ? snakeCaseDecoder : camelCaseDecoder
+        return try await withAuthRetry(tokenProvider: tokenProvider) { token in
+            var request = try buildRequest(endpoint: endpoint, accessToken: token)
+            request.httpMethod = "GET"
+            return try await execute(request, endpoint: endpoint, decoder: decoder)
+        }
+    }
+
+    static func authenticatedPost<T: Decodable>(
+        _ endpoint: String,
+        body: some Encodable,
+        tokenProvider: TokenProvider
+    ) async throws -> T {
+        let encodedBody = try encoder.encode(body)
+        return try await withAuthRetry(tokenProvider: tokenProvider) { token in
+            var request = try buildRequest(endpoint: endpoint, accessToken: token)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = encodedBody
+            return try await execute(request, endpoint: endpoint, decoder: snakeCaseDecoder)
+        }
+    }
+
+    /// Executes a closure with a valid access token, retrying once on 401 after refreshing.
+    private static func withAuthRetry<T>(
+        tokenProvider: TokenProvider,
+        _ operation: (String) async throws -> T
+    ) async throws -> T {
+        let token = try await tokenProvider.validAccessToken()
+        do {
+            return try await operation(token)
+        } catch APIError.httpError(statusCode: 401, _) {
+            let freshToken = try await tokenProvider.refreshedAccessToken()
+            return try await operation(freshToken)
+        }
     }
 
     private static func buildRequest(endpoint: String, accessToken: String?) throws -> URLRequest {
