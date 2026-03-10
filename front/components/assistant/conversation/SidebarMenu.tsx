@@ -5,6 +5,7 @@ import {
 import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
@@ -62,6 +63,7 @@ import {
   cn,
   DocumentIcon,
   DropdownMenu,
+  FolderOpenIcon,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -482,6 +484,8 @@ export function AgentSidebarMenu({
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
+  const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] =
+    useState(false);
 
   const {
     projects: allProjects,
@@ -774,6 +778,12 @@ export function AgentSidebarMenu({
         onClose={() => setIsCreateProjectModalOpen(false)}
         owner={owner}
       />
+      {isImportSkillDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportSkillDialogOpen(false)}
+          owner={owner}
+        />
+      )}
       <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
@@ -943,11 +953,31 @@ export function AgentSidebarMenu({
                         {isBuilder(owner) && (
                           <>
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              href={getSkillBuilderRoute(owner.sId, "new")}
-                              icon={PlusIcon}
-                              label="New skill"
-                            />
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger
+                                icon={PlusIcon}
+                                label="New skill"
+                              />
+                              <DropdownMenuPortal>
+                                <DropdownMenuSubContent className="pointer-events-auto">
+                                  <DropdownMenuItem
+                                    href={getSkillBuilderRoute(
+                                      owner.sId,
+                                      "new"
+                                    )}
+                                    icon={SKILL_ICON}
+                                    label="From scratch"
+                                  />
+                                  <DropdownMenuItem
+                                    icon={FolderOpenIcon}
+                                    label="From existing"
+                                    onClick={() =>
+                                      setIsImportSkillDialogOpen(true)
+                                    }
+                                  />
+                                </DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                            </DropdownMenuSub>
                             <DropdownMenuItem
                               href={getSkillBuilderRoute(owner.sId, "manage")}
                               icon={SKILL_ICON}
