@@ -10,10 +10,8 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
-import {
-  SkillBuilderVersionComparisonFooter,
-  SkillVersionHistoryPicker,
-} from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
+import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
+import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
 import {
   SkillVersionComparisonProvider,
   useSkillVersionComparisonContext,
