@@ -11,14 +11,7 @@ import type {
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import { faker } from "@faker-js/faker";
-import { expect, test, vi } from "vitest";
-
-// Mock GCS bucket to avoid external dependencies.
-vi.mock("@app/lib/file_storage", () => ({
-  getLLMTracesBucket: () => ({
-    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
-  }),
-}));
+import { expect, test } from "vitest";
 
 // Test fixtures for LLM events.
 class LLMEventFactory {

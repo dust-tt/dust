@@ -14,14 +14,6 @@ import { frameContentType } from "@app/types/files";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock FileStorage to avoid GCS calls (needed for mount path resolution in markAsReady).
-vi.mock("@app/lib/file_storage", async () => {
-  const { mockFileStorage } = await import(
-    "@app/tests/utils/mocks/file_storage"
-  );
-  return mockFileStorage();
-});
-
 // Mock copyContent from utils/files.ts
 vi.mock("@app/lib/utils/files", () => ({
   copyContent: vi.fn(),

@@ -6,14 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
-// Mock FileStorage to avoid GCS calls.
-vi.mock("@app/lib/file_storage", async () => {
-  const { mockFileStorage } = await import(
-    "@app/tests/utils/mocks/file_storage"
-  );
-  return mockFileStorage();
-});
-
 // Mock the data sources functions to avoid actual upserting
 vi.mock("@app/lib/api/data_sources", () => ({
   getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
