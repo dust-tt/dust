@@ -96,21 +96,36 @@ export const Markdown: React.FC<MarkdownProps> = ({
   const effectiveStreamingState: StreamingState =
     streamingState ?? (isStreaming ? "streaming" : "none");
 
-  const processedContent = useMemo(() => {
+  const { processedContent, quickReplyDirectives } = useMemo(() => {
     let sanitized = sanitizeContent(content);
     if (compactSpacing) {
       sanitized = preserveLineBreaks(sanitized);
     }
-    return sanitized;
+
+    // Separate quick reply directives from the main content so they are not
+    // revealed character-by-character during the streaming animation.
+    // Quick replies appear atomically once the surrounding text is fully revealed.
+    const quickReplyPattern = /\n*:quickReply\[[^\]]*\](?:\{[^}]*\})?/g;
+    const matches = sanitized.match(quickReplyPattern);
+    if (!matches) {
+      return { processedContent: sanitized, quickReplyDirectives: "" };
+    }
+    return {
+      processedContent: sanitized.replace(quickReplyPattern, ""),
+      quickReplyDirectives: matches.join(""),
+    };
   }, [content, compactSpacing]);
 
   // Animate text during streaming for a smooth reveal effect.
-  const animatedContent = useAnimatedText(
+  const animatedText = useAnimatedText(
     processedContent,
     enableAnimation ? effectiveStreamingState : "none",
     animationDurationSeconds,
     delimiter
   );
+
+  // Append quick reply directives after animated text so they render fully formed.
+  const animatedContent = animatedText + quickReplyDirectives;
 
   const styleContextValue = useMemo(
     () => ({
