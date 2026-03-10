@@ -18,6 +18,7 @@ import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/da
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
+import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -143,6 +144,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
   "file_generation",
+  "fathom",
   "freshservice",
   "github",
   "gmail",
@@ -820,6 +822,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: STATUSPAGE_SERVER,
+  },
+  fathom: {
+    id: 50,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: FATHOM_SERVER,
   },
   primitive_types_debugger: {
     id: 1004,

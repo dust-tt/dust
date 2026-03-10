@@ -18,6 +18,7 @@ import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/ser
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
+import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/api/actions/servers/front";
@@ -209,6 +210,8 @@ export async function getInternalMCPServer(
       return agentSidekickContextServer(auth, agentLoopContext);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
+    case "fathom":
+      return fathomServer(auth, agentLoopContext);
     case "freshservice":
       return freshserviceServer(auth, agentLoopContext);
     case "data_warehouses":
