@@ -49,8 +49,8 @@ interface SkillBuilderInstructionsEditorProps {
 export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
-  const { compareVersion, isDiffMode: isInstructionDiffMode } =
-    useSkillVersionComparisonContext();
+  const { compareVersion } = useSkillVersionComparisonContext();
+  const isDiffMode = !!compareVersion;
   const { setValue } = useFormContext<SkillBuilderFormData>();
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
@@ -71,7 +71,7 @@ export function SkillBuilderInstructionsEditor({
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
-        if (!isInstructionDiffMode && !editor.isDestroyed) {
+        if (!isDiffMode && !editor.isDestroyed) {
           setValue(INSTRUCTIONS_FIELD_NAME, editor.getMarkdown().trim(), {
             shouldDirty: true,
           });
@@ -82,7 +82,7 @@ export function SkillBuilderInstructionsEditor({
           );
         }
       }, 250),
-    [isInstructionDiffMode, setValue]
+    [isDiffMode, setValue]
   );
 
   const handleUpdate = useCallback(
@@ -172,14 +172,14 @@ export function SkillBuilderInstructionsEditor({
           class: cn(
             editorVariants({
               error: displayError,
-              disabled: isInstructionDiffMode,
+              disabled: isDiffMode,
             }),
             INSTRUCTIONS_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, displayError, isInstructionDiffMode]);
+  }, [editor, displayError, isDiffMode]);
 
   // Sync external changes to the editor content
   useEffect(() => {
@@ -212,7 +212,7 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    if (isInstructionDiffMode && compareVersion) {
+    if (compareVersion) {
       if (editor.storage.agentInstructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
       }
@@ -226,15 +226,13 @@ export function SkillBuilderInstructionsEditor({
       });
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);
-    } else if (!isInstructionDiffMode) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
-        editor.setEditable(true);
-      }
+    } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
+      editor.commands.exitDiff();
+      editor.setEditable(true);
     }
     // Re-run when instructionsField.value changes so that restoring a single
     // field updates the diff overlay.
-  }, [isInstructionDiffMode, compareVersion, editor, instructionsField.value]);
+  }, [compareVersion, editor, instructionsField.value]);
 
   return (
     <div className="space-y-1 p-px">

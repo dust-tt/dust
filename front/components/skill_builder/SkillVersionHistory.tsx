@@ -18,7 +18,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 interface SkillVersionHistoryProps {
   currentSkill: SkillType;
@@ -61,21 +61,18 @@ export function SkillVersionHistory({
     return map;
   }, [editedByLookupMembers]);
 
-  const formatVersionLabel = useCallback((config: SkillWithVersionType) => {
+  function formatVersionLabel(config: SkillWithVersionType): string {
     return config.createdAt
       ? format(config.createdAt, "Pp")
       : `Version ${config.version}`;
-  }, []);
+  }
 
-  const getEditedByName = useCallback(
-    (config: SkillType) => {
-      if (!config.editedBy) {
-        return "System";
-      }
-      return editedByUserMap[config.editedBy.toString()] || "Unknown";
-    },
-    [editedByUserMap]
-  );
+  function getEditedByName(config: SkillType): string {
+    if (!config.editedBy) {
+      return "System";
+    }
+    return editedByUserMap[config.editedBy.toString()] || "Unknown";
+  }
 
   // Collapse successive versions where all comparable fields are identical,
   // keeping the first occurrence (highest version number).

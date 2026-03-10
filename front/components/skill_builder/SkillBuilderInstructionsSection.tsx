@@ -9,22 +9,19 @@ const INSTRUCTIONS_FIELD_NAME = "instructions";
 
 export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
-  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
+  const { compareVersion } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
-    isDiffMode &&
-    compareVersion &&
-    compareVersion.instructions !== currentInstructions;
+    compareVersion && compareVersion.instructions !== currentInstructions;
 
   const restoreInstructions = () => {
-    const text = compareVersion?.instructions;
-    if (text === undefined || text === null) {
+    if (!compareVersion) {
       return;
     }
 
-    setValue(INSTRUCTIONS_FIELD_NAME, text, {
+    setValue(INSTRUCTIONS_FIELD_NAME, compareVersion.instructions ?? "", {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -46,7 +43,7 @@ export function SkillBuilderInstructionsSection() {
               label="Restore instructions"
             />
           )}
-          {!isDiffMode && (
+          {!compareVersion && (
             <Button
               variant="primary"
               label="Attach knowledge"

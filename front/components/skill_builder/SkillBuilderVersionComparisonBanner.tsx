@@ -17,7 +17,7 @@ export function SkillVersionHistoryPicker({
   skillHistory,
 }: SkillVersionHistoryPickerProps) {
   const { owner } = useSkillBuilderContext();
-  const { compareVersion, isDiffMode, enterDiffMode, exitDiffMode } =
+  const { compareVersion, enterDiffMode, exitDiffMode } =
     useSkillVersionComparisonContext();
 
   if (skillHistory.length <= 1) {
@@ -33,7 +33,7 @@ export function SkillVersionHistoryPicker({
         onSelect={enterDiffMode}
         owner={owner}
       />
-      {isDiffMode && (
+      {compareVersion && (
         <Button
           icon={XMarkIcon}
           variant="outline"
