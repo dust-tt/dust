@@ -7,13 +7,13 @@ import {
 } from "@app/types/provider_selection";
 import { ContextItem, Icon, SliderToggle } from "@dust-tt/sparkle";
 
-type ProviderContextItemProps = {
+interface ProviderContextItemProps {
   providerId: ModelProviderIdType;
   description: string;
   providersSelection: ProvidersSelection;
   handleToggleChange: () => void;
   disabled: boolean;
-};
+}
 export function ProviderContextItem({
   providerId,
   description,

@@ -11,19 +11,19 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-type EmbeddingModelSelectProps = {
+interface EmbeddingModelSelectProps {
   workspace?: WorkspaceType;
-};
+}
 
 const DEFAULT_EMBEDDING_PROVIDER: ModelProviderIdType = "openai";
 
 export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
-  const [embeddingProvider, setDefaultEmbeddingProvider] =
+  const [embeddingProvider, setEmbeddingProvider] =
     useState<ModelProviderIdType>(DEFAULT_EMBEDDING_PROVIDER);
 
   useEffect(() => {
     if (workspace?.defaultEmbeddingProvider) {
-      setDefaultEmbeddingProvider(workspace.defaultEmbeddingProvider);
+      setEmbeddingProvider(workspace.defaultEmbeddingProvider);
     }
   }, [workspace?.defaultEmbeddingProvider]);
 
@@ -48,7 +48,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
                 key={provider}
                 label={PRETTIFIED_PROVIDER_NAMES[provider]}
                 onClick={() => {
-                  setDefaultEmbeddingProvider(provider);
+                  setEmbeddingProvider(provider);
                 }}
               />
             ))}

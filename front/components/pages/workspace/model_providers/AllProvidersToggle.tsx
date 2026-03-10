@@ -5,10 +5,10 @@ import {
 import { SliderToggle } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-type AllProvidersToggleProps = {
+interface AllProvidersToggleProps {
   setProvidersSelection: (states: ProvidersSelection) => void;
   providersSelection: ProvidersSelection;
-};
+}
 
 export function AllProvidersToggle({
   setProvidersSelection,

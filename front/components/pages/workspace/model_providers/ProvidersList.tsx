@@ -16,11 +16,12 @@ import mapValues from "lodash/mapValues";
 import uniqBy from "lodash/uniqBy";
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 
-type ProviderContextItemProps = {
+interface ProviderContextItemProps {
   providersSelection: ProvidersSelection;
   setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
   isWorkspacePending: boolean;
-};
+}
+
 export function ProvidersList({
   providersSelection,
   setProvidersSelection,
