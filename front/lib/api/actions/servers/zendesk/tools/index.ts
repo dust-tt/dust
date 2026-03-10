@@ -2,6 +2,10 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import {
   getUniqueCustomFieldIds,
   getZendeskClient,
   ZendeskApiError,
@@ -13,13 +17,16 @@ import {
   renderTicketFields,
   renderTicketMetrics,
 } from "@app/lib/api/actions/servers/zendesk/rendering";
-import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
+import type {
+  ZendeskTicketComment,
+  ZendeskUser,
+} from "@app/lib/api/actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
+import { Err, Ok } from "@app/types/shared/result";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const ZENDESK_TAG_MAX_LENGTH = 255;
 const ZENDESK_TAG_REGEX = /^[a-z0-9_\-/]+$/;
-
-import { Err, Ok } from "@app/types/shared/result";
 
 function isTrackedError(error: Error): boolean {
   return !(error instanceof ZendeskApiError && error.isInvalidInput);
@@ -27,7 +34,7 @@ function isTrackedError(error: Error): boolean {
 
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
   get_ticket: async (
-    { ticketId, includeMetrics, includeConversation },
+    { ticketId, includeMetrics, includeConversation, includeAttachments },
     { authInfo }
   ) => {
     const clientResult = getZendeskClient(authInfo);
@@ -69,7 +76,12 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       ticketText += "\n" + renderTicketMetrics(metricsResult.value);
     }
 
-    if (includeConversation) {
+    // Fetch comments when conversation or attachments are requested.
+    const needComments = includeConversation || includeAttachments;
+    let comments: ZendeskTicketComment[] = [];
+    let users: ZendeskUser[] = [];
+
+    if (needComments) {
       const commentsResult = await client.getTicketComments(ticketId);
 
       if (commentsResult.isErr()) {
@@ -81,12 +93,11 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
         );
       }
 
-      const comments = commentsResult.value;
+      comments = commentsResult.value;
       const authorIds = Array.from(
         new Set(comments.map((comment) => comment.author_id))
       );
 
-      let users: ZendeskUser[] = [];
       if (authorIds.length > 0) {
         const usersResult = await client.getUsersByIds(authorIds);
         if (usersResult.isErr()) {
@@ -100,16 +111,66 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           users = usersResult.value;
         }
       }
+    }
 
+    if (includeConversation) {
       ticketText += renderTicketComments(comments, users);
     }
 
-    return new Ok([
-      {
-        type: "text" as const,
-        text: ticketText,
-      },
-    ]);
+    const contentBlocks: CallToolResult["content"] = [
+      { type: "text" as const, text: ticketText },
+    ];
+
+    if (includeAttachments) {
+      const allAttachments = comments.flatMap((c) =>
+        (c.attachments ?? []).filter((a) => !a.deleted)
+      );
+
+      for (const attachment of allAttachments) {
+        const downloadResult = await client.downloadAttachment(
+          attachment.content_url
+        );
+        if (downloadResult.isErr()) {
+          logger.error(
+            {
+              attachmentId: attachment.id,
+              filename: attachment.file_name,
+              error: downloadResult.error.message,
+            },
+            "[Zendesk] Failed to download attachment"
+          );
+          continue;
+        }
+        const buffer = downloadResult.value;
+
+        const attachmentResult = await processAttachment({
+          mimeType: attachment.content_type,
+          filename: attachment.file_name,
+          extractText: async () =>
+            extractTextFromBuffer(buffer, attachment.content_type),
+          downloadContent: async () => new Ok(buffer),
+        });
+
+        if (attachmentResult.isOk()) {
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} (${attachment.content_type}) ---`,
+          });
+          contentBlocks.push(...attachmentResult.value);
+        } else {
+          logger.error(
+            {
+              attachmentId: attachment.id,
+              filename: attachment.file_name,
+              error: attachmentResult.error.message,
+            },
+            "[Zendesk] Failed to process attachment"
+          );
+        }
+      }
+    }
+
+    return new Ok(contentBlocks);
   },
 
   search_tickets: async ({ query, sortBy, sortOrder }, { authInfo }) => {
