@@ -16,6 +16,7 @@ type DustWindow = {
     selector: string;
     CONTENT: string[];
     getElementName: (el: HTMLElement) => string;
+    highlightElement: (el: HTMLElement) => void;
   };
   __dustElementMap: Record<string, WeakRef<HTMLElement>>;
   __dustElementSnapshots: Record<string, ElementSnapshot>;
@@ -105,13 +106,16 @@ export async function clickPageElement(
     return new Err(new Error("No active tab found."));
   }
 
+  const utilsResult = await ensureDustPageUtils(tab);
+  if (utilsResult.isErr()) {
+    return utilsResult;
+  }
+
   const [execution] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     args: [elementId],
     func: (elementId: string) => {
-      const w = window as unknown as {
-        __dustElementMap?: Record<string, WeakRef<HTMLElement>>;
-      };
+      const w = window as unknown as DustWindow;
 
       const element = w.__dustElementMap?.[elementId].deref();
       if (!element) {
@@ -125,39 +129,9 @@ export async function clickPageElement(
         buttons: 1,
       };
 
-      try {
-        element.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "center",
-        });
-      } catch {
-        // scrollIntoView may fail on some elements; ignore.
-      }
+      const { highlightElement } = w.__dustUtils;
 
-      const rect = element.getBoundingClientRect();
-      const overlay = document.createElement("div");
-
-      Object.assign(overlay.style, {
-        position: "absolute",
-        top: `${rect.top + window.scrollY - 8}px`,
-        left: `${rect.left + window.scrollX - 8}px`,
-        width: `${rect.width + 16}px`,
-        height: `${rect.height + 16}px`,
-        borderRadius: "9999px",
-        boxShadow: "0 0 0 3px #418B5C, 0 0 16px 4px rgba(65, 139, 92, 0.9)",
-        background: "rgba(65, 139, 92, 0.12)",
-        pointerEvents: "none",
-        zIndex: "2147483647",
-        transition: "opacity 0.5s ease-out",
-      });
-
-      document.body.appendChild(overlay);
-
-      setTimeout(() => {
-        overlay.style.opacity = "0";
-        setTimeout(() => overlay.remove(), 500);
-      }, 100);
+      highlightElement(element);
 
       element.dispatchEvent(new MouseEvent("mouseover", opts));
       element.dispatchEvent(new MouseEvent("mousedown", opts));
