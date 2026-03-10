@@ -1,16 +1,36 @@
+import {
+  InternalActionIcons,
+  isCustomResourceIconType,
+} from "@app/components/resources/resources_icons";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { isDefaultActionName } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { Card, CardActionButton, XMarkIcon } from "@dust-tt/sparkle";
+import type { ActionCardDiffStatus } from "@dust-tt/sparkle";
+
+import {
+  ActionIcons,
+  Avatar,
+  BookOpenIcon,
+  Card,
+  CardActionButton,
+  ActionCard as SparkleActionCard,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 
 function actionIcon(mcpServerView: MCPServerViewType | null) {
-  if (mcpServerView?.server) {
-    return getAvatar(mcpServerView.server, "xs");
+  if (!mcpServerView?.server) {
+    return BookOpenIcon;
   }
+
+  const { icon } = mcpServerView.server;
+  if (isCustomResourceIconType(icon)) {
+    return ActionIcons[icon];
+  }
+
+  return InternalActionIcons[icon] ?? BookOpenIcon;
 }
 
 function actionDisplayName(
@@ -26,13 +46,30 @@ function actionDisplayName(
   }`;
 }
 
-export interface ActionCardProps {
+interface ActionCardBaseProps {
   action: BuilderAction;
-  onRemove: () => void;
   onClick?: () => void;
 }
 
-export function ActionCard({ action, onRemove, onClick }: ActionCardProps) {
+interface ActionCardDefaultProps extends ActionCardBaseProps {
+  diffStatus?: never;
+  onRemove: () => void;
+}
+
+interface ActionCardDiffProps extends ActionCardBaseProps {
+  diffStatus: ActionCardDiffStatus;
+  onRemove?: never;
+}
+
+export type ActionCardProps = ActionCardDefaultProps | ActionCardDiffProps;
+
+// TODO: rename to not conflict with the sparkle component
+export function ActionCard({
+  action,
+  diffStatus,
+  onRemove,
+  onClick,
+}: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -45,6 +82,21 @@ export function ActionCard({ action, onRemove, onClick }: ActionCardProps) {
 
   const displayName = actionDisplayName(action, mcpServerView);
   const description = action.description ?? "";
+  const icon = actionIcon(mcpServerView);
+
+  if (diffStatus) {
+    return (
+      <SparkleActionCard
+        icon={icon}
+        label={displayName}
+        description={description}
+        diffStatus={diffStatus}
+        canAdd={false}
+        onClick={onClick}
+        cardContainerClassName="h-28"
+      />
+    );
+  }
 
   return (
     <Card
@@ -64,7 +116,7 @@ export function ActionCard({ action, onRemove, onClick }: ActionCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {actionIcon(mcpServerView)}
+          <Avatar icon={icon} size="xs" />
           <span className="truncate">{displayName}</span>
         </div>
 
