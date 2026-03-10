@@ -126,7 +126,7 @@ export function AgentMessageActions({
                       ? "streaming"
                       : "none"
                   }
-                  enableAnimation={true}
+                  enableAnimation
                   animationDurationSeconds={0.3}
                   delimiter=" "
                   forcedTextSize="text-sm"
