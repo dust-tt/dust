@@ -87,13 +87,13 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   const handleUpdate = useCallback(
     ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
-      if (transaction.docChanged && !editor.isDestroyed) {
+      if (transaction.docChanged && !editor.isDestroyed && !isDiffMode) {
         const text = editor.getText().trim();
         setValue(FIELD_NAME, text, { shouldDirty: true });
         triggerSimilarSkillsFetch(text);
       }
     },
-    [setValue, triggerSimilarSkillsFetch]
+    [isDiffMode, setValue, triggerSimilarSkillsFetch]
   );
 
   const handleBlur = useCallback(() => {
