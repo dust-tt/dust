@@ -410,14 +410,14 @@ Example:
 interface ResourceType {
 id: string;
 }
+const agentSId = agent.sId;          // String identifier
+const agentId = agent.id;            // Numeric ModelId
 
 // GOOD
 interface ResourceType {
 sId: string;
 id: ModelId;
 }
-
-// Variable naming
 const agentId = agent.sId;           // String identifier
 const agentModelId = agent.id;       // Numeric ModelId
 ```
