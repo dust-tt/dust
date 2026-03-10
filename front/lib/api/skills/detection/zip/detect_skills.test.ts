@@ -1,9 +1,10 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib)
 // This directive makes them available in the test environment.
+
+import { isString } from "@app/types/shared/utils/general";
 import AdmZip from "adm-zip";
 import { describe, expect, test } from "vitest";
 import { detectSkillsFromZip } from "./detect_skills";
-import { isString } from "@app/types/shared/utils/general";
 
 function makeSkillMd(name: string, description: string, body: string): string {
   return `---
