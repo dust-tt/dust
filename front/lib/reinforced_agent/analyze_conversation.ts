@@ -1,5 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { Authenticator } from "@app/lib/auth";
 import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import logger from "@app/logger/logger";
@@ -30,10 +30,10 @@ ${conversationText}
 </conversation>
 
 ## Your task
-Analyze the conversation and identify areas where the agent's instructions could be improved. Focus on:
+Analyze the conversation and identify areas where the agent's instructions could be improved. Pay special attention to any user feedback (thumbs up/down and comments) as direct signals of satisfaction or dissatisfaction. Focus on:
 - Cases where the agent misunderstood the user's intent
 - Missing knowledge or capabilities the agent should have
-- Tone or style improvements based on user reactions
+- Tone or style improvements based on user reactions and feedback
 - Specific instructions that could prevent repeated mistakes
 
 Only suggest changes to the instructions (kind: 'instructions'). Use targetBlockId 'instructions-root' for top-level instruction changes,
@@ -78,9 +78,10 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  // Get shrink-wrapped conversation text.
-  const conversationRes = await getShrinkWrapedConversation(auth, {
+  // Get shrink-wrapped conversation text with inline feedback.
+  const conversationRes = await getShrinkWrappedConversation(auth, {
     conversationId,
+    includeFeedback: true,
   });
   if (conversationRes.isErr()) {
     logger.warn(

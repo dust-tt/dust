@@ -521,6 +521,23 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  static async listByConversationModelId(
+    auth: Authenticator,
+    conversationModelId: ModelId
+  ): Promise<AgentMessageFeedbackResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const feedbacks = await this.model.findAll({
+      where: {
+        conversationId: conversationModelId,
+        workspaceId: workspace.id,
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    return feedbacks.map((feedback) => new this(this.model, feedback.get()));
+  }
+
   static async listByAgentMessageModelId(
     auth: Authenticator,
     agentMessageId: ModelId

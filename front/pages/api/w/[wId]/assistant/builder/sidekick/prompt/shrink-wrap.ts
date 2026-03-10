@@ -1,5 +1,5 @@
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import { fetchLangfuseFirstMessagePrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -113,7 +113,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { sidekickEdge } = req.query;
-      const conversationRes = await getShrinkWrapedConversation(auth, {
+      const conversationRes = await getShrinkWrappedConversation(auth, {
         conversationId,
       });
 
