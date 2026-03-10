@@ -26,6 +26,13 @@ export function useAnimatedText(
 
   useEffect(() => {
     if (streamingStateRef.current !== "streaming") {
+      // When streaming ended before this effect ran (e.g. the last text chunk
+      // arrived at the same time as streamingState transitioned to "none"),
+      // ensure we show the full text instead of getting stuck on a truncated
+      // cursor position.
+      if (streamingStateRef.current === "none") {
+        setDisableAnimation(true);
+      }
       return;
     }
 
