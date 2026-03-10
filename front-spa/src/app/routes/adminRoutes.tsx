@@ -64,6 +64,13 @@ const WorkspaceSettingsPage = withSuspense(
     import("@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage"),
   "WorkspaceSettingsPage"
 );
+const ModelProvidersPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/model_providers/ModelProvidersPage"
+    ),
+  "ModelProvidersPage"
+);
 
 export const adminRoutes: RouteObject[] = [
   { path: "me", element: <ProfilePage /> },
@@ -71,6 +78,7 @@ export const adminRoutes: RouteObject[] = [
     element: <AdminRouterLayout />,
     children: [
       { path: "members", element: <MembersPage /> },
+      { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "subscription", element: <SubscriptionPage /> },
