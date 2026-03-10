@@ -35,7 +35,7 @@ export function PanelAgentStep({
               content={reasoningContent}
               isStreaming={isStreaming}
               streamingState={isStreaming ? "streaming" : "none"}
-              enableAnimation={true}
+              enableAnimation
               animationDurationSeconds={0.3}
               delimiter=" "
               forcedTextSize="text-sm"
