@@ -14,6 +14,8 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "test", a: "testlonger", b: "longtest" },
     { query: "eng", a: "eng", b: "slack-engineering-highlights" },
     { query: "c", a: "c", b: "RadicalFeedback" },
+    { query: "issuebot", a: "issueBot", b: "FDEIssueBot" },
+    { query: "issuebot", a: "ISSUEBOT", b: "FDEIssueBot" },
   ];
 
   const dataEqual = [
