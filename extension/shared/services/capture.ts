@@ -2,11 +2,18 @@ import type { Result } from "@app/types/shared/result";
 
 export type CaptureOperationId = "capture-page-content" | "capture-screenshot";
 
+export interface FileData {
+  base64: string;
+  mimeType: string;
+  url: string;
+}
+
 export interface TabContent {
   title: string;
   url?: string;
   content?: string;
   captures?: string[];
+  fileData?: FileData;
 }
 
 export interface CaptureOptions {

@@ -14,7 +14,7 @@ export function registerGetCurrentPageTool(
     "get-current-browser-page",
     "Extracts the title, URL, and text content of a browser tab. " +
       "Use this to read and understand what the user is viewing. " +
-      "For non-text pages (PDFs, images, etc.), prefer get-current-browser-page-screenshot. " +
+      "For non-text pages (PDFs, images, etc.), use get-current-browser-page-view instead — it will attach the file directly to the conversation." +
       "Use list-browser-tabs to discover tab IDs.",
     {
       tabId: z

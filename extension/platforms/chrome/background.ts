@@ -16,6 +16,7 @@ import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
 import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
+import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
@@ -348,11 +349,23 @@ chrome.runtime.onMessage.addListener(
               func: () => document.contentType,
             });
 
+            // 45 MB: base64 encoding adds ~33% overhead, keeping the
+            // serialized message well under Chrome's 64 MB limit.
+            const MAX_FILE_SIZE_BYTES = 45 * 1024 * 1024;
+
             let captures: string[] | undefined;
+            let fileData: FileData | undefined;
             if (includeCapture) {
+              const mimeType = mimetypeExecution.result as string;
+              const isAttachableFile =
+                tab.url &&
+                tab.url.startsWith("https://") &&
+                (mimeType === "application/pdf" ||
+                  mimeType.startsWith("image/"));
+
               // Serialize capture operations: captureVisibleTab only captures
               // the currently visible tab, so concurrent captures would race.
-              captures = await withTabLock(async () => {
+              ({ captures, fileData } = await withTabLock(async () => {
                 // If targeting a non-active tab, activate it first so
                 // captureVisibleTab and full-page capture work correctly.
                 let previousTabId: number | undefined;
@@ -367,40 +380,103 @@ chrome.runtime.onMessage.addListener(
                   await new Promise((r) => setTimeout(r, 500));
                 }
 
+                let resultCaptures: string[] | undefined;
+                let resultFileData: FileData | undefined;
                 try {
-                  if (mimetypeExecution.result === "text/html") {
+                  if (mimeType === "text/html") {
                     // Full page capture
                     await chrome.scripting.executeScript({
                       target: { tabId: tab.id! },
                       files: ["page.js"],
                     });
-                    return await new Promise<string[]>((resolve, reject) => {
-                      if (tab?.id) {
-                        const timeout = setTimeout(() => {
-                          console.error(
-                            "Timeout waiting for full page capture"
+                    resultCaptures = await new Promise<string[]>(
+                      (resolve, reject) => {
+                        if (tab?.id) {
+                          const timeout = setTimeout(() => {
+                            console.error(
+                              "Timeout waiting for full page capture"
+                            );
+                            reject(
+                              new Error(
+                                "Timeout waiting for full page screenshot."
+                              )
+                            );
+                          }, 10000);
+                          chrome.tabs.sendMessage(
+                            tab.id,
+                            { type: "PAGE_CAPTURE_FULL_PAGE" },
+                            (res) => {
+                              clearTimeout(timeout);
+                              resolve(res);
+                            }
                           );
-                          reject(
-                            new Error(
-                              "Timeout waiting for full page screenshot."
-                            )
-                          );
-                        }, 10000);
-                        chrome.tabs.sendMessage(
-                          tab.id,
-                          { type: "PAGE_CAPTURE_FULL_PAGE" },
-                          (res) => {
+                        } else {
+                          console.error("No tab id");
+                          reject(new Error("No tab selected."));
+                        }
+                      }
+                    );
+                  } else if (isAttachableFile) {
+                    // Attempt to fetch the actual file and attach it.
+                    // Falls back to a visible-tab screenshot if the file is too
+                    // large or the fetch fails (e.g. auth-gated content).
+                    try {
+                      const response = await fetch(tab.url as string, {
+                        credentials: "omit",
+                      });
+                      if (!response.ok) {
+                        throw new Error(
+                          `Fetch failed with status ${response.status}`
+                        );
+                      }
+                      const contentLength =
+                        response.headers.get("content-length");
+                      if (
+                        contentLength &&
+                        parseInt(contentLength) > MAX_FILE_SIZE_BYTES
+                      ) {
+                        throw new Error("File exceeds 45 MB limit.");
+                      }
+                      const buffer = await response.arrayBuffer();
+                      if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
+                        throw new Error("File exceeds 45 MB limit.");
+                      }
+                      // Convert ArrayBuffer to base64 in chunks to avoid
+                      // stack overflow when spreading large typed arrays.
+                      const bytes = new Uint8Array(buffer);
+                      const chunkSize = 8192;
+                      let binary = "";
+                      for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+                        binary += String.fromCharCode(
+                          ...bytes.subarray(i, i + chunkSize)
+                        );
+                      }
+                      resultFileData = {
+                        base64: btoa(binary),
+                        mimeType,
+                        url: tab.url as string,
+                      };
+                    } catch (fetchError) {
+                      console.warn(
+                        "File fetch failed, falling back to screenshot:",
+                        fetchError
+                      );
+                      resultCaptures = [
+                        await new Promise<string>((resolve, reject) => {
+                          const timeout = setTimeout(() => {
+                            reject(
+                              new Error("Timeout waiting for page screenshot")
+                            );
+                          }, 2000);
+                          chrome.tabs.captureVisibleTab((res) => {
                             clearTimeout(timeout);
                             resolve(res);
-                          }
-                        );
-                      } else {
-                        console.error("No tab id");
-                        reject(new Error("No tab selected."));
-                      }
-                    });
+                          });
+                        }),
+                      ];
+                    }
                   } else {
-                    return [
+                    resultCaptures = [
                       await new Promise<string>((resolve, reject) => {
                         const timeout = setTimeout(() => {
                           console.error("Timeout waiting for capture");
@@ -421,9 +497,10 @@ chrome.runtime.onMessage.addListener(
                     await chrome.tabs.update(previousTabId, { active: true });
                   }
                 }
-              });
+                return { captures: resultCaptures, fileData: resultFileData };
+              }));
 
-              if (!captures || captures.length === 0) {
+              if (!fileData && (!captures || captures.length === 0)) {
                 console.error("Empty captures array");
                 throw new Error("Failed to get a screenshot of the page.");
               }
@@ -437,6 +514,7 @@ chrome.runtime.onMessage.addListener(
                 });
                 content = execution?.result ?? "no content.";
               } else {
+                // TODO - handle non-HTML content. For now we just extract the page content.
                 const [execution] = await chrome.scripting.executeScript({
                   target: { tabId: tab.id },
                   func: extractPage(tab.url || ""),
@@ -449,6 +527,7 @@ chrome.runtime.onMessage.addListener(
               url: tab.url || "",
               content,
               captures,
+              fileData,
             });
           } catch (error) {
             log("Error getting active tab content:", error);

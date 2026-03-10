@@ -1,29 +1,22 @@
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 /**
- * Registers the get-current-browser-page-screenshot tool with the MCP server.
- * Captures a screenshot of a browser tab.
+ * Registers the get-current-browser-page-view tool with the MCP server.
+ * Captures a screenshot or attaches the file content of a browser tab.
  */
-export function registerGetPageScreenshotTool(
+export function registerGetPageViewTool(
   server: McpServer,
   captureService: CaptureService | null
 ): void {
   server.tool(
-    "get-current-browser-page-screenshot",
-    "Captures a screenshot of a browser tab. " +
-      "Use this when you need to visually inspect the page layout, " +
-      "or when the page contains non-text content (PDFs, images, Drive canvas, etc.). " +
+    "get-current-browser-page-view",
+    "Captures or attaches the content of a browser tab. " +
+      "For PDF and image pages, attaches the actual file so you can read or analyze its full content. " +
+      "If the file cannot be attached (too large or access denied), falls back to a screenshot. " +
+      "Also use this for HTML pages when you need to visually inspect the layout (Drive canvas, etc.)." +
       "Use list-browser-tabs to discover tab IDs.",
-    {
-      tabId: z
-        .number()
-        .optional()
-        .describe(
-          "The tab ID to capture. If omitted, captures the active tab. Use list-browser-tabs to get tab IDs."
-        ),
-    },
+    {},
     async ({ tabId }) => {
       if (!captureService) {
         return {
@@ -43,7 +36,25 @@ export function registerGetPageScreenshotTool(
           };
         }
 
-        const { captures } = result.value;
+        const { captures, fileData } = result.value;
+
+        if (fileData) {
+          const { base64, mimeType, url } = fileData;
+          if (mimeType.startsWith("image/")) {
+            return {
+              content: [{ type: "image" as const, data: base64, mimeType }],
+            };
+          }
+          return {
+            content: [
+              {
+                type: "resource" as const,
+                resource: { uri: url, mimeType, blob: base64 },
+              },
+            ],
+          };
+        }
+
         if (!captures || captures.length === 0) {
           return {
             content: [{ type: "text", text: "No screenshot captured." }],
