@@ -1,6 +1,6 @@
 import { AllProvidersToggle } from "@app/components/pages/workspace/model_providers/AllProvidersToggle";
 import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_providers/EmbeddingModelSelect";
-import { ProvidersList } from "@app/components/pages/workspace/model_providers/ProvidersList";
+import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
@@ -24,16 +24,22 @@ export function ModelProvidersPageContent({
 
   return (
     <div className="flex flex-col gap-8">
-      <AllProvidersToggle
-        providersSelection={providersSelection}
-        setProvidersSelection={setProvidersSelection}
-      />
-      <ProvidersList
-        providersSelection={providersSelection}
-        setProvidersSelection={setProvidersSelection}
-        isWorkspaceValidating={isWorkspaceValidating}
-        plan={plan}
-      />
+      {plan.isByok ? (
+        <></>
+      ) : (
+        <>
+          <AllProvidersToggle
+            providersSelection={providersSelection}
+            setProvidersSelection={setProvidersSelection}
+          />
+          <ProvidersToggleList
+            providersSelection={providersSelection}
+            setProvidersSelection={setProvidersSelection}
+            isWorkspaceValidating={isWorkspaceValidating}
+            plan={plan}
+          />
+        </>
+      )}
       <EmbeddingModelSelect workspace={workspace} />
     </div>
   );

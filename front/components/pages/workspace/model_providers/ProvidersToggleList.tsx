@@ -24,7 +24,7 @@ interface ProviderContextItemProps {
   plan: PlanType;
 }
 
-export function ProvidersList({
+export function ProvidersToggleList({
   providersSelection,
   setProvidersSelection,
   isWorkspaceValidating,
