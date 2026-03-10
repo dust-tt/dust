@@ -958,25 +958,23 @@ export function AgentSidebarMenu({
                                   icon={PlusIcon}
                                   label="New skill"
                                 />
-                                <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="pointer-events-auto">
-                                    <DropdownMenuItem
-                                      href={getSkillBuilderRoute(
-                                        owner.sId,
-                                        "new"
-                                      )}
-                                      icon={SKILL_ICON}
-                                      label="From scratch"
-                                    />
-                                    <DropdownMenuItem
-                                      icon={FolderOpenIcon}
-                                      label="From existing"
-                                      onClick={() =>
-                                        setIsImportSkillDialogOpen(true)
-                                      }
-                                    />
-                                  </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem
+                                    href={getSkillBuilderRoute(
+                                      owner.sId,
+                                      "new"
+                                    )}
+                                    icon={SKILL_ICON}
+                                    label="From scratch"
+                                  />
+                                  <DropdownMenuItem
+                                    icon={FolderOpenIcon}
+                                    label="From existing"
+                                    onClick={() =>
+                                      setIsImportSkillDialogOpen(true)
+                                    }
+                                  />
+                                </DropdownMenuSubContent>
                               </DropdownMenuSub>
                             ) : (
                               <DropdownMenuItem
