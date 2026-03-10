@@ -3,7 +3,11 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
+import type { Authenticator } from "@app/lib/auth";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const SKILLS_BASE_PATH = "/skills";
@@ -79,7 +83,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
 /**
  * Load a skill's file attachments onto the conversation's sandbox.
- * Files are written to /files/skills/{skillName}/{fileName}.
+ * Files are written under /skills/{skillName}.
  */
 async function loadSkillFilesToSandbox(
   auth: Authenticator,

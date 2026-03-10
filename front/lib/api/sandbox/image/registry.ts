@@ -159,6 +159,7 @@ SHELLEOF`)
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
   )
+  .runCmd("sudo mkdir -p /skills && sudo chmod 755 /skills")
   .registerTool(
     {
       name: "apply_patch",

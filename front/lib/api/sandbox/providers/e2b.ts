@@ -12,7 +12,7 @@ import type {
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
-import type { Result, Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
