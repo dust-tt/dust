@@ -10,6 +10,8 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
+import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
+import { SkillVersionComparisonProvider } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -21,6 +23,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
+import { useSkillHistory } from "@app/lib/swr/skill_configurations";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -57,6 +60,13 @@ export default function SkillBuilder({
   const { editors } = useSkillEditors({
     owner,
     skillId: skill?.sId ?? null,
+  });
+
+  const { skillHistory } = useSkillHistory({
+    owner,
+    skill,
+    disabled: !skill,
+    limit: 30,
   });
 
   const defaultValues = useMemo(() => {
@@ -149,78 +159,88 @@ export default function SkillBuilder({
   return (
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <div
-          className={cn(
-            "flex h-dvh flex-row",
-            "bg-background text-foreground",
-            "dark:bg-background-night dark:text-foreground-night"
-          )}
-        >
-          <div className="flex h-full w-full flex-col">
-            <BarHeader
-              variant="default"
-              className="mx-4"
-              title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
-              rightActions={
-                <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
-              }
-            />
+        <SkillVersionComparisonProvider>
+          <div
+            className={cn(
+              "flex h-dvh flex-row",
+              "bg-background text-foreground",
+              "dark:bg-background-night dark:text-foreground-night"
+            )}
+          >
+            <div className="flex h-full w-full flex-col">
+              <BarHeader
+                variant="default"
+                className="mx-4"
+                title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
+                centerActions={
+                  skill && skillHistory ? (
+                    <SkillVersionHistoryPicker
+                      skill={skill}
+                      skillHistory={skillHistory}
+                    />
+                  ) : undefined
+                }
+                rightActions={
+                  <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
+                }
+              />
 
-            <ScrollArea className="flex-1">
-              <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
-                {extendedSkill && (
-                  <ContentMessage
-                    title={`Built on ${extendedSkill.name}`}
+              <ScrollArea className="flex-1">
+                <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+                  {extendedSkill && (
+                    <ContentMessage
+                      title={`Built on ${extendedSkill.name}`}
+                      variant="highlight"
+                      icon={getSkillIcon(extendedSkill.icon)}
+                      size="lg"
+                    >
+                      A customized version of {extendedSkill.name} with your own
+                      guidelines and tools.
+                    </ContentMessage>
+                  )}
+                  {skill?.status === "suggested" && (
+                    <ContentMessage
+                      title="This is a generated skill suggestion"
+                      variant="primary"
+                      icon={InformationCircleIcon}
+                      size="lg"
+                    >
+                      This skill was automatically generated based on your
+                      workspace's configuration. We recommend reviewing and
+                      editing it to match your specific needs before saving.
+                    </ContentMessage>
+                  )}
+                  <SkillBuilderRequestedSpacesSection />
+                  <SkillBuilderAgentFacingDescriptionSection />
+                  <SkillBuilderInstructionsSection />
+                  {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
+                  <SkillBuilderToolsSection extendedSkill={extendedSkill} />
+                  <SkillBuilderSettingsSection />
+                </div>
+              </ScrollArea>
+              <BarFooter
+                variant="default"
+                className="mx-4 justify-between"
+                leftActions={
+                  <Button
+                    variant="outline"
+                    label="Cancel"
+                    onClick={handleCancel}
+                    type="button"
+                  />
+                }
+                rightActions={
+                  <Button
                     variant="highlight"
-                    icon={getSkillIcon(extendedSkill.icon)}
-                    size="lg"
-                  >
-                    A customized version of {extendedSkill.name} with your own
-                    guidelines and tools.
-                  </ContentMessage>
-                )}
-                {skill?.status === "suggested" && (
-                  <ContentMessage
-                    title="This is a generated skill suggestion"
-                    variant="primary"
-                    icon={InformationCircleIcon}
-                    size="lg"
-                  >
-                    This skill was automatically generated based on your
-                    workspace's configuration. We recommend reviewing and
-                    editing it to match your specific needs before saving.
-                  </ContentMessage>
-                )}
-                <SkillBuilderRequestedSpacesSection />
-                <SkillBuilderAgentFacingDescriptionSection />
-                <SkillBuilderInstructionsSection skill={skill} />
-                {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-                <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-                <SkillBuilderSettingsSection />
-              </div>
-            </ScrollArea>
-            <BarFooter
-              variant="default"
-              className="mx-4 justify-between"
-              leftActions={
-                <Button
-                  variant="outline"
-                  label="Cancel"
-                  onClick={handleCancel}
-                  type="button"
-                />
-              }
-              rightActions={
-                <Button
-                  variant="highlight"
-                  label={isSaving ? "Saving..." : "Save"}
-                  onClick={handleSave}
-                  disabled={isSaving}
-                />
-              }
-            />
+                    label={isSaving ? "Saving..." : "Save"}
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  />
+                }
+              />
+            </div>
           </div>
-        </div>
+        </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>
   );
