@@ -3,6 +3,7 @@
 import AdmZip from "adm-zip";
 import { describe, expect, test } from "vitest";
 import { detectSkillsFromZip } from "./detect_skills";
+import { isString } from "@app/types/shared/utils/general";
 
 function makeSkillMd(name: string, description: string, body: string): string {
   return `---
@@ -15,7 +16,7 @@ ${body}`;
 function buildZipBuffer(files: Record<string, string | Buffer>): Buffer {
   const zip = new AdmZip();
   for (const [path, content] of Object.entries(files)) {
-    if (typeof content === "string") {
+    if (isString(content)) {
       zip.addFile(path, Buffer.from(content, "utf-8"));
     } else {
       zip.addFile(path, content);
