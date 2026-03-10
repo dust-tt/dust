@@ -14,8 +14,8 @@ const STORAGE_KEY_VISIBLE = "dustSidebarVisible";
 const STORAGE_KEY_WIDTH = "dustSidebarWidth";
 
 // Slide animation: sidebar translates off-screen to the right when hidden.
-const TRANSITION_DURATION = 300; // ms
-const SIDEBAR_TRANSITION = `transform ${TRANSITION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+const TRANSITION_DURATION_MS = 300; // ms
+const SIDEBAR_TRANSITION = `transform ${TRANSITION_DURATION_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
 // Must exceed SIDEBAR_MARGIN so the rounded edge is fully out of view.
 const SIDEBAR_SLIDE_OUT = `translateX(calc(100% + ${SIDEBAR_MARGIN * 2}px))`;
 
@@ -279,7 +279,7 @@ function hideSidebar(): void {
         backdropElement.style.display = "none";
       }
       document.body.style.marginRight = "0";
-    }, TRANSITION_DURATION);
+    }, TRANSITION_DURATION_MS);
 
     // Save state
     chrome.storage.local
@@ -323,16 +323,6 @@ function removeSidebar(): void {
 
 async function init(): Promise<void> {
   try {
-    // Detect Arc browser via its CSS custom property.
-    // This is reliable at document_end (after DOMContentLoaded) when Arc's
-    // palette variables are already applied to the document root.
-    const arcVar = getComputedStyle(document.documentElement).getPropertyValue(
-      "--arc-palette-title"
-    );
-    if (arcVar.trim() !== "") {
-      void chrome.storage.local.set({ isArcBrowser: true });
-    }
-
     // Restore previous state
     const result = await chrome.storage.local.get([STORAGE_KEY_WIDTH]);
 
