@@ -206,11 +206,16 @@ export class SandboxImage {
   }
 
   toCreateConfig(): {
-    imageId?: SandboxImageId;
+    imageId: SandboxImageId;
     envVars?: Record<string, string>;
     network: NetworkPolicy;
     resources: SandboxResources;
   } {
+    if (!this.imageId) {
+      throw new Error(
+        "Cannot create config from unregistered SandboxImage. Call .register() first."
+      );
+    }
     return {
       imageId: this.imageId,
       envVars:

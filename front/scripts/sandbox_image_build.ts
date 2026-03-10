@@ -1,111 +1,154 @@
+import config from "@app/lib/api/config";
 import {
   formatSandboxImageId,
   getSandboxImageFromRegistry,
-  getSandboxImageFromRegistryByName,
-  getSandboxImageNames,
-  getSandboxImageTags,
-  isValidSandboxImageName,
-  isValidSandboxImageTag,
   type SandboxImageId,
 } from "@app/lib/api/sandbox/image";
 import {
   buildSandboxImage,
   createGCPRegistryFactory,
+  templateExists,
 } from "@app/lib/api/sandbox/providers/e2b_template";
-import type { Logger } from "@app/logger/logger";
-import { makeScript } from "@app/scripts/helpers";
+import logger from "@app/logger/logger";
+import * as fs from "fs";
+import * as readline from "readline";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 interface BuildArgs {
   image: string;
   tag: string;
-  execute: boolean;
   skipCache: boolean;
-  dockerRegistry?: string;
-  force: boolean;
+  dockerRegistry: string;
+  rebuild: boolean;
+  confirm: boolean;
 }
 
-async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
+async function promptYesNo(question: string): Promise<boolean> {
+  // Flush async logger (pino-pretty) before prompting
+  await new Promise<void>((resolve) => logger.flush(() => resolve()));
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    let answered = false;
+
+    rl.on("close", () => {
+      if (!answered) {
+        process.exit(1);
+      }
+    });
+
+    rl.question(`${question} [y/N] `, (answer) => {
+      answered = true;
+      rl.close();
+      resolve(answer.toLowerCase() === "y");
+    });
+  });
+}
+
+async function buildImage(args: BuildArgs): Promise<void> {
   const {
     image: imageName,
     tag,
-    execute,
     skipCache,
     dockerRegistry,
-    force,
+    rebuild,
+    confirm,
   } = args;
-
-  if (!isValidSandboxImageName(imageName)) {
-    const available = getSandboxImageNames().join(", ");
-    logger.error(
-      { imageName, available },
-      "Invalid image name. Available: " + available
-    );
-    process.exit(1);
-  }
-
-  if (!isValidSandboxImageTag(tag)) {
-    const available = getSandboxImageTags().join(", ");
-    logger.error({ tag, available }, "Invalid tag. Available: " + available);
-    process.exit(1);
-  }
 
   const imageId: SandboxImageId = { imageName, tag };
 
-  const sandboxImageResult = force
-    ? getSandboxImageFromRegistryByName(imageName)
-    : getSandboxImageFromRegistry(imageId);
+  logger.info({ imageName, tag }, "Starting sandbox image build");
 
-  if (sandboxImageResult.isErr()) {
+  const existsResult = await templateExists(imageId);
+  if (existsResult.isErr()) {
     logger.error(
-      { imageId: formatSandboxImageId(imageId) },
-      "Image not found in registry"
+      { err: existsResult.error },
+      "Failed to check if template exists"
     );
     process.exit(1);
   }
 
-  if (force) {
-    logger.warn(
-      { imageName, tag },
-      "Force mode: building image with tag that may differ from registry"
+  if (existsResult.value && !rebuild) {
+    logger.error(
+      { imageId: formatSandboxImageId(imageId) },
+      "Template already exists in E2B. Use --rebuild to rebuild."
     );
+    process.exit(1);
   }
 
+  if (existsResult.value && rebuild && !confirm) {
+    const confirmed = await promptYesNo(
+      `Template ${formatSandboxImageId(imageId)} already exists. Rebuild?`
+    );
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  const sandboxImageResult = getSandboxImageFromRegistry({ name: imageName });
+  if (sandboxImageResult.isErr()) {
+    logger.error({ imageName }, "Image not found in registry. Cannot proceed.");
+    process.exit(1);
+  }
   const sandboxImage = sandboxImageResult.value;
+
+  logger.info(
+    { imageName, tag },
+    `Building E2B template '${formatSandboxImageId(imageId)}' from registry config`
+  );
 
   const usesDockerBase = sandboxImage.baseImage.type === "docker";
   if (usesDockerBase && !dockerRegistry) {
     logger.error(
       { imageName },
-      "Image uses Docker base. Please provide --docker-registry option"
+      "Image uses Docker base. Please provide --docker-registry option or set SBX_GCP_ARTIFACT_REGISTRY env var"
     );
     process.exit(1);
   }
 
+  const serviceAccountPath = config.getSandboxGcpArtifactServiceAccountPath();
+  if (usesDockerBase && !serviceAccountPath) {
+    logger.error(
+      { imageName },
+      "Image uses Docker base. Please set SBX_GCP_ARTIFACT_SERVICE_ACCOUNT env var to the path of your GCP service account JSON file"
+    );
+    process.exit(1);
+  }
+
+  if (usesDockerBase && serviceAccountPath) {
+    if (!fs.existsSync(serviceAccountPath)) {
+      logger.error({ serviceAccountPath }, "Service account file not found");
+      process.exit(1);
+    }
+    const stat = fs.statSync(serviceAccountPath);
+    if (!stat.isFile()) {
+      logger.error(
+        { serviceAccountPath },
+        "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT must point to a file, not a directory"
+      );
+      process.exit(1);
+    }
+  }
+
   logger.info(
-    { imageName, tag, usesDockerBase, dockerRegistry: dockerRegistry ?? "N/A" },
+    {
+      imageName,
+      tag,
+      usesDockerBase,
+      dockerRegistry: usesDockerBase ? dockerRegistry : "N/A",
+    },
     "Building sandbox image"
   );
 
-  if (!execute) {
-    logger.info(
-      {
-        imageName,
-        tag,
-        skipCache,
-        operationCount: sandboxImage.operations.length,
-        toolCount: sandboxImage.tools.length,
-      },
-      "Would build sandbox image via E2B SDK (dry-run)"
-    );
-    return;
-  }
-
-  const dockerRegistryFactory = dockerRegistry
-    ? createGCPRegistryFactory(
-        dockerRegistry,
-        process.env.SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT ?? ""
-      )
-    : undefined;
+  const dockerRegistryFactory =
+    usesDockerBase && serviceAccountPath
+      ? createGCPRegistryFactory(dockerRegistry, serviceAccountPath)
+      : undefined;
 
   const result = await buildSandboxImage(sandboxImage, imageId, {
     skipCache,
@@ -113,7 +156,6 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
   });
 
   if (result.isErr()) {
-    logger.error({ err: result.error }, "Failed to build sandbox image");
     process.exit(1);
   }
 
@@ -123,47 +165,60 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
   );
 }
 
-makeScript(
-  {
-    image: {
-      type: "string" as const,
-      demandOption: true,
-      describe: "Image name (e.g., dust-base)",
-    },
-    tag: {
-      type: "string" as const,
-      demandOption: true,
-      describe: "E2B image tag (e.g., production, staging)",
-    },
-    "skip-cache": {
-      type: "boolean" as const,
-      default: false,
-      describe: "Force rebuild without using cache",
-    },
-    "docker-registry": {
-      type: "string" as const,
-      describe:
-        "Docker registry URL for images using Docker base (e.g., us-docker.pkg.dev/project/repo)",
-    },
-    force: {
-      alias: "f",
-      type: "boolean" as const,
-      default: false,
-      describe:
-        "Build image even if exact tag is not registered (uses image config by name)",
-    },
-  },
-  async (args, logger) => {
-    await buildImage(
-      {
-        image: args.image,
-        tag: args.tag,
-        execute: args.execute,
-        skipCache: args["skip-cache"],
-        dockerRegistry: args["docker-registry"],
-        force: args.force,
-      },
-      logger
-    );
+function getDockerRegistry(cliValue: string | undefined): string {
+  if (cliValue) {
+    return cliValue;
   }
-);
+  return config.getSandboxGcpArtifactRegistry() ?? "";
+}
+
+yargs(hideBin(process.argv))
+  .option("image", {
+    type: "string",
+    demandOption: true,
+    describe: "Image name (e.g., dust-base)",
+  })
+  .option("tag", {
+    type: "string",
+    demandOption: true,
+    describe: "E2B image tag (e.g., production, staging)",
+  })
+  .option("skip-cache", {
+    type: "boolean",
+    default: false,
+    describe: "Force rebuild without using cache",
+  })
+  .option("docker-registry", {
+    type: "string",
+    describe:
+      "Docker registry URL (fallback: SBX_GCP_ARTIFACT_REGISTRY env var)",
+  })
+  .option("rebuild", {
+    type: "boolean",
+    default: false,
+    describe:
+      "Rebuild even if template exists in E2B (prompts for confirmation unless --confirm)",
+  })
+  .option("confirm", {
+    type: "boolean",
+    default: false,
+    describe: "Skip all interactive prompts",
+  })
+  .help("h")
+  .alias("h", "help")
+  .parseAsync()
+  .then(async (args) => {
+    await buildImage({
+      image: args.image,
+      tag: args.tag,
+      skipCache: args["skip-cache"],
+      dockerRegistry: getDockerRegistry(args["docker-registry"]),
+      rebuild: args.rebuild,
+      confirm: args.confirm,
+    });
+    process.exit(0);
+  })
+  .catch((error) => {
+    logger.error({ err: error }, "An error occurred");
+    process.exit(1);
+  });

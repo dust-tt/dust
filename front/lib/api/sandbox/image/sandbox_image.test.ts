@@ -434,7 +434,8 @@ describe("SandboxImage.toCreateConfig()", () => {
   test("returns network and resources from image", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04")
       .withResources({ vcpu: 2, memoryMb: 1024 })
-      .withNetwork({ mode: "allow_all" });
+      .withNetwork({ mode: "allow_all" })
+      .register({ imageName: "test-image", tag: "v1" });
 
     const config = image.toCreateConfig();
 
@@ -443,7 +444,10 @@ describe("SandboxImage.toCreateConfig()", () => {
   });
 
   test("returns undefined envVars when runEnv is empty", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04");
+    const image = SandboxImage.fromDocker("ubuntu:22.04").register({
+      imageName: "test-image",
+      tag: "v1",
+    });
 
     const config = image.toCreateConfig();
 
@@ -451,10 +455,12 @@ describe("SandboxImage.toCreateConfig()", () => {
   });
 
   test("returns envVars when runEnv is non-empty", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04").setRunEnv({
-      FOO: "bar",
-      BAZ: "qux",
-    });
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
+      .setRunEnv({
+        FOO: "bar",
+        BAZ: "qux",
+      })
+      .register({ imageName: "test-image", tag: "v1" });
 
     const config = image.toCreateConfig();
 
@@ -462,9 +468,11 @@ describe("SandboxImage.toCreateConfig()", () => {
   });
 
   test("returns a copy of runEnv (not the same reference)", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04").setRunEnv({
-      KEY: "value",
-    });
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
+      .setRunEnv({
+        KEY: "value",
+      })
+      .register({ imageName: "test-image", tag: "v1" });
 
     const config = image.toCreateConfig();
 
@@ -472,7 +480,10 @@ describe("SandboxImage.toCreateConfig()", () => {
   });
 
   test("returns default values for new image", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04");
+    const image = SandboxImage.fromDocker("ubuntu:22.04").register({
+      imageName: "test-image",
+      tag: "v1",
+    });
 
     const config = image.toCreateConfig();
 
@@ -481,12 +492,12 @@ describe("SandboxImage.toCreateConfig()", () => {
     expect(config.resources).toEqual({ vcpu: 1, memoryMb: 512 });
   });
 
-  test("returns undefined imageId when not registered", () => {
+  test("throws error when not registered", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04");
 
-    const config = image.toCreateConfig();
-
-    expect(config.imageId).toBeUndefined();
+    expect(() => image.toCreateConfig()).toThrow(
+      "Cannot create config from unregistered SandboxImage"
+    );
   });
 
   test("returns imageId when registered", () => {

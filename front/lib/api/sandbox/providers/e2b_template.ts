@@ -20,7 +20,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { TemplateBuilder } from "e2b";
-import { defaultBuildLogger, Template as E2BTemplate } from "e2b";
+import {
+  ApiClient,
+  ConnectionConfig,
+  defaultBuildLogger,
+  Template as E2BTemplate,
+} from "e2b";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -178,17 +183,6 @@ export interface E2BTemplateInfo {
   aliases: readonly string[];
 }
 
-interface E2BAPITemplateResponse {
-  templateID: string;
-  aliases?: string[];
-  buildID: string;
-  cpuCount: number;
-  memoryMB: number;
-  public: boolean;
-}
-
-const E2B_API_BASE_URL = "https://api.e2b.dev";
-
 export async function listE2BTemplates(
   apiKey?: string
 ): Promise<Result<E2BTemplateInfo[], Error>> {
@@ -196,25 +190,20 @@ export async function listE2BTemplates(
   const key = apiKey ?? e2bConfig.apiKey;
   const domain = e2bConfig.domain;
 
-  const baseUrl = domain ? `https://api.${domain}` : E2B_API_BASE_URL;
-
   try {
-    const response = await fetch(`${baseUrl}/templates`, {
-      method: "GET",
-      headers: {
-        "X-API-Key": key,
-        "Content-Type": "application/json",
-      },
+    const connectionConfig = new ConnectionConfig({
+      apiKey: key,
+      ...(domain ? { domain } : {}),
     });
+    const client = new ApiClient(connectionConfig, { requireApiKey: true });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `E2B API error: ${response.status} ${response.statusText} - ${errorText}`
-      );
+    const response = await client.api.GET("/templates");
+
+    if (response.error) {
+      throw new Error(`E2B API error: ${JSON.stringify(response.error)}`);
     }
 
-    const templates: E2BAPITemplateResponse[] = await response.json();
+    const templates = response.data ?? [];
     return new Ok(
       templates.map((t) => ({
         templateId: t.templateID,
@@ -225,6 +214,23 @@ export async function listE2BTemplates(
     logger.error({ err: normalizeError(err) }, "Failed to list E2B templates");
     return new Err(normalizeError(err));
   }
+}
+
+export async function templateExists(
+  imageId: SandboxImageId,
+  apiKey?: string
+): Promise<Result<boolean, Error>> {
+  const templatesResult = await listE2BTemplates(apiKey);
+  if (templatesResult.isErr()) {
+    return templatesResult;
+  }
+
+  const expectedAlias = formatSandboxImageId(imageId);
+  const exists = templatesResult.value.some((template) =>
+    template.aliases.includes(expectedAlias)
+  );
+
+  return new Ok(exists);
 }
 
 export async function buildSandboxImage(

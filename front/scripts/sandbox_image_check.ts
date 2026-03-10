@@ -1,10 +1,12 @@
 import {
   formatSandboxImageId,
-  getRequiredSandboxImages,
+  getRegisteredImages,
+  type SandboxImageId,
 } from "@app/lib/api/sandbox/image";
 import { listE2BTemplates } from "@app/lib/api/sandbox/providers/e2b_template";
-import type { Logger } from "@app/logger/logger";
-import { makeScript } from "@app/scripts/helpers";
+import logger from "@app/logger/logger";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 interface CheckResult {
   required: string[];
@@ -13,22 +15,24 @@ interface CheckResult {
   buildMatrix: Array<{ image: string; tag: string }>;
 }
 
-async function checkSandboxImages(
-  args: { json: boolean; failOnMissing: boolean; forceRebuild: boolean },
-  logger: Logger
-): Promise<void> {
-  const { json, failOnMissing, forceRebuild } = args;
+interface CheckArgs {
+  json: boolean;
+  failOnMissing: boolean;
+}
 
-  const requiredImages = getRequiredSandboxImages();
+async function checkSandboxImages(args: CheckArgs): Promise<void> {
+  const { json, failOnMissing } = args;
+
+  const requiredImages = getRegisteredImages()
+    .map((img) => img.imageId)
+    .filter((id): id is SandboxImageId => id !== undefined);
   const requiredIds = requiredImages.map(formatSandboxImageId);
 
   const templatesResult = await listE2BTemplates();
 
   if (templatesResult.isErr()) {
     if (json) {
-      logger.info(
-        JSON.stringify({ error: templatesResult.error.message }, null, 2)
-      );
+      logger.info({ result: { error: templatesResult.error.message } }, "");
     } else {
       logger.error(
         { err: templatesResult.error },
@@ -53,7 +57,7 @@ async function checkSandboxImages(
   const buildMatrix: Array<{ image: string; tag: string }> = [];
 
   for (const id of requiredIds) {
-    if (existingIds.has(id) && !forceRebuild) {
+    if (existingIds.has(id)) {
       existing.push(id);
     } else {
       missing.push(id);
@@ -62,7 +66,7 @@ async function checkSandboxImages(
 
   for (const imageId of requiredImages) {
     const formattedId = formatSandboxImageId(imageId);
-    if (!existingIds.has(formattedId) || forceRebuild) {
+    if (!existingIds.has(formattedId)) {
       buildMatrix.push({
         image: imageId.imageName,
         tag: imageId.tag,
@@ -78,7 +82,7 @@ async function checkSandboxImages(
   };
 
   if (json) {
-    logger.info(JSON.stringify(result, null, 2));
+    logger.info({ result }, "");
   } else {
     logger.info(
       {
@@ -101,32 +105,27 @@ async function checkSandboxImages(
   }
 }
 
-makeScript(
-  {
-    json: {
-      type: "boolean" as const,
-      default: false,
-      describe: "Output results as JSON",
-    },
-    "fail-on-missing": {
-      type: "boolean" as const,
-      default: false,
-      describe: "Exit with error code if images are missing",
-    },
-    "force-rebuild": {
-      type: "boolean" as const,
-      default: false,
-      describe: "Treat all images as missing (for rebuild)",
-    },
-  },
-  async (args, logger) => {
-    await checkSandboxImages(
-      {
-        json: args.json,
-        failOnMissing: args["fail-on-missing"],
-        forceRebuild: args["force-rebuild"],
-      },
-      logger
-    );
-  }
-);
+yargs(hideBin(process.argv))
+  .option("json", {
+    type: "boolean",
+    default: false,
+    describe: "Output results as JSON",
+  })
+  .option("fail-on-missing", {
+    type: "boolean",
+    default: false,
+    describe: "Exit with error code if images are missing",
+  })
+  .help("h")
+  .alias("h", "help")
+  .parseAsync()
+  .then(async (args) => {
+    await checkSandboxImages({
+      json: args.json,
+      failOnMissing: args["fail-on-missing"],
+    });
+  })
+  .catch((error) => {
+    logger.error({ err: error }, "An error occurred");
+    process.exit(1);
+  });
