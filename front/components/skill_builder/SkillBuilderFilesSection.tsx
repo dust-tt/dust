@@ -20,8 +20,7 @@ export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
-  const { compareVersion } = useSkillVersionComparisonContext();
-  const isDiffMode = !!compareVersion;
+  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
 
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,

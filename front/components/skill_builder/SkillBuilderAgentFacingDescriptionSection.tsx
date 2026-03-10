@@ -25,8 +25,7 @@ const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-96";
 export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
-  const { compareVersion } = useSkillVersionComparisonContext();
-  const isDiffMode = !!compareVersion;
+  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
 
   const { field: descriptionField, fieldState: descriptionFieldState } =
     useController<SkillBuilderFormData, typeof FIELD_NAME>({
@@ -72,8 +71,9 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       if (!signal.aborted) {
         setIsLoading(false);
         if (result.isOk()) {
+          const similarSkillIds = new Set(result.value);
           setSimilarSkills(
-            skills.filter((skill) => new Set(result.value).has(skill.sId))
+            skills.filter((skill) => similarSkillIds.has(skill.sId))
           );
         }
       }

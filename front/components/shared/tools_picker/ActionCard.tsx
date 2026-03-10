@@ -1,7 +1,4 @@
-import {
-  InternalActionIcons,
-  isCustomResourceIconType,
-} from "@app/components/resources/resources_icons";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { isDefaultActionName } from "@app/components/shared/tools_picker/types";
@@ -11,7 +8,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ActionCardDiffStatus } from "@dust-tt/sparkle";
 
 import {
-  ActionIcons,
   Avatar,
   BookOpenIcon,
   Card,
@@ -25,12 +21,7 @@ function actionIcon(mcpServerView: MCPServerViewType | null) {
     return BookOpenIcon;
   }
 
-  const { icon } = mcpServerView.server;
-  if (isCustomResourceIconType(icon)) {
-    return ActionIcons[icon];
-  }
-
-  return InternalActionIcons[icon] ?? BookOpenIcon;
+  return getIcon(mcpServerView.server.icon);
 }
 
 function actionDisplayName(
@@ -53,7 +44,7 @@ interface ActionCardBaseProps {
 
 interface ActionCardDefaultProps extends ActionCardBaseProps {
   diffStatus?: never;
-  onRemove: () => void;
+  onRemove?: () => void;
 }
 
 interface ActionCardDiffProps extends ActionCardBaseProps {
@@ -104,14 +95,16 @@ export function ActionCard({
       className="h-28"
       onClick={onClick}
       action={
-        <CardActionButton
-          size="icon"
-          icon={XMarkIcon}
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            onRemove();
-            e.stopPropagation();
-          }}
-        />
+        onRemove ? (
+          <CardActionButton
+            size="icon"
+            icon={XMarkIcon}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              onRemove();
+              e.stopPropagation();
+            }}
+          />
+        ) : undefined
       }
     >
       <div className="flex w-full flex-col gap-2 text-sm">

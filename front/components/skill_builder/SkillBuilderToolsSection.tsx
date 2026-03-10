@@ -31,8 +31,7 @@ export function SkillBuilderToolsSection({
   extendedSkill,
 }: SkillBuilderToolsSectionProps) {
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
-  const { compareVersion } = useSkillVersionComparisonContext();
-  const isDiffMode = !!compareVersion;
+  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
 
   const { fields, remove, append } = useFieldArray<
     SkillBuilderFormData,
