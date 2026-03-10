@@ -29,6 +29,7 @@ const gcsStore = new Map<string, Buffer>();
 vi.mock("@app/lib/file_storage", () => ({
   getPrivateUploadBucket: vi.fn(() => ({
     file: vi.fn((path: string) => ({
+      copy: vi.fn().mockResolvedValue(undefined),
       save: vi.fn(async (data: Buffer) => {
         gcsStore.set(path, data);
       }),

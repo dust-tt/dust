@@ -61,11 +61,16 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should return 400 when file is not a frame", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
@@ -73,7 +78,7 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
     });
 
     // Create a non-frame file (PDF).
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -101,13 +106,18 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should return 404 when user cannot access conversation", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
     // Create a frame file with a non-existent conversation.
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -135,18 +145,23 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should return 400 for invalid orientation value", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -173,18 +188,23 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should export PDF successfully with default orientation", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -210,18 +230,23 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should export PDF successfully with landscape orientation", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "my-frame.frame",
       fileSize: 1024,
@@ -251,18 +276,23 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should sanitize non-ASCII characters in Content-Disposition filename", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "Résumé données.frame",
       fileSize: 1024,
