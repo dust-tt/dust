@@ -51,8 +51,9 @@ export class ChromeAuthService extends AuthService {
       const storedTokens = await this.saveTokens(response);
       return new Ok(storedTokens);
     } catch (error) {
-      log("Refresh token: unknown error.", error);
-      return new Err(new AuthError("not_authenticated", error?.toString()));
+      return new Err(
+        new AuthError("invalid_oauth_token_error", error?.toString())
+      );
     }
   }
 
