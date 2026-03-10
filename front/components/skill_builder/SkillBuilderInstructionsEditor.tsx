@@ -7,7 +7,7 @@ import {
 } from "@app/components/editor/SkillInstructionsEditor";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -43,16 +43,14 @@ function toAttachedKnowledge(
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 
 interface SkillBuilderInstructionsEditorProps {
-  compareVersion?: SkillType | null;
-  isInstructionDiffMode?: boolean;
   onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
-  compareVersion,
-  isInstructionDiffMode = false,
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
+  const { compareVersion } = useSkillVersionComparisonContext();
+  const isDiffMode = !!compareVersion;
   const { setValue } = useFormContext<SkillBuilderFormData>();
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
@@ -73,7 +71,7 @@ export function SkillBuilderInstructionsEditor({
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
-        if (!isInstructionDiffMode && !editor.isDestroyed) {
+        if (!isDiffMode && !editor.isDestroyed) {
           setValue(INSTRUCTIONS_FIELD_NAME, editor.getMarkdown().trim(), {
             shouldDirty: true,
           });
@@ -84,7 +82,7 @@ export function SkillBuilderInstructionsEditor({
           );
         }
       }, 250),
-    [isInstructionDiffMode, setValue]
+    [isDiffMode, setValue]
   );
 
   const handleUpdate = useCallback(
@@ -172,13 +170,16 @@ export function SkillBuilderInstructionsEditor({
       editorProps: {
         attributes: {
           class: cn(
-            editorVariants({ error: displayError }),
+            editorVariants({
+              error: displayError,
+              disabled: isDiffMode,
+            }),
             INSTRUCTIONS_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, displayError]);
+  }, [editor, displayError, isDiffMode]);
 
   // Sync external changes to the editor content
   useEffect(() => {
@@ -211,23 +212,27 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    if (isInstructionDiffMode && compareVersion) {
+    if (compareVersion) {
       if (editor.storage.agentInstructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
       }
 
-      const currentText = editor.getMarkdown();
       const compareText = compareVersion.instructions ?? "";
+      const currentText = instructionsField.value ?? "";
 
+      editor.commands.setContent(currentText, {
+        emitUpdate: false,
+        contentType: "markdown",
+      });
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);
-    } else if (!isInstructionDiffMode) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
-        editor.setEditable(true);
-      }
+    } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
+      editor.commands.exitDiff();
+      editor.setEditable(true);
     }
-  }, [isInstructionDiffMode, compareVersion, editor]);
+    // Re-run when instructionsField.value changes so that restoring a single
+    // field updates the diff overlay.
+  }, [compareVersion, editor, instructionsField.value]);
 
   return (
     <div className="space-y-1 p-px">

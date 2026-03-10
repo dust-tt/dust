@@ -45,9 +45,9 @@ export function SkillBuilderFilesSection() {
     [fields]
   );
 
-  const onUploadClick = useCallback(() => {
+  const onUploadClick = () => {
     fileInputRef.current?.click();
-  }, []);
+  };
 
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {

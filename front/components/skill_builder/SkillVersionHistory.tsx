@@ -1,3 +1,4 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMembersLookup } from "@app/lib/swr/memberships";
 import type {
   SkillType,
@@ -17,10 +18,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
-interface SkillInstructionsHistoryProps {
+interface SkillVersionHistoryProps {
   currentSkill: SkillType;
   history: SkillWithVersionType[];
   selectedConfig: SkillWithVersionType | null;
@@ -28,13 +28,13 @@ interface SkillInstructionsHistoryProps {
   owner: LightWorkspaceType;
 }
 
-export function SkillInstructionsHistory({
+export function SkillVersionHistory({
   currentSkill,
   history,
   onSelect,
   selectedConfig,
   owner,
-}: SkillInstructionsHistoryProps) {
+}: SkillVersionHistoryProps) {
   const editedByIdsToLookup = useMemo(() => {
     const ids = new Set<number>();
     history.forEach((config) => {
@@ -61,44 +61,45 @@ export function SkillInstructionsHistory({
     return map;
   }, [editedByLookupMembers]);
 
-  const formatVersionLabel = useCallback((config: SkillWithVersionType) => {
+  function formatVersionLabel(config: SkillWithVersionType): string {
     return config.createdAt
       ? format(config.createdAt, "Pp")
       : `Version ${config.version}`;
-  }, []);
+  }
 
-  const getEditedByName = useCallback(
-    (config: SkillType) => {
-      if (!config.editedBy) {
-        return "System";
-      }
-      return editedByUserMap[config.editedBy.toString()] || "Unknown";
-    },
-    [editedByUserMap]
-  );
+  function getEditedByName(config: SkillType): string {
+    if (!config.editedBy) {
+      return "System";
+    }
+    return editedByUserMap[config.editedBy.toString()] || "Unknown";
+  }
 
-  // Collapse successive versions that contain the exact same instructions,
-  // keeping the first one (it's the one with the highest version).
-  const historyWithPrev = useMemo(() => {
+  // Collapse successive versions where all comparable fields are identical,
+  // keeping the first occurrence (highest version number).
+  const deduplicatedHistory = useMemo(() => {
     const result: SkillWithVersionType[] = [];
 
-    let lastRawInstructions = currentSkill.instructions;
+    let lastFingerprint = getVersionFingerprint(currentSkill);
 
     for (const config of history) {
-      const { instructions } = config;
-      const isNewRun = instructions !== lastRawInstructions;
+      const fingerprint = getVersionFingerprint(config);
+      const isNew = fingerprint !== lastFingerprint;
 
-      if (isNewRun) {
+      if (isNew) {
         result.push(config);
       } else if (config.version === selectedConfig?.version) {
         result[result.length - 1] = config;
       }
 
-      lastRawInstructions = instructions;
+      lastFingerprint = fingerprint;
     }
 
     return result;
   }, [history, selectedConfig, currentSkill]);
+
+  const triggerLabel = selectedConfig
+    ? formatVersionLabel(selectedConfig)
+    : "History";
 
   return (
     <DropdownMenu>
@@ -107,7 +108,7 @@ export function SkillInstructionsHistory({
           variant="outline"
           icon={HistoryIcon}
           size="sm"
-          tooltip="Compare with previous versions"
+          label={triggerLabel}
           isSelect
         />
       </DropdownMenuTrigger>
@@ -137,7 +138,7 @@ export function SkillInstructionsHistory({
               }
             }}
           >
-            {historyWithPrev.map((config) => (
+            {deduplicatedHistory.map((config) => (
               <DropdownMenuRadioItem
                 key={config.version}
                 value={config.version.toString()}
@@ -157,4 +158,13 @@ export function SkillInstructionsHistory({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function getVersionFingerprint(skill: SkillType): string {
+  return JSON.stringify({
+    instructions: skill.instructions,
+    agentFacingDescription: skill.agentFacingDescription,
+    tools: skill.tools.map((t: MCPServerViewType) => t.sId).sort(),
+    files: skill.fileAttachments.map((f) => f.fileId).sort(),
+  });
 }

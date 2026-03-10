@@ -4,7 +4,6 @@ export const editorVariants = cva(
   [
     "overflow-auto border rounded-xl px-3 pt-2 pb-8 resize-y",
     "transition-all duration-200",
-    "bg-muted-background dark:bg-muted-background-night",
   ],
   {
     variants: {
@@ -23,9 +22,17 @@ export const editorVariants = cva(
           "focus:border-highlight-300 dark:focus:border-highlight-300-night",
         ],
       },
+      disabled: {
+        true: [
+          "opacity-60 cursor-not-allowed resize-none",
+          "bg-muted-background/50 dark:bg-muted-background-night/50",
+        ],
+        false: ["bg-muted-background dark:bg-muted-background-night"],
+      },
     },
     defaultVariants: {
       error: false,
+      disabled: false,
     },
   }
 );
