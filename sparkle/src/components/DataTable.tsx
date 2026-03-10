@@ -818,8 +818,9 @@ DataTable.Row = function Row({
           "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
           "s-border-separator dark:s-border-separator-night",
           (onClick || onDoubleClick) &&
-            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
-          props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
+            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background-night",
+          props["data-selected"] &&
+            "s-bg-muted-background/50 dark:s-bg-muted-background-night/50",
           widthClassName,
           className
         )}

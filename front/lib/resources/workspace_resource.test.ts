@@ -74,6 +74,15 @@ vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   };
 });
 
+const listEnabledKillSwitchesCached = vi.hoisted(() =>
+  vi.fn().mockResolvedValue([])
+);
+vi.mock("@app/lib/resources/kill_switch_resource", () => ({
+  KillSwitchResource: {
+    listEnabledKillSwitchesCached,
+  },
+}));
+
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -417,6 +426,110 @@ describe("WorkspaceResource", () => {
 
         expect(found).toBeNull();
       });
+    });
+  });
+
+  describe("getWhiteListedProvidersFilteredByKillSwitches", () => {
+    beforeEach(() => {
+      listEnabledKillSwitchesCached.mockResolvedValue([]);
+    });
+
+    it("returns whiteListedProviders when no kill switches are enabled", async () => {
+      const providers = ["openai", "anthropic", "mistral"] as const;
+
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches([
+          ...providers,
+        ]);
+
+      expect(result).toEqual([...providers]);
+    });
+
+    it("returns null when whiteListedProviders is null and no kill switches", async () => {
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+          null
+        );
+
+      expect(result).toBeNull();
+    });
+
+    it("filters out anthropic when global_blacklist_anthropic is enabled", async () => {
+      listEnabledKillSwitchesCached.mockResolvedValue([
+        "global_blacklist_anthropic",
+      ]);
+
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches([
+          "openai",
+          "anthropic",
+          "mistral",
+        ]);
+
+      expect(result).toEqual(["openai", "mistral"]);
+    });
+
+    it("filters out openai when global_blacklist_openai is enabled", async () => {
+      listEnabledKillSwitchesCached.mockResolvedValue([
+        "global_blacklist_openai",
+      ]);
+
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches([
+          "openai",
+          "anthropic",
+          "mistral",
+        ]);
+
+      expect(result).toEqual(["anthropic", "mistral"]);
+    });
+
+    it("filters out both anthropic and openai when both kill switches are enabled", async () => {
+      listEnabledKillSwitchesCached.mockResolvedValue([
+        "global_blacklist_anthropic",
+        "global_blacklist_openai",
+      ]);
+
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches([
+          "openai",
+          "anthropic",
+          "mistral",
+        ]);
+
+      expect(result).toEqual(["mistral"]);
+    });
+
+    it("uses MODEL_PROVIDER_IDS and filters anthropic when whiteListedProviders is null and anthropic is blacklisted", async () => {
+      listEnabledKillSwitchesCached.mockResolvedValue([
+        "global_blacklist_anthropic",
+      ]);
+
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+          null
+        );
+
+      expect(result).not.toBeNull();
+      expect(result).not.toContain("anthropic");
+      expect(result).toContain("openai");
+      expect(result).toContain("mistral");
+    });
+
+    it("uses MODEL_PROVIDER_IDS and filters openai when whiteListedProviders is null and openai is blacklisted", async () => {
+      listEnabledKillSwitchesCached.mockResolvedValue([
+        "global_blacklist_openai",
+      ]);
+
+      const result =
+        await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+          null
+        );
+
+      expect(result).not.toBeNull();
+      expect(result).not.toContain("openai");
+      expect(result).toContain("anthropic");
+      expect(result).toContain("mistral");
     });
   });
 });

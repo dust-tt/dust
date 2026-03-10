@@ -6,6 +6,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -19,6 +20,7 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -137,6 +139,28 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return killSwitched.conversationIds.includes(conversationId);
   }
 
+  public static async getWhiteListedProvidersFilteredByKillSwitches(
+    whiteListedProviders: ModelProviderIdType[] | null
+  ): Promise<ModelProviderIdType[] | null> {
+    const enabledKillSwitches =
+      await KillSwitchResource.listEnabledKillSwitchesCached();
+
+    const isAnthropicBlacklisted = enabledKillSwitches.includes(
+      "global_blacklist_anthropic"
+    );
+    const isOpenaiBlacklisted = enabledKillSwitches.includes(
+      "global_blacklist_openai"
+    );
+    if (isAnthropicBlacklisted || isOpenaiBlacklisted) {
+      return (whiteListedProviders ?? MODEL_PROVIDER_IDS).filter(
+        (p) =>
+          (isAnthropicBlacklisted ? p !== "anthropic" : true) &&
+          (isOpenaiBlacklisted ? p !== "openai" : true)
+      );
+    }
+    return whiteListedProviders;
+  }
+
   private static async _fetchByIdUncached(
     wId: string
   ): Promise<CachedWorkspaceData | null> {
@@ -146,6 +170,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     if (!workspace) {
       return null;
     }
+
+    const whiteListedProviders =
+      await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+        workspace.whiteListedProviders
+      );
+
     return {
       id: workspace.id,
       sId: workspace.sId,
@@ -154,7 +184,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       segmentation: workspace.segmentation,
       ssoEnforced: workspace.ssoEnforced ?? false,
       workOSOrganizationId: workspace.workOSOrganizationId,
-      whiteListedProviders: workspace.whiteListedProviders,
+      whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
       metadata: workspace.metadata,
       conversationsRetentionDays: workspace.conversationsRetentionDays,
@@ -233,7 +263,16 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     if (!cached) {
       return null;
     }
-    return this.fromCachedData(cached);
+
+    const whiteListedProviders =
+      await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+        cached.whiteListedProviders
+      );
+
+    return this.fromCachedData({
+      ...cached,
+      whiteListedProviders: whiteListedProviders,
+    });
   }
 
   static async fetchByName(name: string): Promise<WorkspaceResource | null> {
