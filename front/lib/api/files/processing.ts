@@ -76,10 +76,10 @@ const resizeImage: ProcessingFunction = async (
     try {
       await pipeline(readStream, writeStream);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Unexpected error";
       return new Err(
-        new Error(`Failed uploading to public bucket. ${errorMessage}`)
+        new Error(
+          `Failed uploading to public bucket. ${normalizeError(err).message}`
+        )
       );
     }
   }
@@ -219,10 +219,9 @@ const resizeAndWriteToProcessed = async (
       "Failed to resize image."
     );
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
-    return new Err(new Error(`Failed resizing image. ${errorMessage}`));
+    return new Err(
+      new Error(`Failed resizing image. ${normalizeError(err).message}`)
+    );
   }
 };
 
@@ -267,11 +266,10 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
       "Failed to extract text from File."
     );
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
     return new Err(
-      new Error(`Failed extracting text from File. ${errorMessage}`)
+      new Error(
+        `Failed extracting text from File. ${normalizeError(err).message}`
+      )
     );
   }
 };
@@ -347,10 +345,10 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
       "Failed to extract text from Audio."
     );
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
     return new Err(
-      new Error(`Failed extracting text from Audio. ${errorMessage}`)
+      new Error(
+        `Failed extracting text from Audio. ${normalizeError(err).message}`
+      )
     );
   } finally {
     // 5) Cleanup temp file.
@@ -368,7 +366,7 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 
 // Preprocessing for file upload.
 
-// Shared map: content type → processing function. Only content types that produce a meaningful
+// Shared map: content type -> processing function. Only content types that produce a meaningful
 // "processed" version are listed here. Content types not in this map are used as-is (original).
 const PROCESSING_BY_CONTENT_TYPE = new Map<
   AllSupportedFileContentType,
@@ -414,7 +412,7 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
 
 // Returns the processing function that transforms the original file into a processed version (e.g.,
 // text extraction, image resize, audio transcription). Returns undefined when no transformation is
-// needed — the original file is used as-is. Processing is purely content-type-driven; upload
+// needed. The original file is used as-is. Processing is purely content-type-driven. Upload
 // support per use case is handled separately by the per-use-case files.
 const getProcessingFunction = (
   contentType: AllSupportedFileContentType
