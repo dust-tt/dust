@@ -9,7 +9,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type { BigQueryCredentialsWithLocation } from "@connectors/types";
 import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
 import type { Result } from "@dust-tt/client";
-import { Err, Ok, removeNulls } from "@dust-tt/client";
+import { Err, normalizeError, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 import { ProjectsClient } from "@google-cloud/resource-manager";
 
@@ -85,7 +85,7 @@ async function listAccessibleProjects(
   });
 
   const projects = [];
-  const iterable = client.searchProjectsAsync({ query: "" });
+  const iterable = client.searchProjectsAsync({ query: "state:ACTIVE" });
 
   for await (const project of iterable) {
     projects.push(project);
@@ -112,7 +112,7 @@ export const fetchDatabases = async ({
     projectIds = [
       ...projectIds,
       ...projects
-        .filter((project) => project.projectId && project.state === "ACTIVE")
+        .filter((project) => project.projectId)
         .map((project) => project.projectId!),
     ];
   } catch (error) {
@@ -174,7 +174,13 @@ export const fetchDatasets = async ({
       )
     );
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    const e = normalizeError(error);
+    // Sometimes the service account has access to a multiple projects, but one of them has not enabled BigQuery.
+    // In that case, we return an empty array.
+    if (e.message.includes("has not enabled BigQuery")) {
+      return new Ok([]);
+    }
+    return new Err(e);
   }
 };
 
