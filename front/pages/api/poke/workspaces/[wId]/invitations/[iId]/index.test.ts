@@ -5,7 +5,7 @@ import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitati
 import sgMail from "@sendgrid/mail";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import handler from "./[iId]";
+import handler from "./index";
 
 // Mock SendGrid so no real emails are sent.
 vi.spyOn(sgMail, "setApiKey").mockImplementation(() => {});
