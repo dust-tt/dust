@@ -1,20 +1,14 @@
 import { CapabilitiesSection } from "@app/components/workspace/settings/CapabilitiesSection";
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
-import { ModelSelectionSection } from "@app/components/workspace/settings/ModelSelectionSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { getPublishingRestrictionMessage } from "@app/lib/api/assistant/publishing_restrictions";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useBotDataSources } from "@app/lib/swr/data_sources";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { GlobeAltIcon, Page, Spinner } from "@dust-tt/sparkle";
 
 export function WorkspaceSettingsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
@@ -44,7 +38,6 @@ export function WorkspaceSettingsPage() {
       <Page.Vertical align="stretch" gap="md">
         <WorkspaceNameEditor owner={owner} />
       </Page.Vertical>
-      <ModelSelectionSection owner={owner} plan={subscription.plan} />
       <CapabilitiesSection
         owner={owner}
         publishingRestrictionMessage={getPublishingRestrictionMessage(
