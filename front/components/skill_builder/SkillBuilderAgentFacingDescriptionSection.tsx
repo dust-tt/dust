@@ -19,7 +19,7 @@ import { useController, useFormContext } from "react-hook-form";
 const FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
-const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-[512px]";
+const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-96";
 
 export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();

@@ -25,7 +25,7 @@ function buildSkillDescriptionExtensions(): Extensions {
       placeholder:
         "When should this skill be used? What is this skill good for?",
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+        "first:before:text-gray-400 dark:first:before:text-gray-500 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
   ];
 }
