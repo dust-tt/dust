@@ -5,7 +5,9 @@ import Custom404 from "@app/pages/404";
 import {
   Button,
   DustLogoSquare,
+  ExclamationCircleIcon,
   Hoverable,
+  Icon,
   LoginIcon,
   Page,
   Spinner,
@@ -17,7 +19,13 @@ export function JoinPage() {
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
 
-  const { joinData, isJoinDataLoading, redirectUrl } = useJoinData({
+  const {
+    joinData,
+    isJoinDataLoading,
+    redirectUrl,
+    joinDataError,
+    mutateJoinData,
+  } = useJoinData({
     wId,
     token,
     conversationId,
@@ -32,6 +40,44 @@ export function JoinPage() {
 
   // Show 404 for unknown workspaces or missing auto-join domains.
   if (!isJoinDataLoading && !joinData) {
+    if (joinDataError) {
+      const errorMessage =
+        joinDataError instanceof Error
+          ? joinDataError.message
+          : typeof joinDataError === "object" &&
+              joinDataError !== null &&
+              "error" in joinDataError
+            ? (joinDataError as { error: { message: string } }).error.message
+            : String(joinDataError);
+
+      return (
+        <div className="flex h-dvh items-center justify-center">
+          <div className="flex max-w-md flex-col gap-3 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <Icon
+                visual={ExclamationCircleIcon}
+                size="lg"
+                className="dark:text-warning-400-night text-warning-400"
+              />
+              <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                Something went wrong
+              </p>
+              <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                We couldn't load the invitation. Please try again.
+              </p>
+              <p className="copy-xs font-mono text-muted-foreground dark:text-muted-foreground-night">
+                {errorMessage}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              label="Retry"
+              onClick={() => void mutateJoinData()}
+            />
+          </div>
+        </div>
+      );
+    }
     return <Custom404 />;
   }
 
