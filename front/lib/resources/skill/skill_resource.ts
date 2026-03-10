@@ -933,15 +933,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List active custom skills marked as default.
+   * List discoverable skills: custom default skills + non-auto-enabled global
+   * skills.
    */
-  static async listDefault(auth: Authenticator): Promise<SkillResource[]> {
+  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         status: "active",
         isDefault: true,
       },
-      onlyCustom: true,
     });
   }
 
@@ -1096,20 +1096,46 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       { agentLoopData }
     );
 
+    let discoverableSkills: SkillResource[] = [];
+    if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
+      discoverableSkills = await this.listDiscoverable(auth);
+    }
+
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
 
-    const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
-    // Skills that are already enabled are not equipped.
-    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const equippedSkills = allAgentSkills.filter(
-      (s) => !enabledSkillIds.has(s.sId)
-    );
+    const sortByName = (a: SkillResource, b: SkillResource) =>
+      a.name.localeCompare(b.name);
+
+    // Compute the enabled skills: auto-enabled skills + conversation-enabled skills.
+    const enabledSkills = [
+      ...autoEnabledSkills.sort(sortByName),
+      ...conversationEnabledSkills.sort(sortByName),
+    ];
 
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
       enabledSkills
     );
+
+    // Compute the equipped skills: agent skills not already enabled +
+    // discoverable skills not already enabled or equipped.
+    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId)
+    );
+
+    const agentEquippedSkillIds = new Set(
+      agentEquippedSkills.map((s) => s.sId)
+    );
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
+    );
+
+    const equippedSkills = [
+      ...agentEquippedSkills.sort(sortByName),
+      ...discoveredSkills.sort(sortByName),
+    ];
 
     return {
       enabledSkills: augmentedEnabledSkills,
@@ -1273,7 +1299,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         extendedSkillId: null,
         source: null,
         sourceMetadata: null,
-        isDefault: false,
+        isDefault: def.isAutoEnabled !== true,
       },
       {
         // Global skills do not have data source configurations.
@@ -2070,7 +2096,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         (ref.customSkillId !== null && ref.customSkillId === this.id)
     );
 
-    if (!hasSkill) {
+    // Allow enabling default skills if the agent has the discover_skills skill.
+    const hasDiscoverSkills =
+      this.isDefault &&
+      refs.some((ref) => ref.globalSkillId === "discover_skills");
+
+    if (!hasSkill && !hasDiscoverSkills) {
       return new Err(
         new Error(
           `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
