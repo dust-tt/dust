@@ -9,10 +9,14 @@ import type {
   ZipEntry,
   ZipSkillDetectionError,
 } from "@app/lib/api/skills/detection/zip/types";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import AdmZip from "adm-zip";
+
+// Reject anything larger before attempting to parse.
+const MAX_ZIP_SIZE_BYTES = 100 * 1024 * 1024;
 
 /**
  * Extracts a flat list of ZipEntry from a ZIP buffer using adm-zip.
@@ -69,6 +73,13 @@ export function detectSkillsFromZip({
 }: {
   zipBuffer: Buffer;
 }): Result<DetectedSkill[], ZipSkillDetectionError> {
+  if (zipBuffer.length > MAX_ZIP_SIZE_BYTES) {
+    return new Err({
+      type: "invalid_zip",
+      message: `ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`,
+    });
+  }
+
   const extractResult = extractZipEntries(zipBuffer);
   if (extractResult.isErr()) {
     return extractResult;
@@ -104,6 +115,10 @@ export function detectSkillsFromZip({
       skillMdEntry.originalEntryName
     );
     if (contentResult.isErr()) {
+      logger.warn(
+        { error: contentResult.error, path: skillDir.skillMdPath },
+        "Failed to read SKILL.md from ZIP, skipping."
+      );
       continue;
     }
 
