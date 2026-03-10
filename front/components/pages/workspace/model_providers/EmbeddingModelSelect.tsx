@@ -1,5 +1,6 @@
 import { EMBEDDING_PROVIDER_IDS } from "@app/types/assistant/models/embedding";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -16,18 +17,6 @@ type EmbeddingModelSelectProps = {
 
 const DEFAULT_EMBEDDING_PROVIDER: ModelProviderIdType = "openai";
 
-const PRETTIFIED_PROVIDER_NAMES: { [key in ModelProviderIdType]: string } = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  mistral: "Mistral AI",
-  google_ai_studio: "Google",
-  togetherai: "TogetherAI",
-  deepseek: "Deepseek",
-  fireworks: "Fireworks",
-  xai: "xAI",
-  noop: "noop",
-};
-
 export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
   const [embeddingProvider, setDefaultEmbeddingProvider] =
     useState<ModelProviderIdType>(DEFAULT_EMBEDDING_PROVIDER);
@@ -39,7 +28,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
   }, [workspace?.defaultEmbeddingProvider]);
 
   return (
-    <div className="flex flex-col gap-2 pt-4">
+    <div className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between">
         <div className="font-semibold">Embedding Provider:</div>
         <DropdownMenu>

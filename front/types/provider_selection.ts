@@ -25,3 +25,15 @@ export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
   xai: false,
   noop: false,
 };
+
+export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  mistral: "Mistral AI",
+  google_ai_studio: "Google",
+  togetherai: "TogetherAI",
+  deepseek: "Deepseek",
+  fireworks: "Fireworks",
+  xai: "xAI",
+  noop: "noop",
+};

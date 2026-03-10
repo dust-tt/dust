@@ -20,8 +20,8 @@ export function AllProvidersToggle({
   );
 
   return (
-    <div className="mt-8 divide-y divide-gray-200 dark:divide-gray-200-night">
-      <div className="flex items-center justify-between pb-4">
+    <div className="mt-8 divide-y divide-gray-200 dark:divide-gray-200-night p-3">
+      <div className="flex items-center justify-between">
         <span className="text-left font-semibold text-foreground dark:text-foreground-night">
           Make all providers available
         </span>
