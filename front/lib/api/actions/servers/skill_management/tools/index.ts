@@ -6,6 +6,8 @@ import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/sk
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
+const SKILLS_BASE_PATH = "/skills";
+
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
   [ENABLE_SKILL_TOOL_NAME]: async (
     { skillName },
@@ -39,15 +41,90 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const { alreadyEnabled } = enableResult.value;
 
+    if (alreadyEnabled) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Skill "${skill.name}" was already enabled. No action taken.`,
+        },
+      ]);
+    }
+
+    // Load skill file attachments to the sandbox.
+    const fileLoadResult = await loadSkillFilesToSandbox(auth, {
+      skill,
+      conversation,
+    });
+
+    let fileMessage: string | null = null;
+    // We don't say anything if there are no files to load.
+    if (fileLoadResult.isOk() && fileLoadResult.value.loadedPaths.length > 0) {
+      fileMessage =
+        "Skill files successfully loaded:\n" +
+        fileLoadResult.value.loadedPaths.map((p) => `  - ${p}`).join("\n");
+    } else if (fileLoadResult.isErr()) {
+      fileMessage = `Failed to load skill files: ${fileLoadResult.error.message}`;
+    }
+
     return new Ok([
       {
         type: "text" as const,
-        text: alreadyEnabled
-          ? `Skill "${skill.name}" was already enabled. No action taken.`
-          : `Skill "${skill.name}" has been enabled.`,
+        text:
+          `Skill "${skill.name}" has been enabled.` +
+          (fileMessage ? `\n\n${fileMessage}` : ""),
       },
     ]);
   },
 };
+
+/**
+ * Load a skill's file attachments onto the conversation's sandbox.
+ * Files are written to /files/skills/{skillName}/{fileName}.
+ */
+async function loadSkillFilesToSandbox(
+  auth: Authenticator,
+  {
+    skill,
+    conversation,
+  }: {
+    skill: SkillResource;
+    conversation: ConversationType;
+  }
+): Promise<Result<{ loadedPaths: string[] }, Error>> {
+  const fileAttachments = skill.getFileAttachments();
+  if (fileAttachments.length === 0) {
+    return new Ok({ loadedPaths: [] });
+  }
+
+  const ensureResult = await SandboxResource.ensureActive(auth, conversation);
+  if (ensureResult.isErr()) {
+    return ensureResult;
+  }
+  const { sandbox } = ensureResult.value;
+
+  const loadedPaths: string[] = [];
+
+  for (const file of fileAttachments) {
+    const fileName = file.fileName ?? `file_${file.sId}`;
+    const targetPath = `${SKILLS_BASE_PATH}/${skill.name}/${fileName}`;
+
+    const readStream = file.getReadStream({ auth, version: "original" });
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of readStream) {
+      chunks.push(chunk);
+    }
+    const content = Buffer.concat(chunks);
+
+    const writeResult = await sandbox.writeFile(auth, targetPath, content);
+    if (writeResult.isErr()) {
+      return writeResult;
+    }
+
+    loadedPaths.push(targetPath);
+  }
+
+  return new Ok({ loadedPaths });
+}
 
 export const TOOLS = buildTools(SKILL_MANAGEMENT_TOOLS_METADATA, handlers);
