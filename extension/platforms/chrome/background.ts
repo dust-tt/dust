@@ -7,6 +7,8 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
+  TabActionMessage,
+  TabActionResponse,
 } from "@extension/platforms/chrome/messages";
 import type { PendingUpdate } from "@extension/platforms/chrome/services/platform";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
@@ -27,6 +29,18 @@ function isGoogleChrome(): boolean {
       }
     ).userAgentData?.brands ?? [];
   return brands.some((b) => b.brand === "Google Chrome");
+}
+
+// Mutex to serialize tab capture operations. captureVisibleTab only captures
+// the currently visible tab, so concurrent captures would produce duplicates.
+let tabOpMutex: Promise<void> = Promise.resolve();
+function withTabLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = tabOpMutex.then(fn, fn);
+  tabOpMutex = next.then(
+    () => {},
+    () => {}
+  );
+  return next;
 }
 
 // Initialize the platform service.
@@ -257,7 +271,8 @@ chrome.runtime.onMessage.addListener(
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
       | CaptureMesssage
-      | InputBarStatusMessage,
+      | InputBarStatusMessage
+      | TabActionMessage,
     sender,
     sendResponse: (
       response:
@@ -266,6 +281,7 @@ chrome.runtime.onMessage.addListener(
         | AuthBackgroundResponseError
         | CaptureResponse
         | GetActiveTabBackgroundResponse
+        | TabActionResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -296,121 +312,230 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "GET_ACTIVE_TAB":
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          async (tabs) => {
-            const tab = tabs[0];
-            if (!tab?.id) {
-              log("No active tab found.");
-              sendResponse({ url: "", content: "", title: "" });
-              return;
-            }
+        void (async () => {
+          let tab: chrome.tabs.Tab | undefined;
+          if (message.tabId) {
+            tab = await chrome.tabs.get(message.tabId);
+          } else {
+            const tabs = await chrome.tabs.query({
+              active: true,
+              currentWindow: true,
+            });
+            tab = tabs[0];
+          }
 
-            if (tab.url && (await shouldDisableContextMenuForDomain(tab.url))) {
-              sendResponse({
-                url: tab.url || "",
-                content: "",
-                title: "",
-                error: "Capture is disabled for this domain.",
-              });
-              return;
-            }
+          if (!tab?.id) {
+            log("No active tab found.");
+            sendResponse({ url: "", content: "", title: "" });
+            return;
+          }
 
-            try {
-              const includeContent = message.includeContent ?? true;
-              const includeCapture = message.includeCapture ?? false;
-              const [mimetypeExecution] = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: () => document.contentType,
-              });
+          if (tab.url && (await shouldDisableContextMenuForDomain(tab.url))) {
+            sendResponse({
+              url: tab.url || "",
+              content: "",
+              title: "",
+              error: "Capture is disabled for this domain.",
+            });
+            return;
+          }
 
-              let captures: string[] | undefined;
-              if (includeCapture) {
-                if (mimetypeExecution.result === "text/html") {
-                  // Full page capture
-                  await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ["page.js"],
+          try {
+            const includeContent = message.includeContent ?? true;
+            const includeCapture = message.includeCapture ?? false;
+            const [mimetypeExecution] = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: () => document.contentType,
+            });
+
+            let captures: string[] | undefined;
+            if (includeCapture) {
+              // Serialize capture operations: captureVisibleTab only captures
+              // the currently visible tab, so concurrent captures would race.
+              captures = await withTabLock(async () => {
+                // If targeting a non-active tab, activate it first so
+                // captureVisibleTab and full-page capture work correctly.
+                let previousTabId: number | undefined;
+                if (!tab.active && tab.id) {
+                  const [activeTab] = await chrome.tabs.query({
+                    active: true,
+                    windowId: tab.windowId,
                   });
-                  captures = await new Promise((resolve, reject) => {
-                    if (tab?.id) {
-                      const timeout = setTimeout(() => {
-                        console.error("Timeout waiting for full page capture");
-                        reject(
-                          new Error("Timeout waiting for full page screenshot.")
+                  previousTabId = activeTab?.id;
+                  await chrome.tabs.update(tab.id, { active: true });
+                  // Brief wait for the tab to render.
+                  await new Promise((r) => setTimeout(r, 500));
+                }
+
+                try {
+                  if (mimetypeExecution.result === "text/html") {
+                    // Full page capture
+                    await chrome.scripting.executeScript({
+                      target: { tabId: tab.id! },
+                      files: ["page.js"],
+                    });
+                    return await new Promise<string[]>((resolve, reject) => {
+                      if (tab?.id) {
+                        const timeout = setTimeout(() => {
+                          console.error(
+                            "Timeout waiting for full page capture"
+                          );
+                          reject(
+                            new Error(
+                              "Timeout waiting for full page screenshot."
+                            )
+                          );
+                        }, 10000);
+                        chrome.tabs.sendMessage(
+                          tab.id,
+                          { type: "PAGE_CAPTURE_FULL_PAGE" },
+                          (res) => {
+                            clearTimeout(timeout);
+                            resolve(res);
+                          }
                         );
-                      }, 10000);
-                      chrome.tabs.sendMessage(
-                        tab.id,
-                        { type: "PAGE_CAPTURE_FULL_PAGE" },
-                        (res) => {
+                      } else {
+                        console.error("No tab id");
+                        reject(new Error("No tab selected."));
+                      }
+                    });
+                  } else {
+                    return [
+                      await new Promise<string>((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                          console.error("Timeout waiting for capture");
+                          reject(
+                            new Error("Timeout waiting for page screenshot")
+                          );
+                        }, 2000);
+                        chrome.tabs.captureVisibleTab((res) => {
                           clearTimeout(timeout);
                           resolve(res);
-                        }
-                      );
-                    } else {
-                      console.error("No tab id");
-                      reject(new Error("No tab selected."));
-                    }
-                  });
-                } else {
-                  captures = [
-                    await new Promise<string>((resolve, reject) => {
-                      const timeout = setTimeout(() => {
-                        console.error("Timeout waiting for capture");
-                        reject(
-                          new Error("Timeout waiting for page screenshot")
-                        );
-                      }, 2000);
-                      chrome.tabs.captureVisibleTab((res) => {
-                        clearTimeout(timeout);
-                        resolve(res);
-                      });
-                    }),
-                  ];
+                        });
+                      }),
+                    ];
+                  }
+                } finally {
+                  // Restore the previously active tab.
+                  if (previousTabId !== undefined) {
+                    await chrome.tabs.update(previousTabId, { active: true });
+                  }
                 }
-                if (!captures || captures.length === 0) {
-                  console.error("Empty captures array");
-                  throw new Error("Failed to get a screenshot of the page.");
-                }
-              }
-              let content: string | undefined;
-              if (includeContent) {
-                if (message.includeSelectionOnly) {
-                  const [execution] = await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: () => window.getSelection()?.toString(),
-                  });
-                  content = execution?.result ?? "no content.";
-                } else {
-                  // TODO - handle non-HTML content. For now we just extract the page content.
-                  const [execution] = await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: extractPage(tab.url || ""),
-                  });
-                  content = execution?.result ?? "no content.";
-                }
-              }
-              sendResponse({
-                title: tab.title || "",
-                url: tab.url || "",
-                content,
-                captures,
               });
-            } catch (error) {
-              log("Error getting active tab content:", error);
-              sendResponse({
-                url: tab.url || "",
-                content: "",
-                title: "",
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to get content from the current tab.",
-              });
+
+              if (!captures || captures.length === 0) {
+                console.error("Empty captures array");
+                throw new Error("Failed to get a screenshot of the page.");
+              }
             }
+            let content: string | undefined;
+            if (includeContent) {
+              if (message.includeSelectionOnly) {
+                const [execution] = await chrome.scripting.executeScript({
+                  target: { tabId: tab.id },
+                  func: () => window.getSelection()?.toString(),
+                });
+                content = execution?.result ?? "no content.";
+              } else {
+                const [execution] = await chrome.scripting.executeScript({
+                  target: { tabId: tab.id },
+                  func: extractPage(tab.url || ""),
+                });
+                content = execution?.result ?? "no content.";
+              }
+            }
+            sendResponse({
+              title: tab.title || "",
+              url: tab.url || "",
+              content,
+              captures,
+            });
+          } catch (error) {
+            log("Error getting active tab content:", error);
+            sendResponse({
+              url: tab.url || "",
+              content: "",
+              title: "",
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to get content from the current tab.",
+            });
           }
-        );
+        })();
+        return true;
+
+      case "LIST_TABS":
+        void (async () => {
+          const tabs = await chrome.tabs.query({ currentWindow: true });
+          sendResponse({
+            success: true,
+            tabs: tabs
+              .filter((t) => t.id !== undefined && t.url)
+              .map((t) => ({
+                tabId: t.id!,
+                title: t.title || "",
+                url: t.url || "",
+                active: t.active,
+              })),
+          });
+        })();
+        return true;
+
+      case "ACTIVATE_TAB":
+        void (async () => {
+          try {
+            await chrome.tabs.update(message.tabId, { active: true });
+            sendResponse({ success: true });
+          } catch (error) {
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
+        return true;
+
+      case "CLOSE_TAB":
+        void (async () => {
+          try {
+            await chrome.tabs.remove(message.tabId);
+            sendResponse({ success: true });
+          } catch (error) {
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
+        return true;
+
+      case "OPEN_TAB":
+        void (async () => {
+          try {
+            const tab = await chrome.tabs.create({ url: message.url });
+            sendResponse({ success: true, tabId: tab.id });
+          } catch (error) {
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
+        return true;
+
+      case "MOVE_TAB":
+        void (async () => {
+          try {
+            await chrome.tabs.move(message.tabId, { index: message.index });
+            sendResponse({ success: true });
+          } catch (error) {
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
         return true;
 
       case "INPUT_BAR_STATUS":

@@ -1,9 +1,10 @@
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
 /**
  * Registers the get-current-browser-page tool with the MCP server.
- * Extracts the text content of the active browser tab.
+ * Extracts the text content of a browser tab.
  */
 export function registerGetCurrentPageTool(
   server: McpServer,
@@ -11,11 +12,19 @@ export function registerGetCurrentPageTool(
 ): void {
   server.tool(
     "get-current-browser-page",
-    "Extracts the title, URL, and text content of the active browser tab. " +
-      "Use this to read and understand what the user is currently viewing. " +
-      "For non-text pages (PDFs, images, etc.), prefer get-current-browser-page-screenshot.",
-    {},
-    async () => {
+    "Extracts the title, URL, and text content of a browser tab. " +
+      "Use this to read and understand what the user is viewing. " +
+      "For non-text pages (PDFs, images, etc.), prefer get-current-browser-page-screenshot. " +
+      "Use list-browser-tabs to discover tab IDs.",
+    {
+      tabId: z
+        .number()
+        .optional()
+        .describe(
+          "The tab ID to read. If omitted, reads the active tab. Use list-browser-tabs to get tab IDs."
+        ),
+    },
+    async ({ tabId }) => {
       if (!captureService) {
         return {
           content: [{ type: "text", text: "Capture service not available." }],
@@ -25,7 +34,7 @@ export function registerGetCurrentPageTool(
       try {
         const result = await captureService.handleOperation(
           "capture-page-content",
-          { includeContent: true, includeCapture: false }
+          { includeContent: true, includeCapture: false, tabId }
         );
 
         if (result.isErr()) {

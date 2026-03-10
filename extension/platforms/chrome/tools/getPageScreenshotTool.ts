@@ -1,9 +1,10 @@
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
 /**
  * Registers the get-current-browser-page-screenshot tool with the MCP server.
- * Captures a screenshot of the active browser tab.
+ * Captures a screenshot of a browser tab.
  */
 export function registerGetPageScreenshotTool(
   server: McpServer,
@@ -11,11 +12,19 @@ export function registerGetPageScreenshotTool(
 ): void {
   server.tool(
     "get-current-browser-page-screenshot",
-    "Captures a screenshot of the active browser tab. " +
+    "Captures a screenshot of a browser tab. " +
       "Use this when you need to visually inspect the page layout, " +
-      "or when the page contains non-text content (PDFs, images, Drive canvas, etc.).",
-    {},
-    async () => {
+      "or when the page contains non-text content (PDFs, images, Drive canvas, etc.). " +
+      "Use list-browser-tabs to discover tab IDs.",
+    {
+      tabId: z
+        .number()
+        .optional()
+        .describe(
+          "The tab ID to capture. If omitted, captures the active tab. Use list-browser-tabs to get tab IDs."
+        ),
+    },
+    async ({ tabId }) => {
       if (!captureService) {
         return {
           content: [{ type: "text", text: "Capture service not available." }],
@@ -25,7 +34,7 @@ export function registerGetPageScreenshotTool(
       try {
         const result = await captureService.handleOperation(
           "capture-page-content",
-          { includeContent: false, includeCapture: true }
+          { includeContent: false, includeCapture: true, tabId }
         );
 
         if (result.isErr()) {
