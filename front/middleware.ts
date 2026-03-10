@@ -100,7 +100,7 @@ export function middleware(request: NextRequest) {
 
   // Redirect SPA paths to the main SPA app.
   if (isSpaPath(url)) {
-    const appUrl = process.env.NEXT_PUBLIC_DUST_APP_URL;
+    const appUrl = process.env.DUST_APP_URL;
     if (appUrl) {
       const queryString = request.nextUrl.search; // includes leading '?' or empty
       return NextResponse.redirect(`${appUrl}${url}${queryString}`, 302);

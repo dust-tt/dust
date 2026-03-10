@@ -101,7 +101,7 @@ export const getStaticProps: GetStaticProps<IndustryDynamicPageProps> = async ({
 
   return {
     props: {
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       customerStories,
       industryKey: industryParam,
     },

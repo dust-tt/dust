@@ -78,7 +78,7 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async (
     props: {
       post,
       relatedPosts: relatedPostsResult.value,
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
     revalidate: CONTENTFUL_REVALIDATE_SECONDS,

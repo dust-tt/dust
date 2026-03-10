@@ -32,13 +32,13 @@ export const getNovuClient = async (): Promise<Novu> => {
     throw new Error("NOVU_SECRET_KEY is not set");
   }
 
-  if (!process.env.NEXT_PUBLIC_NOVU_API_URL) {
-    throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
+  if (!process.env.NOVU_API_URL) {
+    throw new Error("NOVU_API_URL is not set");
   }
 
   const config = {
     secretKey: process.env.NOVU_SECRET_KEY,
-    serverURL: process.env.NEXT_PUBLIC_NOVU_API_URL,
+    serverURL: process.env.NOVU_API_URL,
   };
 
   return new Novu(config);

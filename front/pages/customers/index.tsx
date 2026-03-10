@@ -87,7 +87,7 @@ export const getServerSideProps: GetServerSideProps<
           companySizes: [],
           regions: [],
         },
-        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+        gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       },
     };
   }
@@ -98,7 +98,7 @@ export const getServerSideProps: GetServerSideProps<
     props: {
       stories,
       filterOptions: extractFilterOptions(stories),
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
     },
   };
 };

@@ -17,15 +17,15 @@ class MyDocument extends Document {
             // eslint-disable-next-line @next/next/no-sync-scripts
             <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
           )}
-          <base href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL} />
-          {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
+          <base href={process.env.DUST_CLIENT_FACING_URL} />
+          {process.env.ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}
         </Head>
         <body>
           <noscript>
             <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}`}
+              src={`https://www.googletagmanager.com/ns.html?id=${process.env.GTM_TRACKING_ID}`}
               height="0"
               width="0"
               style={{ display: "none", visibility: "hidden" }}
@@ -45,20 +45,20 @@ class MyDocument extends Document {
              })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
              '${
                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-               process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""
+               process.env.DATADOG_CLIENT_TOKEN || ""
              }' && window.DD_RUM.onReady(function() {
                window.DD_RUM.init({
-                 clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
+                 clientToken: '${process.env.DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
                  service: '${
                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                   process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"
+                   process.env.DATADOG_SERVICE || "front"
                  }-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
                  version: '${
                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                   process.env.NEXT_PUBLIC_COMMIT_HASH || ""
+                   process.env.COMMIT_HASH || ""
                  }',
                  allowedTracingUrls: [
                    "https://dust.tt",

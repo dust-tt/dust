@@ -11,8 +11,7 @@ const EXCLUDED_PATHS = [
 ];
 
 // Check if bot crawling is enabled via environment variable
-const isBotCrawlingEnabled =
-  process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING === "true";
+const isBotCrawlingEnabled = process.env.ENABLE_BOT_CRAWLING === "true";
 
 // Configure robots.txt policies based on environment variable
 const getRobotsPolicies = () => {
@@ -38,7 +37,7 @@ const getRobotsPolicies = () => {
 
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
-  siteUrl: process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL,
+  siteUrl: process.env.DUST_CLIENT_FACING_URL,
   exclude: EXCLUDED_PATHS,
   generateIndexSitemap: false,
   changefreq: "weekly",

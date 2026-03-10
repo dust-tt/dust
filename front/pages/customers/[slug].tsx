@@ -80,7 +80,7 @@ export const getStaticProps: GetStaticProps<CustomerStoryPageProps> = async (
       relatedStories: relatedStoriesResult.isOk()
         ? relatedStoriesResult.value
         : [],
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       preview,
     },
     revalidate: CONTENTFUL_REVALIDATE_SECONDS,

@@ -15,27 +15,23 @@ const getNovuEnvForRegion = ({
   if (isEuRegion) {
     return {
       applicationIdentifier:
-        process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER_EU ??
-        process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER,
-      apiUrl:
-        process.env.NEXT_PUBLIC_NOVU_API_URL_EU ??
-        process.env.NEXT_PUBLIC_NOVU_API_URL,
+        process.env.NOVU_APPLICATION_IDENTIFIER_EU ??
+        process.env.NOVU_APPLICATION_IDENTIFIER,
+      apiUrl: process.env.NOVU_API_URL_EU ?? process.env.NOVU_API_URL,
       socketUrl:
-        process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL_EU ??
-        process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL,
+        process.env.NOVU_WEBSOCKET_API_URL_EU ??
+        process.env.NOVU_WEBSOCKET_API_URL,
     };
   }
 
   return {
     applicationIdentifier:
-      process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER_US ??
-      process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER,
-    apiUrl:
-      process.env.NEXT_PUBLIC_NOVU_API_URL_US ??
-      process.env.NEXT_PUBLIC_NOVU_API_URL,
+      process.env.NOVU_APPLICATION_IDENTIFIER_US ??
+      process.env.NOVU_APPLICATION_IDENTIFIER,
+    apiUrl: process.env.NOVU_API_URL_US ?? process.env.NOVU_API_URL,
     socketUrl:
-      process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL_US ??
-      process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL,
+      process.env.NOVU_WEBSOCKET_API_URL_US ??
+      process.env.NOVU_WEBSOCKET_API_URL,
   };
 };
 
@@ -58,13 +54,13 @@ export const useNovuClient = () => {
   useEffect(() => {
     if (user?.subscriberHash && user?.sId) {
       if (!novuConfig.applicationIdentifier) {
-        throw new Error("NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER is not set");
+        throw new Error("NOVU_APPLICATION_IDENTIFIER is not set");
       }
       if (!novuConfig.apiUrl) {
-        throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
+        throw new Error("NOVU_API_URL is not set");
       }
       if (!novuConfig.socketUrl) {
-        throw new Error("NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL is not set");
+        throw new Error("NOVU_WEBSOCKET_API_URL is not set");
       }
 
       const config = {
