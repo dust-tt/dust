@@ -7,6 +7,7 @@ import {
   ArrowGoBackIcon,
   Button,
   ContextItem,
+  cn,
   DocumentIcon,
   EmptyCTA,
   PlusIcon,
@@ -194,7 +195,10 @@ export function SkillBuilderFilesSection() {
                   key={field.id}
                   title={
                     <span
-                      className={`text-sm font-normal ${isAdded ? "text-success dark:text-success-night" : ""}`}
+                      className={cn(
+                        "text-sm font-normal",
+                        isAdded && "text-success dark:text-success-night"
+                      )}
                     >
                       {field.fileName}
                     </span>
