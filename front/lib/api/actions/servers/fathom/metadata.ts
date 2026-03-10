@@ -4,10 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const FATHOM_TOOL_NAME = "fathom" as const;
-
-export const MAX_TRANSCRIPT_CONTENT_SIZE = 32000;
-
 export const FATHOM_TOOLS_METADATA = createToolsRecord({
   list_meetings: {
     description: "List Fathom meetings",
@@ -62,27 +58,13 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
   },
   get_transcript: {
     description:
-      "Get the transcript of a Fathom meeting recording with offset-based pagination. Use recording_id from list_meetings.",
+      "Get the full transcript of a Fathom meeting recording. Use recording_id from list_meetings. Large transcripts are saved as conversation files—use conversation_files__cat with offset/limit to read in chunks.",
     schema: {
       recording_id: z
         .number()
         .int()
         .describe(
           "The numeric recording ID from list_meetings (e.g. recordingId field)."
-        ),
-      offset: z
-        .number()
-        .optional()
-        .default(0)
-        .describe(
-          "Character offset to start reading from (for pagination). Defaults to 0."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(MAX_TRANSCRIPT_CONTENT_SIZE)
-        .describe(
-          `Maximum number of characters to return. Defaults to ${MAX_TRANSCRIPT_CONTENT_SIZE}. Use nextOffset from previous response to paginate.`
         ),
     },
     stake: "never_ask",
