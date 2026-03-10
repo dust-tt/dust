@@ -7,6 +7,7 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
+import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
@@ -333,6 +334,38 @@ export abstract class LLM<TPayload = unknown> {
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
     yield* this.streamWithTracing(streamParameters);
+  }
+
+  /**
+   * Submit a batch of conversations for asynchronous processing.
+   * Returns a string that can be used to poll status and retrieve results.
+   * Each entry in the map is keyed by a conversation identifier (custom_id).
+   */
+  async sendBatchProcessing(
+    _conversations: Map<string, LLMStreamParameters>
+  ): Promise<string> {
+    throw new Error(
+      `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
+    );
+  }
+
+  /**
+   * Poll the status of a previously submitted batch.
+   */
+  async getBatchStatus(_batchId: string): Promise<BatchStatus> {
+    throw new Error(
+      `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
+    );
+  }
+
+  /**
+   * Retrieve the results of a completed batch.
+   * Only call this when getBatchStatus returns "ready".
+   */
+  async getBatchResult(_batchId: string): Promise<BatchResult> {
+    throw new Error(
+      `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
+    );
   }
 
   /**

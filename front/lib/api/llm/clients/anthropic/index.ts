@@ -1,5 +1,8 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type { MessageCountTokensParams } from "@anthropic-ai/sdk/resources";
+import type {
+  MessageCountTokensParams,
+  MessageCreateParamsNonStreaming,
+} from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
@@ -13,13 +16,17 @@ import {
   toThinkingConfig,
   toToolChoiceParam,
 } from "@app/lib/api/llm/clients/anthropic/utils";
-import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
+import {
+  batchResultToLLMEvents,
+  streamLLMEvents,
+} from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
 import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import { LLM } from "@app/lib/api/llm/llm";
+import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
@@ -30,7 +37,6 @@ import type {
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
-import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
@@ -87,8 +93,6 @@ function buildSystemBlocks(
 
 export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private client: Anthropic;
-  private workspace: WorkspaceType;
-
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
@@ -105,17 +109,15 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
-
-    this.workspace = auth.getNonNullableWorkspace();
   }
 
-  protected buildStreamRequestPayload({
+  private buildBaseRequestPayload({
     conversation,
     hasConditionalJITTools,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): BetaMessageStreamParams {
+  }: LLMStreamParameters): MessageCreateParamsNonStreaming {
     const messages = conversation.messages.map((msg, index, array) =>
       toMessage(msg, { isLast: index === array.length - 1 })
     );
@@ -132,13 +134,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
             this.modelConfig.useNativeLightReasoning
           );
 
-    // Merge betas, always include structured-outputs, add custom betas if specified.
-    // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available.
-    const betas = [
-      "structured-outputs-2025-11-13",
-      ...(this.modelConfig.customBetas ?? []),
-    ];
-
     const system = buildSystemBlocks(normalizePrompt(prompt), {
       hasConditionalJITTools,
     });
@@ -149,10 +144,25 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       system,
       messages,
       temperature: this.temperature ?? undefined,
-      stream: true,
       tools: specifications.map(toTool),
       max_tokens: this.modelConfig.generationTokensCount,
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
+    };
+  }
+
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): BetaMessageStreamParams {
+    // Merge betas, always include structured-outputs, add custom betas if specified.
+    // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available.
+    const betas = [
+      "structured-outputs-2025-11-13",
+      ...(this.modelConfig.customBetas ?? []),
+    ];
+
+    return {
+      ...this.buildBaseRequestPayload(streamParameters),
+      stream: true,
       betas,
       output_format: toOutputFormatParam(this.responseFormat),
       cache_control: { type: "ephemeral" },
@@ -191,5 +201,46 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
         yield handleGenericError(err, this.metadata);
       }
     }
+  }
+
+  private buildBatchRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): MessageCreateParamsNonStreaming {
+    return this.buildBaseRequestPayload(streamParameters);
+  }
+
+  override async sendBatchProcessing(
+    conversations: Map<string, LLMStreamParameters>
+  ): Promise<string> {
+    const requests = Array.from(conversations.entries()).map(
+      ([customId, streamParams]) => ({
+        custom_id: customId,
+        params: this.buildBatchRequestPayload(streamParams),
+      })
+    );
+
+    const batch = await this.client.messages.batches.create({ requests });
+    return batch.id;
+  }
+
+  override async getBatchStatus(batchId: string): Promise<BatchStatus> {
+    const batch = await this.client.messages.batches.retrieve(batchId);
+    return batch.processing_status === "ended" ? "ready" : "computing";
+  }
+
+  override async getBatchResult(batchId: string): Promise<BatchResult> {
+    const results = await this.client.messages.batches.results(batchId);
+    const batchResult: BatchResult = new Map();
+
+    for await (const item of results) {
+      const events = await batchResultToLLMEvents(
+        item.result,
+        this.metadata,
+        this.createCountTokensCallback()
+      );
+      batchResult.set(item.custom_id, events);
+    }
+
+    return batchResult;
   }
 }

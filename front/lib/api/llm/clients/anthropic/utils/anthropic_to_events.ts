@@ -1,7 +1,9 @@
 import assert from "node:assert";
 import type { APIPromise } from "@anthropic-ai/sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
+import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
 import type {
+  Message,
   MessageCountTokensParams,
   MessageParam,
   MessageStreamEvent,
@@ -12,6 +14,7 @@ import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
+  LLMOutputItem,
   ReasoningDeltaEvent,
   ReasoningGeneratedEvent,
   TextDeltaEvent,
@@ -26,6 +29,7 @@ import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isRecord } from "@app/types/shared/utils/general";
 import cloneDeep from "lodash/cloneDeep";
 
 export async function* streamLLMEvents(
@@ -454,4 +458,167 @@ function toolCall({
     },
     metadata,
   };
+}
+
+/**
+ * Converts a single Anthropic batch result to a list of LLMEvents,
+ * mirroring what streamLLMEvents would have produced for a streaming call.
+ */
+export async function batchResultToLLMEvents(
+  result: MessageBatchResult,
+  metadata: LLMClientMetadata,
+  countTokensCallback?: (
+    body: MessageCountTokensParams
+  ) => APIPromise<MessageTokensCount>
+): Promise<LLMEvent[]> {
+  switch (result.type) {
+    case "succeeded":
+      return succeededMessageToEvents(
+        result.message,
+        metadata,
+        countTokensCallback
+      );
+    case "errored":
+      return [
+        new EventError(
+          {
+            type: "server_error",
+            message: result.error.error.message,
+            isRetryable: false,
+          },
+          metadata
+        ),
+      ];
+    case "canceled":
+      return [
+        new EventError(
+          {
+            type: "stream_error",
+            message: "Batch request was canceled.",
+            isRetryable: false,
+          },
+          metadata
+        ),
+      ];
+    case "expired":
+      return [
+        new EventError(
+          {
+            type: "stream_error",
+            message: "Batch request expired before processing completed.",
+            isRetryable: true,
+          },
+          metadata
+        ),
+      ];
+    default:
+      assertNever(result);
+  }
+}
+
+export async function succeededMessageToEvents(
+  message: Message,
+  metadata: LLMClientMetadata,
+  countTokensCallback?: (
+    body: MessageCountTokensParams
+  ) => APIPromise<MessageTokensCount>
+): Promise<LLMEvent[]> {
+  const events: LLMEvent[] = [];
+
+  events.push({
+    type: "interaction_id",
+    content: { modelInteractionId: message.id },
+    metadata,
+  });
+
+  const textBlocks: string[] = [];
+  const toolCalls: ToolCallEvent[] = [];
+  let reasoningGeneratedEvent: ReasoningGeneratedEvent | undefined = undefined;
+
+  for (const block of message.content) {
+    switch (block.type) {
+      case "text":
+        textBlocks.push(block.text);
+        events.push(textGenerated(block.text, metadata));
+        break;
+      case "thinking":
+        reasoningGeneratedEvent = reasoningGenerated(
+          block.thinking,
+          metadata,
+          block.signature
+        );
+        events.push(reasoningGeneratedEvent);
+        break;
+      case "tool_use": {
+        const input =
+          typeof block.input === "object" &&
+          block.input !== null &&
+          isRecord(block.input)
+            ? block.input
+            : {};
+        const toolCallEvent: ToolCallEvent = {
+          type: "tool_call",
+          content: { id: block.id, name: block.name, arguments: input },
+          metadata,
+        };
+        toolCalls.push(toolCallEvent);
+        events.push(toolCallEvent);
+        break;
+      }
+      default:
+        // Ignore other block types (redacted_thinking, server_tool_use, etc.)
+        break;
+    }
+  }
+
+  const usage = message.usage;
+  const cachedTokens = usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = usage.input_tokens;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
+  const tokenUsageAccumulator = {
+    inputTokens,
+    outputTokens: usage.output_tokens,
+    cachedTokens,
+    cacheCreationTokens,
+    uncachedInputTokens,
+    totalTokens: inputTokens + usage.output_tokens,
+    reasoningTokens: 0,
+  };
+
+  const textGeneratedEvent: TextGeneratedEvent | undefined =
+    textBlocks.length > 0
+      ? textGenerated(textBlocks.join(""), metadata)
+      : undefined;
+
+  await estimateReasoningTokens(
+    tokenUsageAccumulator,
+    textGeneratedEvent,
+    toolCalls.length > 0 ? toolCalls : undefined,
+    countTokensCallback,
+    metadata
+  );
+
+  events.push(tokenUsage(tokenUsageAccumulator, metadata));
+
+  const aggregated: LLMOutputItem[] = [];
+
+  if (textGeneratedEvent) {
+    aggregated.push(textGeneratedEvent);
+  }
+  if (reasoningGeneratedEvent) {
+    aggregated.push(reasoningGeneratedEvent);
+  }
+  aggregated.push(...toolCalls);
+
+  events.push({
+    type: "success",
+    aggregated,
+    textGenerated: textGeneratedEvent,
+    reasoningGenerated: reasoningGeneratedEvent,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    metadata,
+  });
+
+  return events;
 }

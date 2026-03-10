@@ -25,7 +25,7 @@ const SYSTEM_PROMPT = "You are a helpful assistant.";
  * Creates a mock Authenticator for testing purposes.
  * This is a minimal mock that bypasses actual authentication.
  */
-function createMockAuthenticator(): Authenticator {
+export function createMockAuthenticator(): Authenticator {
   return new Authenticator({
     workspace: null,
     user: null,

@@ -50,6 +50,7 @@ export const ModelConfigurationSchema = z.object({
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
   disablePrefill: z.boolean().optional(),
+  supportsBatchProcessing: z.boolean().optional(),
 });
 
 // Base type inferred from the schema.
