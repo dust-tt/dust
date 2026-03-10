@@ -101,7 +101,7 @@ export function Providers({ owner }: ProvidersProps) {
         <div className="space-y-8">
           <div>
             <Page.SectionHeader
-              title="Model Providers"
+              title="App Credentials"
               description="Model providers available to your Dust apps."
             />
             <ul

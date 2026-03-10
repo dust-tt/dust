@@ -5,14 +5,16 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BarChartIcon,
+  BoltIcon,
   BracesIcon,
+  BrainIcon,
   CardIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
-  GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ShapesIcon,
@@ -241,14 +243,14 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: GlobeAltIcon,
+          icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
         },
         {
           id: "model_providers",
           label: "Model Providers",
-          icon: GlobeAltIcon,
+          icon: BrainIcon,
           href: `/w/${owner.sId}/model-providers`,
           current: isCurrent("model_providers"),
         },
@@ -262,7 +264,7 @@ export const subNavigationAdmin = ({
         {
           id: "subscription",
           label: "Subscription",
-          icon: ShapesIcon,
+          icon: CardIcon,
           href: `/w/${owner.sId}/subscription`,
           current: isCurrent("subscription"),
         },
@@ -283,8 +285,8 @@ export const subNavigationAdmin = ({
         },
         {
           id: "credits_usage",
-          label: "Programmatic usage",
-          icon: CardIcon,
+          label: "Programmatic Usage",
+          icon: BoltIcon,
           href: `/w/${owner.sId}/developers/credits-usage`,
           current: isCurrent("credits_usage"),
         },
@@ -298,7 +300,7 @@ export const subNavigationAdmin = ({
       menus: [
         {
           id: "providers",
-          label: "Providers",
+          label: "App Credentials",
           icon: ShapesIcon,
           href: `/w/${owner.sId}/developers/providers`,
           current: isCurrent("providers"),

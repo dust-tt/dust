@@ -4,7 +4,7 @@ import { ProvidersList } from "@app/components/pages/workspace/model_providers/P
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
-import { GlobeAltIcon, Page } from "@dust-tt/sparkle";
+import { BrainIcon, Page } from "@dust-tt/sparkle";
 
 export function ModelProvidersPage() {
   const owner = useWorkspace();
@@ -19,7 +19,7 @@ export function ModelProvidersPage() {
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
         title="Model Providers"
-        icon={GlobeAltIcon}
+        icon={BrainIcon}
         description="Configure model providers."
       />
       <Page.Vertical align="stretch" gap="md">
