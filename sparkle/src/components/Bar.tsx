@@ -51,6 +51,7 @@ interface BarProps extends VariantProps<typeof barVariants> {
   description?: React.ReactNode;
   tooltip?: string;
   leftActions?: React.ReactNode;
+  centerActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   className?: string;
 }
@@ -60,6 +61,7 @@ export function Bar({
   description,
   tooltip,
   leftActions,
+  centerActions,
   rightActions,
   className,
   position,
@@ -68,7 +70,7 @@ export function Bar({
 }: BarProps) {
   const titleClasses = cn(
     "s-text-foreground dark:s-text-foreground-night",
-    "s-heading-base s-truncate s-grow"
+    "s-heading-base s-truncate"
   );
 
   return (
@@ -95,7 +97,8 @@ export function Bar({
           )}
         </div>
       )}
-      {!title && !leftActions && <div className="s-flex-grow" />}
+      {centerActions && <div className="s-flex s-gap-1">{centerActions}</div>}
+      <div className="s-flex-grow" />
       {rightActions && <div className="s-flex s-gap-1">{rightActions}</div>}
     </div>
   );
@@ -188,6 +191,7 @@ interface BarHeaderProps {
   description?: React.ReactNode;
   tooltip?: string;
   leftActions?: React.ReactNode;
+  centerActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   className?: string;
   variant?: "full" | "default";
@@ -199,6 +203,7 @@ export function BarHeader({
   description,
   tooltip,
   leftActions,
+  centerActions,
   rightActions,
   className,
   variant,
@@ -211,6 +216,7 @@ export function BarHeader({
       description={description}
       tooltip={tooltip}
       leftActions={leftActions}
+      centerActions={centerActions}
       rightActions={rightActions}
       className={className}
       variant={variant}
