@@ -15,6 +15,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -71,6 +72,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FolderOpenIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -482,6 +484,7 @@ export function AgentSidebarMenu({
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
+  const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
 
   const {
     projects: allProjects,
@@ -774,6 +777,12 @@ export function AgentSidebarMenu({
         onClose={() => setIsCreateProjectModalOpen(false)}
         owner={owner}
       />
+      {isImportSkillDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportSkillDialogOpen(false)}
+          owner={owner}
+        />
+      )}
       <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
@@ -943,11 +952,37 @@ export function AgentSidebarMenu({
                         {isBuilder(owner) && (
                           <>
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              href={getSkillBuilderRoute(owner.sId, "new")}
-                              icon={PlusIcon}
-                              label="New skill"
-                            />
+                            {hasFeature("sandbox_tools") ? (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  icon={PlusIcon}
+                                  label="New skill"
+                                />
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem
+                                    href={getSkillBuilderRoute(
+                                      owner.sId,
+                                      "new"
+                                    )}
+                                    icon={SKILL_ICON}
+                                    label="From scratch"
+                                  />
+                                  <DropdownMenuItem
+                                    icon={FolderOpenIcon}
+                                    label="From existing"
+                                    onClick={() =>
+                                      setIsImportSkillDialogOpen(true)
+                                    }
+                                  />
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            ) : (
+                              <DropdownMenuItem
+                                href={getSkillBuilderRoute(owner.sId, "new")}
+                                icon={PlusIcon}
+                                label="New skill"
+                              />
+                            )}
                             <DropdownMenuItem
                               href={getSkillBuilderRoute(owner.sId, "manage")}
                               icon={SKILL_ICON}
