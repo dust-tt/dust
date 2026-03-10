@@ -3042,6 +3042,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MicrosoftLogo"
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
+  | "MiroLogo"
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
