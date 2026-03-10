@@ -11,6 +11,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
@@ -552,21 +553,24 @@ function PreviewActionButtons({
   exitFullScreen,
   reloadFile,
 }: PreviewActionButtonsProps) {
+  const clientType = useClientType();
   return (
     <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
-      <Tooltip
-        label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
-        side="left"
-        tooltipTriggerAsChild
-        trigger={
-          <Button
-            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
-            variant="ghost"
-            size="xs"
-            onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-          />
-        }
-      />
+      {clientType !== "extension" && (
+        <Tooltip
+          label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+          side="left"
+          tooltipTriggerAsChild
+          trigger={
+            <Button
+              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              variant="ghost"
+              size="xs"
+              onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+            />
+          }
+        />
+      )}
       {lastEditedByAgentConfigurationId && (
         <Tooltip
           label={

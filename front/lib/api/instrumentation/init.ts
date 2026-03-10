@@ -17,7 +17,7 @@ export let resource: Resource | undefined;
 export function initializeOpenTelemetryInstrumentation({
   serviceName,
 }: {
-  serviceName: "dust-agent-loop" | "dust-front";
+  serviceName: "dust-agent-loop" | "dust-front" | "dust-reinforced-agent";
 }): void {
   if (!config.isLangfuseEnabled() || sdk) {
     return;

@@ -12,7 +12,7 @@ const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
 
 const UserMessageOriginSchema = t.union([
   t.literal("web"),
-  t.literal("agent_copilot"),
+  t.literal("agent_sidekick"),
   t.literal("project_kickoff"),
   t.literal("extension"),
 ]);

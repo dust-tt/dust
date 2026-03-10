@@ -685,7 +685,7 @@ Before marking implementation complete:
 - **Snowflake**: `lib/api/actions/servers/snowflake/` - Constant tools with token from authInfo
 - **Google Calendar**: `lib/api/actions/servers/google_calendar/` - Complex tools with helpers
 - **Agent Sidekick Context**: `lib/api/actions/servers/agent_sidekick_context/` - Internal tools without OAuth
-- **Agent Copilot Agent State**: `lib/api/actions/servers/agent_copilot_agent_state/` - Simple internal server
+- **Agent Sidekick Agent State**: `lib/api/actions/servers/agent_sidekick_agent_state/` - Simple internal server
 
 ---
 

@@ -1,13 +1,13 @@
 /**
- * Markdown directive plugin for copilot suggestions.
+ * Markdown directive plugin for sidekick suggestions.
  *
  * This module provides remark-directive plugins for parsing and rendering
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import { useCopilotSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import {
-  CopilotSuggestionCard,
+  SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
@@ -15,12 +15,12 @@ import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 /**
- * Remark directive plugin for parsing copilot suggestion directives.
+ * Remark directive plugin for parsing sidekick suggestion directives.
  *
  * Transforms `:agent_suggestion[]{sId=xxx kind=yyy}` into a custom HTML element
  * that can be rendered by the suggestion card component.
  */
-export function copilotSuggestionDirective() {
+export function sidekickSuggestionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective", "leafDirective"], (node) => {
       if (node.name === "agent_suggestion") {
@@ -66,28 +66,28 @@ export function copilotSuggestionDirective() {
   };
 }
 
-interface CopilotSuggestionPluginProps {
+interface SidekickSuggestionPluginProps {
   sId?: string;
   kind?: AgentSuggestionKind;
 }
 
 /**
- * Creates a React component plugin for rendering copilot suggestions in markdown.
+ * Creates a React component plugin for rendering sidekick suggestions in markdown.
  *
  * This function returns a component that can be used as a custom component
- * in ReactMarkdown to render the copilot suggestion HTML elements.
+ * in ReactMarkdown to render the sidekick suggestion HTML elements.
  */
-export function getCopilotSuggestionPlugin() {
-  const CopilotSuggestionPlugin = ({
+export function getSidekickSuggestionPlugin() {
+  const SidekickSuggestionPlugin = ({
     sId,
     kind,
-  }: CopilotSuggestionPluginProps) => {
+  }: SidekickSuggestionPluginProps) => {
     const {
       getSuggestionWithRelations,
       triggerRefetch,
       isSuggestionsValidating,
       hasAttemptedRefetch,
-    } = useCopilotSuggestions();
+    } = useSidekickSuggestions();
 
     const suggestion = sId ? getSuggestionWithRelations(sId) : null;
 
@@ -125,10 +125,10 @@ export function getCopilotSuggestionPlugin() {
 
     return (
       <div data-suggestion-s-id={sId}>
-        <CopilotSuggestionCard agentSuggestion={suggestion} />
+        <SidekickSuggestionCard agentSuggestion={suggestion} />
       </div>
     );
   };
 
-  return CopilotSuggestionPlugin;
+  return SidekickSuggestionPlugin;
 }

@@ -79,7 +79,7 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
-export interface CopilotConfig {
+export interface SidekickConfig {
   instructions: string;
   model: {
     modelId: ModelIdType;
@@ -95,7 +95,7 @@ export interface JudgeResult {
   reasoning: string;
 }
 
-export interface CopilotExecutionResult {
+export interface SidekickExecutionResult {
   responseText: string;
   toolCalls: ToolCall[];
   modelTimeMs: number;
@@ -107,5 +107,5 @@ export interface EvalResult {
   toolCalls: ToolCall[];
   judgeResult: JudgeResult;
   passed: boolean;
-  copilotModelTimeMs: number;
+  sidekickModelTimeMs: number;
 }

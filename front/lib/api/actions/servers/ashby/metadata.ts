@@ -8,6 +8,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 const DEFAULT_SEARCH_LIMIT = 20;
 export const GET_REFERRAL_FORM_TOOL_NAME = "get_referral_form";
 export const CREATE_REFERRAL_TOOL_NAME = "create_referral";
+export const UPDATE_JOB_POSTING_TOOL_NAME = "update_job_posting";
 
 const CandidateSearchSchema = {
   email: z
@@ -153,6 +154,7 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       "set both suppressDescriptionOpening and suppressDescriptionClosing to true.",
     schema: {
       jobPostingId: z.string().describe("The ID of the job posting to update."),
+      jobId: z.string().describe("The ID of the parent job for this posting."),
       title: z.string().optional().describe("A new title for the job posting."),
       descriptionHtml: z
         .string()

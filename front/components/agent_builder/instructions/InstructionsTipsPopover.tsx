@@ -29,7 +29,7 @@ interface InstructionTipsPopoverProps {
   owner: WorkspaceType;
 }
 
-// TODO(copilot): Remove the whole InstructionTipsPopover when copilot is released.
+// TODO(sidekick): Remove the whole InstructionTipsPopover when sidekick is released.
 export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",

@@ -1,7 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useCopilotFirstMessage } from "@app/hooks/useSidekickFirstMessage";
+import { useSidekickFirstMessage } from "@app/hooks/useSidekickFirstMessage";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSearchParam } from "@app/lib/platform";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -17,7 +17,7 @@ import {
   useState,
 } from "react";
 
-interface CopilotPanelContextType {
+interface SidekickPanelContextType {
   conversation: ConversationType | null;
   isCreatingConversation: boolean;
   creationFailed: boolean;
@@ -27,21 +27,21 @@ interface CopilotPanelContextType {
   conversationId?: string;
 }
 
-const CopilotPanelContext = createContext<CopilotPanelContextType | undefined>(
-  undefined
-);
+const SidekickPanelContext = createContext<
+  SidekickPanelContextType | undefined
+>(undefined);
 
-export const useCopilotPanelContext = () => {
-  const context = useContext(CopilotPanelContext);
+export const useSidekickPanelContext = () => {
+  const context = useContext(SidekickPanelContext);
   if (!context) {
     throw new Error(
-      "useCopilotPanelContext must be used within a CopilotPanelProvider"
+      "useSidekickPanelContext must be used within a SidekickPanelProvider"
     );
   }
   return context;
 };
 
-interface CopilotPanelProviderProps {
+interface SidekickPanelProviderProps {
   children: ReactNode;
   targetAgentConfigurationId: string | null;
   targetAgentConfigurationVersion: number;
@@ -52,7 +52,7 @@ interface CopilotPanelProviderProps {
   conversationId?: string;
 }
 
-export const CopilotPanelProvider = ({
+export const SidekickPanelProvider = ({
   children,
   targetAgentConfigurationId,
   targetAgentConfigurationVersion,
@@ -61,15 +61,15 @@ export const CopilotPanelProvider = ({
   isDuplicate = false,
   templateInfo,
   conversationId,
-}: CopilotPanelProviderProps) => {
+}: SidekickPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
   const sendNotification = useSendNotification();
-  const copilotEdgeParam = useSearchParam("copilotEdge");
-  const isCopilotEdge = copilotEdgeParam === "true";
-  const copilotAgentId = isCopilotEdge
-    ? GLOBAL_AGENTS_SID.COPILOT_EDGE
-    : GLOBAL_AGENTS_SID.COPILOT;
+  const sidekickEdgeParam = useSearchParam("sidekickEdge");
+  const isSidekickEdge = sidekickEdgeParam === "true";
+  const sidekickAgentId = isSidekickEdge
+    ? GLOBAL_AGENTS_SID.SIDEKICK_EDGE
+    : GLOBAL_AGENTS_SID.SIDEKICK;
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
@@ -78,14 +78,14 @@ export const CopilotPanelProvider = ({
   const [creationFailed, setCreationFailed] = useState(false);
   const hasStartedRef = useRef(false);
 
-  const { getFirstMessage, useCase } = useCopilotFirstMessage({
+  const { getFirstMessage, useCase } = useSidekickFirstMessage({
     owner,
     isNewAgent,
     isDuplicate,
     templateInfo,
     conversationId,
     agentConfigurationId: targetAgentConfigurationId ?? undefined,
-    copilotEdge: isCopilotEdge,
+    sidekickEdge: isSidekickEdge,
   });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
@@ -99,8 +99,8 @@ export const CopilotPanelProvider = ({
     }
 
     // Wait for the client-side MCP server to be registered before starting
-    // the conversation. Without this, the copilot won't have access to
-    // agent_builder_copilot_client tools like get_agent_config.
+    // the conversation. Without this, the sidekick won't have access to
+    // agent_builder_sidekick_client tools like get_agent_config.
     if (clientSideMCPServerIds.length === 0) {
       return;
     }
@@ -123,19 +123,20 @@ export const CopilotPanelProvider = ({
     const result = await createConversationWithMessage({
       messageData: {
         input: firstMessageResult.value,
-        mentions: [{ configurationId: copilotAgentId }],
+        mentions: [{ configurationId: sidekickAgentId }],
         contentFragments: { uploaded: [], contentNodes: [] },
-        origin: "agent_copilot",
+        origin: "agent_sidekick",
         clientSideMCPServerIds,
       },
-      // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
+      // TODO(sidekick 2026-01-23): same visibility as the 'Preview' tab conversation.
       // We should rename it.
       visibility: "test",
-      title: `Copilot conversation (useCase: ${useCase}, agentId: ${targetAgentConfigurationId})`,
+      title: `Sidekick conversation (useCase: ${useCase}, agentId: ${targetAgentConfigurationId})`,
       metadata: {
-        copilotTargetAgentConfigurationId: targetAgentConfigurationId,
-        copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
-        copilotIsNewAgentFromScratch: useCase === "new",
+        sidekickTargetAgentConfigurationId: targetAgentConfigurationId,
+        sidekickTargetAgentConfigurationVersion:
+          targetAgentConfigurationVersion,
+        sidekickIsNewAgentFromScratch: useCase === "new",
       },
       skipToolsValidation: true,
     });
@@ -154,7 +155,7 @@ export const CopilotPanelProvider = ({
     setIsCreatingConversation(false);
   }, [
     clientSideMCPServerIds,
-    copilotAgentId,
+    sidekickAgentId,
     createConversationWithMessage,
     getFirstMessage,
     useCase,
@@ -169,7 +170,7 @@ export const CopilotPanelProvider = ({
     setCreationFailed(false);
   }, []);
 
-  const value: CopilotPanelContextType = useMemo(
+  const value: SidekickPanelContextType = useMemo(
     () => ({
       conversation,
       isCreatingConversation,
@@ -189,10 +190,10 @@ export const CopilotPanelProvider = ({
   );
 
   return (
-    <CopilotPanelContext.Provider value={value}>
+    <SidekickPanelContext.Provider value={value}>
       {children}
-    </CopilotPanelContext.Provider>
+    </SidekickPanelContext.Provider>
   );
 };
 
-CopilotPanelProvider.displayName = "CopilotPanelProvider";
+SidekickPanelProvider.displayName = "SidekickPanelProvider";

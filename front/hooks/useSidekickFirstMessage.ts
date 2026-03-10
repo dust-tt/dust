@@ -6,14 +6,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 
-const COPILOT_USE_CASES = [
+const SIDEKICK_USE_CASES = [
   "new",
   "existing",
   "duplicate",
   "template",
   "shrink-wrap",
 ] as const;
-type CopilotUseCase = (typeof COPILOT_USE_CASES)[number];
+type SidekickUseCase = (typeof SIDEKICK_USE_CASES)[number];
 
 const NEW_AGENT_FIRST_MESSAGE = `<dust_system>
 This is a new agent. To start the conversation, you should NOT call any tools. 
@@ -33,7 +33,7 @@ async function fetchFirstMessage(
     if (!res.ok) {
       return new Err(
         new Error(
-          `Failed to fetch copilot first message: ${res.status} ${res.statusText}`
+          `Failed to fetch sidekick first message: ${res.status} ${res.statusText}`
         )
       );
     }
@@ -43,14 +43,14 @@ async function fetchFirstMessage(
   }
 }
 
-function getCopilotScenario({
+function getSidekickScenario({
   workspaceId,
   isNewAgent,
   isDuplicate,
   templateInfo,
   conversationId,
   agentConfigurationId,
-  copilotEdge,
+  sidekickEdge,
 }: {
   workspaceId: string;
   isNewAgent: boolean;
@@ -58,15 +58,15 @@ function getCopilotScenario({
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
-  copilotEdge: boolean;
+  sidekickEdge: boolean;
 }): {
   getFirstMessage: () => Promise<Result<string, Error>>;
-  useCase: CopilotUseCase;
+  useCase: SidekickUseCase;
 } {
   const params = new URLSearchParams();
-  let useCase: CopilotUseCase;
+  let useCase: SidekickUseCase;
 
-  if (templateInfo && templateInfo.copilotInstructions) {
+  if (templateInfo && templateInfo.sidekickInstructions) {
     useCase = "template";
     params.set("templateId", templateInfo.templateId);
   } else if (isDuplicate) {
@@ -86,8 +86,8 @@ function getCopilotScenario({
     useCase = "new";
   }
 
-  if (copilotEdge) {
-    params.set("copilotEdge", "true");
+  if (sidekickEdge) {
+    params.set("sidekickEdge", "true");
   } else if (useCase === "new") {
     return {
       getFirstMessage: () => Promise.resolve(new Ok(NEW_AGENT_FIRST_MESSAGE)),
@@ -104,14 +104,14 @@ function getCopilotScenario({
   };
 }
 
-export function useCopilotFirstMessage({
+export function useSidekickFirstMessage({
   owner,
   isNewAgent,
   isDuplicate = false,
   templateInfo,
   conversationId,
   agentConfigurationId,
-  copilotEdge = false,
+  sidekickEdge = false,
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
@@ -119,18 +119,18 @@ export function useCopilotFirstMessage({
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
-  copilotEdge?: boolean;
+  sidekickEdge?: boolean;
 }) {
   return useMemo(
     () =>
-      getCopilotScenario({
+      getSidekickScenario({
         workspaceId: owner.sId,
         isNewAgent,
         isDuplicate,
         templateInfo,
         conversationId,
         agentConfigurationId,
-        copilotEdge,
+        sidekickEdge,
       }),
     [
       owner.sId,
@@ -139,7 +139,7 @@ export function useCopilotFirstMessage({
       templateInfo,
       conversationId,
       agentConfigurationId,
-      copilotEdge,
+      sidekickEdge,
     ]
   );
 }

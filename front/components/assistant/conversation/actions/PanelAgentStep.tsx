@@ -34,6 +34,10 @@ export function PanelAgentStep({
             <Markdown
               content={reasoningContent}
               isStreaming={isStreaming}
+              streamingState={isStreaming ? "streaming" : "none"}
+              enableAnimation
+              animationDurationSeconds={0.3}
+              delimiter=" "
               forcedTextSize="text-sm"
               textColor="text-muted-foreground dark:text-muted-foreground-night"
               isLastMessage={false}

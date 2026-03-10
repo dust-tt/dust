@@ -338,7 +338,7 @@ const USER_MESSAGE_ORIGINS = [
   "zapier",
   "zendesk",
   "onboarding_conversation",
-  "agent_copilot",
+  "agent_sidekick",
   "project_butler",
   "project_kickoff",
 ] as const;
@@ -690,6 +690,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "discover_skills"
+  | "email_agents"
   | "dust_academy"
   | "dust_internal_global_agents"
   | "dust_no_spa"
@@ -712,6 +714,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "reinforced_agents"
   | "restrict_agents_publishing"
+  | "restrict_agents_publishing_to_admins"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"

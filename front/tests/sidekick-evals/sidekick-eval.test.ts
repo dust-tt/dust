@@ -1,24 +1,24 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
-  COPILOT_AGENT,
-  COPILOT_ON_COPILOT,
-  COPILOT_ON_COPILOT_TIMEOUT_MS,
   FILTER_CATEGORY,
   FILTER_SCENARIO,
-  getCopilotConfig,
+  getSidekickConfig,
   JUDGE_RUNS,
   PASS_THRESHOLD,
-  RUN_COPILOT_EVAL,
+  RUN_SIDEKICK_EVAL,
+  SIDEKICK_AGENT,
+  SIDEKICK_ON_SIDEKICK,
+  SIDEKICK_ON_SIDEKICK_TIMEOUT_MS,
   TIMEOUT_MS,
 } from "@app/tests/sidekick-evals/lib/config";
 import { evaluateWithJudge } from "@app/tests/sidekick-evals/lib/judge";
-import { executeCopilot } from "@app/tests/sidekick-evals/lib/sidekick-executor";
-import { generateCopilotImprovementSuggestions } from "@app/tests/sidekick-evals/lib/sidekick-on-sidekick";
+import { executeSidekick } from "@app/tests/sidekick-evals/lib/sidekick-executor";
+import { generateSidekickImprovementSuggestions } from "@app/tests/sidekick-evals/lib/sidekick-on-sidekick";
 import { filterTestCases } from "@app/tests/sidekick-evals/lib/suite-loader";
 import type {
   CategorizedTestCase,
-  CopilotConfig,
   EvalResult,
+  SidekickConfig,
 } from "@app/tests/sidekick-evals/lib/types";
 import { allTestSuites } from "@app/tests/sidekick-evals/test-suites";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -49,7 +49,7 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
 
 const evalResults: EvalResult[] = [];
 
-const testCases = RUN_COPILOT_EVAL
+const testCases = RUN_SIDEKICK_EVAL
   ? filterTestCases(allTestSuites, {
       category: FILTER_CATEGORY,
       scenarioId: FILTER_SCENARIO,
@@ -64,13 +64,13 @@ for (const testCase of testCases) {
   testGroups.get(testCase.category)!.set(testCase.scenarioId, testCase);
 }
 
-describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
-  let copilotConfig: CopilotConfig;
+describe.skipIf(!RUN_SIDEKICK_EVAL)("Sidekick Evaluation Tests", () => {
+  let sidekickConfig: SidekickConfig;
   let auth: Authenticator;
 
   beforeAll(async () => {
-    const result = await getCopilotConfig();
-    copilotConfig = result.config;
+    const result = await getSidekickConfig();
+    sidekickConfig = result.config;
     auth = result.auth;
   }, TIMEOUT_MS);
 
@@ -81,9 +81,9 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
           scenarioId,
           async () => {
             const { responseText, toolCalls, modelTimeMs } =
-              await executeCopilot(
+              await executeSidekick(
                 auth,
-                copilotConfig,
+                sidekickConfig,
                 testCase,
                 testCase.mockState
               );
@@ -91,7 +91,7 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
             // Require either text response or tool calls (judge has access to tool calls)
             expect(
               responseText.length > 0 || toolCalls.length > 0,
-              "Copilot returned empty response and no tool calls"
+              "Sidekick returned empty response and no tool calls"
             ).toBe(true);
 
             const judgeResult = await evaluateWithJudge(
@@ -116,19 +116,19 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
               toolCalls,
               judgeResult,
               passed,
-              copilotModelTimeMs: modelTimeMs,
+              sidekickModelTimeMs: modelTimeMs,
             });
 
             for (const missing of missingTools) {
               expect(
                 actualToolNames,
-                `Expected tool "${missing}" not called. Tools called: [${actualToolNames.join(", ")}]\n\nCopilot response:\n${responseText}`
+                `Expected tool "${missing}" not called. Tools called: [${actualToolNames.join(", ")}]\n\nSidekick response:\n${responseText}`
               ).toContain(missing);
             }
 
             expect(
               passedJudge,
-              `Judge score ${judgeResult.finalScore} < threshold ${PASS_THRESHOLD}\nReasoning: ${judgeResult.reasoning}\n\nCopilot response:\n${responseText}`
+              `Judge score ${judgeResult.finalScore} < threshold ${PASS_THRESHOLD}\nReasoning: ${judgeResult.reasoning}\n\nSidekick response:\n${responseText}`
             ).toBe(true);
           },
           TIMEOUT_MS
@@ -142,8 +142,8 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
       return;
     }
 
-    const totalCopilotTimeMs = evalResults.reduce(
-      (sum, r) => sum + r.copilotModelTimeMs,
+    const totalSidekickTimeMs = evalResults.reduce(
+      (sum, r) => sum + r.sidekickModelTimeMs,
       0
     );
 
@@ -152,16 +152,16 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
     const lines = [
       "",
       "=".repeat(60),
-      `COPILOT EVAL TIMING SUMMARY (agent: ${COPILOT_AGENT})`,
+      `SIDEKICK EVAL TIMING SUMMARY (agent: ${SIDEKICK_AGENT})`,
       "=".repeat(60),
       `Total scenarios: ${evalResults.length}`,
       `Passed: ${passedCount}/${evalResults.length} (${passRate}%)`,
-      `Total copilot model time: ${(totalCopilotTimeMs / 1000).toFixed(1)}s`,
-      `Average copilot model time per scenario: ${(totalCopilotTimeMs / evalResults.length / 1000).toFixed(1)}s`,
+      `Total sidekick model time: ${(totalSidekickTimeMs / 1000).toFixed(1)}s`,
+      `Average sidekick model time per scenario: ${(totalSidekickTimeMs / evalResults.length / 1000).toFixed(1)}s`,
       "-".repeat(60),
       ...evalResults.map((r) => {
         const status = r.passed ? "PASS" : "FAIL";
-        return `  [${status}] ${r.testCase.category}/${r.testCase.scenarioId}: ${(r.copilotModelTimeMs / 1000).toFixed(1)}s`;
+        return `  [${status}] ${r.testCase.category}/${r.testCase.scenarioId}: ${(r.sidekickModelTimeMs / 1000).toFixed(1)}s`;
       }),
       "=".repeat(60),
       "",
@@ -169,17 +169,17 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
     console.log(lines.join("\n"));
   });
 
-  if (COPILOT_ON_COPILOT) {
+  if (SIDEKICK_ON_SIDEKICK) {
     afterAll(async () => {
       if (evalResults.length === 0) {
         return;
       }
 
-      await generateCopilotImprovementSuggestions(
+      await generateSidekickImprovementSuggestions(
         auth,
-        copilotConfig,
+        sidekickConfig,
         evalResults
       );
-    }, COPILOT_ON_COPILOT_TIMEOUT_MS);
+    }, SIDEKICK_ON_SIDEKICK_TIMEOUT_MS);
   }
 });

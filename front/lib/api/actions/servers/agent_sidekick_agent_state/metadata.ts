@@ -4,10 +4,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const AGENT_COPILOT_AGENT_STATE_TOOL_NAME =
-  "agent_copilot_agent_state" as const;
+export const AGENT_SIDEKICK_AGENT_STATE_TOOL_NAME =
+  "agent_sidekick_agent_state" as const;
 
-export const AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
+export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
   get_agent_info: {
     description:
       "Get detailed information about the current agent configuration, including name, description, instructions, model settings, and the IDs of all skills and tools currently used by the agent.",
@@ -20,8 +20,8 @@ export const AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const AGENT_COPILOT_AGENT_STATE_SERVER_INFO = {
-  name: "agent_copilot_agent_state" as const,
+export const AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO = {
+  name: "agent_sidekick_agent_state" as const,
   version: "1.0.0",
   description:
     "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools.",
@@ -31,16 +31,16 @@ export const AGENT_COPILOT_AGENT_STATE_SERVER_INFO = {
   instructions: null,
 };
 
-export const AGENT_COPILOT_AGENT_STATE_SERVER = {
-  serverInfo: AGENT_COPILOT_AGENT_STATE_SERVER_INFO,
-  tools: Object.values(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA).map((t) => ({
+export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {
+  serverInfo: AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO,
+  tools: Object.values(AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA).map((t) => [
+    Object.values(AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA).map((t) => [
       t.name,
       t.stake,
     ])

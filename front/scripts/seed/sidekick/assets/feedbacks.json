@@ -1,13 +1,13 @@
 [
   {
-    "conversationSId": "CopilotConv01",
-    "agentMessageSId": "CopilotAMsg01",
+    "conversationSId": "SidekickConv01",
+    "agentMessageSId": "SidekickAMsg01",
     "thumbDirection": "down",
     "content": "The agent should be able to search the internet for recent news. It's useless without web access."
   },
   {
-    "conversationSId": "CopilotConv02",
-    "agentMessageSId": "CopilotAMsg03",
+    "conversationSId": "SidekickConv02",
+    "agentMessageSId": "SidekickAMsg03",
     "thumbDirection": "down",
     "content": null
   }

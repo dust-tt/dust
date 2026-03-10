@@ -4,8 +4,8 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -48,11 +48,10 @@ export function AccessSection() {
   const { owner } = useAgentBuilderContext();
   const { featureFlags } = useFeatureFlags();
 
-  const restrictAgentsPublishing = featureFlags.includes(
-    "restrict_agents_publishing"
-  );
-  const publishingToggleDisabled =
-    restrictAgentsPublishing && !isBuilder(owner);
+  const {
+    disabled: publishingToggleDisabled,
+    tooltip: publishingToggleTooltip,
+  } = getPublishingRestrictionForOwner(featureFlags, owner);
 
   const getDisplayValue = () => {
     return scope.value === "visible" ? "Published" : "Unpublished";
@@ -97,11 +96,7 @@ export function AccessSection() {
               isSelect
               type="button"
               disabled={publishingToggleDisabled}
-              tooltip={
-                publishingToggleDisabled
-                  ? "Publishing agents is restricted to builders and admins"
-                  : undefined
-              }
+              tooltip={publishingToggleTooltip}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">

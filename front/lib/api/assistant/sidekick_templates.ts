@@ -26,25 +26,25 @@ export const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> =
     other: [],
   };
 
-export async function getPublishedTemplatesWithCopilot(): Promise<
+export async function getPublishedTemplatesWithSidekick(): Promise<
   TemplateResource[]
 > {
   const all = await TemplateResource.listAll({ visibility: "published" });
-  return all.filter((t) => t.copilotInstructions !== null);
+  return all.filter((t) => t.sidekickInstructions !== null);
 }
 
-export type GetTemplatesForCopilotOptions = {
+export type GetTemplatesForSidekickOptions = {
   auth: Authenticator;
   jobType?: JobType;
   query?: string;
   limit?: number;
 };
 
-export async function getTemplatesForCopilot(
-  options: GetTemplatesForCopilotOptions
+export async function getTemplatesForSidekick(
+  options: GetTemplatesForSidekickOptions
 ): Promise<Result<TemplateResource[], Error>> {
   const { auth, jobType, query, limit = DEFAULT_LIMIT } = options;
-  const allTemplates = await getPublishedTemplatesWithCopilot();
+  const allTemplates = await getPublishedTemplatesWithSidekick();
 
   const matchingTags =
     jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
@@ -75,11 +75,11 @@ function formatOneTemplate(t: TemplateResource): string {
     `agentFacingDescription: ${t.agentFacingDescription ?? ""}`,
     `tags: ${t.tags.join(", ") || "none"}`,
   ];
-  if (t.copilotInstructions?.trim()) {
+  if (t.sidekickInstructions?.trim()) {
     lines.push(
-      "copilotInstructions:",
+      "sidekickInstructions:",
       "---",
-      t.copilotInstructions.trim(),
+      t.sidekickInstructions.trim(),
       "---"
     );
   }

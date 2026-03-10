@@ -1,18 +1,18 @@
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { executeCopilot } from "@app/tests/sidekick-evals/lib/sidekick-executor";
+import { executeSidekick } from "@app/tests/sidekick-evals/lib/sidekick-executor";
 import {
-  type CopilotConfig,
   type EvalResult,
   getTestCaseUserMessageForDisplay,
   type MockAgentState,
+  type SidekickConfig,
 } from "@app/tests/sidekick-evals/lib/types";
 
 const MAX_SCENARIOS = 10;
 
-const ANALYSIS_PROMPT = `I've been running evaluations on the Agent Builder Copilot and some test scenarios are failing. I need your help analyzing the failures and suggesting improvements to the copilot's system instructions.
+const ANALYSIS_PROMPT = `I've been running evaluations on the Agent Builder Sidekick and some test scenarios are failing. I need your help analyzing the failures and suggesting improvements to the sidekick's system instructions.
 
-## Current Copilot Instructions
+## Current Sidekick Instructions
 
 {{CURRENT_INSTRUCTIONS}}
 
@@ -22,7 +22,7 @@ The following scenarios received low scores from the judge:
 
 {{FAILED_SCENARIOS}}
 
-Based on the failure patterns above, please analyze the issues and suggest specific improvements to the copilot's instructions. Focus on:
+Based on the failure patterns above, please analyze the issues and suggest specific improvements to the sidekick's instructions. Focus on:
 
 1. **Patterns in failures** - What common issues do you see across the failed scenarios?
 2. **Missing guidance** - What instructions are missing that would have helped?
@@ -34,12 +34,12 @@ Be specific and actionable. Provide exact text that could be added to the instru
 interface FailedScenario {
   scenarioId: string;
   userMessage: string;
-  copilotResponse: string;
+  sidekickResponse: string;
   judgeReasoning: string;
   score: number;
 }
 
-export interface CopilotOnCopilotReport {
+export interface SidekickOnSidekickReport {
   failedScenarios: FailedScenario[];
   suggestion: string | null;
   error?: string;
@@ -48,15 +48,15 @@ export interface CopilotOnCopilotReport {
 function formatScenario(scenario: FailedScenario, index: number): string {
   return `### Scenario ${index + 1}: ${scenario.scenarioId}
 **User message:** ${scenario.userMessage}
-**Copilot response:** ${scenario.copilotResponse}
+**Sidekick response:** ${scenario.sidekickResponse}
 **Judge reasoning:** ${scenario.judgeReasoning}
 **Score:** ${scenario.score}/3`;
 }
 
-function createCopilotSelfState(config: CopilotConfig): MockAgentState {
+function createSidekickSelfState(config: SidekickConfig): MockAgentState {
   return {
-    name: "Agent Builder Copilot",
-    description: "The copilot that helps users build and improve agents",
+    name: "Agent Builder Sidekick",
+    description: "The sidekick that helps users build and improve agents",
     instructions: config.instructions,
     model: {
       modelId: config.model.modelId,
@@ -72,11 +72,11 @@ function createCopilotSelfState(config: CopilotConfig): MockAgentState {
   };
 }
 
-export async function generateCopilotImprovementSuggestions(
+export async function generateSidekickImprovementSuggestions(
   auth: Authenticator,
-  copilotConfig: CopilotConfig,
+  sidekickConfig: SidekickConfig,
   results: EvalResult[]
-): Promise<CopilotOnCopilotReport> {
+): Promise<SidekickOnSidekickReport> {
   const failedResults = results.filter((r) => !r.passed);
 
   if (failedResults.length === 0) {
@@ -85,13 +85,13 @@ export async function generateCopilotImprovementSuggestions(
 
   logger.info(
     {},
-    `[copilot-on-copilot] Analyzing ${failedResults.length} failed scenario(s)...`
+    `[sidekick-on-sidekick] Analyzing ${failedResults.length} failed scenario(s)...`
   );
 
   const failedScenarios = failedResults.map((r) => ({
     scenarioId: r.testCase.scenarioId,
     userMessage: getTestCaseUserMessageForDisplay(r.testCase),
-    copilotResponse: r.responseText,
+    sidekickResponse: r.responseText,
     judgeReasoning: r.judgeResult.reasoning,
     score: r.judgeResult.finalScore,
   }));
@@ -106,7 +106,7 @@ export async function generateCopilotImprovementSuggestions(
     scenariosText += `\n\n(${remaining} additional failed scenarios not shown)`;
   }
 
-  const instructions = copilotConfig.instructions;
+  const instructions = sidekickConfig.instructions;
   const truncatedInstructions =
     instructions.length > 4000
       ? instructions.substring(0, 4000) + "\n...(truncated)"
@@ -118,12 +118,12 @@ export async function generateCopilotImprovementSuggestions(
   ).replace("{{FAILED_SCENARIOS}}", scenariosText);
 
   try {
-    const selfState = createCopilotSelfState(copilotConfig);
-    const { responseText } = await executeCopilot(
+    const selfState = createSidekickSelfState(sidekickConfig);
+    const { responseText } = await executeSidekick(
       auth,
-      copilotConfig,
+      sidekickConfig,
       {
-        scenarioId: "copilot-on-copilot",
+        scenarioId: "sidekick-on-sidekick",
         userMessage,
         mockState: selfState,
         judgeCriteria: "",
@@ -131,7 +131,7 @@ export async function generateCopilotImprovementSuggestions(
       selfState
     );
 
-    logger.info({}, "[copilot-on-copilot] Analysis complete");
+    logger.info({}, "[sidekick-on-sidekick] Analysis complete");
     logger.info({}, "-".repeat(60));
     logger.info({}, responseText);
     logger.info({}, "-".repeat(60));
@@ -139,7 +139,7 @@ export async function generateCopilotImprovementSuggestions(
     return { failedScenarios, suggestion: responseText };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error";
-    logger.error({ error }, `[copilot-on-copilot] Analysis failed: ${msg}`);
+    logger.error({ error }, `[sidekick-on-sidekick] Analysis failed: ${msg}`);
     return { failedScenarios, suggestion: null, error: msg };
   }
 }

@@ -5,10 +5,23 @@ import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+
+// Origins from which the share frame is considered as embedded.
+// We hide the header for embedded origins.
+const EMBEDDED_ORIGINS = ["https://dust.tt/blog/"];
 
 export function SharedFramePage() {
   const token = usePathParam("token");
+
+  const hideHeader = useMemo(() => {
+    if (typeof window === "undefined" || !document.referrer) {
+      return false;
+    }
+    return EMBEDDED_ORIGINS.some((origin) =>
+      document.referrer.toLowerCase().startsWith(origin)
+    );
+  }, []);
 
   const { shareMetadata, isShareMetadataLoading, shareMetadataError } =
     useShareFrameMetadata({
@@ -89,6 +102,7 @@ export function SharedFramePage() {
           shareToken={token}
           workspaceId={shareMetadata.workspaceId}
           vizUrl={shareMetadata.vizUrl}
+          hideHeader={hideHeader}
         />
       </div>
     </>

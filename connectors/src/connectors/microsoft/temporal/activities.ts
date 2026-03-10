@@ -27,6 +27,7 @@ import {
 } from "@connectors/connectors/microsoft/lib/utils";
 import {
   isAccessBlockedError,
+  isBillingPolicyError,
   isGeneralExceptionError,
   isItemNotFoundError,
   isJSONParsingError,
@@ -235,6 +236,17 @@ export async function getRootNodesToSyncFromResources(
                   errorMessage: error.message,
                 },
                 "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
+              return null;
+            }
+            if (isBillingPolicyError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  internalId: resource.internalId,
+                  error: error.message,
+                },
+                "Billing policy error from Microsoft, skipping root resource"
               );
               return null;
             }
@@ -1516,6 +1528,17 @@ async function getDeltaData({
         heartbeatFunction: heartbeat,
       });
     }
+    if (isBillingPolicyError(e)) {
+      logger.warn(
+        {
+          internalId: node.internalId,
+          error: e.message,
+        },
+        "Billing policy error from Microsoft, skipping delta sync for node"
+      );
+      // Return empty results with current deltaLink so we retry next cycle.
+      return { results: [], deltaLink: node.deltaLink };
+    }
     throw e;
   }
 }
@@ -2189,6 +2212,18 @@ export async function processDeltaChangesFromGCS({
             } else {
               skipped++;
             }
+          } else if (isBillingPolicyError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId,
+                error: error.message,
+              },
+              "Billing policy error from Microsoft, skipping file"
+            );
+            skipped++;
+          } else {
+            throw error;
           }
         }
       }

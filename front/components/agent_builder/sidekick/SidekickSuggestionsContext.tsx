@@ -1,13 +1,13 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
+import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import {
   BLUR_EVENT_NAME,
   INSTRUCTIONS_DEBOUNCE_MS,
 } from "@app/components/agent_builder/instructions/constants";
 import {
-  CopilotHighlightProvider,
-  useCopilotHighlight,
+  SidekickHighlightProvider,
+  useSidekickHighlight,
 } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
@@ -37,7 +37,7 @@ import {
   useState,
 } from "react";
 
-export interface CopilotSuggestionsContextType {
+export interface SidekickSuggestionsContextType {
   getSuggestionWithRelations: (
     sId: string
   ) => AgentSuggestionWithRelationsType | null;
@@ -65,15 +65,15 @@ export interface CopilotSuggestionsContextType {
   scrollToNextSuggestion: (acceptedSuggestion?: AgentSuggestionType) => void;
 }
 
-export const CopilotSuggestionsContext = createContext<
-  CopilotSuggestionsContextType | undefined
+export const SidekickSuggestionsContext = createContext<
+  SidekickSuggestionsContextType | undefined
 >(undefined);
 
-export const useCopilotSuggestions = () => {
-  const context = useContext(CopilotSuggestionsContext);
+export const useSidekickSuggestions = () => {
+  const context = useContext(SidekickSuggestionsContext);
   if (!context) {
     throw new Error(
-      "useCopilotSuggestions must be used within a CopilotSuggestionsProvider"
+      "useSidekickSuggestions must be used within a SidekickSuggestionsProvider"
     );
   }
   return context;
@@ -85,7 +85,7 @@ interface EditorHighlightSyncProps {
 
 // Pushes React highlight state into the editor so decorations stay in sync
 function EditorHighlightSync({ editorRef }: EditorHighlightSyncProps) {
-  const { highlightedSuggestionId } = useCopilotHighlight();
+  const { highlightedSuggestionId } = useSidekickHighlight();
   useEffect(() => {
     const editor = editorRef.current;
     if (editor && !editor.isDestroyed) {
@@ -95,37 +95,37 @@ function EditorHighlightSync({ editorRef }: EditorHighlightSyncProps) {
   return null;
 }
 
-interface CopilotSuggestionsProviderProps {
+interface SidekickSuggestionsProviderProps {
   children: ReactNode;
   agentConfigurationId: string | null;
 }
 
-export const CopilotSuggestionsProvider = ({
+export const SidekickSuggestionsProvider = ({
   children,
   agentConfigurationId,
-}: CopilotSuggestionsProviderProps) => {
+}: SidekickSuggestionsProviderProps) => {
   return (
-    <CopilotHighlightProvider>
-      <CopilotSuggestionsProviderContent
+    <SidekickHighlightProvider>
+      <SidekickSuggestionsProviderContent
         agentConfigurationId={agentConfigurationId}
       >
         {children}
-      </CopilotSuggestionsProviderContent>
-    </CopilotHighlightProvider>
+      </SidekickSuggestionsProviderContent>
+    </SidekickHighlightProvider>
   );
 };
 
-function CopilotSuggestionsProviderContent({
+function SidekickSuggestionsProviderContent({
   children,
   agentConfigurationId,
-}: CopilotSuggestionsProviderProps) {
+}: SidekickSuggestionsProviderProps) {
   const { owner } = useAgentBuilderContext();
   const { skills } = useSkillsContext();
   const { mcpServerViews, mcpServerViewsWithKnowledge } =
     useMCPServerViewsContext();
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
-  const { highlightSuggestion } = useCopilotHighlight();
+  const { highlightSuggestion } = useSidekickHighlight();
   const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
@@ -143,7 +143,7 @@ function CopilotSuggestionsProviderContent({
     []
   );
 
-  const hasCopilot = useIsAgentBuilderCopilotEnabled();
+  const hasSidekick = useIsAgentBuilderSidekickEnabled();
 
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
@@ -175,7 +175,7 @@ function CopilotSuggestionsProviderContent({
     mutateSuggestions: mutatePending,
   } = useAgentSuggestions({
     agentConfigurationId,
-    disabled: !hasCopilot,
+    disabled: !hasSidekick,
     state: ["pending"],
     workspaceId: owner.sId,
   });
@@ -186,7 +186,7 @@ function CopilotSuggestionsProviderContent({
     mutateSuggestions: mutateOutdated,
   } = useAgentSuggestions({
     agentConfigurationId,
-    disabled: !hasCopilot,
+    disabled: !hasSidekick,
     state: ["outdated"],
     limit: 50,
     workspaceId: owner.sId,
@@ -425,7 +425,7 @@ function CopilotSuggestionsProviderContent({
     mutatePending,
   ]);
 
-  const scrollCopilotToSuggestion = useCallback((sId: string) => {
+  const scrollSidekickToSuggestion = useCallback((sId: string) => {
     requestAnimationFrame(() => {
       const el = document.querySelector<HTMLElement>(
         `[data-suggestion-s-id="${sId}"]`
@@ -487,9 +487,9 @@ function CopilotSuggestionsProviderContent({
 
       const next = sorted[0];
       focusOnSuggestion(next);
-      scrollCopilotToSuggestion(next.sId);
+      scrollSidekickToSuggestion(next.sId);
     },
-    [pendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
+    [pendingSuggestions, focusOnSuggestion, scrollSidekickToSuggestion]
   );
 
   const acceptSuggestion = useCallback(
@@ -811,7 +811,7 @@ function CopilotSuggestionsProviderContent({
     prevSuggestionCountRef.current = currentCount;
   }, [scrollToNextSuggestion, suggestions]);
 
-  const value: CopilotSuggestionsContextType = useMemo(
+  const value: SidekickSuggestionsContextType = useMemo(
     () => ({
       acceptAllInstructionSuggestions,
       acceptSuggestion,
@@ -847,11 +847,11 @@ function CopilotSuggestionsProviderContent({
   );
 
   return (
-    <CopilotSuggestionsContext.Provider value={value}>
+    <SidekickSuggestionsContext.Provider value={value}>
       <EditorHighlightSync editorRef={editorRef} />
       {children}
-    </CopilotSuggestionsContext.Provider>
+    </SidekickSuggestionsContext.Provider>
   );
 }
 
-CopilotSuggestionsProvider.displayName = "CopilotSuggestionsProvider";
+SidekickSuggestionsProvider.displayName = "SidekickSuggestionsProvider";

@@ -1,7 +1,7 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { AGENT_COPILOT_AGENT_STATE_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
+import { AGENT_SIDEKICK_AGENT_STATE_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -10,11 +10,11 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("agent_copilot_agent_state");
+  const server = makeInternalMCPServer("agent_sidekick_agent_state");
 
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: AGENT_COPILOT_AGENT_STATE_TOOL_NAME,
+      monitoringName: AGENT_SIDEKICK_AGENT_STATE_TOOL_NAME,
     });
   }
 

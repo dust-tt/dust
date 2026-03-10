@@ -8,7 +8,7 @@ import {
   type ToolCall,
 } from "@app/tests/sidekick-evals/lib/types";
 
-const JUDGE_PROMPT = `You are evaluating the quality of an Agent Builder Copilot's response.
+const JUDGE_PROMPT = `You are evaluating the quality of an Agent Builder Sidekick's response.
 
 ## Scoring Rubric
 
@@ -33,7 +33,7 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
 User message:
 {{USER_MESSAGE}}
 
-## Agent State (what the copilot saw)
+## Agent State (what the sidekick saw)
 
 {{AGENT_STATE}}
 
@@ -41,9 +41,9 @@ User message:
 
 {{TOOL_CALLS}}
 
-## Copilot's Response
+## Sidekick's Response
 
-{{COPILOT_RESPONSE}}
+{{SIDEKICK_RESPONSE}}
 
 ## Scenario-Specific Criteria
 
@@ -53,7 +53,7 @@ User message:
 
 ## General Evaluation Checklist (apply to all scenarios)
 
-1. **Intent Understanding**: Did the copilot correctly understand what the user was asking?
+1. **Intent Understanding**: Did the sidekick correctly understand what the user was asking?
 2. **Actionable Response**: Are the suggestions specific and actionable (not vague or generic)?
 3. **Tool Usage**: Did it use appropriate tools for the task? Did it avoid unnecessary tool calls?
 4. **Response Quality**:
@@ -70,9 +70,9 @@ User message:
    - Did it ask clarifying questions when the request was genuinely ambiguous?
 
 The instruction changes provided in suggest_prompt_edits are visualized as inline diffs in the agent builder.
-This is the key output of copilot. The users will not only see the copilot response, but also the inline diffs of the instruction changes.
+This is the key output of sidekick. The users will not only see the sidekick response, but also the inline diffs of the instruction changes.
 
-At this point, you judging the quality of the copilot response AND the quality of the instruction changes. We are not yet judging on agent name, description, suggested tools, suggested skills, or suggested models.
+At this point, you judging the quality of the sidekick response AND the quality of the instruction changes. We are not yet judging on agent name, description, suggested tools, suggested skills, or suggested models.
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
 
@@ -81,7 +81,7 @@ export async function evaluateWithJudge(
   testCase: TestCase,
   agentState: MockAgentState,
   toolCalls: ToolCall[],
-  copilotResponse: string,
+  sidekickResponse: string,
   numRuns: number = 1
 ): Promise<JudgeResult> {
   const prompt = JUDGE_PROMPT.replace(
@@ -97,7 +97,7 @@ export async function evaluateWithJudge(
             .join("\n")
         : "(none)"
     )
-    .replace("{{COPILOT_RESPONSE}}", copilotResponse)
+    .replace("{{SIDEKICK_RESPONSE}}", sidekickResponse)
     .replace("{{JUDGE_CRITERIA}}", testCase.judgeCriteria);
 
   const scores: number[] = [];
@@ -124,7 +124,7 @@ export async function evaluateWithJudge(
         ],
       },
       prompt:
-        "You are a careful evaluator. Analyze the copilot response and provide a fair assessment.",
+        "You are a careful evaluator. Analyze the sidekick response and provide a fair assessment.",
       specifications: [],
     });
 

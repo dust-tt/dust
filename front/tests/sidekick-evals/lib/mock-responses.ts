@@ -259,7 +259,7 @@ export function getMockToolResponse(
           handle: "customer-support",
           description: "A customer support agent template",
           tags: ["support"],
-          copilotInstructions: "Help users set up a customer support agent.",
+          sidekickInstructions: "Help users set up a customer support agent.",
         },
       ],
     }),
@@ -268,7 +268,7 @@ export function getMockToolResponse(
       sId: "template_support",
       handle: "customer-support",
       description: "A customer support agent template",
-      copilotInstructions: "Help users set up a customer support agent.",
+      sidekickInstructions: "Help users set up a customer support agent.",
     }),
 
     get_available_agents: () => ({

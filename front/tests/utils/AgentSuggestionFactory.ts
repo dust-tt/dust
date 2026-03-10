@@ -88,7 +88,7 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added sub-agent delegation",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "copilot",
+        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -114,7 +114,7 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added skill for better assistance",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "copilot",
+        source: overrides.source ?? "sidekick",
       }
     );
   }

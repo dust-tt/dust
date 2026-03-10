@@ -226,7 +226,7 @@ export async function seedAgentSuggestions(
           suggestion: resolvedSuggestion,
           analysis: suggestionAsset.analysis,
           state: "pending",
-          source: "copilot",
+          source: "sidekick",
         }
       );
 

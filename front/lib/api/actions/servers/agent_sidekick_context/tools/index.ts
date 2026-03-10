@@ -10,7 +10,7 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -23,7 +23,7 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   formatTemplatesAsText,
-  getTemplatesForCopilot,
+  getTemplatesForSidekick,
 } from "@app/lib/api/assistant/sidekick_templates";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -70,13 +70,13 @@ import {
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 
-const COPILOT_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
+const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
   "folder",
   "website",
 ];
-const COPILOT_KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
-  COPILOT_KNOWLEDGE_CATEGORIES
+const SIDEKICK_KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
+  SIDEKICK_KNOWLEDGE_CATEGORIES
 );
 
 type LimitedSuggestionKind =
@@ -198,11 +198,11 @@ async function listAllKnowledgeDataSourceViews(
   const allViews = await DataSourceViewResource.listBySpaces(auth, spaces);
 
   return allViews.filter((dsv) =>
-    COPILOT_KNOWLEDGE_CATEGORIES_SET.has(dsv.toJSON().category)
+    SIDEKICK_KNOWLEDGE_CATEGORIES_SET.has(dsv.toJSON().category)
   );
 }
 
-const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
+const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   get_available_knowledge: async ({ spaceId, category }, { auth }) => {
     // Get all spaces the user is a member of.
     let spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
@@ -222,7 +222,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     // Determine which categories to fetch.
     const categoriesToFetch: DataSourceViewCategory[] = category
       ? [category]
-      : COPILOT_KNOWLEDGE_CATEGORIES;
+      : SIDEKICK_KNOWLEDGE_CATEGORIES;
 
     // Fetch data source views for all spaces in parallel.
     const spaceResults = await concurrentExecutor(
@@ -673,7 +673,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             suggestion: suggestionData,
             analysis: analysis ?? null,
             state: "pending",
-            source: "copilot",
+            source: "sidekick",
           }
         );
 
@@ -822,7 +822,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
               suggestion,
               analysis: analysis ?? null,
               state: "pending",
-              source: "copilot",
+              source: "sidekick",
             }
           );
 
@@ -949,7 +949,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
-            source: "copilot",
+            source: "sidekick",
           }
         );
 
@@ -1064,7 +1064,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
               suggestion: { action, skillId },
               analysis: analysis ?? null,
               state: "pending",
-              source: "copilot",
+              source: "sidekick",
             }
           );
 
@@ -1138,7 +1138,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           suggestion: params.suggestion,
           analysis: params.analysis ?? null,
           state: "pending",
-          source: "copilot",
+          source: "sidekick",
         }
       );
 
@@ -1317,7 +1317,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
-            source: "copilot",
+            source: "sidekick",
           }
         );
 
@@ -1678,7 +1678,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   search_agent_templates: async ({ jobType, query }, { auth }) => {
-    const res = await getTemplatesForCopilot({
+    const res = await getTemplatesForSidekick({
       auth,
       jobType: jobType && isJobType(jobType) ? jobType : undefined,
       query,
@@ -1728,4 +1728,7 @@ function getCategoryDisplayName(category: DataSourceViewCategory): string {
   }
 }
 
-export const TOOLS = buildTools(AGENT_COPILOT_CONTEXT_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
+  handlers
+);

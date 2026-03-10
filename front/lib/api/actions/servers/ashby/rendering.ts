@@ -214,7 +214,7 @@ export function renderJobPostingList(postings: AshbyJobPosting[]): string {
   return postings
     .map(
       (p) =>
-        `- **${p.title}** (ID: ${p.id})\n` +
+        `- **${p.title}** (ID: ${p.id}, Job ID: ${p.jobId})\n` +
         `  Department: ${p.departmentName} | Team: ${p.teamName}\n` +
         `  Location: ${p.locationName}` +
         (p.workplaceType ? ` (${p.workplaceType})` : "") +

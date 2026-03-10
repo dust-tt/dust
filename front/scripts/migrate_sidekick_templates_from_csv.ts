@@ -1,12 +1,12 @@
 /**
  * Upserts templates from a CSV into the database and
- * sets copilotInstructions to null on any existing template not present in the CSV.
+ * sets sidekickInstructions to null on any existing template not present in the CSV.
  *
  * Expected CSV columns (all required):
  *   - "Use Case"                  — used as handle (no transformation)
  *   - "Agent Facing Description"
  *   - "User Facing Description"
- *   - "Sidekick Prompt"           — stored as copilotInstructions
+ *   - "Sidekick Prompt"           — stored as sidekickInstructions
  *   - "Tag"                       — maps to TemplateTagCodeType
  *   - "Emoji"                     — e.g. "sparkles/2728"
  *   - "Background Color"          — e.g. "bg-blue-300"
@@ -84,7 +84,7 @@ interface TemplateRow {
   handle: string;
   agentFacingDescription: string;
   userFacingDescription: string;
-  copilotInstructions: string;
+  sidekickInstructions: string;
   tags: TemplateTagCodeType[];
   emoji: string;
   backgroundColor: string;
@@ -129,7 +129,7 @@ export function parseCsvRows(csvPath: string, logger?: Logger): TemplateRow[] {
       handle,
       agentFacingDescription,
       userFacingDescription,
-      copilotInstructions,
+      sidekickInstructions,
       tagRaw,
       emoji,
       backgroundColor,
@@ -140,7 +140,7 @@ export function parseCsvRows(csvPath: string, logger?: Logger): TemplateRow[] {
       handle,
       agentFacingDescription,
       userFacingDescription,
-      copilotInstructions,
+      sidekickInstructions,
       tags: [tag],
       emoji,
       backgroundColor,
@@ -159,7 +159,7 @@ const argumentSpecs: ArgumentSpecs = {
 };
 
 const PRESET_DEFAULTS = {
-  // These preset fields will be removed after copilot launch
+  // These preset fields will be removed after sidekick launch
   presetTemperature: "balanced" as const,
   presetProviderId: "anthropic" as const,
   presetModelId: "claude-sonnet-4-5-20250929" as const,
@@ -192,7 +192,7 @@ makeScript(argumentSpecs, async ({ csvPath, execute }, logger) => {
         await existing.updateAttributes({
           agentFacingDescription: row.agentFacingDescription,
           userFacingDescription: row.userFacingDescription,
-          copilotInstructions: row.copilotInstructions,
+          sidekickInstructions: row.sidekickInstructions,
           tags: row.tags,
           emoji: row.emoji,
           backgroundColor: row.backgroundColor,
@@ -206,7 +206,7 @@ makeScript(argumentSpecs, async ({ csvPath, execute }, logger) => {
           handle: row.handle,
           agentFacingDescription: row.agentFacingDescription,
           userFacingDescription: row.userFacingDescription,
-          copilotInstructions: row.copilotInstructions,
+          sidekickInstructions: row.sidekickInstructions,
           tags: row.tags,
           emoji: row.emoji,
           backgroundColor: row.backgroundColor,
@@ -218,23 +218,23 @@ makeScript(argumentSpecs, async ({ csvPath, execute }, logger) => {
     }
   }
 
-  // Clear copilotInstructions on templates that are not in the CSV.
+  // Clear sidekickInstructions on templates that are not in the CSV.
   const toClear = allTemplates.filter(
     (t) =>
       !csvHandles.has(t.handle) &&
-      t.copilotInstructions !== null &&
-      t.copilotInstructions.trim() !== ""
+      t.sidekickInstructions !== null &&
+      t.sidekickInstructions.trim() !== ""
   );
   let cleared = 0;
 
   if (toClear.length > 0) {
     logger.info(
       { count: toClear.length, handles: toClear.map((t) => t.handle), execute },
-      "Clearing copilotInstructions on templates not in CSV"
+      "Clearing sidekickInstructions on templates not in CSV"
     );
     if (execute) {
       for (const template of toClear) {
-        await template.updateAttributes({ copilotInstructions: null });
+        await template.updateAttributes({ sidekickInstructions: null });
         cleared++;
       }
     }

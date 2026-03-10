@@ -180,16 +180,15 @@ export class FrontAuthService extends AuthService {
   }
 
   async logout(): Promise<boolean> {
-    const queryParams: Record<string, string> = {
-      returnTo: FRONT_EXTENSION_URL,
-    };
-
     const accessToken = await this.getAccessToken();
-    if (accessToken) {
-      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-      if (decodedPayload) {
-        queryParams.session_id = decodedPayload.sid || "";
-      }
+    if (!accessToken) {
+      return true;
+    }
+
+    const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+    const sessionId = decodedPayload?.sid;
+    if (!sessionId) {
+      return true;
     }
 
     const regionInfo = await this.getRegionInfoFromStorage();
@@ -197,23 +196,21 @@ export class FrontAuthService extends AuthService {
       return true;
     }
 
-    const logoutUrl = `${regionInfo.url}/api/workos/logout?${new URLSearchParams(
-      queryParams
-    )}`;
-
-    const result = await openAndWaitForPopup<void>(
-      logoutUrl,
-      "Logout",
-      (popup) => {
-        const popupUrl = popup.location.href;
-        return popupUrl.includes(FRONT_EXTENSION_URL)
-          ? { data: undefined }
-          : null;
+    const response = await fetch(
+      `${regionInfo.url}/api/workos/revoke-session`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: "omit",
+        body: JSON.stringify({ session_id: sessionId }),
       }
     );
 
-    if (result.error) {
-      throw result.error;
+    if (!response.ok) {
+      throw new Error(`Revoke session failed: ${response.status}`);
     }
 
     return true;
@@ -227,7 +224,7 @@ export class FrontAuthService extends AuthService {
       tokens.expiresAt < Date.now() ||
       forceRefresh
     ) {
-      const refreshRes = await this.refreshToken();
+      const refreshRes = await this.refreshToken(tokens);
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
       } else {
@@ -238,18 +235,19 @@ export class FrontAuthService extends AuthService {
     return tokens?.accessToken ?? null;
   }
 
-  async refreshToken(): Promise<Result<StoredTokens, AuthError>> {
+  async refreshToken(
+    tokens: StoredTokens | null
+  ): Promise<Result<StoredTokens, AuthError>> {
     try {
+      tokens = tokens ?? (await this.getStoredTokens());
+      if (!tokens) {
+        return new Err(new AuthError("not_authenticated", "No tokens found."));
+      }
+
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
-        refresh_token: (await this.getStoredTokens())?.refreshToken || "",
+        refresh_token: tokens.refreshToken ?? "",
       };
-
-      if (!tokenParams.refresh_token) {
-        return new Err(
-          new AuthError("invalid_oauth_token_error", "No refresh token")
-        );
-      }
 
       const regionInfo = await this.getRegionInfoFromStorage();
       if (!regionInfo) {

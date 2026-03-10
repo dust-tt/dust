@@ -589,7 +589,7 @@ type RichTextAreaProps = {
   topBarClassName?: string;
   placeholder?: string;
   topBar?: React.ReactNode;
-  onAskCopilot?: (payload: {
+  onAskSidekick?: (payload: {
     selectedText: string;
     start: number;
     end: number;
@@ -603,7 +603,7 @@ type RichTextAreaProps = {
   defaultValue?: string;
   variant?: "default" | "compact" | "embedded";
   showFormattingMenu?: boolean;
-  showAskCopilotMenu?: boolean;
+  showAskSidekickMenu?: boolean;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
@@ -614,7 +614,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       topBarClassName,
       placeholder,
       topBar,
-      onAskCopilot,
+      onAskSidekick,
       onSuggestionsChange,
       onTextChange,
       onFocus,
@@ -624,7 +624,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       defaultValue,
       variant = "default",
       showFormattingMenu = false,
-      showAskCopilotMenu = true,
+      showAskSidekickMenu: showAskSidekickMenu = true,
     },
     ref
   ) => {
@@ -1091,7 +1091,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         .focus()
         .deleteRange({ from: start, to: end })
         .insertContentAt(start, textToKeep)
-        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Copilot from showing
+        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Sidekick from showing
         .run();
     };
 
@@ -1112,7 +1112,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         .focus()
         .deleteRange({ from: start, to: end })
         .insertContentAt(start, textToKeep)
-        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Copilot from showing
+        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Sidekick from showing
         .run();
     };
 
@@ -1261,8 +1261,8 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               </HoveringBar>
             </BubbleMenu>
           )}
-          {/* Ask Copilot BubbleMenu - only show when text is selected and not on suggestion */}
-          {showAskCopilotMenu && onAskCopilot && (
+          {/* Ask Sidekick BubbleMenu - only show when text is selected and not on suggestion */}
+          {showAskSidekickMenu && onAskSidekick && (
             <BubbleMenu
               editor={editor}
               shouldShow={shouldShowSelectionMenu}
@@ -1278,7 +1278,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   onClick={() => {
                     const payload = getSelectionPayload();
                     if (payload) {
-                      onAskCopilot?.(payload);
+                      onAskSidekick?.(payload);
                     }
                   }}
                 />
@@ -1290,7 +1290,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   onClick={() => {
                     const payload = getSelectionPayload();
                     if (payload) {
-                      onAskCopilot?.(payload);
+                      onAskSidekick?.(payload);
                     }
                   }}
                 />

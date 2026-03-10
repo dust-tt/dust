@@ -32,6 +32,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           node-version: "22.22.0"
+          build-sdks: "true"
 
       - name: Check sandbox images
         id: check
@@ -71,6 +72,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           node-version: "22.22.0"
+          build-sdks: "true"
 
       - name: Write service account JSON
         run: |

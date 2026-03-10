@@ -42,7 +42,7 @@ Based only on the information provided in <existing_agent_data_section> and the 
   CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
 In addition, ask the user if you should suggest additional improvements or if there is something specific they'd like to work on.
-Keep the first message to 1–2 sentences (plus any suggestion cards). Response must fit in the copilot panel without scrolling.
+Keep the first message to 1–2 sentences (plus any suggestion cards). Response must fit in the sidekick panel without scrolling.
 Do not make assumptions about the users's intent. Given that this is an existing agent, the user is likely to be asking for specific improvements or to work on a specific issue.
 
 <existing_agent_data_section>
@@ -107,7 +107,7 @@ async function fetchFeedbackMarkdown(
   if (feedbacksRes.isErr()) {
     logger.warn(
       { err: feedbacksRes.error },
-      "Failed to fetch feedback for copilot first message"
+      "Failed to fetch feedback for sidekick first message"
     );
     return null;
   }
@@ -166,7 +166,7 @@ async function fetchInsightsMarkdown(
   if (overviewResult.isErr()) {
     logger.warn(
       { err: overviewResult.error },
-      "Failed to fetch insights for copilot first message"
+      "Failed to fetch insights for sidekick first message"
     );
     return null;
   }
@@ -192,7 +192,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
-      const { agentConfigurationId, copilotEdge } = req.query;
+      const { agentConfigurationId, sidekickEdge } = req.query;
 
       if (!isString(agentConfigurationId)) {
         return apiError(req, res, {
@@ -210,14 +210,14 @@ async function handler(
         fetchInsightsMarkdown(auth, agentConfigurationId),
       ]);
 
-      if (copilotEdge !== "true") {
+      if (sidekickEdge !== "true") {
         return res
           .status(200)
           .json(buildFirstMessage({ feedbackMarkdown, insightsMarkdown }));
       }
 
       const result = await fetchLangfuseFirstMessagePrompt(
-        "copilot-edge-first-message-existing",
+        "sidekick-edge-first-message-existing",
         {
           ...(feedbackMarkdown ? { feedbackMarkdown } : {}),
           ...(insightsMarkdown ? { insightsMarkdown } : {}),
@@ -228,7 +228,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to generate copilot prompt.",
+            message: "Failed to generate sidekick prompt.",
           },
         });
       }

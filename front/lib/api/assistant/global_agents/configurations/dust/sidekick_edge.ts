@@ -1,7 +1,7 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
-import { buildCopilotInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
+import { buildSidekickInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import type { CopilotContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type {
   MCPServerViewsForGlobalAgentsMap,
   PrefetchedDataSourcesType,
@@ -13,14 +13,14 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { getCompanyDataAction } from "./shared";
 
-export function _getCopilotEdgeGlobalAgent(
+export function _getSidekickEdgeGlobalAgent(
   auth: Authenticator,
   {
-    copilotContext,
+    sidekickContext,
     preFetchedDataSources,
     mcpServerViews,
   }: {
-    copilotContext: CopilotContext | null;
+    sidekickContext: SidekickContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
@@ -30,9 +30,9 @@ export function _getCopilotEdgeGlobalAgent(
     mcpServerViews
   );
 
-  const contextAction = copilotContext?.mcpServerViews?.context
+  const contextAction = sidekickContext?.mcpServerViews?.context
     ? buildServerSideMCPServerConfiguration({
-        mcpServerView: copilotContext.mcpServerViews.context,
+        mcpServerView: sidekickContext.mcpServerViews.context,
       })
     : null;
 
@@ -41,7 +41,7 @@ export function _getCopilotEdgeGlobalAgent(
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
-  const langfuseConfig = copilotContext?.langfuseConfig;
+  const langfuseConfig = sidekickContext?.langfuseConfig;
   const modelConfiguration =
     langfuseConfig?.modelConfig ?? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
 
@@ -54,10 +54,10 @@ export function _getCopilotEdgeGlobalAgent(
       modelConfiguration.maximumReasoningEffort,
   };
 
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT_EDGE);
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.SIDEKICK_EDGE);
 
   const instructions =
-    langfuseConfig?.instructions || buildCopilotInstructions();
+    langfuseConfig?.instructions || buildSidekickInstructions();
 
   return {
     id: -1,

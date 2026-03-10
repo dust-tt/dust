@@ -16,7 +16,7 @@ export const instructionsWithToolsSuite: TestSuite = {
         "I connected Notion for our team wiki and Slack for team discussions, but the agent doesn't seem to know when to use them. Can you help?",
       mockState: AGENT_WITH_UNREFERENCED_TOOLS,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Intent is clear: user wants help with tool usage. Should identify that tools/knowledge (Notion, Slack) are configured but agent doesn't know when to use them. Once assessed, should call suggest_prompt_edits and/or suggest_knowledge. Per new workflow: may ask one clarifying question first, but should not only describe—must suggest. Score 0-1 if copilot misses the gap or never calls a suggestion tool.`,
+      judgeCriteria: `Intent is clear: user wants help with tool usage. Should identify that tools/knowledge (Notion, Slack) are configured but agent doesn't know when to use them. Once assessed, should call suggest_prompt_edits and/or suggest_knowledge. Per new workflow: may ask one clarifying question first, but should not only describe—must suggest. Score 0-1 if sidekick misses the gap or never calls a suggestion tool.`,
     },
     {
       scenarioId: "unreferenced-review-setup",
@@ -48,7 +48,7 @@ export const instructionsWithToolsSuite: TestSuite = {
         "This agent helps track project status and deadlines. What tools would help it access our actual project data?",
       mockState: AGENT_NEEDING_TOOLS,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Intent is somewhat clear (project data tools). Per new workflow: may ask where team tracks projects first, or suggest directly. Should recommend tools (Notion, Slack, GitHub) and explain why; ideally call suggest_tools. Score 0-1 if copilot neither recommends specific tools nor suggests.`,
+      judgeCriteria: `Intent is somewhat clear (project data tools). Per new workflow: may ask where team tracks projects first, or suggest directly. Should recommend tools (Notion, Slack, GitHub) and explain why; ideally call suggest_tools. Score 0-1 if sidekick neither recommends specific tools nor suggests.`,
     },
     {
       scenarioId: "recommend-tools-job",
@@ -64,7 +64,7 @@ export const instructionsWithToolsSuite: TestSuite = {
         "I want to create an agent that can create and update entries in HubSpot CRM when we close deals.",
       mockState: BLANK_AGENT,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Should check available tools (via injected context or get_available_tools) and clearly inform the user that HubSpot is NOT available. Must NOT call suggest_prompt_edits with instructions that reference HubSpot or CRM operations—the tool does not exist, so such instructions are unusable. Should mention this capability isn't currently supported and how to add HubSpot later. Score 0 if copilot suggests adding HubSpot-referencing instructions (even if it also notes the tool is unavailable).`,
+      judgeCriteria: `Should check available tools (via injected context or get_available_tools) and clearly inform the user that HubSpot is NOT available. Must NOT call suggest_prompt_edits with instructions that reference HubSpot or CRM operations—the tool does not exist, so such instructions are unusable. Should mention this capability isn't currently supported and how to add HubSpot later. Score 0 if sidekick suggests adding HubSpot-referencing instructions (even if it also notes the tool is unavailable).`,
     },
     {
       scenarioId: "unavailable-tool-requested-2",
@@ -75,7 +75,7 @@ export const instructionsWithToolsSuite: TestSuite = {
 Must NOT suggest adding instructions that reference pager duty incidents since the tool doesn't exist.
 Should mention this capability isn't currently supported.
 May suggest other way to retrieve the incidents if possible.
-Score 0 if copilot suggests creating instructions for PagerDuty without noting the tool is unavailable.`,
+Score 0 if sidekick suggests creating instructions for PagerDuty without noting the tool is unavailable.`,
     },
   ],
 };

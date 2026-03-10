@@ -13,11 +13,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 type LangfuseFirstMessagePromptName =
-  | "copilot-edge-first-message-existing"
-  | "copilot-edge-first-message-template"
-  | "copilot-edge-first-message-shrink-wrap";
+  | "sidekick-edge-first-message-existing"
+  | "sidekick-edge-first-message-template"
+  | "sidekick-edge-first-message-shrink-wrap";
 
-type LangfuseSystemPromptName = "copilot-edge";
+type LangfuseSystemPromptName = "sidekick-edge";
 
 const LangfuseModelConfigSchema = z.object({
   modelId: z.string(),

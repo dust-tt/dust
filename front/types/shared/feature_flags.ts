@@ -84,6 +84,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Restrict publishing agents to builders and admins",
     stage: "on_demand",
   },
+  restrict_agents_publishing_to_admins: {
+    description: "Restrict publishing agents to admins only",
+    stage: "on_demand",
+  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
@@ -202,6 +206,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
+  email_agents: {
+    description: "Enable triggering and interacting with agents via email",
+    stage: "dust_only",
+  },
   project_butler: {
     description: "Enable user project digest generation in project spaces",
     stage: "dust_only",
@@ -245,6 +253,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   reinforced_agents: {
     description:
       "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
+    stage: "dust_only",
+  },
+  discover_skills: {
+    description:
+      "Enable default skills discovery on global agents (do not enable for customers)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

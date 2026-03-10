@@ -74,8 +74,8 @@ const FAKE_TEMPLATES: Template[] = [
     tags: ["DATA"],
   },
   {
-    sId: "managerCopilot",
-    handle: "managerCopilot",
+    sId: "managerSidekick",
+    handle: "managerSidekick",
     userFacingDescription:
       "Assist managers with daily tasks, finding information, coaching, and write-ups.",
     emoji: "👩‍💼",

@@ -3,18 +3,22 @@ import type { GetExtensionConfigResponseBody } from "@app/pages/api/w/[wId]/exte
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-export function useExtensionConfig(owner: LightWorkspaceType) {
+export function useExtensionConfig(
+  owner: LightWorkspaceType,
+  disabled?: boolean
+) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetExtensionConfigResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/extension/config`,
-    configFetcher
+    configFetcher,
+    { disabled }
   );
 
   return {
     blacklistedDomains: data?.blacklistedDomains ?? emptyArray(),
-    isExtensionConfigLoading: !error && !data,
+    isExtensionConfigLoading: !error && !data && !disabled,
     isExtensionConfigError: error,
   };
 }

@@ -7,33 +7,33 @@ import {
   useState,
 } from "react";
 
-export interface CopilotHighlightContextType {
+export interface SidekickHighlightContextType {
   highlightedSuggestionId: string | null;
   isHighlightedSuggestionPinned: boolean;
   highlightSuggestion: (id: string | null, pinned?: boolean) => void;
 }
 
-export const CopilotHighlightContext = createContext<
-  CopilotHighlightContextType | undefined
+export const SidekickHighlightContext = createContext<
+  SidekickHighlightContextType | undefined
 >(undefined);
 
-export const useCopilotHighlight = () => {
-  const context = useContext(CopilotHighlightContext);
+export const useSidekickHighlight = () => {
+  const context = useContext(SidekickHighlightContext);
   if (!context) {
     throw new Error(
-      "useCopilotHighlight must be used within a CopilotHighlightProvider"
+      "useSidekickHighlight must be used within a SidekickHighlightProvider"
     );
   }
   return context;
 };
 
-interface CopilotHighlightProviderProps {
+interface SidekickHighlightProviderProps {
   children: ReactNode;
 }
 
-export const CopilotHighlightProvider = ({
+export const SidekickHighlightProvider = ({
   children,
-}: CopilotHighlightProviderProps) => {
+}: SidekickHighlightProviderProps) => {
   const [highlightedSuggestionId, setHighlightedSuggestionId] = useState<
     string | null
   >(null);
@@ -62,8 +62,8 @@ export const CopilotHighlightProvider = ({
   );
 
   return (
-    <CopilotHighlightContext.Provider value={value}>
+    <SidekickHighlightContext.Provider value={value}>
       {children}
-    </CopilotHighlightContext.Provider>
+    </SidekickHighlightContext.Provider>
   );
 };

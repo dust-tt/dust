@@ -10,12 +10,12 @@ export default defineConfig(() => {
     );
   }
 
-  // Extended config specific to copilot evaluation tests
+  // Extended config specific to sidekick evaluation tests
   const testConfig = defineConfig({
     test: {
       env: {
         // Skip tests by default, unless explicitly enabled
-        RUN_COPILOT_EVAL: process.env.RUN_COPILOT_EVAL ?? "false",
+        RUN_SIDEKICK_EVAL: process.env.RUN_SIDEKICK_EVAL ?? "false",
         FILTER_CATEGORY: process.env.FILTER_CATEGORY ?? "",
         FILTER_SCENARIO: process.env.FILTER_SCENARIO ?? "",
         JUDGE_RUNS: process.env.JUDGE_RUNS ?? "3",

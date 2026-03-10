@@ -11,7 +11,7 @@ import {
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
 import apiConfig from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -220,20 +220,6 @@ async function handler(
 
       const email = emailRes.value;
 
-      // Gating: only dust.tt emails are allowed to trigger the agent
-      // WARNING: DO NOT UNGATE. Todo before ungating:
-      // - ! check security, including but not limited to SPF dkim approach thorough review
-      // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
-      if (!email.envelope.from.endsWith("@dust.tt")) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Only dust.tt emails are allowed to trigger the agent",
-          },
-        });
-      }
-
       // At this stage we have a valid email in we can respond 200 to the webhook, no more apiError
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
@@ -283,6 +269,18 @@ async function handler(
         user.sId,
         workspace.sId
       );
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (!featureFlags.includes("email_agents")) {
+        await replyToError(email, {
+          type: "invalid_email_error",
+          message:
+            "Email interactions with agents are not enabled for your workspace.",
+        });
+        return;
+      }
 
       const agentConfigurations = removeNulls(
         await Promise.all(

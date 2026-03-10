@@ -1,4 +1,4 @@
-import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
+import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/detection/github/detect_skills";
 import { makeScript } from "@app/scripts/helpers";
 
 // TODO(2026-02-25 aubin): move to a poke plugin or a CLI command if ends up being needed for debugging.

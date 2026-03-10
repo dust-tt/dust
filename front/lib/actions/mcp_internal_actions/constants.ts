@@ -8,8 +8,8 @@ import {
   AGENT_ROUTER_SERVER,
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
-import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
+import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
@@ -130,8 +130,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
-  "agent_copilot_agent_state",
-  "agent_copilot_context",
+  "agent_sidekick_agent_state",
+  "agent_sidekick_context",
   "agent_management",
   "agent_memory",
   "agent_router",
@@ -998,7 +998,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: PROJECT_MANAGER_SERVER,
   },
-  agent_copilot_context: {
+  agent_sidekick_context: {
     id: 1022,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1009,9 +1009,9 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: AGENT_COPILOT_CONTEXT_SERVER,
+    metadata: AGENT_SIDEKICK_CONTEXT_SERVER,
   },
-  agent_copilot_agent_state: {
+  agent_sidekick_agent_state: {
     id: 1023,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1022,7 +1022,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
+    metadata: AGENT_SIDEKICK_AGENT_STATE_SERVER,
   },
   sandbox: {
     id: 1024,

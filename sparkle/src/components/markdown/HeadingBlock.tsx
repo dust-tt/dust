@@ -1,7 +1,11 @@
 import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
+import {
+  type MarkdownNode,
+  sameNodePosition,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
-import React from "react";
+import React, { memo } from "react";
 
 const headingSpacing: Record<number, string> = {
   1: "s-pb-2 s-pt-4",
@@ -14,94 +18,119 @@ const headingSpacing: Record<number, string> = {
 
 interface HeadingBlockProps {
   children?: React.ReactNode;
+  node?: MarkdownNode;
 }
 
-export function H1Block({ children }: HeadingBlockProps) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  return (
-    <h1
-      className={cn(
-        headingSpacing[1],
-        forcedTextSize ?? markdownHeaderClasses.h1,
-        textColor
-      )}
-    >
-      {children}
-    </h1>
-  );
-}
+export const H1Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h1
+        className={cn(
+          headingSpacing[1],
+          forcedTextSize ?? markdownHeaderClasses.h1,
+          textColor
+        )}
+      >
+        {children}
+      </h1>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
+);
+H1Block.displayName = "H1Block";
 
-export function H2Block({ children }: HeadingBlockProps) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  return (
-    <h2
-      className={cn(
-        headingSpacing[2],
-        forcedTextSize ?? markdownHeaderClasses.h2,
-        textColor
-      )}
-    >
-      {children}
-    </h2>
-  );
-}
+export const H2Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h2
+        className={cn(
+          headingSpacing[2],
+          forcedTextSize ?? markdownHeaderClasses.h2,
+          textColor
+        )}
+      >
+        {children}
+      </h2>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
+);
+H2Block.displayName = "H2Block";
 
-export function H3Block({ children }: HeadingBlockProps) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  return (
-    <h3
-      className={cn(
-        headingSpacing[3],
-        forcedTextSize ?? markdownHeaderClasses.h3,
-        textColor
-      )}
-    >
-      {children}
-    </h3>
-  );
-}
+export const H3Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h3
+        className={cn(
+          headingSpacing[3],
+          forcedTextSize ?? markdownHeaderClasses.h3,
+          textColor
+        )}
+      >
+        {children}
+      </h3>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
+);
+H3Block.displayName = "H3Block";
 
-export function H4Block({ children }: HeadingBlockProps) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  return (
-    <h4
-      className={cn(
-        headingSpacing[4],
-        forcedTextSize ?? markdownHeaderClasses.h4,
-        textColor
-      )}
-    >
-      {children}
-    </h4>
-  );
-}
+export const H4Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h4
+        className={cn(
+          headingSpacing[4],
+          forcedTextSize ?? markdownHeaderClasses.h4,
+          textColor
+        )}
+      >
+        {children}
+      </h4>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
+);
+H4Block.displayName = "H4Block";
 
-export function H5Block({ children }: HeadingBlockProps) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  return (
-    <h5
-      className={cn(
-        headingSpacing[5],
-        forcedTextSize ?? markdownHeaderClasses.h5,
-        textColor
-      )}
-    >
-      {children}
-    </h5>
-  );
-}
+export const H5Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h5
+        className={cn(
+          headingSpacing[5],
+          forcedTextSize ?? markdownHeaderClasses.h5,
+          textColor
+        )}
+      >
+        {children}
+      </h5>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
+);
+H5Block.displayName = "H5Block";
 
-export function H6Block({ children }: HeadingBlockProps) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  return (
-    <h6
-      className={cn(
-        headingSpacing[6],
-        forcedTextSize ?? markdownHeaderClasses.h6,
-        textColor
-      )}
-    >
-      {children}
-    </h6>
-  );
-}
+export const H6Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h6
+        className={cn(
+          headingSpacing[6],
+          forcedTextSize ?? markdownHeaderClasses.h6,
+          textColor
+        )}
+      >
+        {children}
+      </h6>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
+);
+H6Block.displayName = "H6Block";

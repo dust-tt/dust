@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useCopilotPanelContext } from "@app/components/agent_builder/SidekickPanelContext";
+import { useSidekickPanelContext } from "@app/components/agent_builder/SidekickPanelContext";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
@@ -8,8 +8,8 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import {
-  copilotSuggestionDirective,
-  getCopilotSuggestionPlugin,
+  getSidekickSuggestionPlugin,
+  sidekickSuggestionDirective,
 } from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
@@ -55,7 +55,7 @@ function LoadingState({ message }: LoadingStateProps) {
   );
 }
 
-interface CopilotContentProps {
+interface SidekickContentProps {
   conversation: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
@@ -66,7 +66,7 @@ interface CopilotContentProps {
   clientSideMCPServerIds: string[];
 }
 
-function CopilotContent({
+function SidekickContent({
   conversation,
   user,
   owner,
@@ -75,7 +75,7 @@ function CopilotContent({
   isTrialPlan,
   isAdmin,
   clientSideMCPServerIds,
-}: CopilotContentProps) {
+}: SidekickContentProps) {
   const agentBuilderContext = useMemo(
     () => ({
       isSubmitting: false,
@@ -90,12 +90,12 @@ function CopilotContent({
   const additionalMarkdownComponents: Components = useMemo(
     () =>
       ({
-        agent_suggestion: getCopilotSuggestionPlugin(),
+        agent_suggestion: getSidekickSuggestionPlugin(),
       }) as Components, // We need to force cast here as we don't use native html tags.
     []
   );
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [copilotSuggestionDirective],
+    () => [sidekickSuggestionDirective],
     []
   );
 
@@ -131,7 +131,7 @@ function CopilotContent({
   );
 }
 
-export function AgentBuilderCopilot() {
+export function AgentBuilderSidekick() {
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useAuth();
   const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
@@ -147,7 +147,7 @@ export function AgentBuilderCopilot() {
     startConversation,
     resetConversation,
     clientSideMCPServerIds,
-  } = useCopilotPanelContext();
+  } = useSidekickPanelContext();
 
   // Auto-start conversation when component mounts
   useEffect(() => {
@@ -169,7 +169,7 @@ export function AgentBuilderCopilot() {
     }
 
     return (
-      <CopilotContent
+      <SidekickContent
         conversation={conversation}
         user={user}
         owner={owner}

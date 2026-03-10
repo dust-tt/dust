@@ -1,6 +1,6 @@
-# Copilot Seed
+# Sidekick Seed
 
-Seeds data for testing the agent builder copilot feature. Enables the `agent_builder_copilot` feature flag and creates:
+Seeds data for testing the agent builder sidekick feature. Enables the `agent_builder_copilot` feature flag and creates:
 
 - 2 additional users (John Doe and Amigo)
 - 3 agents:
@@ -13,5 +13,5 @@ Seeds data for testing the agent builder copilot feature. Enables the `agent_bui
 Run:
 
 ```bash
-npx tsx scripts/seed/copilot/seed.ts --execute
+npx tsx scripts/seed/sidekick/seed.ts --execute
 ```

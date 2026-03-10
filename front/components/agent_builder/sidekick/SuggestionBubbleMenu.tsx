@@ -1,5 +1,5 @@
-import { useCopilotHighlight } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
-import { useCopilotSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useSidekickHighlight } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
+import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import type { RefObject } from "react";
@@ -33,12 +33,12 @@ export function SuggestionBubbleMenu({
   containerRef,
 }: SuggestionBubbleMenuProps) {
   const { acceptSuggestion, rejectSuggestion, getSuggestionWithRelations } =
-    useCopilotSuggestions();
+    useSidekickSuggestions();
   const {
     highlightSuggestion,
     highlightedSuggestionId,
     isHighlightedSuggestionPinned,
-  } = useCopilotHighlight();
+  } = useSidekickHighlight();
 
   const [activeMenu, setActiveMenu] = useState<{
     sId: string;

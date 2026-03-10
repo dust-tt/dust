@@ -13,7 +13,7 @@ export const wellStructuredInstructionsSuite: TestSuite = {
       userMessage: "Can you help me improve this?",
       mockState: WELL_STRUCTURED_AGENT,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Intent is vague ("improve this"). Instructions are already well-structured. Per new workflow should ask what specific aspect to improve, OR identify 1-2 minor improvements. Should NOT suggest full rewrite. Score 0-1 if copilot suggests rewriting everything.`,
+      judgeCriteria: `Intent is vague ("improve this"). Instructions are already well-structured. Per new workflow should ask what specific aspect to improve, OR identify 1-2 minor improvements. Should NOT suggest full rewrite. Score 0-1 if sidekick suggests rewriting everything.`,
     },
     {
       scenarioId: "vague-make-better",
@@ -74,7 +74,7 @@ export const wellStructuredInstructionsSuite: TestSuite = {
       judgeCriteria: `Should notice conflict: existing tone says "Be concise" vs requested "comprehensive, detailed".
 Must surface the conflict and ask for clarification.
 Should NOT silently override existing instructions.
-Score 0-1 if copilot ignores the contradiction.`,
+Score 0-1 if sidekick ignores the contradiction.`,
     },
     {
       scenarioId: "conflict-never-admit-unknown",

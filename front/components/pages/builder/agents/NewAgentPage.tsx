@@ -50,10 +50,10 @@ export function NewAgentPage() {
     disabled: !duplicateAgentId,
   });
 
-  const hasCopilot =
+  const hasSidekick =
     hasFeature("agent_builder_copilot") &&
     (isAdmin || (hasFeature("agent_builder_copilot_builders") && isBuilder));
-  const shouldPassConversationId = hasCopilot && agentConfiguration === null;
+  const shouldPassConversationId = hasSidekick && agentConfiguration === null;
 
   const {
     assistantTemplate,

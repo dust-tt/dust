@@ -209,7 +209,7 @@ export function InputBar({
           onFocus={handleFocus}
           variant="compact"
           showFormattingMenu
-          showAskCopilotMenu={false}
+          showAskSidekickMenu={false}
           className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
         />
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">

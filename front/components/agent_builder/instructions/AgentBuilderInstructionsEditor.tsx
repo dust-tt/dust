@@ -1,11 +1,11 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
+import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
-import { useCopilotSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/sidekick/SuggestionBubbleMenu";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
@@ -175,7 +175,7 @@ export function AgentBuilderInstructionsEditor({
   children,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
-  const hasCopilot = useIsAgentBuilderCopilotEnabled();
+  const hasSidekick = useIsAgentBuilderSidekickEnabled();
 
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -191,7 +191,7 @@ export function AgentBuilderInstructionsEditor({
   const suggestionHandler = blockDropdown.suggestionOptions;
   const initialContentSetRef = useRef(false);
 
-  const suggestionsContext = useCopilotSuggestions();
+  const suggestionsContext = useSidekickSuggestions();
 
   const editorWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -314,7 +314,7 @@ export function AgentBuilderInstructionsEditor({
         return;
       }
 
-      // Prefer HTML content if available (preserves block IDs for copilot targeting).
+      // Prefer HTML content if available (preserves block IDs for sidekick targeting).
       // Fall back to markdown for agents without stored HTML.
       if (instructionsHtmlField.value) {
         editor.commands.setContent(instructionsHtmlField.value, {
@@ -403,7 +403,7 @@ export function AgentBuilderInstructionsEditor({
       // Use requestAnimationFrame to ensure DOM is ready (Safari fix).
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          // Prefer HTML content if available (preserves block IDs for copilot targeting).
+          // Prefer HTML content if available (preserves block IDs for sidekick targeting).
           // Fall back to markdown for agents without stored HTML.
           if (instructionsHtmlField.value) {
             editor.commands.setContent(instructionsHtmlField.value, {
@@ -501,11 +501,11 @@ export function AgentBuilderInstructionsEditor({
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
     >
       <EditorContent editor={editor} />
-      {editor && hasCopilot && (
+      {editor && hasSidekick && (
         <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
       )}
-      {!hasCopilot && (
-        // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+      {!hasSidekick && (
+        // TODO(sidekick): Remove the whole InstructionTipsPopover and endpoint when sidekick is released.
         <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
         </div>
@@ -523,7 +523,7 @@ export function AgentBuilderInstructionsEditor({
             onAcceptAll={handleAcceptAll}
             onRejectAll={handleRejectAll}
             showSuggestionActions={
-              hasCopilot && hasPendingInstructionSuggestions
+              hasSidekick && hasPendingInstructionSuggestions
             }
             toolbarExtra={toolbarExtra}
           />

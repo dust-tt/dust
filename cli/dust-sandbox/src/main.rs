@@ -1,5 +1,4 @@
 mod api;
-mod auth;
 mod commands;
 
 use clap::{Parser, Subcommand};
@@ -15,8 +14,6 @@ struct Cli {
 enum Commands {
     /// Print version information
     Version,
-    /// Show sandbox login status
-    Status,
     /// Interact with MCP servers and tools
     Tools {
         /// Server name (omit to list all servers)
@@ -35,7 +32,6 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Version => commands::cmd_version(),
-        Commands::Status => commands::cmd_status()?,
         Commands::Tools {
             server_name,
             tool_name,

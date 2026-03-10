@@ -2,17 +2,14 @@ use anyhow::{bail, Context};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::auth::{decode_jwt_claims, SandboxClaims, SANDBOX_TOKEN_ENV};
-
 use super::types::{CallToolRequest, CallToolResponse, MCPServerView, SandboxToolsResponse};
 
-const DEFAULT_API_URL: &str = "https://dust.tt";
+const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const API_URL_ENV: &str = "DUST_API_URL";
 
 pub struct DustApiClient {
     client: reqwest::Client,
     base_url: String,
-    claims: SandboxClaims,
 }
 
 impl DustApiClient {
@@ -24,9 +21,7 @@ impl DustApiClient {
             bail!("{SANDBOX_TOKEN_ENV} is empty");
         }
 
-        let claims = decode_jwt_claims(&token)?;
-
-        let base_url = std::env::var(API_URL_ENV).unwrap_or_else(|_| DEFAULT_API_URL.to_string());
+        let base_url = std::env::var(API_URL_ENV).context(format!("{API_URL_ENV} is not set"))?;
 
         let mut headers = HeaderMap::new();
         let auth_value = HeaderValue::from_str(&format!("Bearer {token}"))
@@ -39,15 +34,11 @@ impl DustApiClient {
             .build()
             .context("failed to build HTTP client")?;
 
-        Ok(Self {
-            client,
-            base_url,
-            claims,
-        })
+        Ok(Self { client, base_url })
     }
 
     fn url(&self, path: &str) -> String {
-        format!("{}/api/v1/w/{}/{}", self.base_url, self.claims.w_id, path)
+        format!("{}/{}", self.base_url, path)
     }
 
     async fn get<T: DeserializeOwned>(&self, path: &str) -> anyhow::Result<T> {

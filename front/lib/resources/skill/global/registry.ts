@@ -1,6 +1,7 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover_knowledge";
+import { discoverSkillsSkill } from "@app/lib/resources/skill/global/discover_skills";
 import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
@@ -81,6 +82,7 @@ function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
 // Registry is a simple array.
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   discoverKnowledgeSkill,
+  discoverSkillsSkill,
   discoverToolsSkill,
   framesSkill,
   goDeepSkill,
@@ -133,6 +135,16 @@ export class GlobalSkillsRegistry {
 
           if (where.status && !matchesFilter("active", where.status)) {
             return false; // Global skills are always active.
+          }
+
+          // Global skills are default discoverable except if they are auto enabled,
+          // in which case discoverability does not really have a meaning.
+          if (where.isDefault !== undefined) {
+            const isDefault =
+              !("isAutoEnabled" in skill) || !skill.isAutoEnabled;
+            if (isDefault !== where.isDefault) {
+              return false;
+            }
           }
 
           return true;

@@ -799,7 +799,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      // Create an existing instructions-root suggestion first (e.g. from a previous copilot turn)
+      // Create an existing instructions-root suggestion first (e.g. from a previous sidekick turn)
       const rootSuggestion = await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentWithBlocks,

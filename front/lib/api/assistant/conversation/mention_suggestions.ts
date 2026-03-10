@@ -249,7 +249,7 @@ export const suggestionsOfMentions = async (
       }));
 
     // Include participant agents not already in the fetched configurations
-    // (e.g. the copilot agent which is excluded from global agent listings).
+    // (e.g. the sidekick agent which is excluded from global agent listings).
     const missingParticipants = participantAgents.filter(
       (pa) => !activeAgentIds.has(pa.id)
     );

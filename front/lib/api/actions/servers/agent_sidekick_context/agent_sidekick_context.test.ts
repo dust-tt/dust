@@ -53,7 +53,7 @@ vi.mock("@app/lib/api/actions/servers/agent_sidekick_helpers", () => ({
 // Reset only file-local mocks between tests.
 // Avoid vi.resetAllMocks() as it resets global mocks like the Redis mock from vite.setup.ts.
 beforeEach(async () => {
-  const [overview, feedback, templateSuggestion, copilotHelpers] =
+  const [overview, feedback, templateSuggestion, sidekickHelpers] =
     await Promise.all([
       import("@app/lib/api/assistant/observability/overview"),
       import("@app/lib/api/assistant/feedback"),
@@ -64,7 +64,7 @@ beforeEach(async () => {
   vi.mocked(overview.fetchAgentOverview).mockReset();
   vi.mocked(feedback.getAgentFeedbacks).mockReset();
   vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
-  vi.mocked(copilotHelpers.getAgentConfigurationIdFromContext).mockReset();
+  vi.mocked(sidekickHelpers.getAgentConfigurationIdFromContext).mockReset();
 });
 
 function getToolByName(name: string) {
@@ -2160,7 +2160,7 @@ describe("agent_sidekick_context tools", () => {
       const template = await TemplateFactory.published();
       await template.updateAttributes({
         tags: ["SALES"],
-        copilotInstructions: "Test copilot instructions",
+        sidekickInstructions: "Test sidekick instructions",
       });
 
       const tool = getToolByName("search_agent_templates");
@@ -2182,7 +2182,7 @@ describe("agent_sidekick_context tools", () => {
           expect(content.text).toContain(
             (template.agentFacingDescription ?? "").trim()
           );
-          expect(content.text).toContain("Test copilot instructions");
+          expect(content.text).toContain("Test sidekick instructions");
           expect(content.text).toContain("tags: SALES");
         }
       }
@@ -2269,13 +2269,13 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("get_agent_template", () => {
-    it("returns template with copilotInstructions", async () => {
+    it("returns template with sidekickInstructions", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      // Create a template with copilotInstructions.
+      // Create a template with sidekickInstructions.
       const template = await TemplateFactory.published();
       await template.updateAttributes({
-        copilotInstructions: "Test copilot instructions for this template",
+        sidekickInstructions: "Test sidekick instructions for this template",
       });
 
       const tool = getToolByName("get_agent_template");
@@ -2292,18 +2292,18 @@ describe("agent_sidekick_context tools", () => {
           expect(content.text).toContain(`sId: ${template.sId}`);
           expect(content.text).toContain(`handle: ${template.handle}`);
           expect(content.text).toContain(
-            "Test copilot instructions for this template"
+            "Test sidekick instructions for this template"
           );
         }
       }
     });
 
-    it("returns null copilotInstructions when not set", async () => {
+    it("returns null sidekickInstructions when not set", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      // Create a template without copilotInstructions.
+      // Create a template without sidekickInstructions.
       const template = await TemplateFactory.published();
-      await template.updateAttributes({ copilotInstructions: null });
+      await template.updateAttributes({ sidekickInstructions: null });
 
       const tool = getToolByName("get_agent_template");
       const result = await tool.handler(
@@ -2317,7 +2317,7 @@ describe("agent_sidekick_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           expect(content.text).toContain(`sId: ${template.sId}`);
-          expect(content.text).not.toContain("copilotInstructions:");
+          expect(content.text).not.toContain("sidekickInstructions:");
         }
       }
     });

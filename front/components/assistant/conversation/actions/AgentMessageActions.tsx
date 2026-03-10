@@ -121,6 +121,14 @@ export function AgentMessageActions({
                 <Markdown
                   content={chainOfThought}
                   isStreaming={false}
+                  streamingState={
+                    lastAgentStateClassification === "thinking"
+                      ? "streaming"
+                      : "none"
+                  }
+                  enableAnimation
+                  animationDurationSeconds={0.3}
+                  delimiter=" "
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}

@@ -11,14 +11,17 @@ import {
   storeEmailReplyContext,
 } from "@app/lib/api/assistant/email/email_trigger";
 import config from "@app/lib/api/config";
-import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import {
+  Authenticator,
+  type AuthenticatorType,
+  getFeatureFlags,
+} from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
-import { isDevelopment } from "@app/types/shared/env";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -48,33 +51,27 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
 }
 
 /**
- * Check security gating for email replies.
- * Returns true if the reply should be sent, false otherwise.
- *
- * Defense-in-depth: duplicates the webhook handler checks as a second layer
- * of protection in case Redis data is manipulated or context is stored incorrectly.
+ * Defense-in-depth: check feature flag before sending email replies.
+ * Duplicates the webhook handler check in case Redis data is manipulated
+ * or context is stored incorrectly.
  */
-function checkEmailReplyGating(
-  context: EmailReplyContext,
-  agentMessageId: string
-): boolean {
-  // Security gating: only allow replies to dust.tt emails in the Dust workspace.
-  if (!context.fromEmail.endsWith("@dust.tt")) {
+async function isEmailAgentsEnabled(
+  authType: AuthenticatorType
+): Promise<boolean> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
     logger.warn(
-      { agentMessageId, fromEmail: context.fromEmail },
-      "[email] Sender email not in @dust.tt domain, skipping reply"
+      "[email] Failed to create authenticator for feature flag check"
     );
     return false;
   }
-  const productionDustWorkspaceId = config.getProductionDustWorkspaceId();
-  if (
-    !isDevelopment() &&
-    productionDustWorkspaceId &&
-    context.workspaceId !== productionDustWorkspaceId
-  ) {
-    logger.warn(
-      { agentMessageId, workspaceId: context.workspaceId },
-      "[email] Workspace not gated for email replies, skipping reply"
+  const featureFlags = await getFeatureFlags(
+    authResult.value.getNonNullableWorkspace()
+  );
+  if (!featureFlags.includes("email_agents")) {
+    logger.info(
+      { workspaceId: authType.workspaceId },
+      "[email] email_agents feature flag not enabled, skipping reply"
     );
     return false;
   }
@@ -190,10 +187,6 @@ export async function sendEmailReplyOnCompletion(
       return;
     }
 
-    if (!checkEmailReplyGating(context, agentLoopArgs.agentMessageId)) {
-      return;
-    }
-
     // Get the completed agent message data.
     const dataRes = await getAgentLoopData(authType, agentLoopArgs);
     if (dataRes.isErr()) {
@@ -208,6 +201,14 @@ export async function sendEmailReplyOnCompletion(
     }
 
     const { auth, agentMessage, conversation } = dataRes.value;
+
+    if (!(await isEmailAgentsEnabled(authType))) {
+      await deleteEmailReplyContext(
+        authType.workspaceId,
+        agentLoopArgs.agentMessageId
+      );
+      return;
+    }
 
     // Check if blocked on tool validation — send validation email instead.
     const blocked = await handleBlockedValidation(
@@ -311,7 +312,7 @@ export async function sendEmailReplyOnError(
       agentLoopArgs.agentMessageId
     );
 
-    if (!checkEmailReplyGating(context, agentLoopArgs.agentMessageId)) {
+    if (!(await isEmailAgentsEnabled(authType))) {
       return;
     }
 
