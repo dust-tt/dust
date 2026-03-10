@@ -2,7 +2,7 @@
 
 import { useVizContext } from "@viz/app/components/VizContext";
 import { cn } from "@viz/lib/utils";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface SlideProps {
@@ -84,55 +84,43 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   }, [resetHideTimer]);
 
   return (
-    <>
-      {/* Prev / Next arrow buttons */}
-      <button
-        onClick={onPrev}
-        disabled={activeIndex === 0}
-        className={cn(
-          "absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 shadow border border-gray-200 transition-opacity duration-300",
-          "disabled:opacity-0",
-          isVisible
-            ? "opacity-70 hover:opacity-100"
-            : "opacity-0 pointer-events-none"
-        )}
-        aria-label="Previous slide"
-      >
-        <ChevronLeftIcon className="h-6 w-6" />
-      </button>
-      <button
-        onClick={onNext}
-        disabled={activeIndex === total - 1}
-        className={cn(
-          "absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 shadow border border-gray-200 transition-opacity duration-300",
-          "disabled:opacity-0",
-          isVisible
-            ? "opacity-70 hover:opacity-100"
-            : "opacity-0 pointer-events-none"
-        )}
-        aria-label="Next slide"
-      >
-        <ChevronRightIcon className="h-6 w-6" />
-      </button>
-
-      {/* Dot indicators */}
+    <div
+      className={cn(
+        "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300",
+        isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}
+    >
       <div
         className={cn(
-          "absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 transition-opacity duration-300",
-          isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+          "w-44 inline-flex justify-between items-center overflow-hidden rounded-2xl shadow-lg bg-card",
+          "py-1.5 px-3 outline outline-1 outline-gray-100 border border-border"
         )}
       >
-        {Array.from({ length: total }, (_, i) => (
-          <div
-            key={i}
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-colors",
-              i === activeIndex ? "bg-gray-800" : "bg-gray-300"
-            )}
-          />
-        ))}
+        <button
+          onClick={onPrev}
+          disabled={activeIndex === 0}
+          className="disabled:opacity-40"
+          title="Previous (\u2190)"
+          aria-label="Previous slide"
+        >
+          <ArrowLeftIcon className="h-5 w-5" />
+        </button>
+
+        <span className="text-center justify-center text-lg font-medium">
+          {activeIndex + 1} of {total}
+        </span>
+
+        <button
+          onClick={onNext}
+          disabled={activeIndex === total - 1}
+          className="disabled:opacity-40"
+          title="Next (\u2192)"
+          aria-label="Next slide"
+        >
+          <ArrowRightIcon className="h-5 w-5" />
+        </button>
       </div>
-    </>
+    </div>
   );
 }
 
