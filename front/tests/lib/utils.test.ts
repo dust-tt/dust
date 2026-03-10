@@ -39,3 +39,11 @@ test("compareForFuzzySort should correctly compare strings", () => {
     ).toBe(0);
   }
 });
+
+test("compareForFuzzySort stays symmetric for normalized exact matches", () => {
+  const query = "\u0130";
+  const normalizedExactMatch = "i\u0307";
+
+  expect(compareForFuzzySort(query, query, normalizedExactMatch)).toBe(0);
+  expect(compareForFuzzySort(query, normalizedExactMatch, query)).toBe(0);
+});

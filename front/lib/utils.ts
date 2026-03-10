@@ -295,14 +295,13 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return subFilterLastIndexA - subFilterLastIndexB;
   }
 
-  // Favor exact match
-  if (a.length !== b.length) {
-    if (normalizedA === normalizedQuery) {
-      return -1;
-    }
-    if (normalizedB === normalizedQuery) {
-      return 1;
-    }
+  const isExactMatchA = normalizedA === normalizedQuery;
+  const isExactMatchB = normalizedB === normalizedQuery;
+  if (isExactMatchA && !isExactMatchB) {
+    return -1;
+  }
+  if (isExactMatchB && !isExactMatchA) {
+    return 1;
   }
 
   return 0;
