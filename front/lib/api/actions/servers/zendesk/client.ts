@@ -344,6 +344,38 @@ class ZendeskClient {
     return new Ok(result.value.tags);
   }
 
+  async downloadAttachment(
+    contentUrl: string
+  ): Promise<Result<Buffer, Error>> {
+    const url = new URL(contentUrl);
+    // Only send Zendesk credentials to our own subdomain to avoid leaking
+    // the token to external hosts.
+    const isOwnZendeskUrl =
+      url.hostname === `${this.subdomain}.zendesk.com`;
+
+    const headers: Record<string, string> = {};
+    if (isOwnZendeskUrl) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await untrustedFetch(contentUrl, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      return new Err(
+        new ZendeskApiError(
+          `Failed to download attachment (${response.status}): ${response.statusText}`,
+          { isInvalidInput: false }
+        )
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return new Ok(Buffer.from(arrayBuffer));
+  }
+
   async getUsersByIds(
     userIds: number[]
   ): Promise<Result<ZendeskUser[], Error>> {
