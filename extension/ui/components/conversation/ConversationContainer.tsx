@@ -2,13 +2,15 @@ import { ConversationContainerVirtuoso } from "@app/components/assistant/convers
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InputBarContextProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { Button, MenuIcon } from "@dust-tt/sparkle";
 import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface ConversationContainerProps {
   workspace: LightWorkspaceType;
@@ -29,6 +31,7 @@ export const ConversationContainer = ({
 }: ConversationContainerProps) => {
   const platform = usePlatform();
   const { currentPanel } = useConversationSidePanelContext();
+  const { setSidebarOpen } = useContext(SidebarContext);
   const fileUploaderService = useFileUploaderService(
     platform.capture,
     conversationId
@@ -112,7 +115,15 @@ export const ConversationContainer = ({
         />
       </div>
       {conversation && currentPanel && (
-        <div className="flex h-full w-full flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-background-night">
+          {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
+          <div className="absolute left-0 top-0 z-10 flex h-[58px] shrink-0 items-center px-2">
+            <Button
+              variant="ghost"
+              icon={MenuIcon}
+              onClick={() => setSidebarOpen(true)}
+            />
+          </div>
           <ConversationSidePanelContent
             owner={workspace}
             conversation={conversation}
