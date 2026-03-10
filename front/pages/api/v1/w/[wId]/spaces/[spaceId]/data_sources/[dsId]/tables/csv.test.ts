@@ -109,7 +109,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     await GroupSpaceFactory.associate(space, globalGroup);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
-    const file = await FileFactory.csv(auth, null, {
+    const file = await FileFactory.csv(auth.workspaceAuth, null, {
       useCase: "upsert_table",
     });
 
@@ -186,7 +186,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
   });
 
   it("errors if the file provided has the wrong use-case", async () => {
-    const { req, res, workspace, globalGroup } =
+    const { auth, req, res, workspace, globalGroup } =
       await createPublicApiMockRequest({
         systemKey: true,
         method: "POST",
@@ -196,7 +196,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     await GroupSpaceFactory.associate(space, globalGroup);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
-    const file = await FileFactory.csv(auth, null, {
+    const file = await FileFactory.csv(auth.workspaceAuth, null, {
       useCase: "avatar",
     });
 
