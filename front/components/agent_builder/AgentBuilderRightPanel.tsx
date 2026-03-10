@@ -8,6 +8,7 @@ import { ObservabilityProvider } from "@app/components/agent_builder/observabili
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   BarChartIcon,
   Button,
@@ -78,7 +79,11 @@ function PanelHeader({
                   value="insights"
                   label="Insights"
                   icon={BarChartIcon}
-                  onClick={() => onTabChange("insights")}
+                  onClick={withTracking(
+                    TRACKING_AREAS.BUILDER,
+                    "insights_tab",
+                    () => onTabChange("insights")
+                  )}
                 />
                 {hasTemplate && !hasSidekick && (
                   <TabsTrigger
@@ -141,7 +146,9 @@ function CollapsedTabs({
         variant="ghost"
         size="sm"
         tooltip="Insights"
-        onClick={() => onTabSelect("insights")}
+        onClick={withTracking(TRACKING_AREAS.BUILDER, "insights_tab", () =>
+          onTabSelect("insights")
+        )}
       />
       {hasTemplate && !hasSidekick && (
         <Button
