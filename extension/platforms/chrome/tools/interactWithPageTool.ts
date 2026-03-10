@@ -36,8 +36,6 @@ export function registerInteractWithPageTool(server: McpServer): void {
         };
       }
 
-      console.log("response elements", response.elements);
-
       return {
         content: [
           {
