@@ -1,3 +1,5 @@
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/request/chat";
 
@@ -13,7 +15,10 @@ export class SlackStreamHandler {
   private threadTs: string | undefined;
   messageTs: string | undefined;
 
-  constructor(private slackClient: WebClient) {}
+  constructor(
+    private readonly slackClient: WebClient,
+    private readonly connectorId: number
+  ) {}
 
   public start({
     slackChannel,
@@ -53,7 +58,13 @@ export class SlackStreamHandler {
   private async append(
     payload: Omit<ChatAppendStreamArguments, "channel" | "ts">
   ) {
-    const res = await this.streamer?.append(payload);
+    const res = await throttleWithRedis(
+      RATE_LIMITS["chat.appendStream"],
+      `${this.connectorId}-chat-appendStream`,
+      { canBeIgnored: true },
+      () => this.streamer?.append(payload) ?? Promise.resolve(undefined),
+      {}
+    );
     if (!this.messageTs && res?.ts) {
       this.messageTs = res.ts;
     }

@@ -1012,7 +1012,7 @@ async function answerMessage(
   let streamHandler: SlackStreamHandler | undefined;
 
   if (useNativeStreaming) {
-    streamHandler = new SlackStreamHandler(slackClient);
+    streamHandler = new SlackStreamHandler(slackClient, connector.id);
     streamHandler.start({
       slackChannel,
       slackMessageTs,
