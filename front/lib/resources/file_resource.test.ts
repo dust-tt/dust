@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -11,6 +13,14 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock FileStorage to avoid GCS calls (needed for mount path resolution in markAsReady).
+vi.mock("@app/lib/file_storage", async () => {
+  const { mockFileStorage } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  return mockFileStorage();
+});
 
 // Mock copyContent from utils/files.ts
 vi.mock("@app/lib/utils/files", () => ({
@@ -37,7 +47,7 @@ describe("FileResource", () => {
     });
 
     it("should return file and content for active conversation", async () => {
-      const { authenticator: auth } = await createResourceTest({
+      const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
       });
 
@@ -57,7 +67,13 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      await frameFile.markAsReady(auth);
+      // Frame file should have mount path set (resolved during markAsReady).
+      const row = await FileModel.findOne({
+        where: { id: frameFile.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(
+        `w/${workspace.sId}/conversations/${conversation.sId}/files/frame.html`
+      );
 
       const frameShareInfo = await frameFile.getShareInfo();
 
@@ -312,6 +328,82 @@ describe("FileResource", () => {
       expect(copiedFile.useCase).toBe("upsert_document");
       expect(copiedFile.useCaseMetadata?.spaceId).toBe("space-1");
       expect(copiedFile.useCaseMetadata?.conversationId).toBeUndefined();
+    });
+  });
+
+  describe("uploadContent dual write", () => {
+    it("should write to both canonical and mount path when mountFilePath is set", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create a frame file with conversationId — markAsReady(auth) sets mountFilePath.
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-dual" },
+      });
+
+      // Verify mount path was set.
+      const row = await FileModel.findOne({
+        where: { id: frameFile.id, workspaceId: workspace.id },
+      });
+      assert(row?.mountFilePath, "Mount path should be set");
+
+      // Clear call counts so we can track the uploadContent calls cleanly.
+      vi.mocked(getPrivateUploadBucket).mockClear();
+
+      // Upload new content (simulates a frame edit).
+      await frameFile.uploadContent(auth, "<html>Updated frame</html>");
+
+      // Collect all uploadRawContentToBucket calls across all bucket instances.
+      const allUploadCalls = vi
+        .mocked(getPrivateUploadBucket)
+        .mock.results.flatMap((r) =>
+          r.type === "return"
+            ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
+            : []
+        );
+
+      // Should have written to both canonical and mount path.
+      const filePaths = allUploadCalls.map(
+        (call) => (call[0] as { filePath: string }).filePath
+      );
+      expect(filePaths).toContain(row.mountFilePath);
+    });
+
+    it("should not write to mount path when mountFilePath is not set", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create a file without conversationId — no mount path.
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "plain.txt",
+        fileSize: 100,
+        status: "created",
+        useCase: "conversation",
+      });
+
+      vi.mocked(getPrivateUploadBucket).mockClear();
+
+      await file.uploadContent(auth, "some content");
+
+      // Collect all uploadRawContentToBucket calls.
+      const allUploadCalls = vi
+        .mocked(getPrivateUploadBucket)
+        .mock.results.flatMap((r) =>
+          r.type === "return"
+            ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
+            : []
+        );
+
+      // Only canonical write, no mount path write.
+      expect(allUploadCalls).toHaveLength(1);
     });
   });
 });

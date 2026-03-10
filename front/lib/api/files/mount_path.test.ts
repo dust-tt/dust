@@ -11,31 +11,11 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock FileStorage to avoid GCS calls during setMountFilePath.
-vi.mock("@app/lib/file_storage", () => {
-  const createMockGCSFile = () => ({
-    copy: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
-    createReadStream: vi.fn(),
-    createWriteStream: vi.fn(),
-    getSignedUrl: vi.fn(),
-    publicUrl: vi.fn(),
-  });
-
-  const createMockFileStorage = () => ({
-    file: vi.fn(createMockGCSFile),
-    getSignedUrl: vi.fn(),
-    uploadFileToBucket: vi.fn(),
-    uploadRawContentToBucket: vi.fn(),
-    fetchFileContent: vi.fn(),
-    delete: vi.fn(),
-  });
-
-  return {
-    FileStorage: vi.fn().mockImplementation(createMockFileStorage),
-    getPrivateUploadBucket: vi.fn(createMockFileStorage),
-    getPublicUploadBucket: vi.fn(createMockFileStorage),
-    getUpsertQueueBucket: vi.fn(createMockFileStorage),
-  };
+vi.mock("@app/lib/file_storage", async () => {
+  const { mockFileStorage } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  return mockFileStorage();
 });
 
 // Mock copyContent (used by FileResource.copy).
