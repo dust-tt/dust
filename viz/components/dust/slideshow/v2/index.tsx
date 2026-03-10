@@ -47,7 +47,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
     }
     setIsVisible(true);
     hideTimeoutRef.current = setTimeout(() => {
-      setIsVisible(true);
+      setIsVisible(false);
     }, NAVIGATION_HIDE_DELAY_MS);
   }, []);
 
