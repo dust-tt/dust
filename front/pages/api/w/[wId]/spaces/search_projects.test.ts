@@ -153,7 +153,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
         workspace.sId
       );
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 10; i++) {
         const project = await SpaceFactory.project(workspace);
         await project.addMembers(adminAuth, { userIds: [user.sId] });
       }
@@ -167,11 +167,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
       const names = data.spaces.map((s: { name: string }) => s.name);
-      expect(names).toEqual(
-        [...names].sort((a, b) =>
-          a.localeCompare(b, undefined, { sensitivity: "base" })
-        )
-      );
+      expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     });
 
     it("respects the limit parameter", async () => {
