@@ -13,19 +13,20 @@ RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
 
 RUN GCSFUSE_REPO=$(lsb_release -c -s) \
   && echo "deb [signed-by=/usr/share/keyrings/cloud.google.asc] https://packages.cloud.google.com/apt gcsfuse-$GCSFUSE_REPO main" \
-     > /etc/apt/sources.list.d/gcsfuse.list
+  > /etc/apt/sources.list.d/gcsfuse.list
 
 # Install gcsfuse
 RUN apt-get update && apt-get install -y --no-install-recommends gcsfuse \
   && rm -rf /var/lib/apt/lists/*
 
 # Python via uv (official Astral approach)
+# UV handles arch automatically
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.14 \
-  && PYTHON_BIN=$(find /opt/python -name "python3" -path "*/bin/*" | head -1) \
-  && ln -s "$PYTHON_BIN" /usr/local/bin/python3 \
-  && ln -s "$PYTHON_BIN" /usr/local/bin/python
+  && uv python pin 3.14 \
+  && ln -s "$(uv python find 3.14)" /usr/local/bin/python3 \
+  && ln -s "$(uv python find 3.14)" /usr/local/bin/python
 ENV VIRTUAL_ENV=/opt/venv
 RUN uv venv /opt/venv --python 3.14
 

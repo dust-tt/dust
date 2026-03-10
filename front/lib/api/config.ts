@@ -1,7 +1,3 @@
-import {
-  DUST_SANDBOX_IMAGE_ID,
-  type SandboxImageId,
-} from "@app/lib/api/sandbox/image/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -479,19 +475,21 @@ const config = {
   // E2B Sandbox.
   getE2BSandboxConfig: (): {
     apiKey: string;
-    imageId: SandboxImageId;
     domain: string | undefined;
   } => {
-    const apiKey = EnvironmentConfig.getEnvVariable("E2B_API_KEY");
     return {
-      apiKey,
-      imageId: DUST_SANDBOX_IMAGE_ID,
+      apiKey: EnvironmentConfig.getEnvVariable("E2B_API_KEY"),
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
-  getSandboxGcpArtifactServiceAccountPath: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT"
+  getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
+    );
+  },
+  getSandboxGcpArtifactRegistry: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SBX_GCP_ARTIFACT_REGISTRY"
     );
   },
 };

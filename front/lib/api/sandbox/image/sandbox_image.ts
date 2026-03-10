@@ -180,8 +180,10 @@ export class SandboxImage {
     return this.clone({ network: policy });
   }
 
-  register(imageId: SandboxImageId): SandboxImage {
-    return this.clone({ imageId });
+  register(opts: { imageName: string; tag: string }): SandboxImage {
+    return this.clone({
+      imageId: { imageName: opts.imageName, tag: opts.tag },
+    });
   }
 
   withToolManifest(options?: {
@@ -206,11 +208,16 @@ export class SandboxImage {
   }
 
   toCreateConfig(): {
-    imageId?: SandboxImageId;
+    imageId: SandboxImageId;
     envVars?: Record<string, string>;
     network: NetworkPolicy;
     resources: SandboxResources;
   } {
+    if (!this.imageId) {
+      throw new Error(
+        "Cannot create config from unregistered SandboxImage. Call .register() first."
+      );
+    }
     return {
       imageId: this.imageId,
       envVars:

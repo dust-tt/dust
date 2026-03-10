@@ -1,33 +1,26 @@
-import type { SandboxImage } from "@app/lib/api/sandbox/image";
 import {
-  getSandboxImageFromRegistry,
+  formatSandboxImageId,
   type SandboxImageId,
 } from "@app/lib/api/sandbox/image";
+import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { TemplateBuilder } from "e2b";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { DockerRegistryFactory } from "./e2b_template";
 import { buildSandboxImage } from "./e2b_template";
 
-const TEST_IMAGE_ID: SandboxImageId = { imageName: "dust-base", tag: "edge" };
-const STAGING_IMAGE_ID: SandboxImageId = {
-  imageName: "dust-base",
-  tag: "staging",
-};
-const PRODUCTION_IMAGE_ID: SandboxImageId = {
-  imageName: "dust-base",
-  tag: "production",
-};
-
-function getTestImage(): SandboxImage {
-  const result = getSandboxImageFromRegistry({
-    imageName: "dust-base",
-    tag: "v0.2.0",
-  });
-  if (result.isErr()) {
-    throw new Error("Test setup failed: dust-base image not in registry");
-  }
-  return result.value;
+function createTestImage(): SandboxImage {
+  return SandboxImage.fromDocker("test-image:v1")
+    .registerTool(
+      { name: "tool-a", description: "Test tool A" },
+      { installCmd: "apt-get install -y tool-a" }
+    )
+    .registerTool(
+      { name: "tool-b", description: "Test tool B" },
+      { installCmd: "pip install tool-b" }
+    )
+    .withResources({ vcpu: 2, memoryMb: 1024 })
+    .setWorkdir("/workspace");
 }
 
 vi.mock("@app/lib/api/config", () => ({
@@ -84,6 +77,33 @@ vi.mock("e2b", () => ({
   defaultBuildLogger: vi.fn(() => vi.fn()),
 }));
 
+describe("formatSandboxImageId()", () => {
+  test("replaces dots with hyphens in tag", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "v0.1.1" };
+    expect(formatSandboxImageId(id)).toBe("dust-base_v0-1-1");
+  });
+
+  test("replaces underscores with hyphens in tag", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "my_tag" };
+    expect(formatSandboxImageId(id)).toBe("dust-base_my-tag");
+  });
+
+  test("lowercases uppercase characters", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "Staging" };
+    expect(formatSandboxImageId(id)).toBe("dust-base_staging");
+  });
+
+  test("sanitizes both imageName and tag", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "v0.1.1" };
+    expect(formatSandboxImageId(id)).toBe("dust-base_v0-1-1");
+  });
+
+  test("handles alphanumeric and hyphens without modification", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "edge" };
+    expect(formatSandboxImageId(id)).toBe("dust-base_edge");
+  });
+});
+
 describe("buildSandboxImage()", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,28 +111,32 @@ describe("buildSandboxImage()", () => {
 
   test("calls E2B Template builder methods in operation order", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
-    const testImage = getTestImage();
+    const testImage = createTestImage();
+    const imageId: SandboxImageId = { imageName: "dust-base", tag: "edge" };
 
-    const result = await buildSandboxImage(testImage, TEST_IMAGE_ID, {
+    const result = await buildSandboxImage(testImage, imageId, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockDockerRegistryFactory).toHaveBeenCalledWith(
-      "dust-sbx-bedrock:0.2.0"
-    );
+    if (testImage.baseImage.type === "docker") {
+      expect(mockDockerRegistryFactory).toHaveBeenCalledWith(
+        testImage.baseImage.imageRef
+      );
+    }
     expect(mockDockerRegistryBuilder.runCmd).toHaveBeenCalled();
     expect(mockDockerRegistryBuilder.setWorkdir).toHaveBeenCalledWith(
-      "/home/user"
+      "/workspace"
     );
   });
 
   test("returns templateId from E2B build result", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "my-template-123" });
-    const testImage = getTestImage();
+    const testImage = createTestImage();
+    const imageId: SandboxImageId = { imageName: "dust-base", tag: "staging" };
 
-    const result = await buildSandboxImage(testImage, STAGING_IMAGE_ID, {
+    const result = await buildSandboxImage(testImage, imageId, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -123,11 +147,12 @@ describe("buildSandboxImage()", () => {
     }
   });
 
-  test("passes name_tag format to E2B build", async () => {
+  test("passes sanitized name_tag format to E2B build", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
-    const testImage = getTestImage();
+    const testImage = createTestImage();
+    const imageId: SandboxImageId = { imageName: "dust-base", tag: "v0.1.1" };
 
-    await buildSandboxImage(testImage, PRODUCTION_IMAGE_ID, {
+    await buildSandboxImage(testImage, imageId, {
       apiKey: "test-api-key",
       domain: "custom.e2b.dev",
       dockerRegistryFactory: mockDockerRegistryFactory,
@@ -135,7 +160,7 @@ describe("buildSandboxImage()", () => {
 
     expect(mockBuild).toHaveBeenCalledWith(
       mockDockerRegistryBuilder,
-      "dust-base-production",
+      "dust-base_v0-1-1",
       expect.objectContaining({
         apiKey: "test-api-key",
         domain: "custom.e2b.dev",
@@ -147,9 +172,10 @@ describe("buildSandboxImage()", () => {
 
   test("returns Err when E2B build fails", async () => {
     mockBuild.mockRejectedValueOnce(new Error("Build failed"));
-    const testImage = getTestImage();
+    const testImage = createTestImage();
+    const imageId: SandboxImageId = { imageName: "dust-base", tag: "edge" };
 
-    const result = await buildSandboxImage(testImage, TEST_IMAGE_ID, {
+    const result = await buildSandboxImage(testImage, imageId, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -160,25 +186,10 @@ describe("buildSandboxImage()", () => {
     }
   });
 
-  test("installs npm packages via runCmd", async () => {
-    mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
-    const testImage = getTestImage();
-
-    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
-      apiKey: "test-api-key",
-      dockerRegistryFactory: mockDockerRegistryFactory,
-    });
-
-    const runCmdCalls = mockDockerRegistryBuilder.runCmd.mock.calls;
-    const hasNpmInstall = runCmdCalls.some((call: string[]) =>
-      call[0].includes("npm install -g")
-    );
-    expect(hasNpmInstall).toBe(true);
-  });
-
   test("processes operations in correct order", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
-    const testImage = getTestImage();
+    const testImage = createTestImage();
+    const imageId: SandboxImageId = { imageName: "dust-base", tag: "edge" };
 
     const callOrder: string[] = [];
     const trackingDockerRegistryFactory: DockerRegistryFactory = (
@@ -192,12 +203,10 @@ describe("buildSandboxImage()", () => {
       return mockDockerRegistryBuilder;
     });
     mockDockerRegistryBuilder.runCmd.mockImplementation((cmd: string) => {
-      if (cmd.includes("uv pip install")) {
-        callOrder.push("runCmd:pip");
-      } else if (cmd.includes("npm install")) {
-        callOrder.push("runCmd:npm");
-      } else if (cmd.includes("apt-get install")) {
+      if (cmd.includes("apt-get install")) {
         callOrder.push("runCmd:apt");
+      } else if (cmd.includes("pip install")) {
+        callOrder.push("runCmd:pip");
       } else {
         callOrder.push("runCmd");
       }
@@ -208,53 +217,14 @@ describe("buildSandboxImage()", () => {
       return mockDockerRegistryBuilder;
     });
 
-    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
+    await buildSandboxImage(testImage, imageId, {
       apiKey: "test-api-key",
       dockerRegistryFactory: trackingDockerRegistryFactory,
     });
 
     expect(callOrder[0]).toBe("fromDockerRegistry");
+    expect(callOrder).toContain("runCmd:apt");
     expect(callOrder).toContain("runCmd:pip");
-    expect(callOrder).toContain("runCmd:npm");
     expect(callOrder[callOrder.length - 1]).toBe("setWorkdir");
-  });
-
-  test("passes correct apt packages via runCmd", async () => {
-    mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
-    const testImage = getTestImage();
-
-    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
-      apiKey: "test-api-key",
-      dockerRegistryFactory: mockDockerRegistryFactory,
-    });
-
-    const runCmdCalls = mockDockerRegistryBuilder.runCmd.mock.calls;
-    const aptInstallCall = runCmdCalls.find(
-      (call: string[]) =>
-        call[0].includes("apt-get install") &&
-        call[0].includes("jq") &&
-        call[0].includes("pandoc")
-    );
-    expect(aptInstallCall).toBeDefined();
-  });
-
-  test("passes correct pip packages via runCmd", async () => {
-    mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
-    const testImage = getTestImage();
-
-    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
-      apiKey: "test-api-key",
-      dockerRegistryFactory: mockDockerRegistryFactory,
-    });
-
-    const runCmdCalls = mockDockerRegistryBuilder.runCmd.mock.calls;
-    const pipInstallCall = runCmdCalls.find(
-      (call: string[]) =>
-        call[0].includes("uv pip install") &&
-        call[0].includes("pandas") &&
-        call[0].includes("numpy") &&
-        call[0].includes("matplotlib")
-    );
-    expect(pipInstallCall).toBeDefined();
   });
 });

@@ -31,8 +31,8 @@ export interface SandboxHandle {
  * Flat structure derived from SandboxImage.toCreateConfig() with optional overrides.
  */
 export interface SandboxCreateConfig {
-  /** Typed image identifier (name + tag) override - E2B specific but exposed for overrides. */
-  imageId?: SandboxImageId;
+  /** Typed image identifier (name + tag) - required. Use getSandboxImage().toCreateConfig(). */
+  imageId: SandboxImageId;
   /** Environment variables for the sandbox runtime. */
   envVars?: Record<string, string>;
   /** Network egress policy. */
