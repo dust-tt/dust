@@ -101,7 +101,7 @@ export function Providers({ owner }: ProvidersProps) {
         <div className="space-y-8">
           <div>
             <Page.SectionHeader
-              title="App Credentials"
+              title="Model Providers"
               description="Model providers available to your Dust apps."
             />
             <ul
@@ -211,7 +211,7 @@ export function ProvidersPage() {
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title="Providers"
+        title="App Credentials"
         icon={ShapesIcon}
         description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
       />
