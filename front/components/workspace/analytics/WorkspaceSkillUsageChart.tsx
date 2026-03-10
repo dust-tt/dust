@@ -187,8 +187,14 @@ export function WorkspaceSkillUsageChart({
     });
   }, [selectedSkills, skillUsages]);
 
-  // Show loading only on initial load (when no skills have data yet)
-  const isLoading = isSkillsLoading || skillsWithData.length === 0;
+  const allSkillsSettled = selectedSkills.every((_skill, idx) => {
+    const usage = skillUsages[idx];
+    return usage && !usage.isSkillUsageLoading;
+  });
+
+  // Show loading only on initial load, but not if all requests have settled (even with errors)
+  const isLoading =
+    isSkillsLoading || (skillsWithData.length === 0 && !allSkillsSettled);
 
   const hasError = skillUsages.some(
     (s, i) => skillsToFetch[i] && s.isSkillUsageError
@@ -238,7 +244,7 @@ export function WorkspaceSkillUsageChart({
       if (selectedSkills.length < MAX_SELECTED_SKILLS) {
         setSelectedSkills([...selectedSkills, skill]);
       }
-    } else {
+    } else if (selectedSkills.length > 1) {
       setSelectedSkills(selectedSkills.filter((s) => s !== skill));
     }
   };
@@ -271,8 +277,9 @@ export function WorkspaceSkillUsageChart({
               label={skill.skillName}
               checked={selectedSkills.includes(skill.skillName)}
               disabled={
-                !selectedSkills.includes(skill.skillName) &&
-                selectedSkills.length >= MAX_SELECTED_SKILLS
+                selectedSkills.includes(skill.skillName)
+                  ? selectedSkills.length <= 1
+                  : selectedSkills.length >= MAX_SELECTED_SKILLS
               }
               onCheckedChange={(checked) =>
                 handleSkillToggle(skill.skillName, checked)
