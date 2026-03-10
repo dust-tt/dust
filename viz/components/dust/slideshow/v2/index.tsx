@@ -2,7 +2,8 @@
 
 import { useVizContext } from "@viz/app/components/VizContext";
 import { cn } from "@viz/lib/utils";
-import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
+import { ArrowLeftIcon } from "@viz/components/dust/slideshow/v2/icons/ArrowLeftIcon";
+import { ArrowRightIcon } from "@viz/components/dust/slideshow/v2/icons/ArrowRightIcon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface SlideProps {
@@ -46,7 +47,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
     }
     setIsVisible(true);
     hideTimeoutRef.current = setTimeout(() => {
-      setIsVisible(false);
+      setIsVisible(true);
     }, NAVIGATION_HIDE_DELAY_MS);
   }, []);
 
@@ -92,29 +93,33 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
     >
       <div
         className={cn(
-          "w-44 inline-flex justify-between items-center overflow-hidden rounded-2xl shadow-lg bg-card",
-          "py-1.5 px-3 outline outline-1 outline-gray-100 border border-border"
+          "box-content w-36 h-7 inline-flex justify-between items-center overflow-hidden rounded-2xl bg-card",
+          "p-1.5 border border-border-bottom border-gray-100"
         )}
+        style={{
+          boxShadow:
+            "0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 1px -1px rgba(0, 0, 0, 0.1)",
+        }}
       >
         <button
           onClick={onPrev}
           disabled={activeIndex === 0}
-          className="disabled:opacity-40"
-          title="Previous (\u2190)"
+          className="disabled:opacity-40 px-2"
+          title="Previous"
           aria-label="Previous slide"
         >
           <ArrowLeftIcon className="h-5 w-5" />
         </button>
 
-        <span className="text-center justify-center text-lg font-medium">
+        <span className="text-center justify-center copy-lg">
           {activeIndex + 1} of {total}
         </span>
 
         <button
           onClick={onNext}
           disabled={activeIndex === total - 1}
-          className="disabled:opacity-40"
-          title="Next (\u2192)"
+          className="disabled:opacity-40 px-2"
+          title="Next"
           aria-label="Next slide"
         >
           <ArrowRightIcon className="h-5 w-5" />

@@ -1,0 +1,17 @@
+export function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="1em"
+      height="1em"
+      fill="none"
+      viewBox="0 0 24 24"
+      className={className}
+    >
+      <path
+        fill="currentColor"
+        d="m15.5 10.5-5-5 2-2L21 12l-8.5 8.5-2-2 5-5H3v-3z"
+      />
+    </svg>
+  );
+}
