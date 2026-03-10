@@ -252,7 +252,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   discover_skills: {
-    description: "Enable default skills discovery on global agents",
+    description: "Enable default skills discovery on global agents (do not enable for customers)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

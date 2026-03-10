@@ -27,7 +27,10 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import type { GlobalSkillDefinition, GlobalSkillId } from "@app/lib/resources/skill/global/registry";
+import type {
+  GlobalSkillDefinition,
+  GlobalSkillId,
+} from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
