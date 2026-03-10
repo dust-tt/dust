@@ -289,7 +289,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
       if ((url as string).endsWith("/csv")) {
         expect(req.bucket_csv_path).toBe(
-          `files/w/${workspace.sId}/${file.sId}/processed`
+          `files/w/${workspace.sId}/${file.sId}/original`
         );
         expect(req.truncate).toBe(true);
         return Promise.resolve(
@@ -309,7 +309,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
       if ((url as string).endsWith("/validate_csv_content")) {
         expect(req.bucket_csv_path).toBe(
-          `files/w/${workspace.sId}/${file.sId}/processed`
+          `files/w/${workspace.sId}/${file.sId}/original`
         );
         return Promise.resolve(
           new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
