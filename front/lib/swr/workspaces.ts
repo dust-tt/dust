@@ -742,8 +742,10 @@ export function useJoinData({
 
   return {
     joinData: data ?? null,
+    joinDataError: error ?? null,
     isJoinDataLoading:
       (!error && !data) || !!isRegionRedirectResponse || !!redirectUrl,
+    mutateJoinData: mutate,
     redirectUrl,
   };
 }
