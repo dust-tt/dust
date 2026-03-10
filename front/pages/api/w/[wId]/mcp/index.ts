@@ -80,6 +80,7 @@ const PostQueryParamsSchema = t.union([
       t.array(t.type({ key: t.string, value: t.string })),
       t.undefined,
     ]),
+    viewName: t.union([t.string, t.undefined]),
   }),
 ]);
 
@@ -335,7 +336,7 @@ async function handler(
           });
         }
         case "internal": {
-          const { name } = body;
+          const { name, viewName } = body;
 
           if (!isInternalMCPServerName(name)) {
             return apiError(req, res, {
@@ -345,6 +346,19 @@ async function handler(
                 message: "Invalid internal MCP server name",
               },
             });
+          }
+
+          if (viewName !== undefined) {
+            const trimmed = viewName.trim();
+            if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: "viewName must be a non-empty string.",
+                },
+              });
+            }
           }
 
           if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
@@ -371,6 +385,10 @@ async function handler(
             }
           }
 
+          // Use viewName for the conflict check when provided (multi-instance),
+          // otherwise fall back to the internal server name.
+          const nameForConflictCheck = viewName ?? name;
+
           // Check for name conflicts before creating the server.
           if (body.includeGlobal) {
             const globalSpace =
@@ -379,7 +397,7 @@ async function handler(
             const { hasConflict } =
               await MCPServerViewResource.hasNameConflictInSpaceByName(
                 auth,
-                name,
+                nameForConflictCheck,
                 globalSpace
               );
 
@@ -388,7 +406,7 @@ async function handler(
                 status_code: 400,
                 api_error: {
                   type: "invalid_request_error",
-                  message: `An existing Tool is already using the name "${name}"`,
+                  message: `An existing Tool is already using the name "${nameForConflictCheck}"`,
                 },
               });
             }
@@ -398,6 +416,7 @@ async function handler(
             await InternalMCPServerInMemoryResource.makeNew(auth, {
               name,
               useCase: body.useCase ?? null,
+              viewName,
             });
 
           if (body.connectionId) {

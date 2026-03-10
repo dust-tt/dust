@@ -136,10 +136,26 @@ export const AdminActionsList = ({
     setIsCreateOpen(true);
   };
 
+  const existingViewNames = useMemo(
+    () =>
+      mcpServers.flatMap((s) =>
+        (s.views ?? []).map((v) => v.name ?? v.server.name)
+      ),
+    [mcpServers]
+  );
+
   const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
+    // Open the dialog when OAuth/bearer token is required, OR when a
+    // multi-instance server already has an instance with the same name
+    // (so the user can pick a custom name).
+    const hasNameConflict =
+      mcpServer.allowMultipleInstances &&
+      existingViewNames.includes(mcpServer.name);
+
     if (
       mcpServer.authorization ??
-      requiresBearerTokenConfiguration(mcpServer)
+      requiresBearerTokenConfiguration(mcpServer) ??
+      hasNameConflict
     ) {
       setInternalMCPServerToCreate(mcpServer);
       setDefaultServerConfig(undefined);
@@ -372,6 +388,7 @@ export const AdminActionsList = ({
         owner={owner}
         setMCPServerToShow={setMcpServerToShow}
         defaultServerConfig={defaultServerConfig}
+        existingViewNames={existingViewNames}
       />
       {rows.length > 0 &&
         portalToHeader(

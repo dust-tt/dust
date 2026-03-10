@@ -334,6 +334,11 @@ export function CapabilitiesPicker({
     }
   }, [serverViews, pendingServerToAdd, onSelect]);
 
+  const existingViewNames = useMemo(
+    () => serverViews.map((v) => v.name ?? v.server.name),
+    [serverViews]
+  );
+
   const filteredServerViewsUnselected = useMemo(() => {
     return serverViews
       .filter(
@@ -609,6 +614,7 @@ export function CapabilitiesPicker({
           owner={owner}
           internalMCPServer={setupSheetServer ?? undefined}
           defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}
+          existingViewNames={existingViewNames}
           setMCPServerToShow={async (createdServer) => {
             const updatedData = await mutateServerViews();
 

@@ -41,10 +41,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+
+/**
+ * Generate a unique view name for a multi-instance MCP server by trying
+ * incrementing suffixes until one is not already taken.
+ */
+export function generateUniqueViewName(
+  baseName: string,
+  existingViewNames: string[]
+): string {
+  const existingSet = new Set(existingViewNames);
+  let index = 2;
+  let candidate = `${baseName}_${index}`;
+  while (existingSet.has(candidate)) {
+    index += 1;
+    candidate = `${baseName}_${index}`;
+  }
+  return candidate;
+}
 
 function getSubmitButtonLabel(
   isLoading: boolean,
@@ -72,6 +91,7 @@ interface CreateMCPServerDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
+  existingViewNames?: string[];
 }
 
 export function CreateMCPServerDialog({
@@ -82,13 +102,33 @@ export function CreateMCPServerDialog({
   isOpen = false,
   setIsOpen,
   defaultServerConfig,
+  existingViewNames = [],
 }: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
   const regionContext = useRegionContext();
 
+  // Determine if this is a multi-instance server that already has an existing instance.
+  const needsCustomName = useMemo(
+    () =>
+      !!internalMCPServer?.allowMultipleInstances &&
+      existingViewNames.includes(internalMCPServer.name),
+    [internalMCPServer, existingViewNames]
+  );
+
+  const suggestedViewName = useMemo(
+    () =>
+      needsCustomName && internalMCPServer
+        ? generateUniqueViewName(internalMCPServer.name, existingViewNames)
+        : undefined,
+    [needsCustomName, internalMCPServer, existingViewNames]
+  );
+
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
-    return getCreateMCPServerDialogDefaultValues(defaultServerConfig);
-  }, [defaultServerConfig]);
+    return {
+      ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
+      viewName: suggestedViewName,
+    };
+  }, [defaultServerConfig, suggestedViewName]);
 
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
@@ -106,6 +146,26 @@ export function CreateMCPServerDialog({
     control: form.control,
     name: "authCredentials",
   });
+
+  const viewName = useWatch({
+    control: form.control,
+    name: "viewName",
+  });
+
+  // Client-side validation for the view name field.
+  const viewNameError = useMemo(() => {
+    if (!needsCustomName) {
+      return null;
+    }
+    const trimmed = (viewName ?? "").trim();
+    if (trimmed.length === 0) {
+      return "Name is required.";
+    }
+    if (existingViewNames.includes(trimmed)) {
+      return "This name is already in use.";
+    }
+    return null;
+  }, [needsCustomName, viewName, existingViewNames]);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -154,7 +214,7 @@ export function CreateMCPServerDialog({
 
   const handleSave = async (values: CreateMCPServerDialogFormValues) => {
     // Guard: handleSubmit only checks Zod schema errors, not manual setError errors.
-    if (credentialError) {
+    if (credentialError || viewNameError) {
       return;
     }
 
@@ -270,7 +330,7 @@ export function CreateMCPServerDialog({
   );
 
   const handleCreateServerAndSubmitStaticCredentials = async () => {
-    if (!internalMCPServer || !authorization || !useCase) {
+    if (!internalMCPServer || !authorization || !useCase || viewNameError) {
       return;
     }
 
@@ -283,6 +343,7 @@ export function CreateMCPServerDialog({
         name: internalMCPServer.name,
         useCase,
         includeGlobal: true,
+        viewName: form.getValues("viewName"),
       });
 
       if (createRes.isErr()) {
@@ -332,7 +393,7 @@ export function CreateMCPServerDialog({
   const isOAuthValid = authorization
     ? !!useCase && (hasStaticForm ? isStaticFormValid : !credentialError)
     : true;
-  const isSubmitDisabled = !isOAuthValid || isLoading;
+  const isSubmitDisabled = !isOAuthValid || isLoading || !!viewNameError;
 
   return (
     <Dialog
@@ -351,6 +412,24 @@ export function CreateMCPServerDialog({
           </DialogHeader>
           <DialogContainer className="max-h-[80vh]">
             <div className="space-y-4">
+              {needsCustomName && (
+                <div className="space-y-4">
+                  <div className="heading-lg text-foreground dark:text-foreground-night">
+                    Tool name
+                  </div>
+                  <Input
+                    placeholder="Enter a name for this instance"
+                    {...form.register("viewName")}
+                    isError={!!viewNameError}
+                    message={
+                      viewNameError ??
+                      `${toolName} is already installed. This name tells them apart.`
+                    }
+                    messageStatus={viewNameError ? "error" : "info"}
+                  />
+                </div>
+              )}
+
               {!internalMCPServer &&
                 (!authorization || authorization.provider === "mcp_static") && (
                   <RemoteMCPServerConfigurationSection
