@@ -1,8 +1,8 @@
-import { parseGitHubRepoUrl } from "@app/lib/api/skills/github_detection/parsing";
 import {
   type DetectedSkillStatus,
   isImportableSkillStatus,
-} from "@app/lib/skill";
+  parseGitHubRepoUrl,
+} from "@app/lib/skill_detection";
 import {
   useDetectSkillsFromRepo,
   useImportSkills,
