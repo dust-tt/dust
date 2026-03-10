@@ -3,8 +3,9 @@
 
 import config from "@app/lib/api/config";
 import {
+  disambiguateFileName,
+  getConversationFilePath,
   makeProcessedMountFileName,
-  maybeResolveMountPath,
 } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -33,7 +34,11 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
-import { ALL_FILE_FORMATS, isInteractiveContentType } from "@app/types/files";
+import {
+  ALL_FILE_FORMATS,
+  isConversationFileUseCase,
+  isInteractiveContentType,
+} from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -428,7 +433,7 @@ export class FileResource extends BaseResource<FileModel> {
       });
     }
 
-    await maybeResolveMountPath(auth, this);
+    await this.maybeResolveMountPath(auth);
 
     return updateResult;
   }
@@ -763,8 +768,77 @@ export class FileResource extends BaseResource<FileModel> {
 
   async setUseCaseMetadata(auth: Authenticator, metadata: FileUseCaseMetadata) {
     const result = await this.update({ useCaseMetadata: metadata });
-    await maybeResolveMountPath(auth, this);
+    await this.maybeResolveMountPath(auth);
     return result;
+  }
+
+  // Mount file path logic.
+  //
+  // Files used in conversations are copied to a gcsfuse-mountable GCS path so sandboxes can access
+  // them as a flat, human-readable filesystem:
+  //   w/{wId}/conversations/{cId}/files/{fileName}
+  //
+  // The canonical path (files/w/{wId}/{fileId}/{version}) remains the immutable original. The mount
+  // path is the mutable "live" version. Initial copy from canonical, then frame edits write
+  // directly here (see uploadContent dual write).
+  //
+  // Resolution is triggered automatically by markAsReady() and setUseCaseMetadata(). Callers never
+  // interact with mount paths directly.
+
+  /**
+   * Single entry point for mount path resolution.
+   *
+   * Examines the file's use case and metadata to determine whether a mount path should be created.
+   * Branches internally by use case:
+   * - conversation / tool_output: mounts under w/{wId}/conversations/{cId}/files/
+   * - (future use cases can be added here)
+   *
+   * No-ops if the file already has a mountFilePath or conditions aren't met.
+   */
+  private async maybeResolveMountPath(auth: Authenticator): Promise<void> {
+    if (this.mountFilePath) {
+      return;
+    }
+
+    const { useCase, useCaseMetadata } = this;
+
+    if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
+      await this.resolveConversationMountPath(auth, {
+        conversationId: useCaseMetadata.conversationId,
+      });
+      return;
+    }
+
+    // TODO(2026-03-09 SANDBOX): Add support for project context.
+  }
+
+  /**
+   * Resolve the mount path for a conversation file. Checks for collisions via the unique index on
+   * mountFilePath and disambiguates with the file's sId if needed.
+   */
+  private async resolveConversationMountPath(
+    auth: Authenticator,
+    { conversationId }: { conversationId: string }
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const desiredPath = getConversationFilePath({
+      workspaceId: owner.sId,
+      conversationId,
+      fileName: this.fileName,
+    });
+
+    const isTaken = await this.isMountFilePathTaken(desiredPath);
+
+    const mountFilePath = isTaken
+      ? getConversationFilePath({
+          workspaceId: owner.sId,
+          conversationId,
+          fileName: disambiguateFileName(this.fileName, this.sId),
+        })
+      : desiredPath;
+
+    await this.setMountFilePath(auth, mountFilePath);
   }
 
   /**
@@ -774,7 +848,7 @@ export class FileResource extends BaseResource<FileModel> {
    * This is a one-time operation: copies from the canonical path to the mount path. Subsequent
    * edits (frames) write directly to the mount path.
    */
-  async setMountFilePath(
+  private async setMountFilePath(
     auth: Authenticator,
     mountFilePath: string
   ): Promise<void> {
@@ -795,9 +869,14 @@ export class FileResource extends BaseResource<FileModel> {
     await this.update({ mountFilePath });
   }
 
-  /**
-   * Delete the file's copies from the mount path (if set).
-   */
+  private async isMountFilePathTaken(mountFilePath: string): Promise<boolean> {
+    const existing = await FileResource.model.findOne({
+      attributes: ["id"],
+      where: { workspaceId: this.workspaceId, mountFilePath },
+    });
+    return existing !== null;
+  }
+
   private async deleteMountFileCopies(): Promise<void> {
     if (!this.mountFilePath) {
       return;
