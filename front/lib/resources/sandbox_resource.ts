@@ -504,6 +504,28 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
   }
 
+  /**
+   * Write a file to the sandbox filesystem.
+   */
+  async writeFile(path: string, content: Buffer): Promise<Result<void, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    const result = await provider.writeFile(this.providerId, path, content);
+
+    if (result.isErr() && result.error instanceof SandboxNotFoundError) {
+      logger.error(
+        { sandbox: this.toLogJSON() },
+        "Sandbox not found at provider during writeFile — marking as deleted"
+      );
+      await this.updateStatus("deleted");
+    }
+
+    return result;
+  }
+
   toLogJSON() {
     return {
       id: this.sId,

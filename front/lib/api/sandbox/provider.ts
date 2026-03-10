@@ -108,7 +108,11 @@ export interface SandboxProvider {
     opts?: ExecOptions
   ): Promise<Result<ExecResult, Error>>;
 
-  writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
+  writeFile(
+    providerId: string,
+    path: string,
+    content: Buffer
+  ): Promise<Result<void, Error>>;
 
   readFile(providerId: string, path: string): Promise<Buffer>;
 

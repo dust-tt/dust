@@ -12,7 +12,7 @@ import type {
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types/shared/result";
+import type { Result, Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -223,11 +223,26 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async writeFile(
-    _providerId: string,
-    _path: string,
-    _content: Buffer
-  ): Promise<void> {
-    throw new Error("writeFile is not implemented yet.");
+    providerId: string,
+    path: string,
+    content: Buffer
+  ): Promise<Result<void, Error>> {
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
+      return new Err(normalizeError(err));
+    }
+
+    await sandbox.files.write(path, new Blob([content]));
+
+    return new Ok(undefined);
   }
 
   async readFile(_providerId: string, _path: string): Promise<Buffer> {
