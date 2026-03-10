@@ -1,3 +1,33 @@
+import type { Element } from "hast";
+
+export type MarkdownNode = Element;
+
+export function sameNodePosition(
+  prev?: MarkdownNode,
+  next?: MarkdownNode
+): boolean {
+  // Neither has position — nothing to compare, treat as equal.
+  if (!(prev?.position || next?.position)) {
+    return true;
+  }
+  // Only one has position — they differ.
+  if (!(prev?.position && next?.position)) {
+    return false;
+  }
+
+  const prevStart = prev.position.start;
+  const nextStart = next.position.start;
+  const prevEnd = prev.position.end;
+  const nextEnd = next.position.end;
+
+  return (
+    prevStart?.line === nextStart?.line &&
+    prevStart?.column === nextStart?.column &&
+    prevEnd?.line === nextEnd?.line &&
+    prevEnd?.column === nextEnd?.column
+  );
+}
+
 export function sanitizeContent(str: string): string {
   // (1) Add closing backticks if they are missing such that we render a code block or inline
   // element during streaming.
