@@ -344,14 +344,11 @@ class ZendeskClient {
     return new Ok(result.value.tags);
   }
 
-  async downloadAttachment(
-    contentUrl: string
-  ): Promise<Result<Buffer, Error>> {
+  async downloadAttachment(contentUrl: string): Promise<Result<Buffer, Error>> {
     const url = new URL(contentUrl);
     // Only send Zendesk credentials to our own subdomain to avoid leaking
     // the token to external hosts.
-    const isOwnZendeskUrl =
-      url.hostname === `${this.subdomain}.zendesk.com`;
+    const isOwnZendeskUrl = url.hostname === `${this.subdomain}.zendesk.com`;
 
     const headers: Record<string, string> = {};
     if (isOwnZendeskUrl) {
