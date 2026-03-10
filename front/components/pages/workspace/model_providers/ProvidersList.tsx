@@ -4,11 +4,12 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { isModelCustomAvailable } from "@app/lib/assistant";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
+import type { PlanType } from "@app/types/plan";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import { ContextItem } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
@@ -20,15 +21,16 @@ interface ProviderContextItemProps {
   providersSelection: ProvidersSelection;
   setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
   isWorkspaceValidating: boolean;
+  plan: PlanType;
 }
 
 export function ProvidersList({
   providersSelection,
   setProvidersSelection,
   isWorkspaceValidating,
+  plan,
 }: ProviderContextItemProps) {
   const { featureFlags } = useFeatureFlags();
-  const { subscription } = useAuth();
 
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(
@@ -36,8 +38,7 @@ export function ProvidersList({
     (m) => m.modelId
   ).filter(
     (model) =>
-      !model.isLegacy &&
-      isModelCustomAvailable(model, featureFlags, subscription.plan)
+      !model.isLegacy && isModelCustomAvailable(model, featureFlags, plan)
   );
 
   const modelsDescriptionByProvider: Partial<

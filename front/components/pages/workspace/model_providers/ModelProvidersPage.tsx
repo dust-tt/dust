@@ -1,6 +1,4 @@
-import { AllProvidersToggle } from "@app/components/pages/workspace/model_providers/AllProvidersToggle";
-import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_providers/EmbeddingModelSelect";
-import { ProvidersList } from "@app/components/pages/workspace/model_providers/ProvidersList";
+import { ModelProvidersPageContent } from "@app/components/pages/workspace/model_providers/ModelProvidersPageContent";
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
@@ -21,21 +19,15 @@ export function ModelProvidersPage() {
         description="Configure model providers."
       />
       <Page.Vertical align="stretch" gap="md">
-        {isWorkspaceLoading ? (
+        {isWorkspaceLoading || !workspace ? (
           <></>
         ) : (
-          <div className="flex flex-col gap-8">
-            <AllProvidersToggle
-              providersSelection={providersSelection}
-              setProvidersSelection={setProvidersSelection}
-            />
-            <ProvidersList
-              providersSelection={providersSelection}
-              setProvidersSelection={setProvidersSelection}
-              isWorkspaceValidating={isWorkspaceValidating}
-            />
-            <EmbeddingModelSelect workspace={workspace} />
-          </div>
+          <ModelProvidersPageContent
+            workspace={workspace}
+            setProvidersSelection={setProvidersSelection}
+            providersSelection={providersSelection}
+            isWorkspaceValidating={isWorkspaceValidating}
+          />
         )}
       </Page.Vertical>
     </Page.Vertical>
