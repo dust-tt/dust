@@ -13,8 +13,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const FIELD_NAME = "agentFacingDescription";
@@ -45,6 +44,8 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         return;
       }
 
+      setIsLoading(true);
+
       const result = await getSimilarSkills(description, {
         excludeSkillId: skillId,
         signal,
@@ -53,12 +54,10 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       if (!signal.aborted) {
         setIsLoading(false);
         if (result.isOk()) {
-          const similarSkillIds = result.value;
-          const similarSkillIdsSet = new Set(similarSkillIds);
-          const matchedSkills = skills.filter((skill) =>
-            similarSkillIdsSet.has(skill.sId)
+          const similarSkillIds = new Set(result.value);
+          setSimilarSkills(
+            skills.filter((skill) => similarSkillIds.has(skill.sId))
           );
-          setSimilarSkills(matchedSkills);
         }
       }
     },
@@ -69,26 +68,15 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     delayMs: DEBOUNCE_DELAY_MS,
   });
 
-  const debouncedUpdate = useMemo(
-    () =>
-      debounce((editor: Editor) => {
-        if (!editor.isDestroyed) {
-          const text = editor.getText().trim();
-          setValue(FIELD_NAME, text, { shouldDirty: true });
-          setIsLoading(text.length >= MIN_DESCRIPTION_LENGTH);
-          triggerSimilarSkillsFetch(text);
-        }
-      }, DEBOUNCE_DELAY_MS),
-    [setValue, triggerSimilarSkillsFetch]
-  );
-
   const handleUpdate = useCallback(
     ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
-      if (transaction.docChanged) {
-        debouncedUpdate(editor);
+      if (transaction.docChanged && !editor.isDestroyed) {
+        const text = editor.getText().trim();
+        setValue(FIELD_NAME, text, { shouldDirty: true });
+        triggerSimilarSkillsFetch(text);
       }
     },
-    [debouncedUpdate]
+    [setValue, triggerSimilarSkillsFetch]
   );
 
   const handleBlur = useCallback(() => {
@@ -104,14 +92,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   });
 
   useEffect(() => {
-    return () => {
-      debouncedUpdate.cancel();
-    };
-  }, [debouncedUpdate]);
-
-  const displayError = !!descriptionFieldState.error;
-
-  useEffect(() => {
     if (!editor) {
       return;
     }
@@ -120,13 +100,13 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       editorProps: {
         attributes: {
           class: cn(
-            editorVariants({ error: displayError }),
+            editorVariants({ error: !!descriptionFieldState.error }),
             DESCRIPTION_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, displayError]);
+  }, [editor, descriptionFieldState.error]);
 
   // Sync external changes to the editor content.
   useEffect(() => {
