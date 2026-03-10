@@ -43,6 +43,20 @@ interface SkillUsageChartPoint {
   values: Record<string, number>;
 }
 
+function isSkillUsageChartPoint(value: unknown): value is SkillUsageChartPoint {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "timestamp" in value &&
+    typeof value.timestamp === "number" &&
+    "date" in value &&
+    typeof value.date === "string" &&
+    "values" in value &&
+    typeof value.values === "object" &&
+    value.values !== null
+  );
+}
+
 function getSkillSelectorLabel(selectedSkills: string[]): string {
   if (selectedSkills.length === 0) {
     return "Select skills";
@@ -73,7 +87,11 @@ function SkillUsageTooltip({
     return null;
   }
 
-  const point = first.payload as SkillUsageChartPoint;
+  if (!isSkillUsageChartPoint(first.payload)) {
+    return null;
+  }
+
+  const point = first.payload;
   const title = point.date ?? formatShortDate(point.timestamp);
   const label = displayMode === "users" ? "users" : "executions";
 
