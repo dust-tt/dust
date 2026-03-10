@@ -17,7 +17,7 @@ import AdmZip from "adm-zip";
 
 const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
 // Total uncompressed size limit (prevents issues with small zip but
-// super large incompressed data).
+// super large uncompressed data).
 const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
