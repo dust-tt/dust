@@ -5,6 +5,8 @@ import {
   getConversationFilesBasePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("mount_path helpers", () => {
@@ -66,22 +68,48 @@ describe("mount_path helpers", () => {
   });
 
   describe("disambiguateFileName", () => {
-    it("should insert sId before extension", () => {
-      expect(disambiguateFileName("report.pdf", "fil_abc")).toBe(
-        "report_fil_abc.pdf"
+    it("should insert sId before extension", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await FileFactory.create(auth, null, {
+        contentType: "application/pdf",
+        fileName: "report.pdf",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1234" },
+      });
+
+      expect(disambiguateFileName(file)).toBe(
+        `report_${file.sId}.pdf`
       );
     });
 
-    it("should append sId for files without extension", () => {
-      expect(disambiguateFileName("Makefile", "fil_abc")).toBe(
-        "Makefile_fil_abc"
-      );
+    it("should append sId for files without extension", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "Makefile",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1234" },
+      });
+
+      expect(disambiguateFileName(file)).toBe(`Makefile_${file.sId}`);
     });
 
-    it("should handle dotfiles (leading dot) as no extension", () => {
-      expect(disambiguateFileName(".gitignore", "fil_abc")).toBe(
-        ".gitignore_fil_abc"
-      );
+    it("should handle dotfiles (leading dot) as no extension", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: ".gitignore",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1234" },
+      });
+
+      expect(disambiguateFileName(file)).toBe(`.gitignore_${file.sId}`);
     });
   });
 });

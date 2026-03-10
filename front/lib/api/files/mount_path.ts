@@ -1,5 +1,7 @@
 // Pure path helpers for conversation file mount paths (gcsfuse sandbox mounting).
 
+import type { FileResource } from "@app/lib/resources/file_resource";
+
 export function getBaseMountPathForWorkspace({
   workspaceId,
 }: {
@@ -55,7 +57,9 @@ export function makeProcessedMountFileName(mountFilePath: string): string {
  * "report.pdf" + "fil_abc" → "report_fil_abc.pdf"
  * "Makefile" + "fil_abc" → "Makefile_fil_abc"
  */
-export function disambiguateFileName(fileName: string, sId: string): string {
+export function disambiguateFileName(file: FileResource): string {
+  const { fileName, sId } = file;
+
   const lastDot = fileName.lastIndexOf(".");
   if (lastDot <= 0) {
     return `${fileName}_${sId}`;

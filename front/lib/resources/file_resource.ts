@@ -839,7 +839,7 @@ export class FileResource extends BaseResource<FileModel> {
       ? getConversationFilePath({
           workspaceId: owner.sId,
           conversationId,
-          fileName: disambiguateFileName(this.fileName, this.sId),
+          fileName: disambiguateFileName(this),
         })
       : desiredPath;
   }
