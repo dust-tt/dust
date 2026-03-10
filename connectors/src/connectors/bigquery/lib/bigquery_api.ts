@@ -11,6 +11,7 @@ import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
+import { ProjectsClient } from "@google-cloud/resource-manager";
 
 const MAX_TABLES_PER_SCHEMA = 1500;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
@@ -41,7 +42,7 @@ export const testConnection = async ({
   credentials: BigQueryCredentialsWithLocation;
 }): Promise<Result<string, TestConnectionError>> => {
   // Connect to bigquery, do a simple query.
-  const bigQuery = connectToBigQuery(credentials);
+  const bigQuery = connectToBigQuery(credentials, credentials.project_id);
   try {
     await bigQuery.query("SELECT 1");
     return new Ok("Connection successful");
@@ -58,7 +59,8 @@ export const testConnection = async ({
 };
 
 export function connectToBigQuery(
-  credentials: BigQueryCredentialsWithLocation
+  credentials: BigQueryCredentialsWithLocation,
+  projectId: string
 ): BigQuery {
   return new BigQuery({
     credentials,
@@ -68,17 +70,58 @@ export function connectToBigQuery(
       autoRetry: true,
       maxRetries: 3,
     },
+    projectId,
   });
 }
 
-export const fetchDatabases = ({
+async function listAccessibleProjects(
+  credentials: BigQueryCredentialsWithLocation
+) {
+  const client = new ProjectsClient({
+    credentials: {
+      client_email: credentials.client_email,
+      private_key: credentials.private_key,
+    },
+  });
+
+  const projects = [];
+  const iterable = client.searchProjectsAsync({ query: "" });
+
+  for await (const project of iterable) {
+    projects.push(project);
+  }
+
+  return projects;
+}
+
+export const fetchDatabases = async ({
   credentials,
+  logger,
 }: {
   credentials: BigQueryCredentialsWithLocation;
-}): RemoteDBDatabase[] => {
+  logger?: Logger;
+}): Promise<Array<RemoteDBDatabase>> => {
   // BigQuery do not have a concept of databases per say, the most similar concept is a project.
-  // Since credentials are always scoped to a project, we directly return a single database with the project name.
-  return [{ name: credentials.project_id }];
+
+  // A service account can have access to multiple projects.
+  // We start by the project the credentials are scoped to.
+  let projectIds: string[] = [credentials.project_id];
+  try {
+    const projects = await listAccessibleProjects(credentials);
+    // And then we add the other projects the service account has access to.
+    projectIds = [
+      ...projectIds,
+      ...projects
+        .filter((project) => project.projectId && project.state === "ACTIVE")
+        .map((project) => project.projectId!),
+    ];
+  } catch (error) {
+    logger?.error(error, "Error listing accessible projects");
+  }
+
+  return Array.from(new Set(projectIds)).map((projectId) => ({
+    name: projectId,
+  }));
 };
 
 /**
@@ -88,14 +131,16 @@ export const fetchDatabases = ({
  */
 export const fetchDatasets = async ({
   credentials,
+  database,
   connection,
   logger,
 }: {
   credentials: BigQueryCredentialsWithLocation;
+  database: RemoteDBDatabase;
   connection?: BigQuery;
   logger?: Logger;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const conn = connection ?? connectToBigQuery(credentials);
+  const conn = connection ?? connectToBigQuery(credentials, database.name);
   try {
     const r = await conn.getDatasets();
     const datasets = r[0];
@@ -123,7 +168,7 @@ export const fetchDatasets = async ({
           }
           return {
             name: dataset.id,
-            database_name: credentials.project_id,
+            database_name: database.name,
           };
         })
       )
@@ -144,12 +189,13 @@ export const fetchTables = async ({
   logger,
 }: {
   credentials: BigQueryCredentialsWithLocation;
-  dataset: string;
+  dataset: RemoteDBSchema;
   fetchTablesDescription: boolean;
   connection?: BigQuery;
   logger?: Logger;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
-  const conn = connection ?? connectToBigQuery(credentials);
+  const conn =
+    connection ?? connectToBigQuery(credentials, dataset.database_name);
   try {
     // Can't happen, to please TS.
     if (!dataset) {
@@ -157,7 +203,7 @@ export const fetchTables = async ({
     }
 
     // Get the dataset specified by the schema
-    const d = conn.dataset(dataset);
+    const d = conn.dataset(dataset.name);
     const r = await d.getTables();
     const tables = r[0];
     logger?.info(
@@ -187,8 +233,8 @@ export const fetchTables = async ({
               );
               return {
                 name: table.id!,
-                database_name: credentials.project_id,
-                schema_name: dataset,
+                database_name: dataset.database_name,
+                schema_name: dataset.name,
                 description: metadata[0].description,
               };
             } catch (error) {
@@ -203,7 +249,7 @@ export const fetchTables = async ({
                     : "Permission denied";
                 logger?.warn(
                   {
-                    projectId: credentials.project_id,
+                    projectId: dataset.database_name,
                     dataset,
                     table: table.id,
                     error: errorMessage,
@@ -219,8 +265,8 @@ export const fetchTables = async ({
           } else {
             return {
               name: table.id!,
-              database_name: credentials.project_id,
-              schema_name: dataset,
+              database_name: dataset.database_name,
+              schema_name: dataset.name,
             };
           }
         },
@@ -245,26 +291,29 @@ export const fetchTree = async ({
   fetchTablesDescription: boolean;
   logger: Logger;
 }): Promise<Result<RemoteDBTree, Error>> => {
-  const databases = fetchDatabases({ credentials });
-
-  const schemasRes = await fetchDatasets({ credentials, logger });
-  if (schemasRes.isErr()) {
-    return schemasRes;
-  }
-  const schemas = schemasRes.value;
+  const databases = await fetchDatabases({ credentials });
 
   const tree = {
     databases: await concurrentExecutor(
       databases,
       async (db) => {
+        const schemasRes = await fetchDatasets({
+          credentials,
+          database: db,
+          logger,
+        });
+        if (schemasRes.isErr()) {
+          throw schemasRes.error;
+        }
+        const schemas = schemasRes.value;
         return {
           ...db,
           schemas: await concurrentExecutor(
-            schemas.filter((s) => s.database_name === db.name),
+            schemas,
             async (schema) => {
               const tablesRes = await fetchTables({
                 credentials,
-                dataset: schema.name,
+                dataset: schema,
                 fetchTablesDescription,
                 logger,
               });
@@ -282,7 +331,7 @@ export const fetchTree = async ({
                   name:
                     schema.name +
                     ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
-                  database_name: credentials.project_id,
+                  database_name: db.name,
                   tables: [],
                 };
               }
@@ -296,8 +345,7 @@ export const fetchTree = async ({
           ),
         };
       },
-      // There's only one database in BigQuery, so we can use concurrency 1.
-      { concurrency: 1 }
+      { concurrency: 2 }
     ),
   };
 

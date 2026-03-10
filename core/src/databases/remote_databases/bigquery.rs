@@ -88,7 +88,10 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
                     })
                     .collect(),
             )),
-            None => Err(anyhow!("No fields found in schema"))?,
+            None => {
+                info!("No fields found in schema for table");
+                Ok(TableSchema::empty())
+            }
         }
     }
 }
@@ -482,16 +485,17 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
                 if parts.len() != 3 {
                     Err(anyhow!("Invalid opaque ID: {}", opaque_id))?
                 }
-                let (dataset_id, table_id) = (
+                let (project_id, dataset_id, table_id) = (
+                    parts[0].replace("__DUST_DOT__", "."),
                     parts[1].replace("__DUST_DOT__", "."),
                     parts[2].replace("__DUST_DOT__", "."),
                 );
 
                 self.client
                     .table()
-                    .get(&self.project_id, &dataset_id, &table_id, None)
+                    .get(&project_id, &dataset_id, &table_id, None)
                     .await
-                    .map_err(|e| anyhow!("Error getting table metadata: {}", e))
+                    .map_err(|e| anyhow!("Error getting table metadata of {}: {}", opaque_id, e))
             }))
             .await?;
 
