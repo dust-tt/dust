@@ -104,7 +104,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
         <button
           onClick={onPrev}
           disabled={activeIndex === 0}
-          className="disabled:opacity-40 px-2 transition-opacity duration-100"
+          className="disabled:opacity-40 px-2 transition-opacity"
           title="Previous"
           aria-label="Previous slide"
         >
@@ -118,7 +118,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
         <button
           onClick={onNext}
           disabled={activeIndex === total - 1}
-          className="disabled:opacity-40 px-2 transition-opacity duration-100"
+          className="disabled:opacity-40 px-2 transition-opacity"
           title="Next"
           aria-label="Next slide"
         >
