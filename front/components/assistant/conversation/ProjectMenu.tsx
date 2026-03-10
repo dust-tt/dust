@@ -275,7 +275,7 @@ export function ProjectMenu({
           )}
           {shareLink && (
             <DropdownMenuItem
-              label="Copy the link"
+              label="Copy link"
               onClick={copyProjectLink}
               icon={LinkIcon}
             />

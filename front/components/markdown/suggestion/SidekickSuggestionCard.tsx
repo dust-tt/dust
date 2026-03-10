@@ -218,12 +218,12 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
   const labels = isAddition
     ? {
         title: `Add ${displayName} tool`,
-        applyLabel: "Add",
+        applyLabel: "Accept",
         acceptedTitle: `${displayName} tool added`,
       }
     : {
         title: `Remove ${displayName} tool`,
-        applyLabel: "Remove",
+        applyLabel: "Accept",
         acceptedTitle: `${displayName} tool removed`,
       };
 
@@ -310,12 +310,12 @@ function SubAgentSuggestionCard({
   const labels = isAddition
     ? {
         title: `Add ${displayName}`,
-        applyLabel: "Add",
+        applyLabel: "Accept",
         acceptedTitle: `${displayName} added`,
       }
     : {
         title: `Remove ${displayName}`,
-        applyLabel: "Remove",
+        applyLabel: "Accept",
         acceptedTitle: `${displayName} removed`,
       };
 
@@ -378,12 +378,12 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   const labels = isAddition
     ? {
         title: `Add ${skill.name} skill`,
-        applyLabel: "Add",
+        applyLabel: "Accept",
         acceptedTitle: `${skill.name} skill added`,
       }
     : {
         title: `Remove ${skill.name} skill`,
-        applyLabel: "Remove",
+        applyLabel: "Accept",
         acceptedTitle: `${skill.name} skill removed`,
       };
 
@@ -449,7 +449,7 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
       title={`Change model to: ${modelName}`}
       description={analysis ?? undefined}
       state={cardState}
-      applyLabel="Change"
+      applyLabel="Accept"
       acceptedTitle={`Model changed to ${modelName}`}
       rejectedTitle={`${modelName} model suggestion rejected`}
       actionsPosition="header"
@@ -528,12 +528,12 @@ function KnowledgeSuggestionCard({
   const labels = isAddition
     ? {
         title: `Add ${displayName} as knowledge source`,
-        applyLabel: "Add",
+        applyLabel: "Accept",
         acceptedTitle: `${displayName} knowledge added`,
       }
     : {
         title: `Remove ${displayName} knowledge source`,
-        applyLabel: "Remove",
+        applyLabel: "Accept",
         acceptedTitle: `${displayName} knowledge removed`,
       };
 

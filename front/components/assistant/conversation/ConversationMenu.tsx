@@ -1,6 +1,7 @@
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   useConversationParticipants,
   useConversationParticipationOptions,
@@ -48,7 +49,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -145,6 +146,7 @@ export function ConversationMenu({
 }: ConversationMenuProps) {
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
+  const confirm = useContext(ConfirmContext);
 
   const router = useAppRouter();
 
@@ -311,7 +313,7 @@ export function ConversationMenu({
         )}
         <DropdownMenuContent>
           <DropdownMenuItem
-            label="Rename"
+            label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
@@ -406,22 +408,30 @@ export function ConversationMenu({
           )}
           {conversationLink && (
             <DropdownMenuItem
-              label="Copy the link"
+              label="Copy link"
               onClick={copyConversationLink}
               icon={LinkIcon}
             />
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
-              label="Turn conversation into an agent"
+              label="Shrinkwrap"
               icon={SidekickIcon}
-              onClick={() => {
-                const route = getAgentBuilderRoute(
-                  owner.sId,
-                  "new",
-                  `conversationId=${conversation.sId}`
-                );
-                void router.push(route);
+              onClick={async () => {
+                const confirmed = await confirm({
+                  title: "Shrinkwrap",
+                  message:
+                    "This will open the agent builder and launch Sidekick on this conversation so you can turn it into an agent.",
+                  validateLabel: "Continue",
+                });
+                if (confirmed && conversation) {
+                  const route = getAgentBuilderRoute(
+                    owner.sId,
+                    "new",
+                    `conversationId=${conversation.sId}`
+                  );
+                  void router.push(route);
+                }
               }}
             />
           )}

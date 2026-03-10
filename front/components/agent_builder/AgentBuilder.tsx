@@ -436,7 +436,7 @@ export default function AgentBuilder({
         sendNotification({
           title: isCreatingNew ? "Agent created" : "Agent saved",
           description: isCreatingNew
-            ? "Your agent has been successfully created"
+            ? "Agent created!"
             : "Your agent has been successfully saved",
           type: "success",
         });
