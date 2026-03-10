@@ -96,7 +96,8 @@ export function detectSkillsFromZip({
     const sizeMb = Math.round(totalDecompressedSizeBytes / 1024 / 1024);
     return new Err({
       type: "invalid_zip",
-      message: `Total decompressed size too large (${sizeMb} MB). ` +
+      message:
+        `Total decompressed size too large (${sizeMb} MB). ` +
         `Maximum allowed is ${MAX_DECOMPRESSED_SIZE_BYTES / 1024 / 1024} MB.`,
     });
   }
