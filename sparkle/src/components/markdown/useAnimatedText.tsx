@@ -26,6 +26,13 @@ export function useAnimatedText(
 
   useEffect(() => {
     if (streamingStateRef.current !== "streaming") {
+      // When streaming ended before this effect ran (e.g. the last text chunk
+      // arrived at the same time as streamingState transitioned to "none"),
+      // ensure we show the full text instead of getting stuck on a truncated
+      // cursor position.
+      if (streamingStateRef.current === "none") {
+        setDisableAnimation(true);
+      }
       return;
     }
 
@@ -53,20 +60,14 @@ export function useAnimatedText(
 
     return () => {
       controlsRef.current?.stop();
-      controlsRef.current = null;
     };
   }, [startingCursor, text, delimiter, animationDurationSeconds]);
 
   useEffect(() => {
+    // stop animation if streaming is cancelled.
     if (streamingState === "cancelled") {
       controlsRef.current?.stop();
       controlsRef.current = null;
-    }
-    // When streaming ends and no animation is running (e.g. the last animation
-    // was stopped by cleanup before onComplete could fire), ensure we show the
-    // full text instead of getting stuck on a truncated cursor position.
-    if (streamingState === "none" && !controlsRef.current) {
-      setDisableAnimation(true);
     }
   }, [streamingState]);
 
