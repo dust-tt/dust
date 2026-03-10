@@ -197,7 +197,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
-  private readonly globalSId: GlobalSkillId | null;
+  private readonly globalSId: string | null;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
