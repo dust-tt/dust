@@ -98,7 +98,11 @@ export const CreateDropdown = ({
             <>
               <DropdownMenuLabel label="Skills" />
               <DropdownMenuItem
-                label="skill from scratch"
+                label={
+                  hasFeature("sandbox_tools")
+                    ? "skill from scratch"
+                    : "skill"
+                }
                 icon={PuzzleIcon}
                 onClick={withTracking(
                   TRACKING_AREAS.BUILDER,
@@ -109,11 +113,13 @@ export const CreateDropdown = ({
                   }
                 )}
               />
-              <DropdownMenuItem
-                label="skill from existing"
-                icon={FolderOpenIcon}
-                onClick={() => setIsImportSkillDialogOpen(true)}
-              />
+              {hasFeature("sandbox_tools") && (
+                <DropdownMenuItem
+                  label="skill from existing"
+                  icon={FolderOpenIcon}
+                  onClick={() => setIsImportSkillDialogOpen(true)}
+                />
+              )}
             </>
           )}
         </DropdownMenuContent>
