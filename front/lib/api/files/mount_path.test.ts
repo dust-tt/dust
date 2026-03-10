@@ -79,9 +79,7 @@ describe("mount_path helpers", () => {
         useCaseMetadata: { conversationId: "conv-1234" },
       });
 
-      expect(disambiguateFileName(file)).toBe(
-        `report_${file.sId}.pdf`
-      );
+      expect(disambiguateFileName(file)).toBe(`report_${file.sId}.pdf`);
     });
 
     it("should append sId for files without extension", async () => {
