@@ -99,9 +99,7 @@ export const CreateDropdown = ({
               <DropdownMenuLabel label="Skills" />
               <DropdownMenuItem
                 label={
-                  hasFeature("sandbox_tools")
-                    ? "skill from scratch"
-                    : "skill"
+                  hasFeature("sandbox_tools") ? "skill from scratch" : "skill"
                 }
                 icon={PuzzleIcon}
                 onClick={withTracking(

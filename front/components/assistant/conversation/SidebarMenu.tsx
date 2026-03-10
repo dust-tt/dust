@@ -5,7 +5,6 @@ import {
 import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
-import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
@@ -16,6 +15,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -63,7 +63,6 @@ import {
   cn,
   DocumentIcon,
   DropdownMenu,
-  FolderOpenIcon,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -73,6 +72,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FolderOpenIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -484,8 +484,7 @@ export function AgentSidebarMenu({
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
-  const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] =
-    useState(false);
+  const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
 
   const {
     projects: allProjects,

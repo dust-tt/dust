@@ -258,11 +258,7 @@ export function ManageSkillsPage() {
             {hasFeature("sandbox_tools") ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    label="Create skill"
-                    icon={PlusIcon}
-                    isSelect
-                  />
+                  <Button label="Create skill" icon={PlusIcon} isSelect />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
