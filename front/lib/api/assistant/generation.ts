@@ -271,7 +271,7 @@ function constructSkillsSection({
           `- **${name}**: ${agentFacingDescription}`
       )
       .join("\n");
-    skillsSection += skillList + "\n";
+    skillsSection += skillList + "\n\n";
   }
 
   return skillsSection;

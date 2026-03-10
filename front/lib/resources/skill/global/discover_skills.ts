@@ -13,8 +13,8 @@ export const discoverSkillsSkill = {
   agentFacingDescription:
     "List available workspace skills and enable them for the current conversation.",
   instructions:
-    "Workspace skills marked as available will appear alongside agent-configured skills. " +
-    "Enable them the same way you would any other available skill.",
+    "Some of the available skills listed below come from the workspace rather than " +
+    "this agent's configuration. They can be enabled exactly like any other available skill.",
   version: 1,
   icon: "PuzzleIcon",
   isAutoEnabled: true,
