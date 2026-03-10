@@ -24,7 +24,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types/user";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 
 interface MessageItemProps {
   data: VirtuosoMessage;
@@ -116,14 +116,23 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    // Cache the triggering user for agent messages to avoid scanning the full
+    // message list on every re-render during streaming (O(n) per render).
+    const cachedTriggeringUser = useRef<UserType | null>(null);
+
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
+        if (cachedTriggeringUser.current) {
+          return cachedTriggeringUser.current;
+        }
         const parentMessageId = data.parentMessageId;
         const messages = methods.data.get();
         const parentUserMessage = messages
           .filter(isUserMessage)
           .find((m) => m.sId === parentMessageId);
-        return parentUserMessage?.user ?? null;
+        const user = parentUserMessage?.user ?? null;
+        cachedTriggeringUser.current = user;
+        return user;
       } else {
         return data.user;
       }

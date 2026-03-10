@@ -184,6 +184,8 @@ function AgentActionsPanelContent({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track whether the user is currently scrolled to the bottom of the panel
   const shouldAutoScroll = useRef<boolean>(true);
+  const lastScrollTop = useRef<number>(0);
+  const scrollRafId = useRef<number>(0);
 
   /**
    * Preserve chain of thought content to prevent flickering during state transitions.
@@ -216,20 +218,26 @@ function AgentActionsPanelContent({
     }
 
     if (shouldAutoScroll.current) {
-      el.scrollTo({
-        top: el.scrollHeight,
-        behavior: "smooth",
+      // Cancel any pending scroll animation to avoid overlapping smooth scrolls
+      // which cause jank when content updates rapidly during streaming.
+      cancelAnimationFrame(scrollRafId.current);
+      scrollRafId.current = requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight;
       });
     }
   }, [fullAgentMessage, messageStreamState, shouldStream]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const scrollUp =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      Number(el.scrollTop) < Number(el.dataset.lastScrollTop || 0);
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(scrollRafId.current);
+    };
+  }, []);
 
-    el.dataset.lastScrollTop = el.scrollTop.toString();
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const scrollUp = el.scrollTop < lastScrollTop.current;
+    lastScrollTop.current = el.scrollTop;
+
     /**
      * 1000px threshold is used to determine if the user is at the bottom of the panel.
      * If the user is within 1000px of the bottom, we consider them to be at the bottom.
@@ -239,7 +247,7 @@ function AgentActionsPanelContent({
     shouldAutoScroll.current =
       !scrollUp &&
       el.scrollHeight - el.clientHeight <= el.scrollTop + threshold;
-  };
+  }, []);
 
   const agentMessageToRender = (() => {
     switch (fullAgentMessage.status) {
@@ -382,18 +390,6 @@ export function AgentActionsPanel({
     workspaceId: owner.sId,
     messageId: messageId ?? null,
   });
-
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  }, [fullAgentMessage]);
 
   useEffect(() => {
     if (!messageId) {
