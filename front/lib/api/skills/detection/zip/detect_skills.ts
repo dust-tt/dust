@@ -15,8 +15,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import AdmZip from "adm-zip";
 
-// Reject anything larger before attempting to parse.
-const MAX_ZIP_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
+// Total uncompressed size limit (prevents issues with small zip but
+// super large incompressed data).
+const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Extracts a flat list of ZipEntry from a ZIP buffer using adm-zip.
@@ -85,6 +87,19 @@ export function detectSkillsFromZip({
     return extractResult;
   }
   const { entries: rawEntries, zip } = extractResult.value;
+
+  let totalDecompressedSizeBytes = 0;
+  for (const entry of rawEntries) {
+    totalDecompressedSizeBytes += entry.sizeBytes;
+  }
+  if (totalDecompressedSizeBytes > MAX_DECOMPRESSED_SIZE_BYTES) {
+    const sizeMb = Math.round(totalDecompressedSizeBytes / 1024 / 1024);
+    return new Err({
+      type: "invalid_zip",
+      message: `Total decompressed size too large (${sizeMb} MB). ` +
+        `Maximum allowed is ${MAX_DECOMPRESSED_SIZE_BYTES / 1024 / 1024} MB.`,
+    });
+  }
 
   const entries = stripCommonZipPrefix(rawEntries);
   // Map stripped path -> entry (preserves originalEntryName) for adm-zip lookup.
