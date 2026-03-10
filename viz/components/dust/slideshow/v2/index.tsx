@@ -1,9 +1,9 @@
 "use client";
 
 import { useVizContext } from "@viz/app/components/VizContext";
-import { cn } from "@viz/lib/utils";
 import { ArrowLeftIcon } from "@viz/components/dust/slideshow/v2/icons/ArrowLeftIcon";
 import { ArrowRightIcon } from "@viz/components/dust/slideshow/v2/icons/ArrowRightIcon";
+import { cn } from "@viz/lib/utils";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface SlideProps {
@@ -104,7 +104,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
         <button
           onClick={onPrev}
           disabled={activeIndex === 0}
-          className="disabled:opacity-40 px-2"
+          className="disabled:opacity-40 px-2 transition-opacity duration-100"
           title="Previous"
           aria-label="Previous slide"
         >
@@ -118,7 +118,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
         <button
           onClick={onNext}
           disabled={activeIndex === total - 1}
-          className="disabled:opacity-40 px-2"
+          className="disabled:opacity-40 px-2 transition-opacity duration-100"
           title="Next"
           aria-label="Next slide"
         >
