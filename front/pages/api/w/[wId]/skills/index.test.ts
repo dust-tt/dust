@@ -813,10 +813,13 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
   });
 
   it("rejects file attachments with wrong use case", async () => {
-    const { auth, req, res, workspace, user } = await setupTest(
-      "POST",
-      "admin"
-    );
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+    } = await setupTest("POST", "admin");
 
     await FeatureFlagFactory.basic("sandbox_tools", workspace);
 

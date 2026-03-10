@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { SECRET_KEY_PREFIX } from "@app/lib/resources/key_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -59,7 +60,9 @@ export const createPublicApiMockRequest = async ({
     },
   });
 
-  return { req, res, workspace, globalGroup, systemGroup, key };
+  const auth = await Authenticator.fromKey(key, workspace.sId);
+
+  return { auth, req, res, workspace, globalGroup, systemGroup, key };
 };
 
 export function createPublicApiSystemOnlyAuthenticationTests(

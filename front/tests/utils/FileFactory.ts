@@ -7,7 +7,6 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
-import type { WorkspaceType } from "@app/types/user";
 
 export class FileFactory {
   // We don't support passing a content as GCS has to be mocked in test so the content part can be
@@ -56,7 +55,7 @@ export class FileFactory {
   }
 
   static csv(
-    workspace: WorkspaceType,
+    auth: Authenticator,
     user: UserResource | null,
     {
       useCase,
@@ -72,7 +71,7 @@ export class FileFactory {
       status?: FileStatus;
     }
   ) {
-    return this.create(workspace, user, {
+    return this.create(auth, user, {
       contentType: "text/csv",
       fileName: fileName ?? "file.csv",
       fileSize: fileSize ?? 100,

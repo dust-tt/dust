@@ -99,7 +99,7 @@ vi.mock("@app/lib/file_storage", () => ({
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
   it("successfully upserts a CSV received as file", async () => {
-    const { req, res, workspace, globalGroup } =
+    const { auth, req, res, workspace, globalGroup } =
       await createPublicApiMockRequest({
         systemKey: true,
         method: "POST",
@@ -109,7 +109,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     await GroupSpaceFactory.associate(space, globalGroup);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
-    const file = await FileFactory.csv(workspace, null, {
+    const file = await FileFactory.csv(auth, null, {
       useCase: "upsert_table",
     });
 
@@ -196,7 +196,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     await GroupSpaceFactory.associate(space, globalGroup);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
-    const file = await FileFactory.csv(workspace, null, {
+    const file = await FileFactory.csv(auth, null, {
       useCase: "avatar",
     });
 

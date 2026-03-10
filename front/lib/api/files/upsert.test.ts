@@ -87,7 +87,7 @@ describe("processAndUpsertToDataSource", () => {
 
   it("should call upsertTable with the right parameters for a CSV file", async () => {
     // Create a file
-    const file = await FileFactory.csv(workspace, null, {
+    const file = await FileFactory.csv(auth, null, {
       useCase: "conversation",
       fileName: "test-file.csv",
       status: "ready",
@@ -145,7 +145,7 @@ describe("processAndUpsertToDataSource", () => {
   it("should append to existing generatedTables when processing a CSV file", async () => {
     // Create a file with existing useCaseMetadata containing generatedTables
     const existingTableId = "existing-table-id";
-    const file = await FileFactory.csv(workspace, null, {
+    const file = await FileFactory.csv(auth, null, {
       useCase: "conversation",
       fileName: "test-file-with-existing-tables.csv",
       status: "ready",

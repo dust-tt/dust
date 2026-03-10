@@ -116,6 +116,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
   it("returns 400 on unsupported use-cases", async () => {
     const {
+      authenticator: auth,
       req,
       res,
       workspace,
@@ -126,7 +127,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     });
 
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
-    const file = await FileFactory.csv(workspace, user, {
+    const file = await FileFactory.csv(auth, user, {
       useCase: "conversation",
     });
 
@@ -152,14 +153,20 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   });
 
   it("returns 403 if not authorized to write in the data source (admin)", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
     const space = await SpaceFactory.regular(workspace);
 
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
-    const file = await FileFactory.csv(workspace, user, {
+    const file = await FileFactory.csv(auth, user, {
       useCase: "upsert_table",
     });
 
@@ -185,14 +192,20 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   });
 
   it("returns 403 if not authorized to write in the data source (user)", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
     const space = await SpaceFactory.regular(workspace);
 
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
-    const file = await FileFactory.csv(workspace, user, {
+    const file = await FileFactory.csv(auth, user, {
       useCase: "upsert_table",
     });
 
@@ -219,6 +232,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
   it("successfully upserts file to data source with the right arguments", async () => {
     const {
+      authenticator: auth,
       req,
       res,
       workspace,
@@ -230,7 +244,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     });
 
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
-    const file = await FileFactory.csv(workspace, user, {
+    const file = await FileFactory.csv(auth, user, {
       useCase: "upsert_table",
     });
 

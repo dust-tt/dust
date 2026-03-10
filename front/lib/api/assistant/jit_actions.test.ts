@@ -85,7 +85,7 @@ describe("getJITServers", () => {
 
     it("should include conversation_files server when attachments exist", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -340,7 +340,7 @@ describe("getJITServers", () => {
   describe("attachment-based servers", () => {
     it("should include query_tables server when queryable attachments exist", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -479,7 +479,7 @@ describe("getJITServers", () => {
 
     it("should include conversation_files server when attachments exist but are not searchable", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -521,7 +521,7 @@ describe("getJITServers", () => {
 
     it("should not include search server when attachments are not searchable (search server is distinct from conversation_files)", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -571,7 +571,7 @@ describe("getJITServers", () => {
     it("should return multiple servers when conditions are met", async () => {
       // Create attachments.
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -649,7 +649,7 @@ describe("getJITServers", () => {
 
     it("should generate unique sIds for each server", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
