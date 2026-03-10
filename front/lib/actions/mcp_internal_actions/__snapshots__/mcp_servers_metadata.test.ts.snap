@@ -92,6 +92,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "extract_data": {
     "extract_information_from_documents": "never_ask",
   },
+  "fathom": {
+    "get_transcript": "never_ask",
+    "list_meetings": "never_ask",
+  },
   "file_generation": {
     "convert_file_format": "never_ask",
     "generate_file": "never_ask",
