@@ -1,3 +1,4 @@
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -35,6 +36,7 @@ export const CreateDropdown = ({
 }: CreateDropdownProps) => {
   const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -42,73 +44,86 @@ export const CreateDropdown = ({
   const { hasFeature } = useFeatureFlags();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="primary"
-          icon={PlusIcon}
-          label="Create"
-          data-gtm-label="assistantCreationButton"
-          data-gtm-location={dataGtmLocation}
-          onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}
-          size="sm"
-          isSelect
-          isLoading={isLoading}
-          disabled={isLoading}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
-        <DropdownMenuItem
-          label="agent from scratch"
-          icon={DocumentIcon}
-          onClick={withTracking(
-            TRACKING_AREAS.BUILDER,
-            "create_from_scratch",
-            () => {
-              setIsLoading(true);
-              void router.push(getAgentBuilderRoute(owner.sId, "new"));
-            }
-          )}
-        />
-        <DropdownMenuItem
-          label="agent from template"
-          icon={MagicIcon}
-          onClick={withTracking(
-            TRACKING_AREAS.BUILDER,
-            "create_from_template",
-            () => {
-              setIsLoading(true);
-              void router.push(getAgentBuilderRoute(owner.sId, "create"));
-            }
-          )}
-        />
-        {hasFeature("agent_to_yaml") && (
-          <DropdownMenuItem
-            label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-            icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
-            disabled={isUploadingYAML}
-            onClick={triggerYAMLUpload}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="primary"
+            icon={PlusIcon}
+            label="Create"
+            data-gtm-label="assistantCreationButton"
+            data-gtm-location={dataGtmLocation}
+            onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}
+            size="sm"
+            isSelect
+            isLoading={isLoading}
+            disabled={isLoading}
           />
-        )}
-        {isBuilder(owner) && (
-          <>
-            <DropdownMenuLabel label="Skills" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
+          <DropdownMenuItem
+            label="agent from scratch"
+            icon={DocumentIcon}
+            onClick={withTracking(
+              TRACKING_AREAS.BUILDER,
+              "create_from_scratch",
+              () => {
+                setIsLoading(true);
+                void router.push(getAgentBuilderRoute(owner.sId, "new"));
+              }
+            )}
+          />
+          <DropdownMenuItem
+            label="agent from template"
+            icon={MagicIcon}
+            onClick={withTracking(
+              TRACKING_AREAS.BUILDER,
+              "create_from_template",
+              () => {
+                setIsLoading(true);
+                void router.push(getAgentBuilderRoute(owner.sId, "create"));
+              }
+            )}
+          />
+          {hasFeature("agent_to_yaml") && (
             <DropdownMenuItem
-              label="skill"
-              icon={PuzzleIcon}
-              onClick={withTracking(
-                TRACKING_AREAS.BUILDER,
-                "create_skill",
-                () => {
-                  setIsLoading(true);
-                  void router.push(getSkillBuilderRoute(owner.sId, "new"));
-                }
-              )}
+              label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
+              icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
+              disabled={isUploadingYAML}
+              onClick={triggerYAMLUpload}
             />
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          )}
+          {isBuilder(owner) && (
+            <>
+              <DropdownMenuLabel label="Skills" />
+              <DropdownMenuItem
+                label="skill from scratch"
+                icon={PuzzleIcon}
+                onClick={withTracking(
+                  TRACKING_AREAS.BUILDER,
+                  "create_skill",
+                  () => {
+                    setIsLoading(true);
+                    void router.push(getSkillBuilderRoute(owner.sId, "new"));
+                  }
+                )}
+              />
+              <DropdownMenuItem
+                label="skill from existing"
+                icon={FolderOpenIcon}
+                onClick={() => setIsImportSkillDialogOpen(true)}
+              />
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {isImportSkillDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportSkillDialogOpen(false)}
+          owner={owner}
+        />
+      )}
+    </>
   );
 };
