@@ -1,3 +1,5 @@
+// All recording types, including legacy ones. Used for labels and validation
+// to support existing webhooks.
 export const RECORDING_TYPE_OPTIONS = [
   {
     value: "my_recordings",
@@ -20,6 +22,13 @@ export const RECORDING_TYPE_OPTIONS = [
     description: "Recordings from your team members",
   },
 ] as const;
+
+// Recording types available for new webhook creation.
+export const CREATABLE_RECORDING_TYPE_OPTIONS = RECORDING_TYPE_OPTIONS.filter(
+  (option) =>
+    option.value !== "my_recordings" &&
+    option.value !== "my_shared_with_team_recordings"
+);
 
 export const RECORDING_TYPE_LABELS: Record<string, string> =
   RECORDING_TYPE_OPTIONS.reduce(
