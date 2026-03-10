@@ -829,6 +829,19 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10013,
+    name: "Semrush",
+    description:
+      "Semrush tools for SEO research, keyword analysis, competitor insights, and digital marketing data.",
+    url: "https://mcp.semrush.com/v1/mcp",
+    icon: "SemrushLogo",
+    documentationUrl: "https://developer.semrush.com/api/basics/semrush-mcp/",
+    connectionInstructions:
+      "You will need to provide your Semrush API key as a bearer token. You can find your API key in your Semrush account settings.",
+    authMethod: "bearer",
+    toolStakes: {},
+  },
   //Removed temporaly gitlab server
   /*
   {
