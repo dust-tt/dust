@@ -4,6 +4,7 @@ import {
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
@@ -25,7 +26,6 @@ import {
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import cronstrue from "cronstrue";
 import { useState } from "react";
 
 interface AgentTriggersTabProps {
@@ -151,7 +151,7 @@ export function AgentTriggersTab({
                 </div>
                 {trigger.kind === "schedule" && (
                   <div className="text-sm text-muted-foreground">
-                    Runs {cronstrue.toString(trigger.configuration.cron)}
+                    Runs {describeScheduleConfig(trigger.configuration)}
                   </div>
                 )}
               </div>

@@ -3,10 +3,35 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
 import * as t from "io-ts";
 
-export type ScheduleConfig = {
+export type CronScheduleConfig = {
+  type?: "cron"; // optional for backward compat with existing DB records
   cron: string;
   timezone: string;
 };
+
+// For "every N days" or "every N weeks on <dayOfWeek>"
+export type IntervalScheduleConfig = {
+  type: "interval";
+  intervalDays: number; // e.g. 14 for bi-weekly, 3 for every 3 days
+  dayOfWeek: number | null; // 0-6 (0=Sunday), null for pure day intervals
+  hour: number; // 0-23
+  minute: number; // 0-59
+  timezone: string;
+};
+
+export type ScheduleConfig = CronScheduleConfig | IntervalScheduleConfig;
+
+export function isCronScheduleConfig(
+  config: ScheduleConfig
+): config is CronScheduleConfig {
+  return !config.type || config.type === "cron";
+}
+
+export function isIntervalScheduleConfig(
+  config: ScheduleConfig
+): config is IntervalScheduleConfig {
+  return config.type === "interval";
+}
 
 export type WebhookConfig = {
   includePayload: boolean;
@@ -104,10 +129,29 @@ export function isScheduleTrigger(
   return trigger.kind === "schedule";
 }
 
-const ScheduleConfigSchema = t.type({
-  cron: t.string,
+const CronScheduleConfigSchema = t.intersection([
+  t.type({
+    cron: t.string,
+    timezone: t.string,
+  }),
+  t.partial({
+    type: t.literal("cron"),
+  }),
+]);
+
+const IntervalScheduleConfigSchema = t.type({
+  type: t.literal("interval"),
+  intervalDays: t.number,
+  dayOfWeek: t.union([t.number, t.null]),
+  hour: t.number,
+  minute: t.number,
   timezone: t.string,
 });
+
+const ScheduleConfigSchema = t.union([
+  CronScheduleConfigSchema,
+  IntervalScheduleConfigSchema,
+]);
 
 const WebhookConfigSchema = t.intersection([
   t.type({
