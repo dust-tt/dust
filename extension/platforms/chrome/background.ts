@@ -29,7 +29,6 @@ import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
 import {
   clickPageElement,
-  deleteText,
   getPageElements,
   typeText,
 } from "./interactWithPage";
@@ -808,10 +807,15 @@ chrome.runtime.onMessage.addListener(
           async (tabs) => {
             const tab = tabs[0];
             try {
-              const result = await deleteText(tab, message.elementId);
+              const result = await typeText(
+                tab,
+                message.elementId,
+                "",
+                "delete"
+              );
 
               if (result.isErr()) {
-                log("Error deliting text in element:", result.error);
+                log("Error deleting text in element:", result.error);
                 sendResponse({
                   success: false,
                   error: result.error.message,
@@ -824,7 +828,7 @@ chrome.runtime.onMessage.addListener(
               });
             } catch (error) {
               const normalizedError = normalizeError(error);
-              log("Error deliting text in element:", normalizedError.message);
+              log("Error deleting text in element:", normalizedError.message);
               sendResponse({
                 success: false,
                 error:
