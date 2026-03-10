@@ -837,9 +837,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     url: "https://mcp.semrush.com/v1/mcp",
     icon: "SemrushLogo",
     documentationUrl: "https://developer.semrush.com/api/basics/semrush-mcp/",
-    connectionInstructions:
-      "You will need to provide your Semrush API key as a bearer token. You can find your API key in your Semrush account settings.",
-    authMethod: "bearer",
+    authMethod: "oauth-dynamic",
     toolStakes: {},
   },
   //Removed temporaly gitlab server
