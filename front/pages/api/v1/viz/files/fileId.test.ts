@@ -55,7 +55,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Create frame file with conversation context.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -67,7 +67,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     const frameShareInfo = await frameFile.getShareInfo();
 
     // Create target file in same conversation.
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -124,7 +124,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Create frame file with conversation context.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -136,7 +136,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     const frameShareInfo = await frameFile.getShareInfo();
 
     // Create target file in same conversation.
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -193,7 +193,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Create frame file with conversation context.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -205,7 +205,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     const frameShareInfo = await frameFile.getShareInfo();
 
     // Create target file in same conversation.
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -269,7 +269,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Frame from conversation A.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -286,7 +286,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     }
 
     // Target file from conversation B (should be rejected).
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -360,7 +360,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const project = await SpaceFactory.project(workspace);
       await addUserToProject(project);
 
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -369,7 +369,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         useCaseMetadata: { spaceId: project.sId },
       });
 
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "target.txt",
         fileSize: 500,
@@ -422,7 +422,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         spaceId: project.id,
       });
 
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -431,7 +431,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         useCaseMetadata: { spaceId: project.sId },
       });
 
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "target.txt",
         fileSize: 500,
@@ -478,7 +478,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const project1 = await SpaceFactory.project(workspace);
       const project2 = await SpaceFactory.project(workspace);
 
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -487,7 +487,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         useCaseMetadata: { spaceId: project1.sId },
       });
 
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "target.txt",
         fileSize: 500,
@@ -543,7 +543,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         spaceId: project2.id,
       });
 
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -552,7 +552,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         useCaseMetadata: { spaceId: project1.sId },
       });
 
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "target.txt",
         fileSize: 500,
@@ -606,7 +606,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Frame from conversation.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -623,7 +623,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     }
 
     // Target file with different use case (should be rejected).
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "image/png",
       fileName: "avatar.png",
       fileSize: 2000,
@@ -669,7 +669,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
   it("should reject access when frame has no conversation context", async () => {
     // Frame from conversation.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -686,7 +686,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     }
 
     // Target file with different use case (should be rejected).
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "image/png",
       fileName: "avatar.png",
       fileSize: 2000,
@@ -732,7 +732,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
   it("should reject access when file is not a frame", async () => {
     // Frame from conversation.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: "image/png",
       fileName: "frame.html",
       fileSize: 1000,
@@ -745,7 +745,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject requests without Authorization header", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -773,7 +773,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject malformed Authorization header", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -803,7 +803,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject empty Bearer token", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -833,7 +833,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject invalid JWT token", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -940,7 +940,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const childConversation = childData.conversation;
 
       // Create frame file in parent conversation A.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -950,7 +950,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       });
 
       // Create target file in sub-conversation B.
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "sub-conversation-file.txt",
         fileSize: 500,
@@ -1078,7 +1078,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const conversationB = conversationBData.conversation;
 
       // Create frame file in conversation A.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -1088,7 +1088,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       });
 
       // Create target file in unrelated conversation B.
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "sub-conversation-file.txt",
         fileSize: 500,

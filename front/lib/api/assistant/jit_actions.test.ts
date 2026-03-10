@@ -388,7 +388,7 @@ describe("getJITServers", () => {
 
     it("should include search server when searchable attachments exist", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.create(workspace, user, {
+      const file = await FileFactory.create(auth, user, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -436,7 +436,7 @@ describe("getJITServers", () => {
 
     it("should not include query_tables server when no queryable attachments", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.create(workspace, user, {
+      const file = await FileFactory.create(auth, user, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,

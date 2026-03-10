@@ -699,21 +699,25 @@ describe("POST /api/w/[wId]/skills", () => {
 
 describe("POST /api/w/[wId]/skills - file attachments", () => {
   it("creates a skill with file attachments when sandbox_tools is enabled", async () => {
-    const { req, res, workspace, user, authenticator } = await setupTest(
-      "POST",
-      "builder"
-    );
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await setupTest("POST", "builder");
 
     await FeatureFlagFactory.basic("sandbox_tools", workspace);
 
-    const file1 = await FileFactory.create(workspace, user, {
+    const file1 = await FileFactory.create(auth, user, {
       contentType: "text/plain",
       fileName: "template.txt",
       fileSize: 100,
       status: "ready",
       useCase: "skill_attachment",
     });
-    const file2 = await FileFactory.create(workspace, user, {
+    const file2 = await FileFactory.create(auth, user, {
       contentType: "application/json",
       fileName: "schema.json",
       fileSize: 200,
@@ -755,9 +759,14 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
   });
 
   it("rejects file attachments when sandbox_tools is not enabled", async () => {
-    const { req, res, workspace, user } = await setupTest("POST", "admin");
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await setupTest("POST", "admin");
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
       fileName: "template.txt",
       fileSize: 100,
@@ -804,11 +813,14 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
   });
 
   it("rejects file attachments with wrong use case", async () => {
-    const { req, res, workspace, user } = await setupTest("POST", "admin");
+    const { auth, req, res, workspace, user } = await setupTest(
+      "POST",
+      "admin"
+    );
 
     await FeatureFlagFactory.basic("sandbox_tools", workspace);
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
       fileName: "conversation-file.txt",
       fileSize: 100,

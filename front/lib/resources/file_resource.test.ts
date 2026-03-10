@@ -37,7 +37,7 @@ describe("FileResource", () => {
     });
 
     it("should return file and content for active conversation", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
@@ -48,7 +48,7 @@ describe("FileResource", () => {
       });
 
       // Create frame file linked to conversation.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -73,7 +73,7 @@ describe("FileResource", () => {
     });
 
     it("should return null for soft-deleted conversation", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
@@ -84,7 +84,7 @@ describe("FileResource", () => {
       });
 
       // Create frame file linked to conversation.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -154,7 +154,7 @@ describe("FileResource", () => {
       );
 
       // Create frame file linked to conversation.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(adminAuth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -184,12 +184,12 @@ describe("FileResource", () => {
     const testFileContent = "test file content for copying";
 
     it("should successfully copy a file with new useCase and metadata", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
       // Create source file.
-      const sourceFile = await FileFactory.create(workspace, null, {
+      const sourceFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "source.txt",
         fileSize: testFileContent.length,
@@ -235,12 +235,12 @@ describe("FileResource", () => {
     });
 
     it("should return error when source file is not ready", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
       // Create a file that is not ready.
-      const sourceFile = await FileFactory.create(workspace, null, {
+      const sourceFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "not-ready.txt",
         fileSize: 100,
@@ -261,12 +261,12 @@ describe("FileResource", () => {
     });
 
     it("should return error when source file has failed status", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
       // Create a failed file.
-      const sourceFile = await FileFactory.create(workspace, null, {
+      const sourceFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "failed.txt",
         fileSize: 100,
@@ -286,11 +286,11 @@ describe("FileResource", () => {
     });
 
     it("should copy file with different use case but same content type", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
-      const sourceFile = await FileFactory.create(workspace, null, {
+      const sourceFile = await FileFactory.create(auth, null, {
         contentType: "application/pdf",
         fileName: "document.pdf",
         fileSize: 5000,

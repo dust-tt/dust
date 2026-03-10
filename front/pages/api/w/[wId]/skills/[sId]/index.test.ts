@@ -80,6 +80,7 @@ async function setupTest(
 
   // Create workspace, requesting user and auth based on requestUserRole
   const {
+    authenticator: auth,
     req,
     res,
     workspace,
@@ -155,6 +156,7 @@ async function setupTest(
   req.query = { ...req.query, wId: workspace.sId, sId: skill.sId };
 
   return {
+    auth,
     req,
     res,
     requestUser,
@@ -604,7 +606,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
 
 describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
   it("should update file attachments when sandbox_tools is enabled", async () => {
-    const { req, res, skill, workspace, requestUser, requestUserAuth } =
+    const { auth, req, res, skill, workspace, requestUser, requestUserAuth } =
       await setupTest({
         skillOwnerRole: "builder",
         requestUserRole: "builder",
@@ -613,7 +615,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
 
     await FeatureFlagFactory.basic("sandbox_tools", workspace);
 
-    const file = await FileFactory.create(workspace, requestUser, {
+    const file = await FileFactory.create(auth, requestUser, {
       contentType: "text/plain",
       fileName: "template.txt",
       fileSize: 100,
@@ -696,7 +698,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
   });
 
   it("should remove file attachments when updating with empty array", async () => {
-    const { req, res, skill, workspace, requestUser, requestUserAuth } =
+    const { auth, req, res, skill, workspace, requestUser, requestUserAuth } =
       await setupTest({
         skillOwnerRole: "builder",
         requestUserRole: "builder",
@@ -706,7 +708,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
     await FeatureFlagFactory.basic("sandbox_tools", workspace);
 
     // Add a file attachment via the resource directly.
-    const file = await FileFactory.create(workspace, requestUser, {
+    const file = await FileFactory.create(auth, requestUser, {
       contentType: "text/plain",
       fileName: "to-remove.txt",
       fileSize: 100,

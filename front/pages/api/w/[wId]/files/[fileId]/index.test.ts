@@ -124,13 +124,18 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should return 404 when user cannot access conversation file", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
     // Create a file with a non-existent conversation
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -158,20 +163,24 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should redirect to signed URL for download action", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     // Create a conversation
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
     // Create a file associated with the conversation
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -195,20 +204,24 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should stream file content for view action on safe files", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      user,
+      authenticator: auth,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     // Create a conversation
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
     // Create a safe file (image)
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "image/png",
       fileName: "test.png",
       fileSize: 1024,
@@ -231,7 +244,13 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should return 404 when user cannot read space for folders_document", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
@@ -240,7 +259,7 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     const space = await SpaceFactory.regular(workspace);
 
     // Create a file in that space
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -268,14 +287,19 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should allow access to folders_document in global space", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     // Create a file in global space
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -304,13 +328,18 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should allow builder to delete any file", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "DELETE",
-        role: "builder",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "builder",
+    });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -332,14 +361,19 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should allow file author with admin role to delete upload files", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "DELETE",
-        role: "admin",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
 
     // Create a file in global space (admin has write access)
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -361,14 +395,18 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should deny non-author without builder role from deleting upload files", async () => {
-    const { req, res, workspace, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "DELETE",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "user",
+    });
 
     // Create a file by a different user
-    const file = await FileFactory.create(workspace, null, {
+    const file = await FileFactory.create(auth, null, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -396,12 +434,17 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should deny non-builder from deleting non-conversation files", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "user",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -433,18 +476,23 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should allow builder to upload any file", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "builder",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -467,13 +515,18 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should allow file author with admin role to upload to their space", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "text/csv",
       fileName: "test.csv",
       fileSize: 1024,
@@ -495,14 +548,18 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should deny non-author without builder role from uploading to space", async () => {
-    const { req, res, workspace, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     // Create file with no user (simulating another user's file)
-    const file = await FileFactory.create(workspace, null, {
+    const file = await FileFactory.create(auth, null, {
       contentType: "text/csv",
       fileName: "test.csv",
       fileSize: 1024,
@@ -534,18 +591,23 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
       "@app/lib/api/files/upsert"
     );
 
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
       fileName: "test.txt",
       fileSize: 1024,

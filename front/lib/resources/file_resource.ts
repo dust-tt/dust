@@ -407,7 +407,7 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ status: "failed" });
   }
 
-  async markAsReady(auth?: Authenticator) {
+  async markAsReady(auth: Authenticator) {
     // Early return if the file is already ready.
     if (this.status === "ready") {
       return;
@@ -428,9 +428,7 @@ export class FileResource extends BaseResource<FileModel> {
       });
     }
 
-    if (auth) {
-      await maybeResolveMountPath(auth, this);
-    }
+    await maybeResolveMountPath(auth, this);
 
     return updateResult;
   }

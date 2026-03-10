@@ -192,7 +192,7 @@ describe("processAndUpsertToDataSource", () => {
 
   it("should process an Excel file with multiple sheets with conversation usecase", async () => {
     // Create an Excel file
-    const file = await FileFactory.create(workspace, null, {
+    const file = await FileFactory.create(auth, null, {
       contentType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       fileName: "test-excel-file.xlsx",
@@ -289,7 +289,7 @@ id,category,description
 
   it("should process an Excel file with multiple sheets with upsert_table usecase", async () => {
     // Create an Excel file
-    const file = await FileFactory.create(workspace, null, {
+    const file = await FileFactory.create(auth, null, {
       contentType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       fileName: "test-excel-file.xlsx",

@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -12,7 +13,7 @@ export class FileFactory {
   // We don't support passing a content as GCS has to be mocked in test so the content part can be
   // injected by mocking the GCS client.
   static async create(
-    workspace: WorkspaceType,
+    auth: Authenticator,
     user: UserResource | null,
     {
       contentType,
@@ -32,6 +33,8 @@ export class FileFactory {
       snippet?: string | null;
     }
   ) {
+    const workspace = await auth.getNonNullableWorkspace();
+
     const file = await FileResource.makeNew({
       workspaceId: workspace.id,
       userId: user?.id ?? null,
@@ -44,7 +47,7 @@ export class FileFactory {
     });
 
     if (status === "ready") {
-      await file.markAsReady();
+      await file.markAsReady(auth);
     } else if (status === "failed") {
       await file.markAsFailed();
     }

@@ -77,12 +77,17 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should return 400 when fileName is missing", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "builder",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -108,12 +113,17 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should return 400 when fileName is empty", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "builder",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -139,12 +149,17 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should allow builder to rename any file", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "builder",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "old-name.pdf",
       fileSize: 1024,
@@ -165,12 +180,17 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should deny non-builder from renaming non-project files", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "user",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -198,7 +218,13 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
 
   describe("project_context files", () => {
     it("should allow user with space write access to rename project files", async () => {
-      const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      const {
+        req,
+        res,
+        workspace,
+        authenticator: auth,
+        user,
+      } = await createPrivateApiMockRequest({
         method: "PATCH",
         role: "user",
       });
@@ -209,7 +235,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
       // Create a project space where the user is an editor (has write access)
       const projectSpace = await SpaceFactory.project(workspace, user.id);
 
-      const file = await FileFactory.create(workspace, user, {
+      const file = await FileFactory.create(auth, user, {
         contentType: "application/pdf",
         fileName: "old-name.pdf",
         fileSize: 1024,
@@ -233,7 +259,13 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
     });
 
     it("should deny user without space write access from renaming project files", async () => {
-      const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      const {
+        authenticator: auth,
+        req,
+        res,
+        workspace,
+        user,
+      } = await createPrivateApiMockRequest({
         method: "PATCH",
         role: "user",
       });
@@ -244,7 +276,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
       // Create a regular space (user has no access)
       const space = await SpaceFactory.regular(workspace);
 
-      const file = await FileFactory.create(workspace, user, {
+      const file = await FileFactory.create(auth, user, {
         contentType: "application/pdf",
         fileName: "test.pdf",
         fileSize: 1024,
@@ -274,13 +306,18 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should return 405 for unsupported methods", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "GET",
       role: "builder",
     });
 
     // Create a file so we get past the 404 check
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -305,12 +342,17 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should trim whitespace from fileName", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "builder",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "old-name.pdf",
       fileSize: 1024,
