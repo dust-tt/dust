@@ -16,9 +16,11 @@ import type { LightWorkspaceType } from "@app/types/user";
 export const createResourceTest: ({
   role,
   isSuperUser,
+  isByok,
 }: {
   role?: MembershipRoleType;
   isSuperUser?: boolean;
+  isByok?: boolean;
 }) => Promise<{
   workspace: LightWorkspaceType;
   user: UserResource;
@@ -32,11 +34,15 @@ export const createResourceTest: ({
 }> = async ({
   role = "user",
   isSuperUser = false,
+  isByok = false,
 }: {
   role?: MembershipRoleType;
   isSuperUser?: boolean;
+  isByok?: boolean;
 }) => {
-  const workspace = await WorkspaceFactory.basic();
+  const workspace = isByok
+    ? await WorkspaceFactory.byok()
+    : await WorkspaceFactory.basic();
   const user: UserResource = await (isSuperUser
     ? UserFactory.superUser()
     : UserFactory.basic());

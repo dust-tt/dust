@@ -81,6 +81,9 @@ export const RESOURCES_PREFIX = {
 
   // Conversation branches.
   conversation_branch: "cbr",
+
+  // Provider credentials (BYOK).
+  provider_credential: "pcr",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

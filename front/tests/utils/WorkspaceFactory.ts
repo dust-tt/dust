@@ -1,5 +1,8 @@
 import { PlanModel } from "@app/lib/models/plan";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_BYOK_PLAN_CODE,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -12,8 +15,16 @@ import { expect } from "vitest";
 
 export class WorkspaceFactory {
   static async basic(): Promise<WorkspaceType> {
-    // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks
-    // from concurrent upserts in parallel test workers.
+    return this.create(PRO_PLAN_SEAT_29_CODE);
+  }
+
+  static async byok(): Promise<WorkspaceType> {
+    return this.create(FREE_BYOK_PLAN_CODE);
+  }
+
+  // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks
+  // from concurrent upserts in parallel test workers.
+  private static async create(planCode: string): Promise<WorkspaceType> {
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
@@ -21,25 +32,22 @@ export class WorkspaceFactory {
       workOSOrganizationId: faker.string.alpha(10),
     });
 
-    const newPlan = await PlanModel.findOne({
-      where: { code: PRO_PLAN_SEAT_29_CODE },
-    });
-    if (!newPlan) {
-      throw new Error(`Plan ${PRO_PLAN_SEAT_29_CODE} not found`);
+    const plan = await PlanModel.findOne({ where: { code: planCode } });
+    if (!plan) {
+      throw new Error(`Plan ${planCode} not found`);
     }
-    const now = new Date();
 
     await SubscriptionResource.makeNew(
       {
         sId: generateRandomModelSId(),
         workspaceId: workspace.id,
-        planId: newPlan.id,
+        planId: plan.id,
         status: "active",
-        startDate: now,
+        startDate: new Date(),
         stripeSubscriptionId: null,
         endDate: null,
       },
-      renderPlanFromModel({ plan: newPlan })
+      renderPlanFromModel({ plan })
     );
 
     const workspaceType: WorkspaceType = {
