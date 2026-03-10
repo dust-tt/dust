@@ -3050,6 +3050,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"
+  | "SemrushLogo"
   | "SalesloftLogo"
   | "SlabLogo"
   | "SlackLogo"

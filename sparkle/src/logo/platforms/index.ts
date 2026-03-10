@@ -62,6 +62,7 @@ export { default as ProductboardLogo } from "./Productboard";
 export { default as ReplicateLogo } from "./Replicate";
 export { default as SalesforceLogo } from "./Salesforce";
 export { default as SalesloftLogo } from "./Salesloft";
+export { default as SemrushLogo } from "./Semrush";
 export { default as SlabLogo } from "./Slab";
 export { default as SlackLogo } from "./Slack";
 export { default as SlideLogo } from "./Slide";
