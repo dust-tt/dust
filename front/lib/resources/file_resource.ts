@@ -433,7 +433,7 @@ export class FileResource extends BaseResource<FileModel> {
       });
     }
 
-    await this.maybeResolveMountPath(auth);
+    await this.resolveAndSetMountFilePath(auth);
 
     return updateResult;
   }
@@ -768,7 +768,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   async setUseCaseMetadata(auth: Authenticator, metadata: FileUseCaseMetadata) {
     const result = await this.update({ useCaseMetadata: metadata });
-    await this.maybeResolveMountPath(auth);
+    await this.resolveAndSetMountFilePath(auth);
     return result;
   }
 
@@ -786,7 +786,7 @@ export class FileResource extends BaseResource<FileModel> {
   // interact with mount paths directly.
 
   /**
-   * Single entry point for mount path resolution.
+   * Single entry point for mount path resolution and persistence.
    *
    * Examines the file's use case and metadata to determine whether a mount path should be created.
    * Branches internally by use case:
@@ -795,21 +795,26 @@ export class FileResource extends BaseResource<FileModel> {
    *
    * No-ops if the file already has a mountFilePath or conditions aren't met.
    */
-  private async maybeResolveMountPath(auth: Authenticator): Promise<void> {
+  private async resolveAndSetMountFilePath(auth: Authenticator): Promise<void> {
     if (this.mountFilePath) {
       return;
     }
 
     const { useCase, useCaseMetadata } = this;
 
+    let resolvedPath: string | null = null;
+
     if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-      await this.resolveConversationMountPath(auth, {
+      resolvedPath = await this.resolveConversationMountPath(auth, {
         conversationId: useCaseMetadata.conversationId,
       });
-      return;
     }
 
     // TODO(2026-03-09 SANDBOX): Add support for project context.
+
+    if (resolvedPath) {
+      await this.setMountFilePath(auth, resolvedPath);
+    }
   }
 
   /**
@@ -819,7 +824,7 @@ export class FileResource extends BaseResource<FileModel> {
   private async resolveConversationMountPath(
     auth: Authenticator,
     { conversationId }: { conversationId: string }
-  ): Promise<void> {
+  ): Promise<string> {
     const owner = auth.getNonNullableWorkspace();
 
     const desiredPath = getConversationFilePath({
@@ -830,15 +835,13 @@ export class FileResource extends BaseResource<FileModel> {
 
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
-    const mountFilePath = isTaken
+    return isTaken
       ? getConversationFilePath({
           workspaceId: owner.sId,
           conversationId,
           fileName: disambiguateFileName(this.fileName, this.sId),
         })
       : desiredPath;
-
-    await this.setMountFilePath(auth, mountFilePath);
   }
 
   /**
