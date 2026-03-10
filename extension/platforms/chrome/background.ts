@@ -8,8 +8,8 @@ import type {
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
 } from "@extension/platforms/chrome/messages";
-import type { PendingUpdate } from "@extension/platforms/chrome/services/core_platform";
-import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
+import type { PendingUpdate } from "@extension/platforms/chrome/services/platform";
+import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
 import { generatePKCE } from "@extension/shared/lib/utils";
@@ -20,7 +20,7 @@ const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
 // Initialize the platform service.
-const platform = new ChromeCorePlatformService();
+const platform = new ChromePlatformService();
 
 const state: {
   refreshingToken: boolean;
@@ -99,7 +99,12 @@ const shouldDisableContextMenuForDomain = async (
     }
     const data = await res.json();
     const blacklistedDomains: string[] = data.blacklistedDomains ?? [];
-    return blacklistedDomains.some((d) => url.includes(d));
+    const hostname = new URL(url).hostname;
+    return blacklistedDomains.some((d) =>
+      d.startsWith("http://") || d.startsWith("https://")
+        ? url.startsWith(d)
+        : hostname.endsWith(d)
+    );
   } catch {
     return false;
   }
@@ -278,6 +283,16 @@ chrome.runtime.onMessage.addListener(
             if (!tab?.id) {
               log("No active tab found.");
               sendResponse({ url: "", content: "", title: "" });
+              return;
+            }
+
+            if (tab.url && (await shouldDisableContextMenuForDomain(tab.url))) {
+              sendResponse({
+                url: tab.url || "",
+                content: "",
+                title: "",
+                error: "Capture is disabled for this domain.",
+              });
               return;
             }
 

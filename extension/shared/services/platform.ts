@@ -1,21 +1,25 @@
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { AuthService } from "@extension/shared/services/auth";
 import type { CaptureService } from "@extension/shared/services/capture";
-import { createMockCaptureService } from "@extension/shared/services/capture";
 import type { McpService } from "@extension/shared/services/mcp";
 import type { StorageService } from "@extension/shared/services/storage";
-import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
-import type { ComponentType } from "react";
+
+export interface CaptureActions {
+  onCapture: (type: "text" | "screenshot") => void;
+  isCapturing: boolean;
+}
+
+export type UseCaptureActionsHook = (
+  workspace: LightWorkspaceType,
+  uploadContentTab: (options: {
+    includeContent: boolean;
+    includeCapture: boolean;
+  }) => Promise<unknown>,
+  isCapturing: boolean
+) => CaptureActions | undefined;
 
 const PLATFORM_TYPES = ["chrome", "front"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
-
-export interface CaptureActionsProps {
-  owner: WorkspaceType;
-  isBlinking: boolean;
-  isLoading: boolean;
-  fileUploaderService: FileUploaderService;
-}
 
 export interface BrowserMessagingService {
   addMessageListener: (
@@ -28,13 +32,14 @@ export interface BrowserMessagingService {
   ): void | Promise<R>;
 }
 
-export abstract class CorePlatformService {
+export abstract class PlatformService {
   readonly auth: AuthService;
-  readonly capture: CaptureService;
+  readonly capture?: CaptureService;
   readonly messaging?: BrowserMessagingService;
   readonly platform: PlatformType;
   readonly storage: StorageService;
   readonly mcp?: McpService;
+  useCaptureActions: UseCaptureActionsHook = () => undefined;
 
   constructor(
     platform: PlatformType,
@@ -48,7 +53,7 @@ export abstract class CorePlatformService {
     this.auth = new authCls(storage);
     this.storage = storage;
     this.messaging = browserMessaging;
-    this.capture = capture || createMockCaptureService();
+    this.capture = capture;
     this.mcp = mcp;
   }
 
@@ -61,16 +66,6 @@ export abstract class CorePlatformService {
       this.storage.delete("selectedWorkspace"),
     ]);
   }
-}
-
-export abstract class PlatformService extends CorePlatformService {
-  readonly supportsMCP: boolean = false;
-  // Abstract methods that must be implemented by platform-specific classes.
-
-  // Content capture.
-  abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps> | null;
-
-  abstract getSendWithActionsLabel(): string;
 }
 
 export function isValidPlatform(platform: unknown): platform is PlatformType {

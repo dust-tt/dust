@@ -10,7 +10,7 @@ import { Button, MenuIcon } from "@dust-tt/sparkle";
 import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 
 interface ConversationContainerProps {
   workspace: LightWorkspaceType;
@@ -37,30 +37,10 @@ export const ConversationContainer = ({
     conversationId
   );
 
-  const handleCapture = useCallback(
-    (type: "text" | "screenshot") => {
-      if (type === "text") {
-        void fileUploaderService.uploadContentTab({
-          includeContent: true,
-          includeCapture: false,
-        });
-        return;
-      }
-
-      void fileUploaderService.uploadContentTab({
-        includeContent: false,
-        includeCapture: true,
-      });
-    },
-    [fileUploaderService.uploadContentTab]
-  );
-
-  const captureActions = useMemo(
-    () => ({
-      onCapture: handleCapture,
-      isCapturing: fileUploaderService.isCapturing,
-    }),
-    [handleCapture, fileUploaderService.isCapturing]
+  const captureActions = platform.useCaptureActions(
+    workspace,
+    fileUploaderService.uploadContentTab,
+    fileUploaderService.isCapturing
   );
 
   const clientSideMCPServerIds = useMemo(
