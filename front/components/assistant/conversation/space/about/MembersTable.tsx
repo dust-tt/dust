@@ -37,21 +37,14 @@ type MemberRowData = {
 type MemberRowInfo = { row: { original: MemberRowData } };
 
 function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
-  return allUsers
-    .map((user) => ({
-      userId: user.sId,
-      name: user.fullName,
-      email: user.email ?? "",
-      avatarUrl: user.image ?? "",
-      isEditor: user.isEditor ?? false,
-      joinedAt: user.joinedAt ?? "",
-    }))
-    .sort((a, b) => {
-      if (a.isEditor !== b.isEditor) {
-        return a.isEditor ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
+  return allUsers.map((user) => ({
+    userId: user.sId,
+    name: user.fullName,
+    email: user.email ?? "",
+    avatarUrl: user.image ?? "",
+    isEditor: user.isEditor ?? false,
+    joinedAt: user.joinedAt ?? "",
+  }));
 }
 
 export function MembersTable({
@@ -328,6 +321,7 @@ export function MembersTable({
       data={rows}
       filter={searchSelectedMembers}
       filterColumn="email"
+      sorting={[{ id: "name", desc: false }]}
     />
   );
 }

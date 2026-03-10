@@ -76,16 +76,8 @@ export function GroupSelectionTable({
   }, [groups, searchText]);
 
   const rows = useMemo(
-    () =>
-      getGroupTableRows(filteredGroups).sort((a, b) => {
-        const aSelected = selectedGroupIds.has(a.sId);
-        const bSelected = selectedGroupIds.has(b.sId);
-        if (aSelected !== bSelected) {
-          return aSelected ? -1 : 1;
-        }
-        return 0;
-      }),
-    [filteredGroups, selectedGroupIds]
+    () => getGroupTableRows(filteredGroups),
+    [filteredGroups]
   );
 
   const rowSelectionState: RowSelectionState = useMemo(

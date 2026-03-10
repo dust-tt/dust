@@ -184,7 +184,7 @@ export function MemberSelectionTable({
             columns={columns}
             pagination={pagination}
             setPagination={setPagination}
-            totalRowCount={totalMembersCount + selectedRows.length}
+            totalRowCount={totalMembersCount}
             rowSelection={rowSelectionState}
             setRowSelection={handleRowSelectionChange}
             enableRowSelection
