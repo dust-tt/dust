@@ -19,13 +19,13 @@ import { type Dispatch, type SetStateAction, useCallback } from "react";
 interface ProviderContextItemProps {
   providersSelection: ProvidersSelection;
   setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
-  isWorkspacePending: boolean;
+  isWorkspaceValidating: boolean;
 }
 
 export function ProvidersList({
   providersSelection,
   setProvidersSelection,
-  isWorkspacePending,
+  isWorkspaceValidating,
 }: ProviderContextItemProps) {
   const { featureFlags } = useFeatureFlags();
   const { subscription } = useAuth();
@@ -72,7 +72,7 @@ export function ProvidersList({
           description={description}
           providersSelection={providersSelection}
           handleToggleChange={() => toggleProvider(providerId)}
-          disabled={isWorkspacePending}
+          disabled={isWorkspaceValidating}
         />
       ))}
     </ContextItem.List>

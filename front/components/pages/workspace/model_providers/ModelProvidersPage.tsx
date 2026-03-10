@@ -13,8 +13,6 @@ export function ModelProvidersPage() {
   const { providersSelection, setProvidersSelection } =
     useProvidersSelection(workspace);
 
-  const isWorkspacePending = isWorkspaceLoading || isWorkspaceValidating;
-
   return (
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
@@ -23,18 +21,22 @@ export function ModelProvidersPage() {
         description="Configure model providers."
       />
       <Page.Vertical align="stretch" gap="md">
-        <div className="flex flex-col gap-8">
-          <AllProvidersToggle
-            providersSelection={providersSelection}
-            setProvidersSelection={setProvidersSelection}
-          />
-          <ProvidersList
-            providersSelection={providersSelection}
-            setProvidersSelection={setProvidersSelection}
-            isWorkspacePending={isWorkspacePending}
-          />
-          <EmbeddingModelSelect workspace={workspace} />
-        </div>
+        {isWorkspaceLoading ? (
+          <></>
+        ) : (
+          <div className="flex flex-col gap-8">
+            <AllProvidersToggle
+              providersSelection={providersSelection}
+              setProvidersSelection={setProvidersSelection}
+            />
+            <ProvidersList
+              providersSelection={providersSelection}
+              setProvidersSelection={setProvidersSelection}
+              isWorkspaceValidating={isWorkspaceValidating}
+            />
+            <EmbeddingModelSelect workspace={workspace} />
+          </div>
+        )}
       </Page.Vertical>
     </Page.Vertical>
   );
