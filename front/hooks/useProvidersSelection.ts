@@ -6,9 +6,6 @@ import {
   type ProvidersSelection,
 } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
-import identity from "lodash/identity";
-import keyBy from "lodash/keyBy";
-import mapValues from "lodash/mapValues";
 import { useEffect, useMemo, useState } from "react";
 
 export function useProvidersSelection(workspace: WorkspaceType | undefined) {
@@ -19,10 +16,11 @@ export function useProvidersSelection(workspace: WorkspaceType | undefined) {
     workspace?.whiteListedProviders ?? MODEL_PROVIDER_IDS;
 
   const initialProvidersSelection = useMemo(
-    () => ({
-      ...NO_PROVIDERS_SELECTED,
-      ...mapValues(keyBy(enabledProviders, identity), () => true),
-    }),
+    () =>
+      enabledProviders.reduce(
+        (acc, provider) => ({ ...acc, [provider]: true }),
+        NO_PROVIDERS_SELECTED
+      ),
     [enabledProviders]
   );
 
