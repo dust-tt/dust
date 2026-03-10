@@ -11,9 +11,12 @@ const mockGetSignedUrl = vi.fn().mockResolvedValue("https://signed-url.test");
 vi.mock("@app/lib/file_storage", () => {
   const createMockFileStorage = () => ({
     file: vi.fn(() => ({
+      copy: vi.fn().mockResolvedValue(undefined),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
     })),
     getSignedUrl: mockGetSignedUrl,
+    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
   });
 
   return {

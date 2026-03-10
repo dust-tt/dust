@@ -24,6 +24,7 @@ import handler from "./index";
 // Mock FileStorage to avoid GCS calls during file deletion.
 vi.mock("@app/lib/file_storage", () => {
   const createMockGCSFile = () => ({
+    copy: vi.fn().mockResolvedValue(undefined),
     createReadStream: vi.fn().mockReturnValue({
       on: vi.fn().mockImplementation(function (this: any) {
         return this;

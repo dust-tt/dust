@@ -78,13 +78,20 @@ const mockFileContent = {
 };
 
 // Mock file storage with parameterizable content
-vi.mock("@app/lib/file_storage", () => ({
-  getUpsertQueueBucket: vi.fn(() => ({
-    file: () => ({
-      createReadStream: () => Readable.from([mockFileContent.content]),
-    }),
-  })),
-}));
+vi.mock("@app/lib/file_storage", async () => {
+  const { mockFileStorage } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  return {
+    ...mockFileStorage(),
+    getUpsertQueueBucket: vi.fn(() => ({
+      file: () => ({
+        copy: vi.fn().mockResolvedValue(undefined),
+        createReadStream: () => Readable.from([mockFileContent.content]),
+      }),
+    })),
+  };
+});
 
 describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   it("returns 404 when file not found", async () => {

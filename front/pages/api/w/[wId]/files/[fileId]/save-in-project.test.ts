@@ -5,55 +5,9 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import handler from "./save-in-project";
-
-// Mock FileStorage to avoid GCS calls
-vi.mock("@app/lib/file_storage", () => {
-  const createMockGCSFile = () => ({
-    createReadStream: vi.fn().mockReturnValue({
-      on: vi.fn().mockImplementation(function (this: any) {
-        return this;
-      }),
-      pipe: vi.fn(),
-    }),
-    getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
-    createWriteStream: vi.fn().mockReturnValue({
-      on: vi.fn().mockImplementation(function (
-        this: any,
-        event: string,
-        cb: any
-      ) {
-        if (event === "finish") {
-          // eslint-disable-next-line @typescript-eslint/no-implied-eval
-          setImmediate(cb);
-        }
-        return this;
-      }),
-      write: vi.fn(),
-      end: vi.fn(),
-    }),
-    delete: vi.fn().mockResolvedValue(undefined),
-    publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
-  });
-
-  const createMockFileStorage = () => ({
-    file: vi.fn(createMockGCSFile),
-    getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
-    uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
-    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
-    fetchFileContent: vi.fn().mockResolvedValue("mock content"),
-    delete: vi.fn().mockResolvedValue(undefined),
-  });
-
-  return {
-    FileStorage: vi.fn().mockImplementation(createMockFileStorage),
-    getPrivateUploadBucket: vi.fn(createMockFileStorage),
-    getPublicUploadBucket: vi.fn(createMockFileStorage),
-    getUpsertQueueBucket: vi.fn(createMockFileStorage),
-  };
-});
 
 describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   it("should return 404 when file does not exist", async () => {

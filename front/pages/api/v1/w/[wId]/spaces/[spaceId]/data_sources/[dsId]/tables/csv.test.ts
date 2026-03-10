@@ -84,18 +84,20 @@ const mockFileContent = {
 };
 
 // Mock file storage with parameterizable content
-vi.mock("@app/lib/file_storage", () => ({
-  getUpsertQueueBucket: vi.fn(() => ({
-    file: () => ({
-      createReadStream: () => Readable.from([mockFileContent.content]),
-    }),
-  })),
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: () => ({
-      createReadStream: () => Readable.from([mockFileContent.content]),
-    }),
-  })),
-}));
+vi.mock("@app/lib/file_storage", async () => {
+  const { mockFileStorage } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  const mockFile = () => ({
+    copy: vi.fn().mockResolvedValue(undefined),
+    createReadStream: () => Readable.from([mockFileContent.content]),
+  });
+  return {
+    ...mockFileStorage(),
+    getUpsertQueueBucket: vi.fn(() => ({ file: mockFile })),
+    getPrivateUploadBucket: vi.fn(() => ({ file: mockFile })),
+  };
+});
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
   it("successfully upserts a CSV received as file", async () => {
