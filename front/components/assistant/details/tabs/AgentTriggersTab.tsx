@@ -3,6 +3,7 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -23,14 +24,13 @@ import {
   Spinner,
   TimeIcon,
 } from "@dust-tt/sparkle";
-import cronstrue from "cronstrue";
 import { useMemo, useState } from "react";
 
 function getTriggerDescription(trigger: TriggerType): string {
   switch (trigger.kind) {
     case "schedule":
       try {
-        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+        return `Runs ${describeScheduleConfig(trigger.configuration)}.`;
       } catch {
         return "";
       }

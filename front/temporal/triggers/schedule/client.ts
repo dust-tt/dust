@@ -4,16 +4,87 @@ import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME as COMMON_QUEUE_NAME } from "@app/temporal/triggers/common/config";
 import { agentTriggerWorkflow } from "@app/temporal/triggers/common/workflows";
-import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
-import { isScheduleTrigger } from "@app/types/assistant/triggers";
+import type {
+  IntervalScheduleConfig,
+  ScheduleConfig,
+  ScheduleTriggerType,
+} from "@app/types/assistant/triggers";
+import {
+  isCronScheduleConfig,
+  isScheduleTrigger,
+} from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { ScheduleOptions } from "@temporalio/client";
+import type { ScheduleOptions, ScheduleSpec } from "@temporalio/client";
 import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Convert local hour/minute in a given IANA timezone to a UTC-based
+ * millisecond-of-day value. Uses the current UTC offset of the timezone,
+ * so DST changes may shift the firing time by ~1h (accepted trade-off).
+ */
+function localTimeToUtcMs(
+  hour: number,
+  minute: number,
+  timezone: string
+): number {
+  // Build a date in the target timezone and compute UTC offset.
+  const now = new Date();
+  const localStr = now.toLocaleString("en-US", { timeZone: timezone });
+  const localDate = new Date(localStr);
+  const offsetMs = localDate.getTime() - now.getTime();
+
+  // Local time in ms, then subtract the tz offset to get UTC equivalent.
+  const localTimeMs = (hour * 60 + minute) * 60 * 1000;
+  return (((localTimeMs - offsetMs) % DAY_MS) + DAY_MS) % DAY_MS;
+}
+
+/**
+ * Compute the epoch-based offset for Temporal's IntervalSpec.
+ * Temporal fires at: epoch + offset + n * every.
+ * Epoch (Jan 1, 1970 00:00 UTC) was a Thursday (dayOfWeek=4).
+ */
+function computeIntervalOffsetMs(config: IntervalScheduleConfig): number {
+  const utcTimeMs = localTimeToUtcMs(
+    config.hour,
+    config.minute,
+    config.timezone
+  );
+
+  if (config.dayOfWeek !== null) {
+    // Week-aligned: offset to reach target day-of-week from epoch Thursday.
+    const epochDayOfWeek = 4; // Thursday
+    const daysToTarget = (config.dayOfWeek - epochDayOfWeek + 7) % 7;
+    return daysToTarget * DAY_MS + utcTimeMs;
+  }
+
+  // Pure day interval: just set the time-of-day offset.
+  return utcTimeMs;
+}
+
+function buildScheduleSpec(config: ScheduleConfig): ScheduleSpec {
+  if (isCronScheduleConfig(config)) {
+    return {
+      cronExpressions: [config.cron],
+      timezone: config.timezone,
+    };
+  }
+
+  // Interval-based (N-day, N-week).
+  const everyMs = config.intervalDays * DAY_MS;
+  const offsetMs = computeIntervalOffsetMs(config);
+  return {
+    intervals: [{ every: everyMs, offset: offsetMs }],
+    // Note: timezone field on ScheduleSpec only applies to cron/calendar specs,
+    // not intervals (which are epoch-based). The offset accounts for the target time.
+  };
+}
 
 function getTriggerScheduleOptions(
   auth: Authenticator,
@@ -37,10 +108,7 @@ function getTriggerScheduleOptions(
     policies: {
       overlap: ScheduleOverlapPolicy.SKIP,
     },
-    spec: {
-      cronExpressions: [triggerData.configuration.cron],
-      timezone: triggerData.configuration.timezone,
-    },
+    spec: buildScheduleSpec(triggerData.configuration),
   };
 }
 

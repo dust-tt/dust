@@ -1,11 +1,54 @@
 import { z } from "zod";
 
-export const ScheduleConfigSchema = z.object({
+export type CronScheduleConfig = {
+  type?: "cron"; // optional for backward compat with existing DB records
+  cron: string;
+  timezone: string;
+};
+
+// For "every N days" or "every N weeks on <dayOfWeek>"
+export type IntervalScheduleConfig = {
+  type: "interval";
+  intervalDays: number; // e.g. 14 for bi-weekly, 3 for every 3 days
+  dayOfWeek: number | null; // 0-6 (0=Sunday), null for pure day intervals
+  hour: number; // 0-23
+  minute: number; // 0-59
+  timezone: string;
+};
+
+export type ScheduleConfig = CronScheduleConfig | IntervalScheduleConfig;
+
+export function isCronScheduleConfig(
+  config: ScheduleConfig
+): config is CronScheduleConfig {
+  return !config.type || config.type === "cron";
+}
+
+export function isIntervalScheduleConfig(
+  config: ScheduleConfig
+): config is IntervalScheduleConfig {
+  return config.type === "interval";
+}
+
+const CronScheduleConfigSchema = z.object({
+  type: z.literal("cron").optional(),
   cron: z.string(),
   timezone: z.string(),
 });
 
-export type ScheduleConfig = z.infer<typeof ScheduleConfigSchema>;
+const IntervalScheduleConfigSchema = z.object({
+  type: z.literal("interval"),
+  intervalDays: z.number(),
+  dayOfWeek: z.number().nullable(),
+  hour: z.number(),
+  minute: z.number(),
+  timezone: z.string(),
+});
+
+export const ScheduleConfigSchema = z.union([
+  CronScheduleConfigSchema,
+  IntervalScheduleConfigSchema,
+]);
 
 export const WebhookConfigSchema = z.object({
   includePayload: z.boolean(),
@@ -13,7 +56,11 @@ export const WebhookConfigSchema = z.object({
   filter: z.string().optional(),
 });
 
-export type WebhookConfig = z.infer<typeof WebhookConfigSchema>;
+export type WebhookConfig = {
+  includePayload: boolean;
+  event?: string;
+  filter?: string;
+};
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
