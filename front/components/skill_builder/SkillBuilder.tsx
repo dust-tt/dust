@@ -11,7 +11,11 @@ import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builde
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
-import { SkillVersionComparisonProvider } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
+import {
+  SkillVersionComparisonProvider,
+  useSkillVersionComparisonContext,
+} from "@app/components/skill_builder/SkillBuilderVersionContext";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -215,7 +219,7 @@ export default function SkillBuilder({
                   <SkillBuilderInstructionsSection />
                   {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
                   <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-                  <SkillBuilderSettingsSection />
+                  <SkillBuilderSettingsOrComparisonFooter />
                 </div>
               </ScrollArea>
               <BarFooter
@@ -244,4 +248,14 @@ export default function SkillBuilder({
       </FormProvider>
     </SkillBuilderFormContext.Provider>
   );
+}
+
+function SkillBuilderSettingsOrComparisonFooter() {
+  const { compareVersion } = useSkillVersionComparisonContext();
+
+  if (compareVersion) {
+    return <SkillBuilderVersionComparisonFooter />;
+  }
+
+  return <SkillBuilderSettingsSection />;
 }

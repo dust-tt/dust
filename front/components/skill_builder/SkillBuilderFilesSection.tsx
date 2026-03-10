@@ -1,10 +1,13 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
+  ArrowGoBackIcon,
   Button,
   ContextItem,
+  cn,
   DocumentIcon,
   EmptyCTA,
   PlusIcon,
@@ -12,11 +15,14 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef } from "react";
-import { useFieldArray } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
+  const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
+
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,
     "fileAttachments"
@@ -44,6 +50,33 @@ export function SkillBuilderFilesSection() {
         .sort((a, b) => a.field.fileName.localeCompare(b.field.fileName)),
     [fields]
   );
+
+  const currentFileIds = useMemo(
+    () => new Set(fields.map((f) => f.fileId)),
+    [fields]
+  );
+
+  const compareFileIds = useMemo(
+    () =>
+      compareVersion
+        ? new Set(compareVersion.fileAttachments.map((f) => f.fileId))
+        : new Set<string>(),
+    [compareVersion]
+  );
+
+  const filesDiffer =
+    isDiffMode &&
+    (currentFileIds.size !== compareFileIds.size ||
+      [...currentFileIds].some((id) => !compareFileIds.has(id)));
+
+  const restoreFiles = () => {
+    if (!compareVersion) {
+      return;
+    }
+    setValue("fileAttachments", compareVersion.fileAttachments, {
+      shouldDirty: true,
+    });
+  };
 
   const onUploadClick = () => {
     fileInputRef.current?.click();
@@ -85,7 +118,7 @@ export function SkillBuilderFilesSection() {
     [handleFilesUpload, append, existingFileNames, sendNotification]
   );
 
-  const headerActions = fields.length > 0 && (
+  const headerActions = !isDiffMode && fields.length > 0 && (
     <Button
       type="button"
       onClick={onUploadClick}
@@ -108,20 +141,33 @@ export function SkillBuilderFilesSection() {
             schemas, scripts, or reference materials.
           </p>
         </div>
-        {headerActions}
+        <div className="flex items-center gap-2">
+          {filesDiffer && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ArrowGoBackIcon}
+              onClick={restoreFiles}
+              label="Restore files"
+            />
+          )}
+          {headerActions}
+        </div>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={onFileInputChange}
-      />
+      {!isDiffMode && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={onFileInputChange}
+        />
+      )}
 
       <div className="flex-1">
         {fields.length === 0 ? (
-          isProcessingFiles ? (
+          isDiffMode ? null : isProcessingFiles ? (
             <div className="flex h-40 w-full items-center justify-center">
               <Spinner />
             </div>
@@ -142,25 +188,37 @@ export function SkillBuilderFilesSection() {
           )
         ) : (
           <ContextItem.List>
-            {sortedFields.map(({ field, originalIndex }) => (
-              <ContextItem
-                key={field.id}
-                title={
-                  <span className="text-sm font-normal">{field.fileName}</span>
-                }
-                visual={<ContextItem.Visual visual={DocumentIcon} />}
-                hoverAction
-                action={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    icon={XMarkIcon}
-                    size="xs"
-                    onClick={() => remove(originalIndex)}
-                  />
-                }
-              />
-            ))}
+            {sortedFields.map(({ field, originalIndex }) => {
+              const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
+              return (
+                <ContextItem
+                  key={field.id}
+                  title={
+                    <span
+                      className={cn(
+                        "text-sm font-normal",
+                        isAdded && "text-success dark:text-success-night"
+                      )}
+                    >
+                      {field.fileName}
+                    </span>
+                  }
+                  visual={<ContextItem.Visual visual={DocumentIcon} />}
+                  hoverAction={!isDiffMode}
+                  action={
+                    !isDiffMode ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        icon={XMarkIcon}
+                        size="xs"
+                        onClick={() => remove(originalIndex)}
+                      />
+                    ) : undefined
+                  }
+                />
+              );
+            })}
           </ContextItem.List>
         )}
       </div>

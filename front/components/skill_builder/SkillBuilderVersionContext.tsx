@@ -9,6 +9,7 @@ import {
 
 interface SkillVersionComparisonContextType {
   compareVersion: SkillWithVersionType | null;
+  isDiffMode: boolean;
   enterDiffMode: (version: SkillWithVersionType) => void;
   exitDiffMode: () => void;
 }
@@ -34,9 +35,11 @@ export function SkillVersionComparisonProvider({
     setCompareVersion(null);
   }, []);
 
+  const isDiffMode = compareVersion !== null;
+
   const value = useMemo(
-    () => ({ compareVersion, enterDiffMode, exitDiffMode }),
-    [compareVersion, enterDiffMode, exitDiffMode]
+    () => ({ compareVersion, isDiffMode, enterDiffMode, exitDiffMode }),
+    [compareVersion, isDiffMode, enterDiffMode, exitDiffMode]
   );
 
   return (
