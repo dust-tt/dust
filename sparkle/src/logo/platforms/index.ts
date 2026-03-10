@@ -50,6 +50,7 @@ export { default as MicrosoftOutlookLogo } from "./MicrosoftOutlook";
 export { default as MicrosoftPowerpointLogo } from "./MicrosoftPowerpoint";
 export { default as MicrosoftTeamsLogo } from "./MicrosoftTeams";
 export { default as MicrosoftWordLogo } from "./MicrosoftWord";
+export { default as MiroLogo } from "./Miro";
 export { default as MistralLogo } from "./Mistral";
 export { default as MondayLogo } from "./Monday";
 export { default as NotionLogo } from "./Notion";
