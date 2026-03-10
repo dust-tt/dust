@@ -356,7 +356,33 @@ chrome.runtime.onMessage.addListener(
             let captures: string[] | undefined;
             let fileData: FileData | undefined;
             if (includeCapture) {
-              const mimeType = mimetypeExecution.result as string;
+              // Chrome's built-in PDF viewer does not expose document.contentType
+              // via executeScript, so fall back to URL extension detection.
+              const mimeType: string =
+                (mimetypeExecution.result as string) ||
+                (() => {
+                  const path = (tab.url || "").split("?")[0].toLowerCase();
+                  if (path.endsWith(".pdf")) {
+                    return "application/pdf";
+                  }
+                  if (path.endsWith(".png")) {
+                    return "image/png";
+                  }
+                  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+                    return "image/jpeg";
+                  }
+                  if (path.endsWith(".gif")) {
+                    return "image/gif";
+                  }
+                  if (path.endsWith(".webp")) {
+                    return "image/webp";
+                  }
+                  if (path.endsWith(".svg")) {
+                    return "image/svg+xml";
+                  }
+                  return "";
+                })();
+
               const isAttachableFile =
                 tab.url &&
                 tab.url.startsWith("https://") &&
@@ -417,42 +443,68 @@ chrome.runtime.onMessage.addListener(
                       }
                     );
                   } else if (isAttachableFile) {
-                    // Attempt to fetch the actual file and attach it.
-                    // Falls back to a visible-tab screenshot if the file is too
-                    // large or the fetch fails (e.g. auth-gated content).
+                    // Fetch the file by injecting a script into the tab so that
+                    // the request runs in the page's origin (same-origin, no
+                    // CORS) and is not subject to the extension's own
+                    // content_security_policy. Falls back to a visible-tab
+                    // screenshot if the file is too large or the fetch fails.
                     try {
-                      const response = await fetch(tab.url as string, {
-                        credentials: "omit",
-                      });
-                      if (!response.ok) {
+                      const [fetchExecution] =
+                        await chrome.scripting.executeScript({
+                          target: { tabId: tab.id! },
+                          func: async (
+                            url: string,
+                            maxBytes: number
+                          ): Promise<
+                            { base64: string } | { error: string }
+                          > => {
+                            try {
+                              const response = await fetch(url);
+                              if (!response.ok) {
+                                return { error: `HTTP ${response.status}` };
+                              }
+                              const contentLength =
+                                response.headers.get("content-length");
+                              if (
+                                contentLength &&
+                                parseInt(contentLength) > maxBytes
+                              ) {
+                                return { error: "too-large" };
+                              }
+                              const buffer = await response.arrayBuffer();
+                              if (buffer.byteLength > maxBytes) {
+                                return { error: "too-large" };
+                              }
+                              const bytes = new Uint8Array(buffer);
+                              const chunkSize = 8192;
+                              let binary = "";
+                              for (
+                                let i = 0;
+                                i < bytes.byteLength;
+                                i += chunkSize
+                              ) {
+                                binary += String.fromCharCode(
+                                  ...bytes.subarray(i, i + chunkSize)
+                                );
+                              }
+                              return { base64: btoa(binary) };
+                            } catch (e) {
+                              return { error: String(e) };
+                            }
+                          },
+                          args: [tab.url as string, MAX_FILE_SIZE_BYTES],
+                        });
+
+                      const result = fetchExecution?.result;
+                      if (!result || "error" in result) {
                         throw new Error(
-                          `Fetch failed with status ${response.status}`
-                        );
-                      }
-                      const contentLength =
-                        response.headers.get("content-length");
-                      if (
-                        contentLength &&
-                        parseInt(contentLength) > MAX_FILE_SIZE_BYTES
-                      ) {
-                        throw new Error("File exceeds 45 MB limit.");
-                      }
-                      const buffer = await response.arrayBuffer();
-                      if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
-                        throw new Error("File exceeds 45 MB limit.");
-                      }
-                      // Convert ArrayBuffer to base64 in chunks to avoid
-                      // stack overflow when spreading large typed arrays.
-                      const bytes = new Uint8Array(buffer);
-                      const chunkSize = 8192;
-                      let binary = "";
-                      for (let i = 0; i < bytes.byteLength; i += chunkSize) {
-                        binary += String.fromCharCode(
-                          ...bytes.subarray(i, i + chunkSize)
+                          result && "error" in result
+                            ? result.error
+                            : "Failed to fetch file"
                         );
                       }
                       resultFileData = {
-                        base64: btoa(binary),
+                        base64: result.base64,
                         mimeType,
                         url: tab.url as string,
                       };
