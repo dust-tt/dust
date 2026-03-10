@@ -10,6 +10,8 @@ import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/inv
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
+import type { GetWorkspaceSkillUsageResponse } from "@app/pages/api/w/[wId]/analytics/skill-usage";
+import type { GetWorkspaceSkillsResponse } from "@app/pages/api/w/[wId]/analytics/skills";
 import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
 import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
 import type { GetWorkspaceToolsResponse } from "@app/pages/api/w/[wId]/analytics/tools";
@@ -262,6 +264,64 @@ export function useWorkspaceToolUsage({
     isToolUsageLoading: !error && !data && !disabled,
     isToolUsageError: error,
     isToolUsageValidating: isValidating,
+  };
+}
+
+export function useWorkspaceSkills({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetWorkspaceSkillsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/skills?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    skills: data?.skills ?? emptyArray(),
+    isSkillsLoading: !error && !data && !disabled,
+    isSkillsError: error,
+    isSkillsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceSkillUsage({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  skillName,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  skillName?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetWorkspaceSkillUsageResponse> = fetcher;
+  const params = new URLSearchParams({ days: String(days) });
+  if (skillName) {
+    params.set("skillName", skillName);
+  }
+  const key = `/api/w/${workspaceId}/analytics/skill-usage?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    skillUsage: data?.points ?? emptyArray(),
+    isSkillUsageLoading: !error && !data && !disabled,
+    isSkillUsageError: error,
+    isSkillUsageValidating: isValidating,
   };
 }
 
