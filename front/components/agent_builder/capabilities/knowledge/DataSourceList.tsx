@@ -146,16 +146,19 @@ export function DataSourceList({
     [navigationHistory]
   );
 
+  // Compute selectables items
+  const selectableItems = useMemo(() => {
+    return items.filter((item) => {
+      const hideCheckbox = shouldHideCheckbox(item);
+      return !hideCheckbox;
+    });
+  }, [items, shouldHideCheckbox]);
+
   // Calculate select all state
   const selectAllState = useMemo(() => {
     if (!showSelectAllHeader) {
       return false;
     }
-
-    const selectableItems = items.filter((item) => {
-      const hideCheckbox = shouldHideCheckbox(item);
-      return !hideCheckbox;
-    });
 
     if (selectableItems.length === 0) {
       return false;
@@ -185,8 +188,7 @@ export function DataSourceList({
     return false;
   }, [
     showSelectAllHeader,
-    items,
-    shouldHideCheckbox,
+    selectableItems,
     isRowSelected,
     isItemSelected,
     isCurrentNavigationEntrySelected,
@@ -345,7 +347,7 @@ export function DataSourceList({
       ref={containerRef}
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
-      {showSelectAllHeader && (
+      {showSelectAllHeader && selectableItems.length > 0 && (
         <div className="flex items-center justify-between p-3 font-medium text-foreground dark:text-white">
           <div className="flex items-center gap-3">
             <Checkbox
