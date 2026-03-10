@@ -14,6 +14,8 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "test", a: "testlonger", b: "longtest" },
     { query: "eng", a: "eng", b: "slack-engineering-highlights" },
     { query: "c", a: "c", b: "RadicalFeedback" },
+    { query: "issuebot", a: "issueBot", b: "FDEIssueBot" },
+    { query: "issuebot", a: "ISSUEBOT", b: "FDEIssueBot" },
   ];
 
   const dataEqual = [
@@ -36,4 +38,12 @@ test("compareForFuzzySort should correctly compare strings", () => {
       `Expected compareForFuzzySort("${d.query}", "${d.a}", "${d.b}") to return 0`
     ).toBe(0);
   }
+});
+
+test("compareForFuzzySort stays symmetric for normalized exact matches", () => {
+  const query = "\u0130";
+  const normalizedExactMatch = "i\u0307";
+
+  expect(compareForFuzzySort(query, query, normalizedExactMatch)).toBe(0);
+  expect(compareForFuzzySort(query, normalizedExactMatch, query)).toBe(0);
 });

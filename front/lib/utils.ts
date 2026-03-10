@@ -258,19 +258,29 @@ export function subFilter(a: string, b: string) {
  * lexicographic order
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
-  if (a.includes(query) && !b.includes(query)) {
+  const normalizedQuery = query.toLowerCase();
+  const normalizedA = a.toLowerCase();
+  const normalizedB = b.toLowerCase();
+
+  if (
+    normalizedA.includes(normalizedQuery) &&
+    !normalizedB.includes(normalizedQuery)
+  ) {
     return -1;
   }
-  if (b.includes(query) && !a.includes(query)) {
+  if (
+    normalizedB.includes(normalizedQuery) &&
+    !normalizedA.includes(normalizedQuery)
+  ) {
     return 1;
   }
 
-  const spreadA = spreadLength(query, a);
+  const spreadA = spreadLength(normalizedQuery, normalizedA);
   if (spreadA === -1) {
     return 1;
   }
 
-  const spreadB = spreadLength(query, b);
+  const spreadB = spreadLength(normalizedQuery, normalizedB);
   if (spreadB === -1) {
     return -1;
   }
@@ -279,20 +289,19 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return spreadA - spreadB;
   }
 
-  const subFilterLastIndexA = subFilterLastIndex(query, a);
-  const subFilterLastIndexB = subFilterLastIndex(query, b);
+  const subFilterLastIndexA = subFilterLastIndex(normalizedQuery, normalizedA);
+  const subFilterLastIndexB = subFilterLastIndex(normalizedQuery, normalizedB);
   if (subFilterLastIndexA !== subFilterLastIndexB) {
     return subFilterLastIndexA - subFilterLastIndexB;
   }
 
-  // Favor exact match
-  if (a.length !== b.length) {
-    if (a === query) {
-      return -1;
-    }
-    if (b === query) {
-      return 1;
-    }
+  const isExactMatchA = normalizedA === normalizedQuery;
+  const isExactMatchB = normalizedB === normalizedQuery;
+  if (isExactMatchA && !isExactMatchB) {
+    return -1;
+  }
+  if (isExactMatchB && !isExactMatchA) {
+    return 1;
   }
 
   return 0;
