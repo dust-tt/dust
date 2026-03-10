@@ -35,11 +35,12 @@ export async function generateSnippet(
   }
 
   if (isSupportedDelimitedTextContentType(file.contentType)) {
+    const { bucket, path } = file.getContentBucketAndPath(auth);
     const schemaRes = await coreAPI.tableValidateCSVContent({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
-      bucket: file.getBucketForVersion("processed").name,
-      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      bucket,
+      bucketCSVPath: path,
     });
 
     if (schemaRes.isErr()) {
@@ -76,7 +77,7 @@ export async function generateSnippet(
   }
 
   if (isSupportedAudioContentType(file.contentType)) {
-    const content = await getFileContent(auth, file, "processed");
+    const content = await getFileContent(auth, file);
     if (!content) {
       return new Err(new Error("Failed to get file processed content"));
     }

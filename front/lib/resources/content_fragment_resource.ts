@@ -11,12 +11,16 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import {
+  FileResource,
+  type FileVersion,
+} from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -499,40 +503,15 @@ export function fileAttachmentLocation({
   };
 }
 
-async function getOriginalFileContent(
+async function getSignedUrlForVersion(
   auth: Authenticator,
-  fileId: string
+  fileId: string,
+  version: FileVersion
 ): Promise<string> {
   const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
     fileId,
     workspaceId: auth.getNonNullableWorkspace().sId,
-    version: "original",
-  });
-
-  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
-}
-
-async function getProcessedFileContent(
-  auth: Authenticator,
-  fileId: string
-): Promise<string> {
-  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
-    fileId,
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    version: "processed",
-  });
-
-  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
-}
-
-async function getSignedUrlForProcessedContent(
-  auth: Authenticator,
-  fileId: string
-): Promise<string> {
-  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
-    fileId,
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    version: "processed",
+    version,
   });
 
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
@@ -591,7 +570,12 @@ export async function getContentFragmentFromAttachmentFile(
       );
     }
 
-    const signedUrl = await getSignedUrlForProcessedContent(auth, fileStringId);
+    // Images always have real processing (resize), so we always use "processed".
+    const signedUrl = await getSignedUrlForVersion(
+      auth,
+      fileStringId,
+      "processed"
+    );
 
     return new Ok({
       role: "content_fragment",
@@ -650,19 +634,11 @@ export async function getContentFragmentFromAttachmentFile(
       ],
     });
   } else if (fileStringId) {
-    let content = await getProcessedFileContent(auth, fileStringId);
-
-    if (!content) {
-      logger.warn(
-        {
-          fileId: fileStringId,
-          contentType: attachment.contentType,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "No content extracted from file processed version, we are retrieving the original file as a fallback."
-      );
-      content = await getOriginalFileContent(auth, fileStringId);
+    const file = await FileResource.fetchById(auth, fileStringId);
+    if (!file) {
+      return new Err(new Error(`File not found: ${fileStringId}`));
     }
+    const content = (await getFileContent(auth, file)) ?? "";
 
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
@@ -783,7 +759,12 @@ export async function renderLightContentFragmentForModel(
       };
     }
 
-    const signedUrl = await getSignedUrlForProcessedContent(auth, fileStringId);
+    // Images always have real processing (resize), so we always use "processed".
+    const signedUrl = await getSignedUrlForVersion(
+      auth,
+      fileStringId,
+      "processed"
+    );
 
     return {
       role: "content_fragment",

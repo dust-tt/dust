@@ -95,9 +95,11 @@ export const parseUploadRequest = async (
 export async function getFileContent(
   auth: Authenticator,
   file: FileResource,
-  version: FileVersion = "processed"
+  version?: FileVersion
 ): Promise<string | null> {
-  const readStream = file.getReadStream({ auth, version });
+  const readStream = version
+    ? file.getReadStream({ auth, version })
+    : file.getContentReadStream(auth);
   const bufferResult = await streamToBuffer(readStream);
 
   if (bufferResult.isErr()) {

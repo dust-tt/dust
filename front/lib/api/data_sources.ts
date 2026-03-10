@@ -809,11 +809,12 @@ export async function upsertTable({
     }
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+    const { bucket, path } = file.getContentBucketAndPath(auth);
     const schemaRes = await coreAPI.tableValidateCSVContent({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
-      bucket: file.getBucketForVersion("processed").name,
-      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      bucket,
+      bucketCSVPath: path,
     });
     if (schemaRes.isErr()) {
       if (schemaRes.error.code === "invalid_csv_content") {
@@ -825,8 +826,8 @@ export async function upsertTable({
       } else {
         logger.error(
           {
-            bucket: file.getBucketForVersion("processed").name,
-            bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+            bucket,
+            bucketCSVPath: path,
             dataSourceId: dataSource.sId,
             error: schemaRes.error,
           },
