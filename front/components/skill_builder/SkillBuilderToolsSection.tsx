@@ -30,7 +30,7 @@ interface SkillBuilderToolsSectionProps {
 export function SkillBuilderToolsSection({
   extendedSkill,
 }: SkillBuilderToolsSectionProps) {
-  const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
+  const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
 
   const { fields, remove, append } = useFieldArray<
@@ -51,7 +51,7 @@ export function SkillBuilderToolsSection({
     []
   );
 
-  const selectedActionsForSheet = getValues("tools");
+  const selectedActionsForSheet = fields;
 
   const handleOpenSheet = () => {
     setSheetMode({ type: "add" });

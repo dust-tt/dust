@@ -24,7 +24,7 @@ const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-96";
 
 export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
-  const { setValue, watch } = useFormContext<SkillBuilderFormData>();
+  const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
 
   const { field: descriptionField, fieldState: descriptionFieldState } =
@@ -38,10 +38,9 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   const [similarSkills, setSimilarSkills] = useState<SkillType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentDescription = watch(FIELD_NAME);
   const descriptionDiffers =
     compareVersion &&
-    compareVersion.agentFacingDescription !== currentDescription;
+    compareVersion.agentFacingDescription !== descriptionField.value;
 
   const restoreDescription = () => {
     if (!compareVersion) {
