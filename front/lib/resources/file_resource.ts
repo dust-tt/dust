@@ -7,6 +7,7 @@ import {
   getConversationFilePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
+import { hasProcessedVersion } from "@app/lib/api/files/processing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -454,6 +455,42 @@ export class FileResource extends BaseResource<FileModel> {
     return isInteractiveContentType(this.contentType);
   }
 
+  // Content access logic.
+  //
+  // Files may have a "processed" version (text extraction, image resize, audio transcription) or
+  // only the "original". These methods abstract the version selection so callers never deal with
+  // versions directly.
+
+  /**
+   * Returns the file version to read for "best available" content.
+   */
+  private getContentVersion(): FileVersion {
+    return hasProcessedVersion(this.contentType) ? "processed" : "original";
+  }
+
+  /**
+   * Read stream for the best available content.
+   */
+  getContentReadStream(auth: Authenticator): Readable {
+    return this.getReadStream({ auth, version: this.getContentVersion() });
+  }
+
+  /**
+   * Bucket name and GCS path for the best available content. Used by CoreAPI callers that need
+   * to pass bucket + path for CSV validation / upsert.
+   */
+  getContentBucketAndPath(auth: Authenticator): {
+    bucket: string;
+    path: string;
+  } {
+    const version = this.getContentVersion();
+
+    return {
+      bucket: this.getBucketForVersion(version).name,
+      path: this.getCloudStoragePath(auth, version),
+    };
+  }
+
   // Cloud storage logic.
 
   getPrivateUrl(auth: Authenticator): string {
@@ -860,13 +897,11 @@ export class FileResource extends BaseResource<FileModel> {
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
     await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
 
-    // Copy processed version if it exists.
-    const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
-    const processedMountPath = makeProcessedMountFileName(mountFilePath);
-    try {
+    // Copy processed version only if this file type has real processing.
+    if (this.getContentVersion() === "processed") {
+      const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
+      const processedMountPath = makeProcessedMountFileName(mountFilePath);
       await bucket.file(srcProcessedPath).copy(bucket.file(processedMountPath));
-    } catch {
-      // Processed version may not exist. Ignore.
     }
 
     await this.update({ mountFilePath });
@@ -887,9 +922,10 @@ export class FileResource extends BaseResource<FileModel> {
 
     const bucket = getPrivateUploadBucket();
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
-    await bucket.delete(makeProcessedMountFileName(this.mountFilePath), {
-      ignoreNotFound: true,
-    });
+
+    // Only delete processed mount file if this file type has real processing.
+    const processedMountPath = makeProcessedMountFileName(this.mountFilePath);
+    await bucket.delete(processedMountPath, { ignoreNotFound: true });
   }
 
   static async bulkSetUseCaseMetadata(

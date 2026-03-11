@@ -25,12 +25,17 @@ vi.mock("@app/lib/api/data_sources", () => ({
 }));
 
 // Mock the file processing functions
-vi.mock("@app/lib/api/files/processing", () => ({
-  processAndStoreFile: vi.fn().mockResolvedValue({
-    isErr: () => false,
-    value: {},
-  }),
-}));
+vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
+  const mod =
+    await importOriginal<typeof import("@app/lib/api/files/processing")>();
+  return {
+    ...mod,
+    processAndStoreFile: vi.fn().mockResolvedValue({
+      isErr: () => false,
+      value: {},
+    }),
+  };
+});
 
 vi.mock("@app/lib/api/files/upsert", () => ({
   isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),

@@ -1,5 +1,5 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { isUploadSupported } from "@app/lib/api/files/processing";
+import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -150,7 +150,7 @@ async function handler(
         });
       }
 
-      if (!isUploadSupported({ auth, contentType, useCase })) {
+      if (!isUploadSupportedForContentType({ contentType, useCase })) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

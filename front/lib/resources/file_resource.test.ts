@@ -549,6 +549,135 @@ describe("FileResource", () => {
     });
   });
 
+  describe("getContentBucketAndPath", () => {
+    it("should resolve to 'original' version for plain text files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "readme.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/original");
+    });
+
+    it("should resolve to 'original' version for Python files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/x-python",
+        fileName: "script.py",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/original");
+    });
+
+    it("should resolve to 'original' version for CSV files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/csv",
+        fileName: "data.csv",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/original");
+    });
+
+    it("should resolve to 'processed' version for PDF files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "application/pdf",
+        fileName: "document.pdf",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/processed");
+    });
+
+    it("should resolve to 'processed' version for Word documents", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        fileName: "document.docx",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/processed");
+    });
+
+    it("should resolve to 'processed' version for images in conversation", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "image/png",
+        fileName: "photo.png",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/processed");
+    });
+
+    it("should resolve to 'original' version for JSON files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "application/json",
+        fileName: "config.json",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-1" },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/original");
+    });
+  });
+
   describe("uploadContent dual write", () => {
     it("should write to both canonical and mount path when mountFilePath is set", async () => {
       const { authenticator: auth, workspace } = await createResourceTest({
