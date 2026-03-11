@@ -19,6 +19,16 @@ import { jwtDecode } from "jwt-decode";
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
+function isGoogleChrome(): boolean {
+  const brands =
+    (
+      navigator as Navigator & {
+        userAgentData?: { brands: { brand: string }[] };
+      }
+    ).userAgentData?.brands ?? [];
+  return brands.some((b) => b.brand === "Google Chrome");
+}
+
 // Initialize the platform service.
 const platform = new ChromePlatformService();
 
@@ -47,9 +57,19 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
 /**
  * Listener to open/close the side panel when the user clicks on the extension icon.
  */
+chrome.action.onClicked.addListener((tab) => {
+  if (!isGoogleChrome() && tab.id) {
+    chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" }).catch(() => {
+      // Content script is not available on this page (e.g. Arc blocked pages).
+    });
+  }
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   void platform.storage.set("extensionReady", false);
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  void chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: isGoogleChrome(),
+  });
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
