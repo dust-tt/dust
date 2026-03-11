@@ -40,6 +40,7 @@ import {
   NewConversationAgentMessage,
   NewConversationContainer,
   NewConversationMessageGroup,
+  NewConversationPendingValidationBlock,
   NewConversationSectionHeading,
   NewConversationUserMessage,
 } from "./NewConversationMessages";
@@ -59,6 +60,7 @@ import type {
   Conversation,
   ConversationItem,
   ConversationMessage,
+  ConversationPendingValidation,
   MessageCitationData,
   MessageGroupData,
   MessageGroupType,
@@ -78,6 +80,8 @@ interface ConversationViewProps {
   onBack?: () => void;
   conversationTitle?: string;
   projectTitle?: string;
+  onAcceptPendingValidation?: (blockId: string) => void;
+  onCancelPendingValidation?: (blockId: string) => void;
 }
 
 export function ConversationView({
@@ -90,6 +94,8 @@ export function ConversationView({
   onBack,
   conversationTitle,
   projectTitle,
+  onAcceptPendingValidation,
+  onCancelPendingValidation,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -680,6 +686,82 @@ export function ConversationView({
           name={item.name}
           action={item.action}
           avatar={item.avatar}
+        />
+      );
+      return;
+    }
+
+    if (item.kind === "pendingValidation") {
+      const block = item as ConversationPendingValidation;
+      const userMsg = block.userMessage;
+      const agentMsg = block.agentMessage;
+
+      const userCitations = userMsg.citations?.map((citation) => (
+        <NewCitation
+          key={citation.id}
+          visual={getCitationIcon(citation.icon)}
+          label={citation.title}
+          size="lg"
+          onClick={() => {
+            setSelectedCitation(citation);
+            if (citation.imgSrc) {
+              setIsImageZoomOpen(true);
+            } else {
+              setIsCitationSheetOpen(true);
+            }
+          }}
+          {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
+        />
+      ));
+      const agentCitations = agentMsg.citations?.map((citation) => (
+        <NewCitation
+          key={citation.id}
+          visual={getCitationIcon(citation.icon)}
+          label={citation.title}
+          size="lg"
+          onClick={() => {
+            setSelectedCitation(citation);
+            if (citation.imgSrc) {
+              setIsImageZoomOpen(true);
+            } else {
+              setIsCitationSheetOpen(true);
+            }
+          }}
+          {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
+        />
+      ));
+
+      const agent = getAgentByOwnerId(agentMsg.ownerId);
+      const agentAvatar = agent
+        ? {
+            emoji: agent.emoji,
+            backgroundColor: agent.backgroundColor,
+            name: agent.name,
+          }
+        : agentMsg.group.avatar
+          ? { ...agentMsg.group.avatar, name: agentMsg.group.name }
+          : undefined;
+
+      conversationBlocks.push(
+        <NewConversationPendingValidationBlock
+          key={block.id}
+          userMessageContent={renderMessageBody(userMsg)}
+          agentMessageContent={renderMessageBody(agentMsg)}
+          userGroupHeader={{ timestamp: userMsg.group.timestamp }}
+          agentGroupHeader={{
+            avatar: agentAvatar,
+            name: agent?.name ?? agentMsg.group.name,
+            timestamp: agentMsg.group.timestamp,
+            completionStatus: agentMsg.group.completionStatus ? (
+              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {agentMsg.group.completionStatus}
+              </span>
+            ) : undefined,
+          }}
+          userCitations={userCitations}
+          agentCitations={agentCitations}
+          onAccept={() => onAcceptPendingValidation?.(block.id)}
+          onCancel={() => onCancelPendingValidation?.(block.id)}
         />
       );
     }
