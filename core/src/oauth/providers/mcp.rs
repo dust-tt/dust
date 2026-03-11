@@ -308,11 +308,13 @@ impl Provider for MCPConnectionProvider {
         {
             Ok(json) => json,
             Err(ProviderHttpRequestError::RequestFailed {
-                status, message, ..
+                status,
+                message: error_message,
+                ..
             }) if status == 400 => {
                 if metadata.resource.is_some() {
                     info!(
-                        message,
+                        error_message,
                         "MCP refresh failed with resource parameter, retrying without it"
                     );
                     self.execute_refresh_request(
@@ -328,7 +330,7 @@ impl Provider for MCPConnectionProvider {
                     .map_err(|e| self.handle_provider_request_error(e))?
                 } else {
                     info!(
-                        message,
+                        error_message,
                         "MCP refresh failed without scope, retrying with scope"
                     );
                     self.execute_refresh_request(
