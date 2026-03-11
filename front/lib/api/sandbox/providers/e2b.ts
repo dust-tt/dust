@@ -241,7 +241,10 @@ export class E2BSandboxProvider implements SandboxProvider {
     }
 
     try {
-      // E2B automatically creates the necessary directory structure.
+      // We cannot use Node's Buffer directly as it shares a large pooled
+      // ArrayBuffer and buffer.buffer would send the entire pool, hence
+      // the copy into a fresh area of memory here.
+      // Note: this creates the necessary directories if missing.
       await sandbox.files.write(path, new Uint8Array(content).buffer);
     } catch (err) {
       return new Err(normalizeError(err));
