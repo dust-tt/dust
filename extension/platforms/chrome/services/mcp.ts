@@ -23,14 +23,25 @@ export class ChromeMcpService extends McpService {
     this.captureService = captureService;
   }
 
-  createServerForWorkspace(): McpServer | null {
+  createServerForWorkspace(workspaceId: string): McpServer | null {
     try {
-      const server = new McpServer({
-        name: "chrome-mcp-server",
-        version: "1.0.0",
-      });
+      const server = new McpServer(
+        {
+          name: "chrome-mcp-server",
+          version: "1.0.0",
+        },
+        {
+          instructions:
+            "You are running inside a Dust Chrome extension. " +
+            "The user is actively browsing the web, so their questions often relate to content on their current browser tab. " +
+            "When the user's message implicitly or explicitly refers to a page, article, document, or 'this' / 'it' / 'the page' without further specification, " +
+            "proactively call `get-current-browser-page` to fetch the page title, URL, and text content before answering. " +
+            "For pages that are visual or non-text (images, PDFs, dashboards), call `get-current-browser-page-view` instead — it will attach the file directly when possible. " +
+            "Do not ask the user to paste the content themselves — retrieve it directly with the available tools.",
+        }
+      );
 
-      registerAllTools(server, this.captureService);
+      registerAllTools(server, this.captureService, workspaceId);
 
       this.server = server;
       return server;
@@ -82,7 +93,7 @@ export class ChromeMcpService extends McpService {
         return { server: this.server, serverId: this.serverId };
       }
 
-      const server = this.createServerForWorkspace();
+      const server = this.createServerForWorkspace(owner.sId);
       if (!server) {
         return { server: null, serverId: undefined };
       }

@@ -561,7 +561,7 @@ export async function* tryCallMCPTool(
         };
       }
     }
-    if (serverType === "internal") {
+    if (serverType === "internal" || serverType === "client") {
       // The MCP SDK is now stripping extra properties from the tool result (both client and server).
       // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
       // We now need to move them back to the resource items root level.

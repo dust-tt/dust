@@ -33,10 +33,21 @@ export class FrontMcpService extends McpService {
    */
   createServerForWorkspace(): McpServer | null {
     try {
-      const server = new McpServer({
-        name: "front-mcp-server",
-        version: "1.0.0",
-      });
+      const server = new McpServer(
+        {
+          name: "front-mcp-server",
+          version: "1.0.0",
+        },
+        {
+          instructions:
+            "You are running inside a Dust plugin embedded in the Front customer support platform. " +
+            "The user is working on email conversations in Front. " +
+            "When the user's message implicitly or explicitly refers to 'this conversation', 'this email', 'the thread', or 'the customer' without further specification, " +
+            "proactively call `front-get-current-conversation` to fetch the current conversation context before answering. " +
+            "When asked to draft, reply, or write a response, use the available draft tools (`front-create-email-reply-draft`, `front-create-new-conversation-draft`, `front-update-draft`) to insert content directly into Front. " +
+            "Do not ask the user to copy-paste conversation content — retrieve it directly with the available tools.",
+        }
+      );
 
       // Register all tools with the server.
       registerAllTools(server, this.frontContext);

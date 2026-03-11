@@ -2,7 +2,10 @@ import type {
   AuthService,
   OAuthAuthorizeResponse,
 } from "@extension/shared/services/auth";
-import type { CaptureOptions } from "@extension/shared/services/capture";
+import type {
+  CaptureOptions,
+  FileData,
+} from "@extension/shared/services/capture";
 
 export type AuthBackgroundResponseError = {
   success: false;
@@ -29,6 +32,7 @@ export type GetActiveTabBackgroundResponse = {
   url: string;
   content?: string;
   captures?: string[];
+  fileData?: FileData;
   error?: string;
 };
 
