@@ -161,13 +161,13 @@ export function FeedbackSelector({
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
-          variant="outline"
+          variant={feedback?.thumb === "down" ? "primary" : "outline"}
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => openDialog("down")}
           icon={MagicIcon}
           label="Improve this agent"
-          className="text-muted-foreground"
+          className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
         />
       </ButtonGroup>
 
