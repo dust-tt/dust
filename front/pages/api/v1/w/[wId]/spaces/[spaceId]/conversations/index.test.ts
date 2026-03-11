@@ -9,7 +9,7 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

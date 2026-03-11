@@ -21,7 +21,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("getJITServers", () => {
   let auth: Authenticator;
