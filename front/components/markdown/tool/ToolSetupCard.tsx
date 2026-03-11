@@ -70,6 +70,14 @@ export function ToolSetupCard({
     owner,
   });
 
+  const existingViewNames = useMemo(
+    () =>
+      mcpServers.flatMap((s) =>
+        (s.views ?? []).map((v) => v.name ?? v.server.name)
+      ),
+    [mcpServers]
+  );
+
   // Find the matching MCP server for the tool we want to activate.
   const matchingMCPServer = useMemo(() => {
     const installedServer = mcpServers.find((s) =>
@@ -203,6 +211,7 @@ export function ToolSetupCard({
         <CreateMCPServerDialog
           owner={owner}
           internalMCPServer={matchingMCPServer}
+          existingViewNames={existingViewNames}
           setMCPServerToShow={handleSetupComplete}
           setIsLoading={setIsActivating}
           isOpen={isSetupSheetOpen}

@@ -102,9 +102,11 @@ export class InternalMCPServerInMemoryResource {
     {
       name,
       useCase,
+      viewName,
     }: {
       name: InternalMCPServerNameType;
       useCase: MCPOAuthUseCase | null;
+      viewName?: string;
     }
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -184,6 +186,7 @@ export class InternalMCPServerInMemoryResource {
       editedAt: new Date(),
       editedByUserId: auth.user()?.id,
       oAuthUseCase: useCase ?? null,
+      ...(viewName ? { name: viewName } : {}),
     });
 
     return server;

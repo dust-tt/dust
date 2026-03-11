@@ -70,6 +70,7 @@ type CreateInternalMCPServerFn = (
     includeGlobal: boolean;
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
+    viewName?: string;
   } & (
     | { oauthConnection: MCPConnectionType; useCase?: never }
     | { oauthConnection?: never; useCase: MCPOAuthUseCase }
@@ -225,11 +226,13 @@ export async function submitCreateMCPServerDialogForm({
           name: internalMCPServer.name,
           oauthConnection,
           includeGlobal: true,
+          viewName: values.viewName,
           ...optionalFields,
         })
       : await createInternalMCPServer({
           name: internalMCPServer.name,
           includeGlobal: true,
+          viewName: values.viewName,
           ...optionalFields,
         });
 

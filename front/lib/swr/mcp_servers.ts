@@ -285,11 +285,13 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     includeGlobal,
     sharedSecret,
     customHeaders,
+    viewName,
   }: {
     name: string;
     includeGlobal: boolean;
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
+    viewName?: string;
   } & (
     | { oauthConnection: MCPConnectionType; useCase?: never }
     | { oauthConnection?: never; useCase: MCPOAuthUseCase }
@@ -306,6 +308,7 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
         includeGlobal,
         ...(sharedSecret !== undefined ? { sharedSecret } : {}),
         ...(customHeaders !== undefined ? { customHeaders } : {}),
+        ...(viewName !== undefined ? { viewName } : {}),
       }),
     });
 
