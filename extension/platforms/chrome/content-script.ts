@@ -258,6 +258,15 @@ function showSidebar(): void {
     sidebarElement.style.transform = "translateX(0)";
     sidebarVisible = true;
 
+    // Focus the iframe and notify the React app to focus the input bar.
+    if (iframeElement) {
+      iframeElement.contentWindow?.focus();
+      iframeElement.contentWindow?.postMessage(
+        { type: "DUST_SIDEBAR_SHOWN" },
+        "*"
+      );
+    }
+
     // Save state
     chrome.storage.local
       .set({ [STORAGE_KEY_VISIBLE]: true })
