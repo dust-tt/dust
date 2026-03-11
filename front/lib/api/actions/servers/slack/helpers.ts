@@ -8,6 +8,7 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
