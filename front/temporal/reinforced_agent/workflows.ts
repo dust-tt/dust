@@ -1,8 +1,10 @@
 import type * as activities from "@app/temporal/reinforced_agent/activities";
 import {
+  ApplicationFailure,
   ParentClosePolicy,
   proxyActivities,
   setHandler,
+  sleep,
   startChild,
 } from "@temporalio/workflow";
 
@@ -22,13 +24,36 @@ const { getRecentConversationsForAgentActivity } = proxyActivities<
   startToCloseTimeout: "5 minutes",
 });
 
-const { analyzeConversationActivity } = proxyActivities<typeof activities>({
+const { startConversationAnalysisBatchActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "30 minutes",
+});
+
+const { checkBatchStatusActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
+
+const { processConversationAnalysisBatchResultActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "30 minutes",
+});
+
+const { startAggregationBatchActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
-const { aggregateSuggestionsActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
+const { processAggregationBatchResultActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "30 minutes",
 });
+
+const BATCH_POLL_INTERVAL_FAST_MS = 60_000; // 1 minute (first 30 minutes).
+const BATCH_POLL_INTERVAL_SLOW_MS = 5 * 60_000; // 5 minutes (after 30 minutes).
+const BATCH_POLL_FAST_PHASE_DURATION_MS = 30 * 60_000; // 30 minutes.
+const BATCH_TIMEOUT_MS = 6 * 60 * 60_000; // 6 hours.
 
 /**
  * Top-level workflow: find flagged workspaces and start a child workflow for each.
@@ -69,7 +94,44 @@ export async function reinforcedAgentWorkspaceWorkflow({
 }
 
 /**
- * Agent-level workflow: analyze recent conversations then aggregate suggestions.
+ * Wait for a batch to complete.
+ * Polls every minute for the first 30 minutes, then every 5 minutes.
+ * Throws a non-retryable error after 6 hours.
+ */
+async function waitForBatch({
+  workspaceId,
+  batchId,
+}: {
+  workspaceId: string;
+  batchId: string;
+}): Promise<void> {
+  let elapsedMs = 0;
+
+  while (elapsedMs < BATCH_TIMEOUT_MS) {
+    const intervalMs =
+      elapsedMs < BATCH_POLL_FAST_PHASE_DURATION_MS
+        ? BATCH_POLL_INTERVAL_FAST_MS
+        : BATCH_POLL_INTERVAL_SLOW_MS;
+
+    await sleep(intervalMs);
+    elapsedMs += intervalMs;
+
+    const status = await checkBatchStatusActivity({ workspaceId, batchId });
+    if (status === "ready") {
+      return;
+    }
+  }
+
+  throw new ApplicationFailure(
+    `Batch ${batchId} in workspace ${workspaceId} timed out after 6 hours.`,
+    "BATCH_TIMEOUT",
+    true // non-retryable
+  );
+}
+
+/**
+ * Agent-level workflow: analyze recent conversations then aggregate suggestions,
+ * using batch LLM processing.
  */
 export async function reinforcedAgentForAgentWorkflow({
   workspaceId,
@@ -83,18 +145,38 @@ export async function reinforcedAgentForAgentWorkflow({
     agentConfigurationId,
   });
 
-  // Phase 1: Analyze each conversation.
-  for (const conversationId of conversationIds) {
-    await analyzeConversationActivity({
+  // Phase 1: Batch-analyze all conversations.
+  if (conversationIds.length > 0) {
+    const analysisBatchId = await startConversationAnalysisBatchActivity({
       workspaceId,
       agentConfigurationId,
-      conversationId,
+      conversationIds,
     });
+
+    if (analysisBatchId) {
+      await waitForBatch({ workspaceId, batchId: analysisBatchId });
+
+      await processConversationAnalysisBatchResultActivity({
+        workspaceId,
+        agentConfigurationId,
+        batchId: analysisBatchId,
+      });
+    }
   }
 
-  // Phase 2: Aggregate synthetic suggestions into pending.
-  await aggregateSuggestionsActivity({
+  // Phase 2: Batch-aggregate synthetic suggestions into pending.
+  const aggregationBatchId = await startAggregationBatchActivity({
     workspaceId,
     agentConfigurationId,
   });
+
+  if (aggregationBatchId) {
+    await waitForBatch({ workspaceId, batchId: aggregationBatchId });
+
+    await processAggregationBatchResultActivity({
+      workspaceId,
+      agentConfigurationId,
+      batchId: aggregationBatchId,
+    });
+  }
 }
