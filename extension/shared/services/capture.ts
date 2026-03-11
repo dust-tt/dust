@@ -13,6 +13,7 @@ export interface CaptureOptions {
   includeContent?: boolean;
   includeSelectionOnly?: boolean;
   includeCapture?: boolean;
+  tabId?: number;
 }
 
 export interface CaptureService {

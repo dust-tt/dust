@@ -22,28 +22,26 @@ interface ClientSideMCPRequestId {
 }
 
 /**
- * Generate a unique MCP request ID for a conversation and message
+ * Generate a unique MCP request ID for a conversation and message.
+ * Format: mcp_req_{conversationId}_{messageId}_{uuid}_{originalRequestId}
  */
 function makeClientSideMCPRequestIdForMessageAndConversation({
   conversationId,
   messageId,
   originalRequestId,
 }: ClientSideMCPRequestId): string {
-  // Format: mcp_req_{conversationId}_{messageId}_{timestamp}_{originalRequestId}.
-  // The timestamp ensures uniqueness even for the same message.
-  return `mcp_req_${conversationId}_${messageId}_${Date.now()}_${originalRequestId}`;
+  return `mcp_req_${conversationId}_${messageId}_${crypto.randomUUID()}_${originalRequestId}`;
 }
 
 /**
- * Parse a client-side MCP request ID to extract the conversation ID and message ID
+ * Parse a client-side MCP request ID to extract the conversation ID and message ID.
  * @param requestId The request ID to parse
  * @returns An object containing the conversation ID and message ID, or null if the format is invalid
  */
 export function parseClientSideMCPRequestId(
   requestId: string
 ): ClientSideMCPRequestId | null {
-  // Check if the request ID follows our format.
-  const match = requestId.match(/^mcp_req_([^_]+)_([^_]+)_\d+_(\d+)$/);
+  const match = requestId.match(/^mcp_req_([^_]+)_([^_]+)_([a-f0-9-]+)_(\d+)$/);
 
   if (!match) {
     return null;
@@ -52,7 +50,7 @@ export function parseClientSideMCPRequestId(
   return {
     conversationId: match[1],
     messageId: match[2],
-    originalRequestId: match[3],
+    originalRequestId: match[4],
   };
 }
 
@@ -178,6 +176,9 @@ export function isMCPEventResult(value: unknown): value is MCPEventResult {
  */
 export class ClientSideRedisMCPTransport implements Transport {
   private unsubscribe?: () => void;
+
+  // Track transformed IDs sent by this transport to only process matching responses.
+  private readonly pendingRequestIds = new Set<string>();
 
   private readonly conversationId: string;
   private readonly messageId: string;
@@ -309,6 +310,7 @@ export class ClientSideRedisMCPTransport implements Transport {
     if (isJSONRPCMessageWithId(payload)) {
       const transformedId = this.transformRequestId(payload.id);
       payload.id = transformedId;
+      this.pendingRequestIds.add(transformedId);
     }
 
     // Publish MCP requests to Redis
@@ -336,6 +338,13 @@ export class ClientSideRedisMCPTransport implements Transport {
       // Handle ID transformation for responses
       if (isMCPEventResult(payload.result)) {
         const { id: requestId } = payload.result;
+
+        // Only process responses for requests sent by THIS transport.
+        if (!this.pendingRequestIds.has(requestId)) {
+          return;
+        }
+        this.pendingRequestIds.delete(requestId);
+
         const restored = this.restoreRequestId(requestId);
 
         if (restored) {

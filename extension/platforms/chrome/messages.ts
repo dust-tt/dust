@@ -32,6 +32,27 @@ export type GetActiveTabBackgroundResponse = {
   error?: string;
 };
 
+export type TabInfo = {
+  tabId: number;
+  title: string;
+  url: string;
+  active: boolean;
+};
+
+export type TabActionMessage =
+  | { type: "LIST_TABS" }
+  | { type: "ACTIVATE_TAB"; tabId: number }
+  | { type: "CLOSE_TAB"; tabId: number }
+  | { type: "OPEN_TAB"; url: string }
+  | { type: "MOVE_TAB"; tabId: number; index: number };
+
+export type TabActionResponse = {
+  success: boolean;
+  error?: string;
+  tabId?: number;
+  tabs?: TabInfo[];
+};
+
 export type InputBarStatusMessage = {
   type: "INPUT_BAR_STATUS";
   available: boolean;
@@ -181,6 +202,16 @@ export const sendGetActiveTabMessage = (params: CaptureOptions) => {
     type: "GET_ACTIVE_TAB",
     ...params,
   });
+};
+
+export const sendListTabsMessage = () => {
+  return sendMessage<TabActionMessage, TabActionResponse>({
+    type: "LIST_TABS",
+  });
+};
+
+export const sendTabActionMessage = (message: TabActionMessage) => {
+  return sendMessage<TabActionMessage, TabActionResponse>(message);
 };
 
 // Messages from background script to content script
