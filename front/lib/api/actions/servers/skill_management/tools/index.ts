@@ -112,6 +112,7 @@ async function loadSkillFilesToSandbox(
     const fileName = file.fileName ?? `file_${file.sId}`;
     const targetPath = `${SKILLS_BASE_PATH}/${skill.name}/${fileName}`;
 
+    // Always get the original for the sandbox.
     const readStream = file.getReadStream({ auth, version: "original" });
 
     const chunks: Buffer[] = [];

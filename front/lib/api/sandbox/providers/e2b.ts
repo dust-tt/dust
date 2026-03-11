@@ -240,7 +240,7 @@ export class E2BSandboxProvider implements SandboxProvider {
       return new Err(normalizeError(err));
     }
 
-    await sandbox.files.write(path, new Blob([content]));
+    await sandbox.files.write(path, new Blob([new Uint8Array(content)]));
 
     return new Ok(undefined);
   }
