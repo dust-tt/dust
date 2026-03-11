@@ -1,3 +1,4 @@
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -45,35 +46,58 @@ interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
   isGlobalAgent: boolean;
 }
 
-function makeFeedbackSchema(thumbDirection: ThumbReaction) {
-  return z.object({
-    feedbackContent:
-      thumbDirection === "down"
-        ? z.string().min(1, "Please describe what should be improved.")
-        : z.string(),
-    isConversationShared: z.boolean(),
-  });
-}
+const FEEDBACK_PREDEFINED_ANSWERS = [
+  "Factually incorrect",
+  "Didn’t fully follow instructions",
+  "Don’t like the tone",
+  "Wrong data sources",
+  "Took too long",
+  "Other (please explain below)",
+] as const;
 
-type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
+const OTHER_ANSWER = "Other (please explain below)";
+
+const feedbackSchema = z
+  .object({
+    selectedAnswer: z.string(),
+    feedbackContent: z.string(),
+    isConversationShared: z.boolean(),
+  })
+  .refine(
+    (data) =>
+      data.selectedAnswer !== OTHER_ANSWER ||
+      data.feedbackContent.trim().length > 0,
+    {
+      message: "Please describe what should be improved.",
+      path: ["feedbackContent"],
+    }
+  );
+
+type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 
 export function FeedbackSelector({
   feedback,
   onSubmitThumb,
   isSubmittingThumb,
+  owner,
+  agentConfigurationId,
   agentName,
+  isGlobalAgent,
 }: FeedbackSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [thumbDirection, setThumbDirection] =
     React.useState<ThumbReaction>("up");
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
+    resolver: zodResolver(feedbackSchema),
     defaultValues: {
+      selectedAnswer: "",
       feedbackContent: "",
       isConversationShared: true,
     },
   });
+
+  const selectedAnswer = form.watch("selectedAnswer");
 
   const openDialog = (direction: ThumbReaction) => {
     setThumbDirection(direction);
@@ -86,7 +110,11 @@ export function FeedbackSelector({
   };
 
   const handleSubmit = form.handleSubmit(async (data) => {
-    const feedbackContent = data.feedbackContent.trim() || null;
+    const predefinedAnswer = data.selectedAnswer.trim();
+    const details = data.feedbackContent.trim();
+
+    const feedbackContent =
+      [predefinedAnswer, details].filter(Boolean).join("\n\n") || null;
 
     await onSubmitThumb({
       thumb: thumbDirection,
@@ -116,7 +144,6 @@ export function FeedbackSelector({
     <div className="flex items-center">
       <ButtonGroup>
         <Button
-          tooltip="I found this helpful"
           variant={feedback?.thumb === "up" ? "primary" : "outline"}
           size="xs"
           disabled={isSubmittingThumb}
@@ -125,7 +152,6 @@ export function FeedbackSelector({
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
-          tooltip="Improve this agent"
           variant="outline"
           size="xs"
           disabled={isSubmittingThumb}
@@ -144,7 +170,7 @@ export function FeedbackSelector({
           }
         }}
       >
-        <DialogContent size="md">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>
               <span className="flex items-center gap-2">
@@ -156,16 +182,47 @@ export function FeedbackSelector({
           <DialogContainer className="py-3">
             {isSubmittingThumb ? (
               <div className="m-3 flex items-center justify-center">
-                <Spinner size="sm" />
+                <Spinner size="xs" />
               </div>
             ) : (
               <div className="flex flex-col gap-4 pt-2">
+                {thumbDirection === "down" && (
+                  <div>
+                    <Label className="mb-2 block">
+                      What should the agent do differently?
+                    </Label>
+                    <Controller
+                      control={form.control}
+                      name="selectedAnswer"
+                      render={({ field }) => (
+                        <div className="flex flex-wrap gap-2">
+                          {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
+                            <Button
+                              key={answer}
+                              label={answer}
+                              size="xs"
+                              variant={
+                                field.value === answer ? "primary" : "outline"
+                              }
+                              onClick={() => {
+                                field.onChange(
+                                  field.value === answer ? "" : answer
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    />
+                  </div>
+                )}
+
                 <div>
-                  <Label htmlFor="feedback-content">
-                    {thumbDirection === "down"
-                      ? "What should the agent do differently?"
-                      : "Glad you liked it! Tell us more?"}
-                  </Label>
+                  {thumbDirection === "up" && (
+                    <Label htmlFor="feedback-content" className="mb-2 block">
+                      Glad you liked it! Tell us more?
+                    </Label>
+                  )}
                   <Controller
                     control={form.control}
                     name="feedbackContent"
@@ -175,15 +232,15 @@ export function FeedbackSelector({
                           id="feedback-content"
                           placeholder={
                             thumbDirection === "down"
-                              ? "Describe what didn’t work"
-                              : "Share details (optional)"
+                              ? "Add more details"
+                              : "Share details"
                           }
                           resize="vertical"
-                          rows={5}
+                          rows={3}
                           value={field.value}
                           onChange={(e) => field.onChange(e.target.value)}
                           error={fieldState.error?.message ?? null}
-                          showErrorLabel
+                          showErrorLabel={selectedAnswer === OTHER_ANSWER}
                         />
                       </div>
                     )}
@@ -206,7 +263,7 @@ export function FeedbackSelector({
                       />
                       <div className="flex flex-col">
                         <Label htmlFor="share-conversation">
-                          Share conversation with the agent’s builders
+                          Share conversation with the agent’s editors
                         </Label>
                         <span className="text-xs text-muted-foreground">
                           Visible to whoever manages this agent.
@@ -214,6 +271,12 @@ export function FeedbackSelector({
                       </div>
                     </div>
                   )}
+                />
+
+                <FeedbackSelectorPopoverContent
+                  owner={owner}
+                  agentConfigurationId={agentConfigurationId}
+                  isGlobalAgent={isGlobalAgent}
                 />
               </div>
             )}

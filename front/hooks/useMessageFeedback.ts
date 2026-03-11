@@ -52,10 +52,10 @@ export function useMessageFeedback({
       );
 
       if (response.ok) {
-        if (feedbackContent && !shouldRemoveExistingFeedback) {
+        if (!shouldRemoveExistingFeedback) {
           sendNotification({
             title: "Feedback sent",
-            description: "The agent’s builders will review it.",
+            description: "The agent’s editors will review it.",
             type: "success",
           });
         }
