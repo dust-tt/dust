@@ -53,12 +53,11 @@ const openAIBatchOutputLineSchema = z.object({
 });
 
 function isOpenAIResponse(value: unknown): value is Response {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "output" in value &&
-    Array.isArray((value as Record<string, unknown>).output)
-  );
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const obj = value as { output?: unknown };
+  return "output" in obj && Array.isArray(obj.output);
 }
 
 export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
