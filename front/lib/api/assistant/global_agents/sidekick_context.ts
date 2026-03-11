@@ -1,8 +1,4 @@
 import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
-import {
-  fetchLangfuseSystemPromptConfig,
-  type LangfusePromptConfig,
-} from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -14,7 +10,6 @@ import {
 } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
@@ -33,7 +28,6 @@ export interface SidekickContext {
   mcpServerViews: {
     context: MCPServerViewResource;
   } | null;
-  langfuseConfig: LangfusePromptConfig | null;
 }
 
 export function formatAvailableModels(
@@ -171,10 +165,7 @@ export async function buildSidekickContext(
   auth: Authenticator,
   agentsIdsToFetch: string[]
 ): Promise<SidekickContext | null> {
-  if (
-    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK) &&
-    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)
-  ) {
+  if (!agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK)) {
     return null;
   }
 
@@ -184,25 +175,7 @@ export async function buildSidekickContext(
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME
     );
 
-  let langfuseConfig: LangfusePromptConfig | null = null;
-
-  if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)) {
-    const result = await fetchLangfuseSystemPromptConfig("sidekick-edge", {});
-    if (result.isErr()) {
-      logger.error(
-        {
-          promptName: GLOBAL_AGENTS_SID.SIDEKICK_EDGE,
-          error: result.error,
-        },
-        "[Langfuse] Failed to fetch prompt"
-      );
-    } else {
-      langfuseConfig = result.value;
-    }
-  }
-
   return {
     mcpServerViews: context ? { context } : null,
-    langfuseConfig,
   };
 }

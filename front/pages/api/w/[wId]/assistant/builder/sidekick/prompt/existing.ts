@@ -1,7 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
-import { fetchLangfuseFirstMessagePrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -192,7 +191,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
-      const { agentConfigurationId, sidekickEdge } = req.query;
+      const { agentConfigurationId } = req.query;
 
       if (!isString(agentConfigurationId)) {
         return apiError(req, res, {
@@ -210,30 +209,9 @@ async function handler(
         fetchInsightsMarkdown(auth, agentConfigurationId),
       ]);
 
-      if (sidekickEdge !== "true") {
-        return res
-          .status(200)
-          .json(buildFirstMessage({ feedbackMarkdown, insightsMarkdown }));
-      }
-
-      const result = await fetchLangfuseFirstMessagePrompt(
-        "sidekick-edge-first-message-existing",
-        {
-          ...(feedbackMarkdown ? { feedbackMarkdown } : {}),
-          ...(insightsMarkdown ? { insightsMarkdown } : {}),
-        }
-      );
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to generate sidekick prompt.",
-          },
-        });
-      }
-
-      return res.status(200).json(result.value);
+      return res
+        .status(200)
+        .json(buildFirstMessage({ feedbackMarkdown, insightsMarkdown }));
     }
     default:
       return apiError(req, res, {

@@ -506,9 +506,6 @@ describe("globalAgentInjectsUserContext", () => {
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
       true
     );
-    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)).toBe(
-      true
-    );
   });
 
   it("should return false for non-sidekick agents", () => {
@@ -525,9 +522,6 @@ describe("globalAgentInjectsWorkspaceContext", () => {
     expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
       true
     );
-    expect(
-      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)
-    ).toBe(true);
   });
 
   it("should return false for non-sidekick agents", () => {
