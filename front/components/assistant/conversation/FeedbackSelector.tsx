@@ -102,6 +102,7 @@ export function FeedbackSelector({
 
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
+    defaultValues: feedbackBaseSchema.parse({}),
   });
 
   const selectedAnswerField = useController({
