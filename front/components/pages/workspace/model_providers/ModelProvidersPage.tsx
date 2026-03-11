@@ -6,8 +6,7 @@ import { BrainIcon, Page } from "@dust-tt/sparkle";
 
 export function ModelProvidersPage() {
   const owner = useWorkspace();
-  const { workspace, isWorkspaceLoading, isWorkspaceValidating } =
-    useWorkspaceDetails({ owner });
+  const { workspace, isWorkspaceValidating } = useWorkspaceDetails({ owner });
   const { providersSelection, setProvidersSelection } =
     useProvidersSelection(workspace);
 
@@ -19,9 +18,7 @@ export function ModelProvidersPage() {
         description="Configure model providers."
       />
       <Page.Vertical align="stretch" gap="md">
-        {isWorkspaceLoading || !workspace ? (
-          <></>
-        ) : (
+        {workspace && (
           <ModelProvidersPageContent
             workspace={workspace}
             setProvidersSelection={setProvidersSelection}
