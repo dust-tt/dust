@@ -2,8 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import "vitest-canvas-mock";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { cleanup } from "@testing-library/react";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
