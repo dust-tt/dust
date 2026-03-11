@@ -16,6 +16,7 @@ import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
@@ -26,6 +27,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
+import { Readable } from "stream";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -528,6 +530,39 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return result;
+  }
+
+  /**
+   * Load a skill's file attachments onto this sandbox.
+   * Files are written under /skills/{skillName}/{fileName}.
+   */
+  async loadSkillFiles(
+    auth: Authenticator,
+    skill: SkillResource
+  ): Promise<Result<{ loadedPaths: string[] }, Error>> {
+    const fileAttachments = skill.getFileAttachments();
+    if (fileAttachments.length === 0) {
+      return new Ok({ loadedPaths: [] });
+    }
+
+    const loadedPaths: string[] = [];
+
+    for (const file of fileAttachments) {
+      const fileName = file.fileName ?? `file_${file.sId}`;
+      const targetPath = `/skills/${skill.name}/${fileName}`;
+
+      const readStream = file.getReadStream({ auth, version: "original" });
+      const readable: ReadableStream = Readable.toWeb(readStream);
+
+      const writeResult = await this.writeFile(targetPath, readable);
+      if (writeResult.isErr()) {
+        return writeResult;
+      }
+
+      loadedPaths.push(targetPath);
+    }
+
+    return new Ok({ loadedPaths });
   }
 
   toLogJSON() {
