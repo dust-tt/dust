@@ -52,7 +52,10 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     const owner = auth.getNonNullableWorkspace();
     const featureFlags = await getFeatureFlags(owner);
 
-    if (!featureFlags.includes("sandbox_tools")) {
+    if (
+      !featureFlags.includes("sandbox_tools") ||
+      skill.getFileAttachments().length === 0) {
+    
       return new Ok([
         {
           type: "text" as const,
