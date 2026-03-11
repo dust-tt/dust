@@ -1,6 +1,7 @@
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type logger from "@app/logger/logger";
 import type { Logger } from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import tracer from "@app/logger/tracer";
 import type { Context } from "@temporalio/activity";
 import type {
@@ -8,6 +9,8 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+
+const statsDClient = getStatsDClient();
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {

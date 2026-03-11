@@ -16,9 +16,10 @@ import {
   checkWebhookRequestForRateLimit,
 } from "@app/lib/triggers/rate_limits";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
 import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type {
@@ -37,6 +38,8 @@ import {
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+
+const statsDClient = getStatsDClient();
 
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.

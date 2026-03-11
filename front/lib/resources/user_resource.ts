@@ -14,8 +14,9 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -38,6 +39,8 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+const statsDClient = getStatsDClient();
 
 export interface SearchMembersPaginationParams {
   offset: number;

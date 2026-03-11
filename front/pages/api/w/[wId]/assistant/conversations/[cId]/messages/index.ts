@@ -8,7 +8,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { statsDClient } from "@app/logger/statsDClient";
+import { getStatsDClient } from "@app/lib/utils/statsd";
+
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
@@ -25,6 +26,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const statsDClient = getStatsDClient();
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;

@@ -1,8 +1,11 @@
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { InjectedSinks } from "@temporalio/worker";
 import type { Sinks } from "@temporalio/workflow";
+
+const statsDClient = getStatsDClient();
 
 /**
  * Sink interface for agent loop instrumentation.

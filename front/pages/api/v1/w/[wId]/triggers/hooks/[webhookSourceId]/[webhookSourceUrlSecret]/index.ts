@@ -7,7 +7,8 @@ import {
   processWebhookRequest,
   storePayloadInGCS,
 } from "@app/lib/triggers/webhook";
-import { statsDClient } from "@app/logger/statsDClient";
+import { getStatsDClient } from "@app/lib/utils/statsd";
+
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -15,6 +16,8 @@ import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 import getRawBody from "raw-body";
+
+const statsDClient = getStatsDClient();
 
 /**
  * @swagger

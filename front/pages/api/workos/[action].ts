@@ -12,15 +12,18 @@ import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { GenericServerException, OauthException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const statsDClient = getStatsDClient();
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined
