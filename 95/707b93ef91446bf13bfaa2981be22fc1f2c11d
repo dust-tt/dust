@@ -1,0 +1,67 @@
+front/vite.globalSetup.ts
+  25535915742eb8fe 41
+front/lib/resources/provider_credential_resource.test.ts
+  25535915742eb8fe 10,13-14,16-17,135-149
+  ed20067338b79878 5-9,11-12,15,18-19,127-128,130-134,150-221,225-226
+front/lib/resources/provider_credential_resource.ts
+  ed20067338b79878 1,9,12,15,17,49-54,69-70,97-99,101-102,104-105,107,110-112,114-115,117-118,121-123,125,127,181,194-200
+  25535915742eb8fe 13,16,128,170-171,174-176,178-180,183,187-193,201-205,207-208,211-212
+front/types/provider_credential.ts
+  ed20067338b79878 3,32,34-36,40-50,53-54,68
+  25535915742eb8fe 5-20,52,57-64
+front/tests/sidekick-evals/lib/sidekick-executor.ts
+  25535915742eb8fe 27
+front/pages/api/academy/chat.ts
+  25535915742eb8fe 6,224-225
+front/migrations/20230522_slack_doc_rename_incident.ts
+  25535915742eb8fe 1-2,4-5,7,25-34,63
+front/lib/api/llm/tests/conversations.ts
+  25535915742eb8fe 15-19,33,36-56,340
+front/migrations/20250306_gong_labs_to_connector.ts
+  25535915742eb8fe 16,95
+front/tests/sidekick-evals/lib/judge.ts
+  25535915742eb8fe 107
+front/lib/tokenization.ts
+  25535915742eb8fe 6,77-78,87
+front/lib/api/projects/index.test.ts
+  25535915742eb8fe 230-232
+front/migrations/20230803_wipe_gdrive_connectors.ts
+  25535915742eb8fe 1,5-6,8,41-44,52
+front/types/core/core_api.ts
+  25535915742eb8fe 1526,1532,1556,1561
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/index.ts
+  25535915742eb8fe 9,289-290,293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "95707b93ef91446bf13bfaa2981be22fc1f2c11d",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 205,
+      "total_deletions": 116,
+      "accepted_lines": 149,
+      "overriden_lines": 0
+    },
+    "ed20067338b79878": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d09d917-1865-45c7-87ac-b08d70312601",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 151,
+      "overriden_lines": 0
+    }
+  }
+}
