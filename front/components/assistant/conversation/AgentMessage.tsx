@@ -1018,6 +1018,7 @@ function AgentMessageContent({
       case "blocked_authentication_required":
         return (
           <MCPServerPersonalAuthenticationRequired
+            blockedAction={blockedAction}
             triggeringUser={triggeringUser}
             owner={owner}
             mcpServerId={blockedAction.metadata.mcpServerId}
@@ -1035,6 +1036,7 @@ function AgentMessageContent({
       case "blocked_file_authorization_required":
         return (
           <GoogleDriveFileAuthorizationRequired
+            blockedAction={blockedAction}
             triggeringUser={triggeringUser}
             owner={owner}
             fileAuthorizationInfo={blockedAction.fileAuthorizationInfo}

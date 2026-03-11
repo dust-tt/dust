@@ -453,9 +453,10 @@ export async function* tryCallMCPTool(
     let notificationPromise = notificationStream.next();
 
     // Frequently heartbeat to get notified of cancellation.
+    let heartbeatTimer: NodeJS.Timeout | undefined;
     const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
-        setTimeout(() => {
+        heartbeatTimer = setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
           heartbeat();
           resolve();
@@ -494,6 +495,11 @@ export async function* tryCallMCPTool(
         yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
+
+    // Clean up: cancel pending heartbeat timer and close the notification stream
+    // to remove the EventEmitter listener and release pending promises.
+    clearTimeout(heartbeatTimer);
+    await notificationStream.return();
 
     let toolCallResult: Awaited<typeof toolPromise>;
     try {

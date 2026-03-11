@@ -1,6 +1,10 @@
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
-import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
+import type {
+  BlockedToolExecution,
+  FileAuthorizationInfo,
+} from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
@@ -14,6 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
+  blockedAction: BlockedToolExecution;
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   fileAuthorizationInfo: FileAuthorizationInfo;
@@ -22,6 +27,7 @@ interface GoogleDriveFileAuthorizationRequiredProps {
 }
 
 export function GoogleDriveFileAuthorizationRequired({
+  blockedAction,
   triggeringUser,
   owner,
   fileAuthorizationInfo,
@@ -38,6 +44,8 @@ export function GoogleDriveFileAuthorizationRequired({
     appId: string;
   } | null>(null);
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
+
+  const { removeCompletedAction } = useBlockedActionsContext();
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user?.sId,
@@ -76,7 +84,7 @@ export function GoogleDriveFileAuthorizationRequired({
   }, [isTriggeredByCurrentUser, owner.sId, mcpServerId, pickerCredentials]);
 
   const handleFilesSelected = useCallback(
-    (files: GooglePickerFile[]) => {
+    async (files: GooglePickerFile[]) => {
       // When user selects files in the picker, they authorize them via the drive.file scope.
       // Check if the file we needed was selected.
       const targetFileSelected = files.some(
@@ -85,13 +93,17 @@ export function GoogleDriveFileAuthorizationRequired({
 
       if (targetFileSelected) {
         setIsAuthorized(true);
-        setTimeout(() => {
-          retryHandler();
-        }, 100);
+        await retryHandler();
+        removeCompletedAction(blockedAction.actionId);
       }
       // If wrong file selected, user can click the button again
     },
-    [fileAuthorizationInfo.fileId, retryHandler]
+    [
+      fileAuthorizationInfo.fileId,
+      retryHandler,
+      removeCompletedAction,
+      blockedAction.actionId,
+    ]
   );
 
   const handlePickerCancel = useCallback(() => {
