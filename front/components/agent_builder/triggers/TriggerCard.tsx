@@ -5,32 +5,26 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import {
-  Avatar,
-  Card,
-  CardActionButton,
-  TimeIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { ActionCard, TimeIcon } from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
+import type React from "react";
 import { useMemo } from "react";
 
-function getTriggerIcon(trigger: AgentBuilderTriggerType) {
+function getTriggerIconComponent(
+  trigger: AgentBuilderTriggerType
+): React.ComponentType {
   switch (trigger.kind) {
     case "schedule":
-      // There's actually no dark mode here since we're in an Avatar (fixed background).
-      return <TimeIcon className="h-4 w-4 text-foreground" />;
+      return TimeIcon;
     case "webhook":
-      const IconComponent = getIcon(
+      return getIcon(
         normalizeWebhookIcon(
           trigger.provider ? WEBHOOK_PRESETS[trigger.provider].icon : null
         )
       );
-      return <IconComponent className="h-4 w-4 text-foreground" />;
-    default:
-      return null;
   }
 }
+
 interface TriggerCardProps {
   trigger: AgentBuilderTriggerType;
   webhookSourceView: WebhookSourceViewType | undefined;
@@ -56,83 +50,59 @@ function getWebhookCardDescription({
   );
 }
 
-export const TriggerCard = ({
+export function TriggerCard({
   trigger,
   webhookSourceView,
   onRemove,
   onEdit,
-}: TriggerCardProps) => {
+}: TriggerCardProps) {
   const { isAdmin } = useAgentBuilderContext();
   const { user } = useAuth();
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
-    if (trigger.kind === "schedule") {
-      try {
-        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
-      } catch {
-        return;
-      }
-    } else if (trigger.kind === "webhook") {
-      return getWebhookCardDescription({
-        webhookTrigger: trigger,
-        webhookSourceView,
-      });
+    switch (trigger.kind) {
+      case "schedule":
+        try {
+          return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+        } catch {
+          return "";
+        }
+      case "webhook":
+        return getWebhookCardDescription({
+          webhookTrigger: trigger,
+          webhookSourceView,
+        });
     }
   }, [trigger, webhookSourceView]);
 
+  const resolvedIcon = webhookSourceView?.provider
+    ? getIcon(
+        normalizeWebhookIcon(WEBHOOK_PRESETS[webhookSourceView.provider].icon)
+      )
+    : getTriggerIconComponent(trigger);
+
   return (
-    <Card
-      variant="primary"
-      className={"min-h-28 select-none"}
-      onClick={onEdit}
+    <ActionCard
+      icon={resolvedIcon}
+      label={trigger.name}
+      description={description}
+      canAdd={false}
       disabled={trigger.status !== "enabled"}
-      action={
-        (isEditor || isAdmin) && (
-          <CardActionButton
-            size="icon"
-            icon={XMarkIcon}
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-          />
-        )
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <Avatar
-            visual={
-              webhookSourceView?.provider
-                ? (() => {
-                    const IconComponent = getIcon(
-                      normalizeWebhookIcon(
-                        WEBHOOK_PRESETS[webhookSourceView.provider].icon
-                      )
-                    );
-                    return (
-                      <IconComponent className="h-4 w-4 text-foreground" />
-                    );
-                  })()
-                : getTriggerIcon(trigger)
+      onClick={onEdit}
+      onRemove={isEditor || isAdmin ? onRemove : undefined}
+      cardContainerClassName="s-min-h-28"
+      footer={
+        trigger.editorName
+          ? {
+              label: (
+                <>
+                  Managed by{" "}
+                  <span className="s-font-semibold">{trigger.editorName}</span>.
+                </>
+              ),
             }
-            size="xs"
-          />
-          <span className="truncate">{trigger.name}</span>
-        </div>
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          <span className="line-clamp-2 break-words">{description}</span>
-        </span>
-        {trigger.editorName && (
-          <span className="mt-auto text-xs text-muted-foreground dark:text-muted-foreground-night">
-            Managed by{" "}
-            <span className="font-semibold">
-              {trigger.editorName ?? "another user"}
-            </span>
-            .
-          </span>
-        )}
-      </div>
-    </Card>
+          : undefined
+      }
+    />
   );
-};
+}

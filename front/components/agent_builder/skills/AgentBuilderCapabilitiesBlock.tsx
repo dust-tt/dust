@@ -15,9 +15,8 @@ import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/s
 import type { SheetState } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
-import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
-import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
+import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
@@ -30,18 +29,15 @@ import {
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import {
+  ActionCard,
   BookOpenIcon,
   Button,
-  Card,
-  CardActionButton,
   CardGrid,
   EmptyCTA,
   Hoverable,
   Spinner,
   ToolsIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type React from "react";
 import { useCallback, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -52,52 +48,32 @@ interface SkillCardProps {
 }
 
 function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
-  const SkillIcon = getSkillIcon(skill.icon);
-
   return (
-    <Card
-      variant="primary"
-      className="h-28"
+    <ActionCard
+      icon={getSkillIcon(skill.icon)}
+      iconBackgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
+      iconColor={SKILL_AVATAR_ICON_COLOR}
+      label={skill.name}
+      description={skill.description}
+      canAdd={false}
       onClick={onClick}
-      action={
-        <CardActionButton
-          size="icon"
-          icon={XMarkIcon}
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            onRemove();
-            e.stopPropagation();
-          }}
-        />
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <ResourceAvatar
-            icon={SkillIcon}
-            size="xs"
-            backgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
-            iconColor={SKILL_AVATAR_ICON_COLOR}
-          />
-          <span className="truncate">{skill.name}</span>
-        </div>
-
-        <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <span className="line-clamp-2 break-words">{skill.description}</span>
-        </div>
-      </div>
-    </Card>
+      onRemove={onRemove}
+      cardContainerClassName="s-h-28"
+    />
   );
+}
+
+interface ActionButtonsProps {
+  onClickKnowledge: () => void;
+  onClickCapability: () => void;
 }
 
 function ActionButtons({
   onClickKnowledge,
   onClickCapability,
-}: {
-  onClickKnowledge: () => void;
-  onClickCapability: () => void;
-}) {
+}: ActionButtonsProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="s-flex s-items-center s-gap-2">
       <Button
         type="button"
         onClick={onClickCapability}
@@ -309,7 +285,7 @@ export function AgentBuilderCapabilitiesBlock({
         )
       }
     >
-      <div className="flex-1">
+      <div className="s-flex-1">
         {isSkillsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
@@ -327,7 +303,7 @@ export function AgentBuilderCapabilitiesBlock({
               />
             ))}
             {actionFields.map((field, index) => (
-              <ActionCard
+              <BuilderToolCard
                 key={field.id}
                 action={field}
                 onRemove={() => removeAction(index)}
