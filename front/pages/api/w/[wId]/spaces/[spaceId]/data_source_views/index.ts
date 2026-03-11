@@ -155,8 +155,11 @@ async function handler(
         });
       }
 
-      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-      if (killSwitches?.includes("save_data_source_views")) {
+      const isSaveDataSourceViewsEnabled =
+        await KillSwitchResource.isKillSwitchEnabledCached(
+          "save_data_source_views"
+        );
+      if (isSaveDataSourceViewsEnabled) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
