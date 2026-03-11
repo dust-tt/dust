@@ -3,6 +3,7 @@ import {
   ArrowDownOnSquareIcon,
   ArrowLeftIcon,
   AttachmentChip,
+  AttachmentIcon,
   Avatar,
   Bar,
   BoltIcon,
@@ -18,7 +19,6 @@ import {
   DialogTitle,
   DocumentIcon,
   ExternalLinkIcon,
-  FolderIcon,
   Icon,
   ImageIcon,
   ImageZoomDialog,
@@ -697,7 +697,7 @@ export function ConversationView({
         size="sm"
         rightActions={
           <div className="s-flex s-gap-2">
-            <Button size="sm" variant="ghost" icon={FolderIcon} />
+            <Button size="sm" variant="ghost" icon={AttachmentIcon} isSelect />
             <Button size="sm" variant="ghost" icon={MoreIcon} />
           </div>
         }

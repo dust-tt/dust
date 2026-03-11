@@ -33,7 +33,7 @@ const tabsTriggerVariants = cva(
   }
 );
 
-const tabsListVariants = cva("s-flex s-h-[45px] s-gap-2 s-w-full", {
+const tabsListVariants = cva("s-flex s-h-11 s-gap-2 s-w-full", {
   variants: {
     border: {
       true: "s-border-b s-border-border dark:s-border-border-night",
