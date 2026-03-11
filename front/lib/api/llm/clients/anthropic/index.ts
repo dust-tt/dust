@@ -165,10 +165,12 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       (this.reasoningEffort !== "light" ||
         !!this.modelConfig.useNativeLightReasoning);
 
-    return shouldCountReasoningTokens
-      ? (body: MessageCountTokensParams) =>
-          this.client.messages.countTokens(body)
-      : undefined;
+    if (!shouldCountReasoningTokens) {
+      return undefined;
+    }
+
+    return (body: MessageCountTokensParams) =>
+      this.client.messages.countTokens(body);
   }
 
   protected async *sendRequest(
