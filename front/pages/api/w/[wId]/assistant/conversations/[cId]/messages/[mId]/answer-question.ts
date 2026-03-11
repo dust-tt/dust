@@ -1,3 +1,4 @@
+import { UserQuestionAnswerItemSchema } from "@app/lib/actions/types";
 import { answerUserQuestion } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,12 +11,7 @@ import { z } from "zod";
 
 const AnswerQuestionSchema = z.object({
   actionId: z.string(),
-  answers: z.array(
-    z.object({
-      selectedOptions: z.array(z.number()),
-      customResponse: z.string().optional(),
-    })
-  ),
+  answers: z.array(UserQuestionAnswerItemSchema),
 });
 
 type AnswerQuestionResponse = {
