@@ -90,7 +90,7 @@ export function TriggerCard({
       disabled={trigger.status !== "enabled"}
       onClick={onEdit}
       onRemove={isEditor || isAdmin ? onRemove : undefined}
-      cardContainerClassName="s-min-h-28"
+      cardContainerClassName="min-h-28"
       footer={
         trigger.editorName
           ? {

@@ -73,7 +73,7 @@ function ActionButtons({
   onClickCapability,
 }: ActionButtonsProps) {
   return (
-    <div className="s-flex s-items-center s-gap-2">
+    <div className="flex items-center gap-2">
       <Button
         type="button"
         onClick={onClickCapability}
@@ -285,7 +285,7 @@ export function AgentBuilderCapabilitiesBlock({
         )
       }
     >
-      <div className="s-flex-1">
+      <div className="flex-1">
         {isSkillsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
