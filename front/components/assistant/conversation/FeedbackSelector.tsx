@@ -46,16 +46,16 @@ interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
   isGlobalAgent: boolean;
 }
 
+const OTHER_ANSWER = "Other (please explain below)";
+
 const FEEDBACK_PREDEFINED_ANSWERS = [
   "Factually incorrect",
   "Didn’t fully follow instructions",
   "Don’t like the tone",
   "Wrong data sources",
   "Took too long",
-  "Other (please explain below)",
+  OTHER_ANSWER,
 ] as const;
-
-const OTHER_ANSWER = "Other (please explain below)";
 
 function makeFeedbackSchema(thumbDirection: ThumbReaction) {
   const base = z.object({
