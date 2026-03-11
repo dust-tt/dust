@@ -1,7 +1,7 @@
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
-import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
+import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
@@ -153,7 +153,7 @@ export function SkillBuilderToolsSection({
             {fields.map((field, index) => {
               if (!isDiffMode) {
                 return (
-                  <ActionCard
+                  <BuilderToolCard
                     key={field.id}
                     action={field}
                     onRemove={() => remove(index)}
@@ -166,14 +166,14 @@ export function SkillBuilderToolsSection({
               );
               if (isAdded) {
                 return (
-                  <ActionCard
+                  <BuilderToolCard
                     key={field.id}
                     action={field}
                     diffStatus="added"
                   />
                 );
               }
-              return <ActionCard key={field.id} action={field} />;
+              return <BuilderToolCard key={field.id} action={field} />;
             })}
           </CardGrid>
         )}
