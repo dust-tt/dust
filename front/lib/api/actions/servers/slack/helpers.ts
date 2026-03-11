@@ -11,9 +11,10 @@ import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
-import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
-import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
+import type { CanvasesEditArguments } from "@slack/web-api/dist/types/request/canvas";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
+import type { Usergroup } from "@slack/web-api/dist/types/response/UsergroupsListResponse";
+import type { Member } from "@slack/web-api/dist/types/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
 // Constants for Slack API limits and pagination.
@@ -829,14 +830,18 @@ export async function executePostMessage(
 
     const filename = file.fileName ?? `upload_${file.sId}`;
 
-    const uploadResp = await slackClient.filesUploadV2({
+    const baseUploadArgs = {
       channel_id: channelId,
       file: fileBuffer,
       filename,
       filetype: file.contentType,
       initial_comment: message,
-      thread_ts: threadTs,
-    });
+    };
+    const uploadResp = await slackClient.filesUploadV2(
+      threadTs
+        ? { ...baseUploadArgs, thread_ts: threadTs, channels: channelId }
+        : baseUploadArgs
+    );
 
     if (!uploadResp.ok) {
       return new Err(new MCPError(uploadResp.error ?? "Unknown error"));
@@ -1160,17 +1165,21 @@ export async function executeReadCanvas({
 }): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   const slackClient = await getSlackClient(accessToken);
 
-  const criteria: Record<string, unknown> = {
+  type SectionType = "any_header" | "h1" | "h2" | "h3";
+  const criteria: {
+    section_types: [SectionType, ...SectionType[]];
+    contains_text?: string;
+  } = {
     section_types:
       section_types && section_types.length > 0
-        ? section_types
+        ? (section_types as [SectionType, ...SectionType[]])
         : ["any_header"],
   };
   if (contains_text) {
     criteria.contains_text = contains_text;
   }
 
-  const resp = await slackClient.apiCall("canvases.sections.lookup", {
+  const resp = await slackClient.canvases.sections.lookup({
     canvas_id,
     criteria,
   });
@@ -1182,16 +1191,9 @@ export async function executeReadCanvas({
     );
   }
 
-  const rawSections = resp.sections;
-  const sections = Array.isArray(rawSections)
-    ? rawSections.filter(
-        (s): s is { id: string } =>
-          s !== null &&
-          typeof s === "object" &&
-          "id" in s &&
-          typeof s.id === "string"
-      )
-    : [];
+  const sections = (resp.sections ?? []).filter(
+    (s): s is { id: string } => typeof s.id === "string"
+  );
 
   if (sections.length === 0) {
     return new Ok([
@@ -1234,26 +1236,20 @@ export async function executeWriteCanvas({
   const slackClient = await getSlackClient(accessToken);
 
   if (!canvas_id) {
-    const body: Record<string, unknown> = {};
-    if (title) {
-      body.title = title;
-    }
-    if (content) {
-      body.document_content = { type: "markdown", markdown: content };
-    }
-    if (channel_id) {
-      body.channel_id = channel_id;
-    }
-
-    const res = await slackClient.apiCall("canvases.create", body);
+    const res = await slackClient.canvases.create({
+      ...(title ? { title } : {}),
+      ...(content
+        ? { document_content: { type: "markdown", markdown: content } }
+        : {}),
+      ...(channel_id ? { channel_id } : {}),
+    });
     if (!res.ok) {
       return new Err(
         new MCPError(`Failed to create canvas: ${res.error ?? "unknown error"}`)
       );
     }
 
-    const newCanvasId =
-      typeof res.canvas_id === "string" ? res.canvas_id : undefined;
+    const newCanvasId = res.canvas_id;
     return new Ok([
       {
         type: "text" as const,
@@ -1279,6 +1275,10 @@ export async function executeWriteCanvas({
     return new Err(new MCPError(`operation="${op}" requires content.`));
   }
 
+  const doc = content
+    ? ({ type: "markdown", markdown: content } as const)
+    : undefined;
+
   let change: Record<string, unknown>;
 
   if (op === "rename") {
@@ -1289,15 +1289,17 @@ export async function executeWriteCanvas({
   } else if (op === "delete") {
     change = { operation: "delete", section_id };
   } else {
-    const doc = { type: "markdown", markdown: content };
     change = section_id
       ? { operation: op, section_id, document_content: doc }
       : { operation: op, document_content: doc };
   }
 
-  const res = await slackClient.apiCall("canvases.edit", {
+  const res = await slackClient.canvases.edit({
     canvas_id,
-    changes: [change],
+    // The Slack SDK types for changes are very strict discriminated unions that
+    // don't cover all valid API operations (e.g. "rename"). We build the change
+    // object dynamically, so we cast here.
+    changes: [change] as unknown as CanvasesEditArguments["changes"],
   });
   if (!res.ok) {
     return new Err(
@@ -1322,7 +1324,7 @@ export async function executeDeleteCanvas({
 }): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   const slackClient = await getSlackClient(accessToken);
 
-  const res = await slackClient.apiCall("canvases.delete", { canvas_id });
+  const res = await slackClient.canvases.delete({ canvas_id });
   if (!res.ok) {
     return new Err(
       new MCPError(`Failed to delete canvas: ${res.error ?? "unknown error"}`)
