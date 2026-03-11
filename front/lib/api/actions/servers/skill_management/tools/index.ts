@@ -1,4 +1,4 @@
-import { buffer } from "node:stream/consumers";
+import type { ReadableStream } from "node:stream/web";
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -10,6 +10,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { Readable } from "stream";
 
 const SKILLS_BASE_PATH = "/skills";
 
@@ -112,9 +113,9 @@ async function loadSkillFilesToSandbox(
     const targetPath = `${SKILLS_BASE_PATH}/${skill.name}/${fileName}`;
 
     const readStream = file.getReadStream({ auth, version: "original" });
-    const content = await buffer(readStream);
+    const readable: ReadableStream = Readable.toWeb(readStream);
 
-    const writeResult = await sandbox.writeFile(targetPath, content);
+    const writeResult = await sandbox.writeFile(targetPath, readable);
     if (writeResult.isErr()) {
       return writeResult;
     }

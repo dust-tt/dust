@@ -1,3 +1,4 @@
+import type { ReadableStream } from "node:stream/web";
 import {
   formatSandboxImageId,
   type NetworkPolicy,
@@ -225,7 +226,7 @@ export class E2BSandboxProvider implements SandboxProvider {
   async writeFile(
     providerId: string,
     path: string,
-    content: Buffer
+    stream: ReadableStream
   ): Promise<Result<void, Error>> {
     let sandbox: Sandbox;
     try {
@@ -241,11 +242,8 @@ export class E2BSandboxProvider implements SandboxProvider {
     }
 
     try {
-      // We cannot use Node's Buffer directly as it shares a large pooled
-      // ArrayBuffer and buffer.buffer would send the entire pool, hence
-      // the copy into a fresh area of memory here.
       // Note: this creates the necessary directories if missing.
-      await sandbox.files.write(path, new Uint8Array(content).buffer);
+      await sandbox.files.write(path, stream);
     } catch (err) {
       return new Err(normalizeError(err));
     }

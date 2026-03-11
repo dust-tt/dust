@@ -1,3 +1,4 @@
+import type { ReadableStream } from "node:stream/web";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
@@ -507,13 +508,16 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   /**
    * Write a file to the sandbox filesystem.
    */
-  async writeFile(path: string, content: Buffer): Promise<Result<void, Error>> {
+  async writeFile(
+    path: string,
+    stream: ReadableStream
+  ): Promise<Result<void, Error>> {
     const provider = getSandboxProvider();
     if (!provider) {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.writeFile(this.providerId, path, content);
+    const result = await provider.writeFile(this.providerId, path, stream);
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
