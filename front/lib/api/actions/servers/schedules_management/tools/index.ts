@@ -3,9 +3,10 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
-import { generateCronRule } from "@app/lib/api/assistant/configuration/triggers";
+import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { isUserMessageType } from "@app/types/assistant/conversation";
@@ -16,7 +17,9 @@ import { UniqueConstraintError } from "sequelize";
 
 function renderSchedule(schedule: ScheduleTriggerType): string {
   const config = schedule.configuration;
-  const scheduleInfo = `${schedule.naturalLanguageDescription ?? config.cron} (${config.timezone})`;
+  const scheduleDesc =
+    schedule.naturalLanguageDescription ?? describeScheduleConfig(config);
+  const scheduleInfo = `${scheduleDesc} (${config.timezone})`;
   const lines = [
     `- **${schedule.name}** (ID: ${schedule.sId})`,
     `  Schedule: ${scheduleInfo}`,
@@ -63,15 +66,15 @@ export function createSchedulesManagementTools(
         return new Err(new MCPError("Provide a timezone"));
       }
 
-      const cronResult = await generateCronRule(auth, {
+      const scheduleResult = await generateScheduleRule(auth, {
         naturalDescription: schedule,
         defaultTimezone: resolvedTimezone,
       });
 
-      if (cronResult.isErr()) {
+      if (scheduleResult.isErr()) {
         logger.error(
           {
-            error: cronResult.error,
+            error: scheduleResult.error,
             workspaceId: owner.id,
             schedule,
           },
@@ -79,11 +82,11 @@ export function createSchedulesManagementTools(
         );
         return new Err(
           new MCPError(
-            `Unable to understand the schedule "${schedule}". Please try rephrasing (e.g., "every weekday at 9am", "every Monday at 10am").`
+            `Unable to understand the schedule "${schedule}". Please try rephrasing (e.g., "every weekday at 9am", "every Monday at 10am", "every other Monday at 9am").`
           )
         );
       }
-      const { cron, timezone: resultTimezone } = cronResult.value;
+      const scheduleConfig = scheduleResult.value;
       let result;
       try {
         result = await TriggerResource.makeNew(auth, {
@@ -92,10 +95,7 @@ export function createSchedulesManagementTools(
           name,
           kind: "schedule",
           status: "enabled",
-          configuration: {
-            cron,
-            timezone: resultTimezone,
-          },
+          configuration: scheduleConfig,
           naturalLanguageDescription: schedule,
           customPrompt: prompt,
           editor: user.id,
@@ -128,13 +128,15 @@ export function createSchedulesManagementTools(
         return new Err(new MCPError("Unexpected trigger type"));
       }
 
+      const configDesc = describeScheduleConfig(scheduleConfig);
+
       return new Ok([
         {
           type: "text" as const,
           text:
             `Created schedule "${name}"!\n\n` +
             `Schedule: ${schedule}\n` +
-            `Cron: ${cron} (${resultTimezone})\n\n` +
+            `Configuration: ${configDesc} (${scheduleConfig.timezone})\n\n` +
             `The agent will execute "${prompt}" according to this schedule.\n\n` +
             renderSchedule(trigger),
         },

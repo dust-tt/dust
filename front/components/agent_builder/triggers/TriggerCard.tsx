@@ -2,6 +2,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -12,7 +13,6 @@ import {
   TimeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
 function getTriggerIcon(trigger: AgentBuilderTriggerType) {
@@ -68,7 +68,7 @@ export const TriggerCard = ({
   const description = useMemo(() => {
     if (trigger.kind === "schedule") {
       try {
-        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+        return `Runs ${describeScheduleConfig(trigger.configuration)}.`;
       } catch {
         return;
       }

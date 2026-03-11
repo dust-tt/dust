@@ -1,6 +1,7 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -105,7 +106,7 @@ export function makeColumnsForTriggers(
       cell: ({ row }) => {
         const trigger = row.original;
         if (trigger.kind === "schedule") {
-          return `${trigger.configuration.cron} (${trigger.configuration.timezone})`;
+          return `${describeScheduleConfig(trigger.configuration)} (${trigger.configuration.timezone})`;
         }
         // Webhook: show event + filter summary
         const parts: string[] = [];
