@@ -7,7 +7,6 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   executeListPublicChannels,
-  executeListUserGroups,
   executePostMessage,
   executeSearchUser,
   getSlackClient,
@@ -62,21 +61,6 @@ export function createSlackBotTools(
       } catch (error) {
         return new Err(
           new MCPError(`Error searching user: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    list_user_groups: async (_params, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeListUserGroups({ accessToken });
-      } catch (error) {
-        return new Err(
-          new MCPError(`Error listing user groups: ${normalizeError(error)}`)
         );
       }
     },
