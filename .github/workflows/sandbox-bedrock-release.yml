@@ -98,6 +98,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           echo "## Sandbox Bedrock Release" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Released **v${VERSION}**" >> $GITHUB_STEP_SUMMARY
+          echo "Released **${VERSION}**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Image: \`us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:${VERSION}\`" >> $GITHUB_STEP_SUMMARY

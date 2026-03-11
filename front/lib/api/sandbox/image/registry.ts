@@ -4,7 +4,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:0.2.0")
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.1.0")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
   .runCmd(
