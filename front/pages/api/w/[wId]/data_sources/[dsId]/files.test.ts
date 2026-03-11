@@ -79,11 +79,11 @@ const mockFileContent = {
 
 // Mock file storage with parameterizable content
 vi.mock("@app/lib/file_storage", async () => {
-  const { mockFileStorage } = await import(
+  const { fileStorageMock } = await import(
     "@app/tests/utils/mocks/file_storage"
   );
   return {
-    ...mockFileStorage(),
+    ...fileStorageMock.mock(),
     getUpsertQueueBucket: vi.fn(() => ({
       file: () => ({
         copy: vi.fn().mockResolvedValue(undefined),

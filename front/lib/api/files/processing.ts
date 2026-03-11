@@ -251,6 +251,7 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
     const writeStream = file.getWriteStream({
       auth,
       version: "processed",
+      overrideContentType: "text/plain", // Text extractor extracts plain text from binary documents.
     });
 
     await pipeline(processedStream, writeStream);
