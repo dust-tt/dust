@@ -4,8 +4,8 @@ import {
   processAndStoreFile,
 } from "@app/lib/api/files/processing";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { assert, describe, expect, it, vi } from "vitest";
 
 // Mock config to provide required env vars.
