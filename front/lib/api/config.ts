@@ -204,6 +204,9 @@ const config = {
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
+  getRegion: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("REGION");
+  },
   // OAuth
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");

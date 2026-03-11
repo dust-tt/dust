@@ -38,6 +38,7 @@ export default async function setup() {
     DUST_SANDBOX_JWT_SECRET: "sandbox-secret-for-tests",
     REGION: "us-central1",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
+    OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
 
     // Variables that modify the behavior of certain tests
     UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,
