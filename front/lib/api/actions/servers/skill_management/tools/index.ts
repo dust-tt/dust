@@ -1,3 +1,4 @@
+import { buffer } from "node:stream/consumers";
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -9,7 +10,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { buffer } from "node:stream/consumers";
 
 const SKILLS_BASE_PATH = "/skills";
 
