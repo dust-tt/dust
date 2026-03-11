@@ -57,23 +57,34 @@ const FEEDBACK_PREDEFINED_ANSWERS = [
 
 const OTHER_ANSWER = "Other (please explain below)";
 
-const feedbackSchema = z
-  .object({
+function makeFeedbackSchema(thumbDirection: ThumbReaction) {
+  const base = z.object({
     selectedAnswer: z.string(),
     feedbackContent: z.string(),
     isConversationShared: z.boolean(),
-  })
-  .refine(
-    (data) =>
-      data.selectedAnswer !== OTHER_ANSWER ||
-      data.feedbackContent.trim().length > 0,
+  });
+
+  if (thumbDirection === "up") {
+    return base;
+  }
+
+  // Valid when: a non-"Other" predefined answer is selected, or free text is provided.
+  return base.refine(
+    (data) => {
+      const hasAnswer =
+        data.selectedAnswer.length > 0 && data.selectedAnswer !== OTHER_ANSWER;
+      const hasContent = data.feedbackContent.trim().length > 0;
+
+      return hasAnswer || hasContent;
+    },
     {
-      message: "Please describe what should be improved.",
+      message: "Please select a reason or describe the issue.",
       path: ["feedbackContent"],
     }
   );
+}
 
-type FeedbackFormValues = z.infer<typeof feedbackSchema>;
+type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
 
 export function FeedbackSelector({
   feedback,
@@ -89,15 +100,13 @@ export function FeedbackSelector({
     React.useState<ThumbReaction>("up");
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(feedbackSchema),
+    resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
     defaultValues: {
       selectedAnswer: "",
       feedbackContent: "",
       isConversationShared: true,
     },
   });
-
-  const selectedAnswer = form.watch("selectedAnswer");
 
   const openDialog = (direction: ThumbReaction) => {
     setThumbDirection(direction);
@@ -186,16 +195,19 @@ export function FeedbackSelector({
               </div>
             ) : (
               <div className="flex flex-col gap-4 pt-2">
-                {thumbDirection === "down" && (
-                  <div>
-                    <Label className="mb-2 block">
-                      What should the agent do differently?
-                    </Label>
+                <div>
+                  <Label htmlFor="feedback-content" className="mb-2 block">
+                    {thumbDirection === "down"
+                      ? "What should the agent do differently?"
+                      : "Glad you liked it! Tell us more?"}
+                  </Label>
+
+                  {thumbDirection === "down" && (
                     <Controller
                       control={form.control}
                       name="selectedAnswer"
                       render={({ field }) => (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="mb-3 flex flex-wrap gap-2">
                           {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
                             <Button
                               key={answer}
@@ -214,35 +226,26 @@ export function FeedbackSelector({
                         </div>
                       )}
                     />
-                  </div>
-                )}
-
-                <div>
-                  {thumbDirection === "up" && (
-                    <Label htmlFor="feedback-content" className="mb-2 block">
-                      Glad you liked it! Tell us more?
-                    </Label>
                   )}
+
                   <Controller
                     control={form.control}
                     name="feedbackContent"
                     render={({ field, fieldState }) => (
-                      <div>
-                        <TextArea
-                          id="feedback-content"
-                          placeholder={
-                            thumbDirection === "down"
-                              ? "Add more details"
-                              : "Share details"
-                          }
-                          resize="vertical"
-                          rows={3}
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          error={fieldState.error?.message ?? null}
-                          showErrorLabel={selectedAnswer === OTHER_ANSWER}
-                        />
-                      </div>
+                      <TextArea
+                        id="feedback-content"
+                        placeholder={
+                          thumbDirection === "down"
+                            ? "Add more details"
+                            : "Share details"
+                        }
+                        resize="vertical"
+                        rows={3}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        error={fieldState.error?.message ?? null}
+                        showErrorLabel={!!fieldState.error}
+                      />
                     )}
                   />
                 </div>
