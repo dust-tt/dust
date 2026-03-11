@@ -7,7 +7,6 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
-  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
@@ -30,6 +29,7 @@ import {
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
+  getClientSideToolStake,
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
@@ -1042,6 +1042,8 @@ async function listToolsForClientSideMCPServer(
   let allTools: ClientSideMCPToolTypeWithStakeLevel[] = [];
   let nextPageCursor;
 
+  const serverId = getBaseServerId(config.clientSideMcpServerId);
+
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
     const { tools, nextCursor } = await mcpClient.listTools();
@@ -1052,7 +1054,7 @@ async function listToolsForClientSideMCPServer(
       ...extractMetadataFromTools(tools).map((tool) => ({
         ...tool,
         availability: "manual" as const,
-        stakeLevel: DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
+        stakeLevel: getClientSideToolStake(serverId, tool.name),
       })),
     ];
   } while (nextPageCursor);

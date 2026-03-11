@@ -45,7 +45,7 @@ export interface ToolDefinition<
   displayLabels: ToolDisplayLabels;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
-    extra: ToolHandlerExtra
+    extra?: ToolHandlerExtra
   ) => Promise<ToolHandlerResult>;
 }
 

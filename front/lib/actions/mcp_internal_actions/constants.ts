@@ -1,7 +1,13 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
+  type MCPToolStakeLevelType,
+  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
+} from "@app/lib/actions/constants";
+import type {
+  ServerMetadata,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -89,6 +95,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { CHROME_TOOLS_METADATA } from "../mcp_client_side/metadata";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -1079,6 +1086,16 @@ export const INTERNAL_MCP_SERVERS = {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
 };
 
+// Hardcoded stakes per client-side server (keyed by base server ID)
+export const CLIENT_SIDE_MCP_TOOL_METADATA: Record<
+  string,
+  Record<string, ToolMeta>
+> = {
+  "mcp-client-side:chrome_extension_client": Object.fromEntries(
+    Object.entries(CHROME_TOOLS_METADATA).map(([name, meta]) => [name, meta])
+  ),
+};
+
 type InternalMCPServerEntryCommon = {
   id: number;
   availability: MCPServerAvailability;
@@ -1253,6 +1270,29 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
+}
+
+export function getClientSideToolStake(
+  serverId: string,
+  toolName: string
+): MCPToolStakeLevelType {
+  const toolStake = CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]?.stake;
+  if (toolStake) {
+    return toolStake;
+  }
+  return DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL;
+}
+
+export function getClientSideToolDisplayLabels(
+  serverId: string,
+  toolName: string
+): ToolDisplayLabels | null {
+  const toolDisplayLabels =
+    CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]?.displayLabels;
+  if (toolDisplayLabels) {
+    return toolDisplayLabels;
+  }
+  return null;
 }
 
 // TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
