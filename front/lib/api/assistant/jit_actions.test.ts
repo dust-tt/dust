@@ -23,22 +23,6 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-    getClientFacingUrl: () => "http://localhost:3000",
-  },
-}));
-
 describe("getJITServers", () => {
   let auth: Authenticator;
   let workspace: WorkspaceType;

@@ -29,21 +29,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://fake-core-api-url",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://fake-connectors-api-url",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-  },
-}));
-
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;

@@ -34,25 +34,6 @@ import type {
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
 import { Err, Ok } from "@app/types/shared/result";
 
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-    getClientFacingUrl: () => "http://localhost:3000",
-    getAppUrl: () => "http://localhost:3000",
-    getRegion: () => "us-central1",
-    getOAuthAPIConfig: () => ({ url: "http://localhost:3003", apiKey: "" }),
-  },
-}));
-
 describe("createDataSourceAndConnectorForProject", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;

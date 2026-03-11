@@ -13,13 +13,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-  },
-}));
-
 // Note: The generic system-only auth test expects 404, but this endpoint returns 403
 // So we'll override it with a custom test
 describe("system-only authentication tests", () => {

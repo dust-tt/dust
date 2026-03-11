@@ -1,21 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-    getClientFacingUrl: () => "http://localhost:3000",
-    getAppUrl: () => "http://localhost:3000",
-  },
-}));
-
 import {
   ConversationModel,
   ConversationParticipantModel,

@@ -10,17 +10,6 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-  },
-}));
-
 describe("DataSourceResource.hardDelete", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
