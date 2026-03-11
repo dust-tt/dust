@@ -1,0 +1,8 @@
+name = "app-dust-tt"
+compatibility_date = "2025-01-01"
+main = "./worker/app.ts"
+
+[assets]
+directory = "./dist/app"
+not_found_handling = "none"
+binding = "ASSETS"

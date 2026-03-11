@@ -6,10 +6,10 @@ import { defineConfig, loadEnv } from "vite";
 const apps = {
   app: {
     assets: [
-      ["share.html", "_share/index.html"],
-      ["oauth.html", "_oauth/index.html"],
-      ["email.html", "_email/index.html"],
-    ], // underscore prefix avoids Pretty URLs conflict
+      ["share.html", "share/index.html"],
+      ["oauth.html", "oauth/index.html"],
+      ["email.html", "email/index.html"],
+    ],
     inputs: {
       main: path.resolve(__dirname, "index.html"),
       share: path.resolve(__dirname, "share.html"),
