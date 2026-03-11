@@ -948,7 +948,7 @@ export function DataSourceViewSelector({
                   checked: isChecked === true,
                   disabled: !isRootSelectable,
                   onCheckedChange: handleSelectAll,
-                  className: "s-rounded-full",
+                  className: "rounded-full",
                 }
               : {
                   checked: isChecked,

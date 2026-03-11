@@ -85,6 +85,10 @@
       "plugins": ["./biome-plugins/noNextImports.grit"]
     },
     {
+      "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
+      "plugins": ["./biome-plugins/noSparkleClassInFront.grit"]
+    },
+    {
       "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"

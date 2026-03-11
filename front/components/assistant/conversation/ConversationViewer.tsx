@@ -34,7 +34,6 @@ import type { DustError } from "@app/lib/error";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentGenerationCancelledEvent,
@@ -61,6 +60,7 @@ import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { cn } from "@dust-tt/sparkle";
 import type {
   ListScrollLocation,
   VirtuosoMessageListMethods,
@@ -80,7 +80,6 @@ import React, {
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -859,11 +858,11 @@ export const ConversationViewer = ({
           ItemContent={MessageItem}
           StickyFooter={AgentInputBar}
           // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
-          className={classNames(
+          className={cn(
             "dd-privacy-mask",
-            "s-@container/conversation",
-            "h-full w-full",
-            agentBuilderContext ? "px-4" : "px-4 md:px-8"
+            "@container/conversation",
+            "h-full w-full px-4",
+            !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"
           computeItemKey={computeItemKey}
@@ -873,7 +872,7 @@ export const ConversationViewer = ({
           EmptyPlaceholder={ConversationViewerEmptyState}
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
-          enforceStickyFooterAtBottom={true}
+          enforceStickyFooterAtBottom
         />
       </VirtuosoMessageListLicense>
     </>
