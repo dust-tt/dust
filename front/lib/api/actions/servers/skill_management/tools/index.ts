@@ -9,6 +9,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { buffer } from "node:stream/consumers";
 
 const SKILLS_BASE_PATH = "/skills";
 
@@ -110,14 +111,8 @@ async function loadSkillFilesToSandbox(
     const fileName = file.fileName ?? `file_${file.sId}`;
     const targetPath = `${SKILLS_BASE_PATH}/${skill.name}/${fileName}`;
 
-    // Always get the original for the sandbox.
     const readStream = file.getReadStream({ auth, version: "original" });
-
-    const chunks: Buffer[] = [];
-    for await (const chunk of readStream) {
-      chunks.push(chunk);
-    }
-    const content = Buffer.concat(chunks);
+    const content = await buffer(readStream);
 
     const writeResult = await sandbox.writeFile(targetPath, content);
     if (writeResult.isErr()) {
