@@ -57,19 +57,19 @@ const FEEDBACK_PREDEFINED_ANSWERS = [
   OTHER_ANSWER,
 ] as const;
 
-function makeFeedbackSchema(thumbDirection: ThumbReaction) {
-  const base = z.object({
-    selectedAnswer: z.string().default(""),
-    feedbackContent: z.string().default(""),
-    isConversationShared: z.boolean().default(true),
-  });
+const feedbackBaseSchema = z.object({
+  selectedAnswer: z.string().default(""),
+  feedbackContent: z.string().default(""),
+  isConversationShared: z.boolean().default(true),
+});
 
+function makeFeedbackSchema(thumbDirection: ThumbReaction) {
   if (thumbDirection === "up") {
-    return base;
+    return feedbackBaseSchema;
   }
 
   // Valid when: a non-"Other" predefined answer is selected, or free text is provided.
-  return base.refine(
+  return feedbackBaseSchema.refine(
     (data) => {
       const hasAnswer =
         data.selectedAnswer.length > 0 && data.selectedAnswer !== OTHER_ANSWER;
