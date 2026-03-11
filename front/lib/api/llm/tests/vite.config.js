@@ -39,5 +39,6 @@ export default defineConfig(() => {
   // Merge with the base config and explicitly override globalSetup
   const merged = mergeConfig(baseConfig, testConfig);
   merged.test.globalSetup = []; // Force override the globalSetup
+  merged.test.environment = "node"; // LLM tests need Node.js env for stream uploads
   return merged;
 });
