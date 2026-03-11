@@ -1,26 +1,17 @@
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import {
-  PRETTIFIED_PROVIDER_NAMES,
-  type ProvidersSelection,
-} from "@app/types/provider_selection";
-import { ContextItem, Icon, SliderToggle } from "@dust-tt/sparkle";
+import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
+import { Button, ContextItem, Icon } from "@dust-tt/sparkle";
 
-interface ProviderContextItemProps {
+interface ProviderConfigurationContextItemProps {
   providerId: ModelProviderIdType;
   description: string;
-  providersSelection: ProvidersSelection;
-  handleToggleChange: () => void;
-  disabled: boolean;
 }
-export function ProviderContextItem({
+export function ProviderConfigurationContextItem({
   providerId,
   description,
-  providersSelection,
-  handleToggleChange,
-  disabled,
-}: ProviderContextItemProps) {
+}: ProviderConfigurationContextItemProps) {
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
 
@@ -29,14 +20,7 @@ export function ProviderContextItem({
       key={providerId}
       title={PRETTIFIED_PROVIDER_NAMES[providerId]}
       visual={<Icon visual={LogoComponent} size="lg" />}
-      action={
-        <SliderToggle
-          size="xs"
-          selected={providersSelection[providerId]}
-          onClick={handleToggleChange}
-          disabled={disabled}
-        />
-      }
+      action={<Button label="Configure" variant="outline" />}
     >
       <ContextItem.Description>
         <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
