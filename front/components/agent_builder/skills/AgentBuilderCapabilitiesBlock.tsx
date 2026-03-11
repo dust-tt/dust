@@ -58,7 +58,7 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
       canAdd={false}
       onClick={onClick}
       onRemove={onRemove}
-      cardContainerClassName="s-h-28"
+      cardContainerClassName="h-28"
     />
   );
 }
