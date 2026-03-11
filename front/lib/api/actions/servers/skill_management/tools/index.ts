@@ -43,9 +43,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
-    const { alreadyEnabled } = enableResult.value;
-
-    if (alreadyEnabled) {
+    if (enableResult.value.alreadyEnabled) {
       return new Ok([
         {
           type: "text" as const,
