@@ -1,3 +1,4 @@
+import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { CreditsDataTable } from "@app/components/poke/credits/table";
@@ -23,7 +24,6 @@ import {
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
-import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -309,7 +309,7 @@ export function WorkspacePage() {
             </TabsContent>
             <TabsContent value="analytics">
               <div className="flex flex-col gap-6">
-                <WorkspaceUsageChart workspaceId={owner.sId} period={30} />
+                <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
                 <WorkspaceDatasourceRetrievalTreemapPluginChart
                   workspaceId={owner.sId}
                   period={30}
