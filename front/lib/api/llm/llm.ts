@@ -302,7 +302,11 @@ export abstract class LLM<TPayload = unknown> {
 
       // Run usage is only populated if the run is successful.
       if (buffer.runTokenUsage) {
-        await run.recordTokenUsage(this.authenticator, buffer.runTokenUsage, this.modelId);
+        await run.recordTokenUsage(
+          this.authenticator,
+          buffer.runTokenUsage,
+          this.modelId
+        );
       }
 
       yield currentEvent;

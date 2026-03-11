@@ -291,20 +291,44 @@ export class RunResource extends BaseResource<RunModel> {
         `workspace_id:${auth.getNonNullableWorkspace().sId}`,
       ];
 
-      statsDClient.increment("run_usage.prompt_tokens", usage.promptTokens, tags);
-      statsDClient.increment("run_usage.completion_tokens", usage.completionTokens, tags);
-      statsDClient.increment("run_usage.cost_micro_usd", usage.costMicroUsd, tags);
+      statsDClient.increment(
+        "run_usage.prompt_tokens",
+        usage.promptTokens,
+        tags
+      );
+      statsDClient.increment(
+        "run_usage.completion_tokens",
+        usage.completionTokens,
+        tags
+      );
+      statsDClient.increment(
+        "run_usage.cost_micro_usd",
+        usage.costMicroUsd,
+        tags
+      );
 
       if (usage.cachedTokens) {
-        statsDClient.increment("run_usage.cached_tokens", usage.cachedTokens, tags);
+        statsDClient.increment(
+          "run_usage.cached_tokens",
+          usage.cachedTokens,
+          tags
+        );
       }
       if (usage.cacheCreationTokens) {
-        statsDClient.increment("run_usage.cache_creation_tokens", usage.cacheCreationTokens, tags);
+        statsDClient.increment(
+          "run_usage.cache_creation_tokens",
+          usage.cacheCreationTokens,
+          tags
+        );
       }
     }
   }
 
-  async recordTokenUsage(auth: Authenticator, usage: TokenUsage, modelId: ModelIdType) {
+  async recordTokenUsage(
+    auth: Authenticator,
+    usage: TokenUsage,
+    modelId: ModelIdType
+  ) {
     const modelConfig = getModelConfigByModelId(modelId);
 
     if (!modelConfig) {
