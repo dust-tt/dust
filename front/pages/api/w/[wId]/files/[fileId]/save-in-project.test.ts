@@ -5,55 +5,9 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import handler from "./save-in-project";
-
-// Mock FileStorage to avoid GCS calls
-vi.mock("@app/lib/file_storage", () => {
-  const createMockGCSFile = () => ({
-    createReadStream: vi.fn().mockReturnValue({
-      on: vi.fn().mockImplementation(function (this: any) {
-        return this;
-      }),
-      pipe: vi.fn(),
-    }),
-    getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
-    createWriteStream: vi.fn().mockReturnValue({
-      on: vi.fn().mockImplementation(function (
-        this: any,
-        event: string,
-        cb: any
-      ) {
-        if (event === "finish") {
-          // eslint-disable-next-line @typescript-eslint/no-implied-eval
-          setImmediate(cb);
-        }
-        return this;
-      }),
-      write: vi.fn(),
-      end: vi.fn(),
-    }),
-    delete: vi.fn().mockResolvedValue(undefined),
-    publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
-  });
-
-  const createMockFileStorage = () => ({
-    file: vi.fn(createMockGCSFile),
-    getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
-    uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
-    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
-    fetchFileContent: vi.fn().mockResolvedValue("mock content"),
-    delete: vi.fn().mockResolvedValue(undefined),
-  });
-
-  return {
-    FileStorage: vi.fn().mockImplementation(createMockFileStorage),
-    getPrivateUploadBucket: vi.fn(createMockFileStorage),
-    getPublicUploadBucket: vi.fn(createMockFileStorage),
-    getUpsertQueueBucket: vi.fn(createMockFileStorage),
-  };
-});
 
 describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   it("should return 404 when file does not exist", async () => {
@@ -82,18 +36,23 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 403 when projects feature flag is not enabled", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     const conversation = await ConversationFactory.create(authenticator, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -120,11 +79,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 400 when file is not a frame", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -133,7 +98,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
@@ -160,7 +125,13 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 400 when file is already in a project", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
@@ -169,7 +140,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
 
     const project = await SpaceFactory.project(workspace, user.id);
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -197,11 +168,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 400 when projectId is missing", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -210,7 +187,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -233,11 +210,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 404 when project does not exist", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -246,7 +229,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -273,11 +256,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 400 when space is not a project", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -287,7 +276,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -314,11 +303,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 403 when user does not have write access to project", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -330,7 +325,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -357,11 +352,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should successfully move frame file to project", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -372,7 +373,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,
@@ -402,11 +403,17 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
   });
 
   it("should return 405 for unsupported methods", async () => {
-    const { req, res, workspace, user, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+      authenticator,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     await FeatureFlagFactory.basic("projects", workspace);
 
@@ -417,7 +424,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
       fileName: "test.frame",
       fileSize: 1024,

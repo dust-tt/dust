@@ -5,10 +5,7 @@ import {
   ArrowPathIcon,
   Button,
   ContentMessage,
-  DocumentPileIcon,
-  EyeIcon,
   InformationCircleIcon,
-  Popover,
 } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
@@ -21,13 +18,6 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
     isAgentErrorCategory(error.metadata?.category) &&
     (error.metadata?.category === "retryable_model_error" ||
       error.metadata?.category === "stream_error");
-
-  const debugInfo = [
-    error.metadata?.category ? `category: ${error.metadata?.category}` : "",
-    error.code ? `code: ${error.code}` : "",
-  ]
-    .filter((s) => s.length > 0)
-    .join(", ");
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
@@ -50,37 +40,6 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
           label="Retry"
           onClick={retry}
           disabled={isRetrying}
-        />
-        <Popover
-          popoverTriggerAsChild
-          trigger={
-            <Button
-              variant="outline"
-              size="xs"
-              icon={EyeIcon}
-              label="Details"
-            />
-          }
-          content={
-            <div className="flex flex-col gap-3">
-              <div className="whitespace-normal text-sm font-normal text-warning">
-                {debugInfo}
-              </div>
-              <div className="self-end">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={DocumentPileIcon}
-                  label={"Copy"}
-                  onClick={() =>
-                    void navigator.clipboard.writeText(
-                      error.message + (debugInfo ? ` (${debugInfo})` : "")
-                    )
-                  }
-                />
-              </div>
-            </div>
-          }
         />
       </div>
     </ContentMessage>

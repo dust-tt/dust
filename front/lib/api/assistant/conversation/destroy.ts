@@ -282,6 +282,19 @@ export async function destroyConversation(
 
   await SandboxResource.deleteByConversationId(auth, conversation.sId);
 
+  // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
+  // FileResource records associated with this conversation (via
+  // useCaseMetadata.conversationId) are never deleted here. Both the DB rows and their GCS files
+  // at the canonical path (files/w/{wId}/{fileId}/*) are left orphaned.
+  // Delete all conversation mount path files from GCS. This is temporary and should be self
+  // contained in the FileResource.
+  // await getPrivateUploadBucket().deleteByPrefix(
+  //   getConversationFilesBasePath({
+  //     workspaceId: owner.sId,
+  //     conversationId: conversation.sId,
+  //   })
+  // );
+
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,
     dangerouslySkipPermissionFiltering: true,

@@ -75,6 +75,14 @@ vi.mock("@app/lib/utils/cache", () => ({
     ),
 }));
 
+// Mock file storage (GCS) - must be at module level to avoid SERVICE_ACCOUNT env requirement.
+vi.mock("@app/lib/file_storage", async () => {
+  const { mockFileStorage } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  return mockFileStorage();
+});
+
 // Mock sandbox provider - must be at module level
 vi.mock("@app/lib/api/sandbox", () => ({
   getSandboxProvider: vi.fn().mockReturnValue(undefined),

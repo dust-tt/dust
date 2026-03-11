@@ -1,4 +1,5 @@
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -7,24 +8,25 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import handler from "./content";
 
 describe("/api/v1/viz/content endpoint tests", () => {
   let workspace: LightWorkspaceType;
+  let auth: Authenticator;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const { workspace: w } = await createResourceTest({
+    const { workspace: w, authenticator: a } = await createResourceTest({
       role: "user",
     });
 
     workspace = w;
+    auth = a;
   });
 
   it("should return frame content with valid JWT access token", async () => {
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -147,7 +149,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
   it("should reject expired JWT token using time mocking", async () => {
     vi.useFakeTimers();
 
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -194,7 +196,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
   });
 
   it("should reject when content is not found", async () => {
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -239,7 +241,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
   });
 
   it("should work with workspace scoped content", async () => {
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,

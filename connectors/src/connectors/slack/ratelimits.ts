@@ -26,4 +26,8 @@ export const RATE_LIMITS = {
     limit: 100,
     windowInMs: 60 * 1000,
   },
+  "chat.appendStream": {
+    limit: 100,
+    windowInMs: 60 * 1000,
+  },
 } satisfies Record<string, RateLimit>;

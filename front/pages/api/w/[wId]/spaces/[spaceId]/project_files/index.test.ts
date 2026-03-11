@@ -9,17 +9,22 @@ import handler from "./index";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
   it("should return project files for a valid space", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     // Use the global space (user already has access)
     const space = globalSpace;
 
     // Create some project files
-    await FileFactory.create(workspace, user, {
+    await FileFactory.create(auth, user, {
       contentType: "text/plain",
       fileName: "test1.txt",
       fileSize: 100,
@@ -28,7 +33,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
       useCaseMetadata: { spaceId: space.sId },
     });
 
-    await FileFactory.create(workspace, user, {
+    await FileFactory.create(auth, user, {
       contentType: "image/png",
       fileName: "test2.png",
       fileSize: 200,
@@ -102,16 +107,21 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
   });
 
   it("should include user information for files with uploaders", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     const space = globalSpace;
 
     // Create file with user
-    await FileFactory.create(workspace, user, {
+    await FileFactory.create(auth, user, {
       contentType: "text/csv",
       fileName: "data.csv",
       fileSize: 500,
@@ -121,7 +131,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
     });
 
     // Create file without user
-    await FileFactory.create(workspace, null, {
+    await FileFactory.create(auth, null, {
       contentType: "application/json",
       fileName: "data.json",
       fileSize: 300,
@@ -187,15 +197,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
   });
 
   it("should return files with correct metadata format", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      authenticator: auth,
+      req,
+      res,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
     const space = globalSpace;
 
-    await FileFactory.create(workspace, user, {
+    await FileFactory.create(auth, user, {
       contentType: "text/markdown",
       fileName: "readme.md",
       fileSize: 1024,

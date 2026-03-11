@@ -88,7 +88,7 @@ function ConfirmView({ token }: ConfirmViewProps) {
       <form
         ref={formRef}
         method="POST"
-        action="/api/email/validate-action"
+        action={`${config.getApiBaseUrl()}/api/email/validate-action`}
         style={{ display: "none" }}
       >
         <input type="hidden" name="token" value={token} />

@@ -112,7 +112,6 @@ async function waitForAgentCompletion(
                 checkCompletion();
               }
             },
-            null, // lastEventId.
             "user_message_events"
           );
 

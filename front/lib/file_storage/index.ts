@@ -203,6 +203,10 @@ export class FileStorage {
       throw err;
     }
   }
+
+  async deleteByPrefix(prefix: string): Promise<void> {
+    await this.bucket.deleteFiles({ prefix });
+  }
 }
 
 const bucketInstances = new Map();

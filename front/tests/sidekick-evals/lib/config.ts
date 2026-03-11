@@ -2,7 +2,6 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
-import { _getSidekickEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick_edge";
 import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import {
   MCP_SERVERS_FOR_GLOBAL_AGENTS,
@@ -11,8 +10,6 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export const RUN_SIDEKICK_EVAL = process.env.RUN_SIDEKICK_EVAL === "true";
 export const JUDGE_RUNS = parseInt(process.env.JUDGE_RUNS ?? "3", 10);
@@ -48,7 +45,6 @@ const GET_AGENT_CONFIG_SPEC: AgentActionSpecification = {
 function getMockSidekickContext(): SidekickContext {
   return {
     mcpServerViews: null,
-    langfuseConfig: null,
   };
 }
 
@@ -96,61 +92,16 @@ export async function getSidekickConfig(): Promise<{
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const mockSidekickContext = getMockSidekickContext();
-  let sidekickConfig;
-  switch (SIDEKICK_AGENT) {
-    case "default":
-      sidekickConfig = _getSidekickGlobalAgent(auth, {
-        sidekickContext: mockSidekickContext,
-        preFetchedDataSources: null,
-        mcpServerViews: MOCK_MCP_SERVER_VIEWS,
-      });
-      break;
-    case "haiku":
-      sidekickConfig = _getSidekickEdgeGlobalAgent(auth, {
-        sidekickContext: {
-          ...mockSidekickContext,
-          langfuseConfig: {
-            instructions: "",
-            modelConfig: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-          },
-        },
-        preFetchedDataSources: null,
-        mcpServerViews: MOCK_MCP_SERVER_VIEWS,
-      });
-      break;
-    case "gemini-3-light":
-      sidekickConfig = _getSidekickEdgeGlobalAgent(auth, {
-        sidekickContext: {
-          ...mockSidekickContext,
-          langfuseConfig: {
-            instructions: "",
-            modelConfig: GEMINI_3_FLASH_MODEL_CONFIG,
-            reasoningEffort: "light",
-          },
-        },
-        preFetchedDataSources: null,
-        mcpServerViews: MOCK_MCP_SERVER_VIEWS,
-      });
-      break;
-    case "gemini-3-medium":
-      sidekickConfig = _getSidekickEdgeGlobalAgent(auth, {
-        sidekickContext: {
-          ...mockSidekickContext,
-          langfuseConfig: {
-            instructions: "",
-            modelConfig: GEMINI_3_FLASH_MODEL_CONFIG,
-            reasoningEffort: "medium",
-          },
-        },
-        preFetchedDataSources: null,
-        mcpServerViews: MOCK_MCP_SERVER_VIEWS,
-      });
-      break;
-    default:
-      throw new Error(
-        `Unknown SIDEKICK_AGENT: "${SIDEKICK_AGENT}". Must be "default", "haiku", "gemini-3-light", or "gemini-3-medium".`
-      );
+  if (SIDEKICK_AGENT !== "default") {
+    throw new Error(
+      `Unknown SIDEKICK_AGENT: "${SIDEKICK_AGENT}". Must be "default".`
+    );
   }
+  const sidekickConfig = _getSidekickGlobalAgent(auth, {
+    sidekickContext: mockSidekickContext,
+    preFetchedDataSources: null,
+    mcpServerViews: MOCK_MCP_SERVER_VIEWS,
+  });
 
   const tools: AgentActionSpecification[] = [GET_AGENT_CONFIG_SPEC];
 

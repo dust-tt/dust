@@ -22,8 +22,12 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
-  ArrowDownOnSquareIcon,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FolderOpenIcon,
   MagnifyingGlassIcon,
   Page,
   PlusIcon,
@@ -85,7 +89,6 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
-
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -252,21 +255,32 @@ export function ManageSkillsPage() {
                 setSkillSearch(s);
               }}
             />
-            {hasFeature("sandbox_tools") && (
+            {hasFeature("sandbox_tools") ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button label="Create skill" icon={PlusIcon} isSelect />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label="From scratch"
+                    icon={SKILL_ICON}
+                    href={getSkillBuilderRoute(owner.sId, "new")}
+                  />
+                  <DropdownMenuItem
+                    label="From existing"
+                    icon={FolderOpenIcon}
+                    onClick={() => setIsImportDialogOpen(true)}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
               <Button
-                label="Import skill"
-                variant="outline"
-                icon={ArrowDownOnSquareIcon}
-                tooltip="Import skills from a GitHub repository"
-                onClick={() => setIsImportDialogOpen(true)}
+                label="Create skill"
+                href={getSkillBuilderRoute(owner.sId, "new")}
+                icon={PlusIcon}
+                tooltip="Create a new skill"
               />
             )}
-            <Button
-              label="Create skill"
-              href={getSkillBuilderRoute(owner.sId, "new")}
-              icon={PlusIcon}
-              tooltip="Create a new skill"
-            />
           </div>
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>

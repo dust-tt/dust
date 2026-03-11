@@ -46,8 +46,8 @@ export async function* getConversationEvents({
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
     callbackReader.callback,
-    lastEventId,
-    "conversation_events"
+    "conversation_events",
+    { lastEventId }
   );
 
   // Unsubscribe if the signal is aborted
@@ -170,8 +170,8 @@ export async function* getMessagesEvents(
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
     callbackReader.callback,
-    lastEventId,
-    "message_events"
+    "message_events",
+    { lastEventId }
   );
 
   // Unsubscribe if the signal is aborted

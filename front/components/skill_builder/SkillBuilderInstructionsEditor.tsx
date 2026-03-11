@@ -49,8 +49,7 @@ interface SkillBuilderInstructionsEditorProps {
 export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
-  const { compareVersion } = useSkillVersionComparisonContext();
-  const isDiffMode = !!compareVersion;
+  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
 
   const { field: instructionsField, fieldState: instructionsFieldState } =

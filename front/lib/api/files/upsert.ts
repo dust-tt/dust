@@ -150,12 +150,13 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
 };
 
 const updateUseCaseMetadata = async (
+  auth: Authenticator,
   file: FileResource,
   tableIds: string[]
 ) => {
   // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
   if (file.useCaseMetadata) {
-    await file.setUseCaseMetadata({
+    await file.setUseCaseMetadata(auth, {
       ...file.useCaseMetadata,
       generatedTables: [
         ...(file.useCaseMetadata.generatedTables ?? []),
@@ -237,7 +238,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     return new Err(upsertTableRes.error);
   }
 
-  await updateUseCaseMetadata(file, [tableId]);
+  await updateUseCaseMetadata(auth, file, [tableId]);
 
   return new Ok(undefined);
 };
@@ -398,7 +399,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
   }
 
-  await updateUseCaseMetadata(file, tableIds);
+  await updateUseCaseMetadata(auth, file, tableIds);
 
   return new Ok(undefined);
 };

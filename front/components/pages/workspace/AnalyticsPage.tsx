@@ -3,6 +3,7 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
+import { WorkspaceSkillUsageChart } from "@app/components/workspace/analytics/WorkspaceSkillUsageChart";
 import { WorkspaceSourceChart } from "@app/components/workspace/analytics/WorkspaceSourceChart";
 import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/WorkspaceToolUsageChart";
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
@@ -165,6 +166,7 @@ export function AnalyticsPage() {
       <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
       <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
       <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
+      <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
       <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
       <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
       <ActivityReport

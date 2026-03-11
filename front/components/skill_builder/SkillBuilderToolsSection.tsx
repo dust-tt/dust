@@ -1,14 +1,17 @@
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { getSkillIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
+  ArrowGoBackIcon,
   Button,
   CardGrid,
   Chip,
@@ -17,7 +20,7 @@ import {
   ToolsIcon,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillBuilderToolsSectionProps {
@@ -27,7 +30,9 @@ interface SkillBuilderToolsSectionProps {
 export function SkillBuilderToolsSection({
   extendedSkill,
 }: SkillBuilderToolsSectionProps) {
-  const { getValues } = useFormContext<SkillBuilderFormData>();
+  const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
+
   const { fields, remove, append } = useFieldArray<
     SkillBuilderFormData,
     "tools"
@@ -38,7 +43,6 @@ export function SkillBuilderToolsSection({
 
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
 
-  // Filter to only show tools that don't require configuration
   const filterNoConfigTools = useCallback(
     (view: MCPServerViewTypeWithLabel) => {
       const requirements = getMCPServerRequirements(view);
@@ -47,7 +51,7 @@ export function SkillBuilderToolsSection({
     []
   );
 
-  const selectedActionsForSheet = getValues("tools");
+  const selectedActionsForSheet = fields;
 
   const handleOpenSheet = () => {
     setSheetMode({ type: "add" });
@@ -57,7 +61,34 @@ export function SkillBuilderToolsSection({
     setSheetMode({ type: "info", action, source: "addedTool" });
   };
 
-  const headerActions = fields.length > 0 && (
+  const currentToolIds = useMemo(
+    () => new Set(fields.map((f) => f.configuration.mcpServerViewId)),
+    [fields]
+  );
+
+  const compareToolIds = useMemo(
+    () =>
+      compareVersion
+        ? new Set(compareVersion.tools.map((t) => t.sId))
+        : new Set<string>(),
+    [compareVersion]
+  );
+
+  const toolsDiffer =
+    isDiffMode &&
+    (currentToolIds.size !== compareToolIds.size ||
+      [...currentToolIds].some((id) => !compareToolIds.has(id)));
+
+  const restoreTools = () => {
+    if (!compareVersion) {
+      return;
+    }
+    setValue("tools", compareVersion.tools.map(getDefaultMCPAction), {
+      shouldDirty: true,
+    });
+  };
+
+  const headerActions = !isDiffMode && fields.length > 0 && (
     <Button
       type="button"
       onClick={handleOpenSheet}
@@ -83,7 +114,18 @@ export function SkillBuilderToolsSection({
             />
           )}
         </div>
-        {headerActions}
+        <div className="flex items-center gap-2">
+          {toolsDiffer && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ArrowGoBackIcon}
+              onClick={restoreTools}
+              label="Restore tools"
+            />
+          )}
+          {headerActions}
+        </div>
       </div>
 
       <div className="flex-1">
@@ -92,40 +134,61 @@ export function SkillBuilderToolsSection({
             <Spinner />
           </div>
         ) : fields.length === 0 ? (
-          <EmptyCTA
-            action={
-              <Button
-                type="button"
-                onClick={handleOpenSheet}
-                label="Add tools"
-                icon={ToolsIcon}
-                variant="outline"
-              />
-            }
-            className="py-8"
-          />
+          isDiffMode ? null : (
+            <EmptyCTA
+              action={
+                <Button
+                  type="button"
+                  onClick={handleOpenSheet}
+                  label="Add tools"
+                  icon={ToolsIcon}
+                  variant="outline"
+                />
+              }
+              className="py-8"
+            />
+          )
         ) : (
           <CardGrid>
-            {fields.map((field, index) => (
-              <ActionCard
-                key={field.id}
-                action={field}
-                onRemove={() => remove(index)}
-                onClick={() => handleClickActionCard(field)}
-              />
-            ))}
+            {fields.map((field, index) => {
+              if (!isDiffMode) {
+                return (
+                  <ActionCard
+                    key={field.id}
+                    action={field}
+                    onRemove={() => remove(index)}
+                    onClick={() => handleClickActionCard(field)}
+                  />
+                );
+              }
+              const isAdded = !compareToolIds.has(
+                field.configuration.mcpServerViewId
+              );
+              if (isAdded) {
+                return (
+                  <ActionCard
+                    key={field.id}
+                    action={field}
+                    diffStatus="added"
+                  />
+                );
+              }
+              return <ActionCard key={field.id} action={field} />;
+            })}
           </CardGrid>
         )}
       </div>
 
-      <MCPServerViewsSheet
-        addTools={append}
-        mode={sheetMode}
-        onModeChange={setSheetMode}
-        selectedActions={selectedActionsForSheet}
-        getAgentInstructions={() => ""}
-        filterMCPServerViews={filterNoConfigTools}
-      />
+      {!isDiffMode && (
+        <MCPServerViewsSheet
+          addTools={append}
+          mode={sheetMode}
+          onModeChange={setSheetMode}
+          selectedActions={selectedActionsForSheet}
+          getAgentInstructions={() => ""}
+          filterMCPServerViews={filterNoConfigTools}
+        />
+      )}
     </div>
   );
 }

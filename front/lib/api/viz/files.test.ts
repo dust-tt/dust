@@ -29,7 +29,7 @@ describe("canAccessFileInConversation", () => {
 
   describe("unsupported use cases", () => {
     it("should return error for unsupported use case", async () => {
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -57,7 +57,7 @@ describe("canAccessFileInConversation", () => {
 
   describe("requested conversation not found", () => {
     it("should return error when requested conversation does not exist", async () => {
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -85,7 +85,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -111,7 +111,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -139,7 +139,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -170,7 +170,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -248,7 +248,7 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Create file associated with sub-conversation
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -277,7 +277,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -355,7 +355,7 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Create file associated with sub-conversation
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -410,7 +410,7 @@ describe("canAccessFileInConversation", () => {
         spaceId: project.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -436,7 +436,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -464,7 +464,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -492,7 +492,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -545,7 +545,7 @@ describe("canAccessFileInConversation", () => {
         spaceId: project1.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -582,7 +582,7 @@ describe("canAccessFileInProject", () => {
     it("should return error for unsupported use case", async () => {
       const project = await SpaceFactory.project(workspace);
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -605,7 +605,7 @@ describe("canAccessFileInProject", () => {
 
   describe("requested project not found", () => {
     it("should return error when requested project does not exist", async () => {
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -659,7 +659,7 @@ describe("canAccessFileInProject", () => {
         spaceId: project.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -682,7 +682,7 @@ describe("canAccessFileInProject", () => {
     it("should return error when file is not associated with a conversation", async () => {
       const project = await SpaceFactory.project(workspace);
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -707,7 +707,7 @@ describe("canAccessFileInProject", () => {
     it("should return error when file conversation does not exist", async () => {
       const project = await SpaceFactory.project(workspace);
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -738,7 +738,7 @@ describe("canAccessFileInProject", () => {
         spaceId: project2.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -770,7 +770,7 @@ describe("canAccessFileInProject", () => {
         spaceId: project.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -801,7 +801,7 @@ describe("canAccessFileInProject", () => {
         spaceId: project2.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -826,7 +826,7 @@ describe("canAccessFileInProject", () => {
     it("should allow access when file belongs to the requested project", async () => {
       const project = await SpaceFactory.project(workspace);
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -849,7 +849,7 @@ describe("canAccessFileInProject", () => {
     it("should return error when file is not associated with a project", async () => {
       const project = await SpaceFactory.project(workspace);
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -875,7 +875,7 @@ describe("canAccessFileInProject", () => {
       const project1 = await SpaceFactory.project(workspace);
       const project2 = await SpaceFactory.project(workspace);
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,

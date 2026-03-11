@@ -18,6 +18,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
+import { useClientType } from "@app/lib/context/clientType";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -142,6 +143,7 @@ const InputBarContainer = ({
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
+  const clientType = useClientType();
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -747,37 +749,38 @@ const InputBarContainer = ({
                     className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") && !captureActions && (
-                    <>
-                      <input
-                        accept={getSupportedFileExtensions().join(",")}
-                        onChange={async (e) => {
-                          await fileUploaderService.handleFileChange(e);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                          editorService.focusEnd();
-                        }}
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        type="file"
-                        multiple={true}
-                      />
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                        conversation={conversation}
-                        space={space}
-                        type="dropdown"
-                      />
-                    </>
-                  )}
+                  {actions.includes("attachment") &&
+                    clientType !== "extension" && (
+                      <>
+                        <input
+                          accept={getSupportedFileExtensions().join(",")}
+                          onChange={async (e) => {
+                            await fileUploaderService.handleFileChange(e);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                            editorService.focusEnd();
+                          }}
+                          ref={fileInputRef}
+                          style={{ display: "none" }}
+                          type="file"
+                          multiple={true}
+                        />
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="dropdown"
+                        />
+                      </>
+                    )}
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
@@ -823,7 +826,7 @@ const InputBarContainer = ({
                       showStopLabel={!isMobile}
                     />
                   )}
-                {captureActions && (
+                {clientType === "extension" && (
                   <DropdownMenu
                     open={isCaptureDropdownOpen}
                     onOpenChange={setIsCaptureDropdownOpen}
@@ -853,24 +856,30 @@ const InputBarContainer = ({
                           onFileChange={() => setIsCaptureDropdownOpen(false)}
                         />
                       )}
-                      <DropdownMenuItem
-                        icon={GlobeAltIcon}
-                        label="Attach page content"
-                        disabled={
-                          captureActions.isCapturing ||
-                          fileUploaderService.isProcessingFiles
-                        }
-                        onClick={() => captureActions.onCapture("text")}
-                      />
-                      <DropdownMenuItem
-                        icon={CameraIcon}
-                        label="Take screenshot"
-                        disabled={
-                          captureActions.isCapturing ||
-                          fileUploaderService.isProcessingFiles
-                        }
-                        onClick={() => captureActions.onCapture("screenshot")}
-                      />
+                      {captureActions && (
+                        <>
+                          <DropdownMenuItem
+                            icon={GlobeAltIcon}
+                            label="Attach page content"
+                            disabled={
+                              captureActions.isCapturing ||
+                              fileUploaderService.isProcessingFiles
+                            }
+                            onClick={() => captureActions.onCapture("text")}
+                          />
+                          <DropdownMenuItem
+                            icon={CameraIcon}
+                            label="Take screenshot"
+                            disabled={
+                              captureActions.isCapturing ||
+                              fileUploaderService.isProcessingFiles
+                            }
+                            onClick={() =>
+                              captureActions.onCapture("screenshot")
+                            }
+                          />
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}

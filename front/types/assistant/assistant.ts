@@ -148,7 +148,6 @@ export enum GLOBAL_AGENTS_SID {
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
   DUST_PLANNING = "dust-planning",
   SIDEKICK = "sidekick",
-  SIDEKICK_EDGE = "sidekick-edge",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
@@ -190,7 +189,6 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 
 const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
   GLOBAL_AGENTS_SID.SIDEKICK,
-  GLOBAL_AGENTS_SID.SIDEKICK_EDGE,
 ]);
 
 export function canShowAgentConversationActions(agentId: string): boolean {

@@ -11,9 +11,12 @@ const mockGetSignedUrl = vi.fn().mockResolvedValue("https://signed-url.test");
 vi.mock("@app/lib/file_storage", () => {
   const createMockFileStorage = () => ({
     file: vi.fn(() => ({
+      copy: vi.fn().mockResolvedValue(undefined),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
     })),
     getSignedUrl: mockGetSignedUrl,
+    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
   });
 
   return {
@@ -69,12 +72,17 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
   });
 
   it("should return 404 when file has no useCaseMetadata", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      authenticator: auth,
+      req,
+      res,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       fileName: "file.docx",
@@ -101,7 +109,13 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
   });
 
   it("should return 404 when user is not a member of the file's space", async () => {
-    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+    const {
+      authenticator: auth,
+      req,
+      res,
+      workspace,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
@@ -109,7 +123,7 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
     // Create a regular space (user is not a member)
     const space = await SpaceFactory.regular(workspace);
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       fileName: "file.docx",
@@ -138,13 +152,18 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
   });
 
   it("should return signed URL for files in a space the user is a member of", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       fileName: "test.docx",
@@ -170,13 +189,18 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
   });
 
   it("should use 5 minute TTL for signed URL", async () => {
-    const { req, res, workspace, user, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const {
+      req,
+      res,
+      authenticator: auth,
+      user,
+      globalSpace,
+    } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
-    const file = await FileFactory.create(workspace, user, {
+    const file = await FileFactory.create(auth, user, {
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       fileName: "test.docx",

@@ -43,7 +43,6 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
-import { _getSidekickEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick_edge";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import { _getHelperGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/helper";
@@ -289,12 +288,6 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.SIDEKICK]: {
-    injectsMemory: false,
-    injectsToolsets: false,
-    injectsUserContext: true,
-    injectsWorkspaceContext: true,
-  },
-  [GLOBAL_AGENTS_SID.SIDEKICK_EDGE]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: true,
@@ -937,13 +930,6 @@ function getGlobalAgent({
         globalAgentContext,
       });
       break;
-    case GLOBAL_AGENTS_SID.SIDEKICK_EDGE:
-      agentConfiguration = _getSidekickEdgeGlobalAgent(auth, {
-        sidekickContext,
-        preFetchedDataSources,
-        mcpServerViews,
-      });
-      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -1029,11 +1015,7 @@ export async function getGlobalAgents(
     Object.values(GLOBAL_AGENTS_SID)
       .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
       // We only want to fetch sidekick global agents if explicitly requested.
-      .filter(
-        (sId) =>
-          sId !== GLOBAL_AGENTS_SID.SIDEKICK &&
-          sId !== GLOBAL_AGENTS_SID.SIDEKICK_EDGE
-      );
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK);
 
   const flags = await getFeatureFlags(owner);
 
@@ -1098,9 +1080,7 @@ export async function getGlobalAgents(
   }
   if (!flags.includes("agent_builder_copilot")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) =>
-        sId !== GLOBAL_AGENTS_SID.SIDEKICK &&
-        sId !== GLOBAL_AGENTS_SID.SIDEKICK_EDGE
+      (sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK
     );
   }
 
