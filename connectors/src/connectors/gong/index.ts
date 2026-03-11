@@ -414,14 +414,32 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       }
       case PERMISSION_PROFILE_ID_CONFIG_KEY: {
         const profileId = configValue || null;
+
+        await configuration.setPermissionProfileId(profileId);
+
         logger.info(
           {
             connectorId: connector.id,
             permissionProfileId: profileId,
           },
-          "[Gong] Update permission profile."
+          "[Gong] Permission profile updated, stopping and resuming sync."
         );
-        await configuration.setPermissionProfileId(profileId);
+
+        const stopResult = await this.stop({
+          reason: "Permission profile updated",
+        });
+        if (stopResult.isErr()) {
+          return stopResult;
+        }
+
+        const resumeResult = await this.resume();
+        if (resumeResult.isErr()) {
+          logger.error(
+            { connectorId: connector.id, error: resumeResult.error },
+            "[Gong] Failed to resume schedule after permission profile update"
+          );
+          return resumeResult;
+        }
 
         return new Ok(undefined);
       }

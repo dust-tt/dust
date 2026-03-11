@@ -112,7 +112,18 @@ function shouldSyncTranscript(
   }
 
   const { parties = [] } = metadata;
-  if (parties.some((p) => p.userId && filter.userIds.has(p.userId))) {
+  const partyUserIds = parties
+    .map((p) => p.userId)
+    .filter((id): id is string => Boolean(id));
+
+  // Include the call owner (primaryUserId) in the match check, since they
+  // may not appear in the parties array (e.g. imported calls).
+  const { primaryUserId } = metadata.metaData;
+  const candidateUserIds = primaryUserId
+    ? [...new Set([primaryUserId, ...partyUserIds])]
+    : partyUserIds;
+
+  if (candidateUserIds.some((id) => filter.userIds.has(id))) {
     return { shouldSync: true, reason: null };
   }
 
