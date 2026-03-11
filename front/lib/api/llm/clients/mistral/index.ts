@@ -16,9 +16,9 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { Mistral } from "@mistralai/mistralai";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
+import assert from "assert";
 
 /**
  * Extract the request type from Mistral SDK's chat.stream method.
@@ -36,12 +36,8 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
   ) {
     super(auth, MISTRAL_PROVIDER_ID, llmParameters);
 
-    const { MISTRAL_API_KEY } = dustManagedCredentials();
-    if (!MISTRAL_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_MISTRAL_API_KEY environment variable is required"
-      );
-    }
+    const { MISTRAL_API_KEY } = llmParameters.credentials;
+    assert(MISTRAL_API_KEY, "MISTRAL_API_KEY credential is required");
     this.client = new Mistral({
       apiKey: MISTRAL_API_KEY,
     });

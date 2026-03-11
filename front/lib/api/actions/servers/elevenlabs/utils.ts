@@ -4,7 +4,7 @@ import type {
   VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 
@@ -180,7 +180,7 @@ export function resolveDefaultVoiceId({
 }
 
 export function getElevenLabsClient() {
-  const credentials = dustManagedCredentials();
+  const credentials = dustManagedServiceCredentials();
   const environment =
     regionsConfig.getCurrentRegion() === "europe-west1"
       ? ElevenLabsEnvironment.ProductionEu

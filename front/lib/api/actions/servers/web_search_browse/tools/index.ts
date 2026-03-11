@@ -18,6 +18,7 @@ import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/we
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -107,6 +108,7 @@ async function handleWebbrowser(
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
   const { toolConfiguration } = agentLoopContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
@@ -268,11 +270,15 @@ async function handleWebbrowser(
     } = result;
     const contentText = format === "html" ? html : markdown;
 
-    const tokensRes = await tokenCountForTexts([contentText ?? ""], {
-      providerId: DEFAULT_WEBSEARCH_MODEL_CONFIG.providerId,
-      modelId: DEFAULT_WEBSEARCH_MODEL_CONFIG.modelId,
-      tokenizer: DEFAULT_WEBSEARCH_MODEL_CONFIG.tokenizer,
-    });
+    const tokensRes = await tokenCountForTexts(
+      [contentText ?? ""],
+      {
+        providerId: DEFAULT_WEBSEARCH_MODEL_CONFIG.providerId,
+        modelId: DEFAULT_WEBSEARCH_MODEL_CONFIG.modelId,
+        tokenizer: DEFAULT_WEBSEARCH_MODEL_CONFIG.tokenizer,
+      },
+      credentials
+    );
 
     if (tokensRes.isErr()) {
       const browseResultResource = {

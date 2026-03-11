@@ -1,13 +1,12 @@
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import mainLogger from "@app/logger/logger";
-
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { Storage } from "@google-cloud/storage";
@@ -91,7 +90,7 @@ export async function upsertDocumentActivity(
   ];
 
   // Data source operations are performed with our credentials.
-  const credentials = dustManagedCredentials();
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 

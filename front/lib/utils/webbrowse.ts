@@ -2,7 +2,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import type {
   ErrorResponse,
@@ -11,7 +11,7 @@ import type {
 } from "@mendable/firecrawl-js";
 import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 
-const credentials = dustManagedCredentials();
+const credentials = dustManagedServiceCredentials();
 
 const SPIDER_API_BASE_URL = "https://api.spider.cloud";
 

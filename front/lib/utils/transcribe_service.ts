@@ -1,7 +1,7 @@
 import type { ReadStream } from "node:fs";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -14,7 +14,7 @@ import fs from "fs";
 const TRANSCRIPTION_TIMEOUT_SECONDS = 5 * 60; // 5 minutes.
 
 async function getElevenLabs() {
-  const credentials = dustManagedCredentials();
+  const credentials = dustManagedServiceCredentials();
   const elevenLabsEnvironment =
     regionsConfig.getCurrentRegion() === "europe-west1"
       ? ElevenLabsEnvironment.ProductionEu

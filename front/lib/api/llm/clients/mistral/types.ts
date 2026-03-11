@@ -1,4 +1,4 @@
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type { LLMParameterOverwrites } from "@app/lib/api/llm/types/options";
 import {
   MISTRAL_CODESTRAL_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
@@ -28,7 +28,7 @@ export const MISTRAL_MODEL_FAMILY_CONFIGS: Record<
   MistralModelFamily,
   {
     modelIds: ModelIdType[];
-    overwrites: Partial<LLMParameters>;
+    overwrites: LLMParameterOverwrites;
   }
 > = {
   reasoning: {

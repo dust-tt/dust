@@ -1,9 +1,12 @@
+import assert from "assert";
 import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
+import { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 
 const { CONNECTORS_DB = "" } = process.env;
@@ -35,6 +38,10 @@ async function main() {
     await connectors_sequelize.query(
       `DELETE FROM google_drive_files WHERE "connectorId" = ${connectorId}`
     );
+    const workspace = await WorkspaceModel.findByPk(d.workspaceId);
+    assert(workspace, `Workspace not found for id ${d.workspaceId}`);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
     console.log(`deleting data source ${d.name} from core`);
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     await coreAPI.deleteDataSource({
@@ -42,6 +49,7 @@ async function main() {
       dataSourceId: d.dustAPIDataSourceId,
     });
     console.log(`creating data source ${d.name} in core`);
+    const credentials = await ProviderCredentialResource.getCredentials(auth);
     await coreAPI.createDataSource({
       projectId: d.dustAPIProjectId,
       config: {
@@ -55,7 +63,7 @@ async function main() {
         },
         qdrant_config: null,
       },
-      credentials: dustManagedCredentials(),
+      credentials,
       name: d.name,
     });
   }

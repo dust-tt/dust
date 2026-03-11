@@ -192,6 +192,7 @@ async function handler(
       }
       const searchQuery = r.data;
       const s = await handleDataSourceSearch({
+        auth,
         searchQuery,
         dataSource: dataSourceView.dataSource,
         dataSourceView,

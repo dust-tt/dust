@@ -8,9 +8,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
+import type { CredentialsType } from "@app/types/provider";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Part } from "@google/genai";
 import { createPartFromUri, GoogleGenAI } from "@google/genai";
@@ -266,8 +266,7 @@ export function formatImageResponse(
   );
 }
 
-export function createGeminiClient(): GoogleGenAI {
-  const credentials = dustManagedCredentials();
+export function createGeminiClient(credentials: CredentialsType): GoogleGenAI {
   return new GoogleGenAI({
     apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
   });

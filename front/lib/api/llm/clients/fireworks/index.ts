@@ -21,7 +21,7 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import assert from "assert";
 import { APIError, OpenAI } from "openai";
 import type { ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
 
@@ -37,12 +37,8 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, FIREWORKS_PROVIDER_ID, params);
 
-    const { FIREWORKS_API_KEY } = dustManagedCredentials();
-    if (!FIREWORKS_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_FIREWORKS_API_KEY environment variable is required"
-      );
-    }
+    const { FIREWORKS_API_KEY } = llmParameters.credentials;
+    assert(FIREWORKS_API_KEY, "FIREWORKS_API_KEY credential is required");
     this.client = new OpenAI({
       apiKey: FIREWORKS_API_KEY,
       baseURL: "https://api.fireworks.ai/inference/v1",

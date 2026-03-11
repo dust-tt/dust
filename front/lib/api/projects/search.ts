@@ -2,9 +2,9 @@ import { default as config } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -65,10 +65,11 @@ export async function searchProjectConversations(
   }));
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
   const searchResult = await coreAPI.bulkSearchDataSources(
     query,
     topK,
-    dustManagedCredentials(),
+    credentials,
     false,
     searches
   );

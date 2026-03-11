@@ -1,6 +1,7 @@
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -16,6 +17,7 @@ import {
   isTextContent,
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -77,10 +79,12 @@ export async function renderConversationForModel(
     agentConfiguration,
   });
 
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
+
   // Tokenize messages and prompt/tools in parallel to reduce latency
   const [messagesWithTokensRes, promptToolsRes] = await Promise.all([
-    countTokensForMessages(messages, model),
-    tokenCountForTexts([prompt, tools], model),
+    countTokensForMessages(messages, model, credentials),
+    tokenCountForTexts([prompt, tools], model, credentials),
   ]);
 
   if (messagesWithTokensRes.isErr()) {
@@ -306,7 +310,8 @@ function groupMessagesIntoInteractions(
 
 async function countTokensForMessages(
   messages: ModelMessageTypeMultiActions[],
-  model: ModelConfigurationType
+  model: ModelConfigurationType,
+  credentials: CredentialsType
 ): Promise<Result<MessageWithTokens[], Error>> {
   const textRepresentations: string[] = [];
   const additionalTokens: number[] = [];
@@ -368,7 +373,7 @@ async function countTokensForMessages(
     textRepresentations.push(text);
   }
 
-  const res = await tokenCountForTexts(textRepresentations, model);
+  const res = await tokenCountForTexts(textRepresentations, model, credentials);
   if (res.isErr()) {
     return res;
   }

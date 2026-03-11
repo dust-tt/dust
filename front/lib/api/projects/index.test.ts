@@ -17,13 +17,13 @@ import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
@@ -48,6 +48,8 @@ vi.mock("@app/lib/api/config", () => ({
     }),
     getClientFacingUrl: () => "http://localhost:3000",
     getAppUrl: () => "http://localhost:3000",
+    getRegion: () => "us-central1",
+    getOAuthAPIConfig: () => ({ url: "http://localhost:3003", apiKey: "" }),
   },
 }));
 
@@ -227,9 +229,9 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(createDataSourceCall.config.qdrant_config?.cluster).toBe(
         DEFAULT_QDRANT_CLUSTER
       );
-      expect(createDataSourceCall.credentials).toEqual(
-        dustManagedCredentials()
-      );
+      const expectedCredentials =
+        await ProviderCredentialResource.getCredentials(adminAuth);
+      expect(createDataSourceCall.credentials).toEqual(expectedCredentials);
 
       // Verify project context folder was created
       expect(upsertFolderSpy).toHaveBeenCalledTimes(1);

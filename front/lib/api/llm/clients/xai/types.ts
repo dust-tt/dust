@@ -1,4 +1,7 @@
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameterOverwrites,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import {
   GROK_3_MINI_MODEL_ID,
@@ -23,7 +26,7 @@ export const XAI_MODEL_FAMILIES_CONFIGS: Record<
   XaiModelFamily,
   {
     modelIds: ModelIdType[];
-    overwrites: Partial<LLMParameters>;
+    overwrites: LLMParameterOverwrites;
   }
 > = {
   "no-vision": {

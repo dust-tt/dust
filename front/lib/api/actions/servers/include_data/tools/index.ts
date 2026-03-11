@@ -24,8 +24,8 @@ import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -66,7 +66,7 @@ export function createIncludeDataTools(
     >
   > {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const credentials = dustManagedCredentials();
+    const credentials = await ProviderCredentialResource.getCredentials(auth);
 
     if (!agentLoopContext?.runContext) {
       throw new Error(

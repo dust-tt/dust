@@ -18,12 +18,12 @@ import {
 } from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import {
   ConnectorConfigurationTypeSchema,
@@ -376,6 +376,8 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
+
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
     config: {
@@ -392,7 +394,7 @@ const handleDataSourceWithProvider = async ({
         shadow_write_cluster: null,
       },
     },
-    credentials: dustManagedCredentials(),
+    credentials,
     name: dataSourceName,
   });
 

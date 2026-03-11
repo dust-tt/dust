@@ -14,6 +14,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -32,7 +33,6 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import type {
   AgentMessageType,
   UserMessageContext,
@@ -507,7 +507,8 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const credentials = dustManagedCredentials();
+    const credentials =
+      await ProviderCredentialResource.getCredentials(workspaceAuth);
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
     const upsertRes = await coreAPI.upsertDataSourceDocument({
