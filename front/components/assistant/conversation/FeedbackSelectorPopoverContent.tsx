@@ -43,7 +43,7 @@ export function FeedbackSelectorPopoverContent({
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <Page.P variant="secondary">
-          Your feedback will be available to editors of the agent:
+          Your feedback will be available to the editors of the agent:
         </Page.P>
         <Avatar.Stack avatars={avatarProps} size="xs" nbVisibleItems={4} />
       </div>
