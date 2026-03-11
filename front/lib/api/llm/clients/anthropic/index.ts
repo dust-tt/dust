@@ -203,19 +203,13 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     }
   }
 
-  private buildBatchRequestPayload(
-    streamParameters: LLMStreamParameters
-  ): MessageCreateParamsNonStreaming {
-    return this.buildBaseRequestPayload(streamParameters);
-  }
-
   override async sendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     const requests = Array.from(conversations.entries()).map(
       ([customId, streamParams]) => ({
         custom_id: customId,
-        params: this.buildBatchRequestPayload(streamParams),
+        params: this.buildBaseRequestPayload(streamParams),
       })
     );
 

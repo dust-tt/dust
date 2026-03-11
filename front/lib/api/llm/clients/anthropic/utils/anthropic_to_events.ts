@@ -516,7 +516,7 @@ export async function batchResultToLLMEvents(
   }
 }
 
-export async function succeededMessageToEvents(
+async function succeededMessageToEvents(
   message: Message,
   metadata: LLMClientMetadata,
   countTokensCallback?: (
