@@ -3,7 +3,6 @@
  * These functions are used by both legacy and enhanced implementations
  */
 
-import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -24,11 +23,13 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type {
+  Content,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
+import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -46,9 +47,11 @@ export type Step = {
 /**
  * Renders an action result for multi-actions model
  */
-export function renderActionForMultiActionsModel(
+export async function renderActionForMultiActionsModel(
+  auth: Authenticator,
+  model: ModelConfigurationType,
   action: AgentMCPActionWithOutputType
-): FunctionMessageTypeModel {
+): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
       role: "function" as const,
@@ -83,14 +86,19 @@ export function renderActionForMultiActionsModel(
   }
 
   const outputItems = removeNulls(
-    action.output?.map(rewriteContentForModel) ?? []
+    await Promise.all(
+      action.output?.map((c) => rewriteContentForModel(auth, model, c)) ?? []
+    )
   );
 
-  let output;
+  let output: string | Content[];
   if (outputItems.length === 0) {
     output = "Successfully executed action, no output.";
   } else if (outputItems.every((item) => isTextContent(item))) {
     output = outputItems.map((item) => item.text).join("\n");
+  } else if (outputItems.some((item) => isImageContent(item))) {
+    // Return as Content[] so vision models receive the image_url blocks directly.
+    output = outputItems;
   } else {
     output = JSON.stringify(outputItems);
   }
@@ -106,7 +114,7 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export function getSteps(
+export async function getSteps(
   auth: Authenticator,
   {
     model,
@@ -121,7 +129,7 @@ export function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Step[] {
+): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
@@ -141,15 +149,13 @@ export function getSteps(
   for (const action of actions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-    // All these calls are not async, so we're not doing a Promise.all for now but might need to
-    // be reconsidered in the future.
     stepByStepIndex[stepIndex].actions.push({
       call: {
         id: action.functionCallId,
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: renderActionForMultiActionsModel(action),
+      result: await renderActionForMultiActionsModel(auth, model, action),
     });
   }
 

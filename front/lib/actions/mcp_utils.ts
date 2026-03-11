@@ -17,16 +17,22 @@ import {
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { Content } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types/files";
-import { isSupportedFileContentType } from "@app/types/files";
+import {
+  isLLMVisionSupportedImageContentType,
+  isSupportedFileContentType,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
@@ -85,14 +91,34 @@ export function hideFileFromActionOutput({
   };
 }
 
-export function rewriteContentForModel(
+export async function rewriteContentForModel(
+  auth: Authenticator,
+  model: ModelConfigurationType,
   content: CallToolResult["content"][number]
-): CallToolResult["content"][number] | null {
+): Promise<Content | null> {
   // Only render tool generated files that are supported.
   if (
     isToolGeneratedFile(content) &&
     isSupportedFileContentType(content.resource.contentType)
   ) {
+    const { contentType, fileId } = content.resource;
+
+    // For vision-supported images on vision-capable models, return an image_url block
+    // so the LLM can actually see the screenshot.
+    if (
+      isLLMVisionSupportedImageContentType(contentType) &&
+      model.supportsVision
+    ) {
+      const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
+        fileId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        version: "processed",
+      });
+      const signedUrl =
+        await getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
+      return { type: "image_url", image_url: { url: signedUrl } };
+    }
+
     const attachment = getAttachmentFromFile({
       fileId: content.resource.fileId,
       source: "agent",
@@ -121,7 +147,11 @@ export function rewriteContentForModel(
     return null;
   }
 
-  return content;
+  if (content.type === "text") {
+    return content;
+  }
+
+  return null;
 }
 
 /**
