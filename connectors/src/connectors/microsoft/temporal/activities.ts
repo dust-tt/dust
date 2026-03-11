@@ -292,6 +292,11 @@ export async function getRootNodesToSyncFromResources(
           { errorCode: error.code, errorMessage: error.message },
           "Skipping sites-root due to 401 generalException - possible permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
         );
+      } else if (isBillingPolicyError(error)) {
+        logger.warn(
+          { error: error.message },
+          "Billing policy error from Microsoft, skipping sites-root"
+        );
       } else {
         throw error;
       }
@@ -333,6 +338,13 @@ export async function getRootNodesToSyncFromResources(
                   errorMessage: error.message,
                 },
                 "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
+              return { results: [] };
+            }
+            if (isBillingPolicyError(error)) {
+              logger.warn(
+                { sitePath, error: error.message },
+                "Billing policy error from Microsoft, skipping site drives"
               );
               return { results: [] };
             }
@@ -760,6 +772,22 @@ export async function syncFiles({
           parent,
         },
         "Skipping syncFiles due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+    if (isBillingPolicyError(e)) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "Billing policy error from Microsoft, skipping syncFiles"
       );
       return {
         count: 0,
@@ -1718,6 +1746,12 @@ export async function microsoftGarbageCollectionActivity({
             body: null,
           })),
         };
+      } else if (isBillingPolicyError(error)) {
+        logger.warn(
+          { connectorId, error: error.message },
+          "Billing policy error from Microsoft during garbage collection batch, skipping chunk"
+        );
+        continue;
       } else if (isJSONParsingError(error)) {
         logger.error(
           {
