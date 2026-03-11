@@ -62,8 +62,10 @@ export default async function handler(
 
   const results = await Promise.all([
     checkDependency("redis", () => getRedisHybridManager().ping()),
-    // biome-ignore lint/plugin: health check needs direct DB ping
-    checkDependency("database", () => frontSequelize.query("SELECT 1")),
+    checkDependency("database", () =>
+      // biome-ignore lint/plugin: health check needs direct DB ping
+      frontSequelize.query("SELECT 1 from workspaces;")
+    ),
   ]);
 
   const failed = results.filter((r) => !r.ok);
