@@ -1,9 +1,9 @@
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
-import { Card } from "@sparkle/components/Card";
+import { Card, CardActionButton } from "@sparkle/components/Card";
 import { Chip } from "@sparkle/components/Chip";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
-import { DashIcon, PlusIcon } from "@sparkle/icons/app/";
+import { DashIcon, PlusIcon, XMarkIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -37,34 +37,55 @@ const DIFF_CHIP_CONFIG: Record<
   removed: { color: "warning", icon: DashIcon },
 };
 
-interface ActionCardBaseProps {
+interface ActionCardCommonProps {
   icon: React.ComponentType;
   iconBackgroundColor?: string;
   iconColor?: string;
   label: string;
-  description: string | React.ReactNode;
-  canAdd: boolean;
-  cantAddReason?: string;
-  footer?: { label: string; onClick: () => void };
+  description: React.ReactNode;
   onClick?: () => void;
   className?: string;
   cardContainerClassName?: string;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   descriptionLineClamp?: number;
+  footer?: { label: React.ReactNode; onClick?: () => void };
 }
 
-interface ActionCardSelectableProps extends ActionCardBaseProps {
+// Selection mode <-> card in a picker grid.
+interface ActionCardSelectableProps extends ActionCardCommonProps {
+  canAdd: boolean;
   isSelected: boolean;
+  disabled?: never;
+  cantAddReason?: never;
+  onRemove?: never;
   diffStatus?: never;
 }
 
-interface ActionCardDiffProps extends ActionCardBaseProps {
+// Display mode <-> card already added.
+interface ActionCardDisplayProps extends ActionCardCommonProps {
+  canAdd: false;
+  onRemove?: () => void;
+  disabled?: boolean;
+  cantAddReason?: string;
+  isSelected?: never;
+  diffStatus?: never;
+}
+
+// Display mode with diff indicator.
+interface ActionCardDiffProps extends ActionCardCommonProps {
+  canAdd: false;
+  onRemove?: () => void;
+  disabled?: boolean;
+  cantAddReason?: string;
   diffStatus: ActionCardDiffStatus;
   isSelected?: never;
 }
 
-export type ActionCardProps = ActionCardSelectableProps | ActionCardDiffProps;
+export type ActionCardProps =
+  | ActionCardSelectableProps
+  | ActionCardDisplayProps
+  | ActionCardDiffProps;
 
 export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
   (
@@ -77,8 +98,10 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
       isSelected,
       canAdd,
       cantAddReason,
+      disabled,
       diffStatus,
       footer,
+      onRemove,
       onClick,
       className,
       cardContainerClassName,
@@ -95,9 +118,21 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
         ref={ref}
         variant={isSelected ? "secondary" : "primary"}
         onClick={onClick}
-        disabled={!canAdd}
+        disabled={disabled ?? !canAdd}
         containerClassName={cardContainerClassName}
         className={cn(actionCardDiffVariants({ diffStatus }), className)}
+        action={
+          onRemove ? (
+            <CardActionButton
+              size="icon"
+              icon={XMarkIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                onRemove();
+                e.stopPropagation();
+              }}
+            />
+          ) : undefined
+        }
       >
         <div className="s-flex s-h-full s-w-full s-flex-col s-justify-between">
           <div className="s-flex s-flex-col">
@@ -155,15 +190,21 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
           </div>
           {footer && (
             <div>
-              <a
-                onClick={(e) => {
-                  e.stopPropagation();
-                  footer.onClick();
-                }}
-                className="s-heading-sm s-cursor-pointer s-text-muted-foreground hover:s-text-highlight-light hover:s-underline hover:s-underline-offset-2 dark:s-text-muted-foreground-night dark:hover:s-text-highlight-light-night"
-              >
-                {footer.label}
-              </a>
+              {footer.onClick ? (
+                <a
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    footer.onClick?.();
+                  }}
+                  className="s-heading-sm s-cursor-pointer s-text-muted-foreground hover:s-text-highlight-light hover:s-underline hover:s-underline-offset-2 dark:s-text-muted-foreground-night dark:hover:s-text-highlight-light-night"
+                >
+                  {footer.label}
+                </a>
+              ) : (
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {footer.label}
+                </span>
+              )}
             </div>
           )}
         </div>
