@@ -848,6 +848,77 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
+   * Does not support global agents as we rely on the ID for mapping.
+   */
+  static async listByAgentConfigurations(
+    auth: Authenticator,
+    agentConfigurations: AgentConfigurationType[]
+  ): Promise<
+    { agentConfiguration: AgentConfigurationType; skill: SkillResource }[]
+  > {
+    assert(
+      agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
+      "Global agents are not supported"
+    );
+
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch all agent-skill relationships for the given agents.
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId: agentConfigurations.map((c) => c.id),
+        workspaceId: workspace.id,
+      },
+    });
+
+    // Fetch all unique skills in one batch.
+    const allSkills = await this.fetchBySkillReferences(
+      auth,
+      agentSkills.map((s) => ({
+        customSkillId: s.customSkillId,
+        globalSkillId: s.globalSkillId,
+      }))
+    );
+
+    const skillByCustomId = new Map<ModelId, SkillResource>();
+    const skillByGlobalId = new Map<string, SkillResource>();
+    for (const skill of allSkills) {
+      if (skill.globalSId) {
+        skillByGlobalId.set(skill.globalSId, skill);
+      } else {
+        skillByCustomId.set(skill.id, skill);
+      }
+    }
+
+    // Map skills back to each config.
+    const configById = new Map(agentConfigurations.map((c) => [c.id, c]));
+    return removeNulls(
+      Object.entries(
+        groupBy(agentSkills, (s) => s.agentConfigurationId)
+      ).flatMap(([configId, refs]) => {
+        const agentConfiguration = configById.get(parseInt(configId, 10));
+        if (!agentConfiguration) {
+          return [];
+        }
+        return refs.map((ref) => {
+          if (ref.globalSkillId) {
+            const skill = skillByGlobalId.get(ref.globalSkillId);
+            return skill ? { agentConfiguration, skill } : null;
+          } else if (ref.customSkillId) {
+            const skill = skillByCustomId.get(ref.customSkillId);
+            return skill ? { agentConfiguration, skill } : null;
+          }
+        });
+      })
+    );
+  }
+
+  /**
    * Returns skill references for an agent configuration.
    * For global agents, returns references from the config's skills field.
    * For non-global agents, queries the database.
