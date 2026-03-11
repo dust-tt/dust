@@ -140,7 +140,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
               <div className="s-flex s-items-center s-gap-2">
                 <Avatar
                   icon={icon}
-                  size="sm"
+                  size="xs"
                   backgroundColor={iconBackgroundColor}
                   iconColor={iconColor}
                 />
