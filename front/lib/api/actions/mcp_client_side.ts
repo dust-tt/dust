@@ -178,7 +178,6 @@ export function isMCPEventResult(value: unknown): value is MCPEventResult {
  */
 export class ClientSideRedisMCPTransport implements Transport {
   private unsubscribe?: () => void;
-  private lastEventId: string | null = null;
 
   private readonly conversationId: string;
   private readonly messageId: string;
@@ -262,12 +261,14 @@ export class ClientSideRedisMCPTransport implements Transport {
       mcpServerId: this.mcpServerId,
     });
 
-    // Subscribe to the response channel.
+    // Subscribe to the response channel (real-time pub/sub only, no history).
+    // This transport is created fresh per tool call and only needs events
+    // published after it subscribes. Skip history to avoid fetching old events.
     const subscription = await getRedisHybridManager().subscribe(
       resultsChannelId,
       this.handleRedisEvent.bind(this),
-      this.lastEventId,
-      "mcp_client_side_transport"
+      "mcp_client_side_transport",
+      { skipHistory: true }
     );
 
     this.unsubscribe = subscription.unsubscribe;
@@ -331,7 +332,6 @@ export class ClientSideRedisMCPTransport implements Transport {
 
     try {
       const payload = JSON.parse(event.message.payload);
-      this.lastEventId = event.id;
 
       // Handle ID transformation for responses
       if (isMCPEventResult(payload.result)) {

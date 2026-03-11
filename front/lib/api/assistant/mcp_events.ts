@@ -29,8 +29,8 @@ export async function* getMCPEventsForServer(
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     channelId,
     callbackReader.callback,
-    lastEventId,
-    "mcp_events"
+    "mcp_events",
+    { lastEventId }
   );
 
   // Unsubscribe if the signal is aborted.
