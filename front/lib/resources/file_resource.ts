@@ -895,13 +895,33 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
 
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
-    await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
 
-    // Copy processed version only if this file type has real processing.
-    if (this.getContentVersion() === "processed") {
-      const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
-      const processedMountPath = makeProcessedMountFileName(mountFilePath);
-      await bucket.file(srcProcessedPath).copy(bucket.file(processedMountPath));
+    try {
+      await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
+
+      // Copy processed version only if this file type has real processing.
+      if (this.getContentVersion() === "processed") {
+        const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
+        const processedMountPath = makeProcessedMountFileName(mountFilePath);
+        await bucket
+          .file(srcProcessedPath)
+          .copy(bucket.file(processedMountPath));
+      }
+    } catch (err) {
+      // Transient GCS errors (e.g. socket hang up) should not crash the
+      // request. The file is already marked as ready; the mount copy can be
+      // retried later. Log with enough context to investigate.
+      logger.error(
+        {
+          fileId: this.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          srcPath: srcOriginalPath,
+          mountFilePath,
+          error: normalizeError(err),
+        },
+        "Failed to copy file to mount path in GCS"
+      );
+      return;
     }
 
     await this.update({ mountFilePath });
