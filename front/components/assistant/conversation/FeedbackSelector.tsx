@@ -181,11 +181,7 @@ export function FeedbackSelector({
       >
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>
-              <span className="flex items-center gap-2">
-                Give feedback on @{agentName}
-              </span>
-            </DialogTitle>
+            <DialogTitle>Give feedback on @{agentName}</DialogTitle>
           </DialogHeader>
 
           <DialogContainer className="py-3">
