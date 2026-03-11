@@ -320,7 +320,12 @@ export class BrowserMCPTransport implements Transport {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData: unknown;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = await response.text();
+        }
         console.error(
           "[BrowserMCPTransport] Failed to send MCP result:",
           errorData

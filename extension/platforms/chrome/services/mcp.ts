@@ -23,7 +23,7 @@ export class ChromeMcpService extends McpService {
     this.captureService = captureService;
   }
 
-  createServerForWorkspace(): McpServer | null {
+  createServerForWorkspace(workspaceId: string): McpServer | null {
     try {
       const server = new McpServer(
         {
@@ -41,7 +41,7 @@ export class ChromeMcpService extends McpService {
         }
       );
 
-      registerAllTools(server, this.captureService);
+      registerAllTools(server, this.captureService, workspaceId);
 
       this.server = server;
       return server;
@@ -93,7 +93,7 @@ export class ChromeMcpService extends McpService {
         return { server: this.server, serverId: this.serverId };
       }
 
-      const server = this.createServerForWorkspace();
+      const server = this.createServerForWorkspace(owner.sId);
       if (!server) {
         return { server: null, serverId: undefined };
       }

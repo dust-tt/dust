@@ -12,10 +12,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  */
 export function registerAllTools(
   server: McpServer,
-  captureService: CaptureService | null
+  captureService: CaptureService | null,
+  workspaceId: string
 ): void {
   registerListTabsTool(server);
   registerTabActionTools(server);
   registerGetCurrentPageTool(server, captureService);
-  registerGetPageViewTool(server, captureService);
+  registerGetPageViewTool(server, captureService, workspaceId);
 }

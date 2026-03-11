@@ -235,6 +235,17 @@ export async function processToolResults(
             // who uploaded it to its own conversation but not the main agent's.
             // Skip for project_context files — they are already indexed via their own data source.
             if (file && file.useCase !== "project_context") {
+              // Files uploaded by client-side tools (e.g. the Chrome extension) may not have a
+              // conversationId in their metadata since the tool doesn't know it at upload time.
+              // Patch it here so the JIT data source creation works correctly.
+              if (
+                file.useCase === "conversation" &&
+                !file.useCaseMetadata?.conversationId
+              ) {
+                await file.setUseCaseMetadata(auth, {
+                  conversationId: conversation.sId,
+                });
+              }
               await uploadFileToConversationDataSource({ auth, file });
             }
             return {
