@@ -1,8 +1,25 @@
 import {
   hasProcessedVersion,
   isUploadSupportedForContentType,
+  processAndStoreFile,
 } from "@app/lib/api/files/processing";
-import { describe, expect, it } from "vitest";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { assert, describe, expect, it, vi } from "vitest";
+
+// Mock config to provide required env vars.
+vi.mock("@app/lib/api/config", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@app/lib/api/config")>();
+  return {
+    ...mod,
+    default: {
+      ...mod.default,
+      getTextExtractionUrl: () => "http://fake-tika:9998",
+      getApiBaseUrl: () => "http://localhost:3000",
+    },
+  };
+});
 
 describe("hasProcessedVersion", () => {
   it("should return false for plain text files", () => {
@@ -134,5 +151,66 @@ describe("isUploadSupportedForContentType", () => {
         useCase: "upsert_table",
       })
     ).toBe(false);
+  });
+});
+
+describe("processAndStoreFile", () => {
+  it("should store extracted text from PDF with text/plain content type", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const file = await FileFactory.create(auth, null, {
+      contentType: "application/pdf",
+      fileName: "document.pdf",
+      fileSize: 1000,
+      status: "created",
+      useCase: "conversation",
+    });
+
+    const result = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: "fake pdf bytes" },
+    });
+
+    assert(
+      result.isOk(),
+      `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+    );
+
+    // Should have 2 writes: original (application/pdf) + processed (text/plain).
+    const writes = fileStorageMock.writeStreamCalls;
+    expect(writes).toHaveLength(2);
+    expect(writes[0].contentType).toBe("application/pdf");
+    expect(writes[1].contentType).toBe("text/plain");
+  });
+
+  it("should not create a processed version for plain text files", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "readme.txt",
+      fileSize: 100,
+      status: "created",
+      useCase: "conversation",
+    });
+
+    const result = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: "hello world" },
+    });
+
+    assert(
+      result.isOk(),
+      `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+    );
+
+    // Only one write: the original. No processed version created.
+    const writes = fileStorageMock.writeStreamCalls;
+    expect(writes).toHaveLength(1);
+    expect(writes[0].contentType).toBe("text/plain");
   });
 });

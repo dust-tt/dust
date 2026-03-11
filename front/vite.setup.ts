@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import "vitest-canvas-mock";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { cleanup } from "@testing-library/react";
 import { default as cls } from "cls-hooked";
@@ -77,10 +78,18 @@ vi.mock("@app/lib/utils/cache", () => ({
 
 // Mock file storage (GCS) - must be at module level to avoid SERVICE_ACCOUNT env requirement.
 vi.mock("@app/lib/file_storage", async () => {
-  const { mockFileStorage } = await import(
+  const { fileStorageMock } = await import(
     "@app/tests/utils/mocks/file_storage"
   );
-  return mockFileStorage();
+  return fileStorageMock.mock();
+});
+
+// Mock TextExtraction (Tika) - must be at module level to avoid connecting to Tika.
+vi.mock("@app/types/shared/text_extraction", async () => {
+  const { mockTextExtraction } = await import(
+    "@app/tests/utils/mocks/text_extraction"
+  );
+  return mockTextExtraction();
 });
 
 // Mock sandbox provider - must be at module level
@@ -118,6 +127,7 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
 
 beforeEach(async (c) => {
   vi.clearAllMocks();
+  fileStorageMock.reset();
 
   const namespace = cls.createNamespace("test-namespace");
 
