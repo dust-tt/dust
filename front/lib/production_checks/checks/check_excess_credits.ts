@@ -1,19 +1,30 @@
 import { Authenticator } from "@app/lib/auth";
+import {
+  getAnnualizedSubscriptionValueMicroUsd,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { getFrontReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
 
 const EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD = 10_000_000;
 const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
-const EXCESS_PERCENTAGE_THRESHOLD = 2;
+const EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD = 5; // 5% of annual subscription
+const EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD = 2; // 2% of active credits (fallback)
 
 interface WorkspaceExcessCredits {
   workspaceId: number;
   workspaceSId: string;
   workspaceName: string;
   totalExcessMicroUsd: number;
+}
+
+interface WorkspaceThresholdData {
+  annualSubscriptionValueMicroUsd: number | null;
+  activeCreditsMicroUsd: number;
 }
 
 export const checkExcessCredits: CheckFunction = async (
@@ -57,38 +68,78 @@ export const checkExcessCredits: CheckFunction = async (
     return;
   }
 
-  // Fetch active credits for workspaces that exceeded the absolute threshold.
-  const activeCreditsByWorkspaceSId = new Map<string, number>();
+  // Fetch subscription and active credits data for workspaces that exceeded the absolute threshold.
+  const thresholdDataByWorkspaceSId = new Map<string, WorkspaceThresholdData>();
   await concurrentExecutor(
     workspacesWithExcessCredits,
     async (workspace) => {
       const auth = await Authenticator.internalAdminForWorkspace(
         workspace.workspaceSId
       );
+
+      // Fetch active credits.
       const activeCredits = await CreditResource.listActive(auth);
-      const totalActiveCreditsMicroUsd = activeCredits.reduce(
+      const activeCreditsMicroUsd = activeCredits.reduce(
         (sum, c) => sum + c.initialAmountMicroUsd,
         0
       );
-      activeCreditsByWorkspaceSId.set(
-        workspace.workspaceSId,
-        totalActiveCreditsMicroUsd
-      );
+
+      // Fetch subscription and calculate annualized value if Stripe subscription exists.
+      let annualSubscriptionValueMicroUsd: number | null = null;
+      const subscription =
+        await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          workspace.workspaceId
+        );
+
+      if (subscription?.stripeSubscriptionId) {
+        const stripeSubscription = await getStripeSubscription(
+          subscription.stripeSubscriptionId
+        );
+        if (stripeSubscription) {
+          annualSubscriptionValueMicroUsd =
+            getAnnualizedSubscriptionValueMicroUsd(stripeSubscription);
+        }
+      }
+
+      thresholdDataByWorkspaceSId.set(workspace.workspaceSId, {
+        annualSubscriptionValueMicroUsd,
+        activeCreditsMicroUsd,
+      });
     },
     { concurrency: 10 }
   );
 
-  // Filter to only include workspaces where excess exceeds the percentage threshold of active credits.
+  // Filter to only include workspaces where excess exceeds the relative threshold.
+  // For workspaces with Stripe subscription: use 5% of annual subscription value.
+  // For workspaces without Stripe subscription: fallback to 2% of active credits.
   const significantExcessWorkspaces = workspacesWithExcessCredits.filter(
     (w) => {
-      const totalActiveCreditsMicroUsd =
-        activeCreditsByWorkspaceSId.get(w.workspaceSId) ?? 0;
-      if (totalActiveCreditsMicroUsd === 0) {
+      const thresholdData = thresholdDataByWorkspaceSId.get(w.workspaceSId);
+      if (!thresholdData) {
+        return true;
+      }
+
+      const { annualSubscriptionValueMicroUsd, activeCreditsMicroUsd } =
+        thresholdData;
+
+      // If workspace has a Stripe subscription, use subscription-based threshold.
+      if (
+        annualSubscriptionValueMicroUsd !== null &&
+        annualSubscriptionValueMicroUsd > 0
+      ) {
+        const excessPercentage =
+          (Number(w.totalExcessMicroUsd) / annualSubscriptionValueMicroUsd) *
+          100;
+        return excessPercentage > EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD;
+      }
+
+      // Fallback: use active credits threshold.
+      if (activeCreditsMicroUsd === 0) {
         return true;
       }
       const excessPercentage =
-        (Number(w.totalExcessMicroUsd) / totalActiveCreditsMicroUsd) * 100;
-      return excessPercentage > EXCESS_PERCENTAGE_THRESHOLD;
+        (Number(w.totalExcessMicroUsd) / activeCreditsMicroUsd) * 100;
+      return excessPercentage > EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD;
     }
   );
 
@@ -107,7 +158,7 @@ export const checkExcessCredits: CheckFunction = async (
     const thresholdDollars = EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD / 1_000_000;
     const message =
       `${significantExcessWorkspaces.length} workspace(s) have excess credits > $${thresholdDollars} ` +
-      `(and > ${EXCESS_PERCENTAGE_THRESHOLD}% of active credits) in the last 30 days`;
+      `(and > ${EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD}% of annual subscription or ${EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD}% of active credits) in the last 30 days`;
 
     logger.warn({ workspaces: formattedWorkspaces }, message);
 

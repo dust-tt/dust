@@ -1,7 +1,6 @@
 import {
   formatSandboxImageId,
   type NetworkPolicy,
-  type SandboxImageId,
 } from "@app/lib/api/sandbox/image/types";
 import type {
   ExecOptions,
@@ -47,7 +46,6 @@ function toE2BNetworkOpts(policy: NetworkPolicy): E2BNetworkOpts {
 
 interface E2BConfig {
   apiKey: string;
-  imageId: SandboxImageId;
   domain: string | undefined;
 }
 
@@ -59,12 +57,10 @@ interface E2BConfig {
  */
 export class E2BSandboxProvider implements SandboxProvider {
   private readonly apiKey: string;
-  private readonly imageId: SandboxImageId;
   private readonly domain: string | undefined;
 
   constructor(config: E2BConfig) {
     this.apiKey = config.apiKey;
-    this.imageId = config.imageId;
     this.domain = config.domain;
   }
 
@@ -78,10 +74,17 @@ export class E2BSandboxProvider implements SandboxProvider {
   async create(
     config: SandboxCreateConfig
   ): Promise<Result<SandboxHandle, Error>> {
-    const imageId = config.imageId ?? this.imageId;
-    const templateId = formatSandboxImageId(imageId);
+    if (!config.imageId) {
+      throw new Error(
+        "imageId is required in SandboxCreateConfig. Use getSandboxImage().toCreateConfig() to get the config."
+      );
+    }
+    const templateId = formatSandboxImageId(config.imageId);
 
-    logger.info({ templateId, imageId }, "Creating E2B sandbox");
+    logger.info(
+      { templateId, imageId: config.imageId },
+      "Creating E2B sandbox"
+    );
 
     let sandbox: Sandbox;
     try {

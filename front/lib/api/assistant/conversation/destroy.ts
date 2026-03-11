@@ -62,6 +62,27 @@ async function destroyMessageRelatedResources(
 ) {
   const owner = auth.getNonNullableWorkspace();
 
+  await ConversationBranchModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      previousMessageId: messageIds,
+    },
+  });
+
+  await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      sourceMessageId: messageIds,
+    },
+  });
+
+  await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      resultMessageId: messageIds,
+    },
+  });
+
   await MessageReactionModel.destroy({
     where: {
       workspaceId: owner.id,

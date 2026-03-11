@@ -17,6 +17,14 @@ import {
   isMarkdownContentType,
   isPdfContentType,
 } from "@app/types/files";
+
+/** Minimal file shape for preview (e.g. conversation files). Only sId, fileName, contentType are used by the renderer. */
+export type MinimalFileForPreview = {
+  sId: string;
+  fileName: string;
+  contentType: string;
+};
+
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -179,7 +187,7 @@ function AudioFileRenderer({
 }
 
 interface FileContentRendererProps {
-  file: FileWithCreatorType;
+  file: FileWithCreatorType | MinimalFileForPreview;
   owner: WorkspaceType;
   previewConfig: FilePreviewConfig;
   rawFileContent: string | null;
@@ -246,7 +254,11 @@ function FileContentRenderer({
       return (
         <FrameRenderer
           fileId={file.sId}
-          projectId={file.useCaseMetadata?.spaceId ?? null}
+          projectId={
+            "useCaseMetadata" in file
+              ? (file.useCaseMetadata?.spaceId ?? null)
+              : null
+          }
           owner={owner}
           lastEditedByAgentConfigurationId={undefined}
           contentHash={undefined}
@@ -274,7 +286,7 @@ function FileContentRenderer({
 }
 
 interface FilePreviewContentProps {
-  file: FileWithCreatorType | null;
+  file: FileWithCreatorType | MinimalFileForPreview | null;
   owner: WorkspaceType;
   isOpen: boolean;
 }
@@ -404,7 +416,7 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
 
 interface FilePreviewSheetProps {
   owner: WorkspaceType;
-  file: FileWithCreatorType | null;
+  file: FileWithCreatorType | MinimalFileForPreview | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }

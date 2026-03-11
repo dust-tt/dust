@@ -8,6 +8,7 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
@@ -1127,6 +1128,348 @@ export async function executeSearchUser(
     {
       type: "text" as const,
       text: `Found ${result.value.length} user(s) matching '${query}':\n\n${markdown}`,
+    },
+  ]);
+}
+
+export async function executeReadCanvas({
+  canvas_id,
+  section_types,
+  contains_text,
+  accessToken,
+}: {
+  canvas_id: string;
+  section_types?: Array<"h1" | "h2" | "h3" | "any_header">;
+  contains_text?: string;
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const slackClient = await getSlackClient(accessToken);
+
+  const criteria: Record<string, unknown> = {
+    section_types:
+      section_types && section_types.length > 0
+        ? section_types
+        : ["any_header"],
+  };
+  if (contains_text) {
+    criteria.contains_text = contains_text;
+  }
+
+  const resp = await slackClient.apiCall("canvases.sections.lookup", {
+    canvas_id,
+    criteria,
+  });
+  if (!resp.ok) {
+    return new Err(
+      new MCPError(
+        `Failed to look up canvas sections: ${resp.error ?? "unknown error"}`
+      )
+    );
+  }
+
+  const rawSections = resp.sections;
+  const sections = Array.isArray(rawSections)
+    ? rawSections.filter(
+        (s): s is { id: string } =>
+          s !== null &&
+          typeof s === "object" &&
+          "id" in s &&
+          typeof s.id === "string"
+      )
+    : [];
+
+  if (sections.length === 0) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `No sections found in canvas "${canvas_id}" matching the given criteria.`,
+      },
+    ]);
+  }
+
+  const formatted = sections.map((s, i) => `${i + 1}. ${s.id}`).join("\n");
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text:
+        `Canvas "${canvas_id}" — ${sections.length} section(s) found:\n\n${formatted}\n\n` +
+        "Use these section IDs with write_canvas to target specific sections.",
+    },
+  ]);
+}
+
+export async function executeWriteCanvas({
+  canvas_id,
+  operation,
+  content,
+  section_id,
+  title,
+  channel_id,
+  accessToken,
+}: {
+  canvas_id?: string;
+  operation?: string;
+  content?: string;
+  section_id?: string;
+  title?: string;
+  channel_id?: string;
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const slackClient = await getSlackClient(accessToken);
+
+  if (!canvas_id) {
+    const body: Record<string, unknown> = {};
+    if (title) {
+      body.title = title;
+    }
+    if (content) {
+      body.document_content = { type: "markdown", markdown: content };
+    }
+    if (channel_id) {
+      body.channel_id = channel_id;
+    }
+
+    const res = await slackClient.apiCall("canvases.create", body);
+    if (!res.ok) {
+      return new Err(
+        new MCPError(`Failed to create canvas: ${res.error ?? "unknown error"}`)
+      );
+    }
+
+    const newCanvasId =
+      typeof res.canvas_id === "string" ? res.canvas_id : undefined;
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Canvas created successfully.\nCanvas ID: ${newCanvasId ?? "unknown"}` +
+          (channel_id ? `\nPinned to channel: ${channel_id}` : ""),
+      },
+    ]);
+  }
+
+  const op = operation ?? "insert_at_end";
+
+  if (
+    (op === "insert_after" || op === "insert_before" || op === "delete") &&
+    !section_id
+  ) {
+    return new Err(new MCPError(`operation="${op}" requires a section_id.`));
+  }
+  if (op === "rename" && !title) {
+    return new Err(new MCPError('operation="rename" requires a title.'));
+  }
+  if (op !== "delete" && op !== "rename" && !content) {
+    return new Err(new MCPError(`operation="${op}" requires content.`));
+  }
+
+  let change: Record<string, unknown>;
+
+  if (op === "rename") {
+    change = {
+      operation: "rename",
+      title_content: { type: "markdown", markdown: title },
+    };
+  } else if (op === "delete") {
+    change = { operation: "delete", section_id };
+  } else {
+    const doc = { type: "markdown", markdown: content };
+    change = section_id
+      ? { operation: op, section_id, document_content: doc }
+      : { operation: op, document_content: doc };
+  }
+
+  const res = await slackClient.apiCall("canvases.edit", {
+    canvas_id,
+    changes: [change],
+  });
+  if (!res.ok) {
+    return new Err(
+      new MCPError(`Failed to edit canvas: ${res.error ?? "unknown error"}`)
+    );
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Canvas "${canvas_id}" updated successfully (operation: ${op}).`,
+    },
+  ]);
+}
+
+export async function executeDeleteCanvas({
+  canvas_id,
+  accessToken,
+}: {
+  canvas_id: string;
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const slackClient = await getSlackClient(accessToken);
+
+  const res = await slackClient.apiCall("canvases.delete", { canvas_id });
+  if (!res.ok) {
+    return new Err(
+      new MCPError(`Failed to delete canvas: ${res.error ?? "unknown error"}`)
+    );
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Canvas "${canvas_id}" has been permanently deleted.`,
+    },
+  ]);
+}
+
+export async function executeCreateChannel({
+  name,
+  is_private,
+  leave_after_creation,
+  accessToken,
+}: {
+  name: string;
+  is_private?: boolean;
+  leave_after_creation?: boolean;
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const slackClient = await getSlackClient(accessToken);
+
+  const response = await slackClient.conversations.create({
+    name,
+    is_private: is_private ?? false,
+  });
+
+  if (!response.ok) {
+    return new Err(
+      new MCPError(
+        `Failed to create channel: ${response.error ?? "unknown error"}`
+      )
+    );
+  }
+
+  const channel = response.channel;
+  if (!channel) {
+    return new Err(
+      new MCPError("Channel created but no channel data returned.")
+    );
+  }
+
+  const cleaned = cleanChannelPayload(channel);
+
+  if (leave_after_creation) {
+    try {
+      await slackClient.conversations.leave({ channel: cleaned.id });
+    } catch (error) {
+      // Channel was created successfully; leaving failed — report both.
+      return new Ok([
+        {
+          type: "text" as const,
+          text:
+            `Channel created successfully (but could not leave: ${normalizeError(error).message}):\n` +
+            `- Name: ${cleaned.name}\n` +
+            `- ID: ${cleaned.id}\n` +
+            `- Type: ${cleaned.channel_types.join(", ")}`,
+        },
+      ]);
+    }
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text:
+        `Channel created successfully${leave_after_creation ? " (left after creation)" : ""}:\n` +
+        `- Name: ${cleaned.name}\n` +
+        `- ID: ${cleaned.id}\n` +
+        `- Type: ${cleaned.channel_types.join(", ")}`,
+    },
+  ]);
+}
+
+export async function executeInviteToChannel({
+  channel,
+  users,
+  accessToken,
+}: {
+  channel: string;
+  users: string[];
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const channelId = await resolveChannelId({
+    channelNameOrId: channel,
+    accessToken,
+  });
+
+  if (!channelId) {
+    return new Err(
+      new MCPError(
+        `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+      )
+    );
+  }
+
+  const slackClient = await getSlackClient(accessToken);
+
+  const response = await slackClient.conversations.invite({
+    channel: channelId,
+    users: users.join(","),
+  });
+
+  if (!response.ok) {
+    return new Err(
+      new MCPError(
+        `Failed to invite users to channel: ${response.error ?? "unknown error"}`
+      )
+    );
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Successfully invited ${users.length} user(s) to channel "${channel}" (${channelId}).`,
+    },
+  ]);
+}
+
+export async function executeArchiveChannel({
+  channel,
+  accessToken,
+}: {
+  channel: string;
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const channelId = await resolveChannelId({
+    channelNameOrId: channel,
+    accessToken,
+  });
+
+  if (!channelId) {
+    return new Err(
+      new MCPError(
+        `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+      )
+    );
+  }
+
+  const slackClient = await getSlackClient(accessToken);
+
+  const response = await slackClient.conversations.archive({
+    channel: channelId,
+  });
+
+  if (!response.ok) {
+    return new Err(
+      new MCPError(
+        `Failed to archive channel: ${response.error ?? "unknown error"}`
+      )
+    );
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Channel "${channel}" (${channelId}) has been archived successfully.`,
     },
   ]);
 }

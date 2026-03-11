@@ -52,11 +52,10 @@ export function useMessageFeedback({
       );
 
       if (response.ok) {
-        if (feedbackContent && !shouldRemoveExistingFeedback) {
+        if (!shouldRemoveExistingFeedback) {
           sendNotification({
-            title: "Feedback submitted",
-            description:
-              "Your comment has been submitted successfully to the Builder of this agent. Thank you!",
+            title: "Feedback sent",
+            description: "The agent will improve with your feedback.",
             type: "success",
           });
         }

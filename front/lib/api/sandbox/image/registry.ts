@@ -1,14 +1,27 @@
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
-import type {
-  SandboxImageId,
-  SandboxImageName,
-} from "@app/lib/api/sandbox/image/types";
 import { ALLOWLIST_NETWORK_POLICY } from "@app/lib/api/sandbox/image/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:0.2.0")
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.1.0")
+  // Conversation files bootstrap
+  // Pre-create workspace directory for faster GCS mounts.
+  .runCmd(
+    "sudo mkdir -p /files/conversation && sudo chmod 777 /files/conversation"
+  )
+  // Create simple netcat-based token server script.
+  .runCmd("sudo mkdir -p /home/user/.bin")
+  // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
+  .runCmd(`sudo tee /home/user/.bin/token-server.sh > /dev/null << 'SHELLEOF'
+#!/bin/bash
+while true; do
+  (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
+done
+SHELLEOF`)
+  .runCmd("sudo chmod 755 /home/user/.bin/token-server.sh")
+  // Add sentinel file to indicate when mounts are pending.
+  .runCmd("sudo touch /files/conversation/.mount-pending")
   .registerTool(
     [
       { name: "git", description: "Version control system" },
@@ -57,30 +70,17 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:0.2.0")
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
   )
-  // Pre-create workspace directory for faster GCS mounts.
-  .runCmd(
-    "sudo mkdir -p /files/conversation && sudo chmod 777 /files/conversation"
-  )
-  // Create simple netcat-based token server script.
-  .runCmd("sudo mkdir -p /home/user/.bin")
-  // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
-  .runCmd(`sudo tee /home/user/.bin/token-server.sh > /dev/null << 'SHELLEOF'
-#!/bin/bash
-while true; do
-  (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
-done
-SHELLEOF`)
-  .runCmd("sudo chmod 755 /home/user/.bin/token-server.sh")
-  // Add sentinel file to indicate when mounts are pending.
-  .runCmd("sudo touch /files/conversation/.mount-pending")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")
-  .register({ imageName: "dust-base", tag: "v0.2.0" });
+  .register({
+    imageName: "dust-base",
+    tag: "0.2.1",
+  });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
 
-function getRegisteredImages(): readonly SandboxImage[] {
+export function getRegisteredImages(): readonly SandboxImage[] {
   return IMAGES.filter((image) => {
     if (!image.imageId) {
       logger.warn("Skipping unregistered sandbox image (no imageId)");
@@ -90,35 +90,23 @@ function getRegisteredImages(): readonly SandboxImage[] {
   });
 }
 
-export function getRequiredSandboxImages(): readonly SandboxImageId[] {
-  return getRegisteredImages()
-    .map((image) => image.imageId)
-    .filter((id): id is SandboxImageId => id !== undefined);
-}
-
-export function getSandboxImageFromRegistry(
-  id: SandboxImageId
-): Result<SandboxImage, Error> {
-  const image = getRegisteredImages().find(
-    (img) =>
-      img.imageId?.imageName === id.imageName && img.imageId?.tag === id.tag
-  );
+export function getSandboxImageFromRegistry(opts: {
+  name: string;
+  tag?: string;
+}): Result<SandboxImage, Error> {
+  const { name, tag } = opts;
+  const image = getRegisteredImages().find((img) => {
+    if (img.imageId?.imageName !== name) {
+      return false;
+    }
+    if (tag !== undefined && img.imageId?.tag !== tag) {
+      return false;
+    }
+    return true;
+  });
   if (!image) {
-    return new Err(
-      new Error(`No sandbox image found for id: ${id.imageName}:${id.tag}`)
-    );
-  }
-  return new Ok(image);
-}
-
-export function getSandboxImageFromRegistryByName(
-  name: SandboxImageName
-): Result<SandboxImage, Error> {
-  const image = getRegisteredImages().find(
-    (img) => img.imageId?.imageName === name
-  );
-  if (!image) {
-    return new Err(new Error(`No sandbox image found for name: ${name}`));
+    const id = tag ? `${name}:${tag}` : name;
+    return new Err(new Error(`No sandbox image found: ${id}`));
   }
   return new Ok(image);
 }

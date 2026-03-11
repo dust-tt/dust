@@ -70,6 +70,9 @@ export async function getFileFromConversationAttachment(
         if (f.fileId === fileId) {
           attachment = getAttachmentFromFile({
             fileId: f.fileId,
+            source: "agent",
+            createdAt: f.createdAt,
+            updatedAt: f.updatedAt,
             contentType: f.contentType,
             title: f.title,
             snippet: f.snippet,

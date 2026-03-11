@@ -10,12 +10,17 @@ import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_a
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
+  executeArchiveChannel,
+  executeCreateChannel,
+  executeInviteToChannel,
   executeListUserGroups,
   executePostMessage,
+  executeReadCanvas,
   executeReadThreadMessages,
   executeScheduleMessage,
   executeSearchChannels,
   executeSearchUser,
+  executeWriteCanvas,
   getSlackClient,
   isSlackMissingScope,
   resolveChannelDisplayName,
@@ -825,6 +830,130 @@ export function createSlackPersonalTools(
         latest,
         accessToken,
       });
+    },
+
+    read_canvas: async (
+      { canvas_id, section_types, contains_text },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeReadCanvas({
+          canvas_id,
+          section_types,
+          contains_text,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error reading canvas: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    write_canvas: async (
+      { canvas_id, operation, content, section_id, title, channel_id },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeWriteCanvas({
+          canvas_id,
+          operation,
+          content,
+          section_id,
+          title,
+          channel_id,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error writing canvas: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    create_channel: async (
+      { name, is_private, leave_after_creation },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeCreateChannel({
+          name,
+          is_private,
+          leave_after_creation,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error creating channel: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    invite_to_channel: async ({ channel, users }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeInviteToChannel({ channel, users, accessToken });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(
+            `Error inviting users to channel: ${normalizeError(error)}`
+          )
+        );
+      }
+    },
+
+    archive_channel: async ({ channel }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeArchiveChannel({ channel, accessToken });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error archiving channel: ${normalizeError(error)}`)
+        );
+      }
     },
   };
 

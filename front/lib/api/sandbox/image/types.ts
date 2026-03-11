@@ -1,51 +1,16 @@
 // ---------------------------------------------------------------------------
-// SandboxImage Name & Tag Types
+// SandboxImage Id
 // ---------------------------------------------------------------------------
 
-const SANDBOX_IMAGE_NAMES = ["dust-base"] as const;
-export type SandboxImageName = (typeof SANDBOX_IMAGE_NAMES)[number];
-
-export function isValidSandboxImageName(
-  name: string
-): name is SandboxImageName {
-  return SANDBOX_IMAGE_NAMES.includes(name as SandboxImageName);
-}
-
-export function getSandboxImageNames(): readonly SandboxImageName[] {
-  return SANDBOX_IMAGE_NAMES;
-}
-
-const SANDBOX_IMAGE_TAGS = [
-  "edge",
-  "staging",
-  "production",
-  "v0.1.1",
-  "v0.2.0",
-] as const;
-export type SandboxImageTag = (typeof SANDBOX_IMAGE_TAGS)[number];
-
-export function isValidSandboxImageTag(tag: string): tag is SandboxImageTag {
-  return SANDBOX_IMAGE_TAGS.includes(tag as SandboxImageTag);
-}
-
-export function getSandboxImageTags(): readonly SandboxImageTag[] {
-  return SANDBOX_IMAGE_TAGS;
-}
-
 export interface SandboxImageId {
-  readonly imageName: SandboxImageName;
-  readonly tag: SandboxImageTag;
+  readonly imageName: string;
+  readonly tag: string;
 }
-
-// TODO(@jd): Replace with a proper typed link to dust-base
-export const DUST_SANDBOX_IMAGE_ID: SandboxImageId = {
-  imageName: "dust-base",
-  tag: "v0.2.0",
-};
 
 export function formatSandboxImageId(id: SandboxImageId): string {
   // E2B template IDs only allow lowercase alphanumeric characters and hyphens.
-  return `${id.imageName}-${id.tag}`.replace(/[^a-z0-9-]/g, "-");
+  const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  return `${sanitize(id.imageName)}_${sanitize(id.tag)}`;
 }
 
 // ---------------------------------------------------------------------------

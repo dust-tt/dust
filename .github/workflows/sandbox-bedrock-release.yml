@@ -6,6 +6,15 @@ on:
     paths:
       - "dockerfiles/sandbox-bedrock.Dockerfile"
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: false
+        default: "minor"
+        type: choice
+        options:
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -32,6 +41,7 @@ jobs:
       - name: Calculate next version
         id: version
         run: |
+          BUMP_TYPE="${{ inputs.bump || 'minor' }}"
           LATEST=$(git tag -l 'sbx-bedrock/v*' --sort=-v:refname | head -1)
           if [ -z "$LATEST" ]; then
             NEXT_VERSION="0.1.0"
@@ -39,7 +49,11 @@ jobs:
             CURRENT="${LATEST#sbx-bedrock/v}"
             MAJOR=$(echo "$CURRENT" | cut -d. -f1)
             MINOR=$(echo "$CURRENT" | cut -d. -f2)
-            NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
+            if [ "$BUMP_TYPE" = "major" ]; then
+              NEXT_VERSION="$((MAJOR + 1)).0.0"
+            else
+              NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
+            fi
           fi
           echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
 
@@ -84,6 +98,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           echo "## Sandbox Bedrock Release" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Released **v${VERSION}**" >> $GITHUB_STEP_SUMMARY
+          echo "Released **${VERSION}**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Image: \`us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:${VERSION}\`" >> $GITHUB_STEP_SUMMARY

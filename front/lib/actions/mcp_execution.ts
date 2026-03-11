@@ -398,6 +398,8 @@ export async function processToolResults(
         fileId: c.file.sId,
         snippet: c.file.snippet,
         title: c.file.fileName,
+        createdAt: c.file.createdAt.getTime(),
+        updatedAt: c.file.updatedAt.getTime(),
         isInProjectContext: c.file.useCase === "project_context",
         ...(isHidden ? { hidden: true } : {}),
       } satisfies ActionGeneratedFileType;

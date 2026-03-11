@@ -50,6 +50,7 @@ import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { ConversationAttachmentsUpdatedEvent } from "@app/lib/notifications/events";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
@@ -286,7 +287,13 @@ export function AgentMessage({
               conversationId,
             });
             break;
-          case "agent_action_success":
+          case "agent_action_success": {
+            const action = eventPayload.data.action;
+            if (action.generatedFiles.length > 0) {
+              window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+            }
+            break;
+          }
           case "end-of-stream":
           case "tool_error":
           case "tool_notification":
@@ -574,6 +581,7 @@ export function AgentMessage({
         {...messageFeedback}
         owner={owner}
         agentConfigurationId={agentMessage.configuration.sId}
+        agentName={agentMessage.configuration.name}
         isGlobalAgent={isGlobalAgent}
       />
     );

@@ -40,6 +40,9 @@ export type BaseConversationAttachmentType = {
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
   fileId: string;
+  source: "agent" | "user" | null;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
 export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
@@ -193,17 +196,25 @@ export function getAttachmentFromFileContentFragment(
   return {
     ...baseAttachment,
     fileId,
+    source: "user",
+    createdAt: cf.created,
   };
 }
 
 export function getAttachmentFromFile({
   fileId,
+  source,
+  createdAt,
+  updatedAt,
   contentType,
   title,
   snippet,
   isInProjectContext,
 }: {
   fileId: string;
+  source: "agent" | "user" | null;
+  createdAt?: number;
+  updatedAt?: number;
   contentType: AllSupportedFileContentType;
   title: string;
   snippet: string | null;
@@ -216,6 +227,9 @@ export function getAttachmentFromFile({
 
   return {
     fileId,
+    source,
+    createdAt,
+    updatedAt,
     contentType,
     title,
     snippet,
