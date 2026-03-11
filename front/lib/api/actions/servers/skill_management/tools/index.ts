@@ -54,8 +54,8 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     if (
       !featureFlags.includes("sandbox_tools") ||
-      skill.getFileAttachments().length === 0) {
-    
+      skill.getFileAttachments().length === 0
+    ) {
       return new Ok([
         {
           type: "text" as const,
