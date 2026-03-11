@@ -261,9 +261,7 @@ export function ManageAgentsPage() {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === "/") {
         event.preventDefault();
-        if (searchBarRef.current) {
-          searchBarRef.current.focus();
-        }
+        searchBarRef.current?.focus();
       }
     };
 
