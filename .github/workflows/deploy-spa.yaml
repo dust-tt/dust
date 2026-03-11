@@ -188,13 +188,15 @@ jobs:
             exit 1
           fi
           echo "version_id=${VERSION_ID}" >> $GITHUB_OUTPUT
-          echo "Extracted version ID: ${VERSION_ID}"
+          VERSION_PREFIX=$(echo "$VERSION_ID" | cut -c1-8)
+          echo "version_prefix=${VERSION_PREFIX}" >> $GITHUB_OUTPUT
+          echo "Extracted version ID: ${VERSION_ID} (prefix: ${VERSION_PREFIX})"
 
       - name: Derive preview URL
         id: preview_url
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "url=https://${{ inputs.app }}.dust.tt" >> $GITHUB_OUTPUT
+            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}-worker.preview.dust.tt" >> $GITHUB_OUTPUT
           else
             echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}-worker.preview.dust.tt" >> $GITHUB_OUTPUT
           fi
