@@ -240,8 +240,12 @@ export class E2BSandboxProvider implements SandboxProvider {
       return new Err(normalizeError(err));
     }
 
-    // This automatically creates the necessary directory structure if needed.
-    await sandbox.files.write(path, content.toString("utf-8"));
+    try {
+      // E2B automatically creates the necessary directory structure.
+      await sandbox.files.write(path, new Uint8Array(content).buffer);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     return new Ok(undefined);
   }
