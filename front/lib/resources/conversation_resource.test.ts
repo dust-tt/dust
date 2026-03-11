@@ -4950,8 +4950,17 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_butler_suggestion",
 ];
 
+const KNOWN_MESSAGE_RELATED_MODELS = [
+  // Tables that have a foreign key to the `message` table.
+  "message",
+  "message_reaction",
+  "mention",
+  "conversation_butler_suggestion",
+  "conversation_branch",
+];
+
 describe("ConversationResource cleanup on delete", () => {
-  describe("model relationship detection", () => {
+  describe("conversation model relationship detection", () => {
     /**
      * This test ensures that when a conversation is deleted, all related resources are properly cleaned up.
      * If you add a new model with a `conversationId` foreign key, you MUST:
@@ -5012,6 +5021,70 @@ describe("ConversationResource cleanup on delete", () => {
 
       // Verify they match exactly.
       expect(modelsWithConversationFK).toEqual(knownModels);
+    });
+  });
+
+  describe("message model relationship detection", () => {
+    /**
+     * This test ensures that when a message is deleted, all related resources are properly cleaned up.
+     * If you add a new model with a `messageId` foreign key, you MUST:
+     * 1. Add it to the KNOWN_MESSAGE_RELATED_MODELS list above
+     * 2. Add proper cleanup logic in `destroyConversation` / `destroyMessageRelatedResources`
+     */
+
+    it("should detect any new models with message relationships", async () => {
+      loadAllModels();
+      const models = frontSequelize.models;
+      const modelsWithMessageFK: string[] = [];
+
+      // Scan all models for foreign keys pointing to the messages table.
+      const messageTableName = MessageModel.getTableName();
+      Object.entries(models).forEach(([modelName, model]) => {
+        const attributes = model.getAttributes();
+
+        const hasMessageFK = Object.values(attributes).some((attr) => {
+          const ref = (attr as { references?: { model?: string } }).references;
+          return ref?.model === messageTableName;
+        });
+
+        if (hasMessageFK) {
+          modelsWithMessageFK.push(modelName);
+        }
+      });
+
+      // Sort for consistent comparison.
+      modelsWithMessageFK.sort();
+      const knownModels = [...KNOWN_MESSAGE_RELATED_MODELS].sort();
+
+      if (modelsWithMessageFK.length !== knownModels.length) {
+        const missing = modelsWithMessageFK.filter(
+          (m) => !knownModels.includes(m)
+        );
+        const extra = knownModels.filter(
+          (m) => !modelsWithMessageFK.includes(m)
+        );
+
+        let errorMessage = "Message-related models have changed!\n\n";
+
+        if (missing.length > 0) {
+          errorMessage += `New models detected with message relationships:\n${missing.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "You MUST:\n" +
+            "1. Add these models to KNOWN_MESSAGE_RELATED_MODELS in conversation_resource.test.ts\n" +
+            "2. Add proper cleanup logic in `destroyConversation` / `destroyMessageRelatedResources`\n";
+        }
+
+        if (extra.length > 0) {
+          errorMessage += `Models removed or renamed:\n${extra.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "Remove these from KNOWN_MESSAGE_RELATED_MODELS in conversation_resource.test.ts\n";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Verify they match exactly.
+      expect(modelsWithMessageFK).toEqual(knownModels);
     });
   });
 });
