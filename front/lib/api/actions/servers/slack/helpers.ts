@@ -1,5 +1,4 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,7 +8,6 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
@@ -629,24 +627,18 @@ export async function executeSearchChannels(
 
   // Channel ID lookup: direct API call to conversations.info
   if (detectedChannelId) {
-    try {
-      const response = await slackClient.conversations.info({
-        channel: cleanedQuery,
-      });
+    const response = await slackClient.conversations.info({
+      channel: cleanedQuery,
+    });
 
-      if (response.ok && response.channel) {
-        const c = cleanChannelPayload(response.channel);
-        return new Ok([
-          {
-            type: "text" as const,
-            text: formatChannelAsMarkdown(c),
-          },
-        ]);
-      }
-    } catch (error) {
-      return new Err(
-        new MCPError(`Channel not found: ${query}. Error: ${error}`)
-      );
+    if (response.ok && response.channel) {
+      const c = cleanChannelPayload(response.channel);
+      return new Ok([
+        {
+          type: "text" as const,
+          text: formatChannelAsMarkdown(c),
+        },
+      ]);
     }
 
     return new Err(new MCPError(`Channel not found: ${query}`));
@@ -976,42 +968,34 @@ export async function executeListUserGroups({
 }) {
   const slackClient = await getSlackClient(accessToken);
 
-  try {
-    const response = await slackClient.usergroups.list({
-      include_count: true,
-      include_disabled: false,
-      include_users: false,
-    });
+  const response = await slackClient.usergroups.list({
+    include_count: true,
+    include_disabled: false,
+    include_users: false,
+  });
 
-    if (!response.ok) {
-      return new Err(new MCPError("Failed to list user groups"));
-    }
-
-    const usergroups = response.usergroups ?? [];
-    const cleanedUserGroups = usergroups.map(cleanUserGroupPayload);
-
-    const formattedUserGroups = cleanedUserGroups
-      .map(
-        (group) =>
-          `- **@${group.handle}**` +
-          `\n  - Name: ${group.name}` +
-          `\n  - ID: \`${group.id}\``
-      )
-      .join("\n");
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `The workspace has ${cleanedUserGroups.length} user groups:\n\n${formattedUserGroups}`,
-      },
-    ]);
-  } catch (error) {
-    return new Err(
-      new MCPError(
-        `Error listing user groups: ${normalizeError(error).message}`
-      )
-    );
+  if (!response.ok) {
+    return new Err(new MCPError("Failed to list user groups"));
   }
+
+  const usergroups = response.usergroups ?? [];
+  const cleanedUserGroups = usergroups.map(cleanUserGroupPayload);
+
+  const formattedUserGroups = cleanedUserGroups
+    .map(
+      (group) =>
+        `- **@${group.handle}**` +
+        `\n  - Name: ${group.name}` +
+        `\n  - ID: \`${group.id}\``
+    )
+    .join("\n");
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `The workspace has ${cleanedUserGroups.length} user groups:\n\n${formattedUserGroups}`,
+    },
+  ]);
 }
 
 // Helper: Detect if query is a Slack user ID (e.g., U01234ABCD)
@@ -1179,30 +1163,16 @@ export async function executeReadThreadMessages({
     );
   }
 
-  // Narrow try-catch to only the Slack API call.
-  let response;
-  try {
-    response = await slackClient.conversations.replies({
-      channel: channelId,
-      ts: threadTs,
-      limit: limit
-        ? Math.min(limit, MAX_THREAD_MESSAGES)
-        : DEFAULT_THREAD_MESSAGES,
-      cursor: cursor,
-      oldest: oldest,
-      latest: latest,
-    });
-  } catch (error) {
-    return new Err(new MCPError(`Error reading thread messages: ${error}`));
-  }
-
-  if (!response.ok) {
-    // Trigger authentication flow for missing_scope.
-    if (response.error === "missing_scope") {
-      return new Ok(makePersonalAuthenticationError("slack").content);
-    }
-    return new Err(new MCPError("Failed to read thread messages"));
-  }
+  const response = await slackClient.conversations.replies({
+    channel: channelId,
+    ts: threadTs,
+    limit: limit
+      ? Math.min(limit, MAX_THREAD_MESSAGES)
+      : DEFAULT_THREAD_MESSAGES,
+    cursor: cursor,
+    oldest: oldest,
+    latest: latest,
+  });
 
   const messages = response.messages ?? [];
   if (messages.length === 0) {
