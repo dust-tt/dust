@@ -4,10 +4,18 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
+
+const BYOK_AVAILABLE_PROVIDER_IDS: ModelProviderIdType[] = [
+  "anthropic",
+  "openai",
+];
 
 export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   return (
@@ -22,6 +30,10 @@ export function isModelAvailable(
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null
 ) {
+  if (plan?.isByok && !BYOK_AVAILABLE_PROVIDER_IDS.includes(m.providerId)) {
+    return false;
+  }
+
   if (!m.availableIfOneOf) {
     return true;
   }
