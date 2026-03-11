@@ -52,8 +52,6 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     const owner = auth.getNonNullableWorkspace();
     const featureFlags = await getFeatureFlags(owner);
 
-    let fileMessage: string | null = null;
-
     if (!featureFlags.includes("sandbox_tools")) {
       return new Ok([
         {
@@ -65,15 +63,14 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const ensureResult = await SandboxResource.ensureActive(auth, conversation);
     if (ensureResult.isErr()) {
-      return new Err(
-        new MCPError(ensureResult.error.message, { tracked: false })
-      );
+      return new Err(new MCPError(ensureResult.error.message));
     }
+
     const { sandbox } = ensureResult.value;
 
+    let fileMessage: string | null = null;
     const fileLoadResult = await sandbox.loadSkillFiles(auth, skill);
 
-    let fileMessage: string | null = null;
     // We don't say anything if there are no files to load.
     if (fileLoadResult.isOk() && fileLoadResult.value.loadedPaths.length > 0) {
       fileMessage =
