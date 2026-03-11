@@ -6,6 +6,7 @@ import { getAshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import {
   assertCandidateNotHired,
   diagnoseFieldSubmissions,
+  findHiredApplication,
   findUniqueCandidate,
   resolveAshbyUser,
   resolveFieldSubmissions,
@@ -18,6 +19,7 @@ import {
 import {
   renderCandidateList,
   renderCandidateNotes,
+  renderHireData,
   renderInterviewFeedbackRecap,
   renderJobPostingList,
   renderReferralForm,
@@ -394,6 +396,65 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         text: renderReferralForm(formResult.value.results, {
           jobs: jobsResult.value,
         }),
+      },
+    ]);
+  },
+
+  get_hire_data: async ({ email, name }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const candidateResult = await findUniqueCandidate(client, { email, name });
+    if (candidateResult.isErr()) {
+      return new Err(candidateResult.error);
+    }
+
+    const candidate = candidateResult.value;
+
+    // Find the hired application.
+    const hiredAppResult = await findHiredApplication(client, candidate);
+    if (hiredAppResult.isErr()) {
+      return hiredAppResult;
+    }
+
+    const { applicationId, jobId } = hiredAppResult.value;
+
+    // Fetch detailed candidate info.
+    const candidateInfoResult = await client.getCandidateInfo({
+      id: candidate.id,
+    });
+    const candidateInfo = candidateInfoResult.isOk()
+      ? (candidateInfoResult.value.results ?? null)
+      : null;
+
+    // Fetch offers for the hired application.
+    const offersResult = await client.listOffers({ applicationId });
+    const offers = offersResult.isOk() ? offersResult.value : [];
+
+    // Fetch job info if we have a jobId.
+    let jobInfo = null;
+    if (jobId) {
+      const jobInfoResult = await client.getJobInfo({ id: jobId });
+      if (jobInfoResult.isOk() && jobInfoResult.value.results) {
+        jobInfo = jobInfoResult.value.results;
+      }
+    }
+
+    const text = renderHireData({
+      candidateInfo,
+      offers,
+      jobInfo,
+      applicationId,
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text,
       },
     ]);
   },

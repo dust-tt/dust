@@ -143,6 +143,21 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       done: "List job postings from Ashby",
     },
   },
+  get_hire_data: {
+    description:
+      "Retrieve comprehensive data for a hired candidate, including candidate details, " +
+      "offer form fields (both standard and custom), job information, and application data. " +
+      "This tool finds the candidate's hired application and returns all available information " +
+      "including: name, email, phone, location/country, offer details (start date, compensation, " +
+      "custom fields like middle name, preferred name, address, supervisor, employee type, " +
+      "scheduled hours, etc.), and job details (department, team, job code).",
+    schema: CandidateSearchSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving hire data from Ashby",
+      done: "Retrieve hire data from Ashby",
+    },
+  },
   update_job_posting: {
     description:
       "Update an existing job posting in Ashby. " +
