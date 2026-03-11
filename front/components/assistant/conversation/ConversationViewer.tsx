@@ -32,7 +32,10 @@ import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/ev
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
+import {
+  AgentMessageCompletedEvent,
+  ConversationAttachmentsUpdatedEvent,
+} from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import type {
@@ -450,6 +453,10 @@ export const ConversationViewer = ({
                 );
               }
               void debouncedMarkAsRead(conversationId);
+
+              if (userMessage.contentFragments.length > 0) {
+                window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+              }
             }
             break;
           case "agent_message_new":

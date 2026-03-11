@@ -9,6 +9,7 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { CONVERSATION_ATTACHMENTS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/attachments";
 import { isInteractiveContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -33,7 +34,7 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import moment from "moment";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ConversationAttachmentItem =
   GetConversationAttachmentsResponseBody["attachments"][number];
@@ -125,6 +126,31 @@ export const ConversationAttachmentsPopover = ({
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
   const { openPanel } = useConversationSidePanelContext();
+  const [isPulsing, setIsPulsing] = useState(false);
+  const pulsingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsPulsing(true);
+      if (pulsingTimeoutRef.current) {
+        clearTimeout(pulsingTimeoutRef.current);
+      }
+      pulsingTimeoutRef.current = setTimeout(() => {
+        setIsPulsing(false);
+      }, 9000);
+    };
+    window.addEventListener(CONVERSATION_ATTACHMENTS_UPDATED_EVENT, handler);
+
+    return () => {
+      if (pulsingTimeoutRef.current) {
+        clearTimeout(pulsingTimeoutRef.current);
+      }
+      window.removeEventListener(
+        CONVERSATION_ATTACHMENTS_UPDATED_EVENT,
+        handler
+      );
+    };
+  }, []);
 
   const { attachments, isConversationAttachmentsLoading } =
     useConversationAttachments({
@@ -265,15 +291,23 @@ export const ConversationAttachmentsPopover = ({
         open={isOpen}
         onOpenChange={(open) => {
           setIsOpen(open);
+
+          if (open) {
+            setIsPulsing(false);
+            if (pulsingTimeoutRef.current) {
+              clearTimeout(pulsingTimeoutRef.current);
+            }
+          }
         }}
       >
         <PopoverTrigger asChild>
           <Button
             size="sm"
-            tooltip="Conversation attachments & generated content"
+            tooltip="Attached and Generated content"
             icon={AttachmentIcon}
             variant="ghost"
             isSelect
+            isPulsing={isPulsing}
           />
         </PopoverTrigger>
         <PopoverContent
