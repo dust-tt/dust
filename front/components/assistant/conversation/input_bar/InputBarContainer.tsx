@@ -555,6 +555,32 @@ const InputBarContainer = ({
     }
   }, [animate, editorService]);
 
+  // Focus the input bar when the extension panel is opened (content-script sidebar or Front iframe).
+  // Not gated by disableAutoFocus: that flag prevents autofocus on mount (to avoid mobile keyboard
+  // popping up), but focusing when the user explicitly opens the panel is intentional.
+  useEffect(() => {
+    if (clientType !== "extension") {
+      return;
+    }
+    // Focus immediately on mount (handles navigation within an already-open panel).
+    queueMicrotask(() => editorService.focusEnd());
+
+    const handleWindowFocus = () => {
+      queueMicrotask(() => editorService.focusEnd());
+    };
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "DUST_SIDEBAR_SHOWN") {
+        queueMicrotask(() => editorService.focusEnd());
+      }
+    };
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [clientType, editorService]);
+
   // Restore draft when switching conversations (including new conversations).
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
