@@ -1,0 +1,42 @@
+front/lib/resources/provider_credential_resource.ts
+  25535915742eb8fe 13,16,72,128,170-171,174-176,178-180,183,187-193,201-205,207-208,211-212
+  ed20067338b79878 1,9,12,15,17,49-54,97-99,101-102,104-105,107,110-112,114-115,117-118,121-123,125,127,181,194-200
+front/lib/resources/provider_credential_resource.test.ts
+  25535915742eb8fe 10,13-14,16-17,135-149
+  ed20067338b79878 5-9,11-12,15,18-19,127-128,130-134,150-221,225-226
+front/types/api/credentials.ts
+  25535915742eb8fe 2,109-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "e280d98e5e6f29ebd936a10cce49680a999ea9e9",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 85,
+      "total_deletions": 56,
+      "accepted_lines": 57,
+      "overriden_lines": 0
+    },
+    "ed20067338b79878": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d09d917-1865-45c7-87ac-b08d70312601",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 130,
+      "overriden_lines": 0
+    }
+  }
+}
