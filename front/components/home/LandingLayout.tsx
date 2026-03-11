@@ -99,6 +99,8 @@ export default function LandingLayout({
   // you can have dark theme so we need to remove them manually
   useEffect(() => {
     document.documentElement.classList.remove("dark");
+    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
+    document.documentElement.classList.remove("s-dark");
     document.body.classList.remove("bg-background-night");
   }, []);
 
