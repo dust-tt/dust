@@ -55,7 +55,7 @@ export function useMessageFeedback({
         if (!shouldRemoveExistingFeedback) {
           sendNotification({
             title: "Feedback sent",
-            description: "The agent’s editors will review it.",
+            description: "This helps editors improve the agent.",
             type: "success",
           });
         }

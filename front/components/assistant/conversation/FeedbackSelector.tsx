@@ -18,7 +18,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
 export type ThumbReaction = "up" | "down";
@@ -59,9 +59,9 @@ const FEEDBACK_PREDEFINED_ANSWERS = [
 
 function makeFeedbackSchema(thumbDirection: ThumbReaction) {
   const base = z.object({
-    selectedAnswer: z.string(),
-    feedbackContent: z.string(),
-    isConversationShared: z.boolean(),
+    selectedAnswer: z.string().default(""),
+    feedbackContent: z.string().default(""),
+    isConversationShared: z.boolean().default(true),
   });
 
   if (thumbDirection === "up") {
@@ -101,11 +101,19 @@ export function FeedbackSelector({
 
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
-    defaultValues: {
-      selectedAnswer: "",
-      feedbackContent: "",
-      isConversationShared: true,
-    },
+  });
+
+  const selectedAnswerField = useController({
+    control: form.control,
+    name: "selectedAnswer",
+  });
+  const feedbackContentField = useController({
+    control: form.control,
+    name: "feedbackContent",
+  });
+  const isConversationSharedField = useController({
+    control: form.control,
+    name: "isConversationShared",
   });
 
   const openDialog = (direction: ThumbReaction) => {
@@ -199,78 +207,68 @@ export function FeedbackSelector({
                   </Label>
 
                   {thumbDirection === "down" && (
-                    <Controller
-                      control={form.control}
-                      name="selectedAnswer"
-                      render={({ field }) => (
-                        <div className="mb-3 flex flex-wrap gap-2">
-                          {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
-                            <Button
-                              key={answer}
-                              label={answer}
-                              size="xs"
-                              variant={
-                                field.value === answer ? "primary" : "outline"
-                              }
-                              onClick={() => {
-                                field.onChange(
-                                  field.value === answer ? "" : answer
-                                );
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    />
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
+                        <Button
+                          key={answer}
+                          label={answer}
+                          size="xs"
+                          variant={
+                            selectedAnswerField.field.value === answer
+                              ? "primary"
+                              : "outline"
+                          }
+                          onClick={() => {
+                            selectedAnswerField.field.onChange(
+                              selectedAnswerField.field.value === answer
+                                ? ""
+                                : answer
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
                   )}
 
-                  <Controller
-                    control={form.control}
-                    name="feedbackContent"
-                    render={({ field, fieldState }) => (
-                      <TextArea
-                        id="feedback-content"
-                        placeholder={
-                          thumbDirection === "down"
-                            ? "Describe what went wrong"
-                            : "Share details"
-                        }
-                        resize="vertical"
-                        rows={3}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        error={fieldState.error?.message ?? null}
-                        showErrorLabel={!!fieldState.error}
-                      />
-                    )}
+                  <TextArea
+                    id="feedback-content"
+                    placeholder={
+                      thumbDirection === "down"
+                        ? "Describe what went wrong"
+                        : "Share details"
+                    }
+                    resize="vertical"
+                    rows={3}
+                    value={feedbackContentField.field.value}
+                    onChange={(e) =>
+                      feedbackContentField.field.onChange(e.target.value)
+                    }
+                    error={
+                      feedbackContentField.fieldState.error?.message ?? null
+                    }
+                    showErrorLabel={!!feedbackContentField.fieldState.error}
                   />
                 </div>
 
-                <Controller
-                  control={form.control}
-                  name="isConversationShared"
-                  render={({ field }) => (
-                    <div className="flex items-start gap-2">
-                      <Checkbox
-                        id="share-conversation"
-                        checked={field.value}
-                        onCheckedChange={(value) => {
-                          field.onChange(!!value);
-                        }}
-                        size="xs"
-                        className="mt-1"
-                      />
-                      <div className="flex flex-col">
-                        <Label htmlFor="share-conversation">
-                          Share conversation with the agent’s editors
-                        </Label>
-                        <span className="text-xs text-muted-foreground">
-                          Helps editors improve the agent
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                />
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-conversation"
+                    checked={isConversationSharedField.field.value}
+                    onCheckedChange={(value) => {
+                      isConversationSharedField.field.onChange(!!value);
+                    }}
+                    size="xs"
+                    className="mt-1"
+                  />
+                  <div className="flex flex-col">
+                    <Label htmlFor="share-conversation">
+                      Share conversation with the agent’s editors
+                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      Helps editors improve the agent
+                    </span>
+                  </div>
+                </div>
 
                 <FeedbackSelectorPopoverContent
                   owner={owner}
