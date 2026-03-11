@@ -7,20 +7,20 @@ import {
 } from "@app/types/provider_selection";
 import { ContextItem, Icon, SliderToggle } from "@dust-tt/sparkle";
 
-interface ProviderContextItemProps {
+interface ProviderToggleContextItemProps {
   providerId: ModelProviderIdType;
   description: string;
   providersSelection: ProvidersSelection;
   handleToggleChange: () => void;
   disabled: boolean;
 }
-export function ProviderContextItem({
+export function ProviderToggleContextItem({
   providerId,
   description,
   providersSelection,
   handleToggleChange,
   disabled,
-}: ProviderContextItemProps) {
+}: ProviderToggleContextItemProps) {
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
 
