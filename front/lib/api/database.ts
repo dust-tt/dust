@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import { context as otelContext, trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import type {
@@ -9,7 +10,46 @@ import type {
   QueryOptionsWithType,
   QueryTypes,
 } from "sequelize";
-import { Sequelize } from "sequelize";
+import { DatabaseError, Sequelize } from "sequelize";
+
+const NEXT_PAGES_ROUTE_REGEX = /executing api route \(pages\) (.+)$/;
+
+// PostgreSQL error code 57014 = query_canceled, which is what statement_timeout triggers.
+function isStatementTimeoutError(err: unknown): boolean {
+  return (
+    err instanceof DatabaseError &&
+    (err.original as { code?: string })?.code === "57014"
+  );
+}
+
+/**
+ * Extract the current Next.js route from the active OpenTelemetry span.
+ * Next.js sets `next.route` on SSR spans and encodes the route in `next.span_name` for API routes.
+ */
+function extractRouteFromOtelSpan(): string | null {
+  const span = trace.getSpan(otelContext.active());
+  if (!span || !span.isRecording()) {
+    return null;
+  }
+
+  // The OTel API Span type doesn't expose .attributes; cast to SDK's ReadableSpan.
+  const readableSpan = span as unknown as ReadableSpan;
+  const attrs = readableSpan.attributes;
+
+  if (attrs?.["next.route"]) {
+    return attrs["next.route"] as string;
+  }
+
+  if (attrs?.["next.span_name"]) {
+    const spanName = attrs["next.span_name"] as string;
+    const match = spanName.match(NEXT_PAGES_ROUTE_REGEX);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
 
 /**
  * Wrapper around Sequelize that adds sqlcommenter-style tags to queries.
@@ -94,35 +134,19 @@ export class SequelizeWithComments extends Sequelize {
   ): Promise<any> {
     // Only process string queries.
     if (typeof sql !== "string") {
-      return super.query(sql, options);
+      return this.queryWithTimeoutLogging(sql, options);
     }
 
     // Skip if already has comments (avoid double-commenting).
     if (sql.includes("/*")) {
-      return super.query(sql, options);
+      return this.queryWithTimeoutLogging(sql, options);
     }
 
     const comments: Record<string, string> = {};
 
-    // Get Next.js route from OpenTelemetry span.
-    const span = trace.getSpan(otelContext.active());
-    if (span && span.isRecording()) {
-      const readableSpan = span as unknown as ReadableSpan;
-      const attrs = readableSpan.attributes;
-
-      // Case 1: getServerSideProps/getStaticProps: has explicit `next.route`.
-      if (attrs?.["next.route"]) {
-        comments.route = attrs["next.route"] as string;
-      }
-      // Case 2: API routes: extract from next.span_name.
-      else if (attrs?.["next.span_name"]) {
-        const spanName = attrs["next.span_name"] as string;
-        // Extract route from: "executing api route (pages) /api/w/[wId]/feature-flags".
-        const match = spanName.match(/executing api route \(pages\) (.+)$/);
-        if (match) {
-          comments.route = match[1];
-        }
-      }
+    const route = extractRouteFromOtelSpan();
+    if (route) {
+      comments.route = route;
     }
 
     // Build comment string following sqlcommenter format
@@ -141,6 +165,31 @@ export class SequelizeWithComments extends Sequelize {
       sql = `${sql} /*${commentStr}*/`;
     }
 
-    return super.query(sql, options);
+    return this.queryWithTimeoutLogging(sql, options);
+  }
+
+  private async queryWithTimeoutLogging(
+    sql: string | { query: string; values: unknown[] },
+    options?: QueryOptions | QueryOptionsWithType<any>
+  ): Promise<any> {
+    try {
+      return await super.query(sql, options);
+    } catch (err) {
+      if (isStatementTimeoutError(err)) {
+        const sqlText = typeof sql === "string" ? sql : sql.query;
+
+        logger.error(
+          {
+            err,
+            sql: sqlText.slice(0, 4096),
+            route: extractRouteFromOtelSpan() ?? "unknown",
+            model: (options as any)?.model?.name,
+            queryType: options?.type,
+          },
+          "Sequelize query timed out (statement_timeout)"
+        );
+      }
+      throw err;
+    }
   }
 }
