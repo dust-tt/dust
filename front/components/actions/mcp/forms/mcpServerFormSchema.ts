@@ -157,10 +157,29 @@ export function getMCPServerFormDefaults(
   return defaults;
 }
 
-export function getMCPServerFormSchema(view: MCPServerViewType) {
+export function getMCPServerFormSchema(
+  view: MCPServerViewType,
+  options?: {
+    existingViewNames?: string[];
+    initialName?: string;
+  }
+) {
+  const { existingViewNames = [], initialName } = options ?? {};
   const requiresBearerToken = requiresBearerTokenConfiguration(view.server);
   let schema = z.object({
-    name: z.string().min(1, "Name is required."),
+    name: z
+      .string()
+      .min(1, "Name is required.")
+      .refine(
+        (val) => {
+          const trimmed = val.trim();
+          if (!initialName || trimmed === initialName) {
+            return true;
+          }
+          return !existingViewNames.includes(trimmed);
+        },
+        { message: "This name is already in use." }
+      ),
     description: z.string().min(1, "Description is required."),
     toolSettings: z.record(
       z.object({
