@@ -25,6 +25,7 @@ import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import cloneDeep from "lodash/cloneDeep";
 
 export async function* streamLLMEvents(
@@ -66,45 +67,13 @@ export async function* streamLLMEvents(
     }
   }
 
-  const outputTokensWithoutReasoning: MessageParam[] = [];
-
-  if (aggregate.textGenerated) {
-    outputTokensWithoutReasoning.push({
-      content: aggregate.textGenerated.content.text,
-      role: "user" as const,
-    });
-  }
-  if (aggregate.toolCalls) {
-    outputTokensWithoutReasoning.push(
-      ...aggregate.toolCalls.map((call) => ({
-        content: `${call.content.name} ${JSON.stringify(call.content.arguments)}`,
-        role: "user" as const,
-      }))
-    );
-  }
-
-  try {
-    // Anthropic does not send the output token count details.
-    // This allows a rough estimation of the reasoning tokens.
-    const tokenCount = (await countTokensCallback?.({
-      model: metadata.modelId,
-      messages: outputTokensWithoutReasoning,
-    })) ?? {
-      input_tokens: tokenUsageAccumulator.outputTokens,
-    };
-    const reasoningTokens = Math.max(
-      0,
-      tokenUsageAccumulator.outputTokens - tokenCount.input_tokens
-    );
-    tokenUsageAccumulator.reasoningTokens = reasoningTokens;
-    tokenUsageAccumulator.outputTokens =
-      tokenUsageAccumulator.outputTokens - reasoningTokens;
-  } catch (err) {
-    logger.error("Failed getting token details from Anthropic", {
-      error: err,
-      metadata,
-    });
-  }
+  await estimateReasoningTokens(
+    tokenUsageAccumulator,
+    aggregate.textGenerated,
+    aggregate.toolCalls,
+    countTokensCallback,
+    metadata
+  );
 
   yield tokenUsage(tokenUsageAccumulator, metadata);
 
@@ -346,6 +315,61 @@ function* handleStopReason(
         metadata
       );
       break;
+  }
+}
+
+/**
+ * Estimates reasoning tokens by comparing total output tokens against a count
+ * of non-reasoning output tokens (text + tool calls). Mutates tokenUsageAccumulator
+ * in place.
+ */
+async function estimateReasoningTokens(
+  tokenUsageAccumulator: Required<TokenUsage>,
+  textGenerated: TextGeneratedEvent | undefined,
+  toolCalls: ToolCallEvent[] | undefined,
+  countTokensCallback:
+    | ((body: MessageCountTokensParams) => APIPromise<MessageTokensCount>)
+    | undefined,
+  metadata: LLMClientMetadata
+): Promise<void> {
+  const outputTokensWithoutReasoning: MessageParam[] = [];
+
+  if (textGenerated) {
+    outputTokensWithoutReasoning.push({
+      content: textGenerated.content.text,
+      role: "user" as const,
+    });
+  }
+  if (toolCalls) {
+    for (const call of toolCalls) {
+      outputTokensWithoutReasoning.push({
+        content: `${call.content.name} ${JSON.stringify(call.content.arguments)}`,
+        role: "user" as const,
+      });
+    }
+  }
+
+  try {
+    // Anthropic does not send the output token count details.
+    // This allows a rough estimation of the reasoning tokens.
+    const tokenCount = (await countTokensCallback?.({
+      model: metadata.modelId,
+      messages: outputTokensWithoutReasoning,
+    })) ?? {
+      input_tokens: tokenUsageAccumulator.outputTokens,
+    };
+    const reasoningTokens = Math.max(
+      0,
+      tokenUsageAccumulator.outputTokens - tokenCount.input_tokens
+    );
+    tokenUsageAccumulator.reasoningTokens = reasoningTokens;
+    tokenUsageAccumulator.outputTokens =
+      tokenUsageAccumulator.outputTokens - reasoningTokens;
+  } catch (err) {
+    logger.error("Failed getting token details from Anthropic", {
+      error: normalizeError(err),
+      metadata,
+    });
   }
 }
 
