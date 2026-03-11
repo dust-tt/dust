@@ -20,6 +20,7 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
             label="Name"
             isError={!!form.formState.errors.name}
             message={form.formState.errors.name?.message}
+            messageStatus={form.formState.errors.name ? "error" : undefined}
             placeholder={mcpServerView.server.name}
           />
         </div>

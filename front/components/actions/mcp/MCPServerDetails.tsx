@@ -16,6 +16,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
+  useMCPServers,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -51,6 +52,20 @@ export function MCPServerDetails({
     serverId: mcpServerView?.server.sId ?? "",
     disabled: !isOpen || !mcpServerView,
   });
+
+  const { mcpServers } = useMCPServers({
+    owner,
+    disabled: !isOpen || readOnly,
+  });
+
+  // Collect all effective view names from other servers (excluding the current one).
+  const existingViewNames = useMemo(
+    () =>
+      mcpServers
+        .filter((s) => s.sId !== mcpServerView?.server.sId)
+        .flatMap((s) => (s.views ?? []).map((v) => v.name ?? v.server.name)),
+    [mcpServers, mcpServerView]
+  );
   const { mutate: mutateMCPServersViewsForAdmin } =
     useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
@@ -79,7 +94,12 @@ export function MCPServerDetails({
       keepDirtyValues: true, // Preserve user edits on SWR refetch.
     },
     resolver: mcpServerView
-      ? zodResolver(getMCPServerFormSchema(mcpServerView))
+      ? zodResolver(
+          getMCPServerFormSchema(mcpServerView, {
+            existingViewNames,
+            initialName: mcpServerView.name ?? mcpServerView.server.name,
+          })
+        )
       : undefined,
   });
 

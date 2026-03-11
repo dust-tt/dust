@@ -240,7 +240,11 @@ export function MCPServerDetailsSheet({
                   isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
                 }
                 variant="primary"
-                disabled={isSaving || form.formState.isSubmitting}
+                disabled={
+                  isSaving ||
+                  form.formState.isSubmitting ||
+                  !!form.formState.errors.name
+                }
                 onClick={async () => {
                   setIsSaving(true);
                   try {

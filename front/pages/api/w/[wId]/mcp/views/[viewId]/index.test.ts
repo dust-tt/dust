@@ -248,6 +248,65 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
     }
   });
 
+  it("should return 400 when renaming to a name already used by another server", async () => {
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+
+    const server1 = await RemoteMCPServerFactory.create(workspace, {
+      name: "server-one",
+    });
+    const server2 = await RemoteMCPServerFactory.create(workspace, {
+      name: "server-two",
+    });
+
+    const systemView1 =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server1.sId
+      );
+    // Ensure server2 exists in system space (created automatically).
+    const systemView2 =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server2.sId
+      );
+    expect(systemView1).toBeDefined();
+    expect(systemView2).toBeDefined();
+
+    // Try to rename server1 to server2's name.
+    req.query.viewId = systemView1!.sId;
+    req.body = { name: "server-two", description: "updated" };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const responseData = res._getJSONData();
+    expect(responseData.error.type).toBe("invalid_request_error");
+    expect(responseData.error.message).toContain("server-two");
+  });
+
+  it("should allow renaming when the new name is unique", async () => {
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "original-name",
+    });
+
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+    expect(systemView).toBeDefined();
+
+    req.query.viewId = systemView!.sId;
+    req.body = { name: "unique-new-name", description: "updated" };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = res._getJSONData();
+    expect(responseData.success).toBe(true);
+    expect(responseData.serverView.name).toBe("unique-new-name");
+  });
+
   it("should support updating null name and description", async () => {
     const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
 
