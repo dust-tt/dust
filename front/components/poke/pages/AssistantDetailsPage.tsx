@@ -65,8 +65,13 @@ export function AssistantDetailsPage() {
     );
   }
 
-  const { agentConfigurations, authors, lastVersionEditors, spaces, skills } =
-    agentDetails;
+  const {
+    agentConfigurations,
+    authors,
+    lastVersionEditors,
+    spaces,
+    skillsByVersion,
+  } = agentDetails;
 
   return (
     <div>
@@ -159,6 +164,7 @@ export function AssistantDetailsPage() {
                 const author = authors.find(
                   (user) => user.id === a.versionAuthorId
                 );
+                const versionSkills = skillsByVersion[a.version] ?? [];
                 return (
                   <ContextItem
                     key={a.version}
@@ -220,10 +226,10 @@ export function AssistantDetailsPage() {
                         </div>
                         <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           <div className="font-bold">Skills:</div>
-                          {skills.length === 0 ? (
+                          {versionSkills.length === 0 ? (
                             <div>No skills</div>
                           ) : (
-                            skills.map((skill) => (
+                            versionSkills.map((skill) => (
                               <div key={skill.sId}>
                                 <div className="flex items-center gap-1">
                                   {skill.name}
