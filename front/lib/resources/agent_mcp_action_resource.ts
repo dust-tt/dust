@@ -508,7 +508,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           status: action.status,
           questions: resumeState.questions,
           questionMetadata: resumeState.metadata ?? null,
-          metadata: baseActionParams.metadata,
           authorizationInfo: null,
         });
       } else if (action.status === "blocked_child_action_input_required") {
