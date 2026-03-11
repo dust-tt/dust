@@ -275,9 +275,9 @@ export class FrontAuthService extends AuthService {
       const data = await response.json();
       const storedTokens = await this.saveTokens({
         success: true,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || "",
-        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken || "",
+        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
       });
       return new Ok(storedTokens);
     } catch (error) {
