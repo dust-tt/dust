@@ -27,6 +27,7 @@ import {
   isMCPServerPersonalAuthRequiredError,
   Ok,
 } from "@dust-tt/client";
+import type { ChatMessage } from "@microsoft/microsoft-graph-types";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
@@ -614,14 +615,38 @@ async function makeContentFragments(
     );
   }
 
-  // Get conversation history using Microsoft Graph API
-  const conversationHistory = await getMessagesFromConversation(
-    localLogger,
-    client,
-    teamsConversationId
-  );
-
-  const messages = conversationHistory.results || [];
+  // Get conversation history using Microsoft Graph API.
+  // This can fail with InsufficientPrivileges if the connector admin user is
+  // not a member of the chat/channel. In that case, gracefully continue
+  // without conversation history (the bot can still respond to the current message).
+  let messages: ChatMessage[] = [];
+  try {
+    const conversationHistory = await getMessagesFromConversation(
+      localLogger,
+      client,
+      teamsConversationId
+    );
+    messages = conversationHistory.results || [];
+  } catch (error) {
+    localLogger.warn(
+      { error, teamsConversationId },
+      "Failed to fetch conversation history, continuing without it"
+    );
+    // Process only current message attachments (like we do for non-channel conversations)
+    const currentMessageAttachments = context.activity.attachments || [];
+    if (currentMessageAttachments.length === 0) {
+      return new Ok(undefined);
+    }
+    const allContentFragments = await processFileAttachments(
+      currentMessageAttachments,
+      dustAPI,
+      client,
+      localLogger
+    );
+    return new Ok(
+      allContentFragments.length > 0 ? allContentFragments : undefined
+    );
+  }
 
   const startIndex =
     messages.findIndex((msg) => msg.id === context.activity.id) + 1;
