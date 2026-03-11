@@ -191,131 +191,133 @@ export abstract class LLM<TPayload = unknown> {
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 
-    for await (const event of this.completeStream(streamParameters)) {
-      if (currentEvent === null) {
-        timeToFirstEventMs = Date.now() - startTime;
-      }
-      currentEvent = event;
-      buffer.addEvent(currentEvent);
-
-      if (currentEvent.type === "interaction_id") {
-        buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
-        this.generation.updateTrace({
-          metadata: {
-            modelInteractionId: currentEvent.content.modelInteractionId,
-          },
-        });
-      }
-
-      if (currentEvent.type !== "success" && currentEvent.type !== "error") {
-        yield currentEvent;
-        continue;
-      }
-
-      // Logging before it gets stopped and retried downstream
-      if (currentEvent.type === "error") {
-        // Temporary: track LLM error metric
-        statsDClient.increment("llm_error.count", 1, metricTags);
-        this.generation.updateTrace({
-          tags: ["isError:true", `errorType:${currentEvent.content.type}`],
-        });
-
-        logger.error(
-          {
-            llmEventType: "error",
-            errorContent: currentEvent.content,
-            modelId: this.modelId,
-            context: this.context,
-            traceId: this.traceId,
-          },
-          "LLM Error"
-        );
-      }
-
-      if (currentEvent.type === "success") {
-        // Temporary: track LLM success metric
-        statsDClient.increment("llm_success.count", 1, metricTags);
-
-        logger.info(
-          {
-            llmEventType: "success",
-            modelId: this.modelId,
-            context: this.context,
-            traceId: this.traceId,
-          },
-          "LLM Success"
-        );
-      }
-
-      const durationMs = Date.now() - startTime;
-      buffer
-        .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
-        .catch(() => {});
-
-      const { tokenUsage, ...rest } = buffer.currentOutput;
-
-      this.generation.update({
-        output: { ...rest },
-      });
-
-      // Use custom trace output transformer if provided, otherwise use the full output.
-      if (this.getTraceOutput) {
-        const traceOutput = this.getTraceOutput(rest);
-        if (traceOutput) {
-          this.generation.updateTrace({ output: traceOutput });
+    try {
+      for await (const event of this.completeStream(streamParameters)) {
+        if (currentEvent === null) {
+          timeToFirstEventMs = Date.now() - startTime;
         }
-      } else {
-        this.generation.updateTrace({ output: { ...rest } });
-      }
+        currentEvent = event;
+        buffer.addEvent(currentEvent);
 
-      if (tokenUsage) {
+        if (currentEvent.type === "interaction_id") {
+          buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
+          this.generation.updateTrace({
+            metadata: {
+              modelInteractionId: currentEvent.content.modelInteractionId,
+            },
+          });
+        }
+
+        if (currentEvent.type !== "success" && currentEvent.type !== "error") {
+          yield currentEvent;
+          continue;
+        }
+
+        // Logging before it gets stopped and retried downstream
+        if (currentEvent.type === "error") {
+          // Temporary: track LLM error metric
+          statsDClient.increment("llm_error.count", 1, metricTags);
+          this.generation.updateTrace({
+            tags: ["isError:true", `errorType:${currentEvent.content.type}`],
+          });
+
+          logger.error(
+            {
+              llmEventType: "error",
+              errorContent: currentEvent.content,
+              modelId: this.modelId,
+              context: this.context,
+              traceId: this.traceId,
+            },
+            "LLM Error"
+          );
+        }
+
+        if (currentEvent.type === "success") {
+          // Temporary: track LLM success metric
+          statsDClient.increment("llm_success.count", 1, metricTags);
+
+          logger.info(
+            {
+              llmEventType: "success",
+              modelId: this.modelId,
+              context: this.context,
+              traceId: this.traceId,
+            },
+            "LLM Success"
+          );
+        }
+
+        const durationMs = Date.now() - startTime;
+        buffer
+          .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
+          .catch(() => {});
+
+        const { tokenUsage, ...rest } = buffer.currentOutput;
+
         this.generation.update({
-          usageDetails: {
-            // Report the uncached input tokens if provider supports it.
-            input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
-            output: tokenUsage.outputTokens,
-            total: tokenUsage.totalTokens,
-            cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
-            cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
-            reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
-          },
+          output: { ...rest },
         });
-      }
 
-      if (buffer.error) {
-        this.generation.update({
-          level: "ERROR",
-          statusMessage: buffer.error.message,
-          metadata: {
-            errorType: buffer.error.type,
-            errorMessage: buffer.error.message,
-          },
+        // Use custom trace output transformer if provided, otherwise use the full output.
+        if (this.getTraceOutput) {
+          const traceOutput = this.getTraceOutput(rest);
+          if (traceOutput) {
+            this.generation.updateTrace({ output: traceOutput });
+          }
+        } else {
+          this.generation.updateTrace({ output: { ...rest } });
+        }
+
+        if (tokenUsage) {
+          this.generation.update({
+            usageDetails: {
+              // Report the uncached input tokens if provider supports it.
+              input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
+              output: tokenUsage.outputTokens,
+              total: tokenUsage.totalTokens,
+              cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
+              cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
+              reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
+            },
+          });
+        }
+
+        if (buffer.error) {
+          this.generation.update({
+            level: "ERROR",
+            statusMessage: buffer.error.message,
+            metadata: {
+              errorType: buffer.error.type,
+              errorMessage: buffer.error.message,
+            },
+          });
+        }
+
+        const run = await RunResource.makeNew({
+          appId: null,
+          dustRunId: this.traceId,
+          runType: "deploy",
+          // Assumption made that this class exclusively uses Dust credentials.
+          useWorkspaceCredentials: false,
+          workspaceId: this.authenticator.getNonNullableWorkspace().id,
         });
-      }
 
+        // Run usage is only populated if the run is successful.
+        if (buffer.runTokenUsage) {
+          await run.recordTokenUsage(
+            this.authenticator,
+            buffer.runTokenUsage,
+            this.modelId
+          );
+        }
+
+        yield currentEvent;
+
+        break;
+      }
+    } finally {
       this.generation.end();
-
-      const run = await RunResource.makeNew({
-        appId: null,
-        dustRunId: this.traceId,
-        runType: "deploy",
-        // Assumption made that this class exclusively uses Dust credentials.
-        useWorkspaceCredentials: false,
-        workspaceId: this.authenticator.getNonNullableWorkspace().id,
-      });
-
-      // Run usage is only populated if the run is successful.
-      if (buffer.runTokenUsage) {
-        await run.recordTokenUsage(
-          this.authenticator,
-          buffer.runTokenUsage,
-          this.modelId
-        );
-      }
-
-      yield currentEvent;
-
-      break;
     }
   }
 

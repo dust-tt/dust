@@ -43,8 +43,11 @@ async function* withPeriodicHeartbeat<T>(
   let heartbeatCount = 0;
   let lastEventTimeMs = Date.now();
 
+  let heartbeatTimer: NodeJS.Timeout | undefined;
+
   try {
     while (!streamExhausted) {
+      heartbeatTimer = undefined;
       const result = await Promise.race([
         nextPromise
           .then((value) => ({ type: "stream" as const, value }))
@@ -52,13 +55,16 @@ async function* withPeriodicHeartbeat<T>(
             // Rethrow to ensure errors are not swallowed
             throw error;
           }),
-        new Promise<{ type: "heartbeat" }>((resolve) =>
-          setTimeout(
+        new Promise<{ type: "heartbeat" }>((resolve) => {
+          heartbeatTimer = setTimeout(
             () => resolve({ type: "heartbeat" }),
             LLM_HEARTBEAT_INTERVAL_MS
-          )
-        ),
+          );
+        }),
       ]);
+
+      // Clear the heartbeat timer if the stream event won the race.
+      clearTimeout(heartbeatTimer);
 
       heartbeat();
 
@@ -111,6 +117,9 @@ async function* withPeriodicHeartbeat<T>(
       lastEventTimeMs = Date.now();
     }
   } finally {
+    // Clear any pending heartbeat timer to prevent leaked closures.
+    clearTimeout(heartbeatTimer);
+
     // Ensure the underlying stream is closed on early exit (timeout, error, or break).
     // This aborts the HTTP connection to the LLM provider.
     // Wrapped in try/catch to avoid masking the original error if cleanup fails.
