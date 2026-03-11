@@ -115,6 +115,42 @@ export function registerTabActionTools(server: McpServer): void {
   );
 
   server.tool(
+    "reload-browser-tab",
+    "Reloads the specified browser tab. Useful after server-side actions that modify page content. " +
+      "Use list-browser-tabs to discover tab IDs.",
+    {
+      tabId: z.number().describe("The tab ID to reload."),
+    },
+    async ({ tabId }) => {
+      try {
+        const result = await sendTabActionMessage({
+          type: "RELOAD_TAB",
+          tabId,
+        });
+        if (!result.success) {
+          return {
+            content: [
+              { type: "text", text: `Error: ${result.error ?? "Unknown"}` },
+            ],
+          };
+        }
+        return {
+          content: [{ type: "text", text: `Reloaded tab ${tabId}.` }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to reload tab: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
     "move-browser-tab",
     "Moves a browser tab to a new position (index) in the tab bar. " +
       "Use list-browser-tabs to discover tab IDs and current order.",

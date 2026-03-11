@@ -48,7 +48,8 @@ export type TabActionMessage =
   | { type: "ACTIVATE_TAB"; tabId: number }
   | { type: "CLOSE_TAB"; tabId: number }
   | { type: "OPEN_TAB"; url: string }
-  | { type: "MOVE_TAB"; tabId: number; index: number };
+  | { type: "MOVE_TAB"; tabId: number; index: number }
+  | { type: "RELOAD_TAB"; tabId: number };
 
 export type TabActionResponse = {
   success: boolean;
