@@ -69,6 +69,7 @@ function makeFeedbackSchema(thumbDirection: ThumbReaction) {
   }
 
   // Valid when: a non-"Other" predefined answer is selected, or free text is provided.
+  // Note: we are not using superRefine here because thumbDirection is not a form value.
   return feedbackBaseSchema.refine(
     (data) => {
       const hasAnswer =
