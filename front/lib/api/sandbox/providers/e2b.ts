@@ -1,4 +1,3 @@
-import type { ReadableStream } from "node:stream/web";
 import {
   formatSandboxImageId,
   type NetworkPolicy,
@@ -226,7 +225,7 @@ export class E2BSandboxProvider implements SandboxProvider {
   async writeFile(
     providerId: string,
     path: string,
-    stream: ReadableStream
+    data: ArrayBuffer
   ): Promise<Result<void, Error>> {
     let sandbox: Sandbox;
     try {
@@ -243,7 +242,7 @@ export class E2BSandboxProvider implements SandboxProvider {
 
     try {
       // Note: this creates the necessary directories if missing.
-      await sandbox.files.write(path, stream);
+      await sandbox.files.write(path, data);
     } catch (err) {
       return new Err(normalizeError(err));
     }

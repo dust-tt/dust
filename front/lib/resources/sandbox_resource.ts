@@ -1,4 +1,4 @@
-import type { ReadableStream } from "node:stream/web";
+import streamConsumers from "stream/consumers";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
@@ -12,11 +12,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
@@ -27,7 +27,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
-import { Readable } from "stream";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -512,14 +511,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   async writeFile(
     path: string,
-    stream: ReadableStream
+    data: ArrayBuffer
   ): Promise<Result<void, Error>> {
     const provider = getSandboxProvider();
     if (!provider) {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.writeFile(this.providerId, path, stream);
+    const result = await provider.writeFile(this.providerId, path, data);
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
@@ -552,9 +551,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       const targetPath = `/skills/${skill.name}/${fileName}`;
 
       const readStream = file.getReadStream({ auth, version: "original" });
-      const readable: ReadableStream = Readable.toWeb(readStream);
+      const data = await streamConsumers.arrayBuffer(readStream);
 
-      const writeResult = await this.writeFile(targetPath, readable);
+      const writeResult = await this.writeFile(targetPath, data);
       if (writeResult.isErr()) {
         return writeResult;
       }

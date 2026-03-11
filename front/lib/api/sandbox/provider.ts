@@ -7,7 +7,6 @@
  * adapter.
  */
 
-import type { ReadableStream } from "node:stream/web";
 import type {
   NetworkPolicy,
   SandboxImageId,
@@ -112,7 +111,7 @@ export interface SandboxProvider {
   writeFile(
     providerId: string,
     path: string,
-    stream: ReadableStream
+    data: ArrayBuffer
   ): Promise<Result<void, Error>>;
 
   readFile(providerId: string, path: string): Promise<Buffer>;
