@@ -11,6 +11,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
   ModelIdType,
@@ -282,6 +283,24 @@ export class RunResource extends BaseResource<RunModel> {
         })
       )
     );
+
+    for (const usage of usages) {
+      const tags = [
+        `provider_id:${usage.providerId}`,
+        `model_id:${usage.modelId}`,
+      ];
+
+      statsDClient.increment("run_usage.prompt_tokens", usage.promptTokens, tags);
+      statsDClient.increment("run_usage.completion_tokens", usage.completionTokens, tags);
+      statsDClient.increment("run_usage.cost_micro_usd", usage.costMicroUsd, tags);
+
+      if (usage.cachedTokens) {
+        statsDClient.increment("run_usage.cached_tokens", usage.cachedTokens, tags);
+      }
+      if (usage.cacheCreationTokens) {
+        statsDClient.increment("run_usage.cache_creation_tokens", usage.cacheCreationTokens, tags);
+      }
+    }
   }
 
   async recordTokenUsage(usage: TokenUsage, modelId: ModelIdType) {
