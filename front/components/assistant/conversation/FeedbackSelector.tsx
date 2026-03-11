@@ -46,7 +46,7 @@ interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
   isGlobalAgent: boolean;
 }
 
-const OTHER_ANSWER = "Other (please explain below)";
+const OTHER_ANSWER = "Other (add details below)";
 
 const FEEDBACK_PREDEFINED_ANSWERS = [
   "Factually incorrect",
@@ -183,7 +183,7 @@ export function FeedbackSelector({
           <DialogHeader>
             <DialogTitle>
               <span className="flex items-center gap-2">
-                Improve @{agentName}
+                Give feedback on @{agentName}
               </span>
             </DialogTitle>
           </DialogHeader>
@@ -236,7 +236,7 @@ export function FeedbackSelector({
                         id="feedback-content"
                         placeholder={
                           thumbDirection === "down"
-                            ? "Add more details"
+                            ? "Describe what went wrong"
                             : "Share details"
                         }
                         resize="vertical"
@@ -269,7 +269,7 @@ export function FeedbackSelector({
                           Share conversation with the agent’s editors
                         </Label>
                         <span className="text-xs text-muted-foreground">
-                          Visible to whoever manages this agent.
+                          Helps editors improve the agent
                         </span>
                       </div>
                     </div>

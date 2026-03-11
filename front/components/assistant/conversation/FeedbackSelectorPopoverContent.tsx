@@ -23,8 +23,7 @@ export function FeedbackSelectorPopoverContent({
     return (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback will be available to Dust for future improvement to our
-          default agents.
+          Dust will use this to improve default agents.
         </Page.P>
       </div>
     );
@@ -42,9 +41,7 @@ export function FeedbackSelectorPopoverContent({
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <Page.P variant="secondary">
-          Your feedback will be available to the editors of the agent:
-        </Page.P>
+        <Page.P variant="secondary">Editors who'll see this:</Page.P>
         <Avatar.Stack avatars={avatarProps} size="xs" nbVisibleItems={4} />
       </div>
     </div>
