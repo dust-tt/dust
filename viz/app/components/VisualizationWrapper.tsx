@@ -252,7 +252,13 @@ export function VisualizationWrapper({
   config: VisualizationConfig;
   api: VisualizationAPI;
 }) {
-  const { identifier, isFullHeight = false, isPdfMode = false } = config;
+  const {
+    identifier,
+    isFullHeight = false,
+    isPdfMode = false,
+    isSinglePage = false,
+    pdfPageWidthPx,
+  } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
   const [vizReady, setVizReady] = useState(false);
 
@@ -417,6 +423,10 @@ export function VisualizationWrapper({
   const heightClass = isPdfMode ? "" : isFullHeight ? "h-screen" : "";
 
   const shouldShowControls = !isFullHeight && !isPdfMode;
+  const singlePageStyle =
+    isPdfMode && isSinglePage && pdfPageWidthPx
+      ? { width: `${pdfPageWidthPx}px`, margin: "0 auto" }
+      : undefined;
 
   return (
     <div
@@ -448,7 +458,7 @@ export function VisualizationWrapper({
           </button>
         </div>
       )}
-      <div ref={ref}>
+      <div ref={ref} style={singlePageStyle}>
         <Runner
           code={runnerParams.code}
           scope={runnerParams.scope}

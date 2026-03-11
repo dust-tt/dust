@@ -18,6 +18,8 @@ interface ServerVisualizationWrapperClientProps {
   identifier: string;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
+  isSinglePage?: boolean;
+  pdfPageWidthPx?: number;
   prefetchedCode?: string;
   prefetchedFiles?: PreFetchedFile[];
 }
@@ -39,6 +41,8 @@ export function ServerVisualizationWrapperClient({
   allowedOrigins,
   isFullHeight = false,
   isPdfMode = false,
+  isSinglePage = false,
+  pdfPageWidthPx,
   prefetchedCode,
   prefetchedFiles = [],
 }: ServerVisualizationWrapperClientProps) {
@@ -53,6 +57,8 @@ export function ServerVisualizationWrapperClient({
     identifier,
     isFullHeight,
     isPdfMode,
+    isSinglePage,
+    pdfPageWidthPx,
   };
 
   return (

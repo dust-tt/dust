@@ -80,7 +80,10 @@ function ExportContentDropdown({
     }
   };
 
-  const exportAsPdf = async (orientation: "portrait" | "landscape") => {
+  const exportAsPdf = async (
+    orientation: "portrait" | "landscape",
+    pageMode: "paged" | "single" = "paged"
+  ) => {
     if (isExportingPdf) {
       return;
     }
@@ -94,12 +97,28 @@ function ExportContentDropdown({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ orientation }),
+          body: JSON.stringify({ orientation, pageMode }),
         }
       );
 
       if (!response.ok) {
         throw new Error("Failed to generate PDF");
+      }
+
+      const resolvedPageMode =
+        response.headers.get("X-Dust-Pdf-Page-Mode") || pageMode;
+      const pageNotice = response.headers.get("X-Dust-Pdf-Notice");
+
+      if (pageMode === "single" && resolvedPageMode !== "single") {
+        const noticeText =
+          pageNotice === "single-page-dimension-parse-failed"
+            ? "Single-page export failed to measure content. Exported as paged PDF instead."
+            : "Single-page export was not available. Exported as paged PDF instead.";
+        sendNotification({
+          title: "Single-page export fallback",
+          type: "warning",
+          description: noticeText,
+        });
       }
 
       // Get the PDF blob and trigger download.
@@ -164,11 +183,17 @@ function ExportContentDropdown({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
           <DropdownMenuSubContent>
-            <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
-              Portrait
+            <DropdownMenuItem onClick={() => exportAsPdf("portrait", "paged")}>
+              Portrait (Paged)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportAsPdf("landscape")}>
-              Landscape
+            <DropdownMenuItem onClick={() => exportAsPdf("landscape", "paged")}>
+              Landscape (Paged)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportAsPdf("portrait", "single")}>
+              Portrait (Single Page)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportAsPdf("landscape", "single")}>
+              Landscape (Single Page)
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>

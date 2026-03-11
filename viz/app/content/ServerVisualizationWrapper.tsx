@@ -9,6 +9,8 @@ interface ServerSideVisualizationWrapperProps {
   identifier: string;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
+  isSinglePage?: boolean;
+  pdfPageWidthPx?: number;
 }
 
 /**
@@ -28,6 +30,8 @@ export async function ServerSideVisualizationWrapper({
   identifier,
   isFullHeight = false,
   isPdfMode = false,
+  isSinglePage = false,
+  pdfPageWidthPx,
 }: ServerSideVisualizationWrapperProps) {
   let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
@@ -115,6 +119,8 @@ export async function ServerSideVisualizationWrapper({
       identifier={identifier}
       isFullHeight={isFullHeight}
       isPdfMode={isPdfMode}
+      isSinglePage={isSinglePage}
+      pdfPageWidthPx={pdfPageWidthPx}
       prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
     />

@@ -17,6 +17,8 @@ export interface PdfOptions {
   marginRight?: string;
   marginTop?: string;
   orientation?: PdfOrientation;
+  paperHeight?: string;
+  paperWidth?: string;
   scale?: number;
 }
 
@@ -93,6 +95,8 @@ export class DocumentRenderer {
       marginRight,
       marginTop,
       orientation,
+      paperHeight,
+      paperWidth,
       scale,
     } = { ...DEFAULT_PDF_OPTIONS, ...options };
 
@@ -106,6 +110,14 @@ export class DocumentRenderer {
     formData.append("marginBottom", marginBottom);
     formData.append("marginLeft", marginLeft);
     formData.append("marginRight", marginRight);
+
+    if (paperWidth) {
+      formData.append("paperWidth", paperWidth);
+    }
+
+    if (paperHeight) {
+      formData.append("paperHeight", paperHeight);
+    }
 
     if (footerHtml) {
       const footerBlob = new Blob([footerHtml], { type: "text/html" });

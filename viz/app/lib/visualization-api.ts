@@ -45,5 +45,7 @@ export interface VisualizationConfig {
   allowedOrigins: string[];
   isFullHeight?: boolean;
   isPdfMode?: boolean;
+  isSinglePage?: boolean;
+  pdfPageWidthPx?: number;
   dataAPI: VisualizationDataAPI;
 }
