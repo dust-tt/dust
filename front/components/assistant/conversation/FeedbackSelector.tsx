@@ -161,17 +161,18 @@ export function FeedbackSelector({
             ) : (
               <div className="flex flex-col gap-4 pt-2">
                 <div>
-                  <div className="text-sm font-semibold mb-2">
+                  <Label htmlFor="feedback-content">
                     {thumbDirection === "down"
                       ? "What should the agent do differently?"
                       : "Glad you liked it! Tell us more?"}
-                  </div>
+                  </Label>
                   <Controller
                     control={form.control}
                     name="feedbackContent"
                     render={({ field, fieldState }) => (
                       <div>
                         <TextArea
+                          id="feedback-content"
                           placeholder={
                             thumbDirection === "down"
                               ? "Describe what didn’t work"
