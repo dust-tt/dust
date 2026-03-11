@@ -459,7 +459,7 @@ async function handler(
           useWorkspaceCredentials: !useDustCredentials,
         });
 
-        await run.recordRunUsage(usages);
+        await run.recordRunUsage(auth, usages);
       } catch (err) {
         logger.error(
           {
