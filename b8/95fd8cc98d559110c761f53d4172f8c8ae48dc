@@ -1,0 +1,39 @@
+front/lib/resources/provider_credential_resource.ts
+  25535915742eb8fe 72,128,170-171,174-176,178-180,183,187-193,201-205,207-208,211-212
+  ed20067338b79878 107,194-200
+front/lib/resources/provider_credential_resource.test.ts
+  25535915742eb8fe 135-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "b895fd8cc98d559110c761f53d4172f8c8ae48dc",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 205,
+      "total_deletions": 116,
+      "accepted_lines": 94,
+      "overriden_lines": 0
+    },
+    "ed20067338b79878": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d09d917-1865-45c7-87ac-b08d70312601",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 130,
+      "overriden_lines": 0
+    }
+  }
+}
