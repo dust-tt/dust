@@ -58,7 +58,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     });
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,

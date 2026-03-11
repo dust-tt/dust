@@ -49,7 +49,7 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
     });
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,

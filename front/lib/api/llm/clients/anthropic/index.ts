@@ -109,7 +109,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     this.workspace = auth.getNonNullableWorkspace();
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     hasConditionalJITTools,
     prompt,

@@ -47,7 +47,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
     });
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,
