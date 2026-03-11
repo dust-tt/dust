@@ -259,7 +259,7 @@ export class RunResource extends BaseResource<RunModel> {
    * Run usage.
    */
 
-  async recordRunUsage(usages: RunUsageType[]) {
+  async recordRunUsage(auth: Authenticator, usages: RunUsageType[]) {
     await RunUsageModel.bulkCreate(
       usages.map(
         ({
@@ -288,6 +288,7 @@ export class RunResource extends BaseResource<RunModel> {
       const tags = [
         `provider_id:${usage.providerId}`,
         `model_id:${usage.modelId}`,
+        `workspace_id:${auth.getNonNullableWorkspace().sId}`,
       ];
 
       statsDClient.increment("run_usage.prompt_tokens", usage.promptTokens, tags);
@@ -303,7 +304,7 @@ export class RunResource extends BaseResource<RunModel> {
     }
   }
 
-  async recordTokenUsage(usage: TokenUsage, modelId: ModelIdType) {
+  async recordTokenUsage(auth: Authenticator, usage: TokenUsage, modelId: ModelIdType) {
     const modelConfig = getModelConfigByModelId(modelId);
 
     if (!modelConfig) {
@@ -319,7 +320,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
     });
 
-    return this.recordRunUsage([
+    return this.recordRunUsage(auth, [
       {
         cacheCreationTokens: usage.cacheCreationTokens,
         cachedTokens: usage.cachedTokens ?? null,
