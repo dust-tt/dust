@@ -76,6 +76,9 @@ interface InputBarAttachmentsPickerProps {
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   onFileChange?: () => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 const PAGE_SIZE = 25;
@@ -203,10 +206,19 @@ export const InputBarAttachmentsPicker = ({
   space,
   type,
   onFileChange,
+  externalOpen,
+  onExternalOpenChange,
+  anchorRef,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const isExternallyControlled = externalOpen !== undefined;
+  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
+  const setIsOpen = isExternallyControlled
+    ? (open: boolean) => onExternalOpenChange?.(open)
+    : setInternalOpen;
   const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
     useState<Record<string, boolean>>({});
   const {
@@ -408,15 +420,13 @@ export const InputBarAttachmentsPicker = ({
     <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
-        if (type === "subdropdown") {
-          setIsOpen(open);
-        }
+        setIsOpen(open);
         if (open) {
           setSearch("");
         }
       }}
     >
-      {type === "dropdown" ? (
+      {type === "dropdown" && !isExternallyControlled ? (
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost-secondary"
@@ -424,6 +434,23 @@ export const InputBarAttachmentsPicker = ({
             size={buttonSize}
             disabled={disabled || isLoading}
             onClick={() => setIsOpen(!isOpen)}
+          />
+        </DropdownMenuTrigger>
+      ) : type === "dropdown" && isExternallyControlled ? (
+        <DropdownMenuTrigger asChild>
+          <div
+            ref={(el) => {
+              if (el && anchorRef?.current) {
+                const rect = anchorRef.current.getBoundingClientRect();
+                el.style.position = "fixed";
+                el.style.top = `${rect.top}px`;
+                el.style.left = `${rect.left}px`;
+                el.style.width = `${rect.width}px`;
+                el.style.height = `${rect.height}px`;
+                el.style.pointerEvents = "none";
+                el.style.opacity = "0";
+              }
+            }}
           />
         </DropdownMenuTrigger>
       ) : (
@@ -448,7 +475,7 @@ export const InputBarAttachmentsPicker = ({
               onClick: (e) => e.stopPropagation(),
             }
           : {
-              align: "start",
+              align: isExternallyControlled ? "end" : "start",
               onInteractOutside: () => setIsOpen(false),
             })}
         dropdownHeaders={

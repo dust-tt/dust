@@ -41,6 +41,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
+  AttachmentIcon,
   Button,
   CameraIcon,
   Chip,
@@ -143,6 +144,8 @@ const InputBarContainer = ({
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
+  const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
 
   const [selectedNode, setSelectedNode] =
@@ -853,61 +856,78 @@ const InputBarContainer = ({
                     />
                   )}
                 {clientType === "extension" && (
-                  <DropdownMenu
-                    open={isCaptureDropdownOpen}
-                    onOpenChange={setIsCaptureDropdownOpen}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost-secondary"
-                        icon={PlusIcon}
-                        size={buttonSize}
+                  <>
+                    <div ref={plusButtonRef}>
+                      <DropdownMenu
+                        open={isCaptureDropdownOpen}
+                        onOpenChange={setIsCaptureDropdownOpen}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost-secondary"
+                            icon={PlusIcon}
+                            size={buttonSize}
+                            disabled={disableInput}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {actions.includes("attachment") && (
+                            <DropdownMenuItem
+                              icon={AttachmentIcon}
+                              label="Attach knowledge"
+                              onClick={() => {
+                                setIsCaptureDropdownOpen(false);
+                                setShowKnowledgePicker(true);
+                              }}
+                            />
+                          )}
+                          {captureActions && (
+                            <>
+                              <DropdownMenuItem
+                                icon={GlobeAltIcon}
+                                label="Attach page content"
+                                disabled={
+                                  captureActions.isCapturing ||
+                                  fileUploaderService.isProcessingFiles
+                                }
+                                onClick={() => captureActions.onCapture("text")}
+                              />
+                              <DropdownMenuItem
+                                icon={CameraIcon}
+                                label="Take screenshot"
+                                disabled={
+                                  captureActions.isCapturing ||
+                                  fileUploaderService.isProcessingFiles
+                                }
+                                onClick={() =>
+                                  captureActions.onCapture("screenshot")
+                                }
+                              />
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    {actions.includes("attachment") && (
+                      <InputBarAttachmentsPicker
+                        fileUploaderService={fileUploaderService}
+                        owner={owner}
+                        isLoading={false}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        attachedNodes={attachedNodes}
                         disabled={disableInput}
+                        buttonSize={buttonSize}
+                        conversation={conversation}
+                        space={space}
+                        type="dropdown"
+                        onFileChange={() => setShowKnowledgePicker(false)}
+                        externalOpen={showKnowledgePicker}
+                        onExternalOpenChange={setShowKnowledgePicker}
+                        anchorRef={plusButtonRef}
                       />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {actions.includes("attachment") && (
-                        <InputBarAttachmentsPicker
-                          fileUploaderService={fileUploaderService}
-                          owner={owner}
-                          isLoading={false}
-                          onNodeSelect={onNodeSelect}
-                          onNodeUnselect={onNodeUnselect}
-                          attachedNodes={attachedNodes}
-                          disabled={disableInput}
-                          buttonSize={buttonSize}
-                          conversation={conversation}
-                          space={space}
-                          type="subdropdown"
-                          onFileChange={() => setIsCaptureDropdownOpen(false)}
-                        />
-                      )}
-                      {captureActions && (
-                        <>
-                          <DropdownMenuItem
-                            icon={GlobeAltIcon}
-                            label="Attach page content"
-                            disabled={
-                              captureActions.isCapturing ||
-                              fileUploaderService.isProcessingFiles
-                            }
-                            onClick={() => captureActions.onCapture("text")}
-                          />
-                          <DropdownMenuItem
-                            icon={CameraIcon}
-                            label="Take screenshot"
-                            disabled={
-                              captureActions.isCapturing ||
-                              fileUploaderService.isProcessingFiles
-                            }
-                            onClick={() =>
-                              captureActions.onCapture("screenshot")
-                            }
-                          />
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )}
+                  </>
                 )}
                 <Button
                   size={buttonSize}
