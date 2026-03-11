@@ -1,12 +1,25 @@
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { ProviderCredentialType } from "@app/types/provider_credential";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import { dustManagedLLMCredentials } from "@app/types/api/credentials";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ConnectionCredentials } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
+import {
+  PROVIDER_CREDENTIAL_CONTENT_SCHEMAS,
+  PROVIDER_TO_CREDENTIAL_KEY,
+  type ProviderCredentialType,
+} from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic } from "sequelize";
@@ -33,6 +46,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     });
   }
 
+  static async listByWorkspace(
+    auth: Authenticator
+  ): Promise<ProviderCredentialResource[]> {
+    return this.baseFetch(auth);
+  }
+
   private static async baseFetch(
     auth: Authenticator
   ): Promise<ProviderCredentialResource[]> {
@@ -50,10 +69,43 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     );
   }
 
-  static async listByWorkspace(
+  static async getCredentials(
     auth: Authenticator
-  ): Promise<ProviderCredentialResource[]> {
-    return this.baseFetch(auth);
+  ): Promise<LLMCredentialsType> {
+    const plan = auth.getNonNullablePlan();
+
+    if (!plan.isByok) {
+      return dustManagedLLMCredentials();
+    }
+
+    const providerCredentials = await this.baseFetch(auth);
+
+    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+    const oauthCredentialsByProvider = await concurrentExecutor(
+      providerCredentials,
+      async (cred) => {
+        const credentialRes = await oauthApi.getCredentials({
+          credentialsId: cred.credentialId,
+        });
+
+        if (credentialRes.isErr()) {
+          throw new Error(
+            `Failed to fetch OAuth credentials for provider ${cred.providerId}: ${credentialRes.error.message}`
+          );
+        }
+
+        return {
+          providerId: cred.providerId,
+          content: credentialRes.value.credential.content,
+        };
+      },
+      { concurrency: 8 }
+    );
+
+    return oauthCredentialsByProvider
+      .map(mapOauthCredentialToLlmCredential)
+      .reduce((acc, partial) => ({ ...acc, ...partial }), {});
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
@@ -92,5 +144,47 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       placeholder: this.placeholder,
       editedByUserId: this.editedByUserId,
     };
+  }
+}
+
+function mapOauthCredentialToLlmCredential({
+  providerId,
+  content,
+}: {
+  providerId: ModelProviderIdType;
+  content: ConnectionCredentials;
+}): Partial<LLMCredentialsType> {
+  if (providerId === "noop") {
+    return {};
+  }
+
+  switch (providerId) {
+    case "openai": {
+      const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
+      const parsedContent = schema.parse(content);
+
+      return {
+        OPENAI_API_KEY: parsedContent.api_key,
+        OPENAI_BASE_URL: parsedContent.base_url,
+        OPENAI_USE_EU_ENDPOINT:
+          config.getRegion() === "europe-west1" ? "true" : "false",
+      };
+    }
+    case "anthropic":
+    case "mistral":
+    case "google_ai_studio":
+    case "deepseek":
+    case "fireworks":
+    case "xai":
+    case "togetherai": {
+      const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
+      const parsedContent = schema.parse(content);
+
+      return {
+        [PROVIDER_TO_CREDENTIAL_KEY[providerId]]: parsedContent.api_key,
+      };
+    }
+    default:
+      assertNever(providerId);
   }
 }
