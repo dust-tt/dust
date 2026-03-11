@@ -9,7 +9,6 @@ interface ProviderContextItemProps {
   providersSelection: ProvidersSelection;
   setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
   isWorkspaceValidating: boolean;
-  plan: PlanType;
   modelsDescriptionByProvider: Partial<Record<ModelProviderIdType, string>>;
 }
 
@@ -17,7 +16,6 @@ export function ProvidersToggleList({
   providersSelection,
   setProvidersSelection,
   isWorkspaceValidating,
-  plan,
   modelsDescriptionByProvider,
 }: ProviderContextItemProps) {
   const toggleProvider = useCallback(

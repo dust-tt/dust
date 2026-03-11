@@ -66,7 +66,6 @@ export function ModelProvidersPageContent({
             providersSelection={providersSelection}
             setProvidersSelection={setProvidersSelection}
             isWorkspaceValidating={isWorkspaceValidating}
-            plan={plan}
             modelsDescriptionByProvider={modelsDescriptionByProvider}
           />
         </>
