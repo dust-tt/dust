@@ -54,9 +54,8 @@ export function useMessageFeedback({
       if (response.ok) {
         if (feedbackContent && !shouldRemoveExistingFeedback) {
           sendNotification({
-            title: "Feedback submitted",
-            description:
-              "Your comment has been submitted successfully to the Builder of this agent. Thank you!",
+            title: "Feedback sent",
+            description: "The agent’s builders will review it.",
             type: "success",
           });
         }

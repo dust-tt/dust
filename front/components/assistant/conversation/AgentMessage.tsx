@@ -574,6 +574,7 @@ export function AgentMessage({
         {...messageFeedback}
         owner={owner}
         agentConfigurationId={agentMessage.configuration.sId}
+        agentName={agentMessage.configuration.name}
         isGlobalAgent={isGlobalAgent}
       />
     );

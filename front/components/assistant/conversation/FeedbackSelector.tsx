@@ -1,4 +1,3 @@
-import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -10,13 +9,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  HandThumbDownIcon,
   HandThumbUpIcon,
   Label,
+  MagicIcon,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 
 export type ThumbReaction = "up" | "down";
 
@@ -36,67 +38,64 @@ export interface FeedbackSelectorBaseProps {
   isSubmittingThumb: boolean;
 }
 
-const FEEDBACK_PREDEFINED_ANSWERS = [
-  "Factually incorrect",
-  "Didn't fully follow instructions",
-  "Don't like the tone",
-  "Wrong data sources",
-  "Took too long",
-  "Other (please explain below)",
-] as const;
-
-type FeedbackPredefinedAnswerType =
-  (typeof FEEDBACK_PREDEFINED_ANSWERS)[number];
-
 interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
+  agentName: string;
   isGlobalAgent: boolean;
 }
+
+function makeFeedbackSchema(thumbDirection: ThumbReaction) {
+  return z.object({
+    feedbackContent:
+      thumbDirection === "down"
+        ? z.string().min(1, "Please describe what should be improved.")
+        : z.string(),
+    isConversationShared: z.boolean(),
+  });
+}
+
+type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
 
 export function FeedbackSelector({
   feedback,
   onSubmitThumb,
   isSubmittingThumb,
-  owner,
-  agentConfigurationId,
-  isGlobalAgent,
+  agentName,
 }: FeedbackSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [thumbDirection, setThumbDirection] =
     React.useState<ThumbReaction>("up");
-  const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
-    string | null
-  >(null);
-  const [selectedPredefinedAnswer, setSelectedPredefinedAnswer] =
-    React.useState<FeedbackPredefinedAnswerType | null>(null);
-  const [isConversationShared, setIsConversationShared] = React.useState(
-    feedback?.isConversationShared ?? false
-  );
+
+  const form = useForm<FeedbackFormValues>({
+    resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
+    defaultValues: {
+      feedbackContent: "",
+      isConversationShared: true,
+    },
+  });
+
+  const openDialog = (direction: ThumbReaction) => {
+    setThumbDirection(direction);
+    setIsDialogOpen(true);
+  };
 
   const closeDialog = () => {
     setIsDialogOpen(false);
-    setSelectedPredefinedAnswer(null);
-    setLocalFeedbackContent(null);
-    setIsConversationShared(false);
+    form.reset();
   };
 
-  const handleSubmit = async () => {
-    const details = localFeedbackContent?.trim() ?? "";
-    const predefinedAnswer = selectedPredefinedAnswer?.trim() ?? "";
-
-    const feedbackContent = [predefinedAnswer, details]
-      .filter(Boolean)
-      .join("\n\n");
+  const handleSubmit = form.handleSubmit(async (data) => {
+    const feedbackContent = data.feedbackContent.trim() || null;
 
     await onSubmitThumb({
       thumb: thumbDirection,
       shouldRemoveExistingFeedback: false,
-      feedbackContent: feedbackContent || null,
-      isConversationShared,
+      feedbackContent,
+      isConversationShared: data.isConversationShared,
     });
     closeDialog();
-  };
+  });
 
   const handleThumbClick = async (direction: ThumbReaction) => {
     const shouldRemoveExistingFeedback = feedback?.thumb === direction;
@@ -110,17 +109,8 @@ export function FeedbackSelector({
       return;
     }
 
-    setThumbDirection(direction);
-    setSelectedPredefinedAnswer(null);
-    setLocalFeedbackContent(null);
-    setIsConversationShared(true);
-    setIsDialogOpen(true);
+    openDialog(direction);
   };
-
-  const canSubmit =
-    thumbDirection === "up" ||
-    !!selectedPredefinedAnswer ||
-    (localFeedbackContent?.trim() ?? "") !== "";
 
   return (
     <div className="flex items-center">
@@ -135,13 +125,14 @@ export function FeedbackSelector({
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
-          tooltip="Report an issue with this answer"
-          variant={feedback?.thumb === "down" ? "primary" : "outline"}
+          tooltip="Improve this agent"
+          variant="outline"
           size="xs"
           disabled={isSubmittingThumb}
-          onClick={() => handleThumbClick("down")}
-          icon={HandThumbDownIcon}
-          className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
+          onClick={() => openDialog("down")}
+          icon={MagicIcon}
+          label="Improve this agent"
+          className="text-muted-foreground"
         />
       </ButtonGroup>
 
@@ -153,83 +144,86 @@ export function FeedbackSelector({
           }
         }}
       >
-        <DialogContent size="lg">
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>
-              {thumbDirection === "down"
-                ? "What’s wrong with this answer?"
-                : "Glad you liked it! Tell us more?"}
+              <span className="flex items-center gap-2">
+                Improve @{agentName}
+              </span>
             </DialogTitle>
           </DialogHeader>
 
-          <DialogContainer>
+          <DialogContainer className="py-3">
             {isSubmittingThumb ? (
               <div className="m-3 flex items-center justify-center">
                 <Spinner size="sm" />
               </div>
             ) : (
               <div className="flex flex-col gap-4 pt-2">
-                {thumbDirection === "down" && (
-                  <div className="flex flex-wrap gap-2">
-                    {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
-                      const isSelected = selectedPredefinedAnswer === answer;
-                      return (
-                        <Button
-                          key={answer}
-                          size="xs"
-                          variant={isSelected ? "primary" : "outline"}
-                          label={answer}
-                          onClick={() =>
-                            setSelectedPredefinedAnswer(
-                              isSelected ? null : answer
-                            )
-                          }
-                        />
-                      );
-                    })}
+                <div>
+                  <div className="text-sm font-semibold mb-2">
+                    {thumbDirection === "down"
+                      ? "What should the agent do differently?"
+                      : "Glad you liked it! Tell us more?"}
                   </div>
-                )}
-                <TextArea
-                  placeholder="Share details (optional)"
-                  resize="vertical"
-                  rows={5}
-                  value={localFeedbackContent ?? ""}
-                  onChange={(e) => setLocalFeedbackContent(e.target.value)}
-                />
-                <FeedbackSelectorPopoverContent
-                  owner={owner}
-                  agentConfigurationId={agentConfigurationId}
-                  isGlobalAgent={isGlobalAgent}
-                />
-
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="share-conversation"
-                    checked={isConversationShared}
-                    onCheckedChange={(value) => {
-                      setIsConversationShared(!!value);
-                    }}
+                  <Controller
+                    control={form.control}
+                    name="feedbackContent"
+                    render={({ field, fieldState }) => (
+                      <div>
+                        <TextArea
+                          placeholder={
+                            thumbDirection === "down"
+                              ? "Describe what didn’t work"
+                              : "Share details (optional)"
+                          }
+                          resize="vertical"
+                          rows={5}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          error={fieldState.error?.message ?? null}
+                          showErrorLabel
+                        />
+                      </div>
+                    )}
                   />
-                  <Label htmlFor="share-conversation">
-                    Include my full conversation with this feedback.
-                  </Label>
                 </div>
+
+                <Controller
+                  control={form.control}
+                  name="isConversationShared"
+                  render={({ field }) => (
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="share-conversation"
+                        checked={field.value}
+                        onCheckedChange={(value) => {
+                          field.onChange(!!value);
+                        }}
+                        size="xs"
+                        className="mt-1"
+                      />
+                      <div className="flex flex-col">
+                        <Label htmlFor="share-conversation">
+                          Share conversation with the agent’s builders
+                        </Label>
+                        <span className="text-xs text-muted-foreground">
+                          Visible to whoever manages this agent.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
             )}
           </DialogContainer>
 
           <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              disabled: isSubmittingThumb,
-              onClick: closeDialog,
-            }}
             rightButtonProps={{
               label: "Submit",
               variant: "primary",
               onClick: handleSubmit,
-              disabled: isSubmittingThumb || !canSubmit,
+              disabled: isSubmittingThumb,
             }}
           />
         </DialogContent>
