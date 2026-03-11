@@ -150,6 +150,28 @@ function itemToEvents(
   }
 }
 
+export function responseToLLMEvents(
+  response: Response,
+  metadata: LLMClientMetadata
+): LLMEvent[] {
+  const events = responseCompleted(response, metadata);
+  const aggregate = new SuccessAggregate();
+  for (const event of events) {
+    aggregate.add(event);
+  }
+  return [
+    ...events,
+    {
+      type: "success",
+      aggregated: aggregate.aggregated,
+      textGenerated: aggregate.textGenerated,
+      reasoningGenerated: aggregate.reasoningGenerated,
+      toolCalls: aggregate.toolCalls,
+      metadata,
+    },
+  ];
+}
+
 function responseCompleted(
   response: Response,
   metadata: LLMClientMetadata
