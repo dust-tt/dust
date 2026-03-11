@@ -113,6 +113,7 @@ impl MCPConnectionProvider {
         client_secret: Option<&str>,
         use_basic_auth: bool,
         resource: Option<&str>,
+        scope: Option<&str>,
     ) -> Result<serde_json::Value, ProviderHttpRequestError> {
         let grant_type = "refresh_token";
 
@@ -129,6 +130,11 @@ impl MCPConnectionProvider {
         // Include resource parameter per RFC 8707 if provided.
         if let Some(resource) = resource {
             form_data.push(("resource", resource));
+        }
+
+        // Add scope to refresh request (needed for Azure Entra v2 endpoints)
+        if let Some(scope) = scope {
+            form_data.push(("scope", scope));
         }
 
         let mut req = self
@@ -284,10 +290,10 @@ impl Provider for MCPConnectionProvider {
             Some("client_secret_basic")
         ) && client_secret.is_some();
 
-        // Try with resource parameter first. If the auth server rejects with 400
-        // (many don't support RFC 8707), retry without resource. Per RFC 8707 §5 the auth
-        // server SHOULD remember the resource from the original grant, so omitting it in
-        // refresh is valid.
+        // First try with resource parameter (if any) but without scope.
+        // On failure:
+        //   - If there was a resource, retry without it (the auth server may not support RFC 8707).
+        //   - If there was no resource, retry with scope (needed for e.g. Azure Entra v2).
         let raw_json = match self
             .execute_refresh_request(
                 &metadata.token_endpoint,
@@ -296,24 +302,47 @@ impl Provider for MCPConnectionProvider {
                 client_secret.as_deref(),
                 use_basic_auth,
                 metadata.resource.as_deref(),
+                None,
             )
             .await
         {
             Ok(json) => json,
-            Err(ProviderHttpRequestError::RequestFailed { status, .. })
-                if status == 400 && metadata.resource.is_some() =>
-            {
-                info!("MCP refresh failed with resource parameter, retrying without it");
-                self.execute_refresh_request(
-                    &metadata.token_endpoint,
-                    &refresh_token,
-                    &client_id,
-                    client_secret.as_deref(),
-                    use_basic_auth,
-                    None,
-                )
-                .await
-                .map_err(|e| self.handle_provider_request_error(e))?
+            Err(ProviderHttpRequestError::RequestFailed {
+                status, message, ..
+            }) if status == 400 => {
+                if metadata.resource.is_some() {
+                    info!(
+                        message,
+                        "MCP refresh failed with resource parameter, retrying without it"
+                    );
+                    self.execute_refresh_request(
+                        &metadata.token_endpoint,
+                        &refresh_token,
+                        &client_id,
+                        client_secret.as_deref(),
+                        use_basic_auth,
+                        None,
+                        None,
+                    )
+                    .await
+                    .map_err(|e| self.handle_provider_request_error(e))?
+                } else {
+                    info!(
+                        message,
+                        "MCP refresh failed without scope, retrying with scope"
+                    );
+                    self.execute_refresh_request(
+                        &metadata.token_endpoint,
+                        &refresh_token,
+                        &client_id,
+                        client_secret.as_deref(),
+                        use_basic_auth,
+                        None,
+                        metadata.scope.as_deref(),
+                    )
+                    .await
+                    .map_err(|e| self.handle_provider_request_error(e))?
+                }
             }
             Err(e) => return Err(self.handle_provider_request_error(e)),
         };
