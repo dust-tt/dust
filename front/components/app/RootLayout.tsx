@@ -4,6 +4,7 @@ import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import { Notification } from "@dust-tt/sparkle";
+import { ConversationSidePanelProvider } from "../assistant/conversation/ConversationSidePanelContext";
 
 /**
  * This layout is used in _app only
@@ -16,7 +17,9 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <NoOpDesktopNavigationProvider>
           <ConfirmPopupArea>
-            <Notification.Area>{children}</Notification.Area>
+            <ConversationSidePanelProvider>
+              <Notification.Area>{children}</Notification.Area>
+            </ConversationSidePanelProvider>
           </ConfirmPopupArea>
         </NoOpDesktopNavigationProvider>
       </SidebarProvider>

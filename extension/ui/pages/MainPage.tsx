@@ -1,9 +1,9 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
-import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useConversation } from "@app/hooks/conversations/useConversation";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
@@ -71,25 +71,31 @@ export const MainPage = () => {
       }
       rightActions={
         conversationId ? (
-          <ConversationMenu
-            activeConversationId={conversationId}
-            conversation={conversation}
-            owner={workspace}
-            trigger={
-              <Button
-                size="sm"
-                variant="ghost"
-                icon={MoreIcon}
-                aria-label="Conversation menu"
-              />
-            }
-            isConversationDisplayed={true}
-            isOpen={isMenuOpen}
-            onOpenChange={handleMenuOpenChange}
-            triggerPosition={menuTriggerPosition}
-            displayOpenInBrowser
-            openDetailsInNewTab
-          />
+          <div className="flex items-center gap-2">
+            <ConversationFilesPopover
+              conversationId={conversationId}
+              owner={workspace}
+            />
+            <ConversationMenu
+              activeConversationId={conversationId}
+              conversation={conversation}
+              owner={workspace}
+              trigger={
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={MoreIcon}
+                  aria-label="Conversation menu"
+                />
+              }
+              isConversationDisplayed={true}
+              isOpen={isMenuOpen}
+              onOpenChange={handleMenuOpenChange}
+              triggerPosition={menuTriggerPosition}
+              displayOpenInBrowser
+              openDetailsInNewTab
+            />
+          </div>
         ) : (
           <div className="items-right flex flex-row space-x-1">
             <UserDropdownMenu />
@@ -105,18 +111,16 @@ export const MainPage = () => {
         </div>
       )}
       <BlockedActionsProvider owner={workspace} conversation={conversation}>
-        <ConversationSidePanelProvider>
-          <GenerationContextProvider>
-            <ConversationContainer
-              workspace={workspace}
-              user={user}
-              subscription={subscription}
-              conversationId={conversationId}
-              conversation={conversation}
-              serverId={serverId}
-            />
-          </GenerationContextProvider>
-        </ConversationSidePanelProvider>
+        <GenerationContextProvider>
+          <ConversationContainer
+            workspace={workspace}
+            user={user}
+            subscription={subscription}
+            conversationId={conversationId}
+            conversation={conversation}
+            serverId={serverId}
+          />
+        </GenerationContextProvider>
       </BlockedActionsProvider>
     </ConversationLayout>
   );
