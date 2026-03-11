@@ -14,6 +14,7 @@ import {
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import type { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
@@ -56,9 +57,11 @@ import {
 } from "@app/types/assistant/models/openai";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
+type CustomModelId = (typeof CUSTOM_MODEL_IDS)[number];
+
 export const MODELS: Record<
   | OpenAIWhitelistedModelId
-  | AnthropicWhitelistedModelId
+  | Exclude<AnthropicWhitelistedModelId, CustomModelId>
   | GoogleAIStudioWhitelistedModelId
   | MistralWhitelistedModelId
   | FireworksWhitelistedModelId,
