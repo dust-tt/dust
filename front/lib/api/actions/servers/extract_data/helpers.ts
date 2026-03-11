@@ -171,6 +171,8 @@ export async function generateProcessToolOutput({
     contentType: jsonFile.contentType,
     snippet: jsonSnippet,
     isInProjectContext: jsonFile.useCase === "project_context",
+    createdAt: jsonFile.createdAt.getTime(),
+    updatedAt: jsonFile.updatedAt.getTime(),
   };
   const timeFrameAsString = timeFrame
     ? "the last " +

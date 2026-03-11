@@ -95,6 +95,7 @@ export function rewriteContentForModel(
   ) {
     const attachment = getAttachmentFromFile({
       fileId: content.resource.fileId,
+      source: "agent",
       contentType: content.resource.contentType,
       title: content.resource.title,
       snippet: content.resource.snippet,

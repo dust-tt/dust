@@ -96,6 +96,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -351,6 +352,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -403,6 +405,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.txt",
           contentType: "text/plain",
           contentFragmentVersion: "latest",
@@ -451,6 +454,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.txt",
           contentType: "text/plain",
           contentFragmentVersion: "latest",
@@ -490,6 +494,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -532,6 +537,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -582,6 +588,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -660,6 +667,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
