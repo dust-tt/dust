@@ -7,9 +7,12 @@ import {
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { Op } from "sequelize";
+
+const statsDClient = getStatsDClient();
 
 const COST_WARNING_THRESHOLDS_USD = [10, 50, 100] as const;
 const COST_THRESHOLD_CROSSED_METRIC = "agent_loop.cost_threshold_crossed";

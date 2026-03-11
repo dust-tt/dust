@@ -16,11 +16,11 @@ vi.mock("@app/logger/logger", () => ({
   },
 }));
 
-vi.mock("@app/logger/statsDClient", () => ({
-  statsDClient: {
+vi.mock("@app/lib/utils/statsd", () => ({
+  getStatsDClient: () => ({
     increment: vi.fn(),
     decrement: vi.fn(),
-  },
+  }),
 }));
 
 describe("getRedisStreamClient", () => {

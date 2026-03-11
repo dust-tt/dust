@@ -14,13 +14,16 @@ import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+const statsDClient = getStatsDClient();
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 

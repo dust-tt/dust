@@ -1,6 +1,7 @@
 import config from "@app/lib/file_storage/config";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
 import {
@@ -12,6 +13,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
+
+const statsDClient = getStatsDClient();
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,

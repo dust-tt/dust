@@ -1,12 +1,15 @@
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { createRedisStreamClient } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import tracer from "@app/logger/tracer";
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
 import { commandOptions } from "redis";
+
+const statsDClient = getStatsDClient();
 
 type EventCallback = (event: EventPayload | "close") => void;
 

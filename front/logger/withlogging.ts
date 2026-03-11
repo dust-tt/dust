@@ -10,6 +10,7 @@ import type {
   BaseResource,
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import tracer from "@app/logger/tracer";
 import type {
   APIErrorWithStatusCode,
@@ -24,7 +25,8 @@ import type {
   NextApiResponse,
 } from "next";
 import logger from "./logger";
-import { statsDClient } from "./statsDClient";
+
+const statsDClient = getStatsDClient();
 
 export type RequestContext = {
   [key: string]: ResourceLogJSON;
