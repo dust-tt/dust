@@ -1,5 +1,7 @@
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import {
   isAgentMessageType,
   isUserMessageType,
@@ -69,9 +71,18 @@ function truncateContent(content: string | null): {
  * Pure formatting function that renders a conversation as text for shrink-wrap.
  * Separated from the DB-fetching logic so it can be reused in tests.
  */
+export interface ShrinkWrapFeedback {
+  thumbDirection: AgentMessageFeedbackDirection;
+  content: string | null;
+}
+
 export function formatConversationForShrinkWrap(
   conversation: ShrinkWrapConversationData,
-  options?: { fromMessageIndex?: number; toMessageIndex?: number }
+  options?: {
+    fromMessageIndex?: number;
+    toMessageIndex?: number;
+    feedbackByMessageId?: Map<string, ShrinkWrapFeedback[]>;
+  }
 ): string {
   const messages = conversation.messages;
   const from = options?.fromMessageIndex ?? 0;
@@ -171,21 +182,35 @@ export function formatConversationForShrinkWrap(
     lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
     lines.push(content ?? "_empty_");
     lines.push("");
+
+    // Feedback on agent messages.
+    const feedbacks = options?.feedbackByMessageId?.get(agentMsg.sId);
+    if (feedbacks && feedbacks.length > 0) {
+      lines.push("### User feedback");
+      for (const f of feedbacks) {
+        const direction = f.thumbDirection === "up" ? "👍" : "👎";
+        const comment = f.content ? `: ${f.content}` : "";
+        lines.push(`- ${direction}${comment}`);
+      }
+      lines.push("");
+    }
   }
 
   return lines.join("\n");
 }
 
-export async function getShrinkWrapedConversation(
+export async function getShrinkWrappedConversation(
   auth: Authenticator,
   {
     conversationId,
     fromMessageIndex,
     toMessageIndex,
+    includeFeedback,
   }: {
     conversationId: string;
     fromMessageIndex?: number;
     toMessageIndex?: number;
+    includeFeedback?: boolean;
   }
 ): Promise<
   Result<
@@ -217,13 +242,54 @@ export async function getShrinkWrapedConversation(
     }
   }
 
+  // Optionally fetch feedback and build a map of message sId → feedbacks.
+  let feedbackByMessageId: Map<string, ShrinkWrapFeedback[]> | undefined;
+  if (includeFeedback) {
+    const feedbacks =
+      await AgentMessageFeedbackResource.listByConversationModelId(
+        auth,
+        conversation.id
+      );
+
+    if (feedbacks.length > 0) {
+      // Build agentMessageId (ModelId) → message sId map from the conversation.
+      const agentMessageIdToSId = new Map<number, string>();
+      for (const messageVersions of conversation.content) {
+        if (messageVersions.length === 0) {
+          continue;
+        }
+        const lastVersion = messageVersions[messageVersions.length - 1];
+        if (isAgentMessageType(lastVersion)) {
+          agentMessageIdToSId.set(lastVersion.agentMessageId, lastVersion.sId);
+        }
+      }
+
+      feedbackByMessageId = new Map();
+      for (const f of feedbacks) {
+        const messageId = agentMessageIdToSId.get(f.agentMessageId);
+        if (messageId) {
+          const list = feedbackByMessageId.get(messageId) ?? [];
+          list.push({
+            thumbDirection: f.thumbDirection,
+            content: f.content,
+          });
+          feedbackByMessageId.set(messageId, list);
+        }
+      }
+    }
+  }
+
   const text = formatConversationForShrinkWrap(
     {
       sId: conversation.sId,
       title: conversation.title,
       messages: flatMessages,
     },
-    { fromMessageIndex, toMessageIndex }
+    {
+      fromMessageIndex,
+      toMessageIndex,
+      feedbackByMessageId: feedbackByMessageId,
+    }
   );
 
   return new Ok({
