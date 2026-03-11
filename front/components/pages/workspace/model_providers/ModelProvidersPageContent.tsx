@@ -1,5 +1,6 @@
 import { AllProvidersToggle } from "@app/components/pages/workspace/model_providers/AllProvidersToggle";
 import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_providers/EmbeddingModelSelect";
+import { ProvidersConfigurationList } from "@app/components/pages/workspace/model_providers/ProvidersConfigurationList";
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
 import {
   REASONING_MODEL_CONFIGS,
@@ -55,7 +56,9 @@ export function ModelProvidersPageContent({
   return (
     <div className="flex flex-col gap-8">
       {plan.isByok ? (
-        <></>
+        <ProvidersConfigurationList
+          modelsDescriptionByProvider={modelsDescriptionByProvider}
+        />
       ) : (
         <>
           <AllProvidersToggle
