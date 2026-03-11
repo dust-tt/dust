@@ -496,11 +496,47 @@ export async function syncSpreadSheet(
         }
       }
 
-      const sheets = await getAllSheetsFromSpreadSheet(
-        sheetsAPI,
-        spreadsheet.data,
-        localLogger
-      );
+      let sheets: Sheet[];
+      // We do 3 local retries for 500 Internal Server Error on batchGet too.
+      // If we still get 500 after 3 retries and the activity has been retried
+      // 20+ times, we skip the file (same logic as getSpreadsheet above).
+      internalErrorsCount = 0;
+      for (;;) {
+        try {
+          sheets = await getAllSheetsFromSpreadSheet(
+            sheetsAPI,
+            spreadsheet.data,
+            localLogger
+          );
+          break;
+        } catch (err) {
+          if (isGAxiosServiceUnavailableError(err)) {
+            throw new ProviderWorkflowError(
+              "google_drive",
+              "503 - Service Unavailable from Google Sheets (batchGet)",
+              "transient_upstream_activity_error",
+              err
+            );
+          } else if (isGAxiosInternalServerError(err)) {
+            internalErrorsCount++;
+            if (internalErrorsCount > maxInternalErrors) {
+              if (Context.current().info.attempt > 20) {
+                localLogger.info(
+                  "[Spreadsheet] Consistently getting 500 Internal Server Error from Google Sheets on batchGet, skipping further processing."
+                );
+                return {
+                  isSupported: true,
+                  skipReason: "google_internal_server_error",
+                };
+              }
+            } else {
+              // Allow locally retrying the API call.
+              continue;
+            }
+          }
+          throw err;
+        }
+      }
 
       // List synced sheets.
       const syncedSheets = await GoogleDriveSheetModel.findAll({
