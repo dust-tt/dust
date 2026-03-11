@@ -3,6 +3,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
@@ -47,7 +48,21 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    // Load skill file attachments to the sandbox.
+    // Load skill file attachments to the sandbox (behind feature flag).
+    const owner = auth.getNonNullableWorkspace();
+    const featureFlags = await getFeatureFlags(owner);
+
+    let fileMessage: string | null = null;
+
+    if (!featureFlags.includes("sandbox_tools")) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Skill "${skill.name}" has been enabled.`,
+        },
+      ]);
+    }
+
     const ensureResult = await SandboxResource.ensureActive(auth, conversation);
     if (ensureResult.isErr()) {
       return new Err(
