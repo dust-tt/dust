@@ -154,7 +154,7 @@ export function registerGetPageViewTool(
               // them back to the root level in mcp_actions.ts (tryCallMCPTool).
               const resource = {
                 mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                uri: `/api/v1/w/${workspaceId}/files/${data.fileId}`,
+                uri: `/api/w/${workspaceId}/files/${data.fileId}`,
                 text: data.extractedText ?? `PDF from ${url}`,
                 _meta: {
                   fileId: data.fileId,
