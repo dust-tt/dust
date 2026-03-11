@@ -193,12 +193,14 @@ export function ManageSkillsPage() {
   }, [searchBarRef.current]);
 
   useEffect(() => {
+    if (isImportDialogOpen) {
+      return;
+    }
+
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === "/") {
         event.preventDefault();
-        if (searchBarRef.current) {
-          searchBarRef.current.focus();
-        }
+        searchBarRef.current?.focus();
       }
     };
 
@@ -206,7 +208,7 @@ export function ManageSkillsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, []);
+  }, [isImportDialogOpen]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
