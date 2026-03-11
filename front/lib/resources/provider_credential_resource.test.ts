@@ -1,7 +1,6 @@
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
-import { dustManagedLLMCredentials } from "@app/types/api/credentials";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -127,13 +126,27 @@ describe("ProviderCredentialResource", () => {
   });
 
   describe("getCredentials", () => {
-    it("returns dustManagedLLMCredentials for non-BYOK workspaces", async () => {
+    it("returns Dust-managed LLM credentials for non-BYOK workspaces", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       const credentials =
         await ProviderCredentialResource.getCredentials(authenticator);
 
-      expect(credentials).toEqual(dustManagedLLMCredentials());
+      expect(credentials).toEqual({
+        ANTHROPIC_API_KEY: "",
+        AZURE_OPENAI_API_KEY: "",
+        AZURE_OPENAI_ENDPOINT: "",
+        MISTRAL_API_KEY: "",
+        OPENAI_API_KEY: "",
+        OPENAI_BASE_URL: "",
+        OPENAI_USE_EU_ENDPOINT: "false",
+        TEXTSYNTH_API_KEY: "",
+        GOOGLE_AI_STUDIO_API_KEY: "",
+        TOGETHERAI_API_KEY: "",
+        DEEPSEEK_API_KEY: "",
+        FIREWORKS_API_KEY: "",
+        XAI_API_KEY: "",
+      });
     });
 
     it("returns mapped credentials for BYOK workspace with multiple providers", async () => {

@@ -1,5 +1,4 @@
 import type { CredentialsType, ProviderType } from "../provider";
-import type { LLMCredentialsType } from "../provider_credential";
 
 const {
   DUST_MANAGED_ANTHROPIC_API_KEY = "",
@@ -91,7 +90,7 @@ export const credentialsFromProviders = (
   return credentials;
 };
 
-export const dustManagedLLMCredentials = (): LLMCredentialsType => {
+export const dustManagedCredentials = (): CredentialsType => {
   return {
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
@@ -99,27 +98,16 @@ export const dustManagedLLMCredentials = (): LLMCredentialsType => {
     MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     OPENAI_BASE_URL: DUST_MANAGED_OPENAI_BASE_URL,
+    // In Core this will determine the openai endpoint we use (EU vs US).
     OPENAI_USE_EU_ENDPOINT: REGION === "europe-west1" ? "true" : "false",
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
+    SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
+    BROWSERLESS_API_KEY: DUST_MANAGED_BROWSERLESS_API_KEY,
     TOGETHERAI_API_KEY: DUST_MANAGED_TOGETHERAI_API_KEY,
     DEEPSEEK_API_KEY: DUST_MANAGED_DEEPSEEK_API_KEY,
     FIREWORKS_API_KEY: DUST_MANAGED_FIREWORKS_API_KEY,
     XAI_API_KEY: DUST_MANAGED_XAI_API_KEY,
-  };
-};
-
-export const dustManagedCredentials = (): CredentialsType => {
-  return {
-    ...dustManagedLLMCredentials(),
-    ...dustManagedServiceCredentials(),
-  };
-};
-
-export const dustManagedServiceCredentials = (): CredentialsType => {
-  return {
-    SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
-    BROWSERLESS_API_KEY: DUST_MANAGED_BROWSERLESS_API_KEY,
     FIRECRAWL_API_KEY: DUST_MANAGED_FIRECRAWL_API_KEY,
     ELEVENLABS_API_KEY: DUST_MANAGED_ELEVENLABS_API_KEY,
     SPIDER_API_KEY: DUST_MANAGED_SPIDER_API_KEY,

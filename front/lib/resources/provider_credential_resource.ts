@@ -7,7 +7,6 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { dustManagedLLMCredentials } from "@app/types/api/credentials";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ConnectionCredentials } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
@@ -20,6 +19,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic } from "sequelize";
@@ -46,10 +46,26 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     });
   }
 
-  static async listByWorkspace(
-    auth: Authenticator
-  ): Promise<ProviderCredentialResource[]> {
-    return this.baseFetch(auth);
+  private static get dustManagedLLMCredentials(): LLMCredentialsType {
+    const env = (key: string) =>
+      EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
+
+    return {
+      ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
+      AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
+      AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
+      MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
+      OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
+      OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
+      OPENAI_USE_EU_ENDPOINT:
+        config.getRegion() === "europe-west1" ? "true" : "false",
+      TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
+      GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
+      TOGETHERAI_API_KEY: env("DUST_MANAGED_TOGETHERAI_API_KEY"),
+      DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
+      FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
+      XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
+    };
   }
 
   private static async baseFetch(
@@ -69,20 +85,26 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     );
   }
 
+  static async listByWorkspace(
+    auth: Authenticator
+  ): Promise<ProviderCredentialResource[]> {
+    return this.baseFetch(auth);
+  }
+
   static async getCredentials(
     auth: Authenticator
   ): Promise<LLMCredentialsType> {
     const plan = auth.getNonNullablePlan();
 
     if (!plan.isByok) {
-      return dustManagedLLMCredentials();
+      return this.dustManagedLLMCredentials;
     }
 
     const providerCredentials = await this.baseFetch(auth);
 
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
-    const oauthCredentialsByProvider = await concurrentExecutor(
+    const oauthCredentials = await concurrentExecutor(
       providerCredentials,
       async (cred) => {
         const credentialRes = await oauthApi.getCredentials({
@@ -103,9 +125,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       { concurrency: 8 }
     );
 
-    return oauthCredentialsByProvider
-      .map(mapOauthCredentialToLlmCredential)
-      .reduce((acc, partial) => ({ ...acc, ...partial }), {});
+    return mapOauthCredentialsToLlmCredentials(oauthCredentials);
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
@@ -147,44 +167,47 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   }
 }
 
-function mapOauthCredentialToLlmCredential({
-  providerId,
-  content,
-}: {
-  providerId: ModelProviderIdType;
-  content: ConnectionCredentials;
-}): Partial<LLMCredentialsType> {
-  if (providerId === "noop") {
-    return {};
+function mapOauthCredentialsToLlmCredentials(
+  oauthCredentials: {
+    providerId: ModelProviderIdType;
+    content: ConnectionCredentials;
+  }[]
+): LLMCredentialsType {
+  const result: LLMCredentialsType = {};
+
+  for (const { providerId, content } of oauthCredentials) {
+    if (providerId === "noop") {
+      continue;
+    }
+
+    switch (providerId) {
+      case "openai": {
+        const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
+        const parsedContent = schema.parse(content);
+
+        result.OPENAI_API_KEY = parsedContent.api_key;
+        result.OPENAI_BASE_URL = parsedContent.base_url;
+        result.OPENAI_USE_EU_ENDPOINT =
+          config.getRegion() === "europe-west1" ? "true" : "false";
+        break;
+      }
+      case "anthropic":
+      case "mistral":
+      case "google_ai_studio":
+      case "deepseek":
+      case "fireworks":
+      case "xai":
+      case "togetherai": {
+        const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
+        const parsedContent = schema.parse(content);
+
+        result[PROVIDER_TO_CREDENTIAL_KEY[providerId]] = parsedContent.api_key;
+        break;
+      }
+      default:
+        assertNever(providerId);
+    }
   }
 
-  switch (providerId) {
-    case "openai": {
-      const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
-      const parsedContent = schema.parse(content);
-
-      return {
-        OPENAI_API_KEY: parsedContent.api_key,
-        OPENAI_BASE_URL: parsedContent.base_url,
-        OPENAI_USE_EU_ENDPOINT:
-          config.getRegion() === "europe-west1" ? "true" : "false",
-      };
-    }
-    case "anthropic":
-    case "mistral":
-    case "google_ai_studio":
-    case "deepseek":
-    case "fireworks":
-    case "xai":
-    case "togetherai": {
-      const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
-      const parsedContent = schema.parse(content);
-
-      return {
-        [PROVIDER_TO_CREDENTIAL_KEY[providerId]]: parsedContent.api_key,
-      };
-    }
-    default:
-      assertNever(providerId);
-  }
+  return result;
 }
