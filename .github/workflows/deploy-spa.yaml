@@ -47,10 +47,18 @@ on:
         type: string
         default: ""
         required: false
+      skip_slack:
+        description: "Skip Slack notifications (e.g. for PR preview deploys)"
+        type: boolean
+        default: false
+        required: false
     outputs:
       version_id:
         description: "Worker version ID from versions upload"
         value: ${{ jobs.deploy.outputs.version_id }}
+      preview_url:
+        description: "Preview URL for the deployed version"
+        value: ${{ jobs.deploy.outputs.preview_url }}
 
 concurrency:
   group: deploy-spa-${{ inputs.app }}-${{ github.ref_name }}
@@ -78,6 +86,7 @@ jobs:
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
+    if: ${{ !inputs.skip_slack }}
     needs: [prepare]
     runs-on: ubuntu-latest
     outputs:
@@ -98,9 +107,11 @@ jobs:
 
   deploy:
     needs: [prepare, notify-start]
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     outputs:
       version_id: ${{ steps.extract_version.outputs.version_id }}
+      preview_url: ${{ steps.preview_url.outputs.url }}
     permissions:
       contents: read
 
@@ -120,6 +131,11 @@ jobs:
         if: ${{ github.ref_name != 'main' }}
         run: |
           SANITIZED=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+          # Preview aliases must start with a letter (DNS label rule).
+          if [[ "$SANITIZED" =~ ^[0-9] ]]; then
+            SANITIZED="pr-${SANITIZED}"
+            SANITIZED=$(echo "$SANITIZED" | cut -c1-28 | sed 's/-$//')
+          fi
           echo "sanitized=${SANITIZED}" >> $GITHUB_OUTPUT
 
       - name: Build SPA
@@ -211,6 +227,7 @@ jobs:
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify Deploy Success
+        if: ${{ !inputs.skip_slack }}
         uses: ./.github/actions/slack-notify
         with:
           step: ${{ 'spa_preview_success' }}
@@ -222,7 +239,7 @@ jobs:
           preview_url: ${{ steps.preview_url.outputs.url }}
 
       - name: Notify Failure
-        if: failure()
+        if: ${{ failure() && !inputs.skip_slack }}
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
