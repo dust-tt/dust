@@ -414,11 +414,11 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
 // text extraction, image resize, audio transcription). Returns undefined when no transformation is
 // needed. The original file is used as-is. Processing is purely content-type-driven. Upload
 // support per use case is handled separately by the per-use-case files.
-const getProcessingFunction = (
+function getProcessingFunction(
   contentType: AllSupportedFileContentType
-): ProcessingFunction | undefined => {
+): ProcessingFunction | undefined {
   return PROCESSING_BY_CONTENT_TYPE.get(contentType);
-};
+}
 
 // Whether uploading this content type for this use case is supported. Dispatches to per-use-case
 // files that each define their own set of supported content types.

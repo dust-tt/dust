@@ -66,6 +66,10 @@ const SUPPORTED_CONTENT_TYPES: Set<AllSupportedFileContentType> = new Set([
   "text/x-perl",
   "text/x-perl-script",
   "message/rfc822",
+
+  // Dust-specific content types.
+  "text/vnd.dust.attachment.slack.thread",
+  "text/vnd.dust.attachment.pasted",
 ]);
 
 export function isSupportedForProjectContext(
