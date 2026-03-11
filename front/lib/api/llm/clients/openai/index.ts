@@ -55,7 +55,7 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     });
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,

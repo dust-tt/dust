@@ -47,7 +47,7 @@ export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
     });
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,

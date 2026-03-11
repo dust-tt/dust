@@ -341,7 +341,7 @@ export abstract class LLM<TPayload = unknown> {
    * Contract: Implement this method to return the provider-specific request object.
    * The payload is automatically captured for tracing.
    */
-  protected abstract buildRequestPayload(
+  protected abstract buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
   ): TPayload;
 
@@ -359,7 +359,7 @@ export abstract class LLM<TPayload = unknown> {
   protected async *internalStream(
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
-    const payload = this.buildRequestPayload(streamParameters);
+    const payload = this.buildStreamRequestPayload(streamParameters);
 
     // Update the generation span with the actual payload.
     this.generation?.update({ input: payload });

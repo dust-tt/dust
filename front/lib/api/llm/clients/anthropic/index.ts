@@ -109,7 +109,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     this.workspace = auth.getNonNullableWorkspace();
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
     hasConditionalJITTools,
     prompt,
@@ -159,23 +159,31 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     };
   }
 
+  private createCountTokensCallback() {
+    const shouldCountReasoningTokens =
+      this.reasoningEffort !== "none" &&
+      (this.reasoningEffort !== "light" ||
+        !!this.modelConfig.useNativeLightReasoning);
+
+    if (!shouldCountReasoningTokens) {
+      return undefined;
+    }
+
+    return (body: MessageCountTokensParams) =>
+      this.client.messages.countTokens(body);
+  }
+
   protected async *sendRequest(
     payload: BetaMessageStreamParams
   ): AsyncGenerator<LLMEvent> {
     try {
       const events = this.client.beta.messages.stream(payload);
 
-      const shouldCountReasoningTokens =
-        this.reasoningEffort !== "none" &&
-        (this.reasoningEffort !== "light" ||
-          !!this.modelConfig.useNativeLightReasoning);
-
-      const countTokens = shouldCountReasoningTokens
-        ? (body: MessageCountTokensParams) =>
-            this.client.messages.countTokens(body)
-        : undefined;
-
-      yield* streamLLMEvents(events, this.metadata, countTokens);
+      yield* streamLLMEvents(
+        events,
+        this.metadata,
+        this.createCountTokensCallback()
+      );
     } catch (err) {
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);

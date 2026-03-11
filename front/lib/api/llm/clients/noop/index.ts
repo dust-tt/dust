@@ -34,7 +34,7 @@ export class NoopLLM extends LLM<NoopRequest> {
     this.metaData = llmParameters.metaData;
   }
 
-  protected buildRequestPayload({
+  protected buildStreamRequestPayload({
     conversation,
   }: LLMStreamParameters): NoopRequest {
     const staticResponse = this.metaData?.staticResponse;
