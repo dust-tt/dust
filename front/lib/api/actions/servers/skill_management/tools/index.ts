@@ -121,7 +121,7 @@ async function loadSkillFilesToSandbox(
     }
     const content = Buffer.concat(chunks);
 
-    const writeResult = await sandbox.writeFile(auth, targetPath, content);
+    const writeResult = await sandbox.writeFile(targetPath, content);
     if (writeResult.isErr()) {
       return writeResult;
     }
