@@ -3,16 +3,14 @@ import type { AgentBuilderTriggerType } from "@app/components/agent_builder/Agen
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { ActionCard, TimeIcon } from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
-import type React from "react";
 import { useMemo } from "react";
 
-function getTriggerIconComponent(
-  trigger: AgentBuilderTriggerType
-): React.ComponentType {
+function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
   switch (trigger.kind) {
     case "schedule":
       return TimeIcon;
@@ -22,14 +20,9 @@ function getTriggerIconComponent(
           trigger.provider ? WEBHOOK_PRESETS[trigger.provider].icon : null
         )
       );
+    default:
+      assertNever(trigger);
   }
-}
-
-interface TriggerCardProps {
-  trigger: AgentBuilderTriggerType;
-  webhookSourceView: WebhookSourceViewType | undefined;
-  onRemove: () => void;
-  onEdit?: () => void;
 }
 
 function getWebhookCardDescription({
@@ -48,6 +41,13 @@ function getWebhookCardDescription({
     (webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name) +
     "'s source."
   );
+}
+
+interface TriggerCardProps {
+  trigger: AgentBuilderTriggerType;
+  webhookSourceView: WebhookSourceViewType | undefined;
+  onRemove: () => void;
+  onEdit?: () => void;
 }
 
 export function TriggerCard({
@@ -97,7 +97,7 @@ export function TriggerCard({
               label: (
                 <>
                   Managed by{" "}
-                  <span className="s-font-semibold">{trigger.editorName}</span>.
+                  <span className="font-semibold">{trigger.editorName}</span>.
                 </>
               ),
             }
