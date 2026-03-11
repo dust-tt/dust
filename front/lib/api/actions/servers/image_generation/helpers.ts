@@ -10,10 +10,9 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
-import type { CredentialsType } from "@app/types/provider";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Part } from "@google/genai";
-import { createPartFromUri, GoogleGenAI } from "@google/genai";
+import { createPartFromUri } from "@google/genai";
 import { z } from "zod";
 
 const GEMINI_SUPPORTED_IMAGE_TYPES = [
@@ -264,12 +263,6 @@ export function formatImageResponse(
       name: outputFileName,
     }))
   );
-}
-
-export function createGeminiClient(credentials: CredentialsType): GoogleGenAI {
-  return new GoogleGenAI({
-    apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
-  });
 }
 
 async function processSingleImageFile(
