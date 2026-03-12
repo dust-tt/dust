@@ -669,6 +669,20 @@ chrome.runtime.onMessage.addListener(
         })();
         return true;
 
+      case "RELOAD_TAB":
+        void (async () => {
+          try {
+            await chrome.tabs.reload(message.tabId);
+            sendResponse({ success: true });
+          } catch (error) {
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
+        return true;
+
       case "INPUT_BAR_STATUS":
         void (async () => {
           if (message.available) {
