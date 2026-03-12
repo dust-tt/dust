@@ -213,6 +213,40 @@ async function checkWriteAccess(
   }
 }
 
+/**
+ * Checks whether the caller has write access to a file before attempting a write operation.
+ * Returns an early Ok result with a view-only message when access is denied, or null to proceed.
+ */
+async function ensureWriteAccess(
+  canEdit: boolean | undefined,
+  fileId: string,
+  authInfo: ToolHandlerExtra["authInfo"]
+): Promise<ToolHandlerResult | null> {
+  if (canEdit === false) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
+      },
+    ]);
+  }
+  if (canEdit === undefined) {
+    const drive = await getDriveClient(authInfo);
+    if (drive) {
+      const accessCheck = await checkWriteAccess(drive, fileId);
+      if (accessCheck !== null && !accessCheck.canEdit) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
+          },
+        ]);
+      }
+    }
+  }
+  return null;
+}
+
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   list_drives: async ({ pageToken }, { authInfo }) => {
     const drive = await getDriveClient(authInfo);
@@ -679,28 +713,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { fileId, content, canEdit },
     { authInfo, agentLoopContext }
   ) => {
-    if (canEdit === false) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
-        },
-      ]);
+    const accessError = await ensureWriteAccess(canEdit, fileId, authInfo);
+    if (accessError) {
+      return accessError;
     }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
-    }
-    if (canEdit === undefined) {
-      const accessCheck = await checkWriteAccess(drive, fileId);
-      if (accessCheck !== null && !accessCheck.canEdit) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-          },
-        ]);
-      }
     }
 
     const finalContent = addAgentAttribution(content, { agentLoopContext });
@@ -736,28 +755,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { fileId, commentId, content, canEdit },
     { authInfo, agentLoopContext }
   ) => {
-    if (canEdit === false) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
-        },
-      ]);
+    const accessError = await ensureWriteAccess(canEdit, fileId, authInfo);
+    if (accessError) {
+      return accessError;
     }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
-    }
-    if (canEdit === undefined) {
-      const accessCheck = await checkWriteAccess(drive, fileId);
-      if (accessCheck !== null && !accessCheck.canEdit) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-          },
-        ]);
-      }
     }
 
     const finalContent = addAgentAttribution(content, { agentLoopContext });
@@ -796,27 +800,9 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { documentId, requests, canEdit },
     { authInfo, agentLoopContext }
   ) => {
-    if (canEdit === false) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
-        },
-      ]);
-    }
-    if (canEdit === undefined) {
-      const drive = await getDriveClient(authInfo);
-      if (drive) {
-        const accessCheck = await checkWriteAccess(drive, documentId);
-        if (accessCheck !== null && !accessCheck.canEdit) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-            },
-          ]);
-        }
-      }
+    const accessError = await ensureWriteAccess(canEdit, documentId, authInfo);
+    if (accessError) {
+      return accessError;
     }
     const docs = await getDocsClient(authInfo);
     if (!docs) {
@@ -871,27 +857,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     },
     { authInfo, agentLoopContext }
   ) => {
-    if (canEdit === false) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
-        },
-      ]);
-    }
-    if (canEdit === undefined) {
-      const drive = await getDriveClient(authInfo);
-      if (drive) {
-        const accessCheck = await checkWriteAccess(drive, spreadsheetId);
-        if (accessCheck !== null && !accessCheck.canEdit) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-            },
-          ]);
-        }
-      }
+    const accessError = await ensureWriteAccess(
+      canEdit,
+      spreadsheetId,
+      authInfo
+    );
+    if (accessError) {
+      return accessError;
     }
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
@@ -930,27 +902,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { spreadsheetId, requests, canEdit },
     { authInfo, agentLoopContext }
   ) => {
-    if (canEdit === false) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
-        },
-      ]);
-    }
-    if (canEdit === undefined) {
-      const drive = await getDriveClient(authInfo);
-      if (drive) {
-        const accessCheck = await checkWriteAccess(drive, spreadsheetId);
-        if (accessCheck !== null && !accessCheck.canEdit) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-            },
-          ]);
-        }
-      }
+    const accessError = await ensureWriteAccess(
+      canEdit,
+      spreadsheetId,
+      authInfo
+    );
+    if (accessError) {
+      return accessError;
     }
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
@@ -997,27 +955,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { presentationId, requests, canEdit },
     { authInfo, agentLoopContext }
   ) => {
-    if (canEdit === false) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
-        },
-      ]);
-    }
-    if (canEdit === undefined) {
-      const drive = await getDriveClient(authInfo);
-      if (drive) {
-        const accessCheck = await checkWriteAccess(drive, presentationId);
-        if (accessCheck !== null && !accessCheck.canEdit) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-            },
-          ]);
-        }
-      }
+    const accessError = await ensureWriteAccess(
+      canEdit,
+      presentationId,
+      authInfo
+    );
+    if (accessError) {
+      return accessError;
     }
     const slides = await getSlidesClient(authInfo);
     if (!slides) {
