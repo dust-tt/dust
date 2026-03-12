@@ -37,7 +37,7 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
   operations: "Operations",
   procurement: "Procurement",
   product: "Product",
-  revops: "RevOps",
+  revops: "Revenue Operations",
   sales: "Sales",
   other: "Other",
 };
