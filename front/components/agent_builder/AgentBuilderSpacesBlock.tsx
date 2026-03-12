@@ -116,31 +116,6 @@ export function AgentBuilderSpacesBlock({
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
   }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
 
-  const { displayProjectWarning, privateProjectWithoutWarning } =
-    useMemo(() => {
-      const allRequestedSpaceIds = new Set([
-        ...actionsAndSkillsRequestedSpaceIds,
-        ...additionalSpaces,
-      ]);
-
-      const selectedPrivateSpaces = allSpaces.filter(
-        (s) =>
-          s.kind !== "global" &&
-          allRequestedSpaceIds.has(s.sId) &&
-          s.isRestricted
-      );
-
-      const displayProjectWarning = selectedPrivateSpaces.length > 0;
-
-      const privateProjectWithoutWarning =
-        selectedPrivateSpaces.length === 1 &&
-        selectedPrivateSpaces[0].kind === "project"
-          ? selectedPrivateSpaces[0]
-          : null;
-
-      return { displayProjectWarning, privateProjectWithoutWarning };
-    }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
-
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
     const actionsToRemove = spaceIdToActions[space.sId] || [];
@@ -237,24 +212,6 @@ export function AgentBuilderSpacesBlock({
               {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
             </strong>
             .
-            {isProjectsEnabled &&
-              displayProjectWarning &&
-              (privateProjectWithoutWarning ? (
-                <>
-                  <br />
-                  <br />
-                  Based on your selection of knowledge and capabilities, this
-                  agent will only be available in the following project:{" "}
-                  <strong>{privateProjectWithoutWarning.name}</strong>
-                </>
-              ) : (
-                <>
-                  <br />
-                  <br />
-                  Based on your selection of knowledge and capabilities, this
-                  agent will be unavailable in project conversations.
-                </>
-              ))}
           </ContentMessage>
         </div>
       )}
