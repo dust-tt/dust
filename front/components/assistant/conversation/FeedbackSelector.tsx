@@ -294,7 +294,6 @@ export function FeedbackSelector({
                 <FeedbackSelectorPopoverContent
                   owner={owner}
                   agentConfigurationId={agentConfigurationId}
-                  agentName={agentName}
                   isGlobalAgent={isGlobalAgent}
                 />
               </div>
