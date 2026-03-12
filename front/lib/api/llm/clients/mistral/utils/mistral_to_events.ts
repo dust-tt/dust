@@ -16,12 +16,16 @@ import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import type {
+  ChatCompletionResponse,
   CompletionEvent,
   ContentChunk,
   ToolCall,
   UsageInfo,
 } from "@mistralai/mistralai/models/components";
-import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
+import {
+  CompletionResponseStreamChoiceFinishReason,
+  FinishReason,
+} from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
 export async function* streamLLMEvents({
@@ -293,4 +297,131 @@ function contentChunkToLLMEvent({
       // Only support text for now
       return null;
   }
+}
+
+/**
+ * Converts a non-streaming ChatCompletionResponse (batch result) to LLM events.
+ */
+export function chatCompletionToLLMEvents(
+  response: ChatCompletionResponse,
+  metadata: LLMClientMetadata
+): LLMEvent[] {
+  const events: LLMEvent[] = [];
+  const aggregate = new SuccessAggregate();
+
+  function addEvent(event: LLMEvent): void {
+    aggregate.add(event);
+    events.push(event);
+  }
+
+  addEvent({
+    type: "interaction_id",
+    content: { modelInteractionId: response.id },
+    metadata,
+  });
+
+  if (!response.choices || response.choices.length === 0) {
+    addEvent(
+      new EventError(
+        {
+          type: "stream_error",
+          message: "Mistral batch response has no choices",
+          isRetryable: false,
+        },
+        metadata
+      )
+    );
+    return events;
+  }
+
+  const choice = response.choices[0];
+  switch (choice.finishReason) {
+    case FinishReason.Stop:
+    case FinishReason.ToolCalls: {
+      const { content, toolCalls } = choice.message;
+      if (content) {
+        const text = batchContentToText(content);
+        if (text.length > 0) {
+          addEvent({
+            type: "text_generated",
+            content: { text },
+            metadata,
+          });
+        }
+      }
+      if (toolCalls) {
+        for (const toolCall of toolCalls) {
+          const toolEvent = toToolEvent({ toolCall, metadata });
+          if (toolEvent) {
+            addEvent(toolEvent);
+          }
+        }
+      }
+      break;
+    }
+    case FinishReason.Length:
+    case FinishReason.ModelLength: {
+      addEvent(
+        new EventError(
+          {
+            type: "maximum_length",
+            isRetryable: true,
+            message: "Maximum length reached",
+            originalError: { choice },
+          },
+          metadata
+        )
+      );
+      break;
+    }
+    case FinishReason.Error: {
+      addEvent(
+        new EventError(
+          {
+            type: "stop_error",
+            isRetryable: true,
+            message: "An error occurred during completion",
+            originalError: { choice },
+          },
+          metadata
+        )
+      );
+      break;
+    }
+    default: {
+      logger.error(
+        `Unknown Mistral batch finish reason: ${choice.finishReason}`
+      );
+      break;
+    }
+  }
+
+  addEvent(toTokenUsage({ usage: response.usage, metadata }));
+
+  addEvent({
+    type: "success",
+    aggregated: aggregate.aggregated,
+    textGenerated: aggregate.textGenerated,
+    reasoningGenerated: aggregate.reasoningGenerated,
+    toolCalls: aggregate.toolCalls,
+    metadata,
+  });
+
+  return events;
+}
+
+function batchContentToText(content: string | Array<ContentChunk>): string {
+  if (isString(content)) {
+    return content;
+  }
+  return content
+    .map((chunk) => {
+      switch (chunk.type) {
+        case "text":
+          return chunk.text;
+        default:
+          return "";
+      }
+    })
+    .join("");
 }
