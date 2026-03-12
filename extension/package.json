@@ -1,11 +1,11 @@
 {
   "name": "@dust-tt/extension",
-  "version": "0.0.1",
+  "version": "0.0.36",
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
-    "dev:chrome": "npm run clean && tsx run/watch.ts --platform=chrome --mode=development",
-    "dev:front": "npm run clean && tsx run/watch.ts --platform=front --mode=development",
+    "dev:chrome": "tsx run/watch.ts --platform=chrome --mode=development",
+    "dev:front": "tsx run/watch.ts --platform=front --mode=development",
     "package:chrome:production": "tsx run/build.ts --platform=chrome",
     "package:front:production": "tsx run/build.ts --platform=front",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
