@@ -1,6 +1,5 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -56,11 +55,7 @@ export async function getExecutionStatusFromConfig(
       // Medium stake requires per-argument, per-agent approval.
       // If context is missing, we block.
       const user = auth.user();
-      if (
-        !user ||
-        !context ||
-        !isServerSideMCPToolConfiguration(actionConfiguration)
-      ) {
+      if (!user || !context) {
         return { status: "blocked_validation_required" };
       }
       const { agentId, toolInputs } = context;

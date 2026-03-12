@@ -29,6 +29,7 @@ import {
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
+  getClientSideToolArgumentsRequiringApproval,
   getClientSideToolStake,
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
@@ -250,6 +251,10 @@ function makeClientSideMCPToolConfigurations(
     // of the same server name, allowing for consistent tool behavior.
     toolServerId: getBaseServerId(config.clientSideMcpServerId),
     icon: config.icon,
+    argumentsRequiringApproval: getClientSideToolArgumentsRequiringApproval(
+      config.clientSideMcpServerId,
+      tool.name
+    ),
   }));
 }
 
