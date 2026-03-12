@@ -90,6 +90,17 @@ export interface ToolManifest {
 }
 
 // ---------------------------------------------------------------------------
+// Capabilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Declarative tags describing what a sandbox template supports.
+ * The Docker image must actually have the corresponding tooling installed. The capability tag tells
+ * orchestration it is safe to attempt the feature.
+ */
+export type SandboxCapability = "gcsfuse";
+
+// ---------------------------------------------------------------------------
 // Base Image
 // ---------------------------------------------------------------------------
 
