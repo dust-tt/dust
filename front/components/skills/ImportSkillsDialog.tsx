@@ -23,6 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Hoverable,
   InformationCircleIcon,
   Input,
   PlusIcon,
@@ -430,18 +431,19 @@ function FileRequirements() {
       <ul className="list-disc pl-4 text-sm">
         <li>The imported .zip or file must include a SKILL.md file</li>
         <li>
-          The SKILL.md file must contain the skill name and description
-          formatted in YAML
+          This file must contain the skill name and description formatted in
+          YAML
         </li>
       </ul>
-      <a
+      Read more about importing skills&nbsp;
+      <Hoverable
+        variant="highlight"
         href="https://agentskills.io/specification"
         target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 inline-block text-sm text-action-500 hover:text-action-600 dark:text-action-500-night dark:hover:text-action-600-night"
       >
-        Read more about importing skills
-      </a>
+        here
+      </Hoverable>
+      .
     </ContentMessage>
   );
 }
