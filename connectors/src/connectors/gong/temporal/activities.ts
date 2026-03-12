@@ -498,15 +498,15 @@ export async function gongDeleteExcludedTranscriptsActivity({
 }: {
   connectorId: ModelId;
   excludeKeywords: string[];
-  lastId?: ModelId;
+  lastId: ModelId | null;
   maxTranscriptId: ModelId;
 }): Promise<{ hasMore: boolean; lastId: ModelId | null }> {
   const connector = await fetchGongConnector({ connectorId });
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const transcripts = await GongTranscriptResource.fetchBatch(connector, {
+    ...(lastId ? { lastId } : {}),
     limit: GARBAGE_COLLECT_BATCH_SIZE,
-    lastId,
   });
 
   if (transcripts.length === 0) {

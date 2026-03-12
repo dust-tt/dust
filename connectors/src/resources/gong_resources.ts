@@ -6,7 +6,7 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import { normalizeError } from "@connectors/types";
+import { type ModelId, normalizeError } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type {
@@ -455,7 +455,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       orderBy = "ASC",
     }: {
       limit: number;
-      lastId?: number;
+      lastId?: ModelId;
       orderBy?: "ASC" | "DESC";
     }
   ): Promise<GongTranscriptResource[]> {
