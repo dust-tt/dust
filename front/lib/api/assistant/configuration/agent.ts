@@ -57,6 +57,7 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   AgentModelConfigurationType,
+  AgentReinforcementMode,
   AgentStatus,
   GlobalAgentContext,
   LightAgentConfigurationType,
@@ -118,6 +119,7 @@ export async function createPendingAgentConfiguration(
         reasoningEffort:
           CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
         maxStepsPerRun: 8,
+        reinforcement: "auto",
         pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
         workspaceId: owner.id,
         authorId: user.id,
@@ -418,6 +420,7 @@ export async function createAgentConfiguration(
     requestedSpaceIds,
     tags,
     editors,
+    reinforcement,
   }: {
     name: string;
     description: string;
@@ -432,6 +435,7 @@ export async function createAgentConfiguration(
     requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
+    reinforcement?: AgentReinforcementMode;
   },
   transaction?: Transaction
 ): Promise<Result<LightAgentConfigurationType, Error>> {
@@ -603,6 +607,7 @@ export async function createAgentConfiguration(
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
+            reinforcement: reinforcement ?? "auto",
           },
           {
             where: {
@@ -647,6 +652,7 @@ export async function createAgentConfiguration(
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
+            reinforcement: reinforcement ?? "auto",
           },
           {
             transaction: t,
@@ -801,6 +807,7 @@ export async function createAgentConfiguration(
         SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
       ),
       tags,
+      reinforcement: reinforcement ?? "auto",
       canRead: true,
       canEdit: true,
     };

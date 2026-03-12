@@ -119,6 +119,7 @@ async function handler(
           templateId: agentConfiguration.templateId,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           tags: agentConfiguration.tags,
+          reinforcement: agentConfiguration.reinforcement,
           canRead: agentConfiguration.canRead,
           canEdit: agentConfiguration.canEdit,
           editors: [],
