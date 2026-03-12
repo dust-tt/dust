@@ -1,5 +1,4 @@
 import fileStorageConfig from "@app/lib/file_storage/config";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -49,20 +48,28 @@ function getAuthClient() {
  *  - Object list restricted to `prefix/` via the objectListPrefix API attribute.
  *  - Object read+write restricted to `prefix/` via resource.name condition.
  */
-export async function mintDownscopedGcsToken({
+async function getSourceToken(): Promise<Result<string, Error>> {
+  try {
+    const client = await getAuthClient();
+    const { token } = await client.getAccessToken();
+    if (!token) {
+      return new Err(new Error("GCP auth returned no access token."));
+    }
+    return new Ok(token);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+async function exchangeToken({
   bucket,
   prefix,
+  sourceToken,
 }: {
   bucket: string;
   prefix: string;
-}): Promise<Result<DownscopedGcsToken, Error>> {
-  const client = await getAuthClient();
-  const { token: sourceToken } = await client.getAccessToken();
-
-  if (!sourceToken) {
-    return new Err(new Error("Failed to obtain source access token from GCP."));
-  }
-
+  sourceToken: string;
+}): Promise<Result<StsTokenResponse, Error>> {
   try {
     const response = await fetch("https://sts.googleapis.com/v1/token", {
       method: "POST",
@@ -87,20 +94,38 @@ export async function mintDownscopedGcsToken({
       );
     }
 
-    const data = (await response.json()) as StsTokenResponse;
-
-    return new Ok({
-      accessToken: data.access_token,
-      expiresInSeconds: data.expires_in,
-    });
+    return new Ok((await response.json()) as StsTokenResponse);
   } catch (err) {
-    logger.error(
-      { err: normalizeError(err), bucket, prefix },
-      "Failed to mint downscoped GCS token"
-    );
-
     return new Err(normalizeError(err));
   }
+}
+
+export async function mintDownscopedGcsToken({
+  bucket,
+  prefix,
+}: {
+  bucket: string;
+  prefix: string;
+}): Promise<Result<DownscopedGcsToken, Error>> {
+  const sourceTokenResult = await getSourceToken();
+  if (sourceTokenResult.isErr()) {
+    return sourceTokenResult;
+  }
+
+  const stsResult = await exchangeToken({
+    bucket,
+    prefix,
+    sourceToken: sourceTokenResult.value,
+  });
+  if (stsResult.isErr()) {
+    return stsResult;
+  }
+
+  const data = stsResult.value;
+  return new Ok({
+    accessToken: data.access_token,
+    expiresInSeconds: data.expires_in,
+  });
 }
 
 /**
