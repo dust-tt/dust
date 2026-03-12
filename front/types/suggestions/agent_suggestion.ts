@@ -69,8 +69,19 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
+export const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
+export type KnowledgeSuggestionMethod =
+  (typeof KNOWLEDGE_SUGGESTION_METHODS)[number];
+
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
+  method: z
+    .enum(KNOWLEDGE_SUGGESTION_METHODS)
+    .optional()
+    .default("search")
+    .describe(
+      "'Search' for semantic search on unstructured data. 'Query table' to generate SQL-like queries against structured data."
+    ),
   dataSourceViewId: z.string(),
   description: z.string().optional(),
 });
@@ -207,7 +218,7 @@ export interface ModelSuggestionRelations {
 
 export interface KnowledgeSuggestionRelations {
   dataSourceView: DataSourceViewType;
-  searchServerView: MCPServerViewType;
+  serverView: MCPServerViewType;
 }
 
 export type AgentToolsSuggestionWithRelationsType = AgentToolsSuggestionType & {
