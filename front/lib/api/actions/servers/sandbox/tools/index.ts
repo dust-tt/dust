@@ -141,13 +141,13 @@ export function createSandboxTools(
         return new Err(new MCPError(hostResult.error.message));
       }
 
-      const { host, trafficAccessToken } = hostResult.value;
+      const { host, accessToken } = hostResult.value;
       const url = `https://${host}`;
 
       const parts = [`URL: ${url}`];
-      if (trafficAccessToken) {
+      if (accessToken) {
         parts.push(
-          `Authentication required: include header \`e2b-traffic-access-token: ${trafficAccessToken}\` in all requests to this URL.`
+          `Authentication required: include header \`${accessToken.header}: ${accessToken.value}\` in all requests to this URL.`
         );
       }
 

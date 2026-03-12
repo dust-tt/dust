@@ -242,7 +242,14 @@ export class E2BSandboxProvider implements SandboxProvider {
 
     return new Ok({
       host: sandbox.getHost(port),
-      trafficAccessToken: sandbox.trafficAccessToken,
+      ...(sandbox.trafficAccessToken
+        ? {
+            accessToken: {
+              header: "e2b-traffic-access-token",
+              value: sandbox.trafficAccessToken,
+            },
+          }
+        : {}),
     });
   }
 

@@ -48,8 +48,11 @@ export interface SandboxCreateConfig {
 export interface SandboxHostInfo {
   /** Public hostname (without protocol) for the sandbox port. */
   host: string;
-  /** Access token required in the `e2b-traffic-access-token` header when public traffic is restricted. */
-  trafficAccessToken?: string;
+  /** Credentials required to access the sandbox URL when public traffic is restricted. */
+  accessToken?: {
+    header: string;
+    value: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
