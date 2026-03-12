@@ -29,7 +29,10 @@ export type ToolProfile = (typeof TOOL_PROFILES)[number];
 
 export interface ToolEntry {
   readonly name: string;
+  readonly version?: string;
   readonly description: string;
+  readonly usage?: string;
+  readonly returns?: string;
   readonly runtime: ToolRuntime;
   readonly profile?: ToolProfile;
 }
@@ -98,7 +101,10 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
 
 export interface ManifestToolEntry {
   readonly name: string;
+  readonly version?: string;
   readonly description: string;
+  readonly usage?: string;
+  readonly returns?: string;
 }
 
 export interface ToolManifest {

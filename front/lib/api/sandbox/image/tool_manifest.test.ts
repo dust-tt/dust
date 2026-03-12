@@ -52,6 +52,50 @@ describe("createToolManifest()", () => {
     expect(manifest.tools.python).toBeUndefined();
     expect(manifest.tools.node).toBeUndefined();
   });
+
+  test("includes version when provided", () => {
+    const tools: ToolEntry[] = [
+      {
+        name: "pandas",
+        version: "2.2.3",
+        description: "Data analysis",
+        runtime: "python",
+      },
+      { name: "curl", description: "HTTP client", runtime: "system" },
+    ];
+
+    const manifest = createToolManifest(tools);
+
+    expect(manifest.tools.python).toEqual([
+      { name: "pandas", version: "2.2.3", description: "Data analysis" },
+    ]);
+    expect(manifest.tools.system).toEqual([
+      { name: "curl", description: "HTTP client" },
+    ]);
+  });
+
+  test("includes usage and returns when provided", () => {
+    const tools: ToolEntry[] = [
+      {
+        name: "read_file",
+        description: "Read file with line numbers",
+        usage: "read_file <path> [start] [end]",
+        returns: "Numbered lines",
+        runtime: "system",
+      },
+    ];
+
+    const manifest = createToolManifest(tools);
+
+    expect(manifest.tools.system).toEqual([
+      {
+        name: "read_file",
+        description: "Read file with line numbers",
+        usage: "read_file <path> [start] [end]",
+        returns: "Numbered lines",
+      },
+    ]);
+  });
 });
 
 describe("toolManifestToJSON()", () => {

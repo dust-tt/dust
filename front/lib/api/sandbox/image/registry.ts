@@ -1,12 +1,85 @@
+import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
-import { ALLOWLIST_NETWORK_POLICY } from "@app/lib/api/sandbox/image/types";
+import {
+  ALLOWLIST_NETWORK_POLICY,
+  type ToolEntry,
+} from "@app/lib/api/sandbox/image/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import fs from "fs";
+import path from "path";
 
 const DSBX_CLI_VERSION = "0.1.1";
+const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.1.0")
+interface PythonLibrary {
+  name: string;
+  version: string;
+  description: string;
+}
+
+const PYTHON_LIBRARIES: PythonLibrary[] = [
+  { name: "pandas", version: "3.0.1", description: "Data analysis library" },
+  { name: "numpy", version: "2.4.3", description: "Numerical computing" },
+  { name: "scipy", version: "1.17.1", description: "Scientific computing" },
+  { name: "scikit-learn", version: "1.8.0", description: "Machine learning" },
+  { name: "statsmodels", version: "0.14.6", description: "Statistical models" },
+  { name: "pyarrow", version: "23.0.1", description: "Arrow data format" },
+  { name: "matplotlib", version: "3.10.8", description: "Plotting library" },
+  {
+    name: "seaborn",
+    version: "0.13.2",
+    description: "Statistical visualization",
+  },
+  { name: "plotly", version: "6.6.0", description: "Interactive plots" },
+  { name: "requests", version: "2.32.5", description: "HTTP library" },
+  { name: "openpyxl", version: "3.1.5", description: "Excel file support" },
+  { name: "xlsxwriter", version: "3.2.9", description: "Excel file writer" },
+  { name: "pdfplumber", version: "0.11.9", description: "PDF extraction" },
+  { name: "pypdf", version: "6.8.0", description: "PDF manipulation" },
+  { name: "reportlab", version: "4.4.10", description: "PDF generation" },
+  {
+    name: "python-docx",
+    version: "1.2.0",
+    description: "Word document support",
+  },
+  { name: "python-pptx", version: "1.0.2", description: "PowerPoint support" },
+  {
+    name: "beautifulsoup4",
+    version: "4.14.3",
+    description: "HTML/XML parsing",
+  },
+  { name: "lxml", version: "6.0.2", description: "XML processing" },
+  { name: "pillow", version: "12.1.1", description: "Image processing" },
+  { name: "sympy", version: "1.14.0", description: "Symbolic mathematics" },
+];
+
+function getPythonToolEntries(): ToolEntry[] {
+  return PYTHON_LIBRARIES.map((lib) => ({
+    name: lib.name,
+    version: lib.version,
+    description: lib.description,
+    runtime: "python" as const,
+  }));
+}
+
+function getPythonInstallCmd(): string {
+  const packages = PYTHON_LIBRARIES.map(
+    (lib) => `${lib.name}==${lib.version}`
+  ).join(" ");
+  return `uv pip install --python /opt/venv ${packages}`;
+}
+
+function getProfileContent(filename: string): () => string {
+  return () => fs.readFileSync(path.join(PROFILE_LOCAL_DIR, filename), "utf-8");
+}
+
+function getFileContent(filePath: string): () => string {
+  return () => fs.readFileSync(filePath, "utf-8");
+}
+
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.2.0")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
   .runCmd(
@@ -24,10 +97,16 @@ SHELLEOF`)
   .runCmd("sudo chmod 755 /home/user/.bin/token-server.sh")
   // Add sentinel file to indicate when mounts are pending.
   .runCmd("sudo touch /files/conversation/.mount-pending")
+  // Hidden tools: installed but not in manifest (back profile functions)
+  .runCmd("sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd")
+  // Create profile directory and copy profile scripts
   .registerTool(
     [
       { name: "git", description: "Version control system", runtime: "system" },
+      { name: "curl", description: "HTTP client", runtime: "system" },
+      { name: "wget", description: "Network downloader", runtime: "system" },
       { name: "jq", description: "JSON processor", runtime: "system" },
+      { name: "sqlite3", description: "SQLite database", runtime: "system" },
       { name: "pandoc", description: "Document converter", runtime: "system" },
       {
         name: "imagemagick",
@@ -35,15 +114,22 @@ SHELLEOF`)
         runtime: "system",
       },
       { name: "ffmpeg", description: "Media processing", runtime: "system" },
+      { name: "unzip", description: "Archive extraction", runtime: "system" },
       {
         name: "lsb-release",
         description: "Linux distribution info",
         runtime: "system",
       },
+      {
+        name: "file",
+        description: "Determine file type",
+        runtime: "system",
+      },
     ],
     {
+      // the other tools are installed in bedrock
       installCmd:
-        "sudo apt-get update && sudo apt-get install -y jq pandoc imagemagick ffmpeg lsb-release",
+        "sudo apt-get install -y jq pandoc imagemagick ffmpeg unzip file",
     }
   )
   .registerTool({
@@ -51,32 +137,7 @@ SHELLEOF`)
     description: "Python interpreter",
     runtime: "python",
   })
-  .registerTool(
-    [
-      {
-        name: "pandas",
-        description: "Data analysis library",
-        runtime: "python",
-      },
-      { name: "numpy", description: "Numerical computing", runtime: "python" },
-      {
-        name: "matplotlib",
-        description: "Plotting library",
-        runtime: "python",
-      },
-      { name: "requests", description: "HTTP library", runtime: "python" },
-      {
-        name: "openpyxl",
-        description: "Excel file support",
-        runtime: "python",
-      },
-      { name: "pdfplumber", description: "PDF extraction", runtime: "python" },
-    ],
-    {
-      installCmd:
-        "uv pip install --python /opt/venv pandas numpy matplotlib requests openpyxl pdfplumber",
-    }
-  )
+  .registerTool(getPythonToolEntries(), { installCmd: getPythonInstallCmd() })
   .registerTool(
     [
       {
@@ -99,6 +160,77 @@ SHELLEOF`)
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
   )
+  // Test data file
+  .copy(
+    getFileContent("/Users/jd/Downloads/products-100000.csv"),
+    "/home/user/products-100000.csv"
+  )
+  .runCmd(`sudo mkdir -p ${PROFILE_DIR}`)
+  .copy(getProfileContent("common.sh"), `${PROFILE_DIR}/common.sh`)
+  .copy(getProfileContent("_truncate.sh"), `${PROFILE_DIR}/_truncate.sh`)
+  .copy(getProfileContent("read_file.sh"), `${PROFILE_DIR}/read_file.sh`)
+  .copy(getProfileContent("edit_file.sh"), `${PROFILE_DIR}/edit_file.sh`)
+  .copy(getProfileContent("write_file.sh"), `${PROFILE_DIR}/write_file.sh`)
+  .copy(getProfileContent("grep_files.sh"), `${PROFILE_DIR}/grep_files.sh`)
+  .copy(getProfileContent("glob.sh"), `${PROFILE_DIR}/glob.sh`)
+  .copy(getProfileContent("list_dir.sh"), `${PROFILE_DIR}/list_dir.sh`)
+  .copy(getProfileContent("shell.sh"), `${PROFILE_DIR}/shell.sh`)
+  // Profile functions (no install needed, provided by profile scripts)
+  .registerTool([
+    {
+      name: "read_file",
+      description: "Read file with line numbers",
+      usage: "read_file <path> [start] [end]",
+      returns: "Numbered lines (format: '  N\\tcontent')",
+      runtime: "system",
+    },
+    {
+      name: "edit_file",
+      description:
+        "Replace exact text in files. Fails per-file if old_text not found or matches multiple times",
+      usage: "edit_file <old_text> <new_text> <path1> [path2]...",
+      returns: "'Edited <path>' per success",
+      runtime: "system",
+    },
+    {
+      name: "write_file",
+      description: "Write content to file (creates parent directories)",
+      usage: "write_file <path> <content>",
+      returns: "'Wrote <path>' on success",
+      runtime: "system",
+    },
+    {
+      name: "grep_files",
+      description:
+        "Search files for regex pattern. context_lines adds N lines before/after each match (default 0)",
+      usage: "grep_files <pattern> [glob] [path] [max_results] [context_lines]",
+      returns:
+        "file:line:content format, truncated to max_results (default 200)",
+      runtime: "system",
+    },
+    {
+      name: "glob",
+      description: "Find files by glob pattern",
+      usage: "glob <pattern> [path]",
+      returns: "File paths, one per line. Truncated to 200 results",
+      runtime: "system",
+    },
+    {
+      name: "list_dir",
+      description: "List directory contents. depth defaults to 2, max 5",
+      usage: "list_dir [path] [depth]",
+      returns: "File/dir paths, limited to 200 entries",
+      runtime: "system",
+    },
+    {
+      name: "shell",
+      description: "Execute shell command. Combines stdout/stderr",
+      usage: "shell <command> [timeout_sec]",
+      returns:
+        "Command output, truncated to 50000 chars (full output saved to /tmp when truncated)",
+      runtime: "system",
+    },
+  ])
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
@@ -106,7 +238,7 @@ SHELLEOF`)
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.2.2",
+    tag: "0.4.0",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
