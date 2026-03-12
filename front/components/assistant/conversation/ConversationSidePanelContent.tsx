@@ -1,9 +1,11 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
+import { ConversationFilesPanel } from "@app/components/assistant/conversation/files_panel/ConversationFilesPanel";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/InteractiveContentContainer";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -29,6 +31,11 @@ export default function ConversationSidePanelContent({
           conversation={conversation}
           owner={owner}
         />
+      );
+
+    case FILES_SIDE_PANEL_TYPE:
+      return (
+        <ConversationFilesPanel conversation={conversation} owner={owner} />
       );
 
     default:

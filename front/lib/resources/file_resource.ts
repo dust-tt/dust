@@ -299,6 +299,33 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  static async fetchByMountFilePaths(
+    auth: Authenticator,
+    mountFilePaths: string[]
+  ): Promise<Map<string, FileResource>> {
+    if (mountFilePaths.length === 0) {
+      return new Map();
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        mountFilePath: { [Op.in]: mountFilePaths },
+      },
+    });
+
+    const result = new Map<string, FileResource>();
+    for (const f of files) {
+      const resource = new this(this.model, f.get());
+      if (resource.mountFilePath) {
+        result.set(resource.mountFilePath, resource);
+      }
+    }
+
+    return result;
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
