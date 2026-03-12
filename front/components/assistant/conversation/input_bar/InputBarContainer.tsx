@@ -564,6 +564,7 @@ const InputBarContainer = ({
   const screenshotShortcut = isMac ? "cmd+shift+S" : "ctrl+shift+S";
 
   useEffect(() => {
+    // captureActions is defined only in the extension, so the shortcuts won't work in the web app
     if (!captureActions) {
       return;
     }
