@@ -56,6 +56,7 @@ import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
+  isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
@@ -548,7 +549,10 @@ export function AgentMessage({
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
-    agentMessage.configuration.status !== "draft";
+    agentMessage.configuration.status !== "draft" &&
+    (!isGlobalAgent ||
+      (isGlobalAgentId(agentMessage.configuration.sId) &&
+        isGlobalAgentWithFeedback(agentMessage.configuration.sId)));
 
   const retryMessage = useRetryMessage({ owner });
 
@@ -573,7 +577,7 @@ export function AgentMessage({
     [retryMessage]
   );
 
-  // Add feedback buttons first (thumbs up/down)
+  // Add feedback buttons first
   if (shouldShowFeedback) {
     messageButtons.push(
       <FeedbackSelector
