@@ -34,7 +34,7 @@ import {
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
@@ -340,10 +340,10 @@ function getModelConfig(
   } =
     prefer === "anthropic"
       ? {
-          model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+          model: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
           reasoningEffort: reasoning
             ? "light"
-            : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
+            : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         }
       : prefer === "openai"
         ? {
@@ -366,10 +366,10 @@ function getModelConfig(
             : GPT_5_4_MODEL_CONFIG.minimumReasoningEffort,
         }
       : {
-          model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+          model: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
           reasoningEffort: reasoning
             ? "light"
-            : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
+            : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
   if (isProviderWhitelisted(owner, preferredModel.model.providerId)) {
@@ -427,7 +427,7 @@ function getMaxReasoningModelConfig(owner: WorkspaceType): {
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return {
-      modelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+      modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
