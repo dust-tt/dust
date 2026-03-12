@@ -64,7 +64,10 @@ const feedbackBaseSchema = z.object({
   isConversationShared: z.boolean().default(true),
 });
 
-function makeFeedbackSchema(thumbDirection: ThumbReaction) {
+function makeFeedbackSchema(
+  thumbDirection: ThumbReaction,
+  showPredefinedAnswers: boolean
+) {
   if (thumbDirection === "up") {
     return feedbackBaseSchema;
   }
@@ -74,13 +77,17 @@ function makeFeedbackSchema(thumbDirection: ThumbReaction) {
   return feedbackBaseSchema.refine(
     (data) => {
       const hasAnswer =
-        data.selectedAnswer.length > 0 && data.selectedAnswer !== OTHER_ANSWER;
+        showPredefinedAnswers &&
+        data.selectedAnswer.length > 0 &&
+        data.selectedAnswer !== OTHER_ANSWER;
       const hasContent = data.feedbackContent.trim().length > 0;
 
       return hasAnswer || hasContent;
     },
     {
-      message: "Please select a reason or describe the issue.",
+      message: showPredefinedAnswers
+        ? "Please select a reason or describe the issue."
+        : "Please describe the issue.",
       path: ["feedbackContent"],
     }
   );
@@ -111,7 +118,7 @@ export function FeedbackSelector({
     React.useState<ThumbReaction>("up");
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
+    resolver: zodResolver(makeFeedbackSchema(thumbDirection, showPredefinedAnswers)),
     defaultValues: feedbackBaseSchema.parse({}),
   });
 
