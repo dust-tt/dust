@@ -30,6 +30,7 @@ export function getTableIdForContentNode(
     case "salesforce":
     case "snowflake":
     case "google_drive":
+    case "dust_project":
       return contentNode.internalId;
 
     case "confluence":
@@ -42,7 +43,6 @@ export function getTableIdForContentNode(
     case "webcrawler":
     case "zendesk":
     case "discord_bot":
-    case "dust_project":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
