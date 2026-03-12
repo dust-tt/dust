@@ -68,9 +68,7 @@ export default function OnboardingLayout({
         />
       </Head>
 
-      <Page>
-        {children}
-      </Page>
+      <Page>{children}</Page>
 
       <Script id="google-tag-manager" strategy="afterInteractive">
         {`
