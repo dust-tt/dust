@@ -45,7 +45,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -101,7 +101,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_report_data: async ({ reportUrl }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -153,7 +153,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_interview_feedback: async ({ email, name }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -240,7 +240,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_candidate_notes: async ({ email, name }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -302,7 +302,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   create_candidate_note: async ({ email, name, noteContent }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -356,7 +356,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   [GET_REFERRAL_FORM_TOOL_NAME]: async (_, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -607,7 +607,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   [CREATE_REFERRAL_TOOL_NAME]: async ({ fieldSubmissions }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }

@@ -317,7 +317,7 @@ export function renderHireData({
 }: HireDataParams): string {
   const lines: string[] = ["# Hire Data Summary", ""];
 
-  // -- Candidate Information --
+  // Candidate Information
   lines.push("## Candidate Information");
   lines.push("");
 
@@ -364,9 +364,7 @@ export function renderHireData({
 
     if (candidateInfo.socialLinks && candidateInfo.socialLinks.length > 0) {
       for (const link of candidateInfo.socialLinks) {
-        lines.push(
-          `**${link.type}:** ${link.url ?? link.value ?? "N/A"}`
-        );
+        lines.push(`**${link.type}:** ${link.url ?? link.value ?? "N/A"}`);
       }
     }
 
@@ -384,7 +382,7 @@ export function renderHireData({
 
   lines.push("");
 
-  // -- Job Information --
+  // Job Information
   lines.push("## Job Information");
   lines.push("");
 
@@ -416,14 +414,14 @@ export function renderHireData({
 
   lines.push("");
 
-  // -- Application Information --
+  // Application Information
   lines.push("## Application");
   lines.push("");
   lines.push(`**Application ID:** ${applicationId}`);
   lines.push(`**Status:** Hired`);
   lines.push("");
 
-  // -- Offer Information --
+  // Offer Information
   lines.push("## Offer Details");
   lines.push("");
 
