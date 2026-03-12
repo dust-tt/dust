@@ -338,7 +338,7 @@ export const InputBar = React.memo(function InputBar({
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
           "rounded-2xl transition-all",
           "bg-white dark:bg-muted-background-night",
-          "shadow-sm focus-within:shadow-[0_1px_3px_0_rgba(0,0,0,0.08),0_1px_2px_-1px_rgba(0,0,0,0.08)]",
+          "shadow-[0_2px_6px_-1px_rgba(0,0,0,0.08),0_1px_3px_-1px_rgba(0,0,0,0.06)] hover:shadow-[0_3px_8px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)] focus-within:shadow-[0_3px_8px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]",
           "border",
           "border-border-dark dark:border-border-dark/10",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
