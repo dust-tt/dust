@@ -1,6 +1,7 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
@@ -138,6 +139,13 @@ export async function aggregateSyntheticSuggestions(
     operationType: "reinforced_agent_aggregate_suggestions",
     contextId: "n/a",
   });
+
+  if (createdCount > 0) {
+    notifyAgentSuggestionsReady(auth, {
+      agentConfiguration: agentConfig,
+      suggestionCount: createdCount,
+    });
+  }
 
   await AgentSuggestionResource.bulkUpdateState(
     auth,

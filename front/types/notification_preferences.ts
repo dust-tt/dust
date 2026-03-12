@@ -121,8 +121,11 @@ export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
   "project-added-as-member" as const;
 export const PROJECT_NEW_CONVERSATION_TRIGGER_ID =
   "project-new-conversation" as const;
+export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =
+  "agent-suggestions-ready" as const;
 
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
-  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID;
+  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID
+  | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID;
