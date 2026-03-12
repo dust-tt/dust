@@ -1,6 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   FilePreviewSheet,
+  getFilePreviewConfig,
   type MinimalFileForPreview,
 } from "@app/components/spaces/FilePreviewSheet";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
@@ -11,6 +12,7 @@ import {
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { CONVERSATION_ATTACHMENTS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/attachments";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -18,12 +20,15 @@ import {
   AttachmentIcon,
   Button,
   DataTable,
+  type DropdownMenuFilterOption,
+  DropdownMenuFilters,
   Icon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   RobotIcon,
   ScrollArea,
+  SpaceClosedIcon,
   Spinner,
   Tooltip,
   UserIcon,
@@ -46,12 +51,15 @@ type ConversationAttachmentRow = {
   updatedAt: number | null;
   source: "agent" | "user" | null;
   sourceUrl: string | null;
+  isInProjectContext: boolean;
   onClick?: () => void;
+  popoverCategory: PopoverCategoryValue;
 };
 
 function conversationAttachmentToRow(
   item: ConversationAttachmentItem,
-  onFileClick: (fileId: string, title: string, contentType: string) => void
+  onFileClick: (fileId: string, title: string, contentType: string) => void,
+  popoverCategory: PopoverCategoryValue
 ): ConversationAttachmentRow {
   if (isFileAttachmentType(item)) {
     return {
@@ -61,6 +69,8 @@ function conversationAttachmentToRow(
       updatedAt: item.updatedAt ?? item.createdAt ?? null,
       source: item.source,
       sourceUrl: null,
+      isInProjectContext: item.isInProjectContext,
+      popoverCategory,
       onClick: () => {
         onFileClick(item.fileId, item.title, item.contentType);
       },
@@ -73,6 +83,8 @@ function conversationAttachmentToRow(
       updatedAt: null,
       source: null,
       sourceUrl: item.sourceUrl,
+      isInProjectContext: item.isInProjectContext,
+      popoverCategory,
       onClick: item.sourceUrl
         ? () => window.open(item.sourceUrl!, "_blank", "noopener,noreferrer")
         : undefined,
@@ -110,13 +122,42 @@ function EmptyState() {
 
 const DEFAULT_SORTING: SortingState = [{ id: "updatedAt", desc: true }];
 
+type PopoverCategoryValue =
+  | "frame"
+  | "pdf"
+  | "image"
+  | "audio"
+  | "delimited"
+  | "knowledge"
+  | "other";
+
+function getPopoverCategory(previewCategory: string): {
+  value: PopoverCategoryValue;
+  label: string;
+} {
+  switch (previewCategory) {
+    case "frame":
+      return { value: "frame", label: "Frames" };
+    case "pdf":
+      return { value: "pdf", label: "PDF" };
+    case "image":
+      return { value: "image", label: "Images" };
+    case "audio":
+      return { value: "audio", label: "Audio" };
+    case "delimited":
+      return { value: "delimited", label: "Tables" };
+    default:
+      return { value: "other", label: "Other" };
+  }
+}
+
 interface ConversationAttachmentsPopoverProps {
-  conversationId: string;
+  conversation?: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
 export const ConversationAttachmentsPopover = ({
-  conversationId,
+  conversation,
   owner,
 }: ConversationAttachmentsPopoverProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -125,6 +166,9 @@ export const ConversationAttachmentsPopover = ({
   );
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
+  const [selectedCategories, setSelectedCategories] = useState<
+    PopoverCategoryValue[]
+  >([]);
   const { openPanel } = useConversationSidePanelContext();
   const [isPulsing, setIsPulsing] = useState(false);
   const pulsingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -154,7 +198,7 @@ export const ConversationAttachmentsPopover = ({
 
   const { attachments, isConversationAttachmentsLoading } =
     useConversationAttachments({
-      conversationId,
+      conversationId: conversation?.sId ?? null,
       owner,
       options: {
         disabled: !isOpen,
@@ -176,25 +220,73 @@ export const ConversationAttachmentsPopover = ({
     [openPanel]
   );
 
-  const { conversationContextFiles } = useMemo(() => {
-    const project: ConversationAttachmentItem[] = [];
-    const conversation: ConversationAttachmentItem[] = [];
+  const {
+    rows,
+    categoryFilters,
+  }: {
+    rows: ConversationAttachmentRow[];
+    categoryFilters: DropdownMenuFilterOption<PopoverCategoryValue>[];
+  } = useMemo(() => {
+    const rows: ConversationAttachmentRow[] = [];
+    const categoryLabelByValue = new Map<PopoverCategoryValue, string>();
     for (const f of attachments) {
-      if (f.isInProjectContext) {
-        project.push(f);
+      let popoverCategory: PopoverCategoryValue;
+      let label: string;
+
+      if (isContentNodeAttachmentType(f)) {
+        popoverCategory = "knowledge";
+        label = "Knowledge";
       } else {
-        conversation.push(f);
+        const previewConfig = getFilePreviewConfig(f.contentType);
+        const mapped = getPopoverCategory(previewConfig.category);
+        popoverCategory = mapped.value;
+        label = mapped.label;
       }
+
+      categoryLabelByValue.set(popoverCategory, label);
+
+      const row = conversationAttachmentToRow(
+        f,
+        handleFileClick,
+        popoverCategory
+      );
+      rows.push(row);
     }
+
+    const orderedCategoryValues: PopoverCategoryValue[] = [
+      "frame",
+      "pdf",
+      "image",
+      "audio",
+      "delimited",
+      "knowledge",
+      "other",
+    ];
+
     return {
-      projectContextFiles: project.map((a) =>
-        conversationAttachmentToRow(a, handleFileClick)
-      ),
-      conversationContextFiles: conversation.map((a) =>
-        conversationAttachmentToRow(a, handleFileClick)
-      ),
+      rows,
+      categoryFilters: orderedCategoryValues
+        .filter((value) => categoryLabelByValue.has(value))
+        .map((value) => ({
+          value,
+          label: categoryLabelByValue.get(value)!,
+        })),
     };
   }, [attachments, handleFileClick]);
+
+  const filteredRows = useMemo(() => {
+    if (selectedCategories.length === 0) {
+      return rows;
+    }
+
+    return rows.filter((row) =>
+      selectedCategories.includes(row.popoverCategory)
+    );
+  }, [rows, selectedCategories]);
+
+  const showProjectColumn =
+    Boolean(conversation?.spaceId) &&
+    attachments.some((attachment) => attachment.isInProjectContext);
 
   const titleColumn: ColumnDef<ConversationAttachmentRow, unknown> = {
     id: "title",
@@ -277,13 +369,50 @@ export const ConversationAttachmentsPopover = ({
     },
   };
 
-  const conversationColumns: ColumnDef<ConversationAttachmentRow, unknown>[] = [
-    titleColumn,
-    sourceColumn,
-    updatedColumn,
-  ];
+  const projectContextColumn: ColumnDef<ConversationAttachmentRow, unknown> = {
+    id: "projectContext",
+    accessorKey: "isInProjectContext",
+    header: "",
+    meta: { className: "w-10 shrink-0" },
+    cell: (info: CellContext<ConversationAttachmentRow, unknown>) => {
+      const { isInProjectContext } = info.row.original;
+      if (!isInProjectContext) {
+        return <DataTable.BasicCellContent label="" />;
+      }
+
+      return (
+        <DataTable.CellContent>
+          <Tooltip
+            tooltipTriggerAsChild
+            label="Saved to Project"
+            trigger={
+              <span className="inline-flex">
+                <Icon visual={SpaceClosedIcon} size="sm" />
+              </span>
+            }
+          />
+        </DataTable.CellContent>
+      );
+    },
+  };
+
+  const conversationColumns: ColumnDef<ConversationAttachmentRow, unknown>[] =
+    showProjectColumn
+      ? [titleColumn, sourceColumn, projectContextColumn, updatedColumn]
+      : [titleColumn, sourceColumn, updatedColumn];
 
   const hasFiles = attachments.length > 0;
+
+  const handleCategoryFilterClick = useCallback(
+    (category: PopoverCategoryValue) => {
+      setSelectedCategories((prev) =>
+        prev.includes(category)
+          ? prev.filter((c) => c !== category)
+          : [...prev, category]
+      );
+    },
+    []
+  );
 
   return (
     <>
@@ -329,21 +458,25 @@ export const ConversationAttachmentsPopover = ({
               <EmptyState />
             ) : (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="text-base font-medium text-primary dark:text-primary-night">
-                    Attached and Generated content
-                  </div>
-                  {conversationContextFiles.length > 0 ? (
+                {filteredRows.length > 0 ? (
+                  <div className="space-y-2">
+                    {categoryFilters.length > 1 && (
+                      <DropdownMenuFilters
+                        filters={categoryFilters}
+                        selectedValues={selectedCategories}
+                        onSelectFilter={handleCategoryFilterClick}
+                      />
+                    )}
                     <DataTable
                       columns={conversationColumns}
-                      data={conversationContextFiles}
+                      data={filteredRows}
                       sorting={sorting}
                       setSorting={setSorting}
                     />
-                  ) : (
-                    <EmptyState />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <EmptyState />
+                )}
               </div>
             )}
           </ScrollArea>

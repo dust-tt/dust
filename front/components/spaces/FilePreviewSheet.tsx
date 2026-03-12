@@ -79,7 +79,7 @@ interface FilePreviewConfig {
   supportsExternalViewer: boolean;
 }
 
-function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   const category = getFileFormatCategory(contentType);
 
   if (isInteractiveContentType(contentType)) {
