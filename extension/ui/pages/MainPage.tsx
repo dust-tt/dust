@@ -1,5 +1,5 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
+import { ConversationAttachmentsPopover } from "@app/components/assistant/conversation/ConversationAttachmentsPopover";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -72,7 +72,7 @@ export const MainPage = () => {
       rightActions={
         conversationId ? (
           <div className="flex items-center gap-2">
-            <ConversationFilesPopover
+            <ConversationAttachmentsPopover
               conversationId={conversationId}
               owner={workspace}
             />
