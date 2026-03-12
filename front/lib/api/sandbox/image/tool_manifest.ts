@@ -1,11 +1,39 @@
-import type { ToolEntry, ToolManifest } from "@app/lib/api/sandbox/image/types";
+import type {
+  ManifestToolEntry,
+  ToolEntry,
+  ToolManifest,
+  ToolRuntime,
+} from "@app/lib/api/sandbox/image/types";
+import { TOOL_RUNTIMES } from "@app/lib/api/sandbox/image/types";
 import * as yaml from "js-yaml";
 
 export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
+  const toolsByRuntime: Record<ToolRuntime, ManifestToolEntry[]> = {
+    system: [],
+    python: [],
+    node: [],
+  };
+
+  for (const tool of tools) {
+    toolsByRuntime[tool.runtime].push({
+      name: tool.name,
+      description: tool.description,
+    });
+  }
+
+  const filteredTools: Partial<
+    Record<ToolRuntime, readonly ManifestToolEntry[]>
+  > = {};
+  for (const runtime of TOOL_RUNTIMES) {
+    if (toolsByRuntime[runtime].length > 0) {
+      filteredTools[runtime] = toolsByRuntime[runtime];
+    }
+  }
+
   return {
     version: "1.0",
     generatedAt: new Date().toISOString(),
-    tools,
+    tools: filteredTools,
   };
 }
 

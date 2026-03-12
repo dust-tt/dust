@@ -8,7 +8,6 @@
 import config from "@app/lib/api/config";
 import type { SandboxImage } from "@app/lib/api/sandbox/image";
 import type {
-  ContentGenerator,
   Operation,
   SandboxImageId,
   SandboxResources,
@@ -21,8 +20,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { TemplateBuilder } from "e2b";
 import { defaultBuildLogger, Template as E2BTemplate } from "e2b";
-import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 export type DockerRegistryFactory = (imageRef: string) => TemplateBuilder;
@@ -51,26 +48,6 @@ interface E2BBuildConfig {
   dockerRegistryFactory?: DockerRegistryFactory;
 }
 
-class ContentMaterializer {
-  private tempDir: string | null = null;
-  private fileCount = 0;
-
-  materializeToPath(getContent: ContentGenerator): string {
-    if (!this.tempDir) {
-      this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sandbox-build-"));
-    }
-    const tempFile = path.join(this.tempDir, `content-${this.fileCount++}`);
-    fs.writeFileSync(tempFile, getContent());
-    return tempFile;
-  }
-
-  cleanup(): void {
-    if (this.tempDir) {
-      fs.rmSync(this.tempDir, { recursive: true, force: true });
-    }
-  }
-}
-
 interface E2BTemplateBuildOptions {
   apiKey: string;
   domain?: string;
@@ -80,7 +57,6 @@ interface E2BTemplateBuildOptions {
 
 class E2BTemplateBuilder {
   private builder: TemplateBuilder;
-  private readonly materializer = new ContentMaterializer();
 
   private constructor(builder: TemplateBuilder) {
     this.builder = builder;
@@ -127,14 +103,7 @@ class E2BTemplateBuilder {
         break;
 
       case "copy":
-        if (op.src.type === "path") {
-          this.builder = this.builder.copy(op.src.path, op.dest);
-        } else {
-          const tempPath = this.materializer.materializeToPath(
-            op.src.getContent
-          );
-          this.builder = this.builder.copy(tempPath, op.dest);
-        }
+        this.builder = this.builder.copy(op.src.path, op.dest);
         break;
 
       case "workdir":
@@ -154,22 +123,14 @@ class E2BTemplateBuilder {
     imageId: SandboxImageId,
     options: E2BTemplateBuildOptions
   ): Promise<{ templateId: string }> {
-    try {
-      return await E2BTemplate.build(
-        this.builder,
-        formatSandboxImageId(imageId),
-        {
-          cpuCount: options.resources.vcpu,
-          memoryMB: options.resources.memoryMb,
-          apiKey: options.apiKey,
-          ...(options.domain ? { domain: options.domain } : {}),
-          ...(options.skipCache ? { skipCache: true } : {}),
-          onBuildLogs: defaultBuildLogger(),
-        }
-      );
-    } finally {
-      this.materializer.cleanup();
-    }
+    return E2BTemplate.build(this.builder, formatSandboxImageId(imageId), {
+      cpuCount: options.resources.vcpu,
+      memoryMB: options.resources.memoryMb,
+      apiKey: options.apiKey,
+      ...(options.domain ? { domain: options.domain } : {}),
+      ...(options.skipCache ? { skipCache: true } : {}),
+      onBuildLogs: defaultBuildLogger(),
+    });
   }
 }
 
