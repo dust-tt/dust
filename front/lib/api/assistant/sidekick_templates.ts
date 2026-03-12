@@ -23,6 +23,9 @@ export const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> =
     people: ["HIRING", "RECRUITING"],
     customer_success: ["SUPPORT"],
     customer_support: ["SUPPORT"],
+    it: ["IT"],
+    revops: ["SALES"],
+    procurement: ["OPERATIONS"],
     other: [],
   };
 
