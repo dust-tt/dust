@@ -93,7 +93,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         />
         <div className="flex items-center gap-2">
           <ConversationAttachmentsPopover
-            conversationId={activeConversationId}
+            conversation={conversation}
             owner={owner}
           />
           <ConversationMenu
