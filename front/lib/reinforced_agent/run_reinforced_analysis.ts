@@ -232,3 +232,47 @@ async function createSuggestionsFromToolCall({
 
   return createdCount;
 }
+
+/**
+ * Shared helper for both analyze and aggregate phases of reinforced agents.
+ * Calls the LLM with the given prompt, parses suggestions, and creates them.
+ * Returns the number of suggestions created.
+ */
+export async function runReinforcedAnalysis({
+  auth,
+  agentConfig,
+  prompt,
+  source,
+  operationType,
+  contextId,
+}: {
+  auth: Authenticator;
+  agentConfig: LightAgentConfigurationType;
+  prompt: { systemPrompt: string; userMessage: string };
+  source: AgentSuggestionSource;
+  operationType: ReinforcedOperationType;
+  contextId: string;
+}): Promise<number> {
+  const llm = await getReinforcedLLM(auth);
+  if (!llm) {
+    logger.error(
+      { contextId },
+      `ReinforcedAgent: no whitelisted model available for ${operationType}`
+    );
+    return 0;
+  }
+
+  const events: LLMEvent[] = [];
+  for await (const event of llm.stream(buildReinforcedLLMParams(prompt))) {
+    events.push(event);
+  }
+
+  return processReinforcedEvents({
+    auth,
+    agentConfig,
+    events,
+    source,
+    operationType,
+    contextId,
+  });
+}

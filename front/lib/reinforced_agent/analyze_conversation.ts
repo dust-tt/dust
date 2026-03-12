@@ -1,3 +1,8 @@
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import type { Authenticator } from "@app/lib/auth";
+import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export function buildAnalysisPrompt(
@@ -40,4 +45,70 @@ ${conversationText}
 </conversation>`;
 
   return { systemPrompt, userMessage };
+}
+
+/**
+ * Analyze a single conversation for reinforcement suggestions.
+ * Creates synthetic AgentSuggestion records.
+ */
+export async function analyzeConversationForReinforcement(
+  auth: Authenticator,
+  {
+    conversationId,
+    agentConfigurationId,
+  }: {
+    conversationId: string;
+    agentConfigurationId: string;
+  }
+): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "full",
+  });
+  if (!agentConfig) {
+    logger.warn(
+      { agentConfigurationId, workspaceId: owner.sId },
+      "ReinforcedAgent: agent configuration not found"
+    );
+    return;
+  }
+  if (agentConfig.id < 0) {
+    return;
+  }
+
+  const conversationRes = await getShrinkWrappedConversation(auth, {
+    conversationId,
+    includeFeedback: true,
+  });
+  if (conversationRes.isErr()) {
+    logger.warn(
+      { conversationId, error: conversationRes.error },
+      "ReinforcedAgent: conversation not found"
+    );
+    return;
+  }
+
+  const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+
+  const createdCount = await runReinforcedAnalysis({
+    auth,
+    agentConfig,
+    prompt,
+    source: "synthetic",
+    operationType: "reinforced_agent_analyze_conversation",
+    contextId: conversationId,
+  });
+
+  if (createdCount > 0) {
+    logger.info(
+      {
+        conversationId,
+        agentConfigurationId,
+        suggestionsCreated: createdCount,
+      },
+      "ReinforcedAgent: created synthetic suggestions from conversation analysis"
+    );
+  }
 }

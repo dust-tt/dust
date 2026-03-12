@@ -1,3 +1,8 @@
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import type { Authenticator } from "@app/lib/auth";
+import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import logger from "@app/logger/logger";
 import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 export function buildAggregationPrompt(
@@ -31,4 +36,72 @@ You MUST call the tool. If no suggestions survive aggregation, return an empty s
 ${suggestionsSection}`;
 
   return { systemPrompt, userMessage };
+}
+
+/**
+ * Aggregate synthetic suggestions for an agent into pending suggestions.
+ * Marks processed synthetic suggestions as approved.
+ */
+export async function aggregateSyntheticSuggestions(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const syntheticSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { sources: ["synthetic"], states: ["pending"] }
+    );
+
+  if (syntheticSuggestions.length === 0) {
+    return;
+  }
+
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "light",
+  });
+  if (!agentConfig) {
+    logger.warn(
+      { agentConfigurationId },
+      "ReinforcedAgent: agent not found for aggregation"
+    );
+    return;
+  }
+
+  const instructionsSuggestions = syntheticSuggestions
+    .map((s) => s.toJSON())
+    .filter(
+      (json): json is AgentInstructionsSuggestionType =>
+        json.kind === "instructions"
+    );
+
+  const prompt = buildAggregationPrompt(
+    agentConfig.name,
+    instructionsSuggestions
+  );
+
+  const createdCount = await runReinforcedAnalysis({
+    auth,
+    agentConfig,
+    prompt,
+    source: "reinforcement",
+    operationType: "reinforced_agent_aggregate_suggestions",
+    contextId: "n/a",
+  });
+
+  await AgentSuggestionResource.bulkUpdateState(
+    auth,
+    syntheticSuggestions,
+    "approved"
+  );
+
+  logger.info(
+    {
+      agentConfigurationId,
+      syntheticCount: syntheticSuggestions.length,
+      pendingCreated: createdCount,
+    },
+    "ReinforcedAgent: aggregated synthetic suggestions into pending"
+  );
 }

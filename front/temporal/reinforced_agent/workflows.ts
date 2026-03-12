@@ -24,6 +24,14 @@ const { getRecentConversationsForAgentActivity } = proxyActivities<
   startToCloseTimeout: "5 minutes",
 });
 
+const { analyzeConversationActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
+
+const { aggregateSuggestionsActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
+
 const { startConversationAnalysisBatchActivity } = proxyActivities<
   typeof activities
 >({
@@ -68,7 +76,7 @@ export async function reinforcedAgentWorkflow(): Promise<void> {
   for (const workspaceId of workspaceIds) {
     await startChild(reinforcedAgentWorkspaceWorkflow, {
       workflowId: `reinforced-agent-workspace-${workspaceId}`,
-      args: [{ workspaceId }],
+      args: [{ workspaceId, useBatchMode: true }],
       parentClosePolicy: ParentClosePolicy.ABANDON,
     });
   }
@@ -79,15 +87,17 @@ export async function reinforcedAgentWorkflow(): Promise<void> {
  */
 export async function reinforcedAgentWorkspaceWorkflow({
   workspaceId,
+  useBatchMode,
 }: {
   workspaceId: string;
+  useBatchMode: boolean;
 }): Promise<void> {
   const agentIds = await getAgentConfigurationsActivity({ workspaceId });
 
   for (const agentConfigurationId of agentIds) {
     await startChild(reinforcedAgentForAgentWorkflow, {
       workflowId: `reinforced-agent-${workspaceId}-${agentConfigurationId}`,
-      args: [{ workspaceId, agentConfigurationId }],
+      args: [{ workspaceId, agentConfigurationId, useBatchMode }],
       parentClosePolicy: ParentClosePolicy.ABANDON,
     });
   }
@@ -111,7 +121,10 @@ async function waitForBatch({
   while (elapsedMs < BATCH_TIMEOUT_MS) {
     await sleep(intervalMs);
     elapsedMs += intervalMs;
-    intervalMs = Math.min(intervalMs + BATCH_POLL_INTERVAL_STEP_MS, BATCH_POLL_INTERVAL_MAX_MS);
+    intervalMs = Math.min(
+      intervalMs + BATCH_POLL_INTERVAL_STEP_MS,
+      BATCH_POLL_INTERVAL_MAX_MS
+    );
 
     const status = await checkBatchStatusActivity({ workspaceId, batchId });
     if (status === "ready") {
@@ -127,53 +140,72 @@ async function waitForBatch({
 }
 
 /**
- * Agent-level workflow: analyze recent conversations then aggregate suggestions,
- * using batch LLM processing.
+ * Agent-level workflow: analyze recent conversations then aggregate suggestions.
+ * Uses batch LLM processing when useBatchMode is true, sequential streaming otherwise.
  */
 export async function reinforcedAgentForAgentWorkflow({
   workspaceId,
   agentConfigurationId,
+  useBatchMode,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  useBatchMode: boolean;
 }): Promise<void> {
   const conversationIds = await getRecentConversationsForAgentActivity({
     workspaceId,
     agentConfigurationId,
   });
 
-  // Phase 1: Batch-analyze all conversations.
-  if (conversationIds.length > 0) {
-    const analysisBatchId = await startConversationAnalysisBatchActivity({
-      workspaceId,
-      agentConfigurationId,
-      conversationIds,
-    });
-
-    if (analysisBatchId) {
-      await waitForBatch({ workspaceId, batchId: analysisBatchId });
-
-      await processConversationAnalysisBatchResultActivity({
+  if (useBatchMode) {
+    // Phase 1: Batch-analyze all conversations.
+    if (conversationIds.length > 0) {
+      const analysisBatchId = await startConversationAnalysisBatchActivity({
         workspaceId,
         agentConfigurationId,
-        batchId: analysisBatchId,
+        conversationIds,
       });
+
+      if (analysisBatchId) {
+        await waitForBatch({ workspaceId, batchId: analysisBatchId });
+
+        await processConversationAnalysisBatchResultActivity({
+          workspaceId,
+          agentConfigurationId,
+          batchId: analysisBatchId,
+        });
+      }
     }
-  }
 
-  // Phase 2: Batch-aggregate synthetic suggestions into pending.
-  const aggregationBatchId = await startAggregationBatchActivity({
-    workspaceId,
-    agentConfigurationId,
-  });
-
-  if (aggregationBatchId) {
-    await waitForBatch({ workspaceId, batchId: aggregationBatchId });
-
-    await processAggregationBatchResultActivity({
+    // Phase 2: Batch-aggregate synthetic suggestions into pending.
+    const aggregationBatchId = await startAggregationBatchActivity({
       workspaceId,
       agentConfigurationId,
-      batchId: aggregationBatchId,
+    });
+
+    if (aggregationBatchId) {
+      await waitForBatch({ workspaceId, batchId: aggregationBatchId });
+
+      await processAggregationBatchResultActivity({
+        workspaceId,
+        agentConfigurationId,
+        batchId: aggregationBatchId,
+      });
+    }
+  } else {
+    // Phase 1: Analyze each conversation sequentially via streaming.
+    for (const conversationId of conversationIds) {
+      await analyzeConversationActivity({
+        workspaceId,
+        agentConfigurationId,
+        conversationId,
+      });
+    }
+
+    // Phase 2: Aggregate synthetic suggestions into pending.
+    await aggregateSuggestionsActivity({
+      workspaceId,
+      agentConfigurationId,
     });
   }
 }

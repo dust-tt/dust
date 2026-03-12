@@ -3,8 +3,14 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { buildAggregationPrompt } from "@app/lib/reinforced_agent/aggregate_suggestions";
-import { buildAnalysisPrompt } from "@app/lib/reinforced_agent/analyze_conversation";
+import {
+  aggregateSyntheticSuggestions,
+  buildAggregationPrompt,
+} from "@app/lib/reinforced_agent/aggregate_suggestions";
+import {
+  analyzeConversationForReinforcement,
+  buildAnalysisPrompt,
+} from "@app/lib/reinforced_agent/analyze_conversation";
 import {
   buildReinforcedLLMParams,
   getReinforcedLLM,
@@ -87,6 +93,41 @@ export async function getRecentConversationsForAgentActivity({
     agentConfigurationId,
     updatedSince,
   });
+}
+
+/**
+ * Analyze a single conversation for a specific agent.
+ */
+export async function analyzeConversationActivity({
+  workspaceId,
+  agentConfigurationId,
+  conversationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  conversationId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  await analyzeConversationForReinforcement(auth, {
+    conversationId,
+    agentConfigurationId,
+  });
+}
+
+/**
+ * Aggregate synthetic suggestions for a specific agent into pending suggestions.
+ */
+export async function aggregateSuggestionsActivity({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  await aggregateSyntheticSuggestions(auth, agentConfigurationId);
 }
 
 // ---------------------------------------------------------------------------
