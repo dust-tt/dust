@@ -136,8 +136,8 @@ Avoid unnecessary actions.`,
       action: z
         .enum(["get_elements", "click_element", "type_text", "delete_text"])
         .describe("Action to perform."),
-      tab_id: z.number().describe("The ID of the tab to interact with."),
-      element_id: z
+      tabId: z.number().describe("The ID of the tab to interact with."),
+      elementId: z
         .string()
         .nullish()
         .describe(
@@ -156,7 +156,7 @@ Avoid unnecessary actions.`,
           "How text should be applied when using type_text: replace existing content or append to it."
         ),
     }).shape,
-    argumentsRequiringApproval: ["tab_id"],
+    argumentsRequiringApproval: ["tabId"],
     stake: "medium",
     displayLabels: {
       running: "Interacting with page...",
