@@ -94,7 +94,11 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
       header: "Conversation",
       cell: ({ row }) => {
         const feedback = row.original;
-        if (feedback.conversationSId && feedback.workspaceSId !== "unknown") {
+        if (
+          feedback.isConversationShared &&
+          feedback.conversationSId &&
+          feedback.workspaceSId !== "unknown"
+        ) {
           return (
             <LinkWrapper
               href={`/poke/${feedback.workspaceSId}/conversation/${feedback.conversationSId}`}

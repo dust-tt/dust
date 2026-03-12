@@ -37,6 +37,7 @@ export interface GlobalAgentFeedbackItem {
   content: string | null;
   userName: string | null;
   userEmail: string | null;
+  isConversationShared: boolean;
   workspaceSId: string;
   workspaceName: string;
   conversationSId: string | null;
@@ -158,6 +159,7 @@ async function handler(
       content: row.content,
       userName: row.user?.name ?? null,
       userEmail: row.user?.email ?? null,
+      isConversationShared: row.isConversationShared,
       workspaceSId: workspace?.sId ?? "unknown",
       workspaceName: workspace?.name ?? "Unknown",
       conversationSId: conversationById.get(row.conversationId) ?? null,
