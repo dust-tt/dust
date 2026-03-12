@@ -21,11 +21,17 @@ html {
   font-size: 14px;
 }
 
+#root {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .animate-\[bgblink_200ms_3\] {
   animation: bgblink 200ms 3;
 }
 
 @keyframes bgblink {
+
   0%,
   100% {
     --tw-bg-opacity: 1;
