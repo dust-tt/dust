@@ -1,5 +1,6 @@
 import type { ReadStream } from "node:fs";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import type { Result } from "@app/types/shared/result";
@@ -40,6 +41,9 @@ async function toReadable(input: FormidableFileLike): Promise<ReadStream> {
 export async function transcribeFile(
   input: FormidableFileLike
 ): Promise<Result<string, Error>> {
+  const statsd = getStatsDClient();
+  const startMs = performance.now();
+
   try {
     const el = await getElevenLabs();
     const file = await toReadable(input);
@@ -53,9 +57,24 @@ export async function transcribeFile(
       // we can safely cast here because we know the response is a SpeechToTextChunkResponseModel
     })) as SpeechToTextChunkResponseModel;
 
+    const elapsedMs = performance.now() - startMs;
+    statsd.distribution(
+      "voice_transcription.elevenlabs.duration_ms",
+      elapsedMs,
+      [`status:success`]
+    );
+
     return new Ok(response.text);
   } catch (err) {
     const e = normalizeError(err);
+
+    const elapsedMs = performance.now() - startMs;
+    statsd.distribution(
+      "voice_transcription.elevenlabs.duration_ms",
+      elapsedMs,
+      [`status:error`]
+    );
+
     logger.error({ err: e }, `Failed to transcribe file`);
     return new Err(e);
   }

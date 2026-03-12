@@ -1,6 +1,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -61,6 +62,9 @@ async function handler(
   }
   const file = maybeFiles[0];
 
+  const statsd = getStatsDClient();
+  const totalStartMs = performance.now();
+
   try {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -97,10 +101,21 @@ async function handler(
             res.write(
               `data: ${JSON.stringify({ type: "error", error: "the audio was silent, please check your microphone" })}\n\n`
             );
+            statsd.distribution(
+              "voice_transcription.total.duration_ms",
+              performance.now() - totalStartMs,
+              [`status:silent`]
+            );
             res.end();
             return;
           } else {
+            const agentFinderStartMs = performance.now();
             const fullTranscript = await findAgentsInMessage(auth, transcript);
+            statsd.distribution(
+              "voice_transcription.agent_detection.duration_ms",
+              performance.now() - agentFinderStartMs,
+              [`status:success`]
+            );
 
             res.write(
               `data: ${JSON.stringify({ type: "fullTranscript", fullTranscript })}\n\n`
@@ -122,10 +137,24 @@ async function handler(
     // @ts-expect-error - We need it for streaming, but it does not exist in the types.
     res.flush();
 
+    statsd.distribution(
+      "voice_transcription.total.duration_ms",
+      performance.now() - totalStartMs,
+      [`status:success`]
+    );
+
     res.end();
   } catch (e) {
     const err = normalizeError(e);
     logger.error({ err, wId }, "Unexpected error in transcribe endpoint.");
+
+    statsd.distribution(
+      "voice_transcription.total.duration_ms",
+      performance.now() - totalStartMs,
+      [`status:error`]
+    );
+    statsd.increment("voice_transcription.errors", 1);
+
     res.status(500).json({
       error: {
         type: "internal_server_error",
