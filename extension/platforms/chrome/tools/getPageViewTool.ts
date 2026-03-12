@@ -1,4 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CaptureService } from "@extension/shared/services/capture";
@@ -269,8 +270,9 @@ export function registerGetPageViewTool(
 
         // Upload each screenshot and return as ToolGeneratedFile resources
         // so the agent can visually analyze them.
-        const uploadedCaptures = await Promise.all(
-          captures.map(async (dataUrl, i) => {
+        const uploadedCaptures = await concurrentExecutor(
+          captures,
+          async (dataUrl, i) => {
             const [header, data] = dataUrl.split(",");
             const mimeType = header.replace("data:", "").replace(";base64", "");
             const ext = mimeType.split("/")[1] ?? "jpg";
@@ -294,7 +296,8 @@ export function registerGetPageViewTool(
               null
             );
             return { type: "resource" as const, resource };
-          })
+          },
+          { concurrency: 8 }
         );
 
         return { content: uploadedCaptures };

@@ -11,6 +11,7 @@ import {
   serializeMention,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -86,8 +87,10 @@ export async function renderActionForMultiActionsModel(
   }
 
   const outputItems = removeNulls(
-    await Promise.all(
-      action.output?.map((c) => rewriteContentForModel(auth, model, c)) ?? []
+    await concurrentExecutor(
+      action.output ?? [],
+      (c) => rewriteContentForModel(auth, model, c),
+      { concurrency: 8 }
     )
   );
 
@@ -97,7 +100,7 @@ export async function renderActionForMultiActionsModel(
   } else if (outputItems.every((item) => isTextContent(item))) {
     output = outputItems.map((item) => item.text).join("\n");
   } else if (outputItems.some((item) => isImageContent(item))) {
-    // Return as Content[] so vision models receive the image_url blocks directly.
+    // Return as Content[] to the model so vision models receive the image_url blocks directly.
     output = outputItems;
   } else {
     output = JSON.stringify(outputItems);
