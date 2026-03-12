@@ -78,8 +78,8 @@ export async function getPageElements(
           name: getElementName(el),
           inputType: el.getAttribute("type"),
           coords: {
-            x: Math.round(rect.x + rect.width / 2),
-            y: Math.round(rect.y + rect.height / 2),
+            x: Math.round(rect.x + rect.width / 2 + window.scrollX),
+            y: Math.round(rect.y + rect.height / 2 + window.scrollY),
           },
         };
 
@@ -483,8 +483,8 @@ export async function getPageElementsDiff(
           name: getElementName(el),
           inputType: el.getAttribute("type"),
           coords: {
-            x: Math.round(rect.x + rect.width / 2),
-            y: Math.round(rect.y + rect.height / 2),
+            x: Math.round(rect.x + rect.width / 2 + window.scrollX),
+            y: Math.round(rect.y + rect.height / 2 + window.scrollY),
           },
         };
 
@@ -496,9 +496,7 @@ export async function getPageElementsDiff(
           const changed =
             prev.role !== current.role ||
             prev.name !== current.name ||
-            prev.inputType !== current.inputType ||
-            prev.coords.x !== current.coords.x ||
-            prev.coords.y !== current.coords.y;
+            prev.inputType !== current.inputType;
 
           if (changed) {
             const editedElement: ElementSnapshot = {
