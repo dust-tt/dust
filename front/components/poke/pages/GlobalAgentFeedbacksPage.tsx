@@ -82,17 +82,16 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
     },
     {
       accessorKey: "content",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Content" />
-      ),
+      header: "Content",
+      enableSorting: false,
       cell: ({ row }) => {
         const { content } = row.original;
-        return <div className="max-w-md truncate">{content ?? "-"}</div>;
+        return <div className="whitespace-pre-wrap">{content ?? "-"}</div>;
       },
     },
     {
       id: "link",
-      header: "Link",
+      header: "Conversation",
       cell: ({ row }) => {
         const feedback = row.original;
         if (feedback.conversationSId && feedback.workspaceSId !== "unknown") {
