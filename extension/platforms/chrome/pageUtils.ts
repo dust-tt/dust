@@ -148,7 +148,43 @@ export async function ensureDustPageUtils(
         return "";
       };
 
-      w.__dustUtils = { selector, CONTENT, getElementName };
+      const highlightElement = (el: HTMLElement) => {
+        try {
+          el.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "center",
+          });
+        } catch {
+          // ignore
+        }
+
+        const rect = el.getBoundingClientRect();
+        const overlay = document.createElement("div");
+
+        Object.assign(overlay.style, {
+          position: "absolute",
+          top: `${rect.top + window.scrollY - 8}px`,
+          left: `${rect.left + window.scrollX - 8}px`,
+          width: `${rect.width + 16}px`,
+          height: `${rect.height + 16}px`,
+          borderRadius: "9999px",
+          boxShadow: "0 0 0 3px #418B5C, 0 0 16px 4px rgba(65, 139, 92, 0.9)",
+          background: "rgba(65, 139, 92, 0.12)",
+          pointerEvents: "none",
+          zIndex: "2147483647",
+          transition: "opacity 0.5s ease-out",
+        });
+
+        document.body.appendChild(overlay);
+
+        setTimeout(() => {
+          overlay.style.opacity = "0";
+          setTimeout(() => overlay.remove(), 500);
+        }, 100);
+      };
+
+      w.__dustUtils = { selector, CONTENT, getElementName, highlightElement };
     },
   });
 

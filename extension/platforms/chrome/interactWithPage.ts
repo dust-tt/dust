@@ -16,6 +16,7 @@ type DustWindow = {
     selector: string;
     CONTENT: string[];
     getElementName: (el: HTMLElement) => string;
+    highlightElement: (el: HTMLElement) => void;
   };
   __dustElementMap: Record<string, WeakRef<HTMLElement>>;
   __dustElementSnapshots: Record<string, ElementSnapshot>;
@@ -95,4 +96,60 @@ export async function getPageElements(
       : JSON.stringify([]);
 
   return new Ok(result);
+}
+
+export async function clickPageElement(
+  tab: chrome.tabs.Tab | undefined,
+  elementId: string
+): Promise<Result<boolean, Error>> {
+  if (!tab?.id) {
+    return new Err(new Error("No active tab found."));
+  }
+
+  const utilsResult = await ensureDustPageUtils(tab);
+  if (utilsResult.isErr()) {
+    return utilsResult;
+  }
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    args: [elementId],
+    func: (elementId: string) => {
+      const w = window as unknown as DustWindow;
+
+      const element = w.__dustElementMap?.[elementId].deref();
+      if (!element) {
+        return "NOT_FOUND";
+      }
+
+      const opts: MouseEventInit = {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        buttons: 1,
+      };
+
+      const { highlightElement } = w.__dustUtils;
+
+      highlightElement(element);
+
+      element.dispatchEvent(new MouseEvent("mouseover", opts));
+      element.dispatchEvent(new MouseEvent("mousedown", opts));
+      element.dispatchEvent(new MouseEvent("mouseup", opts));
+      element.dispatchEvent(new MouseEvent("click", opts));
+
+      return "OK";
+    },
+  });
+
+  const result = execution?.result;
+
+  if (!result) {
+    return new Err(new Error("Unexpected error"));
+  }
+
+  if (result === "NOT_FOUND") {
+    return new Err(new Error("Element not found"));
+  }
+  return new Ok(true);
 }

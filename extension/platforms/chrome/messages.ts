@@ -88,6 +88,13 @@ export type CaptureFullPageMessage = {
 export type GetPageElementsMessage = { type: "GET_ELEMENTS"; tabId: number };
 export type GetPageElementsResponse = { elements: string; error?: string };
 
+export type ClickPageElementMessage = {
+  type: "CLICK_ELEMENT";
+  tabId: number;
+  elementId: string;
+};
+export type ClickPageElementResponse = { success: boolean; error?: string };
+
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response: U | undefined) => {
@@ -222,18 +229,36 @@ export const sendTabActionMessage = (message: TabActionMessage) => {
   return sendMessage<TabActionMessage, TabActionResponse>(message);
 };
 
-export const sendInteractWithPageMessage = (
-  action: "get_elements",
-  tabId: number
-): Promise<GetPageElementsResponse> => {
-  switch (action) {
+export function sendInteractWithPageMessage(input: {
+  action: "get_elements";
+  tabId: number;
+}): Promise<GetPageElementsResponse>;
+
+export function sendInteractWithPageMessage(input: {
+  action: "click_element";
+  elementId: string;
+  tabId: number;
+}): Promise<ClickPageElementResponse>;
+
+export function sendInteractWithPageMessage(
+  input:
+    | { action: "get_elements"; tabId: number }
+    | { action: "click_element"; tabId: number; elementId: string }
+): Promise<GetPageElementsResponse | ClickPageElementResponse> {
+  switch (input.action) {
     case "get_elements":
       return sendMessage<GetPageElementsMessage, GetPageElementsResponse>({
         type: "GET_ELEMENTS",
-        tabId,
+        tabId: input.tabId,
+      });
+    case "click_element":
+      return sendMessage<ClickPageElementMessage, ClickPageElementResponse>({
+        type: "CLICK_ELEMENT",
+        elementId: input.elementId,
+        tabId: input.tabId,
       });
   }
-};
+}
 
 // Messages from background script to content script
 
