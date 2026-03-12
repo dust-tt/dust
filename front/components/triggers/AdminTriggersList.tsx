@@ -214,7 +214,7 @@ export const AdminTriggersList = ({
           <DataTable.BasicCellContent
             label={formatTimestampToFriendlyDate(
               info.row.original.webhookSource.updatedAt,
-              "long"
+              "compact"
             )}
           />
         ),
