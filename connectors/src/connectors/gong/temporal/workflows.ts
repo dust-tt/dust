@@ -165,6 +165,7 @@ export async function gongKeywordUpdateWorkflow({
   const keywordsToProcess = new Set<string>();
   let latestMaxTranscriptId: ModelId | null = null;
   let keywordsUpdated = false;
+  let lastId: number | null = null;
 
   setHandler(
     updateExcludedKeywordsSignal,
@@ -174,6 +175,8 @@ export async function gongKeywordUpdateWorkflow({
       }
       latestMaxTranscriptId = maxTranscriptId;
       keywordsUpdated = true;
+      // Start over from the beginning to check for the new keywords.
+      lastId = null;
     }
   );
 
@@ -186,11 +189,11 @@ export async function gongKeywordUpdateWorkflow({
     const signalReceived = await condition(() => keywordsUpdated, "90 seconds");
     if (!signalReceived) {
       settled = true;
+      lastId = null;
     }
   }
 
   let hasMore = keywordsToProcess.size > 0;
-  let lastId: number | undefined = undefined;
 
   while (hasMore && latestMaxTranscriptId) {
     const result = await gongDeleteExcludedTranscriptsActivity({
@@ -201,6 +204,6 @@ export async function gongKeywordUpdateWorkflow({
     });
 
     hasMore = result.hasMore;
-    lastId = result.lastId ?? undefined;
+    lastId = result.lastId ?? null;
   }
 }
