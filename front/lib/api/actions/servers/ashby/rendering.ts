@@ -302,82 +302,54 @@ function formatFieldValue(value: unknown): string {
   return String(value);
 }
 
-interface HireDataParams {
-  candidateInfo: AshbyCandidateInfo | null;
-  offers: AshbyOffer[];
-  jobInfo: AshbyJobInfo | null;
-  applicationId: string;
-}
-
 export function renderHireData({
   candidateInfo,
   offers,
   jobInfo,
   applicationId,
-}: HireDataParams): string {
+}: {
+  candidateInfo: AshbyCandidateInfo;
+  offers: AshbyOffer[];
+  jobInfo: AshbyJobInfo | null;
+  applicationId: string;
+}): string {
   const lines: string[] = ["# Hire Data Summary", ""];
 
   // Candidate Information
   lines.push("## Candidate Information");
   lines.push("");
 
-  if (candidateInfo) {
-    if (candidateInfo.firstName) {
-      lines.push(`**First Name:** ${candidateInfo.firstName}`);
-    }
-    if (candidateInfo.lastName) {
-      lines.push(`**Last Name:** ${candidateInfo.lastName}`);
-    }
-    lines.push(`**Full Name:** ${candidateInfo.name}`);
+  if (candidateInfo.firstName) {
+    lines.push(`**First Name:** ${candidateInfo.firstName}`);
+  }
+  if (candidateInfo.lastName) {
+    lines.push(`**Last Name:** ${candidateInfo.lastName}`);
+  }
 
-    if (candidateInfo.primaryEmailAddress) {
-      lines.push(`**Email:** ${candidateInfo.primaryEmailAddress.value}`);
-    } else if (
-      candidateInfo.emailAddresses &&
-      candidateInfo.emailAddresses.length > 0
-    ) {
-      lines.push(`**Email:** ${candidateInfo.emailAddresses[0].value}`);
-    }
+  if (candidateInfo.primaryEmailAddress) {
+    lines.push(`**Email:** ${candidateInfo.primaryEmailAddress.value}`);
+  }
+  if (candidateInfo.primaryPhoneNumber) {
+    lines.push(`**Phone:** ${candidateInfo.primaryPhoneNumber.value}`);
+  }
 
-    if (candidateInfo.primaryPhoneNumber) {
-      lines.push(`**Phone:** ${candidateInfo.primaryPhoneNumber.value}`);
-    } else if (
-      candidateInfo.phoneNumbers &&
-      candidateInfo.phoneNumbers.length > 0
-    ) {
-      lines.push(`**Phone:** ${candidateInfo.phoneNumbers[0].value}`);
-    }
+  if (candidateInfo.location?.country) {
+    lines.push(`**Country:** ${candidateInfo.location.country}`);
+  }
+  if (candidateInfo.location?.region) {
+    lines.push(`**Region:** ${candidateInfo.location.region}`);
+  }
+  if (candidateInfo.location?.city) {
+    lines.push(`**City:** ${candidateInfo.location.city}`);
+  }
 
-    if (candidateInfo.location) {
-      const locationParts = [
-        candidateInfo.location.city,
-        candidateInfo.location.region,
-        candidateInfo.location.country,
-      ].filter(Boolean);
-      if (locationParts.length > 0) {
-        lines.push(`**Location:** ${locationParts.join(", ")}`);
-      }
-      if (candidateInfo.location.country) {
-        lines.push(`**Country:** ${candidateInfo.location.country}`);
-      }
+  if (candidateInfo.customFields && candidateInfo.customFields.length > 0) {
+    lines.push("");
+    lines.push("### Candidate Custom Fields");
+    for (const field of candidateInfo.customFields) {
+      const title = field.title ?? field.id ?? "Unknown";
+      lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
     }
-
-    if (candidateInfo.socialLinks && candidateInfo.socialLinks.length > 0) {
-      for (const link of candidateInfo.socialLinks) {
-        lines.push(`**${link.type}:** ${link.url ?? link.value ?? "N/A"}`);
-      }
-    }
-
-    if (candidateInfo.customFields && candidateInfo.customFields.length > 0) {
-      lines.push("");
-      lines.push("### Candidate Custom Fields");
-      for (const field of candidateInfo.customFields) {
-        const title = field.title ?? field.id ?? "Unknown";
-        lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
-      }
-    }
-  } else {
-    lines.push("*Detailed candidate info not available.*");
   }
 
   lines.push("");

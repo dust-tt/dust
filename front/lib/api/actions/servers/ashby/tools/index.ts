@@ -427,21 +427,45 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const candidateInfoResult = await client.getCandidateInfo({
       id: candidate.id,
     });
-    const candidateInfo = candidateInfoResult.isOk()
-      ? (candidateInfoResult.value.results ?? null)
-      : null;
+    if (candidateInfoResult.isErr() || !candidateInfoResult.value.results) {
+      return new Err(
+        new MCPError(
+          "Failed to retrieve candidate info: " +
+            (candidateInfoResult.isErr()
+              ? candidateInfoResult.error.message
+              : "no result")
+        )
+      );
+    }
+
+    const candidateInfo = candidateInfoResult.value.results;
 
     // Fetch offers for the hired application.
     const offersResult = await client.listOffers({ applicationId });
-    const offers = offersResult.isOk() ? offersResult.value : [];
+    if (offersResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list offers: ${offersResult.error.message}`, {
+          cause: offersResult.error,
+        })
+      );
+    }
+    const offers = offersResult.value;
 
     // Fetch job info if we have a jobId.
     let jobInfo = null;
     if (jobId) {
       const jobInfoResult = await client.getJobInfo({ id: jobId });
-      if (jobInfoResult.isOk() && jobInfoResult.value.results) {
-        jobInfo = jobInfoResult.value.results;
+      if (jobInfoResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to get job info: ${jobInfoResult.error.message}`,
+            {
+              cause: jobInfoResult.error,
+            }
+          )
+        );
       }
+      jobInfo = jobInfoResult.value.results ?? null;
     }
 
     const text = renderHireData({
