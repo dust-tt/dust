@@ -537,8 +537,12 @@ export function useDetectSkillsFromFiles({
 
         const data: DetectSkillsResponseBody = await res.json();
         setDetectedSkills(data.skills);
-      } catch {
-        setDetectError("Failed to detect skills from the uploaded files.");
+      } catch (err) {
+        setDetectError(
+          isAPIErrorResponse(err)
+            ? err.error.message
+            : "Failed to detect skills from the uploaded files."
+        );
       } finally {
         setIsDetecting(false);
       }
@@ -546,17 +550,11 @@ export function useDetectSkillsFromFiles({
     [owner.sId]
   );
 
-  const resetDetection = useCallback(() => {
-    setDetectedSkills([]);
-    setDetectError(null);
-  }, []);
-
   return {
     detectedSkills,
     isDetecting,
     detectError,
     triggerDetect,
-    resetDetection,
   };
 }
 
