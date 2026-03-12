@@ -17,12 +17,14 @@ import {
   Chip,
   ContentMessage,
   ContextItem,
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropzoneOverlay,
   Hoverable,
   InformationCircleIcon,
   Input,
@@ -57,7 +59,7 @@ const STATUS_CHIP_LABEL: Record<
   invalid: "Invalid skill format",
 };
 
-const ACCEPTED_FILE_TYPES = ".md,.zip,.skill";
+const ACCEPTED_FILE_TYPES = ".md,.zip";
 
 export function ImportSkillsDialog({
   onClose,
@@ -212,7 +214,7 @@ export function ImportSkillsDialog({
 
             <TabsContent value="files">
               <div className="flex flex-col gap-4 pt-2">
-                <FileDropzone
+                <SkillFileDropzone
                   onDrop={handleDrop}
                   onFileInputChange={(e) => {
                     const files = Array.from(e.target.files ?? []);
@@ -347,7 +349,7 @@ function DetectedSkillsList({
   );
 }
 
-interface FileDropzoneProps {
+interface SkillFileDropzoneProps {
   onDrop: (e: React.DragEvent) => void;
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
@@ -355,23 +357,22 @@ interface FileDropzoneProps {
   isLoading: boolean;
 }
 
-// TODO(2026-03-12 aubin): move this to sparkle.
-function FileDropzone({
+function SkillFileDropzone({
   onDrop,
   onFileInputChange,
   fileInputRef,
   disabled,
   isLoading,
-}: FileDropzoneProps) {
+}: SkillFileDropzoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
     <div
-      className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-4 py-6 transition-colors ${
-        isDragOver
-          ? "border-action-300 bg-action-50 dark:border-action-300-night dark:bg-action-50-night"
-          : "border-border bg-muted-background dark:border-border-night dark:bg-muted-background-night"
-      }`}
+      className={cn(
+        "relative flex flex-col items-center gap-3 overflow-hidden rounded-xl",
+        "border-2 border-dashed border-border bg-muted-background px-4 py-6",
+        "transition-colors dark:border-border-night dark:bg-muted-background-night"
+      )}
       onDragOver={(e) => {
         e.preventDefault();
         if (!isLoading) {
@@ -386,36 +387,30 @@ function FileDropzone({
         }
       }}
     >
-      {isLoading ? (
-        <>
-          <Spinner size="md" />
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Detecting skills...
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Drag and drop or click to upload
-          </p>
-          <input
-            className="hidden"
-            type="file"
-            accept={ACCEPTED_FILE_TYPES}
-            ref={fileInputRef}
-            multiple
-            onChange={onFileInputChange}
-          />
-          <Button
-            label="Upload files"
-            icon={PlusIcon}
-            variant="primary"
-            size="sm"
-            disabled={disabled}
-            onClick={() => fileInputRef.current?.click()}
-          />
-        </>
-      )}
+      <DropzoneOverlay
+        isDragActive={isDragOver}
+        title="Drop files here"
+        description="Upload .md, .zip or .skill files"
+      />
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Drag and drop or click to upload
+      </p>
+      <input
+        className="hidden"
+        type="file"
+        accept={ACCEPTED_FILE_TYPES}
+        ref={fileInputRef}
+        multiple
+        onChange={onFileInputChange}
+      />
+      <Button
+        label="Upload files"
+        icon={PlusIcon}
+        variant="primary"
+        size="sm"
+        disabled={disabled}
+        onClick={() => fileInputRef.current?.click()}
+      />
     </div>
   );
 }
