@@ -25,8 +25,6 @@ export async function rateLimiter({
   maxPerTimeframe: number;
   timeframeSeconds: number;
 }): Promise<number> {
-  const statsDClient = getStatsDClient();
-
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
@@ -76,19 +74,19 @@ export async function rateLimiter({
     })) as number;
 
     const totalTimeMs = new Date().getTime() - now.getTime();
-    statsDClient.distribution(
+    getStatsDClient().distribution(
       "ratelimiter.latency.distribution",
       totalTimeMs,
       tags
     );
 
     if (remaining <= 0) {
-      statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
+      getStatsDClient().increment("ratelimiter.exceeded.count", 1, tags);
     }
 
     return remaining;
   } catch (e) {
-    statsDClient.increment("ratelimiter.error.count", 1, tags);
+    getStatsDClient().increment("ratelimiter.error.count", 1, tags);
     logger.error(
       {
         key,

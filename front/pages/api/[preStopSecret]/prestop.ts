@@ -14,8 +14,6 @@ import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 const PRESTOP_LOG_INTERVAL_MS = 1000; // 1 second log interval.
 const PRESTOP_LOG_MAX_LOCKS = 3; // Show top 3 longest running wake locks.
 
@@ -47,7 +45,7 @@ async function handler(
   });
 
   // Record pre-stop initiation.
-  statsDClient.increment("prestop.requests");
+  getStatsDClient().increment("prestop.requests");
 
   // Phase 1: Signal shutdown immediately to fail readiness probe.
   // This triggers the load balancer to stop sending new connections.
@@ -77,11 +75,14 @@ async function handler(
       );
 
       // Record initial wake lock metrics.
-      statsDClient.gauge("prestop.initial_wake_locks", currentWakeLockCount);
+      getStatsDClient().gauge(
+        "prestop.initial_wake_locks",
+        currentWakeLockCount
+      );
       if (currentWakeLockCount > 0) {
-        statsDClient.increment("prestop.has_wake_locks");
+        getStatsDClient().increment("prestop.has_wake_locks");
       } else {
-        statsDClient.increment("prestop.no_wake_locks");
+        getStatsDClient().increment("prestop.no_wake_locks");
       }
 
       // Log details of all active wake locks.
@@ -146,9 +147,12 @@ async function handler(
       );
 
       // Record timeout metrics.
-      statsDClient.increment("prestop.timeouts");
-      statsDClient.gauge("prestop.timeout_wake_locks", currentWakeLockCount);
-      statsDClient.distribution("prestop.timeout_duration_ms", elapsedMs);
+      getStatsDClient().increment("prestop.timeouts");
+      getStatsDClient().gauge(
+        "prestop.timeout_wake_locks",
+        currentWakeLockCount
+      );
+      getStatsDClient().distribution("prestop.timeout_duration_ms", elapsedMs);
 
       break;
     }
@@ -168,15 +172,15 @@ async function handler(
     );
 
     // Record successful completion metrics.
-    statsDClient.increment("prestop.wake_locks_cleared");
-    statsDClient.distribution(
+    getStatsDClient().increment("prestop.wake_locks_cleared");
+    getStatsDClient().distribution(
       "prestop.wake_lock_duration_ms",
       wakeLockDurationMs
     );
   } else {
     // Record forced termination metrics.
-    statsDClient.increment("prestop.wake_locks_forced");
-    statsDClient.distribution(
+    getStatsDClient().increment("prestop.wake_locks_forced");
+    getStatsDClient().distribution(
       "prestop.wake_lock_forced_duration_ms",
       wakeLockDurationMs
     );
@@ -200,8 +204,8 @@ async function handler(
       "Waiting additional time for connection draining"
     );
 
-    statsDClient.increment("prestop.draining_wait_additional");
-    statsDClient.distribution(
+    getStatsDClient().increment("prestop.draining_wait_additional");
+    getStatsDClient().distribution(
       "prestop.draining_additional_wait_ms",
       remainingDrainingWaitMs
     );
@@ -216,7 +220,9 @@ async function handler(
       "Connection draining period already satisfied by wake lock wait"
     );
 
-    statsDClient.increment("prestop.draining_wait_satisfied_by_wake_locks");
+    getStatsDClient().increment(
+      "prestop.draining_wait_satisfied_by_wake_locks"
+    );
   }
 
   const totalDurationMs =
@@ -238,8 +244,8 @@ async function handler(
   );
 
   // Record total prestop duration.
-  statsDClient.increment("prestop.completions");
-  statsDClient.distribution("prestop.total_duration_ms", totalDurationMs);
+  getStatsDClient().increment("prestop.completions");
+  getStatsDClient().distribution("prestop.total_duration_ms", totalDurationMs);
 
   res.status(200).end();
 }

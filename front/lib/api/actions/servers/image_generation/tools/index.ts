@@ -43,8 +43,7 @@ export function createImageGenerationTools(
         "Generating image..."
       );
 
-      const statsDClient = getStatsDClient();
-      statsDClient.increment("tools.image_generation.generated", 1, [
+      getStatsDClient().increment("tools.image_generation.generated", 1, [
         `aspect_ratio:${aspectRatio}`,
         `image_count:${referenceImages?.length ?? 0}`,
         `quality:${quality}`,
@@ -171,7 +170,7 @@ export function createImageGenerationTools(
 
       const imageParts = validationResult.value;
 
-      trackGeminiTokenUsage(response, statsDClient);
+      trackGeminiTokenUsage(response);
 
       if (response.usageMetadata) {
         const { inputTokens, outputTokens, totalTokens, costDetails } =

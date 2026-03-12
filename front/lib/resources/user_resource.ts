@@ -40,8 +40,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-const statsDClient = getStatsDClient();
-
 export interface SearchMembersPaginationParams {
   offset: number;
   limit: number;
@@ -388,7 +386,10 @@ export class UserResource extends BaseResource<UserModel> {
       const foundUserIds = new Set(users.map((u) => u.sId));
       const missingUserIds = userIds.filter((sId) => !foundUserIds.has(sId));
 
-      statsDClient.increment("user_search.revoked_users_in_results.count", 1);
+      getStatsDClient().increment(
+        "user_search.revoked_users_in_results.count",
+        1
+      );
 
       logger.error(
         {

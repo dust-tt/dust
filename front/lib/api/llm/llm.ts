@@ -33,8 +33,6 @@ import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-const statsDClient = getStatsDClient();
-
 export abstract class LLM<TPayload = unknown> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
@@ -186,7 +184,7 @@ export abstract class LLM<TPayload = unknown> {
       `operation_type:${this.context.operationType}`,
     ];
 
-    statsDClient.increment("llm_interaction.count", 1, metricTags);
+    getStatsDClient().increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
@@ -216,7 +214,7 @@ export abstract class LLM<TPayload = unknown> {
         // Logging before it gets stopped and retried downstream
         if (currentEvent.type === "error") {
           // Temporary: track LLM error metric
-          statsDClient.increment("llm_error.count", 1, metricTags);
+          getStatsDClient().increment("llm_error.count", 1, metricTags);
           this.generation.updateTrace({
             tags: ["isError:true", `errorType:${currentEvent.content.type}`],
           });
@@ -235,7 +233,7 @@ export abstract class LLM<TPayload = unknown> {
 
         if (currentEvent.type === "success") {
           // Temporary: track LLM success metric
-          statsDClient.increment("llm_success.count", 1, metricTags);
+          getStatsDClient().increment("llm_success.count", 1, metricTags);
 
           logger.info(
             {

@@ -10,8 +10,6 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-const statsDClient = getStatsDClient();
-
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
   logger: typeof logger;
@@ -111,10 +109,10 @@ export class ActivityInboundLogInterceptor
         );
 
         tags.push(`error_type:${errorType}`);
-        statsDClient.increment("activity_failed.count", 1, tags);
+        getStatsDClient().increment("activity_failed.count", 1, tags);
       } else {
         this.logger.info({ durationMs: durationMs }, "Activity completed.");
-        statsDClient.increment("activities_success.count", 1, tags);
+        getStatsDClient().increment("activities_success.count", 1, tags);
       }
     }
   }

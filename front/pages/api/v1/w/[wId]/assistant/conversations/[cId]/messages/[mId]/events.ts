@@ -17,8 +17,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { AgentMessageEventType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events:
@@ -228,7 +226,7 @@ async function handler(
         );
         if (!writeSuccessful) {
           backpressureCount++;
-          statsDClient.increment("streaming.backpressure.count", 1, [
+          getStatsDClient().increment("streaming.backpressure.count", 1, [
             "endpoint_type:v1",
             "endpoint:message_events",
           ]);

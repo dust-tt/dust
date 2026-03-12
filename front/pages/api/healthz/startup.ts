@@ -7,8 +7,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 const DEPENDENCY_CHECK_TIMEOUT_MS = 2000;
 
-const statsDClient = getStatsDClient();
-
 type DependencyName = "redis" | "database";
 
 interface DependencyResult {
@@ -74,7 +72,7 @@ export default async function handler(
       "Startup probe succeeded - dependencies connected"
     );
 
-    statsDClient.distribution("healthz.startup.duration_ms", durationMs, [
+    getStatsDClient().distribution("healthz.startup.duration_ms", durationMs, [
       "status:success",
     ]);
 
@@ -87,7 +85,7 @@ export default async function handler(
       `Startup probe failed - ${failed.map((r) => r.name).join(", ")} not ready`
     );
 
-    statsDClient.distribution("healthz.startup.duration_ms", durationMs, [
+    getStatsDClient().distribution("healthz.startup.duration_ms", durationMs, [
       "status:failure",
     ]);
 

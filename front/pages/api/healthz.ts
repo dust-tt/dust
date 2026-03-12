@@ -1,8 +1,6 @@
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 // TODO(2026-01-12): Delete once helm chart has been updated to use /api/healthz/ready.
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
@@ -16,5 +14,5 @@ export default async function handler(
 
   const elapsed = performance.now() - start;
 
-  statsDClient.distribution("requests.health.check", elapsed);
+  getStatsDClient().distribution("requests.health.check", elapsed);
 }

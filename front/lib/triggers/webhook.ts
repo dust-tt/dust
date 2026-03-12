@@ -39,8 +39,6 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-const statsDClient = getStatsDClient();
-
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
  */
@@ -281,7 +279,7 @@ async function checkWorkspaceRateLimit({
   }
 
   if (errorMessage !== null) {
-    statsDClient.increment("webhook_workspace_rate_limit.hit.count", 1, [
+    getStatsDClient().increment("webhook_workspace_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
     ]);
@@ -320,7 +318,7 @@ async function checkTriggerRateLimit({
       { workspaceId, webhookRequestId, triggerId: trigger.sId },
       result.message
     );
-    statsDClient.increment("webhook_trigger_rate_limit.hit.count", 1, [
+    getStatsDClient().increment("webhook_trigger_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
       `trigger_id:${trigger.sId}`,
@@ -356,7 +354,7 @@ function matchesPayloadFilter({
     `workspace_id:${workspaceId}`,
     `trigger_id:${trigger.sId}`,
   ];
-  statsDClient.increment("webhook_filter.events_processed.count", 1, tags);
+  getStatsDClient().increment("webhook_filter.events_processed.count", 1, tags);
 
   const parsedFilterResult = parseMatcherExpression(filter);
   if (parsedFilterResult.isErr()) {
@@ -374,7 +372,7 @@ function matchesPayloadFilter({
 
   const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
   if (payloadMatchesFilter) {
-    statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
+    getStatsDClient().increment("webhook_filter.events_passed.count", 1, tags);
     return true;
   }
 
@@ -658,7 +656,7 @@ export async function storePayloadInGCS(
       "Failed to store webhook request"
     );
 
-    statsDClient.increment("webhook_error.count", 1, [
+    getStatsDClient().increment("webhook_error.count", 1, [
       `provider:${provider}`,
       `workspace_id:${auth.getNonNullableWorkspace().sId}`,
     ]);

@@ -720,14 +720,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           }),
         ]);
 
-        const statsDClient = getStatsDClient();
-
-        statsDClient.increment(
+        getStatsDClient().increment(
           "mcp_output_items.fetch.count",
           gcsItems.length,
           ["storage:gcs"]
         );
-        statsDClient.increment(
+        getStatsDClient().increment(
           "mcp_output_items.fetch.count",
           legacyItems.length,
           ["storage:legacy"]
@@ -743,7 +741,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               gcsPath: item.contentGcsPath!,
             }))
           );
-          statsDClient.distribution(
+          getStatsDClient().distribution(
             "mcp_output_items.gcs_hydrate.duration_ms",
             Date.now() - gcsStartMs
           );
@@ -756,7 +754,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               }
             }
           } else {
-            statsDClient.increment(
+            getStatsDClient().increment(
               "mcp_output_items.gcs_fallback_db.count",
               gcsItems.length
             );

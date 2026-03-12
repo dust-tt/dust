@@ -5,8 +5,6 @@ import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { InjectedSinks } from "@temporalio/worker";
 import type { Sinks } from "@temporalio/workflow";
 
-const statsDClient = getStatsDClient();
-
 /**
  * Sink interface for agent loop instrumentation.
  *
@@ -57,7 +55,7 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
             { workspaceId, agentMessageId, conversationId, startStep },
             "Agent loop phase execution started"
           );
-          statsDClient.increment(METRICS.PHASE_STARTS, 1);
+          getStatsDClient().increment(METRICS.PHASE_STARTS, 1);
         },
       },
       logStepCompletion: {
@@ -71,9 +69,9 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
           const stepDurationMs = Date.now() - stepStartTime;
           const tags = [`step:${step}`];
 
-          statsDClient.increment(METRICS.STEP_STARTS, 1, tags);
-          statsDClient.increment(METRICS.STEP_COMPLETIONS, 1, tags);
-          statsDClient.distribution(
+          getStatsDClient().increment(METRICS.STEP_STARTS, 1, tags);
+          getStatsDClient().increment(METRICS.STEP_COMPLETIONS, 1, tags);
+          getStatsDClient().distribution(
             METRICS.STEP_DURATION,
             stepDurationMs,
             tags
@@ -108,12 +106,18 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
             "Agent loop execution completed"
           );
 
-          statsDClient.increment(METRICS.PHASE_COMPLETIONS, 1);
-          statsDClient.distribution(METRICS.PHASE_DURATION, phaseDurationMs);
-          statsDClient.histogram(METRICS.PHASE_STEPS, stepsCompleted);
+          getStatsDClient().increment(METRICS.PHASE_COMPLETIONS, 1);
+          getStatsDClient().distribution(
+            METRICS.PHASE_DURATION,
+            phaseDurationMs
+          );
+          getStatsDClient().histogram(METRICS.PHASE_STEPS, stepsCompleted);
 
-          statsDClient.increment(METRICS.LOOP_COMPLETIONS, 1);
-          statsDClient.distribution(METRICS.LOOP_DURATION, totalDurationMs);
+          getStatsDClient().increment(METRICS.LOOP_COMPLETIONS, 1);
+          getStatsDClient().distribution(
+            METRICS.LOOP_DURATION,
+            totalDurationMs
+          );
         },
       },
     },

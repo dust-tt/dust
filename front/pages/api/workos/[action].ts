@@ -23,8 +23,6 @@ import { GenericServerException, OauthException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 function isValidScreenHint(
   screenHint: string | string[] | undefined
 ): screenHint is "sign-up" | "sign-in" {
@@ -137,7 +135,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     res.redirect(authorizationUrl);
   } catch (error) {
     logger.error({ error }, "Error during WorkOS login");
-    statsDClient.increment("login.error", 1);
+    getStatsDClient().increment("login.error", 1);
     res.redirect("/login-error?type=workos-login");
   }
 }
@@ -461,7 +459,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     redirectTo(res, appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
-    statsDClient.increment("login.callback.error", 1);
+    getStatsDClient().increment("login.callback.error", 1);
     redirectTo(res, `/login-error?type=workos-callback`);
   }
 }

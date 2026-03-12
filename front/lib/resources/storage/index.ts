@@ -49,8 +49,6 @@ types.setTypeParser(INT8_ARRAY_OID, (val: string) =>
   parseBigIntegerArray(val).map(parseBigIntToSafeNumber)
 );
 
-export const statsDClient = getStatsDClient();
-
 // Sequelize-pool exposes these getters at runtime but Sequelize's type
 // definitions do not surface them on `connectionManager.pool`.
 declare module "sequelize/types/dialects/abstract/connection-manager" {
@@ -73,10 +71,10 @@ function reportPoolMetrics(
     return;
   }
 
-  statsDClient.gauge("sequelize.pool.size", pool.size, tags);
-  statsDClient.gauge("sequelize.pool.available", pool.available, tags);
-  statsDClient.gauge("sequelize.pool.using", pool.using, tags);
-  statsDClient.gauge("sequelize.pool.waiting", pool.waiting, tags);
+  getStatsDClient().gauge("sequelize.pool.size", pool.size, tags);
+  getStatsDClient().gauge("sequelize.pool.available", pool.available, tags);
+  getStatsDClient().gauge("sequelize.pool.using", pool.using, tags);
+  getStatsDClient().gauge("sequelize.pool.waiting", pool.waiting, tags);
 }
 
 const POOL_TAGS = ["pool:front_master"];
@@ -115,7 +113,7 @@ export const frontSequelize = new SequelizeWithComments(
           return;
         }
 
-        statsDClient.distribution(
+        getStatsDClient().distribution(
           "sequelize.connection_acquisition.duration",
           Date.now() - startMs,
           POOL_TAGS
