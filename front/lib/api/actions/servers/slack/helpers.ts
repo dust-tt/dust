@@ -1132,6 +1132,91 @@ export async function executeSearchUser(
   ]);
 }
 
+type ChannelTab = {
+  type?: string;
+  data?: { file_id?: string; shared_ts?: string };
+  label?: string;
+};
+
+// This object is unfortunately not in the SDK type, but documented in the API reference.
+function hasChannelTabs(
+  ch: unknown
+): ch is { properties: { tabs: ChannelTab[] } } {
+  const p =
+    ch !== null &&
+    typeof ch === "object" &&
+    (ch as Record<string, unknown>).properties;
+  return (
+    p !== null &&
+    typeof p === "object" &&
+    Array.isArray((p as Record<string, unknown>).tabs)
+  );
+}
+
+export type ChannelCanvasInfo = {
+  canvas_id: string;
+  type: "canvas";
+  label?: string;
+};
+
+async function getChannelCanvases({
+  channelId,
+  accessToken,
+}: {
+  channelId: string;
+  accessToken: string;
+}): Promise<ChannelCanvasInfo[]> {
+  const slackClient = await getSlackClient(accessToken);
+  const res = await slackClient.conversations.info({ channel: channelId });
+  if (!res.ok || !res.channel || !hasChannelTabs(res.channel)) {
+    return [];
+  }
+  const tabs = res.channel.properties.tabs;
+
+  const canvases: ChannelCanvasInfo[] = [];
+  const seen = new Set<string>();
+  for (const tab of tabs) {
+    if (tab.type === "canvas" && tab.data?.file_id) {
+      const id = tab.data.file_id;
+      if (!seen.has(id)) {
+        seen.add(id);
+        canvases.push({ canvas_id: id, type: "canvas", label: tab.label });
+      }
+    }
+  }
+  return canvases;
+}
+
+export async function executeGetChannelCanvases({
+  channel_id,
+  accessToken,
+}: {
+  channel_id: string;
+  accessToken: string;
+}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const canvases = await getChannelCanvases({
+    channelId: channel_id,
+    accessToken,
+  });
+  if (canvases.length === 0) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Channel ${channel_id} has no canvases. Create one with write_canvas.`,
+      },
+    ]);
+  }
+  const lines = canvases.map(
+    (c) => `- ${c.canvas_id} (${c.type}${c.label ? `, "${c.label}"` : ""})`
+  );
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Channel ${channel_id} — ${canvases.length} canvas/canvases:\n\n${lines.join("\n")}\n\nUse these canvas_id values with read_canvas or write_canvas.`,
+    },
+  ]);
+}
+
 export async function executeReadCanvas({
   canvas_id,
   section_types,

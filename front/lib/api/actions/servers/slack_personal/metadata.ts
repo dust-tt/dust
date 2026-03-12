@@ -285,6 +285,21 @@ Set search_all=true only if the user explicitly requests to search all public wo
       done: "Read Slack thread messages",
     },
   },
+  get_channel_canvases: {
+    description:
+      "List all canvas IDs for a Slack channel (from the channel's tabs). " +
+      "Use when you need to edit a channel's canvas but only have the channel ID. ",
+    schema: {
+      channel_id: z
+        .string()
+        .describe("The Slack channel ID (e.g. 'C01234ABCD')."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting channel canvases",
+      done: "Got channel canvases",
+    },
+  },
   read_canvas: {
     description:
       "Find sections within a Slack canvas. " +

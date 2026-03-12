@@ -12,6 +12,7 @@ import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
   executeArchiveChannel,
   executeCreateChannel,
+  executeGetChannelCanvases,
   executeInviteToChannel,
   executeListUserGroups,
   executePostMessage,
@@ -830,6 +831,30 @@ export function createSlackPersonalTools(
         latest,
         accessToken,
       });
+    },
+
+    get_channel_canvases: async ({ channel_id }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeGetChannelCanvases({
+          channel_id,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(
+            `Error getting channel canvases: ${normalizeError(error)}`
+          )
+        );
+      }
     },
 
     read_canvas: async (
