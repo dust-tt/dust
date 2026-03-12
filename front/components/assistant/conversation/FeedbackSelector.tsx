@@ -51,7 +51,7 @@ const OTHER_ANSWER = "Other (add details below)";
 
 const FEEDBACK_PREDEFINED_ANSWERS = [
   "Factually incorrect",
-  "Didn’t fully follow instructions",
+  "Didn’t follow instructions",
   "Don’t like the tone",
   "Wrong data sources",
   "Took too long",
@@ -223,32 +223,31 @@ export function FeedbackSelector({
                 <div>
                   <Label htmlFor="feedback-content" className="mb-2 block">
                     {thumbDirection === "down"
-                      ? "What should the agent do differently?"
+                      ? "What was the issue?"
                       : "Glad you liked it! Tell us more?"}
                   </Label>
 
-                  {thumbDirection === "down" && (
+                  {thumbDirection === "down" && showPredefinedAnswers && (
                     <div className="mb-3 flex flex-wrap gap-2">
-                      {showPredefinedAnswers &&
-                        FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
-                          <Button
-                            key={answer}
-                            label={answer}
-                            size="xs"
-                            variant={
+                      {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
+                        <Button
+                          key={answer}
+                          label={answer}
+                          size="xs"
+                          variant={
+                            selectedAnswerField.field.value === answer
+                              ? "primary"
+                              : "outline"
+                          }
+                          onClick={() => {
+                            selectedAnswerField.field.onChange(
                               selectedAnswerField.field.value === answer
-                                ? "primary"
-                                : "outline"
-                            }
-                            onClick={() => {
-                              selectedAnswerField.field.onChange(
-                                selectedAnswerField.field.value === answer
-                                  ? ""
-                                  : answer
-                              );
-                            }}
-                          />
-                        ))}
+                                ? ""
+                                : answer
+                            );
+                          }}
+                        />
+                      ))}
                     </div>
                   )}
 
@@ -295,6 +294,7 @@ export function FeedbackSelector({
                 <FeedbackSelectorPopoverContent
                   owner={owner}
                   agentConfigurationId={agentConfigurationId}
+                  agentName={agentName}
                   isGlobalAgent={isGlobalAgent}
                 />
               </div>
