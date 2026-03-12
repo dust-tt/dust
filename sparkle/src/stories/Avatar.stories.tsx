@@ -13,7 +13,7 @@ import {
   ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
-import { StarStrokeIcon } from "@sparkle/icons/app";
+import { SidekickIcon, StarStrokeIcon } from "@sparkle/icons/app";
 
 import {
   Avatar,
@@ -242,6 +242,12 @@ export const AvatarExample: Story = {
       </div>
       <div>Platforms integrations</div>
       <div className="s-flex s-gap-4">
+        <Avatar
+          size="md"
+          icon={SidekickIcon}
+          backgroundColor="s-bg-warning-200"
+          iconColor="s-text-warning-800"
+        />
         <Avatar size="md" icon={DriveLogo} backgroundColor="s-bg-gray-900" />
         <Avatar size="md" icon={NotionLogo} backgroundColor="s-bg-white" />
         <Avatar size="md" icon={SlackLogo} hexBgColor="#421D51" />
