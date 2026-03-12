@@ -137,14 +137,16 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
         <div className="s-flex s-h-full s-w-full s-flex-col s-justify-between">
           <div className="s-flex s-flex-col">
             <div className="s-mb-2 s-flex s-items-center s-justify-between s-gap-2">
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="s-flex s-min-w-0 s-items-center s-gap-2">
                 <Avatar
                   icon={icon}
                   size="xs"
                   backgroundColor={iconBackgroundColor}
                   iconColor={iconColor}
                 />
-                <span className="s-text-sm s-font-medium">{label}</span>
+                <span className="s-truncate s-text-sm s-font-medium">
+                  {label}
+                </span>
                 {isSelected && (
                   <Chip
                     size="xs"
