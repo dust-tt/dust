@@ -83,6 +83,7 @@ const ICONS_XCASSETS_DIR = resolve(
 );
 const ICONS_APP_SRC_DIR = resolve(__dirname, "../src/icons/src/app");
 const ICONS_ACTIONS_SRC_DIR = resolve(__dirname, "../src/icons/src/actions");
+const PLATFORM_LOGOS_SRC_DIR = resolve(__dirname, "../src/logo/src/platforms");
 
 const HEADER = `// DO NOT EDIT — Generated from Sparkle (tailwind.config.js)
 // Run: cd sparkle && node scripts/generate-swift.mjs\n\n`;
@@ -438,12 +439,18 @@ function generateIcons() {
 
   // App icons (unprefixed)
   for (const file of readdirSync(ICONS_APP_SRC_DIR).filter((f) => f.endsWith(".svg")).sort()) {
-    icons.push({ src: file, srcDir: ICONS_APP_SRC_DIR, name: toPascalCase(file) });
+    icons.push({ src: file, srcDir: ICONS_APP_SRC_DIR, name: toPascalCase(file), isLogo: false });
   }
 
   // Action icons (Action-prefixed)
   for (const file of readdirSync(ICONS_ACTIONS_SRC_DIR).filter((f) => f.endsWith(".svg")).sort()) {
-    icons.push({ src: file, srcDir: ICONS_ACTIONS_SRC_DIR, name: "Action" + toPascalCase(file) });
+    icons.push({ src: file, srcDir: ICONS_ACTIONS_SRC_DIR, name: "Action" + toPascalCase(file), isLogo: false });
+  }
+
+  // Platform logos (suffixed with "Logo", original rendering to preserve brand colors)
+  for (const file of readdirSync(PLATFORM_LOGOS_SRC_DIR).filter((f) => f.endsWith(".svg")).sort()) {
+    const baseName = toPascalCase(file);
+    icons.push({ src: file, srcDir: PLATFORM_LOGOS_SRC_DIR, name: baseName + "Logo", isLogo: true });
   }
 
   // Create Icons.xcassets
@@ -473,7 +480,7 @@ function generateIcons() {
           info: { author: "xcode", version: 1 },
           properties: {
             "preserves-vector-representation": true,
-            "template-rendering-intent": "template",
+            "template-rendering-intent": icon.isLogo ? "original" : "template",
           },
         },
         null,
