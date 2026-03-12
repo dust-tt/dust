@@ -118,7 +118,9 @@ export function FeedbackSelector({
     React.useState<ThumbReaction>("up");
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(thumbDirection, showPredefinedAnswers)),
+    resolver: zodResolver(
+      makeFeedbackSchema(thumbDirection, showPredefinedAnswers)
+    ),
     defaultValues: feedbackBaseSchema.parse({}),
   });
 
