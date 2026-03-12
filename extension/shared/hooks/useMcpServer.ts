@@ -1,13 +1,12 @@
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { normalizeError } from "@extension/shared/lib/utils";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
- * React hook for using MCP servers in components
- * This hook provides access to workspace-scoped MCP servers
- *
- * @returns An object with the MCP server, serverId for message payloads, and connection state
+ * React hook for using MCP servers in components.
+ * This hook provides access to workspace-scoped MCP servers and
+ * re-registers when the workspace changes.
  */
 export function useMcpServer() {
   const platform = usePlatform();
@@ -16,34 +15,32 @@ export function useMcpServer() {
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const serverRef = useRef<any>(null);
 
   const { workspace } = useExtensionAuth();
+  const workspaceId = workspace?.sId;
 
-  // Function to disconnect the server.
   const disconnectServer = useCallback(async () => {
-    if (serverRef.current) {
+    if (platform.mcp) {
       try {
-        // If the server has a disconnect method, call it.
-        if (typeof serverRef.current.disconnect === "function") {
-          await serverRef.current.disconnect();
-        }
+        await platform.mcp.disconnect();
         setIsConnected(false);
       } catch (err) {
         console.error("Error disconnecting MCP server:", err);
       }
     }
-  }, []);
+  }, [platform.mcp]);
 
-  // Create and connect to the MCP server.
   useEffect(() => {
-    // Check if the platform supports MCP.
     if (!platform.mcp) {
       setIsSupported(false);
       return;
     }
 
     setIsSupported(true);
+
+    if (!workspaceId) {
+      return;
+    }
 
     let isMounted = true;
 
@@ -52,9 +49,7 @@ export function useMcpServer() {
         if (!platform.mcp) {
           if (isMounted) {
             setIsSupported(false);
-            return;
           }
-
           return;
         }
 
@@ -64,25 +59,26 @@ export function useMcpServer() {
 
         const result = await platform.mcp.getOrCreateServer(
           workspace,
-          (serverId) => {
-            setServerId(serverId);
+          (sid) => {
+            if (isMounted) {
+              setServerId(sid);
+            }
           }
         );
-        if (!result.server) {
-          console.log("MCP server creation returned null");
-          if (isMounted) {
-            setIsSupported(false);
-            return;
-          }
+
+        if (!isMounted) {
+          return;
         }
 
-        if (isMounted) {
-          serverRef.current = result.server;
-          setServer(result.server);
-          setServerId(result.serverId);
-          setIsConnected(true);
-          setError(null);
+        if (!result.server) {
+          setIsSupported(false);
+          return;
         }
+
+        setServer(result.server);
+        setServerId(result.serverId);
+        setIsConnected(true);
+        setError(null);
       } catch (err) {
         console.error("Error setting up MCP server:", err);
         if (isMounted) {
@@ -92,18 +88,24 @@ export function useMcpServer() {
       }
     };
 
-    // Start the setup process.
-    void setupServer();
+    // Defer so that React StrictMode's synchronous mount→cleanup→mount cycle
+    // cancels the first timer before it runs, preventing duplicate registrations.
+    const timer = setTimeout(() => {
+      void setupServer();
+    }, 0);
 
-    // Cleanup function.
     return () => {
+      clearTimeout(timer);
       isMounted = false;
-      if (serverRef.current && isConnected) {
-        // Disconnect server if connected.
-        void disconnectServer();
+      if (platform.mcp) {
+        void platform.mcp.disconnect();
       }
+      setServer(null);
+      setServerId(undefined);
+      setIsConnected(false);
     };
-  }, [platform.mcp, isConnected, disconnectServer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- workspace object excluded; workspaceId triggers re-runs.
+  }, [platform.mcp, workspaceId]);
 
   return {
     server,
