@@ -168,10 +168,7 @@ export const getConfig = async ({
         COMMIT_HASH: process.env.COMMIT_HASH || getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
-        DUST_EU_URL: process.env.DUST_EU_URL || "",
         DUST_EXTENSION_VERSION: `chrome-${version}`,
-        DUST_US_URL: process.env.DUST_US_URL || "",
-        FRONT_EXTENSION_URL: process.env.FRONT_EXTENSION_URL || "",
         NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
         NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
@@ -181,7 +178,6 @@ export const getConfig = async ({
         NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
           process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
         VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
-        WORKOS_CLIENT_ID: process.env.WORKOS_CLIENT_ID || "",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
@@ -231,7 +227,7 @@ export const getConfig = async ({
       packageDirPath
         ? new ZipPlugin({
             path: packageDirPath,
-            filename: `Dust_Extension.${env}.v${version}.zip`,
+            filename: `Dust_Extension_Chrome.${env}.v${version}.zip`,
           })
         : null,
       isDevelopment

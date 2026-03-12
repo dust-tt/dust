@@ -5,6 +5,8 @@ on:
     paths:
       - package-lock.json
       - sdks/js/**
+      - sparkle/**
+      - front/**
       - extension/**
       - .github/workflows/build-extension.yml
 
