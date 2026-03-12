@@ -15,7 +15,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         <PokeColumnSortableHeader column={column} label="Date" />
       ),
       cell: ({ row }) => {
-        const date = new Date(row.getValue("createdAt") as string);
+        const date = new Date(row.original.createdAt);
         return (
           <span className="whitespace-nowrap">
             {date.toLocaleDateString()} {date.toLocaleTimeString()}
@@ -35,12 +35,12 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         <PokeColumnSortableHeader column={column} label="Vote" />
       ),
       cell: ({ row }) => {
-        const direction = row.getValue("thumbDirection") as string;
+        const { thumbDirection } = row.original;
         return (
           <Chip
-            color={direction === "up" ? "green" : "rose"}
+            color={thumbDirection === "up" ? "green" : "rose"}
             size="xs"
-            label={direction === "up" ? "up" : "down"}
+            label={thumbDirection === "up" ? "up" : "down"}
           />
         );
       },
@@ -86,7 +86,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         <PokeColumnSortableHeader column={column} label="Content" />
       ),
       cell: ({ row }) => {
-        const content = row.getValue("content") as string | null;
+        const { content } = row.original;
         return <div className="max-w-md truncate">{content ?? "-"}</div>;
       },
     },
