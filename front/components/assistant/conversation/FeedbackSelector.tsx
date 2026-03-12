@@ -97,11 +97,14 @@ export function FeedbackSelector({
   agentName,
   isGlobalAgent,
 }: FeedbackSelectorProps) {
+  const isSidekick = agentConfigurationId === GLOBAL_AGENTS_SID.SIDEKICK;
+  // Predefined answers are not so relevant in the context of sidekick.
+  const showPredefinedAnswers = !isSidekick;
+
   // "Improve this agent" would be confusing in the context of sidekick so we show "Improve @sidekick" instead
-  const improveLabel =
-    agentConfigurationId === GLOBAL_AGENTS_SID.SIDEKICK
-      ? `Improve @${agentName}`
-      : "Improve this agent";
+  const improveLabel = isSidekick
+    ? `Improve @${agentName}`
+    : "Improve this agent";
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [thumbDirection, setThumbDirection] =
@@ -217,25 +220,26 @@ export function FeedbackSelector({
 
                   {thumbDirection === "down" && (
                     <div className="mb-3 flex flex-wrap gap-2">
-                      {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
-                        <Button
-                          key={answer}
-                          label={answer}
-                          size="xs"
-                          variant={
-                            selectedAnswerField.field.value === answer
-                              ? "primary"
-                              : "outline"
-                          }
-                          onClick={() => {
-                            selectedAnswerField.field.onChange(
+                      {showPredefinedAnswers &&
+                        FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
+                          <Button
+                            key={answer}
+                            label={answer}
+                            size="xs"
+                            variant={
                               selectedAnswerField.field.value === answer
-                                ? ""
-                                : answer
-                            );
-                          }}
-                        />
-                      ))}
+                                ? "primary"
+                                : "outline"
+                            }
+                            onClick={() => {
+                              selectedAnswerField.field.onChange(
+                                selectedAnswerField.field.value === answer
+                                  ? ""
+                                  : answer
+                              );
+                            }}
+                          />
+                        ))}
                     </div>
                   )}
 
