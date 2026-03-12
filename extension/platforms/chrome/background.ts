@@ -1,3 +1,4 @@
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   AuthBackgroundMessage,
   AuthBackgroundResponseError,
@@ -6,6 +7,8 @@ import type {
   CaptureResponse,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
+  GetPageElementsMessage,
+  GetPageElementsResponse,
   InputBarStatusMessage,
   TabActionMessage,
   TabActionResponse,
@@ -18,6 +21,7 @@ import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
+import { getPageElements } from "./interactWithPage";
 
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
@@ -273,7 +277,8 @@ chrome.runtime.onMessage.addListener(
       | GetActiveTabBackgroundMessage
       | CaptureMesssage
       | InputBarStatusMessage
-      | TabActionMessage,
+      | TabActionMessage
+      | GetPageElementsMessage,
     sender,
     sendResponse: (
       response:
@@ -283,6 +288,7 @@ chrome.runtime.onMessage.addListener(
         | CaptureResponse
         | GetActiveTabBackgroundResponse
         | TabActionResponse
+        | GetPageElementsResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -681,6 +687,35 @@ chrome.runtime.onMessage.addListener(
             });
           }
         })();
+        return true;
+
+      case "GET_ELEMENTS":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await getPageElements(tab);
+
+            if (result.isErr()) {
+              log("Error reading page elements:", result.error);
+              sendResponse({
+                elements: "",
+                error: result.error.message,
+              });
+              return;
+            }
+
+            sendResponse({
+              elements: result.value,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error reading page elements:", normalizedError.message);
+            sendResponse({
+              elements: "",
+              error: normalizedError.message ?? "Failed to read page elements.",
+            });
+          }
+        });
         return true;
 
       case "INPUT_BAR_STATUS":
