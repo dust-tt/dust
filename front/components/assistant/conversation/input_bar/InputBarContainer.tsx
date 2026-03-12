@@ -49,6 +49,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
   GlobeAltIcon,
   PlusIcon,
@@ -551,6 +552,42 @@ const InputBarContainer = ({
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
   const { animate, captureActions } = useContext(InputBarContext);
+
+  const isMac = useMemo(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  }, []);
+
+  const pageShortcut = isMac ? "⇧⌘P" : "Ctrl+Maj+P";
+  const screenshotShortcut = isMac ? "⇧⌘S" : "Ctrl+Maj+S";
+
+  useEffect(() => {
+    // captureActions is defined only in the extension, so the shortcuts won't work in the web app
+    if (!captureActions) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod || !e.shiftKey) {
+        return;
+      }
+      if (captureActions.isCapturing || fileUploaderService.isProcessingFiles) {
+        return;
+      }
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        captureActions.onCapture("text");
+      } else if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        captureActions.onCapture("screenshot");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [captureActions, fileUploaderService.isProcessingFiles]);
+
   useEffect(() => {
     if (animate) {
       // Schedule focus to avoid flushing during render lifecycle.
@@ -891,6 +928,12 @@ const InputBarContainer = ({
                                   fileUploaderService.isProcessingFiles
                                 }
                                 onClick={() => captureActions.onCapture("text")}
+                                endComponent={
+                                  <DropdownMenuShortcut
+                                    shortcut={pageShortcut}
+                                    className="text-xs text-faint dark:text-faint-night"
+                                  />
+                                }
                               />
                               <DropdownMenuItem
                                 icon={CameraIcon}
@@ -901,6 +944,12 @@ const InputBarContainer = ({
                                 }
                                 onClick={() =>
                                   captureActions.onCapture("screenshot")
+                                }
+                                endComponent={
+                                  <DropdownMenuShortcut
+                                    shortcut={screenshotShortcut}
+                                    className="text-xs text-faint dark:text-faint-night"
+                                  />
                                 }
                               />
                             </>
