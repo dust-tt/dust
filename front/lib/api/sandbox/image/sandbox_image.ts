@@ -212,7 +212,6 @@ export class SandboxImage {
     const destPath =
       options?.path ?? `${this.workdir}/tool-manifest.${extension}`;
 
-    // Capture tools at call time, generate content lazily
     const tools = this.tools;
     const getContent = (): string => {
       const manifest = createToolManifest(tools);

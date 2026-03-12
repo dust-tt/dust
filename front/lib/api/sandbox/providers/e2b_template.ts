@@ -27,7 +27,6 @@ import {
   Template as E2BTemplate,
 } from "e2b";
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 export type DockerRegistryFactory = (imageRef: string) => TemplateBuilder;
@@ -60,13 +59,23 @@ class ContentMaterializer {
   private tempDir: string | null = null;
   private fileCount = 0;
 
-  materializeToPath(getContent: ContentGenerator): string {
+  materializeToPath(
+    getContent: ContentGenerator,
+    destFileName: string
+  ): string {
     if (!this.tempDir) {
-      this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sandbox-build-"));
+      // Create temp dir relative to this module (E2B resolves paths from __dirname).
+      const uniqueId = `sandbox-build-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      this.tempDir = path.join(__dirname, uniqueId);
+      fs.mkdirSync(this.tempDir, { recursive: true });
     }
-    const tempFile = path.join(this.tempDir, `content-${this.fileCount++}`);
+    // Use a subdirectory per file so E2B's directory-based copy works correctly.
+    const contentDir = path.join(this.tempDir, `content-${this.fileCount++}`);
+    fs.mkdirSync(contentDir, { recursive: true });
+    const fileName = path.basename(destFileName);
+    const tempFile = path.join(contentDir, fileName);
     fs.writeFileSync(tempFile, getContent());
-    return tempFile;
+    return path.relative(__dirname, contentDir);
   }
 
   cleanup(): void {
@@ -135,10 +144,14 @@ class E2BTemplateBuilder {
         if (op.src.type === "path") {
           this.builder = this.builder.copy(op.src.path, op.dest);
         } else {
-          const tempPath = this.materializer.materializeToPath(
-            op.src.getContent
+          // E2B copy works with directories, so we create a temp dir containing
+          // a file with the destination's filename, then copy to dest's parent.
+          const tempDir = this.materializer.materializeToPath(
+            op.src.getContent,
+            op.dest
           );
-          this.builder = this.builder.copy(tempPath, op.dest);
+          const destDir = path.dirname(op.dest);
+          this.builder = this.builder.copy(tempDir, destDir);
         }
         break;
 

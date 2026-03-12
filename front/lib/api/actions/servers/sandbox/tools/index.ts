@@ -15,6 +15,7 @@ import {
 import {
   createToolManifest,
   getSandboxImage,
+  getToolsForProvider,
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
@@ -152,12 +153,17 @@ export function createSandboxTools(
 
       return new Ok([{ type: "text" as const, text: output }]);
     },
-    describe_environment: async ({ format }, { auth }) => {
-      const sandboxImageResult = getSandboxImage(auth);
-      if (sandboxImageResult.isErr()) {
-        return new Err(new MCPError(sandboxImageResult.error.message));
+    describe_environment: async ({ format }, { auth, agentLoopContext }) => {
+      const providerId =
+        agentLoopContext?.runContext?.agentConfiguration.model.providerId;
+      if (!providerId) {
+        return new Err(new MCPError("Missing model provider ID"));
       }
-      const manifest = createToolManifest(sandboxImageResult.value.tools);
+      const toolsResult = getToolsForProvider(auth, providerId);
+      if (toolsResult.isErr()) {
+        return new Err(new MCPError(toolsResult.error.message));
+      }
+      const manifest = createToolManifest(toolsResult.value);
       const output =
         format === "json"
           ? toolManifestToJSON(manifest)

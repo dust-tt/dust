@@ -78,17 +78,19 @@ describe("SandboxImage.registerTool()", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
       name: "dsbx",
       description: "Dust CLI",
+      runtime: "system",
     });
 
     expect(image.operations).toHaveLength(0);
     expect(image.tools).toHaveLength(1);
     expect(image.tools[0].name).toBe("dsbx");
     expect(image.tools[0].description).toBe("Dust CLI");
+    expect(image.tools[0].runtime).toBe("system");
   });
 
   test("registers single tool with installCmd", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool(
-      { name: "curl", description: "HTTP client" },
+      { name: "curl", description: "HTTP client", runtime: "system" },
       { installCmd: "apt-get install -y curl" }
     );
 
@@ -99,14 +101,23 @@ describe("SandboxImage.registerTool()", () => {
     }
     expect(image.tools).toHaveLength(1);
     expect(image.tools[0].name).toBe("curl");
+    expect(image.tools[0].runtime).toBe("system");
   });
 
   test("registers multiple tools with single installCmd", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool(
       [
-        { name: "pandas", description: "Data analysis" },
-        { name: "numpy", description: "Numerical computing" },
-        { name: "matplotlib", description: "Plotting library" },
+        { name: "pandas", description: "Data analysis", runtime: "python" },
+        {
+          name: "numpy",
+          description: "Numerical computing",
+          runtime: "python",
+        },
+        {
+          name: "matplotlib",
+          description: "Plotting library",
+          runtime: "python",
+        },
       ],
       { installCmd: "pip install pandas numpy matplotlib" }
     );
@@ -124,6 +135,19 @@ describe("SandboxImage.registerTool()", () => {
       "numpy",
       "matplotlib",
     ]);
+    expect(image.tools.every((t) => t.runtime === "python")).toBe(true);
+  });
+
+  test("registers tool with profile", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
+      name: "special",
+      description: "OpenAI-only tool",
+      runtime: "system",
+      profile: "openai",
+    });
+
+    expect(image.tools).toHaveLength(1);
+    expect(image.tools[0].profile).toBe("openai");
   });
 
   test("returns new image instance", () => {
@@ -131,6 +155,7 @@ describe("SandboxImage.registerTool()", () => {
     const modified = original.registerTool({
       name: "curl",
       description: "HTTP client",
+      runtime: "system",
     });
 
     expect(modified).not.toBe(original);
@@ -240,7 +265,7 @@ describe("SandboxImage immutability", () => {
   test("chained operations preserve original instances", () => {
     const original = SandboxImage.fromDocker("ubuntu:22.04");
     const afterInstall = original.registerTool(
-      { name: "curl", description: "HTTP client" },
+      { name: "curl", description: "HTTP client", runtime: "system" },
       { installCmd: "apt-get install -y curl" }
     );
     const afterRun = afterInstall.runCmd("echo hello");
@@ -315,7 +340,11 @@ describe("SandboxImage.withToolManifest()", () => {
 
   test("chains with other operations", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04")
-      .registerTool({ name: "curl", description: "HTTP client" })
+      .registerTool({
+        name: "curl",
+        description: "HTTP client",
+        runtime: "system",
+      })
       .runCmd("echo hello")
       .withToolManifest()
       .runCmd("echo done");
@@ -328,8 +357,16 @@ describe("SandboxImage.withToolManifest()", () => {
 
   test("includes registered tools in manifest content", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04")
-      .registerTool({ name: "curl", description: "HTTP client" })
-      .registerTool({ name: "jq", description: "JSON processor" })
+      .registerTool({
+        name: "curl",
+        description: "HTTP client",
+        runtime: "system",
+      })
+      .registerTool({
+        name: "jq",
+        description: "JSON processor",
+        runtime: "system",
+      })
       .withToolManifest();
 
     if (
@@ -348,6 +385,7 @@ describe("SandboxImage.withToolManifest()", () => {
     const baseImage = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
       name: "curl",
       description: "HTTP client",
+      runtime: "system",
     });
 
     const imageWithManifest = baseImage.withToolManifest();
@@ -545,7 +583,11 @@ describe("SandboxImage.register()", () => {
 
   test("chains with other operations", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04")
-      .registerTool({ name: "curl", description: "HTTP client" })
+      .registerTool({
+        name: "curl",
+        description: "HTTP client",
+        runtime: "system",
+      })
       .withResources({ vcpu: 2, memoryMb: 1024 })
       .register({ imageName: "dust-base", tag: "staging" })
       .setRunEnv({ DEBUG: "true" });
