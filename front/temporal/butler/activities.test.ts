@@ -44,6 +44,7 @@ describe("analyzeConversationActivity", () => {
       authType: authenticator.toJSON(),
       conversationId: conversation.sId,
       messageId: "any-msg-id",
+      passIndex: 0,
     });
 
     const suggestions = await ConversationButlerSuggestionModel.findAll({
@@ -77,6 +78,7 @@ describe("analyzeConversationActivity", () => {
       authType: authenticator.toJSON(),
       conversationId: conversation.sId,
       messageId: "any-msg-id",
+      passIndex: 0,
     });
 
     const suggestions = await ConversationButlerSuggestionModel.findAll({
