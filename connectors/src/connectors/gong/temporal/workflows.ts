@@ -189,7 +189,6 @@ export async function gongKeywordUpdateWorkflow({
     const signalReceived = await condition(() => keywordsUpdated, "90 seconds");
     if (!signalReceived) {
       settled = true;
-      lastId = null;
     }
   }
 
