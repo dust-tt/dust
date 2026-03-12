@@ -1,18 +1,14 @@
 import { Head, Script } from "@app/lib/platform";
 import { getFaviconPath } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { BarHeader, Page } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type React from "react";
 
 export default function OnboardingLayout({
   owner,
-  headerTitle,
-  headerRightActions,
   children,
 }: {
   owner: LightWorkspaceType;
-  headerTitle: string;
-  headerRightActions: React.ReactNode;
   children: React.ReactNode;
 }) {
   const faviconPath = getFaviconPath();
@@ -73,7 +69,6 @@ export default function OnboardingLayout({
       </Head>
 
       <Page>
-        <BarHeader title={headerTitle} rightActions={headerRightActions} />
         {children}
       </Page>
 

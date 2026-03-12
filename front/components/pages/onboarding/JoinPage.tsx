@@ -92,19 +92,7 @@ export function JoinPage() {
   const { onboardingType, signInUrl, userExists, workspace } = joinData;
 
   return (
-    <OnboardingLayout
-      owner={workspace}
-      headerTitle="Welcome to Dust"
-      headerRightActions={
-        <Button
-          variant="ghost"
-          size="sm"
-          label={userExists ? "Sign in" : "Sign up"}
-          icon={LoginIcon}
-          onClick={() => (window.location.href = signInUrl)}
-        />
-      }
-    >
+    <OnboardingLayout owner={workspace}>
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello there!`}
