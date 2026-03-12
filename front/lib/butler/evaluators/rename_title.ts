@@ -12,6 +12,7 @@ const CONFIDENCE_THRESHOLD = 70;
 const RenameResult = z.object({
   rename_confidence: z.number(),
   new_title: z.string(),
+  rename_rationale: z.string().optional(),
 });
 
 export const renameTitleEvaluator: ButlerEvaluator = {
@@ -75,8 +76,13 @@ export const renameTitleEvaluator: ButlerEvaluator = {
             type: "string",
             description: "The proposed new title (3-8 words).",
           },
+          rename_rationale: {
+            type: "string",
+            description:
+              "A brief one-sentence explanation of why renaming would help, or empty string if confidence is low.",
+          },
         },
-        required: ["rename_confidence", "new_title"],
+        required: ["rename_confidence", "new_title", "rename_rationale"],
       },
     };
 
@@ -92,7 +98,7 @@ export const renameTitleEvaluator: ButlerEvaluator = {
       return null;
     }
 
-    const { rename_confidence, new_title } = parsed.data;
+    const { rename_confidence, new_title, rename_rationale } = parsed.data;
 
     if (
       rename_confidence < CONFIDENCE_THRESHOLD ||
@@ -105,7 +111,10 @@ export const renameTitleEvaluator: ButlerEvaluator = {
 
     return {
       suggestionType: "rename_title",
-      metadata: { suggestedTitle: new_title },
+      metadata: {
+        suggestedTitle: new_title,
+        rationale: rename_rationale || undefined,
+      },
     };
   },
 };
