@@ -1,10 +1,10 @@
 import {
   bucketsToArray,
   formatDateFromMillis,
-  getMidnightInTimezone,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { getStartOfTodayInTimezone } from "@app/lib/utils/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -60,11 +60,6 @@ function computeRollingActiveUsers(
   }
 
   return uniqueUsers.size;
-}
-
-function getStartOfTodayInTimezone(timezone: string): number {
-  const todayStr = formatDateFromMillis(Date.now(), timezone);
-  return getMidnightInTimezone(todayStr, timezone);
 }
 
 /**
