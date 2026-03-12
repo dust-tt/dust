@@ -5,6 +5,7 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -19,13 +20,19 @@ const INSIGHTS_DAYS = 30;
 function buildFirstMessage({
   feedbackMarkdown,
   insightsMarkdown,
+  hasReinforcementSuggestions,
 }: {
   feedbackMarkdown: string | null;
   insightsMarkdown: string | null;
+  hasReinforcementSuggestions: boolean;
 }): string {
   const dataSections = [feedbackMarkdown, insightsMarkdown]
     .filter(Boolean)
     .join("\n\n");
+
+  const reinforcementGuidance = hasReinforcementSuggestions
+    ? `\n- Start by telling the user: "A background analysis has identified some possible improvements for your agent."`
+    : "";
 
   return `<dust_system>
 This is an existing agent.
@@ -34,7 +41,7 @@ This is an existing agent.
 Call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
 
 ## STEP 2: Opening message
-Based only on the information provided in <existing_agent_data_section> and the \`get_agent_config\` result:
+Based only on the information provided in <existing_agent_data_section> and the \`get_agent_config\` result:${reinforcementGuidance}
 - If reinforced suggestions exist (source="reinforcement"), highlight them
 - If negative feedback patterns exist in the current agent version, mention it as the top issue. Feedback from previous versions are provided for reference, but should not be mentioned in the opening message.
 - If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
@@ -204,14 +211,28 @@ async function handler(
         });
       }
 
-      const [feedbackMarkdown, insightsMarkdown] = await Promise.all([
-        fetchFeedbackMarkdown(auth, agentConfigurationId),
-        fetchInsightsMarkdown(auth, agentConfigurationId),
-      ]);
+      const [feedbackMarkdown, insightsMarkdown, reinforcementSuggestions] =
+        await Promise.all([
+          fetchFeedbackMarkdown(auth, agentConfigurationId),
+          fetchInsightsMarkdown(auth, agentConfigurationId),
+          AgentSuggestionResource.listByAgentConfigurationId(
+            auth,
+            agentConfigurationId,
+            {
+              states: ["pending"],
+              sources: ["reinforcement"],
+              limit: 1,
+            }
+          ),
+        ]);
 
-      return res
-        .status(200)
-        .json(buildFirstMessage({ feedbackMarkdown, insightsMarkdown }));
+      return res.status(200).json(
+        buildFirstMessage({
+          feedbackMarkdown,
+          insightsMarkdown,
+          hasReinforcementSuggestions: reinforcementSuggestions.length > 0,
+        })
+      );
     }
     default:
       return apiError(req, res, {
