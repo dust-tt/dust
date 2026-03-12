@@ -90,6 +90,7 @@ export type GetPageElementsResponse = { elements: string; error?: string };
 
 export type ClickPageElementMessage = {
   type: "CLICK_ELEMENT";
+  tabId: number;
   elementId: string;
 };
 export type ClickPageElementResponse = { success: boolean; error?: string };

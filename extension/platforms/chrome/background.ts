@@ -723,36 +723,32 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "CLICK_ELEMENT":
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          async (tabs) => {
-            const tab = tabs[0];
-            try {
-              const result = await clickPageElement(tab, message.elementId);
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await clickPageElement(tab, message.elementId);
 
-              if (result.isErr()) {
-                log("Error clicking page element:", result.error);
-                sendResponse({
-                  success: false,
-                  error: result.error.message,
-                });
-                return;
-              }
-
-              sendResponse({
-                success: true,
-              });
-            } catch (error) {
-              const normalizedError = normalizeError(error);
-              log("Error clicking page element:", normalizedError.message);
+            if (result.isErr()) {
+              log("Error clicking page element:", result.error);
               sendResponse({
                 success: false,
-                error:
-                  normalizedError.message ?? "Failed to click page element.",
+                error: result.error.message,
               });
+              return;
             }
+
+            sendResponse({
+              success: true,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error clicking page element:", normalizedError.message);
+            sendResponse({
+              success: false,
+              error: normalizedError.message ?? "Failed to click page element.",
+            });
           }
-        );
+        });
         return true;
 
       case "INPUT_BAR_STATUS":

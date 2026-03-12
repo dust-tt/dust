@@ -99,7 +99,7 @@ export async function getPageElements(
 }
 
 export async function clickPageElement(
-  tab: chrome.tabs.Tab,
+  tab: chrome.tabs.Tab | undefined,
   elementId: string
 ): Promise<Result<boolean, Error>> {
   if (!tab?.id) {
