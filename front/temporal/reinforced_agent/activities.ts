@@ -1,18 +1,16 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   aggregateSyntheticSuggestions,
-  buildAggregationPrompt,
+  buildAggregationBatchMap,
 } from "@app/lib/reinforced_agent/aggregate_suggestions";
 import {
   analyzeConversationForReinforcement,
-  buildAnalysisPrompt,
+  buildConversationAnalysisBatchMap,
 } from "@app/lib/reinforced_agent/analyze_conversation";
 import {
-  buildReinforcedLLMParams,
   getReinforcedLLM,
   processReinforcedEvents,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
@@ -20,7 +18,6 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
-import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import { ApplicationFailure } from "@temporalio/common";
 
 const HOURS_LOOKBACK = 24;
@@ -149,42 +146,16 @@ export async function startConversationAnalysisBatchActivity({
 }): Promise<string | null> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  const [agentConfig] = await getAgentConfigurations(auth, {
-    agentIds: [agentConfigurationId],
-    variant: "full",
+  const batchMap = await buildConversationAnalysisBatchMap(auth, {
+    agentConfigurationId,
+    conversationIds,
   });
-  if (!agentConfig || agentConfig.id < 0) {
+  if (!batchMap) {
     return null;
   }
 
   const llm = await getReinforcedLLM(auth);
   if (!llm) {
-    return null;
-  }
-
-  const batchMap = new Map<
-    string,
-    ReturnType<typeof buildReinforcedLLMParams>
-  >();
-
-  for (const conversationId of conversationIds) {
-    const conversationRes = await getShrinkWrappedConversation(auth, {
-      conversationId,
-      includeFeedback: true,
-    });
-    if (conversationRes.isErr()) {
-      logger.warn(
-        { conversationId, error: conversationRes.error },
-        "ReinforcedAgent: conversation not found, skipping in batch"
-      );
-      continue;
-    }
-
-    const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
-    batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
-  }
-
-  if (batchMap.size === 0) {
     return null;
   }
 
@@ -295,26 +266,8 @@ export async function startAggregationBatchActivity({
 }): Promise<string | null> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  const syntheticSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      { sources: ["synthetic"], states: ["pending"] }
-    );
-
-  if (syntheticSuggestions.length === 0) {
-    return null;
-  }
-
-  const [agentConfig] = await getAgentConfigurations(auth, {
-    agentIds: [agentConfigurationId],
-    variant: "light",
-  });
-  if (!agentConfig) {
-    logger.warn(
-      { agentConfigurationId },
-      "ReinforcedAgent: agent not found for aggregation batch"
-    );
+  const batchMap = await buildAggregationBatchMap(auth, agentConfigurationId);
+  if (!batchMap) {
     return null;
   }
 
@@ -323,20 +276,6 @@ export async function startAggregationBatchActivity({
     return null;
   }
 
-  const instructionsSuggestions = syntheticSuggestions
-    .map((s) => s.toJSON())
-    .filter(
-      (json): json is AgentInstructionsSuggestionType =>
-        json.kind === "instructions"
-    );
-
-  const prompt = buildAggregationPrompt(
-    agentConfig.name,
-    instructionsSuggestions
-  );
-
-  const batchMap = new Map([["aggregation", buildReinforcedLLMParams(prompt)]]);
-
   const batchId = await llm.sendBatchProcessing(batchMap);
 
   logger.info(
@@ -344,7 +283,6 @@ export async function startAggregationBatchActivity({
       agentConfigurationId,
       workspaceId,
       batchId,
-      syntheticCount: syntheticSuggestions.length,
     },
     "ReinforcedAgent: started aggregation batch"
   );

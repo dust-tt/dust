@@ -1,7 +1,11 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import {
+  buildReinforcedLLMParams,
+  runReinforcedAnalysis,
+} from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
@@ -45,6 +49,50 @@ ${conversationText}
 </conversation>`;
 
   return { systemPrompt, userMessage };
+}
+
+/**
+ * Build the batch map for conversation analysis.
+ * Returns null if there are no valid conversations or the agent is global.
+ */
+export async function buildConversationAnalysisBatchMap(
+  auth: Authenticator,
+  {
+    agentConfigurationId,
+    conversationIds,
+  }: {
+    agentConfigurationId: string;
+    conversationIds: string[];
+  }
+): Promise<Map<string, LLMStreamParameters> | null> {
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "full",
+  });
+  if (!agentConfig || agentConfig.id < 0) {
+    return null;
+  }
+
+  const batchMap = new Map<string, LLMStreamParameters>();
+
+  for (const conversationId of conversationIds) {
+    const conversationRes = await getShrinkWrappedConversation(auth, {
+      conversationId,
+      includeFeedback: true,
+    });
+    if (conversationRes.isErr()) {
+      logger.warn(
+        { conversationId, error: conversationRes.error },
+        "ReinforcedAgent: conversation not found, skipping in batch"
+      );
+      continue;
+    }
+
+    const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+    batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
+  }
+
+  return batchMap.size > 0 ? batchMap : null;
 }
 
 /**
