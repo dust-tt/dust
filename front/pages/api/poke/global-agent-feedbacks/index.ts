@@ -13,6 +13,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
@@ -86,7 +87,7 @@ async function handler(
     where.content = { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }] };
   }
 
-  if (typeof lastId === "string") {
+  if (isString(lastId)) {
     const parsed = parseInt(lastId, 10);
     if (!isNaN(parsed)) {
       where.id = { [Op.lt]: parsed };
