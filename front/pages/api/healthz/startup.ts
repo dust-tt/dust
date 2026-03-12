@@ -64,7 +64,7 @@ export default async function handler(
     checkDependency("redis", () => getRedisHybridManager().ping()),
     checkDependency("database", () =>
       // biome-ignore lint/plugin: health check needs direct DB ping
-      frontSequelize.query("SELECT 1 from workspaces;")
+      frontSequelize.query("SELECT 1")
     ),
   ]);
 
