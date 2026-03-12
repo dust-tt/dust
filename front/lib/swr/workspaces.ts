@@ -253,11 +253,13 @@ export function useWorkspaceToolUsage({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
-  const params = new URLSearchParams({ days: String(days) });
+  const params = new URLSearchParams({
+    days: String(days),
+    timezone: BROWSER_TIMEZONE,
+  });
   if (serverName) {
     params.set("serverName", serverName);
   }
-  params.set("timezone", BROWSER_TIMEZONE);
   const key = `/api/w/${workspaceId}/analytics/tool-usage?${params.toString()}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
@@ -312,11 +314,13 @@ export function useWorkspaceSkillUsage({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceSkillUsageResponse> = fetcher;
-  const params = new URLSearchParams({ days: String(days) });
+  const params = new URLSearchParams({
+    days: String(days),
+    timezone: BROWSER_TIMEZONE,
+  });
   if (skillName) {
     params.set("skillName", skillName);
   }
-  params.set("timezone", BROWSER_TIMEZONE);
   const key = `/api/w/${workspaceId}/analytics/skill-usage?${params.toString()}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(

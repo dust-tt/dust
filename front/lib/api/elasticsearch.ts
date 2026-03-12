@@ -137,6 +137,11 @@ export function bucketsToArray<TBucket>(
   return Array.isArray(buckets) ? buckets : Object.values(buckets);
 }
 
+export {
+  formatDateFromMillis,
+  getMidnightInTimezone,
+} from "@app/lib/utils/timezone";
+
 export function formatUTCDateFromMillis(ms: number): string {
   const d = new Date(ms);
   const y = d.getUTCFullYear();
@@ -144,11 +149,6 @@ export function formatUTCDateFromMillis(ms: number): string {
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-
-export {
-  formatDateFromMillis,
-  getMidnightInTimezone,
-} from "@app/lib/utils/timezone";
 
 /**
  * Ensures at most N groups by keeping top N-1 groups and aggregating the rest into "Others".
