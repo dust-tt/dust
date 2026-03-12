@@ -1,5 +1,14 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
+import {
+  ArrowUpIcon,
+  AttachmentIcon,
+  CameraIcon,
+  GlobeAltIcon,
+  MicIcon,
+  PlusIcon,
+  TextIcon,
+} from "@app/components/assistant/conversation/icons";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import {
   getDisplayNameFromPastedFileId,
@@ -39,15 +48,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
-import {
-  ArrowUpIcon,
-  AttachmentIcon,
-  CameraIcon,
-  GlobeAltIcon,
-  MicIcon,
-  PlusIcon,
-  TextIcon,
-} from "@app/components/assistant/conversation/icons";
 import {
   Button,
   Chip,

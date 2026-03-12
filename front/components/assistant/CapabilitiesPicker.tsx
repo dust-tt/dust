@@ -1,5 +1,6 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
+import { ToolsIcon } from "@app/components/assistant/conversation/icons";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import {
   getMcpServerViewDescription,
@@ -32,7 +33,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { ToolsIcon } from "@app/components/assistant/conversation/icons";
 import {
   BoltIcon,
   Button,

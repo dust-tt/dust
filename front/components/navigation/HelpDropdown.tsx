@@ -1,3 +1,11 @@
+import {
+  BookOpenIcon,
+  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentIcon,
+  HeartIcon,
+  LightbulbIcon,
+} from "@app/components/assistant/conversation/icons";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -9,14 +17,6 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import {
-  BookOpenIcon,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentIcon,
-  HeartIcon,
-  LightbulbIcon,
-} from "@app/components/assistant/conversation/icons";
 import {
   Button,
   DropdownMenu,

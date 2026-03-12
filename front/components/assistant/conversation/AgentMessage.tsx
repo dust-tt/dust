@@ -12,6 +12,16 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
+import {
+  Clipboard,
+  ClipboardCheck,
+  Info,
+  Link,
+  MoreHorizontal,
+  RotateCcw,
+  StopCircle,
+  Trash2,
+} from "@app/components/assistant/conversation/icons";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
@@ -88,7 +98,6 @@ import {
   Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import { Clipboard, ClipboardCheck, Info, Link, MoreHorizontal, RotateCcw, StopCircle, Trash2 } from "@app/components/assistant/conversation/icons";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import React, { useCallback, useContext, useMemo } from "react";
@@ -453,7 +462,7 @@ export function AgentMessage({
       <Button
         key="stop-msg-button"
         label="Stop agent"
-        variant="ghost-secondary"
+        variant="outline-ghost"
         size="xs"
         onClick={async () => {
           await cancelMessage([sId]);
@@ -622,7 +631,7 @@ export function AgentMessage({
       <ButtonGroup key="split-button-group">
         <Button
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="outline"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheck : Clipboard}
@@ -631,7 +640,7 @@ export function AgentMessage({
         <ButtonGroupDropdown
           trigger={
             <Button
-              variant="outline"
+              variant="outline-ghost"
               size="xs"
               icon={MoreHorizontal}
               className="text-muted-foreground"
@@ -648,7 +657,7 @@ export function AgentMessage({
         <Button
           key="copy-msg-button"
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheck : Clipboard}
@@ -660,7 +669,7 @@ export function AgentMessage({
         <Button
           key="copy-msg-link-button"
           tooltip="Copy message link"
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyMessageLink}
           icon={Link}
@@ -674,7 +683,7 @@ export function AgentMessage({
         <Button
           key="retry-msg-button"
           tooltip="Retry"
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={() => {
             void retryHandler({
@@ -1181,7 +1190,7 @@ function AgentMessageContent({
             <ButtonGroupDropdown
               trigger={
                 <Button
-                  variant="outline"
+                  variant="outline-ghost"
                   size="xs"
                   icon={MoreHorizontal}
                   className="text-muted-foreground"

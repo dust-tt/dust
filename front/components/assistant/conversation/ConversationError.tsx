@@ -1,12 +1,11 @@
+import {
+  CircleAlert,
+  LogIn,
+} from "@app/components/assistant/conversation/icons";
 import type { ConversationError } from "@app/types/assistant/conversation";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import {
-  Button,
-  Icon,
-  LinkWrapper,
-} from "@dust-tt/sparkle";
-import { CircleAlert, LogIn } from "@app/components/assistant/conversation/icons";
+import { Button, Icon, LinkWrapper } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ConversationErrorProps {

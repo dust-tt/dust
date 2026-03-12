@@ -5,6 +5,24 @@ import {
 import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
+import {
+  Bot,
+  Braces,
+  CheckCheck,
+  FileText,
+  FolderOpen,
+  ListChecks,
+  MessageSquareText,
+  MessagesSquare,
+  MoreHorizontal,
+  Plus,
+  SquarePen,
+  Trash2,
+  Wand2,
+  X,
+  Zap,
+  ZapOff,
+} from "@app/components/assistant/conversation/icons";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
@@ -74,7 +92,6 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Bot, Braces, CheckCheck, FileText, FolderOpen, ListChecks, MessageSquareText, MessagesSquare, MoreHorizontal, Plus, SquarePen, Trash2, Wand2, X, Zap, ZapOff } from "@app/components/assistant/conversation/icons";
 import moment from "moment";
 import {
   memo,
@@ -781,11 +798,7 @@ export function AgentSidebarMenu({
                   disabled={selectedConversations.length === 0}
                   onClick={() => setShowDeleteDialog("selection")}
                 />
-                <Button
-                  variant="ghost"
-                  icon={X}
-                  onClick={toggleMultiSelect}
-                />
+                <Button variant="ghost" icon={X} onClick={toggleMultiSelect} />
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2">
@@ -814,12 +827,17 @@ export function AgentSidebarMenu({
                     icon={MessageSquareText}
                     className="shrink-0"
                     tooltip="Create a new conversation"
+                    variant="primary"
                     onClick={handleNewClick}
                   />
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" icon={MoreHorizontal} variant="outline" />
+                        <Button
+                          size="sm"
+                          icon={MoreHorizontal}
+                          variant="outline-ghost"
+                        />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (

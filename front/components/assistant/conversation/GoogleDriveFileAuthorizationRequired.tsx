@@ -1,4 +1,8 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import {
+  CircleCheck,
+  FileText,
+} from "@app/components/assistant/conversation/icons";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
 import type {
@@ -9,11 +13,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import {
-  Button,
-  ContentMessage,
-} from "@dust-tt/sparkle";
-import { CircleCheck, FileText } from "@app/components/assistant/conversation/icons";
+import { Button, ContentMessage } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {

@@ -1,5 +1,5 @@
-import { AnimatedText } from "@dust-tt/sparkle";
 import { Sparkles } from "@app/components/assistant/conversation/icons";
+import { AnimatedText } from "@dust-tt/sparkle";
 
 export function ButlerThinkingIndicator() {
   return (

@@ -1,11 +1,11 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ChevronRight } from "@app/components/assistant/conversation/icons";
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
 import { cn, Icon } from "@dust-tt/sparkle";
-import { ChevronRight } from "@app/components/assistant/conversation/icons";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 

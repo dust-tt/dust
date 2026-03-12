@@ -829,7 +829,7 @@ module.exports = {
           fontSize: theme("fontSize.xs[0]"),
           lineHeight: theme("fontSize.xs[1].lineHeight"),
           letterSpacing: theme("fontSize.xs[1].letterSpacing"),
-          fontWeight: "500",
+          fontWeight: "400",
         },
         ".s-heading-sm": {
           fontSize: theme("fontSize.sm[0]"),

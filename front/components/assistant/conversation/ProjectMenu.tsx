@@ -1,4 +1,11 @@
 import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
+import {
+  Contact,
+  EyeOff,
+  Link,
+  SquarePen,
+  X,
+} from "@app/components/assistant/conversation/icons";
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
@@ -26,7 +33,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { Contact, EyeOff, Link, SquarePen, X } from "@app/components/assistant/conversation/icons";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -243,10 +249,7 @@ export function ProjectMenu({
           )}
           {spaceInfo?.members && spaceInfo.members.length > 0 && (
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                icon={Contact}
-                label="Member list"
-              />
+              <DropdownMenuSubTrigger icon={Contact} label="Member list" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   {spaceInfo.members.map((member) => (

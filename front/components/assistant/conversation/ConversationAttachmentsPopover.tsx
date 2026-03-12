@@ -1,5 +1,10 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
+  Bot,
+  Paperclip,
+  User,
+} from "@app/components/assistant/conversation/icons";
+import {
   FilePreviewSheet,
   type MinimalFileForPreview,
 } from "@app/components/spaces/FilePreviewSheet";
@@ -25,7 +30,6 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { Bot, Paperclip, User } from "@app/components/assistant/conversation/icons";
 import type {
   CellContext,
   ColumnDef,

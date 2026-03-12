@@ -1,5 +1,5 @@
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { SmilePlusIcon } from "@app/components/assistant/conversation/icons";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   Button,
   cn,

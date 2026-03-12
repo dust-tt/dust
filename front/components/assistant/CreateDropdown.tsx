@@ -1,3 +1,9 @@
+import {
+  DocumentIcon,
+  MagicIcon,
+  PlusIcon,
+  PuzzleIcon,
+} from "@app/components/assistant/conversation/icons";
 import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -9,12 +15,6 @@ import {
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
-import {
-  DocumentIcon,
-  MagicIcon,
-  PlusIcon,
-  PuzzleIcon,
-} from "@app/components/assistant/conversation/icons";
 import {
   Button,
   DropdownMenu,
@@ -49,7 +49,7 @@ export const CreateDropdown = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="primary"
+          variant="outline-ghost"
           icon={PlusIcon}
           label="Create"
           data-gtm-label="assistantCreationButton"

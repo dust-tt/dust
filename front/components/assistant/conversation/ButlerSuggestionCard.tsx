@@ -1,3 +1,9 @@
+import {
+  Check,
+  MessagesSquare,
+  SquarePen,
+  X,
+} from "@app/components/assistant/conversation/icons";
 import type {
   ButlerSuggestionPublicType,
   CallAgentButlerSuggestion,
@@ -5,12 +11,7 @@ import type {
   RenameTitleButlerSuggestion,
 } from "@app/types/conversation_butler_suggestion";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import {
-  ActionFrameIcon,
-  Button,
-  ContentMessage,
-} from "@dust-tt/sparkle";
-import { Check, MessagesSquare, SquarePen, X } from "@app/components/assistant/conversation/icons";
+import { ActionFrameIcon, Button, ContentMessage } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
 

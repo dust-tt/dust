@@ -1,4 +1,5 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { Bot } from "@app/components/assistant/conversation/icons";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -20,7 +21,6 @@ import {
   LoadingBlock,
   Page,
 } from "@dust-tt/sparkle";
-import { Bot } from "@app/components/assistant/conversation/icons";
 import {
   useCallback,
   useContext,

@@ -23,6 +23,7 @@ export const BUTTON_VARIANTS = [
   "warning",
   "warning-secondary",
   "outline",
+  "outline-ghost",
   "ghost",
   "ghost-secondary",
 ] as const;
@@ -128,6 +129,21 @@ const buttonVariants = cva(
           "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
           "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
           "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
+          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
+          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+        ),
+        "outline-ghost": cn(
+          "s-border",
+          "s-border-border dark:s-border-border-night",
+          "s-text-primary dark:s-text-primary-night",
+          "s-bg-transparent",
+          "hover:s-text-primary dark:hover:s-text-primary-night",
+          "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
+          "hover:s-border-primary-150 dark:hover:s-border-border-night",
+          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
+          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
           "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
           "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
         ),
@@ -240,6 +256,7 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
   warning: "light",
   "warning-secondary": "mono",
   outline: "mono",
+  "outline-ghost": "mono",
   ghost: "mono",
   "ghost-secondary": "mono",
 };
@@ -247,6 +264,7 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
 const chevronVariantMap = {
   primary: "s-text-muted-foreground-night dark:s-text-muted-foreground",
   outline: "s-text-faint",
+  "outline-ghost": "s-text-faint",
   ghost: "s-text-faint",
   "ghost-secondary": "s-text-faint",
   highlight: "s-text-white/60",

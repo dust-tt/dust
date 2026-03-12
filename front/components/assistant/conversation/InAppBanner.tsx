@@ -1,7 +1,7 @@
+import { X } from "@app/components/assistant/conversation/icons";
 import { Image } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
-import { X } from "@app/components/assistant/conversation/icons";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 

@@ -1,5 +1,11 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import {
+  ArrowDown,
+  ArrowUp,
+  Info,
+  StopCircle,
+} from "@app/components/assistant/conversation/icons";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
   VirtuosoMessage,
@@ -25,7 +31,6 @@ import {
   ContentMessageInline,
   IconButton,
 } from "@dust-tt/sparkle";
-import { ArrowDown, ArrowUp, Info, StopCircle } from "@app/components/assistant/conversation/icons";
 import {
   useVirtuosoLocation,
   useVirtuosoMethods,

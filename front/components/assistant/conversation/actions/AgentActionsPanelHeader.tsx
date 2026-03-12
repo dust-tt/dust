@@ -1,6 +1,6 @@
+import { X } from "@app/components/assistant/conversation/icons";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Button, cn } from "@dust-tt/sparkle";
-import { X } from "@app/components/assistant/conversation/icons";
 import type React from "react";
 
 interface AgentActionsPanelHeaderProps {

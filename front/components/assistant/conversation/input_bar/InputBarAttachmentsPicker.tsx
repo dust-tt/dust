@@ -1,3 +1,9 @@
+import {
+  AttachmentIcon,
+  ChevronRightIcon,
+  CloudArrowUpIcon,
+  MagnifyingGlassIcon,
+} from "@app/components/assistant/conversation/icons";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -29,12 +35,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  AttachmentIcon,
-  ChevronRightIcon,
-  CloudArrowUpIcon,
-  MagnifyingGlassIcon,
-} from "@app/components/assistant/conversation/icons";
 import {
   Button,
   DoubleIcon,

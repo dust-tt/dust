@@ -1,3 +1,8 @@
+import {
+  BoltIcon,
+  SpaceClosedIcon,
+  SpaceOpenIcon,
+} from "@app/components/assistant/conversation/icons";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
@@ -6,7 +11,6 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import { BoltIcon } from "@app/components/assistant/conversation/icons";
 import {
   CloudArrowLeftRightIcon,
   CommandLineIcon,
@@ -15,8 +19,6 @@ import {
   GlobeAltIcon,
   LockIcon,
   ServerIcon,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import type React from "react";
@@ -27,7 +29,7 @@ export type SpaceSectionGroupType = (typeof SPACE_SECTION_GROUP_ORDER)[number];
 
 export function getSpaceIcon(
   space: SpaceType
-): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
+): React.ComponentType<{ className?: string }> {
   if (space.kind === "project") {
     return space.isRestricted ? SpaceClosedIcon : SpaceOpenIcon;
   }

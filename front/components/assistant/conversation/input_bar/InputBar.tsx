@@ -337,22 +337,13 @@ export const InputBar = React.memo(function InputBar({
         className={classNames(
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
           "rounded-2xl transition-all",
-          "bg-muted-background dark:bg-muted-background-night",
+          "bg-white dark:bg-muted-background-night",
+          "shadow-sm focus-within:shadow-[0_1px_3px_0_rgba(0,0,0,0.08),0_1px_2px_-1px_rgba(0,0,0,0.08)]",
           "border",
           "border-border-dark dark:border-border-dark/10",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
           "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
           disable && "cursor-not-allowed opacity-75",
-          isFloating
-            ? classNames(
-                "focus-within:ring-1 dark:focus-within:ring-1",
-                "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
-                "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
-              )
-            : classNames(
-                "focus-within:border-highlight-300",
-                "dark:focus-within:border-highlight-300-night"
-              ),
           isAnimating ? "duration-600 animate-shake" : "duration-300"
         )}
       >

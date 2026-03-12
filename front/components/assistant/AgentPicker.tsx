@@ -1,8 +1,8 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { Bot as RobotIcon } from "@app/components/assistant/conversation/icons";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
-import { Bot as RobotIcon } from "@app/components/assistant/conversation/icons";
 import {
   Avatar,
   Button,

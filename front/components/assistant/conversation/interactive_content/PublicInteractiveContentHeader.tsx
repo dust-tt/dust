@@ -1,3 +1,4 @@
+import { SpaceClosedIcon } from "@app/components/assistant/conversation/icons";
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -8,7 +9,6 @@ import {
   ChatBubbleBottomCenterTextIcon,
   cn,
   RocketIcon,
-  SpaceClosedIcon,
 } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentHeaderProps {

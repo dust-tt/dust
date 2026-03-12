@@ -679,7 +679,7 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.gray[950] },
+        background: { DEFAULT: "#FBFBFB", night: colors.gray[950] },
         foreground: {
           DEFAULT: colors.gray[950],
           night: colors.gray[200],
@@ -870,7 +870,7 @@ module.exports = {
           fontSize: theme("fontSize.xs[0]"),
           lineHeight: theme("fontSize.xs[1].lineHeight"),
           letterSpacing: theme("fontSize.xs[1].letterSpacing"),
-          fontWeight: "500",
+          fontWeight: "400",
         },
         ".heading-sm": {
           fontSize: theme("fontSize.sm[0]"),

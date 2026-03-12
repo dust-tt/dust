@@ -1,11 +1,8 @@
+import { Info, RotateCcw } from "@app/components/assistant/conversation/icons";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { isAgentErrorCategory } from "@app/types/assistant/agent";
-import {
-  Button,
-  ContentMessage,
-} from "@dust-tt/sparkle";
-import { Info, RotateCcw } from "@app/components/assistant/conversation/icons";
+import { Button, ContentMessage } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;

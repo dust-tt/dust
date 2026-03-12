@@ -1,5 +1,16 @@
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import {
+  ArrowRight,
+  BotMessageSquare,
+  Contact,
+  ExternalLink,
+  Link,
+  PlusCircle,
+  SquarePen,
+  Trash2,
+  X,
+} from "@app/components/assistant/conversation/icons";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
@@ -38,7 +49,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { ArrowRight, BotMessageSquare, Contact, ExternalLink, Link, PlusCircle, SquarePen, Trash2, X } from "@app/components/assistant/conversation/icons";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";

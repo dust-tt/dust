@@ -27,6 +27,7 @@ const tabsTriggerVariants = cva(
         warning: "",
         "warning-secondary": "",
         outline: "",
+        "outline-ghost": "",
         "ghost-secondary": "",
       },
     },

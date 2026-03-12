@@ -1,3 +1,4 @@
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@sparkle/components/Button";
 import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import { ContentMessage } from "@sparkle/components/ContentMessage";
@@ -10,11 +11,7 @@ import {
 } from "@sparkle/components/Popover";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { Spinner } from "@sparkle/components/Spinner";
-import {
-  ListCheckIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+import { ListCheckIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -35,6 +32,7 @@ export interface SearchInputProps {
   disabled?: boolean;
   isLoading?: boolean;
   className?: string;
+  searchIcon?: React.ComponentType<{ className?: string }>;
 }
 
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
@@ -50,6 +48,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       disabled = false,
       isLoading = false,
       className,
+      searchIcon,
     },
     ref
   ) => {
@@ -96,7 +95,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               )}
             >
               <Icon
-                visual={MagnifyingGlassIcon}
+                visual={searchIcon ?? MagnifyingGlass}
                 size="xs"
                 className="s-text-muted-foreground dark:s-text-muted-foreground-night"
               />

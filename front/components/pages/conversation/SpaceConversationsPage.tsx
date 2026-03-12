@@ -1,3 +1,9 @@
+import {
+  BookOpen,
+  MessagesSquare,
+  Settings,
+  TestTube,
+} from "@app/components/assistant/conversation/icons";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
@@ -33,7 +39,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { BookOpen, MessagesSquare, Settings, TestTube } from "@app/components/assistant/conversation/icons";
 import React, { useCallback, useRef, useState } from "react";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
@@ -330,11 +335,7 @@ export function SpaceConversationsPage() {
                 />
               </>
             )}
-            <TabsTrigger
-              value="settings"
-              icon={Settings}
-              tooltip="Settings"
-            />
+            <TabsTrigger value="settings" icon={Settings} tooltip="Settings" />
             <TabsTrigger
               value="alpha"
               label="Alpha"

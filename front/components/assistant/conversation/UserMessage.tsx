@@ -1,5 +1,12 @@
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
+import {
+  Link,
+  MoreHorizontal,
+  SquarePen,
+  Trash2,
+  Zap,
+} from "@app/components/assistant/conversation/icons";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
@@ -41,7 +48,6 @@ import {
   Toolbar,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { Link, MoreHorizontal, SquarePen, Trash2, Zap } from "@app/components/assistant/conversation/icons";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";

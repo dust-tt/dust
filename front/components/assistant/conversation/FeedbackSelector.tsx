@@ -1,4 +1,8 @@
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import {
+  Sparkles,
+  ThumbsUp,
+} from "@app/components/assistant/conversation/icons";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -15,7 +19,6 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { Sparkles, ThumbsUp } from "@app/components/assistant/conversation/icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useController, useForm } from "react-hook-form";
@@ -181,7 +184,7 @@ export function FeedbackSelector({
     <div className="flex items-center">
       <ButtonGroup>
         <Button
-          variant={feedback?.thumb === "up" ? "primary" : "outline"}
+          variant={feedback?.thumb === "up" ? "primary" : "outline-ghost"}
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("up")}
@@ -189,7 +192,7 @@ export function FeedbackSelector({
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
-          variant={feedback?.thumb === "down" ? "primary" : "outline"}
+          variant={feedback?.thumb === "down" ? "primary" : "outline-ghost"}
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("down")}

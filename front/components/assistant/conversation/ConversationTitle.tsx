@@ -3,6 +3,10 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
+import {
+  ArrowLeft,
+  MoreHorizontal,
+} from "@app/components/assistant/conversation/icons";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
@@ -14,7 +18,6 @@ import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, Button } from "@dust-tt/sparkle";
-import { ArrowLeft, MoreHorizontal } from "@app/components/assistant/conversation/icons";
 import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";

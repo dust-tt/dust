@@ -1,3 +1,4 @@
+import { PuzzleIcon } from "@app/components/assistant/conversation/icons";
 import {
   getIcon,
   isCustomResourceIconType,
@@ -9,7 +10,6 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { PuzzleIcon } from "@app/components/assistant/conversation/icons";
 import { cn } from "@dust-tt/sparkle";
 import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
 import React from "react";

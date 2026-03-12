@@ -19,7 +19,7 @@ const textAreaVariants = cva(
   cn(
     "s-flex s-w-full s-px-3 s-py-2 s-text-sm",
     "s-text-foreground dark:s-text-foreground-night",
-    "s-bg-muted-background dark:s-bg-muted-background-night",
+    "s-bg-white dark:s-bg-muted-background-night",
     "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
     "s-ring-offset-background",
     "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
@@ -126,7 +126,7 @@ const ReadOnlyTextArea = ({
       minRows={minRows}
       className={cn(
         "s-copy-sm s-h-full s-min-h-60 s-w-full s-min-w-0 s-rounded-xl",
-        "s-resize-none s-border-border s-bg-muted-background",
+        "s-resize-none s-border-border s-bg-white",
         "dark:s-border-border-night dark:s-bg-muted-background-night"
       )}
       defaultValue={content ?? ""}

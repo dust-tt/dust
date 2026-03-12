@@ -48,6 +48,12 @@ const iconButtonVariants = cva(
           "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
           "s-text-primary-500 dark:s-text-primary-500-night"
         ),
+        "outline-ghost": cn(
+          "s-text-primary-700 dark:s-text-primary-700-night",
+          "hover:s-text-primary-400 dark:hover:s-text-primary-400-night",
+          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
+          "s-text-primary-500 dark:s-text-primary-500-night"
+        ),
         ghost: cn(
           "s-text-white dark:s-text-primary-950",
           "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
