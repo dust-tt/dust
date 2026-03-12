@@ -73,7 +73,7 @@ export const MainPage = () => {
         conversationId ? (
           <div className="flex items-center gap-2">
             <ConversationAttachmentsPopover
-              conversationId={conversationId}
+              conversation={conversation}
               owner={workspace}
             />
             <ConversationMenu
