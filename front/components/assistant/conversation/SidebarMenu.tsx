@@ -52,16 +52,9 @@ import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   Avatar,
-  BoltIcon,
-  BoltOffIcon,
-  BracesIcon,
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
   Checkbox,
-  CheckDoubleIcon,
   cn,
-  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -72,24 +65,16 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  FolderOpenIcon,
   Label,
-  ListCheckIcon,
-  MagicIcon,
-  MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
-  PencilSquareIcon,
-  PlusIcon,
-  RobotIcon,
   SearchInput,
   Spinner,
-  TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
+import { Bot, Braces, CheckCheck, FileText, FolderOpen, ListChecks, MessageSquareText, MessagesSquare, MoreHorizontal, Plus, SquarePen, Trash2, Wand2, X, Zap, ZapOff } from "@app/components/assistant/conversation/icons";
 import moment from "moment";
 import {
   memo,
@@ -256,7 +241,7 @@ function SearchResults({
             <>
               <Button
                 size="xs"
-                icon={PlusIcon}
+                icon={Plus}
                 label="New"
                 variant="ghost"
                 onClick={(e) => {
@@ -312,7 +297,7 @@ function SearchResults({
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={MessagesSquare}
                 variant="ghost"
                 tooltip="New Conversation"
                 href={getConversationRoute(owner.sId)}
@@ -321,7 +306,7 @@ function SearchResults({
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="xmini"
-                    icon={MoreIcon}
+                    icon={MoreHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
                     onClick={(e) => {
@@ -338,7 +323,7 @@ function SearchResults({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -672,7 +657,7 @@ export function AgentSidebarMenu({
               <>
                 <Button
                   size="xs"
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="New"
                   variant="ghost"
                   onClick={(e) => {
@@ -700,7 +685,7 @@ export function AgentSidebarMenu({
           ) : (
             <NavigationListItem
               label="Create a Project"
-              icon={PlusIcon}
+              icon={Plus}
               onClick={() => setIsCreateProjectModalOpen(true)}
             />
           )}
@@ -798,7 +783,7 @@ export function AgentSidebarMenu({
                 />
                 <Button
                   variant="ghost"
-                  icon={XMarkIcon}
+                  icon={X}
                   onClick={toggleMultiSelect}
                 />
               </div>
@@ -826,7 +811,7 @@ export function AgentSidebarMenu({
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterTextIcon}
+                    icon={MessageSquareText}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -834,7 +819,7 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" icon={MoreIcon} variant="outline" />
+                        <Button size="sm" icon={MoreHorizontal} variant="outline" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -842,7 +827,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Agents</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={Plus}
                                 label="New agent"
                               />
                               <DropdownMenuPortal>
@@ -852,7 +837,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "new"
                                     )}
-                                    icon={DocumentIcon}
+                                    icon={FileText}
                                     label="From scratch"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -866,7 +851,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "create"
                                     )}
-                                    icon={MagicIcon}
+                                    icon={Wand2}
                                     label="From template"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -881,7 +866,7 @@ export function AgentSidebarMenu({
                                         isUploadingYAML ? (
                                           <Spinner size="xs" />
                                         ) : (
-                                          BracesIcon
+                                          Braces
                                         )
                                       }
                                       label={
@@ -901,7 +886,7 @@ export function AgentSidebarMenu({
                             {editableAgents.length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
-                                  icon={PencilSquareIcon}
+                                  icon={SquarePen}
                                   label="Edit agent"
                                 />
                                 <DropdownMenuPortal>
@@ -938,7 +923,7 @@ export function AgentSidebarMenu({
                             )}
                             <DropdownMenuItem
                               href={getAgentBuilderRoute(owner.sId, "manage")}
-                              icon={RobotIcon}
+                              icon={Bot}
                               label="Manage agents"
                               data-gtm-label="assistantManagementButton"
                               data-gtm-location="sidebarMenu"
@@ -955,7 +940,7 @@ export function AgentSidebarMenu({
                             {hasFeature("sandbox_tools") ? (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
-                                  icon={PlusIcon}
+                                  icon={Plus}
                                   label="New skill"
                                 />
                                 <DropdownMenuSubContent>
@@ -968,7 +953,7 @@ export function AgentSidebarMenu({
                                     label="From scratch"
                                   />
                                   <DropdownMenuItem
-                                    icon={FolderOpenIcon}
+                                    icon={FolderOpen}
                                     label="From existing"
                                     onClick={() =>
                                       setIsImportSkillDialogOpen(true)
@@ -979,7 +964,7 @@ export function AgentSidebarMenu({
                             ) : (
                               <DropdownMenuItem
                                 href={getSkillBuilderRoute(owner.sId, "new")}
-                                icon={PlusIcon}
+                                icon={Plus}
                                 label="New skill"
                               />
                             )}
@@ -994,13 +979,13 @@ export function AgentSidebarMenu({
                         <DropdownMenuItem
                           label="Edit conversations"
                           onClick={toggleMultiSelect}
-                          icon={ListCheckIcon}
+                          icon={ListChecks}
                           disabled={filteredConversations.length === 0}
                         />
                         <DropdownMenuItem
                           label="Clear conversation history"
                           onClick={() => setShowDeleteDialog("all")}
-                          icon={TrashIcon}
+                          icon={Trash2}
                           disabled={filteredConversations.length === 0}
                         />
                       </DropdownMenuContent>
@@ -1106,7 +1091,7 @@ const InboxConversationList = ({
           <Button
             size="xmini"
             variant="ghost"
-            icon={CheckDoubleIcon}
+            icon={CheckCheck}
             tooltip="Mark all as read"
             onClick={() =>
               onMarkAllAsRead(inboxConversations.map((c) => c.sId))
@@ -1405,7 +1390,7 @@ function NavigationListWithInbox({
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={MessagesSquare}
                 variant="ghost"
                 aria-label="New Conversation"
                 tooltip="New Conversation"
@@ -1416,7 +1401,7 @@ function NavigationListWithInbox({
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="xmini"
-                    icon={MoreIcon}
+                    icon={MoreHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
                     onClick={(e) => {
@@ -1433,7 +1418,7 @@ function NavigationListWithInbox({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -1441,14 +1426,14 @@ function NavigationListWithInbox({
                   />
                   <DropdownMenuItem
                     label="Edit history"
-                    icon={ListCheckIcon}
+                    icon={ListChecks}
                     onClick={toggleMultiSelect}
                     disabled={conversations.length === 0}
                   />
                   <DropdownMenuItem
                     label="Clear history"
                     variant="warning"
-                    icon={TrashIcon}
+                    icon={Trash2}
                     onClick={() => setShowDeleteDialog("all")}
                     disabled={conversations.length === 0}
                   />

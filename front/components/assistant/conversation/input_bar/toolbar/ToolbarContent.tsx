@@ -10,6 +10,8 @@ import {
   ListCheckIcon,
   ListOrdered2Icon,
   QuoteTextIcon,
+} from "@app/components/assistant/conversation/icons";
+import {
   ToolbarContent,
   ToolbarIcon,
   ToolbarLink,

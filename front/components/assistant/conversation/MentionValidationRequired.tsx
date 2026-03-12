@@ -11,8 +11,8 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
-  ChatBubbleLeftRightIcon,
 } from "@dust-tt/sparkle";
+import { MessagesSquare } from "@app/components/assistant/conversation/icons";
 import { useMemo, useState } from "react";
 
 interface MentionValidationRequiredProps {
@@ -95,7 +95,7 @@ export function MentionValidationRequired({
     <div className="my-3">
       <ActionCardBlock
         title={title}
-        visual={<Avatar icon={ChatBubbleLeftRightIcon} size="sm" />}
+        visual={<Avatar icon={MessagesSquare} size="sm" />}
         description={description}
         actions={
           <div className="flex flex-wrap justify-end gap-2">

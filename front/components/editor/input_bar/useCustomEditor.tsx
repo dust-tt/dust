@@ -284,7 +284,7 @@ export const buildEditorExtensions = ({
         return "Ask an @agent a question, or get some @help";
       },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+        "first:before:text-gray-400 first:before:font-light first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     PastedAttachmentExtension.configure({
       onInlineText,

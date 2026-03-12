@@ -30,6 +30,7 @@ export interface VoicePickerProps {
   disabled?: boolean;
   showStopLabel?: boolean;
   pressDelayMs?: number;
+  micIcon?: React.ComponentType<{ className?: string }>;
   buttonProps?: Omit<
     ButtonProps,
     "icon" | "label" | "variant" | "isLoading" | "disabled" | "size"
@@ -46,6 +47,7 @@ export function VoicePicker({
   disabled = false,
   showStopLabel = false,
   pressDelayMs = DEFAULT_PRESS_DELAY_MS,
+  micIcon,
   buttonProps,
 }: VoicePickerProps): React.ReactElement {
   const [interactionMode, setInteractionMode] =
@@ -170,7 +172,7 @@ export function VoicePicker({
     }
   }
 
-  const icon = shouldShowStop ? SquareIcon : MicIcon;
+  const icon = shouldShowStop ? SquareIcon : (micIcon ?? MicIcon);
   const variant = shouldShowStop ? "highlight" : "ghost-secondary";
   const label = shouldShowStop && showStopLabel ? "Stop" : undefined;
   const tooltip = computeTooltip(interactionMode, isRecording, isTranscribing);

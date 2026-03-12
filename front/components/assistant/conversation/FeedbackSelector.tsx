@@ -11,12 +11,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  HandThumbUpIcon,
   Label,
-  MagicIcon,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Sparkles, ThumbsUp } from "@app/components/assistant/conversation/icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useController, useForm } from "react-hook-form";
@@ -186,7 +185,7 @@ export function FeedbackSelector({
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("up")}
-          icon={HandThumbUpIcon}
+          icon={ThumbsUp}
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
@@ -194,7 +193,7 @@ export function FeedbackSelector({
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("down")}
-          icon={MagicIcon}
+          icon={Sparkles}
           label={improveLabel}
           className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
         />

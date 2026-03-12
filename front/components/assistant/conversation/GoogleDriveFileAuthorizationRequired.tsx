@@ -11,10 +11,9 @@ import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_driv
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
-  CheckCircleIcon,
   ContentMessage,
-  DocumentTextIcon,
 } from "@dust-tt/sparkle";
+import { CircleCheck, FileText } from "@app/components/assistant/conversation/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
@@ -143,7 +142,7 @@ export function GoogleDriveFileAuthorizationRequired({
     <ContentMessage
       title={isAuthorized ? "File authorized" : "Authorization required"}
       variant={isAuthorized ? "success" : "primary"}
-      icon={isAuthorized ? CheckCircleIcon : DocumentTextIcon}
+      icon={isAuthorized ? CircleCheck : FileText}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
     >
       {isTriggeredByCurrentUser ? (
@@ -161,7 +160,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 label={isButtonLoading ? "Loading..." : "Open File Picker"}
                 variant="highlight"
                 size="xs"
-                icon={DocumentTextIcon}
+                icon={FileText}
                 disabled={isButtonLoading || !!error || !!credentialsError}
                 onClick={handleOpenPicker}
               />

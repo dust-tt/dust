@@ -27,7 +27,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BoltIcon,
   Button,
   ConversationMessageAvatar,
   ConversationMessageContainer,
@@ -39,13 +38,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
-  LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
   Toolbar,
   Tooltip,
-  TrashIcon,
 } from "@dust-tt/sparkle";
+import { Link, MoreHorizontal, SquarePen, Trash2, Zap } from "@app/components/assistant/conversation/icons";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -391,7 +387,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={BoltIcon} />}
+      trigger={<Icon size="xs" visual={Zap} />}
     />
   );
 }
@@ -445,14 +441,14 @@ function ActionMenu({
   const actions = showActions
     ? [
         {
-          icon: LinkIcon,
+          icon: Link,
           label: "Copy message link",
           onClick: handleCopyMessageLink,
         },
         ...(canEdit
           ? [
               {
-                icon: PencilSquareIcon,
+                icon: SquarePen,
                 label: "Edit message",
                 onClick: handleEditMessage,
               },
@@ -461,7 +457,7 @@ function ActionMenu({
         ...(canDelete
           ? [
               {
-                icon: TrashIcon,
+                icon: Trash2,
                 label: "Delete message",
                 onClick: handleDeleteMessage,
               },
@@ -500,7 +496,7 @@ function ActionMenu({
         >
           <DropdownMenuTrigger asChild>
             <Button
-              icon={MoreIcon}
+              icon={MoreHorizontal}
               size="icon-xs"
               variant="outline"
               aria-label="Message actions"

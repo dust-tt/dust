@@ -17,7 +17,6 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,11 +25,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeSlashIcon,
-  LinkIcon,
-  PencilSquareIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
+import { Contact, EyeOff, Link, SquarePen, X } from "@app/components/assistant/conversation/icons";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -242,13 +238,13 @@ export function ProjectMenu({
             <DropdownMenuItem
               label="Rename"
               onClick={() => setShowRenameDialog(true)}
-              icon={PencilSquareIcon}
+              icon={SquarePen}
             />
           )}
           {spaceInfo?.members && spaceInfo.members.length > 0 && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
-                icon={ContactsUserIcon}
+                icon={Contact}
                 label="Member list"
               />
               <DropdownMenuPortal>
@@ -277,14 +273,14 @@ export function ProjectMenu({
             <DropdownMenuItem
               label="Copy link"
               onClick={copyProjectLink}
-              icon={LinkIcon}
+              icon={Link}
             />
           )}
           {isProjectEditor && (
             <DropdownMenuItem
               label="Archive"
               onClick={archiveProject}
-              icon={EyeSlashIcon}
+              icon={EyeOff}
               variant="warning"
             />
           )}
@@ -292,7 +288,7 @@ export function ProjectMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={openLeaveDialog}
-              icon={XMarkIcon}
+              icon={X}
             />
           )}
         </DropdownMenuContent>

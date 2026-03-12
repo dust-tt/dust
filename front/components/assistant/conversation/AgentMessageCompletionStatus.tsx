@@ -4,7 +4,8 @@ import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
-import { ChevronRightIcon, cn, Icon } from "@dust-tt/sparkle";
+import { cn, Icon } from "@dust-tt/sparkle";
+import { ChevronRight } from "@app/components/assistant/conversation/icons";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -66,7 +67,7 @@ export const AgentMessageCompletionStatus = ({
         {hasCompletedTimestamp && <span> {timeString}</span>}
       </div>
 
-      <Icon visual={ChevronRightIcon} size="xs" />
+      <Icon visual={ChevronRight} size="xs" />
     </div>
   );
 };

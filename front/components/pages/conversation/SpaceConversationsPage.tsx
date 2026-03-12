@@ -27,16 +27,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
-  BookOpenIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
   Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
+import { BookOpen, MessagesSquare, Settings, TestTube } from "@app/components/assistant/conversation/icons";
 import React, { useCallback, useRef, useState } from "react";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
@@ -324,24 +321,24 @@ export function SpaceConversationsPage() {
                 <TabsTrigger
                   value="conversations"
                   label="Conversations"
-                  icon={ChatBubbleLeftRightIcon}
+                  icon={MessagesSquare}
                 />
                 <TabsTrigger
                   value="knowledge"
                   label="Knowledge"
-                  icon={BookOpenIcon}
+                  icon={BookOpen}
                 />
               </>
             )}
             <TabsTrigger
               value="settings"
-              icon={Cog6ToothIcon}
+              icon={Settings}
               tooltip="Settings"
             />
             <TabsTrigger
               value="alpha"
               label="Alpha"
-              icon={TestTubeIcon}
+              icon={TestTube}
               variant="warning-secondary"
             />
           </TabsList>

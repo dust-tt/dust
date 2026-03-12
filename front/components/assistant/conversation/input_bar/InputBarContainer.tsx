@@ -42,17 +42,20 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
-  Button,
   CameraIcon,
+  GlobeAltIcon,
+  MicIcon,
+  PlusIcon,
+  TextIcon,
+} from "@app/components/assistant/conversation/icons";
+import {
+  Button,
   Chip,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  PlusIcon,
-  TextIcon,
   Toolbar,
   VoicePicker,
 } from "@dust-tt/sparkle";
@@ -775,7 +778,7 @@ const InputBarContainer = ({
                     variant="ghost-secondary"
                     icon={TextIcon}
                     size={buttonSize}
-                    className="flex sm:hidden"
+                    className="flex text-foreground sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
                   {actions.includes("attachment") &&
@@ -853,6 +856,8 @@ const InputBarContainer = ({
                       disabled={disableInput}
                       size={buttonSize}
                       showStopLabel={!isMobile}
+                      micIcon={MicIcon}
+                      buttonProps={{ className: "text-foreground" }}
                     />
                   )}
                 {clientType === "extension" && (
@@ -868,6 +873,7 @@ const InputBarContainer = ({
                             icon={PlusIcon}
                             size={buttonSize}
                             disabled={disableInput}
+                            className="text-foreground"
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">

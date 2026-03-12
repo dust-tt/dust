@@ -13,7 +13,8 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
+import { Breadcrumbs, Button } from "@dust-tt/sparkle";
+import { ArrowLeft, MoreHorizontal } from "@app/components/assistant/conversation/icons";
 import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
@@ -55,7 +56,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   if (spaceId && spaceInfo) {
     breadcrumbItems.push({
-      icon: ArrowLeftIcon,
+      icon: ArrowLeft,
       label: spaceInfo.name,
       onClick: () => {
         void router.push(getProjectRoute(owner.sId, spaceId), undefined, {
@@ -104,7 +105,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               <Button
                 size="sm"
                 variant="ghost"
-                icon={MoreIcon}
+                icon={MoreHorizontal}
                 aria-label="Conversation menu"
                 disabled={
                   activeConversationId === null ||

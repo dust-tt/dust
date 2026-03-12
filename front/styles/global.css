@@ -208,5 +208,5 @@ body {
 /* Style first row as header (Contentful doesn't always use th elements) */
 .rich-text-table table tr:first-child td {
   background-color: theme("colors.gray.50");
-  font-weight: 600;
+  font-weight: 500;
 }

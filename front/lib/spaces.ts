@@ -6,8 +6,8 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import { BoltIcon } from "@app/components/assistant/conversation/icons";
 import {
-  BoltIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,

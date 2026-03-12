@@ -9,7 +9,8 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { cn, PuzzleIcon } from "@dust-tt/sparkle";
+import { PuzzleIcon } from "@app/components/assistant/conversation/icons";
+import { cn } from "@dust-tt/sparkle";
 import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
 import React from "react";
 
@@ -55,7 +56,7 @@ export function getSkillAvatarIcon(
 export function getSkillIcon(
   iconString: string | null
 ): React.ComponentType<{ className?: string }> {
-  const Icon =
+  const Icon: React.ComponentType<{ className?: string }> =
     iconString &&
     (isCustomResourceIconType(iconString) || isInternalAllowedIcon(iconString))
       ? getIcon(iconString)

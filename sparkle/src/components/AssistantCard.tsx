@@ -63,7 +63,7 @@ export const AssistantCard = React.forwardRef<
         variant={variant}
       >
         <div className="s-flex s-gap-3">
-          <Avatar visual={pictureUrl} size="md" />
+          <Avatar visual={pictureUrl} size="sm" />
           <div
             className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
           >
@@ -112,7 +112,7 @@ export const LargeAssistantCard = React.forwardRef<
       variant="tertiary"
     >
       <div className="s-flex s-gap-3">
-        <Avatar visual={pictureUrl} size="lg" />
+        <Avatar visual={pictureUrl} size="md" />
         <div
           className={cn(
             "s-flex s-flex-col s-gap-2 s-text-base",

@@ -6,13 +6,15 @@ import {
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContactsRobotIcon,
+  RobotIcon,
+} from "@app/components/assistant/conversation/icons";
+import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 

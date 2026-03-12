@@ -19,8 +19,8 @@ import {
   Button,
   LoadingBlock,
   Page,
-  RobotIcon,
 } from "@dust-tt/sparkle";
+import { Bot } from "@app/components/assistant/conversation/icons";
 import {
   useCallback,
   useContext,
@@ -211,7 +211,7 @@ export function AgentSuggestion({
             <Button
               variant="outline"
               size="sm"
-              icon={RobotIcon}
+              icon={Bot}
               label="Pick an agent"
               isSelect
             />

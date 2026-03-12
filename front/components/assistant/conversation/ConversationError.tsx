@@ -3,11 +3,10 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
   Button,
-  ExclamationCircleIcon,
   Icon,
   LinkWrapper,
-  LoginIcon,
 } from "@dust-tt/sparkle";
+import { CircleAlert, LogIn } from "@app/components/assistant/conversation/icons";
 import type { ComponentType } from "react";
 
 interface ConversationErrorProps {
@@ -36,7 +35,7 @@ export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
 function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
-      icon={ExclamationCircleIcon}
+      icon={CircleAlert}
       title="You don't have access to this page"
       message={["This conversation may include restricted data."]}
     />
@@ -46,7 +45,7 @@ function ConversationAccessRestricted() {
 function ConversationNotFound() {
   return (
     <ErrorDisplay
-      icon={ExclamationCircleIcon}
+      icon={CircleAlert}
       title="Conversation Not Found"
       message="This conversation may have been deleted or moved."
     />
@@ -94,7 +93,7 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
         )}
       </p>
       <LinkWrapper href="/">
-        <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
+        <Button variant="outline" label="Back to homepage" icon={LogIn} />
       </LinkWrapper>
     </div>
   );

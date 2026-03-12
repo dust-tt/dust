@@ -32,6 +32,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { ToolsIcon } from "@app/components/assistant/conversation/icons";
 import {
   BoltIcon,
   Button,
@@ -45,7 +46,6 @@ import {
   Icon,
   LoadingBlock,
   MoreIcon,
-  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
@@ -482,6 +482,7 @@ export function CapabilitiesPicker({
             size={buttonSize}
             tooltip="Capabilities"
             disabled={disabled || isLoading}
+            className="text-foreground"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent

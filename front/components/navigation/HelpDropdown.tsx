@@ -11,17 +11,19 @@ import { isAgentMention } from "@app/types/assistant/mentions";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
   BookOpenIcon,
-  Button,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   DocumentIcon,
+  HeartIcon,
+  LightbulbIcon,
+} from "@app/components/assistant/conversation/icons";
+import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  HeartIcon,
-  LightbulbIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";

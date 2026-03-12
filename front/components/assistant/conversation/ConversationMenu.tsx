@@ -27,9 +27,7 @@ import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ArrowRightIcon,
   Avatar,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -39,14 +37,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
-  LinkIcon,
-  PencilSquareIcon,
-  PlusCircleIcon,
-  SidekickIcon,
-  TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
+import { ArrowRight, BotMessageSquare, Contact, ExternalLink, Link, PlusCircle, SquarePen, Trash2, X } from "@app/components/assistant/conversation/icons";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -315,12 +307,12 @@ export function ConversationMenu({
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
-            icon={PencilSquareIcon}
+            icon={SquarePen}
           />
           {hasFeature("projects") && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
-                icon={ArrowRightIcon}
+                icon={ArrowRight}
                 label="Move to project"
                 disabled={!projects.length}
               />
@@ -346,7 +338,7 @@ export function ConversationMenu({
           )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={Contact}
               label="Participants"
               disabled={
                 !conversationParticipants?.users.length &&
@@ -361,7 +353,7 @@ export function ConversationMenu({
                     <DropdownMenuItem
                       label="Join"
                       onClick={joinConversation}
-                      icon={PlusCircleIcon}
+                      icon={PlusCircle}
                     />
                     <DropdownMenuSeparator />
                   </>
@@ -403,20 +395,20 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Open in a browser tab"
               onClick={openConversationInBrowser}
-              icon={ExternalLinkIcon}
+              icon={ExternalLink}
             />
           )}
           {conversationLink && (
             <DropdownMenuItem
               label="Copy link"
               onClick={copyConversationLink}
-              icon={LinkIcon}
+              icon={Link}
             />
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
               label="Shrinkwrap"
-              icon={SidekickIcon}
+              icon={BotMessageSquare}
               onClick={async () => {
                 const confirmed = await confirm({
                   title: "Shrinkwrap",
@@ -439,14 +431,14 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={() => setShowLeaveDialog(true)}
-              icon={XMarkIcon}
+              icon={X}
             />
           )}
           {canDelete && (
             <DropdownMenuItem
               label="Delete"
               onClick={() => setShowDeleteDialog(true)}
-              icon={TrashIcon}
+              icon={Trash2}
               variant="warning"
             />
           )}

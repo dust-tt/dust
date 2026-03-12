@@ -10,17 +10,19 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  Button,
   DocumentIcon,
+  MagicIcon,
+  PlusIcon,
+  PuzzleIcon,
+} from "@app/components/assistant/conversation/icons";
+import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
   FolderOpenIcon,
-  MagicIcon,
-  PlusIcon,
-  PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
