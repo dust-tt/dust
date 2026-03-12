@@ -162,7 +162,7 @@ export async function typeText(
   variant: "replace" | "append" | "delete"
 ): Promise<Result<boolean, Error>> {
   if (!tab?.id) {
-    return new Err(new Error("No active tab found."));
+    return new Err(new Error("Tab not found."));
   }
 
   const utilsResult = await ensureDustPageUtils(tab);
@@ -419,7 +419,7 @@ export async function getPageElementsDiff(
   tab: chrome.tabs.Tab | undefined
 ): Promise<Result<string, Error>> {
   if (!tab?.id) {
-    return new Err(new Error("No active tab found."));
+    return new Err(new Error("Tab not found."));
   }
 
   const utilsResult = await ensureDustPageUtils(tab);

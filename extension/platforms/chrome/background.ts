@@ -708,7 +708,10 @@ chrome.runtime.onMessage.addListener(
 
       case "GET_ELEMENTS":
         chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
+          const tab =
+            message.tabId !== null && message.tabId !== undefined
+              ? tabs.find((t) => t.id === message.tabId)
+              : tabs.find((t) => t.active);
           try {
             const result = await getPageElements(tab);
 
@@ -737,7 +740,10 @@ chrome.runtime.onMessage.addListener(
 
       case "CLICK_ELEMENT":
         chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
+          const tab =
+            message.tabId !== null && message.tabId !== undefined
+              ? tabs.find((t) => t.id === message.tabId)
+              : tabs.find((t) => t.active);
           try {
             const result = await clickPageElement(tab, message.elementId);
 
@@ -781,7 +787,10 @@ chrome.runtime.onMessage.addListener(
 
       case "TYPE_TEXT":
         chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
+          const tab =
+            message.tabId !== null && message.tabId !== undefined
+              ? tabs.find((t) => t.id === message.tabId)
+              : tabs.find((t) => t.active);
           try {
             const result = await typeText(
               tab,
@@ -831,7 +840,10 @@ chrome.runtime.onMessage.addListener(
 
       case "DELETE_TEXT":
         chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
+          const tab =
+            message.tabId !== null && message.tabId !== undefined
+              ? tabs.find((t) => t.id === message.tabId)
+              : tabs.find((t) => t.active);
           try {
             const result = await typeText(tab, message.elementId, "", "delete");
 

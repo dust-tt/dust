@@ -6,19 +6,24 @@ const inputSchema = z.object({
   action: z
     .enum(["get_elements", "click_element", "type_text", "delete_text"])
     .describe("Action to perform."),
-  tab_id: z.number().describe("The ID of the tab to interact with."),
+  tab_id: z
+    .number()
+    .nullish()
+    .describe(
+      "The ID of the tab to interact with. If not specified, the active tab will be used."
+    ),
   element_id: z
     .string()
-    .nullable()
+    .nullish()
     .describe(
       "ID of the element to interact with. Required for click_element, type_text and delete_text. Must match an element returned by get_elements."
     ),
 
-  text: z.string().nullable().describe("Text to insert when using type_text."),
+  text: z.string().nullish().describe("Text to insert when using type_text."),
 
   textActionVariant: z
     .enum(["replace", "append"])
-    .nullable()
+    .nullish()
     .describe(
       "How text should be applied when using type_text: replace existing content or append to it."
     ),
