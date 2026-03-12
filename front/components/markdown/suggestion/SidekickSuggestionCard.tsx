@@ -17,6 +17,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentKnowledgeSuggestionWithRelationsType,
@@ -573,19 +574,7 @@ function KnowledgeSuggestionCard({
           )
         );
     setValue("actions", nextActions, { shouldDirty: true });
-  }, [
-    acceptSuggestion,
-    sId,
-    isAddition,
-    isQueryTables,
-    serverView,
-    dataSourceView,
-    getValues,
-    setValue,
-    displayName,
-    suggestion.description,
-    method,
-  ]);
+  };
 
   const handleReject = (
     agentSuggestion: AgentKnowledgeSuggestionWithRelationsType

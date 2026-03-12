@@ -68,7 +68,11 @@ const KnowledgeSuggestionSchema = z.object({
     .optional()
     .default("search")
     .describe(
-      "search: semantic search on unstructured data. include: full document content in context. query_tables: SQL-like queries on structured data. extract: structured output from unstructured data."
+      "The knowledge access method. Defaults to 'search' (recommended). " +
+        "Use 'query_tables' ONLY for sources you have confirmed contain " +
+        "top-level structured tables. Use 'include' ONLY for single small " +
+        "reference documents. Use 'extract' ONLY for homogeneous document " +
+        "collections where a single schema applies to all."
     ),
   dataSourceViewId: z
     .string()

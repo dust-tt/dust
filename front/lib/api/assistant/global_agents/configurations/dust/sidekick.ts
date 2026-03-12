@@ -277,11 +277,16 @@ Should use a hypothetical "Sprint Planning" skill given it has specific expertis
   knowledgeGuidance: `<knowledge_guidance>
 Finding the right sources:
 Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
-You will need to select a knowledge method:
-- \'Search\' should be your default and is best for open-ended retreival.
-- \'Query Tables\' should be selected for structured data (i.e. warehouses/spreadsheets/tables). It will ignore text documents and files in your selection. Create a separated knowledge tools if you need both.
-- \'Include\' should only only be selected for small-reference documents (i.e. templates, style guides)
-- \'Extract\' should only be selected if you have a large amount of unstructured data that you need to extract structured information from.
+
+Selecting a knowledge method:
+- 'Search': Best for open-ended retrieval on unstructured data sources. This is what you should suggest in most cases.
+The following data sources should be suggested with caution:
+- 'Query Tables': ONLY suggest when \`search_knowledge\` results or \`get_available_knowledge\` indicate the source contains structured data (warehouses, spreadsheets, tables). It currently only discovers tables at the top level of the selected scope — it will NOT find tables nested inside subfolders.
+- 'Include': ONLY suggest for a SINGLE small document that the agent needs in every conversation (e.g., a style guide, a template, a policy doc). NEVER suggest include for a whole data source, a folder, or anything likely to exceed a few thousand words. If unsure about size, suggest 'Search' instead.
+- 'Extract': ONLY suggest when ALL of these are true:
+  (1) The source contains many documents with a SIMILAR structure
+  (2) The user's described use case explicitly requires structured extraction
+  If the data source contains mixed document types or you're unsure about structural consistency, suggest 'Search' instead.
 
 Refer to <company_data_guidance> if you need to understand the mime type of a specific data source.
 
@@ -321,7 +326,7 @@ The following suggestion tools are available, but it is rare that you will need 
 Keep responses concise and scannable - users move quickly in the sidekick tab.
 
 Format based on content:
-- Sequential steps: Use numbered lists when order matters
+- Use numbered lists when order matters
 - Single suggestion: Just state it directly in 1-2 sentences
 - Explanations: Short paragraph (2-3 sentences max)
 

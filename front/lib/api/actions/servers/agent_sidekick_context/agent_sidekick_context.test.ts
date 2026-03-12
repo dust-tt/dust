@@ -1433,7 +1433,7 @@ describe("agent_sidekick_context tools", () => {
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
       const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_copilot_helpers"
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
