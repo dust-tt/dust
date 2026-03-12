@@ -6,6 +6,7 @@ import {
 import { getPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getCurrentTabInfoTool } from "./getCurrentTabInfo";
 import { getPageViewTool } from "./getPageViewTool";
 import { interactWithPageTool } from "./interactWithPageTool";
 import { listBrowserTabsTool } from "./listTabsTool";
@@ -32,6 +33,7 @@ export function registerAllTools(
     get_browser_page_view: (params) =>
       getPageViewTool({ ...params, captureService, workspaceId }),
     list_browser_tabs: () => listBrowserTabsTool(),
+    get_current_tab_info: () => getCurrentTabInfoTool(),
     activate_browser_tab: (params) => activateBrowserTabTool(params),
     close_browser_tab: (params) => closeBrowserTabTool(params),
     move_browser_tab: (params) => moveBrowserTabTool(params),
