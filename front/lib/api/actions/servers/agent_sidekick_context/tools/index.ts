@@ -31,12 +31,12 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
@@ -1195,10 +1195,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     );
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const credentials = await ProviderCredentialResource.getCredentials(auth);
     const searchResults = await coreAPI.bulkSearchDataSources(
       query,
       topK,
-      dustManagedCredentials(),
+      credentials,
       false,
       dataSourceEntries.map((entry) => entry.searchArg)
     );

@@ -11,6 +11,11 @@ import type {
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
 import { Authenticator } from "@app/lib/auth";
+import { SubscriptionModel } from "@app/lib/models/plan";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
@@ -23,15 +28,36 @@ const SYSTEM_PROMPT = "You are a helpful assistant.";
 
 /**
  * Creates a mock Authenticator for testing purposes.
- * This is a minimal mock that bypasses actual authentication.
+ * Includes a non-BYOK subscription so getCredentials(auth) returns Dust-managed keys.
  */
 export function createMockAuthenticator(): Authenticator {
+  const plan = renderPlanFromModel({ plan: FREE_NO_PLAN_DATA });
+  const subscription = new SubscriptionResource(
+    SubscriptionModel,
+    {
+      id: -1,
+      sId: "test-subscription",
+      status: "active",
+      trialing: null,
+      paymentFailingSince: null,
+      startDate: new Date(),
+      endDate: null,
+      planId: -1,
+      stripeSubscriptionId: null,
+      requestCancelAt: null,
+      workspaceId: -1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    plan
+  );
+
   return new Authenticator({
     workspace: null,
     user: null,
     role: "none",
     groupModelIds: [],
-    subscription: null,
+    subscription,
     authMethod: "internal",
   });
 }
@@ -309,7 +335,9 @@ export const runConversation = async (
   config: TestConfig
 ): Promise<void> => {
   const mockAuth = createMockAuthenticator();
+  const credentials = await ProviderCredentialResource.getCredentials(mockAuth);
   const llm = await getLLM(mockAuth, {
+    credentials,
     modelId: config.modelId,
     temperature: config.temperature,
     reasoningEffort: config.reasoningEffort,

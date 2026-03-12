@@ -1,4 +1,7 @@
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameterOverwrites,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
@@ -75,7 +78,7 @@ const POST_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
 export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
   GoogleAIStudioWhitelistedModelId,
   {
-    overwrites?: Omit<LLMParameters, "modelId">;
+    overwrites?: LLMParameterOverwrites;
     thinkingConfig: Record<ReasoningEffort, ThinkingConfig>;
   }
 > = {

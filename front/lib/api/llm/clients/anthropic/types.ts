@@ -1,4 +1,7 @@
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameterOverwrites,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -31,19 +34,16 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
 export type AnthropicWhitelistedModelId =
   (typeof ANTHROPIC_WHITELISTED_MODEL_IDS)[number];
 
-const NON_THINKING_OVERWRITES: Partial<LLMParameters> = {
+const NON_THINKING_OVERWRITES: LLMParameterOverwrites = {
   reasoningEffort: null,
 };
-const THINKING_OVERWRITES: Partial<LLMParameters> = {
+const THINKING_OVERWRITES: LLMParameterOverwrites = {
   temperature: 1,
 };
 
 // Config overwrites for static Anthropic models. Custom models use THINKING_OVERWRITES by default.
 const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
-  Record<
-    AnthropicWhitelistedModelId,
-    { overwrites: Omit<LLMParameters, "modelId"> }
-  >
+  Record<AnthropicWhitelistedModelId, { overwrites: LLMParameterOverwrites }>
 > = {
   [CLAUDE_3_OPUS_2024029_MODEL_ID]: {
     overwrites: NON_THINKING_OVERWRITES,

@@ -17,13 +17,13 @@ import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
@@ -33,23 +33,6 @@ import type {
 } from "@app/types/core/data_source";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
 import { Err, Ok } from "@app/types/shared/result";
-
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-    getClientFacingUrl: () => "http://localhost:3000",
-    getAppUrl: () => "http://localhost:3000",
-  },
-}));
 
 describe("createDataSourceAndConnectorForProject", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -227,9 +210,9 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(createDataSourceCall.config.qdrant_config?.cluster).toBe(
         DEFAULT_QDRANT_CLUSTER
       );
-      expect(createDataSourceCall.credentials).toEqual(
-        dustManagedCredentials()
-      );
+      const expectedCredentials =
+        await ProviderCredentialResource.getCredentials(adminAuth);
+      expect(createDataSourceCall.credentials).toEqual(expectedCredentials);
 
       // Verify project context folder was created
       expect(upsertFolderSpy).toHaveBeenCalledTimes(1);

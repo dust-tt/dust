@@ -8,7 +8,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
-  createGeminiClient,
   formatImageResponse,
   processImageFileIds,
   QUALITY_TO_IMAGE_SIZE,
@@ -18,12 +17,13 @@ import {
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
 import type { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Part } from "@google/genai";
+import { GoogleGenAI, type Part } from "@google/genai";
 import { startObservation } from "@langfuse/tracing";
 
 export function createImageGenerationTools(
@@ -59,7 +59,10 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      const gemini = createGeminiClient();
+      const credentials = await ProviderCredentialResource.getCredentials(auth);
+      const gemini = new GoogleGenAI({
+        apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
+      });
 
       let referenceImageParts: Part[] = [];
 

@@ -18,16 +18,6 @@ vi.mock("@app/lib/lock", () => ({
   }),
 }));
 
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
-      logger: console,
-    }),
-  },
-}));
-
 // Mock CoreAPI methods to avoid requiring the Core service
 vi.spyOn(CoreAPI.prototype, "createProject").mockImplementation(async () => {
   return new Ok({

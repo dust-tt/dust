@@ -9,6 +9,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { isString } from "@app/types/shared/utils/general";
 
 export interface SystemPromptInstruction {
@@ -98,12 +99,17 @@ export function systemPromptToText(input: SystemPromptInput): string {
 export type LLMParameters = {
   bypassFeatureFlag?: boolean;
   context?: LLMTraceContext;
+  credentials: LLMCredentialsType;
   modelId: ModelIdType;
   reasoningEffort?: ReasoningEffort | null;
   responseFormat?: string | null;
   metaData?: Record<string, unknown>;
   temperature?: number | null;
 } & LLMTraceCustomization;
+
+export type LLMParameterOverwrites = Partial<
+  Omit<LLMParameters, "modelId" | "credentials">
+>;
 
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;

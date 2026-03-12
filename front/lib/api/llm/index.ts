@@ -20,6 +20,7 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 export async function getLLM(
   auth: Authenticator,
   {
+    credentials,
     getTraceInput,
     getTraceOutput,
     modelId,
@@ -38,6 +39,7 @@ export async function getLLM(
 
   if (isMistralWhitelistedModelId(modelId)) {
     return new MistralLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,
@@ -50,6 +52,7 @@ export async function getLLM(
 
   if (isGoogleAIStudioWhitelistedModelId(modelId)) {
     return new GoogleLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,
@@ -63,6 +66,7 @@ export async function getLLM(
 
   if (isOpenAIResponsesWhitelistedModelId(modelId)) {
     return new OpenAIResponsesLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,
@@ -76,6 +80,7 @@ export async function getLLM(
 
   if (isAnthropicWhitelistedModelId(modelId)) {
     return new AnthropicLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,
@@ -89,6 +94,7 @@ export async function getLLM(
 
   if (isFireworksWhitelistedModelId(modelId)) {
     return new FireworksLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,
@@ -100,6 +106,7 @@ export async function getLLM(
   }
   if (isNoopWhitelistedModelId(modelId)) {
     return new NoopLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,
@@ -111,6 +118,7 @@ export async function getLLM(
 
   if (isXaiWhitelistedModelId(modelId)) {
     return new XaiLLM(auth, {
+      credentials,
       getTraceInput,
       getTraceOutput,
       modelId,

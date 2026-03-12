@@ -6,6 +6,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -15,7 +16,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   credentialsFromProviders,
-  dustManagedCredentials,
+  dustManagedServiceCredentials,
 } from "@app/types/api/credentials";
 import type {
   ModelIdType,
@@ -285,8 +286,13 @@ async function handler(
 
       let credentials: CredentialsType | null = null;
       if (useDustCredentials) {
+        const llmCredentials =
+          await ProviderCredentialResource.getCredentials(auth);
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials();
+        credentials = {
+          ...llmCredentials,
+          ...dustManagedServiceCredentials(),
+        };
       } else {
         credentials = credentialsFromProviders(providers);
       }

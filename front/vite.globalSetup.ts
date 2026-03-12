@@ -39,6 +39,10 @@ export default async function setup() {
     REGION: "us-central1",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
     OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
+    CORE_API: "http://fake-core-api",
+    CONNECTORS_API: "http://fake-connectors-api",
+    DUST_CONNECTORS_SECRET: "fake-connectors-secret",
+    DUST_CONNECTORS_WEBHOOKS_SECRET: "fake-connectors-webhooks-secret",
 
     // Variables that modify the behavior of certain tests
     UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,

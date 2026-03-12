@@ -36,7 +36,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import assert from "assert";
 
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
@@ -99,12 +99,8 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, ANTHROPIC_PROVIDER_ID, params);
-    const { ANTHROPIC_API_KEY } = dustManagedCredentials();
-    if (!ANTHROPIC_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
-      );
-    }
+    const { ANTHROPIC_API_KEY } = llmParameters.credentials;
+    assert(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY credential is required");
 
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,

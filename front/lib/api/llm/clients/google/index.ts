@@ -22,8 +22,8 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { ApiError, GoogleGenAI } from "@google/genai";
+import assert from "assert";
 
 import { handleError } from "./utils/errors";
 
@@ -46,12 +46,11 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     super(auth, GOOGLE_AI_STUDIO_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
-    const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
-    if (!GOOGLE_AI_STUDIO_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY environment variable is required"
-      );
-    }
+    const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
+    assert(
+      GOOGLE_AI_STUDIO_API_KEY,
+      "GOOGLE_AI_STUDIO_API_KEY credential is required"
+    );
 
     this.client = new GoogleGenAI({
       apiKey: GOOGLE_AI_STUDIO_API_KEY,

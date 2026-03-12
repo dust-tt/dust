@@ -1,6 +1,8 @@
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -12,7 +14,6 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 
 export async function processDataSourceDocuments({
@@ -41,9 +42,10 @@ export async function processDataSourceDocuments({
   const data =
     await readFromRelocationStorage<CoreDocumentAPIRelocationBlob>(dataPath);
 
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  const credentials = dustManagedCredentials();
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
   const destRegionApiBaseUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(

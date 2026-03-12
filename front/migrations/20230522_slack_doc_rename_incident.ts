@@ -1,7 +1,11 @@
+import assert from "assert";
+
 import config from "@app/lib/api/config";
+import { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 
 async function main() {
@@ -18,12 +22,17 @@ async function main() {
         const provider = ds.connectorProvider;
         const workspaceId = ds.workspaceId;
 
-        if (!workspaceId) {
-          throw new Error("No workspaceId found");
-        }
-        if (!connectorId || !provider || provider !== "slack") {
-          throw new Error("No connectorId found");
-        }
+        assert(workspaceId, "No workspaceId found");
+        assert(
+          connectorId && provider && provider === "slack",
+          "No connectorId found"
+        );
+
+        const workspace = await WorkspaceModel.findByPk(workspaceId);
+        assert(workspace, `Workspace not found for id ${workspaceId}`);
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
 
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const dds = await coreAPI.deleteDataSource({
@@ -50,8 +59,8 @@ async function main() {
           throw new Error("Failed to create new Core project.");
         }
 
-        // Dust managed credentials: managed data source.
-        const credentials = dustManagedCredentials();
+        const credentials =
+          await ProviderCredentialResource.getCredentials(auth);
 
         const dustDataSource = await coreAPI.createDataSource({
           projectId: dustProject.value.project.project_id.toString(),

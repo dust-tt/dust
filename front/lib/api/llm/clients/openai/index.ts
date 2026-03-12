@@ -26,8 +26,8 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 import { APIError, OpenAI, toFile } from "openai";
 import type {
   Response,
@@ -72,12 +72,8 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     super(auth, OPENAI_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
-    const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
-    if (!OPENAI_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_OPENAI_API_KEY environment variable is required"
-      );
-    }
+    const { OPENAI_API_KEY, OPENAI_BASE_URL } = llmParameters.credentials;
+    assert(OPENAI_API_KEY, "OPENAI_API_KEY credential is required");
 
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
