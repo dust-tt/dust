@@ -505,11 +505,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           const GONG_TRANSCRIPT_PAGE_SIZE = 100;
           const maxTranscriptId = currentMaxId + GONG_TRANSCRIPT_PAGE_SIZE;
 
-          await launchGongKeywordUpdateWorkflow(
-            connector,
+          await launchGongKeywordUpdateWorkflow(connector, {
             newKeywords,
-            maxTranscriptId
-          );
+            maxTranscriptId,
+          });
 
           // Resume the schedule with new keywords excluded
           const resumeResult = await this.resume();

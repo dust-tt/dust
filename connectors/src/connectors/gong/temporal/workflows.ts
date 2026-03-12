@@ -159,23 +159,23 @@ export async function gongGarbageCollectWorkflow({
  */
 export async function gongKeywordUpdateWorkflow({
   connectorId,
-  newKeywords,
-  maxTranscriptId,
 }: {
   connectorId: ModelId;
-  newKeywords: string[];
-  maxTranscriptId: ModelId;
 }) {
-  let latestKeywords = newKeywords;
-  let latestMaxTranscriptId = maxTranscriptId;
-  let activeKeywords = [...newKeywords];
+  const keywordsToProcess = new Set<string>();
+  let latestMaxTranscriptId: ModelId | null = null;
   let keywordsUpdated = false;
 
-  setHandler(updateExcludedKeywordsSignal, (update) => {
-    latestKeywords = update.newKeywords;
-    latestMaxTranscriptId = update.maxTranscriptId;
-    keywordsUpdated = true;
-  });
+  setHandler(
+    updateExcludedKeywordsSignal,
+    ({ newKeywords, maxTranscriptId }) => {
+      for (const keyword of newKeywords) {
+        keywordsToProcess.add(keyword);
+      }
+      latestMaxTranscriptId = maxTranscriptId;
+      keywordsUpdated = true;
+    }
+  );
 
   // Wait for in-flight sync activities to settle after this.stop().
   // Resets the 90s wait each time a new signal arrives (meaning a new
@@ -189,29 +189,13 @@ export async function gongKeywordUpdateWorkflow({
     }
   }
 
-  // Pick up the latest keywords after the settle period
-  activeKeywords = [...latestKeywords];
-
-  let hasMore = true;
+  let hasMore = keywordsToProcess.size > 0;
   let lastId: number | undefined = undefined;
 
-  while (hasMore) {
-    if (keywordsUpdated) {
-      // Only restart from the beginning if new keywords were added.
-      // If keywords were only removed, continue from current position.
-      const hasNewKeywords = latestKeywords.some(
-        (kw) => !activeKeywords.includes(kw)
-      );
-      if (hasNewKeywords) {
-        lastId = undefined;
-      }
-      activeKeywords = [...latestKeywords];
-      keywordsUpdated = false;
-    }
-
+  while (hasMore && latestMaxTranscriptId) {
     const result = await gongDeleteExcludedTranscriptsActivity({
       connectorId,
-      excludeKeywords: activeKeywords,
+      excludeKeywords: [...keywordsToProcess],
       lastId,
       maxTranscriptId: latestMaxTranscriptId,
     });
