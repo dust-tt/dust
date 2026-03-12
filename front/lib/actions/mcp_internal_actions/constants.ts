@@ -6,8 +6,8 @@ import {
 } from "@app/lib/actions/constants";
 import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
 import type {
+  ClientToolMeta,
   ServerMetadata,
-  ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
@@ -1089,7 +1089,7 @@ export const INTERNAL_MCP_SERVERS = {
 // Hardcoded stakes per client-side server (keyed by base server ID)
 export const CLIENT_SIDE_MCP_TOOL_METADATA: Record<
   string,
-  Record<string, ToolMeta>
+  Record<string, ClientToolMeta>
 > = {
   "mcp-client-side:chrome_extension_client": Object.fromEntries(
     Object.entries(CHROME_TOOLS_METADATA).map(([name, meta]) => [name, meta])
@@ -1281,6 +1281,16 @@ export function getClientSideToolStake(
     return toolStake;
   }
   return DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL;
+}
+
+export function getClientSideToolArgumentsRequiringApproval(
+  serverId: string,
+  toolName: string
+): string[] | undefined {
+  const toolArgsRequiringApproval =
+    CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]
+      .argumentsRequiringApproval;
+  return toolArgsRequiringApproval;
 }
 
 export function getClientSideToolDisplayLabels(

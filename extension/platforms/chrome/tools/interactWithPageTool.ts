@@ -5,13 +5,13 @@ import { sendInteractWithPageMessage } from "@extension/platforms/chrome/message
 
 export async function interactWithPageTool(input: {
   action: "get_elements" | "click_element" | "type_text" | "delete_text";
-  tab_id: number;
-  element_id?: string | null;
+  tabId: number;
+  elementId?: string | null;
   text?: string | null;
   textActionVariant?: "replace" | "append" | null;
 }): Promise<ToolHandlerResult> {
   if (input.action === "type_text") {
-    const elementId = input.element_id;
+    const elementId = input.elementId;
     if (!elementId) {
       return new Err(
         new MCPError("No elementId specified for type_text action")
@@ -26,7 +26,7 @@ export async function interactWithPageTool(input: {
 
     const typeResponse = await sendInteractWithPageMessage({
       action: "type_text",
-      tabId: input.tab_id,
+      tabId: input.tabId,
       elementId,
       text: input.text ?? "",
       variant,
@@ -47,7 +47,7 @@ export async function interactWithPageTool(input: {
   }
 
   if (input.action === "delete_text") {
-    const elementId = input.element_id;
+    const elementId = input.elementId;
     if (!elementId) {
       return new Err(
         new MCPError("No elementId specified for delete_text action")
@@ -56,7 +56,7 @@ export async function interactWithPageTool(input: {
 
     const typeResponse = await sendInteractWithPageMessage({
       action: "delete_text",
-      tabId: input.tab_id,
+      tabId: input.tabId,
       elementId,
     });
     if (!typeResponse.success) {
@@ -75,7 +75,7 @@ export async function interactWithPageTool(input: {
   }
 
   if (input.action === "click_element") {
-    const elementId = input.element_id;
+    const elementId = input.elementId;
     if (!elementId) {
       return new Err(
         new MCPError("No elementId specified for click_element action")
@@ -83,7 +83,7 @@ export async function interactWithPageTool(input: {
     }
     const clickResponse = await sendInteractWithPageMessage({
       action: "click_element",
-      tabId: input.tab_id,
+      tabId: input.tabId,
       elementId,
     });
 
@@ -105,7 +105,7 @@ export async function interactWithPageTool(input: {
 
   const response = await sendInteractWithPageMessage({
     action: "get_elements",
-    tabId: input.tab_id,
+    tabId: input.tabId,
   });
 
   if (!response) {

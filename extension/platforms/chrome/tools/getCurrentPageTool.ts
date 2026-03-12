@@ -12,7 +12,7 @@ export async function getPageTool({
   tabId,
   captureService,
 }: {
-  tabId?: number;
+  tabId: number;
   captureService: CaptureService | null;
 }): Promise<ToolHandlerResult> {
   if (!captureService) {

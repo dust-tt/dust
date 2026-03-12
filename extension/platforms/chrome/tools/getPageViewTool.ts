@@ -108,7 +108,7 @@ export async function getPageViewTool({
   captureService,
   workspaceId,
 }: {
-  tabId?: number;
+  tabId: number;
   captureService: CaptureService | null;
   workspaceId: string;
 }): Promise<ToolHandlerResult> {

@@ -1,7 +1,7 @@
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createClientToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
-export const CHROME_TOOLS_METADATA = createToolsRecord({
+export const CHROME_TOOLS_METADATA = createClientToolsRecord({
   get_browser_page: {
     description:
       "Extracts the title, URL, and text content of a browser tab. " +
@@ -9,13 +9,9 @@ export const CHROME_TOOLS_METADATA = createToolsRecord({
       "For non-text pages (PDFs, images, etc.), use get_browser_page_view instead — it will attach the file directly to the conversation." +
       "Use list_browser_tabs to discover tab IDs.",
     schema: {
-      tabId: z
-        .number()
-        .optional()
-        .describe(
-          "The tab ID to read. If omitted, reads the active tab. Use list_browser_tabs to get tab IDs."
-        ),
+      tabId: z.number().describe("The tab ID to read."),
     },
+    argumentsRequiringApproval: ["tabId"],
     stake: "medium",
     displayLabels: {
       running: "Getting page content...",
@@ -30,13 +26,9 @@ export const CHROME_TOOLS_METADATA = createToolsRecord({
       "For HTML pages, takes a screenshot for visual inspection (Drive canvas, dashboards, etc.)." +
       "Use list_browser_tabs to discover tab IDs.",
     schema: {
-      tabId: z
-        .number()
-        .optional()
-        .describe(
-          "The tab ID to capture. If omitted, captures the active tab. Use list_browser_tabs to get tab IDs."
-        ),
+      tabId: z.number().describe("The tab ID to capture."),
     },
+    argumentsRequiringApproval: ["tabId"],
     stake: "medium",
     displayLabels: {
       running: "Attaching tab content...",
@@ -144,8 +136,8 @@ Avoid unnecessary actions.`,
       action: z
         .enum(["get_elements", "click_element", "type_text", "delete_text"])
         .describe("Action to perform."),
-      tab_id: z.number().describe("The ID of the tab to interact with."),
-      element_id: z
+      tabId: z.number().describe("The ID of the tab to interact with."),
+      elementId: z
         .string()
         .nullish()
         .describe(
@@ -164,6 +156,7 @@ Avoid unnecessary actions.`,
           "How text should be applied when using type_text: replace existing content or append to it."
         ),
     }).shape,
+    argumentsRequiringApproval: ["tabId"],
     stake: "medium",
     displayLabels: {
       running: "Interacting with page...",
