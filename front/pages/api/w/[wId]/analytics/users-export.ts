@@ -3,7 +3,7 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -20,6 +20,7 @@ import { z } from "zod";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
+  timezone: z.string().optional().default("UTC"),
 });
 
 type TopUserExportBucket = {
@@ -60,8 +61,8 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { days } = req.query;
-      const q = QuerySchema.safeParse({ days });
+      const { days, timezone } = req.query;
+      const q = QuerySchema.safeParse({ days, timezone });
       if (!q.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -95,6 +96,7 @@ async function handler(
                   date_histogram: {
                     field: "timestamp",
                     calendar_interval: "day",
+                    time_zone: q.data.timezone,
                   },
                 },
               },
@@ -128,7 +130,7 @@ async function handler(
               messageCount: b.doc_count,
               lastMessageSent:
                 typeof lastMessageMs === "number"
-                  ? formatUTCDateFromMillis(lastMessageMs)
+                  ? formatDateFromMillis(lastMessageMs, q.data.timezone)
                   : "",
               activeDaysCount: Array.isArray(activeDaysBuckets)
                 ? activeDaysBuckets.filter((d) => d.doc_count > 0).length

@@ -1,6 +1,7 @@
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
+  getMidnightInTimezone,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -61,6 +62,11 @@ function computeRollingActiveUsers(
   return uniqueUsers.size;
 }
 
+function getStartOfTodayInTimezone(timezone: string): number {
+  const todayStr = formatDateFromMillis(Date.now(), timezone);
+  return getMidnightInTimezone(todayStr, timezone);
+}
+
 /**
  * Fetches DAU/WAU/MAU metrics for the given time range.
  *
@@ -72,7 +78,8 @@ function computeRollingActiveUsers(
  */
 export async function fetchActiveUsersMetrics(
   workspace: LightWorkspaceType,
-  days: number
+  days: number,
+  timezone: string = "UTC"
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
   // Extend the query range to include extra days for rolling window calculations
@@ -95,7 +102,7 @@ export async function fetchActiveUsersMetrics(
         date_histogram: {
           field: "timestamp",
           calendar_interval: "day",
-          time_zone: "UTC",
+          time_zone: timezone,
         },
         aggs: {
           users: {
@@ -132,8 +139,7 @@ export async function fetchActiveUsersMetrics(
   sortedTimestamps.sort((a, b) => a - b);
 
   // Determine the cutoff timestamp - we only return points for the requested range
-  const now = Date.now();
-  const startOfToday = new Date(now).setUTCHours(0, 0, 0, 0);
+  const startOfToday = getStartOfTodayInTimezone(timezone);
   const cutoffTimestamp = startOfToday - (days - 1) * MS_PER_DAY;
 
   // Collect timestamps in the requested range for membership counting.
@@ -165,7 +171,7 @@ export async function fetchActiveUsersMetrics(
 
     points.push({
       timestamp,
-      date: formatUTCDateFromMillis(timestamp),
+      date: formatDateFromMillis(timestamp, timezone),
       dau,
       wau,
       mau,

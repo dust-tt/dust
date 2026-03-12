@@ -10,6 +10,10 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import {
+  formatDateFromMillis,
+  getMidnightInTimezone,
+} from "@app/lib/utils/timezone";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export type VersionMarker = { version: string; timestamp: number };
@@ -184,20 +188,14 @@ export function filterTimeSeriesByVersionWindow<
   });
 }
 
-export function formatUTCDateString(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-export function getTimeRangeBounds(periodDays: number): [string, string] {
-  const endUTC = Date.now();
-  const startUTC = endUTC - periodDays * 24 * 60 * 60 * 1000;
-  return [
-    formatUTCDateString(new Date(startUTC)),
-    formatUTCDateString(new Date(endUTC)),
-  ];
+export function getTimeRangeBounds(
+  periodDays: number,
+  timezone?: string
+): [string, string] {
+  const tz = timezone ?? "UTC";
+  const nowMs = Date.now();
+  const startMs = nowMs - periodDays * 24 * 60 * 60 * 1000;
+  return [formatDateFromMillis(startMs, tz), formatDateFromMillis(nowMs, tz)];
 }
 
 // Pads a time-series with zero-value points at the selected time-range bounds
@@ -206,8 +204,10 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
   points: T[] | undefined,
   mode: ObservabilityMode,
   periodDays: number,
-  zeroFactory: (timestamp: number) => T
+  zeroFactory: (timestamp: number) => T,
+  timezone?: string
 ) {
+  const tz = timezone ?? "UTC";
   const pts = points ?? [];
   if (mode !== "timeRange") {
     return pts.map((pt) => ({
@@ -216,9 +216,9 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
     }));
   }
 
-  const [startDate, endDate] = getTimeRangeBounds(periodDays);
-  const startTime = new Date(startDate + "T00:00:00Z").getTime();
-  const endTime = new Date(endDate + "T00:00:00Z").getTime();
+  const [startDate, endDate] = getTimeRangeBounds(periodDays, tz);
+  const startTime = getMidnightInTimezone(startDate, tz);
+  const endTime = getMidnightInTimezone(endDate, tz);
 
   const byTimestamp = new Map<number, T>(pts.map((p) => [p.timestamp, p]));
 

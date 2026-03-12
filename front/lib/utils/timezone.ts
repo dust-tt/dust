@@ -1,11 +1,3 @@
-/**
- * Pure timezone utilities using Intl APIs.
- * Safe to use in both browser and Node.js contexts.
- */
-
-/**
- * Formats a timestamp as "YYYY-MM-DD" in the given IANA timezone.
- */
 export function formatDateFromMillis(ms: number, timezone: string): string {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
@@ -16,10 +8,6 @@ export function formatDateFromMillis(ms: number, timezone: string): string {
   return formatter.format(new Date(ms));
 }
 
-/**
- * Returns the epoch ms of midnight for the given "YYYY-MM-DD" date string
- * in the specified IANA timezone.
- */
 export function getMidnightInTimezone(
   dateStr: string,
   timezone: string

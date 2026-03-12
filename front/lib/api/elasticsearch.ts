@@ -145,6 +145,11 @@ export function formatUTCDateFromMillis(ms: number): string {
   return `${y}-${m}-${day}`;
 }
 
+export {
+  formatDateFromMillis,
+  getMidnightInTimezone,
+} from "@app/lib/utils/timezone";
+
 /**
  * Ensures at most N groups by keeping top N-1 groups and aggregating the rest into "Others".
  * If there are N groups or less, returns them as is. Otherwise aggregates the last ones

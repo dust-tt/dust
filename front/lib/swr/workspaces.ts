@@ -129,6 +129,11 @@ export function useWorkspaceAnalytics({
   };
 }
 
+export const BROWSER_TIMEZONE =
+  typeof window !== "undefined"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : "UTC";
+
 export function useWorkspaceUsageMetrics({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
@@ -142,7 +147,7 @@ export function useWorkspaceUsageMetrics({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
+  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -168,7 +173,7 @@ export function useWorkspaceActiveUsersMetrics({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}`;
+  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -252,6 +257,7 @@ export function useWorkspaceToolUsage({
   if (serverName) {
     params.set("serverName", serverName);
   }
+  params.set("timezone", BROWSER_TIMEZONE);
   const key = `/api/w/${workspaceId}/analytics/tool-usage?${params.toString()}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
@@ -310,6 +316,7 @@ export function useWorkspaceSkillUsage({
   if (skillName) {
     params.set("skillName", skillName);
   }
+  params.set("timezone", BROWSER_TIMEZONE);
   const key = `/api/w/${workspaceId}/analytics/skill-usage?${params.toString()}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(

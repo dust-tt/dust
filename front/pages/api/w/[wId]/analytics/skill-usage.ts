@@ -13,6 +13,7 @@ import { z } from "zod";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   skillName: z.string().optional(),
+  timezone: z.string().optional().default("UTC"),
 });
 
 export type GetWorkspaceSkillUsageResponse = {
@@ -36,10 +37,15 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { days: queryDays, skillName: querySkillName } = req.query;
+      const {
+        days: queryDays,
+        skillName: querySkillName,
+        timezone: queryTimezone,
+      } = req.query;
       const q = QuerySchema.safeParse({
         days: queryDays,
         skillName: isString(querySkillName) ? querySkillName : undefined,
+        timezone: queryTimezone,
       });
       if (!q.success) {
         return apiError(req, res, {
@@ -51,7 +57,7 @@ async function handler(
         });
       }
 
-      const { days, skillName } = q.data;
+      const { days, skillName, timezone } = q.data;
       const owner = auth.getNonNullableWorkspace();
 
       const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -61,7 +67,8 @@ async function handler(
 
       const usageResult = await fetchSkillUsageMetrics(
         baseQuery,
-        skillName ?? null
+        skillName ?? null,
+        timezone
       );
 
       if (usageResult.isErr()) {

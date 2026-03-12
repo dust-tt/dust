@@ -1,6 +1,6 @@
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
@@ -66,19 +66,22 @@ type ToolListAggs = {
   };
 };
 
-function bucketToPoint(bucket: DateBucket): ToolUsagePoint {
+function bucketToPoint(bucket: DateBucket, timezone: string): ToolUsagePoint {
   return {
     timestamp: bucket.key,
-    date: formatUTCDateFromMillis(bucket.key),
+    date: formatDateFromMillis(bucket.key, timezone),
     uniqueUsers: bucket.tools_nested?.unique_users?.cardinality?.value ?? 0,
     executionCount: bucket.tools_nested?.doc_count ?? 0,
   };
 }
 
-function filteredBucketToPoint(bucket: FilteredDateBucket): ToolUsagePoint {
+function filteredBucketToPoint(
+  bucket: FilteredDateBucket,
+  timezone: string
+): ToolUsagePoint {
   return {
     timestamp: bucket.key,
-    date: formatUTCDateFromMillis(bucket.key),
+    date: formatDateFromMillis(bucket.key, timezone),
     uniqueUsers:
       bucket.tools_nested?.filtered?.unique_users?.cardinality?.value ?? 0,
     executionCount: bucket.tools_nested?.filtered?.doc_count ?? 0,
@@ -87,11 +90,11 @@ function filteredBucketToPoint(bucket: FilteredDateBucket): ToolUsagePoint {
 
 export async function fetchToolUsageMetrics(
   baseQuery: estypes.QueryDslQueryContainer,
-  serverName: string | null
+  serverName: string | null,
+  timezone: string = "UTC"
 ): Promise<Result<ToolUsagePoint[], Error>> {
   // When serverName is provided, filter the nested tools_used aggregation
   // When null, aggregate across all tools
-
   const nestedAggs: Record<string, estypes.AggregationsAggregationContainer> =
     serverName
       ? {
@@ -125,7 +128,7 @@ export async function fetchToolUsageMetrics(
       date_histogram: {
         field: "timestamp",
         calendar_interval: "day",
-        time_zone: "UTC",
+        time_zone: timezone,
       },
       aggs: {
         tools_nested: {
@@ -150,7 +153,7 @@ export async function fetchToolUsageMetrics(
       result.value.aggregations?.by_date?.buckets
     );
 
-    return new Ok(dateBuckets.map(filteredBucketToPoint));
+    return new Ok(dateBuckets.map((b) => filteredBucketToPoint(b, timezone)));
   }
 
   const result = await searchAnalytics<never, ToolUsageAggs>(baseQuery, {
@@ -166,7 +169,7 @@ export async function fetchToolUsageMetrics(
     result.value.aggregations?.by_date?.buckets
   );
 
-  return new Ok(dateBuckets.map(bucketToPoint));
+  return new Ok(dateBuckets.map((b) => bucketToPoint(b, timezone)));
 }
 
 export async function fetchAvailableTools(

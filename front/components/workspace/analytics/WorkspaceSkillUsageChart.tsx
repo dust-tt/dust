@@ -12,6 +12,7 @@ import {
   useWorkspaceSkillUsage,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { getMidnightInTimezone } from "@app/lib/utils/timezone";
 import {
   Button,
   ButtonsSwitch,
@@ -209,9 +210,10 @@ export function WorkspaceSkillUsageChart({
 
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
-    const [startDate, endDate] = getTimeRangeBounds(period);
-    const startTimeMs = new Date(startDate + "T00:00:00Z").getTime();
-    const endTimeMs = new Date(endDate + "T00:00:00Z").getTime();
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const [startDate, endDate] = getTimeRangeBounds(period, browserTimezone);
+    const startTimeMs = getMidnightInTimezone(startDate, browserTimezone);
+    const endTimeMs = getMidnightInTimezone(endDate, browserTimezone);
     const dayMs = 24 * 60 * 60 * 1000;
     const numDays = Math.floor((endTimeMs - startTimeMs) / dayMs) + 1;
 
