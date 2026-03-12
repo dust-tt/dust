@@ -78,17 +78,19 @@ describe("SandboxImage.registerTool()", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
       name: "dsbx",
       description: "Dust CLI",
+      runtime: "system",
     });
 
     expect(image.operations).toHaveLength(0);
     expect(image.tools).toHaveLength(1);
     expect(image.tools[0].name).toBe("dsbx");
     expect(image.tools[0].description).toBe("Dust CLI");
+    expect(image.tools[0].runtime).toBe("system");
   });
 
   test("registers single tool with installCmd", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool(
-      { name: "curl", description: "HTTP client" },
+      { name: "curl", description: "HTTP client", runtime: "system" },
       { installCmd: "apt-get install -y curl" }
     );
 
@@ -99,14 +101,23 @@ describe("SandboxImage.registerTool()", () => {
     }
     expect(image.tools).toHaveLength(1);
     expect(image.tools[0].name).toBe("curl");
+    expect(image.tools[0].runtime).toBe("system");
   });
 
   test("registers multiple tools with single installCmd", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool(
       [
-        { name: "pandas", description: "Data analysis" },
-        { name: "numpy", description: "Numerical computing" },
-        { name: "matplotlib", description: "Plotting library" },
+        { name: "pandas", description: "Data analysis", runtime: "python" },
+        {
+          name: "numpy",
+          description: "Numerical computing",
+          runtime: "python",
+        },
+        {
+          name: "matplotlib",
+          description: "Plotting library",
+          runtime: "python",
+        },
       ],
       { installCmd: "pip install pandas numpy matplotlib" }
     );
@@ -124,6 +135,19 @@ describe("SandboxImage.registerTool()", () => {
       "numpy",
       "matplotlib",
     ]);
+    expect(image.tools.every((t) => t.runtime === "python")).toBe(true);
+  });
+
+  test("registers tool with profile", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
+      name: "special",
+      description: "OpenAI-only tool",
+      runtime: "system",
+      profile: "openai",
+    });
+
+    expect(image.tools).toHaveLength(1);
+    expect(image.tools[0].profile).toBe("openai");
   });
 
   test("returns new image instance", () => {
@@ -131,6 +155,7 @@ describe("SandboxImage.registerTool()", () => {
     const modified = original.registerTool({
       name: "curl",
       description: "HTTP client",
+      runtime: "system",
     });
 
     expect(modified).not.toBe(original);
@@ -150,44 +175,18 @@ describe("SandboxImage.copy()", () => {
     expect(image.operations[0].type).toBe("copy");
     if (image.operations[0].type === "copy") {
       expect(image.operations[0].src.type).toBe("path");
-      if (image.operations[0].src.type === "path") {
-        expect(image.operations[0].src.path).toBe("./src");
-      }
+      expect(image.operations[0].src.path).toBe("./src");
       expect(image.operations[0].dest).toBe("/app/src");
     }
   });
 
-  test("accepts content generator callback", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04").copy(
-      () => "hello world",
-      "/app/file.txt"
-    );
+  test("returns new image instance", () => {
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
+    const modified = original.copy("./src", "/app/src");
 
-    expect(image.operations).toHaveLength(1);
-    expect(image.operations[0].type).toBe("copy");
-    if (image.operations[0].type === "copy") {
-      expect(image.operations[0].src.type).toBe("content");
-      if (image.operations[0].src.type === "content") {
-        expect(image.operations[0].src.getContent()).toBe("hello world");
-      }
-      expect(image.operations[0].dest).toBe("/app/file.txt");
-    }
-  });
-
-  test("accepts content generator returning Buffer", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04").copy(
-      () => Buffer.from("binary data"),
-      "/app/data.bin"
-    );
-
-    expect(image.operations).toHaveLength(1);
-    if (image.operations[0].type === "copy") {
-      expect(image.operations[0].src.type).toBe("content");
-      if (image.operations[0].src.type === "content") {
-        const content = image.operations[0].src.getContent();
-        expect(Buffer.isBuffer(content)).toBe(true);
-      }
-    }
+    expect(modified).not.toBe(original);
+    expect(original.operations).toHaveLength(0);
+    expect(modified.operations).toHaveLength(1);
   });
 });
 
@@ -240,7 +239,7 @@ describe("SandboxImage immutability", () => {
   test("chained operations preserve original instances", () => {
     const original = SandboxImage.fromDocker("ubuntu:22.04");
     const afterInstall = original.registerTool(
-      { name: "curl", description: "HTTP client" },
+      { name: "curl", description: "HTTP client", runtime: "system" },
       { installCmd: "apt-get install -y curl" }
     );
     const afterRun = afterInstall.runCmd("echo hello");
@@ -256,109 +255,6 @@ describe("SandboxImage immutability", () => {
     expect(afterRun.tools).toHaveLength(1);
 
     expect(afterCopy.operations).toHaveLength(3);
-  });
-});
-
-describe("SandboxImage.withToolManifest()", () => {
-  test("adds copy operation with content generator", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04").withToolManifest();
-
-    expect(image.operations).toHaveLength(1);
-    expect(image.operations[0].type).toBe("copy");
-    if (image.operations[0].type === "copy") {
-      expect(image.operations[0].src.type).toBe("content");
-      expect(image.operations[0].dest).toBe("/home/user/tool-manifest.yaml");
-      if (image.operations[0].src.type === "content") {
-        const content = image.operations[0].src.getContent();
-        expect(typeof content).toBe("string");
-        expect(content).toContain("version:");
-      }
-    }
-  });
-
-  test("accepts custom path and format", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04").withToolManifest({
-      path: "/custom/path/manifest.json",
-      format: "json",
-    });
-
-    expect(image.operations).toHaveLength(1);
-    if (image.operations[0].type === "copy") {
-      expect(image.operations[0].dest).toBe("/custom/path/manifest.json");
-      if (image.operations[0].src.type === "content") {
-        const content = image.operations[0].src.getContent();
-        expect(content).toContain('"version"');
-      }
-    }
-  });
-
-  test("uses correct default extension based on format", () => {
-    const jsonImage = SandboxImage.fromDocker("ubuntu:22.04").withToolManifest({
-      format: "json",
-    });
-
-    if (jsonImage.operations[0].type === "copy") {
-      expect(jsonImage.operations[0].dest).toBe(
-        "/home/user/tool-manifest.json"
-      );
-    }
-  });
-
-  test("returns new instance (immutability)", () => {
-    const original = SandboxImage.fromDocker("ubuntu:22.04");
-    const modified = original.withToolManifest();
-
-    expect(modified).not.toBe(original);
-    expect(original.operations).toHaveLength(0);
-    expect(modified.operations).toHaveLength(1);
-  });
-
-  test("chains with other operations", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04")
-      .registerTool({ name: "curl", description: "HTTP client" })
-      .runCmd("echo hello")
-      .withToolManifest()
-      .runCmd("echo done");
-
-    expect(image.operations).toHaveLength(3);
-    expect(image.operations[0].type).toBe("run");
-    expect(image.operations[1].type).toBe("copy");
-    expect(image.operations[2].type).toBe("run");
-  });
-
-  test("includes registered tools in manifest content", () => {
-    const image = SandboxImage.fromDocker("ubuntu:22.04")
-      .registerTool({ name: "curl", description: "HTTP client" })
-      .registerTool({ name: "jq", description: "JSON processor" })
-      .withToolManifest();
-
-    if (
-      image.operations[0].type === "copy" &&
-      image.operations[0].src.type === "content"
-    ) {
-      const content = image.operations[0].src.getContent();
-      expect(content).toContain("curl");
-      expect(content).toContain("HTTP client");
-      expect(content).toContain("jq");
-      expect(content).toContain("JSON processor");
-    }
-  });
-
-  test("lazily generates content (captures tools at call time)", () => {
-    const baseImage = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
-      name: "curl",
-      description: "HTTP client",
-    });
-
-    const imageWithManifest = baseImage.withToolManifest();
-
-    if (
-      imageWithManifest.operations[0].type === "copy" &&
-      imageWithManifest.operations[0].src.type === "content"
-    ) {
-      const content = imageWithManifest.operations[0].src.getContent();
-      expect(content).toContain("curl");
-    }
   });
 });
 
@@ -545,7 +441,11 @@ describe("SandboxImage.register()", () => {
 
   test("chains with other operations", () => {
     const image = SandboxImage.fromDocker("ubuntu:22.04")
-      .registerTool({ name: "curl", description: "HTTP client" })
+      .registerTool({
+        name: "curl",
+        description: "HTTP client",
+        runtime: "system",
+      })
       .withResources({ vcpu: 2, memoryMb: 1024 })
       .register({ imageName: "dust-base", tag: "staging" })
       .setRunEnv({ DEBUG: "true" });

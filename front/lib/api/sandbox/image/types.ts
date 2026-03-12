@@ -14,12 +14,24 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tool Runtime & Profile
+// ---------------------------------------------------------------------------
+
+export const TOOL_RUNTIMES = ["system", "python", "node"] as const;
+export type ToolRuntime = (typeof TOOL_RUNTIMES)[number];
+
+export const TOOL_PROFILES = ["openai", "anthropic", "gemini"] as const;
+export type ToolProfile = (typeof TOOL_PROFILES)[number];
+
+// ---------------------------------------------------------------------------
 // Tool Entry
 // ---------------------------------------------------------------------------
 
 export interface ToolEntry {
   readonly name: string;
   readonly description: string;
+  readonly runtime: ToolRuntime;
+  readonly profile?: ToolProfile;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,11 +40,7 @@ export interface ToolEntry {
 
 export type ManifestFormat = "json" | "yaml";
 
-export type ContentGenerator = () => Buffer | string;
-
-export type CopySource =
-  | { readonly type: "path"; readonly path: string }
-  | { readonly type: "content"; readonly getContent: ContentGenerator };
+export type CopySource = { readonly type: "path"; readonly path: string };
 
 export type Operation =
   | { readonly type: "run"; readonly command: string }
@@ -83,10 +91,17 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
 // Tool Manifest
 // ---------------------------------------------------------------------------
 
+export interface ManifestToolEntry {
+  readonly name: string;
+  readonly description: string;
+}
+
 export interface ToolManifest {
   readonly version: "1.0";
   readonly generatedAt: string;
-  readonly tools: readonly ToolEntry[];
+  readonly tools: Readonly<
+    Partial<Record<ToolRuntime, readonly ManifestToolEntry[]>>
+  >;
 }
 
 // ---------------------------------------------------------------------------
