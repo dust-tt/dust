@@ -8,6 +8,7 @@ import type {
   FileEntry,
   SandboxCreateConfig,
   SandboxHandle,
+  SandboxHostInfo,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -28,6 +29,7 @@ const ALL_TRAFFIC = "0.0.0.0/0";
 interface E2BNetworkOpts {
   allowOut?: string[];
   denyOut?: string[];
+  allowPublicTraffic?: boolean;
 }
 
 function toE2BNetworkOpts(policy: NetworkPolicy): E2BNetworkOpts {
@@ -95,9 +97,10 @@ export class E2BSandboxProvider implements SandboxProvider {
         envs: hasEnvVars ? envVars : undefined,
         timeoutMs: SANDBOX_LIFETIME_MS,
         requestTimeoutMs: REQUEST_TIMEOUT_MS,
-        ...(config.network
-          ? { network: toE2BNetworkOpts(config.network) }
-          : {}),
+        network: {
+          ...(config.network ? toE2BNetworkOpts(config.network) : {}),
+          allowPublicTraffic: false,
+        },
       });
     } catch (err) {
       return new Err(normalizeError(err));
@@ -218,6 +221,29 @@ export class E2BSandboxProvider implements SandboxProvider {
       }
       return new Err(normalizeError(err));
     }
+  }
+
+  async getHost(
+    providerId: string,
+    port: number
+  ): Promise<Result<SandboxHostInfo, Error>> {
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
+      return new Err(normalizeError(err));
+    }
+
+    return new Ok({
+      host: sandbox.getHost(port),
+      trafficAccessToken: sandbox.trafficAccessToken,
+    });
   }
 
   async writeFile(

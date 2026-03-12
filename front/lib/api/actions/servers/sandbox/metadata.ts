@@ -37,6 +37,27 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       done: "Execute command in sandbox",
     },
   },
+  get_host: {
+    description:
+      "Get the public URL for a port exposed by the sandbox. " +
+      "Use this after starting a server or service on a specific port " +
+      "to obtain an HTTPS URL that can be used to connect to it from outside the sandbox.",
+    schema: {
+      port: z
+        .number()
+        .int()
+        .min(1)
+        .max(65535)
+        .describe(
+          "The port number the service is listening on inside the sandbox."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting sandbox host URL",
+      done: "Get sandbox host URL",
+    },
+  },
   describe_environment: {
     description:
       "Describe the sandbox environment and list available CLI binaries and language libraries.",

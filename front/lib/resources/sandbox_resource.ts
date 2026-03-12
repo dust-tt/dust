@@ -3,6 +3,7 @@ import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
   ExecOptions,
   ExecResult,
+  SandboxHostInfo,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -446,6 +447,18 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox destroyed.");
       return new Ok(undefined);
     });
+  }
+
+  /**
+   * Get the public hostname for a port exposed by this sandbox.
+   */
+  async getHost(port: number): Promise<Result<SandboxHostInfo, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    return provider.getHost(this.providerId, port);
   }
 
   /**
