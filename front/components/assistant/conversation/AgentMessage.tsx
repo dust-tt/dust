@@ -551,7 +551,8 @@ export function AgentMessage({
     agentMessage.status !== "failed" &&
     agentMessage.configuration.status !== "draft" &&
     (!isGlobalAgent ||
-      isGlobalAgentWithFeedback(agentMessage.configuration.sId));
+      (isGlobalAgentId(agentMessage.configuration.sId) &&
+        isGlobalAgentWithFeedback(agentMessage.configuration.sId)));
 
   const retryMessage = useRetryMessage({ owner });
 
