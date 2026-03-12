@@ -102,47 +102,42 @@ export async function registerMCPServer(
   let attempts = 0;
 
   while (!serverIdFound && attempts < MAX_SERVER_INSTANCES) {
-    const exists = await runOnRedis(
+    const metadata: MCPServerRegistration = {
+      lastHeartbeat: now,
+      registeredAt: now,
+      serverId,
+      serverName,
+      userId,
+      workspaceId,
+    };
+
+    const result = await runOnRedis(
       { origin: "mcp_client_side_request" },
-      async (redis) => {
-        return redis.exists(key);
-      }
+      async (redis) =>
+        redis.set(key, JSON.stringify(metadata), {
+          NX: true,
+          EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
+        })
     );
 
-    if (!exists) {
+    if (result !== null) {
       serverIdFound = true;
-      break;
+    } else {
+      // Key already exists, try the next suffix.
+      serverId = `${getMCPServerIdFromServerName({ serverName })}.${suffix}`;
+      key = getMCPServerRegistryKey({
+        workspaceId,
+        userId,
+        serverId,
+      });
+      suffix++;
+      attempts++;
     }
-
-    // Try next suffix, using a dot prefix to ensure it can't be confused with the base serverId.
-    serverId = `${getMCPServerIdFromServerName({ serverName })}.${suffix}`;
-    key = getMCPServerRegistryKey({
-      workspaceId,
-      userId,
-      serverId,
-    });
-    suffix++;
-    attempts++;
   }
 
   if (!serverIdFound) {
     return new Err(new MCPServerInstanceLimitError(serverName));
   }
-
-  const metadata: MCPServerRegistration = {
-    lastHeartbeat: now,
-    registeredAt: now,
-    serverId,
-    serverName,
-    userId,
-    workspaceId,
-  };
-
-  await runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
-    await redis.set(key, JSON.stringify(metadata), {
-      EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
-    });
-  });
 
   const expiresAt = new Date(
     now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
