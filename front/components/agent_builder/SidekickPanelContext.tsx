@@ -24,6 +24,7 @@ interface SidekickPanelContextType {
   resetConversation: () => void;
   clientSideMCPServerIds: string[];
   conversationId?: string;
+  suppressAutoStart: boolean;
 }
 
 const SidekickPanelContext = createContext<
@@ -49,6 +50,7 @@ interface SidekickPanelProviderProps {
   isDuplicate?: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  suppressAutoStart?: boolean;
 }
 
 export const SidekickPanelProvider = ({
@@ -60,6 +62,7 @@ export const SidekickPanelProvider = ({
   isDuplicate = false,
   templateInfo,
   conversationId,
+  suppressAutoStart = false,
 }: SidekickPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
@@ -87,7 +90,11 @@ export const SidekickPanelProvider = ({
   });
 
   const startConversation = useCallback(async () => {
-    if (hasStartedRef.current || !targetAgentConfigurationId) {
+    if (
+      hasStartedRef.current ||
+      !targetAgentConfigurationId ||
+      suppressAutoStart
+    ) {
       return;
     }
 
@@ -152,6 +159,7 @@ export const SidekickPanelProvider = ({
     getFirstMessage,
     useCase,
     sendNotification,
+    suppressAutoStart,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
   ]);
@@ -170,6 +178,7 @@ export const SidekickPanelProvider = ({
       startConversation,
       resetConversation,
       clientSideMCPServerIds,
+      suppressAutoStart,
     }),
     [
       clientSideMCPServerIds,
@@ -178,6 +187,7 @@ export const SidekickPanelProvider = ({
       creationFailed,
       startConversation,
       resetConversation,
+      suppressAutoStart,
     ]
   );
 

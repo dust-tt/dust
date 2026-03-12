@@ -724,6 +724,7 @@ function AgentBuilderContent({
             isDuplicate={isDuplicate}
             templateInfo={templateInfo}
             conversationId={conversationId}
+            suppressAutoStart={isCreatedDialogOpen}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
