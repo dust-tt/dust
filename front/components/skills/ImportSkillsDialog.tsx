@@ -1,9 +1,9 @@
+import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   type DetectedSkillStatus,
   isImportableSkillStatus,
   parseGitHubRepoUrl,
 } from "@app/lib/skill_detection";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   useDetectSkillsFromFiles,
   useDetectSkillsFromRepo,
@@ -86,17 +86,13 @@ export function ImportSkillsDialog({
     triggerDetect: triggerFileDetect,
     resetDetection: resetFileDetection,
   } = useDetectSkillsFromFiles({ owner });
-  const {
-    importSkillsFromFiles,
-    isImporting: isFileImporting,
-  } = useImportSkillsFromFiles({ owner });
+  const { importSkillsFromFiles, isImporting: isFileImporting } =
+    useImportSkillsFromFiles({ owner });
 
   const detectedSkills =
     activeTab === "files" ? fileDetectedSkills : repoDetectedSkills;
-  const isDetecting =
-    activeTab === "files" ? isFileDetecting : isRepoDetecting;
-  const isImporting =
-    activeTab === "files" ? isFileImporting : isRepoImporting;
+  const isDetecting = activeTab === "files" ? isFileDetecting : isRepoDetecting;
+  const isImporting = activeTab === "files" ? isFileImporting : isRepoImporting;
 
   // Pre-select all importable skills when detection completes.
   useEffect(() => {
@@ -190,8 +186,7 @@ export function ImportSkillsDialog({
     [resetFileDetection]
   );
 
-  const detectError =
-    activeTab === "files" ? fileDetectError : repoDetectError;
+  const detectError = activeTab === "files" ? fileDetectError : repoDetectError;
   const selectedCount = selectedNames.size;
 
   return (
@@ -319,9 +314,7 @@ function DetectedSkillsList({
           {detectedSkills.map((skill) => (
             <ContextItem
               key={skill.name}
-              title={
-                <span className="text-sm font-normal">{skill.name}</span>
-              }
+              title={<span className="text-sm font-normal">{skill.name}</span>}
               visual={
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -361,6 +354,7 @@ interface FileDropzoneProps {
   isLoading: boolean;
 }
 
+// TODO(2026-03-12 aubin): move this to sparkle.
 function FileDropzone({
   onDrop,
   onFileInputChange,
@@ -434,10 +428,11 @@ function FileRequirements() {
       size="lg"
     >
       <ul className="list-disc pl-4 text-sm">
+        <li>The imported .zip or file must include a SKILL.md file</li>
         <li>
-          .md file must contain skill name and description formatted in YAML
+          The SKILL.md file must contain the skill name and description
+          formatted in YAML
         </li>
-        <li>.zip or .skill file must include a SKILL.md file</li>
       </ul>
       <a
         href="https://agentskills.io/specification"
