@@ -690,36 +690,32 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "GET_ELEMENTS":
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          async (tabs) => {
-            const tab = tabs[0];
-            try {
-              const result = await getPageElements(tab);
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await getPageElements(tab);
 
-              if (result.isErr()) {
-                log("Error reading page elements:", result.error);
-                sendResponse({
-                  elements: "",
-                  error: result.error.message,
-                });
-                return;
-              }
-
-              sendResponse({
-                elements: result.value,
-              });
-            } catch (error) {
-              const normalizedError = normalizeError(error);
-              log("Error reading page elements:", normalizedError.message);
+            if (result.isErr()) {
+              log("Error reading page elements:", result.error);
               sendResponse({
                 elements: "",
-                error:
-                  normalizedError.message ?? "Failed to read page elements.",
+                error: result.error.message,
               });
+              return;
             }
+
+            sendResponse({
+              elements: result.value,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error reading page elements:", normalizedError.message);
+            sendResponse({
+              elements: "",
+              error: normalizedError.message ?? "Failed to read page elements.",
+            });
           }
-        );
+        });
         return true;
 
       case "INPUT_BAR_STATUS":

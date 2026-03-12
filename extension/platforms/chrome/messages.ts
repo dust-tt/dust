@@ -85,7 +85,7 @@ export type CaptureFullPageMessage = {
   type: "PAGE_CAPTURE_FULL_PAGE";
 };
 
-export type GetPageElementsMessage = { type: "GET_ELEMENTS" };
+export type GetPageElementsMessage = { type: "GET_ELEMENTS"; tabId: number };
 export type GetPageElementsResponse = { elements: string; error?: string };
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
@@ -223,12 +223,14 @@ export const sendTabActionMessage = (message: TabActionMessage) => {
 };
 
 export const sendInteractWithPageMessage = (
-  action: "get_elements"
+  action: "get_elements",
+  tabId: number
 ): Promise<GetPageElementsResponse> => {
   switch (action) {
     case "get_elements":
       return sendMessage<GetPageElementsMessage, GetPageElementsResponse>({
         type: "GET_ELEMENTS",
+        tabId,
       });
   }
 };

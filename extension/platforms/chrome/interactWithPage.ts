@@ -23,10 +23,10 @@ type DustWindow = {
 };
 
 export async function getPageElements(
-  tab: chrome.tabs.Tab
+  tab: chrome.tabs.Tab | undefined
 ): Promise<Result<string, Error>> {
   if (!tab?.id) {
-    return new Err(new Error("No active tab found."));
+    return new Err(new Error("Tab not found."));
   }
 
   const utilsResult = await ensureDustPageUtils(tab);
@@ -36,13 +36,16 @@ export async function getPageElements(
 
   const [execution] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    func: () => {
+    args: [tab.id],
+    func: (tabId: number) => {
       const w = window as unknown as DustWindow;
       const { selector, CONTENT, getElementName } = w.__dustUtils;
 
       w.__dustElementMap = {};
       w.__dustElementSnapshots = {};
       w.__dustElementIdCounter = 0;
+
+      const elementPrefix = `el_${tabId.toString(36)}_`;
 
       const elements: ElementSnapshot[] = [];
       const nodes = document.querySelectorAll<HTMLElement>(selector);
@@ -61,7 +64,7 @@ export async function getPageElements(
           return;
         }
 
-        const elementId = `element_${w.__dustElementIdCounter++}`;
+        const elementId = `${elementPrefix}${w.__dustElementIdCounter++}`;
         w.__dustElementMap[elementId] = new WeakRef<HTMLElement>(el);
 
         const tag = el.tagName.toLowerCase();
