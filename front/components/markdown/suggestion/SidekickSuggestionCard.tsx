@@ -462,9 +462,8 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
 }
 
 const KNOWLEDGE_METHOD_ACTION_VERB: Record<string, string> = {
-  include: "Include",
-  extract: "Extract",
   search: "Search",
+  query_tables: "Query",
 };
 
 function buildNewKnowledgeAction(

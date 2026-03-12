@@ -280,13 +280,7 @@ Always call \`search_knowledge\` first to identify relevant sources, then pass t
 
 Selecting a knowledge method:
 - 'Search': Best for open-ended retrieval on unstructured data sources. This is what you should suggest in most cases.
-The following data sources should be suggested with caution:
 - 'Query Tables': ONLY suggest when \`search_knowledge\` results or \`get_available_knowledge\` indicate the source contains structured data (warehouses, spreadsheets, tables). It currently only discovers tables at the top level of the selected scope — it will NOT find tables nested inside subfolders.
-- 'Include': ONLY suggest for a SINGLE small document that the agent needs in every conversation (e.g., a style guide, a template, a policy doc). NEVER suggest include for a whole data source, a folder, or anything likely to exceed a few thousand words. If unsure about size, suggest 'Search' instead.
-- 'Extract': ONLY suggest when ALL of these are true:
-  (1) The source contains many documents with a SIMILAR structure
-  (2) The user's described use case explicitly requires structured extraction
-  If the data source contains mixed document types or you're unsure about structural consistency, suggest 'Search' instead.
 
 Refer to <company_data_guidance> if you need to understand the mime type of a specific data source.
 

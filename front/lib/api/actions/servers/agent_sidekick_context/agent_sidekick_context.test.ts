@@ -1425,7 +1425,7 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_knowledge", () => {
-    it("creates knowledge suggestion with method include", async () => {
+    it("creates knowledge suggestion with method search", async () => {
       const { authenticator, globalSpace, workspace } =
         await createResourceTest({ role: "admin" });
       const dsv = await DataSourceViewFactory.folder(workspace, globalSpace);
@@ -1445,8 +1445,8 @@ describe("agent_sidekick_context tools", () => {
           suggestion: {
             action: "add",
             dataSourceViewId: dsv.sId,
-            method: "include",
-            description: "Include recent content",
+            method: "search",
+            description: "Search documentation",
           },
         },
         createTestExtra(authenticator)

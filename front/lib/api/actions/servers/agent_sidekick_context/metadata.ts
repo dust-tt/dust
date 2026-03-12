@@ -57,8 +57,6 @@ const SkillsSuggestionSchema = z.object({
 const KNOWLEDGE_SUGGESTION_METHODS_METADATA = [
   "search",
   "query_tables",
-  "include",
-  "extract",
 ] as const;
 
 const KnowledgeSuggestionSchema = z.object({
@@ -70,9 +68,7 @@ const KnowledgeSuggestionSchema = z.object({
     .describe(
       "The knowledge access method. Defaults to 'search' (recommended). " +
         "Use 'query_tables' ONLY for sources you have confirmed contain " +
-        "top-level structured tables. Use 'include' ONLY for single small " +
-        "reference documents. Use 'extract' ONLY for homogeneous document " +
-        "collections where a single schema applies to all."
+        "top-level structured tables."
     ),
   dataSourceViewId: z
     .string()

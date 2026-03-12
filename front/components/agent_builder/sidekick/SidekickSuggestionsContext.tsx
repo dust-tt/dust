@@ -169,14 +169,6 @@ function SidekickSuggestionsProviderContent({
       search:
         mcpServerViewsWithKnowledge.find((v) => v.server.name === "search") ??
         undefined,
-      include:
-        mcpServerViewsWithKnowledge.find(
-          (v) => v.server.name === "include_data"
-        ) ?? undefined,
-      extract:
-        mcpServerViewsWithKnowledge.find(
-          (v) => v.server.name === "extract_data"
-        ) ?? undefined,
       query_tables:
         mcpServerViewsWithKnowledge.find(
           (v) => v.server.name === "query_tables_v2"

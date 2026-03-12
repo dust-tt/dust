@@ -69,12 +69,7 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
-export const KNOWLEDGE_SUGGESTION_METHODS = [
-  "search",
-  "query_tables",
-  "include",
-  "extract",
-] as const;
+export const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
 export type KnowledgeSuggestionMethod =
   (typeof KNOWLEDGE_SUGGESTION_METHODS)[number];
 
@@ -85,7 +80,7 @@ const KnowledgeSuggestionSchema = z.object({
     .optional()
     .default("search")
     .describe(
-      "\'Search\' for semantic search on unstructured data. \'Include\' to include the full content of a document in context. \'Query table\' to generate SQL-like queries against structured data. \'Extract\' to pull structured output from a stream of unstructured data."
+      "'Search' for semantic search on unstructured data. 'Query table' to generate SQL-like queries against structured data."
     ),
   dataSourceViewId: z.string(),
   description: z.string().optional(),
