@@ -156,7 +156,7 @@ export async function clickPageElement(
 }
 
 export async function typeText(
-  tab: chrome.tabs.Tab,
+  tab: chrome.tabs.Tab | undefined,
   elementId: string,
   text: string,
   variant: "replace" | "append" | "delete"

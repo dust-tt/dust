@@ -764,80 +764,68 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "TYPE_TEXT":
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          async (tabs) => {
-            const tab = tabs[0];
-            try {
-              const result = await typeText(
-                tab,
-                message.elementId,
-                message.text,
-                message.variant
-              );
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await typeText(
+              tab,
+              message.elementId,
+              message.text,
+              message.variant
+            );
 
-              if (result.isErr()) {
-                log("Error typing text in element:", result.error);
-                sendResponse({
-                  success: false,
-                  error: result.error.message,
-                });
-                return;
-              }
-
-              sendResponse({
-                success: true,
-              });
-            } catch (error) {
-              const normalizedError = normalizeError(error);
-              log("Error typing text in element:", normalizedError.message);
+            if (result.isErr()) {
+              log("Error typing text in element:", result.error);
               sendResponse({
                 success: false,
-                error:
-                  normalizedError.message ?? "Failed to type text in element.",
+                error: result.error.message,
               });
+              return;
             }
+
+            sendResponse({
+              success: true,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error typing text in element:", normalizedError.message);
+            sendResponse({
+              success: false,
+              error:
+                normalizedError.message ?? "Failed to type text in element.",
+            });
           }
-        );
+        });
         return true;
 
       case "DELETE_TEXT":
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          async (tabs) => {
-            const tab = tabs[0];
-            try {
-              const result = await typeText(
-                tab,
-                message.elementId,
-                "",
-                "delete"
-              );
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await typeText(tab, message.elementId, "", "delete");
 
-              if (result.isErr()) {
-                log("Error deleting text in element:", result.error);
-                sendResponse({
-                  success: false,
-                  error: result.error.message,
-                });
-                return;
-              }
-
-              sendResponse({
-                success: true,
-              });
-            } catch (error) {
-              const normalizedError = normalizeError(error);
-              log("Error deleting text in element:", normalizedError.message);
+            if (result.isErr()) {
+              log("Error deleting text in element:", result.error);
               sendResponse({
                 success: false,
-                error:
-                  normalizedError.message ??
-                  "Failed to delete text in element.",
+                error: result.error.message,
               });
+              return;
             }
+
+            sendResponse({
+              success: true,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error deleting text in element:", normalizedError.message);
+            sendResponse({
+              success: false,
+              error:
+                normalizedError.message ?? "Failed to delete text in element.",
+            });
           }
-        );
+        });
         return true;
 
       case "INPUT_BAR_STATUS":
