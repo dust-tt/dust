@@ -28,6 +28,7 @@ const ALL_TRAFFIC = "0.0.0.0/0";
 interface E2BNetworkOpts {
   allowOut?: string[];
   denyOut?: string[];
+  allowPublicTraffic?: boolean;
 }
 
 function toE2BNetworkOpts(policy: NetworkPolicy): E2BNetworkOpts {
@@ -95,9 +96,10 @@ export class E2BSandboxProvider implements SandboxProvider {
         envs: hasEnvVars ? envVars : undefined,
         timeoutMs: SANDBOX_LIFETIME_MS,
         requestTimeoutMs: REQUEST_TIMEOUT_MS,
-        ...(config.network
-          ? { network: toE2BNetworkOpts(config.network) }
-          : {}),
+        network: {
+          ...(config.network ? toE2BNetworkOpts(config.network) : {}),
+          allowPublicTraffic: false,
+        },
       });
     } catch (err) {
       return new Err(normalizeError(err));
