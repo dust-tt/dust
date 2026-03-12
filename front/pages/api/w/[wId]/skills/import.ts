@@ -9,13 +9,16 @@ import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillSourceType,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import formidable from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -157,17 +160,13 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message:
-                "Invalid request body: repoUrl and names are required.",
+              message: "Invalid request body: repoUrl and names are required.",
             },
           });
         }
 
-        const parsed = body as Record<string, unknown>;
-        if (
-          typeof parsed.repoUrl !== "string" ||
-          !Array.isArray(parsed.names)
-        ) {
+        const { repoUrl: rawRepoUrl, names: rawNames } = body;
+        if (!isString(rawRepoUrl) || !Array.isArray(rawNames)) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -178,10 +177,8 @@ async function handler(
           });
         }
 
-        const repoUrl = parsed.repoUrl;
-        names = parsed.names.filter(
-          (n): n is string => typeof n === "string"
-        );
+        const repoUrl = rawRepoUrl;
+        names = rawNames.filter(isString);
 
         const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
         const result = await detectSkillsFromGitHubRepo({
@@ -275,8 +272,7 @@ async function handler(
               return;
             }
 
-            const attachedKnowledge =
-              await existing.getAttachedKnowledge(auth);
+            const attachedKnowledge = await existing.getAttachedKnowledge(auth);
 
             await existing.updateSkill(auth, {
               name: skill.name,

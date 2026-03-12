@@ -1,7 +1,6 @@
 import { parseSkillMarkdown } from "@app/lib/api/skills/detection/parsing";
 import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { detectSkillsFromZip } from "@app/lib/api/skills/detection/zip/detect_skills";
-import { apiError } from "@app/logger/withlogging";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";

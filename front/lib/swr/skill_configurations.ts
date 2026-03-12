@@ -524,13 +524,10 @@ export function useDetectSkillsFromFiles({
       }
 
       try {
-        const res = await clientFetch(
-          `/api/w/${owner.sId}/skills/detect`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+        const res = await clientFetch(`/api/w/${owner.sId}/skills/detect`, {
+          method: "POST",
+          body: formData,
+        });
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
@@ -554,7 +551,13 @@ export function useDetectSkillsFromFiles({
     setDetectError(null);
   }, []);
 
-  return { detectedSkills, isDetecting, detectError, triggerDetect, resetDetection };
+  return {
+    detectedSkills,
+    isDetecting,
+    detectError,
+    triggerDetect,
+    resetDetection,
+  };
 }
 
 export function useImportSkillsFromFiles({
@@ -583,13 +586,10 @@ export function useImportSkillsFromFiles({
           formData.append("names", name);
         }
 
-        const res = await clientFetch(
-          `/api/w/${owner.sId}/skills/import`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+        const res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
+          method: "POST",
+          body: formData,
+        });
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);

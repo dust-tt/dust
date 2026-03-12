@@ -117,11 +117,14 @@ async function handler(
         // GitHub-based detection.
         const body = await parseJsonBody(req);
         const bodyRepoUrl =
-          body && typeof body === "object" && "repoUrl" in body
-            ? (body as Record<string, unknown>).repoUrl
+          body &&
+          typeof body === "object" &&
+          "repoUrl" in body &&
+          isString(body.repoUrl)
+            ? body.repoUrl
             : undefined;
 
-        if (!isString(bodyRepoUrl)) {
+        if (!bodyRepoUrl) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
