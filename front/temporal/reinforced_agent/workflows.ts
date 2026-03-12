@@ -50,9 +50,9 @@ const { processAggregationBatchResultActivity } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
-const BATCH_POLL_INTERVAL_FAST_MS = 60_000; // 1 minute (first 30 minutes).
-const BATCH_POLL_INTERVAL_SLOW_MS = 5 * 60_000; // 5 minutes (after 30 minutes).
-const BATCH_POLL_FAST_PHASE_DURATION_MS = 30 * 60_000; // 30 minutes.
+const BATCH_POLL_INTERVAL_MIN_MS = 30_000; // 30 seconds (linear backoff start).
+const BATCH_POLL_INTERVAL_MAX_MS = 5 * 60_000; // 5 minutes (linear backoff cap).
+const BATCH_POLL_INTERVAL_STEP_MS = 10_000; // 10 seconds (linear backoff step).
 const BATCH_TIMEOUT_MS = 6 * 60 * 60_000; // 6 hours.
 
 /**
@@ -95,7 +95,7 @@ export async function reinforcedAgentWorkspaceWorkflow({
 
 /**
  * Wait for a batch to complete.
- * Polls every minute for the first 30 minutes, then every 5 minutes.
+ * Polls with linear backoff starting at 30 seconds, adding 10 seconds each time, capped at 5 minutes.
  * Throws a non-retryable error after 6 hours.
  */
 async function waitForBatch({
@@ -106,15 +106,12 @@ async function waitForBatch({
   batchId: string;
 }): Promise<void> {
   let elapsedMs = 0;
+  let intervalMs = BATCH_POLL_INTERVAL_MIN_MS;
 
   while (elapsedMs < BATCH_TIMEOUT_MS) {
-    const intervalMs =
-      elapsedMs < BATCH_POLL_FAST_PHASE_DURATION_MS
-        ? BATCH_POLL_INTERVAL_FAST_MS
-        : BATCH_POLL_INTERVAL_SLOW_MS;
-
     await sleep(intervalMs);
     elapsedMs += intervalMs;
+    intervalMs = Math.min(intervalMs + BATCH_POLL_INTERVAL_STEP_MS, BATCH_POLL_INTERVAL_MAX_MS);
 
     const status = await checkBatchStatusActivity({ workspaceId, batchId });
     if (status === "ready") {
