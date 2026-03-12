@@ -11,6 +11,16 @@ import type {
 } from "sequelize";
 import { Sequelize } from "sequelize";
 
+// Why are we doing this?
+// Sequelize is loosely typed and connection parameters are passed as is
+// to the host, meaning a wrong parameter can result in wide database connection outage
+// For this reason, new parameters must be reviewed carefully and peer-reviewed by a tenured engineer
+// (ping @flvdvd)
+// TODO(unknown time): Remove this once we move away from Sequelize
+type StrictDialectOptions<T extends { appName?: string }> = T & {
+  [K in keyof T as K extends "appName" ? never : K]?: never;
+};
+
 /**
  * Wrapper around Sequelize that adds sqlcommenter-style tags to queries.
  *
@@ -21,9 +31,16 @@ import { Sequelize } from "sequelize";
  *   https://github.com/google/sqlcommenter/blob/master/nodejs/sqlcommenter-nodejs/packages/sqlcommenter-sequelize/index.js
  * - The official sqlcommenter package is unmaintained and incompatible with modern OpenTelemetry
  */
-export class SequelizeWithComments extends Sequelize {
-  constructor(uri: string, options?: Options) {
-    super(uri, options);
+export class SequelizeWithComments<
+  T extends { appName?: string } = { appName?: string },
+> extends Sequelize {
+  constructor(
+    uri: string,
+    options?: Omit<Options, "dialectOptions"> & {
+      dialectOptions?: StrictDialectOptions<T>;
+    }
+  ) {
+    super(uri, options as Options);
   }
 
   /**
