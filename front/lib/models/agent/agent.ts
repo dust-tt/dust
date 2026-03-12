@@ -6,6 +6,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type {
   AgentConfigurationScope,
   AgentReasoningEffort,
+  AgentReinforcementMode,
   AgentStatus,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
@@ -48,6 +49,8 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
   // declare visualizationEnabled: boolean;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
+
+  declare reinforcement: AgentReinforcementMode;
 
   declare requestedSpaceIds: number[];
 
@@ -155,6 +158,11 @@ AgentConfigurationModel.init(
     pictureUrl: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    reinforcement: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

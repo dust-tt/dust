@@ -54,7 +54,9 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
-  return agents.filter((a) => a.id > 0).map((a) => a.sId);
+  return agents
+    .filter((a) => a.id > 0 && a.reinforcement !== "off")
+    .map((a) => a.sId);
 }
 
 /**
