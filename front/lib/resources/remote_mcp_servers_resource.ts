@@ -487,12 +487,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     } catch (e) {
       logger.error(
         { error: e },
-        "Failed to register client, this server might requires a pre-approval process."
+        "Failed to register client, this server might require a pre-approval process."
       );
       return new Err(
         new DustError(
           "internal_error",
-          "Failed to register client, this server might requires a pre-approval process. Please contact support@dust.com."
+          "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
         )
       );
     }
