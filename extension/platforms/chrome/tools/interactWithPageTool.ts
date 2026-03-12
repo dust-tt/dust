@@ -9,16 +9,16 @@ const inputSchema = z.object({
   tab_id: z.number().describe("The ID of the tab to interact with."),
   element_id: z
     .string()
-    .nullable()
+    .nullish()
     .describe(
       "ID of the element to interact with. Required for click_element, type_text and delete_text. Must match an element returned by get_elements."
     ),
 
-  text: z.string().nullable().describe("Text to insert when using type_text."),
+  text: z.string().nullish().describe("Text to insert when using type_text."),
 
   textActionVariant: z
     .enum(["replace", "append"])
-    .nullable()
+    .nullish()
     .describe(
       "How text should be applied when using type_text: replace existing content or append to it."
     ),
@@ -42,7 +42,7 @@ Important rules:
 
 type_text automatically focuses the element before typing.
 delete_text automatically focuses the element before deleting the text.
-For the above reasons do NOT click an element before calling type_text or delete_text.
+For the above reasons in most cases you do NOT need to click an element before calling type_text or delete_text.
 Avoid unnecessary actions.`,
     inputSchema.shape,
     async (input) => {
@@ -74,9 +74,7 @@ Avoid unnecessary actions.`,
             content: [
               {
                 type: "text",
-                text:
-                  typeResponse.error ??
-                  "Unexpected error when typing in element",
+                text: `${typeResponse.error ?? "Unexpected error when typing in element"} ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
               },
             ],
             isError: true,
@@ -86,7 +84,7 @@ Avoid unnecessary actions.`,
           content: [
             {
               type: "text",
-              text: "Text inserted successfully",
+              text: `Text inserted successfully. ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
             },
           ],
         };
@@ -111,9 +109,7 @@ Avoid unnecessary actions.`,
             content: [
               {
                 type: "text",
-                text:
-                  typeResponse.error ??
-                  "Unexpected error when deleting text in element",
+                text: `${typeResponse.error ?? "Unexpected error when deleting text in element"} ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
               },
             ],
             isError: true,
@@ -123,7 +119,7 @@ Avoid unnecessary actions.`,
           content: [
             {
               type: "text",
-              text: "Text deleted successfully",
+              text: `Text deleted successfully. ${typeResponse.elementsDiff ? `Elements diff: ${typeResponse.elementsDiff}` : ""}`,
             },
           ],
         };
@@ -148,9 +144,7 @@ Avoid unnecessary actions.`,
             content: [
               {
                 type: "text",
-                text:
-                  clickResponse.error ??
-                  "Unexpected error when clicking element",
+                text: `${clickResponse.error ?? "Unexpected error when clicking element"} ${clickResponse.elementsDiff ? `Elements diff: ${clickResponse.elementsDiff}` : ""}`,
               },
             ],
             isError: true,
@@ -160,7 +154,7 @@ Avoid unnecessary actions.`,
           content: [
             {
               type: "text",
-              text: "Button clicked successfully",
+              text: `Button clicked successfully. ${clickResponse.elementsDiff ? `Elements diff: ${clickResponse.elementsDiff}` : ""}`,
             },
           ],
         };

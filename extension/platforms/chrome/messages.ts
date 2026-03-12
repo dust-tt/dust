@@ -85,7 +85,10 @@ export type CaptureFullPageMessage = {
   type: "PAGE_CAPTURE_FULL_PAGE";
 };
 
-export type GetPageElementsMessage = { type: "GET_ELEMENTS"; tabId: number };
+export type GetPageElementsMessage = {
+  type: "GET_ELEMENTS";
+  tabId: number;
+};
 export type GetPageElementsResponse = { elements: string; error?: string };
 
 export type ClickPageElementMessage = {
@@ -93,7 +96,11 @@ export type ClickPageElementMessage = {
   tabId: number;
   elementId: string;
 };
-export type ClickPageElementResponse = { success: boolean; error?: string };
+export type ClickPageElementResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
 
 export type TypeTextMessage = {
   type: "TYPE_TEXT";
@@ -103,7 +110,11 @@ export type TypeTextMessage = {
   variant: "replace" | "append";
 };
 
-export type TypeTextResponse = { success: boolean; error?: string };
+export type TypeTextResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
 
 export type DeleteTextMessage = {
   type: "DELETE_TEXT";
@@ -111,7 +122,11 @@ export type DeleteTextMessage = {
   elementId: string;
 };
 
-export type DeleteTextResponse = { success: boolean; error?: string };
+export type DeleteTextResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
@@ -275,7 +290,11 @@ export function sendInteractWithPageMessage(input: {
 export function sendInteractWithPageMessage(
   input:
     | { action: "get_elements"; tabId: number }
-    | { action: "click_element"; tabId: number; elementId: string }
+    | {
+        action: "click_element";
+        tabId: number;
+        elementId: string;
+      }
     | {
         action: "type_text";
         tabId: number;

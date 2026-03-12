@@ -30,6 +30,7 @@ import { jwtDecode } from "jwt-decode";
 import {
   clickPageElement,
   getPageElements,
+  getPageElementsDiff,
   typeText,
 } from "./interactWithPage";
 
@@ -749,8 +750,23 @@ chrome.runtime.onMessage.addListener(
               return;
             }
 
+            const elementsDiff = await getPageElementsDiff(tab);
+
+            if (elementsDiff.isErr()) {
+              log(
+                "Error getting page elements diff after click:",
+                elementsDiff.error
+              );
+              sendResponse({
+                success: false,
+                error: `Element clicked successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+              });
+              return;
+            }
+
             sendResponse({
               success: true,
+              elementsDiff: elementsDiff.value,
             });
           } catch (error) {
             const normalizedError = normalizeError(error);
@@ -783,8 +799,23 @@ chrome.runtime.onMessage.addListener(
               return;
             }
 
+            const elementsDiff = await getPageElementsDiff(tab);
+
+            if (elementsDiff.isErr()) {
+              log(
+                "Error getting page elements diff after typing text:",
+                elementsDiff.error
+              );
+              sendResponse({
+                success: false,
+                error: `Text typed successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+              });
+              return;
+            }
+
             sendResponse({
               success: true,
+              elementsDiff: elementsDiff.value,
             });
           } catch (error) {
             const normalizedError = normalizeError(error);
@@ -813,8 +844,23 @@ chrome.runtime.onMessage.addListener(
               return;
             }
 
+            const elementsDiff = await getPageElementsDiff(tab);
+
+            if (elementsDiff.isErr()) {
+              log(
+                "Error getting page elements diff after deleting text:",
+                elementsDiff.error
+              );
+              sendResponse({
+                success: false,
+                error: `Text deleted successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+              });
+              return;
+            }
+
             sendResponse({
               success: true,
+              elementsDiff: elementsDiff.value,
             });
           } catch (error) {
             const normalizedError = normalizeError(error);
