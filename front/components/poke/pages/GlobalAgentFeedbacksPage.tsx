@@ -5,7 +5,7 @@ import { usePokeGlobalAgentFeedbacks } from "@app/hooks/usePokeGlobalAgentFeedba
 import type { GlobalAgentFeedbackItem } from "@app/pages/api/poke/global-agent-feedbacks";
 import { Button, Chip, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
   return [
@@ -130,21 +130,21 @@ export function GlobalAgentFeedbacksPage() {
 
   const columns = useMemo(() => makeColumns(), []);
 
-  const handleNextPage = useCallback(() => {
+  const handleNextPage = () => {
     if (feedbacks.length > 0) {
       const lastFeedback = feedbacks[feedbacks.length - 1];
       setPages((prev) => [...prev, lastFeedback.id]);
     }
-  }, [feedbacks]);
+  };
 
-  const handlePrevPage = useCallback(() => {
+  const handlePrevPage = () => {
     setPages((prev) => prev.slice(0, -1));
-  }, []);
+  };
 
-  const handleIncludeEmptyChange = useCallback(() => {
+  const handleIncludeEmptyChange = () => {
     setIncludeEmpty((prev) => !prev);
     setPages([]);
-  }, []);
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
