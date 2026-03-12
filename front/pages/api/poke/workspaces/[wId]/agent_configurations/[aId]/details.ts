@@ -19,7 +19,7 @@ export type PokeGetAgentDetails = {
   authors: UserType[];
   lastVersionEditors: UserType[];
   spaces: SpaceType[];
-  skills: SkillType[];
+  skillsByVersion: Record<number, SkillType[]>;
 };
 
 async function handler(
@@ -77,17 +77,25 @@ async function handler(
       );
       const authors = await getAuthors(agentConfigurations);
 
-      const skillResources = await SkillResource.listByAgentConfiguration(
+      const allSkills = await SkillResource.listByAgentConfigurations(
         auth,
-        latestAgentConfiguration
+        agentConfigurations
       );
+
+      const skillsByVersion: Record<number, SkillType[]> = {};
+      for (const config of agentConfigurations) {
+        skillsByVersion[config.version] = [];
+      }
+      for (const { agentConfiguration, skill } of allSkills) {
+        skillsByVersion[agentConfiguration.version].push(skill.toJSON(auth));
+      }
 
       return res.status(200).json({
         agentConfigurations,
         authors,
         lastVersionEditors,
         spaces: spaces.map((s) => s.toJSON()),
-        skills: skillResources.map((s) => s.toJSON(auth)),
+        skillsByVersion,
       });
 
     default:
