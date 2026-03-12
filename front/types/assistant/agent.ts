@@ -94,8 +94,7 @@ export type AgentUsageType = {
 export type AgentRecentAuthors = readonly string[];
 
 export const AGENT_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
-export type AgentReinforcementMode =
-  (typeof AGENT_REINFORCEMENT_MODES)[number];
+export type AgentReinforcementMode = (typeof AGENT_REINFORCEMENT_MODES)[number];
 
 const AGENT_REASONING_EFFORTS = ["none", "light", "medium", "high"] as const;
 
