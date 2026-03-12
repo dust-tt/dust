@@ -1,10 +1,13 @@
 import config from "@app/lib/api/config";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import type { RedisClientType } from "redis";
 export type { RedisClientType };
 
 import { createClient } from "redis";
+
+const statsDClient = getStatsDClient();
 
 const clients = new Map<string, RedisClientType>();
 
@@ -46,6 +49,7 @@ export type RedisUsageTagsType =
   | "mentions_count"
   | "message_events"
   | "notion_url_sync"
+  | "poke_cache_invalidation"
   | "poke_cache_lookup"
   | "public_api_limits"
   | "rate_limiter"

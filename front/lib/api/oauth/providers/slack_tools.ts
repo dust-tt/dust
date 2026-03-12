@@ -60,7 +60,6 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "im:read",
             "mpim:read",
             // Semantic search scopes.
-            "search:read",
             "search:read.public",
             "search:read.private",
             "search:read.mpim",
@@ -69,6 +68,14 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "users:read.email",
             "users:read",
             "usergroups:read",
+            // The following scopes are needed to use the official Slack MCP, and could be helpful if we switch to that later
+            "canvases:read",
+            "canvases:write",
+            "search:read.files",
+            "search:read.users",
+            // The following two are needed for some customer scenarios that require us to create/invite/archive channels
+            "channels:write",
+            "groups:write",
           ];
         default:
           assert(

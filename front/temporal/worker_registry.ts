@@ -1,6 +1,7 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
+import { runButlerWorker } from "@app/temporal/butler/worker";
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
@@ -11,8 +12,10 @@ import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runUserProjectDigestQueueWorker } from "@app/temporal/project_user_digest_queue/worker";
+import { runReinforcedAgentWorker } from "@app/temporal/reinforced_agent/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
+import { runSandboxReaperWorker } from "@app/temporal/sandbox_reaper/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runAgentTriggerWorker } from "@app/temporal/triggers/common/worker";
 import { runAgentTriggerWebhookWorker } from "@app/temporal/triggers/webhook/worker";
@@ -26,6 +29,7 @@ export type WorkerName =
   | "agent_schedule"
   | "agent_trigger_webhook"
   | "analytics_queue"
+  | "butler"
   | "credit_alerts"
   | "data_retention"
   | "es_indexation_queue"
@@ -36,8 +40,10 @@ export type WorkerName =
   | "notifications_queue"
   | "poke"
   | "production_checks"
+  | "reinforced_agent"
   | "project_user_digest_queue"
   | "relocation"
+  | "sandbox_reaper"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
   | "update_workspace_usage"
@@ -50,6 +56,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
   analytics_queue: runAnalyticsWorker,
+  butler: runButlerWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
   hard_delete: runHardDeleteWorker,
@@ -59,8 +66,10 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
+  reinforced_agent: runReinforcedAgentWorker,
   project_user_digest_queue: runUserProjectDigestQueueWorker,
   relocation: runRelocationWorker,
+  sandbox_reaper: runSandboxReaperWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,

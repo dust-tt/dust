@@ -1,6 +1,6 @@
 "use client";
 
-import { classNames as cn } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import type { HTMLMotionProps } from "framer-motion";
 import { AnimatePresence, motion, useMotionValue } from "framer-motion";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`

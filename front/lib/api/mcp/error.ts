@@ -1,7 +1,7 @@
 import type { MCPErrorEvent, MCPSuccessEvent } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
@@ -19,20 +19,20 @@ type HandleErrorParams = {
 /**
  * Handles MCP action errors with type-safe discriminated union based on error severity.
  */
-export async function handleMCPActionError({
-  action,
-  agentConfiguration,
-  agentMessage,
-  errorContent,
-  status,
-  executionDurationMs,
-}: HandleErrorParams): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  await AgentMCPActionOutputItemModel.bulkCreate(
-    errorContent.map((item) => ({
-      workspaceId: action.workspaceId,
-      agentMCPActionId: action.id,
-      content: item,
-    }))
+export async function handleMCPActionError(
+  auth: Authenticator,
+  {
+    action,
+    agentConfiguration,
+    agentMessage,
+    errorContent,
+    status,
+    executionDurationMs,
+  }: HandleErrorParams
+): Promise<MCPErrorEvent | MCPSuccessEvent> {
+  await action.createOutputItems(
+    auth,
+    errorContent.map((item) => ({ content: item }))
   );
 
   // If the tool is not already in a final state, we set it to errored (could be denied).

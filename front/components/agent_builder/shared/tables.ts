@@ -8,7 +8,7 @@ import type {
 import type { LightContentNode } from "@app/types/api/public/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -30,6 +30,7 @@ export function getTableIdForContentNode(
     case "salesforce":
     case "snowflake":
     case "google_drive":
+    case "dust_project":
       return contentNode.internalId;
 
     case "confluence":
@@ -42,13 +43,15 @@ export function getTableIdForContentNode(
     case "webcrawler":
     case "zendesk":
     case "discord_bot":
-    case "dust_project":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
 
     default:
-      assertNever(dataSource.connectorProvider);
+      assertNeverAndIgnore(dataSource.connectorProvider);
+      throw new Error(
+        `Provider ${dataSource.connectorProvider} is not supported`
+      );
   }
 }
 

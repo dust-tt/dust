@@ -89,10 +89,13 @@ const editorsColumn = {
 
 const usedByColumn = (onAgentClick: (agentId: string) => void) => ({
   header: "Used by",
-  accessorKey: "usage",
-  cell: (info: CellContext<RowData, AgentsUsageType>) => (
+  accessorFn: (row: RowData) => row.usage?.count ?? 0,
+  cell: (info: CellContext<RowData, number>) => (
     <DataTable.CellContent>
-      <UsedByButton usage={info.getValue()} onItemClick={onAgentClick} />
+      <UsedByButton
+        usage={info.row.original.usage}
+        onItemClick={onAgentClick}
+      />
     </DataTable.CellContent>
   ),
   meta: {

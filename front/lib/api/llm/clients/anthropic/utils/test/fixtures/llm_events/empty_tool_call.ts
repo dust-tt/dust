@@ -34,6 +34,7 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
     content: {
       inputTokens: 100,
       outputTokens: 20,
+      reasoningTokens: 0,
       cachedTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 120,

@@ -2,7 +2,10 @@ import type {
   AuthService,
   OAuthAuthorizeResponse,
 } from "@extension/shared/services/auth";
-import type { CaptureOptions } from "@extension/shared/services/capture";
+import type {
+  CaptureOptions,
+  FileData,
+} from "@extension/shared/services/capture";
 
 export type AuthBackgroundResponseError = {
   success: false;
@@ -16,6 +19,7 @@ export type AuthBackgroundResponseSuccess = {
 export type AuthBackgroundMessage = {
   type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
   connection?: string;
+  organizationId?: string;
   refreshToken?: string;
 };
 
@@ -28,7 +32,30 @@ export type GetActiveTabBackgroundResponse = {
   url: string;
   content?: string;
   captures?: string[];
+  fileData?: FileData;
   error?: string;
+};
+
+export type TabInfo = {
+  tabId: number;
+  title: string;
+  url: string;
+  active: boolean;
+};
+
+export type TabActionMessage =
+  | { type: "LIST_TABS" }
+  | { type: "ACTIVATE_TAB"; tabId: number }
+  | { type: "CLOSE_TAB"; tabId: number }
+  | { type: "OPEN_TAB"; url: string }
+  | { type: "MOVE_TAB"; tabId: number; index: number }
+  | { type: "RELOAD_TAB"; tabId: number };
+
+export type TabActionResponse = {
+  success: boolean;
+  error?: string;
+  tabId?: number;
+  tabs?: TabInfo[];
 };
 
 export type InputBarStatusMessage = {
@@ -77,12 +104,14 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
  */
 
 export const sendAuthMessage = (
-  connection?: string
+  connection?: string,
+  organizationId?: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   return new Promise((resolve, reject) => {
     const message: AuthBackgroundMessage = {
       type: "AUTHENTICATE",
       connection,
+      organizationId,
     };
     chrome.runtime.sendMessage(
       message,
@@ -178,6 +207,16 @@ export const sendGetActiveTabMessage = (params: CaptureOptions) => {
     type: "GET_ACTIVE_TAB",
     ...params,
   });
+};
+
+export const sendListTabsMessage = () => {
+  return sendMessage<TabActionMessage, TabActionResponse>({
+    type: "LIST_TABS",
+  });
+};
+
+export const sendTabActionMessage = (message: TabActionMessage) => {
+  return sendMessage<TabActionMessage, TabActionResponse>(message);
 };
 
 // Messages from background script to content script

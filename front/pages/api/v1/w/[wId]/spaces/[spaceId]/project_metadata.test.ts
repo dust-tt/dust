@@ -188,6 +188,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.metadata).toEqual({
+      archivedAt: null,
       createdAt: expect.anything(),
       description: "Test project description",
       sId: expect.anything(),
@@ -241,6 +242,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.metadata).toEqual({
+      archivedAt: null,
       createdAt: expect.anything(),
       description: "Test project with members",
       sId: expect.anything(),

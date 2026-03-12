@@ -1,22 +1,4 @@
-# start installing poppler tools for pdf text extraction
-FROM node:22.22.0 AS build
-
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
-
-ARG COMMIT_HASH_LONG
-ARG COMMIT_HASH
-
-WORKDIR /tmp/
-COPY /connectors/admin/docker_build/install_poppler_tools.sh ./
-RUN chmod +x ./install_poppler_tools.sh
-RUN ./install_poppler_tools.sh
-# end installing poppler tools
-
 FROM node:22.22.0 as connectors
-
-ENV LD_LIBRARY_PATH=/usr/local/lib
-COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
-COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
 WORKDIR /app
 
@@ -40,6 +22,8 @@ COPY /connectors/ .
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
+# Build temporal workers
+RUN CONNECTORS_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
 # Build all components (server, worker, cli) with esbuild
 RUN npm run build
 

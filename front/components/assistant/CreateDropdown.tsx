@@ -1,3 +1,4 @@
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -35,6 +36,7 @@ export const CreateDropdown = ({
 }: CreateDropdownProps) => {
   const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -95,7 +97,9 @@ export const CreateDropdown = ({
           <>
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem
-              label="skill"
+              label={
+                hasFeature("sandbox_tools") ? "skill from scratch" : "skill"
+              }
               icon={PuzzleIcon}
               onClick={withTracking(
                 TRACKING_AREAS.BUILDER,
@@ -106,9 +110,22 @@ export const CreateDropdown = ({
                 }
               )}
             />
+            {hasFeature("sandbox_tools") && (
+              <DropdownMenuItem
+                label="skill from existing"
+                icon={FolderOpenIcon}
+                onClick={() => setIsImportSkillDialogOpen(true)}
+              />
+            )}
           </>
         )}
       </DropdownMenuContent>
+      {isImportSkillDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportSkillDialogOpen(false)}
+          owner={owner}
+        />
+      )}
     </DropdownMenu>
   );
 };

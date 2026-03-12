@@ -7,7 +7,7 @@ import * as React from "react";
 const hoveringBarVariants = cva(
   cn(
     "s-inline-flex s-items-center s-shadow-md s-backdrop-blur-sm s-p-1",
-    "s-bg-background/80 s-border s-border-border dark:border-border-night dark:bg-background-night/80"
+    "s-bg-background/80 s-border s-border-border dark:s-border-border-night dark:s-bg-background-night/80"
   ),
   {
     variants: {

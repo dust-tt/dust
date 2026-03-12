@@ -39,7 +39,7 @@ export class TemplateModel extends BaseModel<TemplateModel> {
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
-  declare copilotInstructions: string | null;
+  declare sidekickInstructions: string | null;
 
   declare tags: TemplateTagCodeType[];
 }
@@ -115,7 +115,7 @@ TemplateModel.init(
     helpActions: {
       type: DataTypes.TEXT,
     },
-    copilotInstructions: {
+    sidekickInstructions: {
       type: DataTypes.TEXT,
     },
     tags: {

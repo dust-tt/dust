@@ -6,15 +6,17 @@ import {
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
+import {
+  createAgentMessages,
+  createUserMessage,
+} from "@app/lib/api/assistant/conversation/messages";
 import {
   canAgentBeUsedInProjectConversation,
-  createAgentMessages,
-  createUserMentions,
-  createUserMessage,
   updateConversationRequirements,
-} from "@app/lib/api/assistant/conversation/mentions";
+} from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -34,6 +36,7 @@ import {
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { isModelAvailable } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -49,6 +52,7 @@ import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/pr
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -56,7 +60,10 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
   getTimeframeSecondsFromLiteral,
@@ -65,6 +72,10 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchOrSignalButlerWorkflow,
+  signalButlerComplete,
+} from "@app/temporal/butler/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -106,8 +117,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
-import { md5 } from "@app/types/shared/utils/hashing";
+import { md5 } from "@app/types/shared/utils/encryption";
+import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
@@ -192,31 +203,8 @@ export async function createConversation(
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
     metadata: conversation.metadata,
+    branchId: null,
   };
-}
-
-export async function updateConversationTitle(
-  auth: Authenticator,
-  {
-    conversationId,
-    title,
-  }: {
-    conversationId: string;
-    title: string;
-  }
-): Promise<Result<undefined, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  await conversation.updateTitle(title);
-
-  return new Ok(undefined);
 }
 
 /**
@@ -512,7 +500,7 @@ export function isUserMessageContextValid(
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
-    case "agent_copilot":
+    case "agent_sidekick":
     case "project_kickoff":
     case "web":
       return false;
@@ -567,7 +555,10 @@ export async function postUserMessage(
     });
   }
 
-  if (isProjectConversation(conversation)) {
+  const featureFlags = await getFeatureFlags(owner);
+  const isPartOfProject = isProjectConversation(conversation);
+
+  if (isPartOfProject) {
     // Check if the user is a member of the space.
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
@@ -621,6 +612,7 @@ export async function postUserMessage(
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
+  let shouldCreateBranch = false;
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
@@ -648,11 +640,10 @@ export async function postUserMessage(
       });
     }
 
-    const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig?.featureFlag &&
-      !featureFlags.includes(supportedModelConfig.featureFlag)
+      supportedModelConfig &&
+      !isModelAvailable(supportedModelConfig, featureFlags, plan)
     ) {
       return new Err({
         status_code: 400,
@@ -662,6 +653,17 @@ export async function postUserMessage(
         },
       });
     }
+
+    // If the conversation is part of a project and the conversation branches feature flag is enabled.
+    // When the agent is not usable, we will create a branch.
+    if (isPartOfProject && featureFlags.includes("conversation_branches")) {
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: agentConfig,
+        conversation,
+      });
+
+      shouldCreateBranch = shouldCreateBranch || !canAgentBeUsed;
+    }
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -670,6 +672,48 @@ export async function postUserMessage(
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
+
+    // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
+    // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
+    // - Message has user mentions, we don't support multiple users in a branch yet.
+    // - Conversation has no content, we cannot create a branch as the start of the conversation.
+    // - Last message in conversation has no content should never happen, but we will log an error and continue.
+    // If we do not create a branch, the user will receive a notification that the agent is not usable.
+    if (shouldCreateBranch) {
+      if (user === null) {
+        // Should never happen, but we will log an error and continue.
+        logger.error("User is null, cannot create branch without a user.");
+      } else if (mentions.some(isUserMention)) {
+        logger.info(
+          "Message has user mentions, for now we do not support branching with user mentions."
+        );
+      } else if (conversation.content.length === 0) {
+        logger.info(
+          "Conversation has no content, cannot create branch as the start of the conversation."
+        );
+      } else if (
+        conversation.content[conversation.content.length - 1].length === 0
+      ) {
+        logger.error(
+          "Last message in conversation has no content, cannot create branch."
+        );
+      } else {
+        const branch = await ConversationBranchResource.makeNew(
+          auth,
+          {
+            conversationId: conversation.id,
+            previousMessageId:
+              conversation.content[conversation.content.length - 1].at(-1)!.id,
+            state: "open",
+            userId: user.id,
+          },
+          t
+        );
+
+        // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+        conversation.branchId = branch.sId;
+      }
+    }
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -685,7 +729,11 @@ export async function postUserMessage(
     let nextMessageRank =
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
+          workspaceId: owner.id,
           conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
         },
         transaction: t,
       })) ?? -1) + 1;
@@ -818,6 +866,23 @@ export async function postUserMessage(
         })
       : Promise.resolve(undefined),
   ]);
+
+  if (featureFlags.includes("conversation_butler") && isPartOfProject) {
+    // Fire-and-forget: butler failures must not block message posting.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+
+    if (agentMessages.length === 0) {
+      void signalButlerComplete({
+        authType: auth.toJSON(),
+        conversationId: conversation.sId,
+        messageId: userMessage.sId,
+      });
+    }
+  }
 
   return new Ok({
     userMessage,
@@ -1030,7 +1095,11 @@ export async function editUserMessage(
           const nextMessageRank =
             ((await MessageModel.max<number | null, MessageModel>("rank", {
               where: {
+                workspaceId: owner.id,
                 conversationId: conversation.id,
+                branchId: conversation.branchId
+                  ? getResourceIdFromSId(conversation.branchId)
+                  : null,
               },
               transaction: t,
             })) ?? -1) + 1;
@@ -1128,6 +1197,27 @@ export async function editUserMessage(
     agentMessages
   );
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block message editing.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+
+    if (agentMessages.length === 0) {
+      void signalButlerComplete({
+        authType: auth.toJSON(),
+        conversationId: conversation.sId,
+        messageId: userMessage.sId,
+      });
+    }
+  }
+
   return new Ok({
     userMessage,
     agentMessages,
@@ -1191,6 +1281,8 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+  const owner = auth.getNonNullableWorkspace();
+
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1386,6 +1478,19 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block retries.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+  }
+
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
@@ -1491,7 +1596,11 @@ export async function postNewContentFragment(
     const nextMessageRank =
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
+          workspaceId: owner.id,
           conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
         },
         transaction: t,
       })) ?? -1) + 1;
@@ -1500,6 +1609,9 @@ export async function postNewContentFragment(
         sId: messageId,
         rank: nextMessageRank,
         conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
         contentFragmentId: contentFragment.id,
         workspaceId: owner.id,
       },
@@ -1525,6 +1637,24 @@ export async function postNewContentFragment(
     conversationId: conversation.sId,
     message: messageRow,
   });
+
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block content fragment posting.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId,
+    });
+    void signalButlerComplete({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId,
+    });
+  }
 
   return new Ok(render);
 }
@@ -1619,7 +1749,7 @@ export async function softDeleteAgentMessage(
     conversation,
   }: {
     message: AgentMessageType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
@@ -1967,166 +2097,4 @@ async function isMessagesLimitReached(
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
-}
-
-// Build the output messages, truncating content per message.
-const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
-const MAX_TOTAL_CONTENT_CHARS = 20_000;
-
-function truncateContent(content: string | null): {
-  content: string | null;
-  contentTruncated: boolean;
-} {
-  if (!content || content.length <= MAX_CONTENT_CHARS_PER_MESSAGE) {
-    return { content, contentTruncated: false };
-  }
-  return {
-    content: content.slice(0, MAX_CONTENT_CHARS_PER_MESSAGE),
-    contentTruncated: true,
-  };
-}
-
-export async function getShrinkWrapedConversation(
-  auth: Authenticator,
-  {
-    conversationId,
-    fromMessageIndex,
-    toMessageIndex,
-  }: {
-    conversationId: string;
-    fromMessageIndex?: number;
-    toMessageIndex?: number;
-  }
-): Promise<
-  Result<
-    {
-      type: "text";
-      text: string;
-    },
-    Error
-  >
-> {
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return new Err(
-      new Error(`Conversation not found or not accessible: ${conversationId}`)
-    );
-  }
-
-  const conversation = conversationRes.value;
-
-  // Flatten the 2D content array into a flat list of messages (last version of each).
-  const flatMessages: (UserMessageType | AgentMessageType)[] = [];
-  for (const messageVersions of conversation.content) {
-    if (messageVersions.length === 0) {
-      continue;
-    }
-    const lastVersion = messageVersions[messageVersions.length - 1];
-    if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
-      flatMessages.push(lastVersion);
-    }
-  }
-
-  // Apply message index range.
-  const from = fromMessageIndex ?? 0;
-  const to = toMessageIndex ?? flatMessages.length;
-  const isConversationTruncated = from > 0 || to < flatMessages.length;
-  const slicedMessages = flatMessages.slice(from, to);
-
-  // Build a map of agent message sId → list of agents it handed off to.
-  // An agent message B with parentAgentMessageId === A.sId means A handed off to B.
-  const handoffMap = new Map<string, { agentId: string }[]>();
-  for (const msg of flatMessages) {
-    if (isAgentMessageType(msg) && msg.parentAgentMessageId) {
-      const targets = handoffMap.get(msg.parentAgentMessageId) ?? [];
-      targets.push({ agentId: msg.configuration.sId });
-      handoffMap.set(msg.parentAgentMessageId, targets);
-    }
-  }
-
-  let currentTotalChars = 0;
-  const lines: string[] = [];
-
-  lines.push(`# ${conversation.sId}: ${conversation.title ?? "Untitled"}`);
-  if (isConversationTruncated) {
-    lines.push(`_(conversation truncated)_`);
-  }
-  lines.push("");
-
-  for (let i = 0; i < slicedMessages.length; i++) {
-    if (currentTotalChars >= MAX_TOTAL_CONTENT_CHARS) {
-      break;
-    }
-
-    const msg = slicedMessages[i];
-    const index = from + i;
-
-    if (isUserMessageType(msg)) {
-      const { content, contentTruncated } = truncateContent(msg.content);
-      currentTotalChars += content ? content.length : 0;
-
-      lines.push(`## Message ${index}: ${msg.sId}`);
-      lines.push(`at ${msg.created}`);
-      lines.push(`from user ${msg.context.username}`);
-      const mentions = msg.mentions.filter(isAgentMention);
-      if (mentions.length > 0) {
-        lines.push(
-          `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
-        );
-      }
-      lines.push("");
-      lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
-      lines.push(content ?? "_empty_");
-      lines.push("");
-      continue;
-    }
-
-    // Agent message.
-    const agentMsg = msg as AgentMessageType;
-    const { content, contentTruncated } = truncateContent(agentMsg.content);
-    currentTotalChars += content ? content.length : 0;
-
-    const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
-
-    lines.push(`## Message ${index}: ${agentMsg.sId}`);
-    lines.push(`at ${agentMsg.created}`);
-    lines.push(
-      `from agent ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
-    );
-    lines.push("");
-
-    // Actions.
-    if (agentMsg.actions.length > 0) {
-      lines.push("### Actions");
-      for (const action of agentMsg.actions) {
-        const actionStatus =
-          action.status === "succeeded" ? "success" : "error";
-        let actionLine = `- ${action.functionCallName} (${actionStatus})`;
-        if (action.internalMCPServerName === "run_agent") {
-          const childConvId = action.params.conversationId;
-          if (isString(childConvId)) {
-            actionLine += ` → child conversation: ${childConvId}`;
-          }
-        }
-        lines.push(actionLine);
-      }
-      lines.push("");
-    }
-
-    // Handoffs.
-    const handoffs = handoffMap.get(agentMsg.sId) ?? [];
-    if (handoffs.length > 0) {
-      lines.push(`Handed off to: ${handoffs.map((h) => h.agentId).join(", ")}`);
-      lines.push("");
-    }
-
-    lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
-    lines.push(content ?? "_empty_");
-    lines.push("");
-  }
-
-  return new Ok({
-    type: "text" as const,
-    text: lines.join("\n"),
-  });
 }

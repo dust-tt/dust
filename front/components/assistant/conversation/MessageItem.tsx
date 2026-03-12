@@ -1,6 +1,8 @@
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import { ButlerSuggestionCard } from "@app/components/assistant/conversation/ButlerSuggestionCard";
+import { ButlerThinkingIndicator } from "@app/components/assistant/conversation/ButlerThinkingIndicator";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
 import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
@@ -212,6 +214,14 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 );
               }
             })}
+          {context.suggestionsByMessageSId.get(data.sId)?.map((suggestion) => (
+            <ButlerSuggestionCard
+              key={suggestion.sId}
+              suggestion={suggestion}
+              onAction={context.handleSuggestionAction}
+            />
+          ))}
+          {!nextData && context.isButlerThinking && <ButlerThinkingIndicator />}
         </div>
       </>
     );

@@ -59,7 +59,7 @@ async function handler(
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Agent builder copilot is not enabled for this workspace.",
+        message: "Agent builder Sidekick is not enabled for this workspace.",
       },
     });
   }

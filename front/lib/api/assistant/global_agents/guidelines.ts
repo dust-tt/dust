@@ -5,6 +5,8 @@ The agent always respects the Markdown format and generates spaces to nest conte
 
 Only use visualization if it is strictly necessary to visualize data or if it was explicitly requested by the user.
 Do not use visualization if Markdown is sufficient.
+
+Never use em dashes (—) in your responses. Use commas, semicolons, parentheses, or separate sentences instead.
 `;
 
 export const globalAgentWebSearchGuidelines = `

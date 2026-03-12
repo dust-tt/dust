@@ -6,20 +6,19 @@ import type {
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
-  getTargetEmailsForWorkspace,
   replyToEmail,
   triggerFromEmail,
-  userAndWorkspacesFromEmail,
+  userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
 import apiConfig from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -29,6 +28,44 @@ export const config = {
     bodyParser: false,
   },
 };
+
+function parseHeaderValue(
+  rawHeaders: string,
+  headerName: string
+): string | null {
+  const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Match the header name at line start, capture the first line value then any
+  // RFC 5322 folded continuation lines (lines starting with whitespace).
+  const headerPattern = new RegExp(
+    `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
+    "im"
+  );
+  const match = rawHeaders.match(headerPattern);
+  if (!match) {
+    return null;
+  }
+
+  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
+  const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
+
+  return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
+}
+
+function parseThreadingHeaders(rawHeaders: string | null) {
+  if (!rawHeaders) {
+    return {
+      messageId: null,
+      inReplyTo: null,
+      references: null,
+    };
+  }
+
+  return {
+    messageId: parseHeaderValue(rawHeaders, "Message-ID"),
+    inReplyTo: parseHeaderValue(rawHeaders, "In-Reply-To"),
+    references: parseHeaderValue(rawHeaders, "References"),
+  };
+}
 
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
@@ -43,6 +80,7 @@ const parseSendgridWebhookContent = async (
     const full = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
+    const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
     const envelope = fields["envelope"]
       ? JSON.parse(fields["envelope"][0])
       : null;
@@ -85,6 +123,9 @@ const parseSendgridWebhookContent = async (
       text: text || "",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
+      threadingHeaders: parseThreadingHeaders(
+        isString(rawHeaders) ? rawHeaders : null
+      ),
       envelope: {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         to: envelope.to || [],
@@ -179,21 +220,6 @@ async function handler(
 
       const email = emailRes.value;
 
-      // Gating: only dust.tt emails are allowed to trigger the agent
-      // WARNING: DO NOT UNGATE. Todo before ungating:
-      // - ! check security, including but not limited to SPF dkim approach thorough review
-      // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
-      // - also, need to ungate the workspace check in email/email_trigger/userAndWorkspacesFromEmail
-      if (!email.envelope.from.endsWith("@dust.tt")) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Only dust.tt emails are allowed to trigger the agent",
-          },
-        });
-      }
-
       // At this stage we have a valid email in we can respond 200 to the webhook, no more apiError
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
@@ -211,7 +237,7 @@ async function handler(
         return;
       }
 
-      const userRes = await userAndWorkspacesFromEmail({
+      const userRes = await userAndWorkspaceFromEmail({
         email: email.envelope.from,
       });
       if (userRes.isErr()) {
@@ -219,86 +245,84 @@ async function handler(
         return;
       }
 
-      const { user, workspaces, defaultWorkspace } = userRes.value;
+      const { user, workspace } = userRes.value;
 
-      // find target email in [...to, ...cc, ...bcc], that is email whose domain is
+      // Find target emails in [...to, ...cc, ...bcc] whose domain is
       // ASSISTANT_EMAIL_SUBDOMAIN.
-      const allTargetEmails = [
+      const targetEmails = [
         ...(email.envelope.to ?? []),
         ...(email.envelope.cc ?? []),
         ...(email.envelope.bcc ?? []),
-      ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
+      ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
-      const workspacesAndEmails = workspaces
-        .map((workspace) => {
-          return {
-            workspace,
-            targetEmails: getTargetEmailsForWorkspace({
-              allTargetEmails,
-              workspace,
-              isDefault: workspace.sId === defaultWorkspace.sId,
-            }),
-          };
-        })
-        .filter(({ targetEmails }) => (targetEmails as string[]).length > 0);
-
-      if (workspacesAndEmails.length === 0) {
+      if (targetEmails.length === 0) {
         await replyToError(email, {
           type: "invalid_email_error",
           message:
             `Failed to match any valid agent email. ` +
             `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
         });
+        return;
       }
 
-      for (const { workspace, targetEmails } of workspacesAndEmails) {
-        const auth = await Authenticator.fromUserIdAndWorkspaceId(
-          user.sId,
-          workspace.sId
-        );
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
 
-        const agentConfigurations = removeNulls(
-          await Promise.all(
-            targetEmails.map(async (targetEmail) => {
-              const matchRes = await emailAssistantMatcher({
-                auth,
-                targetEmail,
-              });
-              if (matchRes.isErr()) {
-                await replyToError(email, matchRes.error);
-                return null;
-              }
-
-              return matchRes.value.agentConfiguration;
-            })
-          )
-        );
-
-        if (agentConfigurations.length === 0) {
-          return;
-        }
-
-        // Trigger async processing - reply will be sent by finalization activity.
-        const triggerRes = await triggerFromEmail({
-          auth,
-          agentConfigurations,
-          email,
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (!featureFlags.includes("email_agents")) {
+        await replyToError(email, {
+          type: "invalid_email_error",
+          message:
+            "Email interactions with agents are not enabled for your workspace.",
         });
-
-        if (triggerRes.isErr()) {
-          await replyToError(email, triggerRes.error);
-          return;
-        }
-
-        logger.info(
-          {
-            conversationId: triggerRes.value.conversation.sId,
-            workspaceId: workspace.sId,
-            agentCount: agentConfigurations.length,
-          },
-          "[email] Triggered async email processing"
-        );
+        return;
       }
+
+      const agentConfigurations = removeNulls(
+        await Promise.all(
+          targetEmails.map(async (targetEmail) => {
+            const matchRes = await emailAssistantMatcher({
+              auth,
+              targetEmail,
+            });
+            if (matchRes.isErr()) {
+              await replyToError(email, matchRes.error);
+              return null;
+            }
+
+            return matchRes.value.agentConfiguration;
+          })
+        )
+      );
+
+      if (agentConfigurations.length === 0) {
+        return;
+      }
+
+      // Trigger async processing - reply will be sent by finalization activity.
+      const triggerRes = await triggerFromEmail({
+        auth,
+        agentConfigurations,
+        email,
+      });
+
+      if (triggerRes.isErr()) {
+        await replyToError(email, triggerRes.error);
+        return;
+      }
+
+      logger.info(
+        {
+          conversationId: triggerRes.value.conversation.sId,
+          workspaceId: workspace.sId,
+          agentCount: agentConfigurations.length,
+        },
+        "[email] Triggered async email processing"
+      );
       return;
 
     default:

@@ -48,7 +48,7 @@ import type {
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
-import { sha256 } from "@app/types/shared/utils/hashing";
+import { sha256 } from "@app/types/shared/utils/encryption";
 import type { WhereOptions } from "sequelize";
 
 export async function storeAgentAnalyticsActivity(

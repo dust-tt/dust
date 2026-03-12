@@ -163,9 +163,12 @@ runs:
         fi
 
         # Override NEXT_PUBLIC_DUST_APP_URL for front-edge
+        # Apply the same sanitization Cloudflare Pages uses for branch aliases:
+        # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
         if [[ "$COMPONENT" == "front-edge" ]]; then
-          echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt"
-          build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt")
+          CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+          echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt"
+          build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
         fi
 
         # Special handling for front component, build both front and workers targets

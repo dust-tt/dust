@@ -17,6 +17,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
+  invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -48,7 +49,6 @@ import { Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
-const GROUP_IDS_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -113,6 +113,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static dangerouslyListUserGroupsForAuthCached = cacheWithRedis(
     ({
       user,
@@ -126,7 +127,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspace,
       }),
     GroupResource.groupIdsCacheKeyResolver,
-    { ttlMs: GROUP_IDS_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   static invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(
@@ -231,12 +232,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         { transaction }
       );
 
-      // Always invalidate cache - safe even if transaction rolls back
-      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-        memberIds.map((userModelId) => [
-          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
-        ])
-      );
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          memberIds.map((userModelId) => [
+            { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+          ])
+        );
+      });
     }
 
     return new this(GroupModel, group.get());
@@ -1342,10 +1344,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-      users.map((u) => [{ user: { id: u.id }, workspace: { id: owner.id } }])
-    );
+    const workspaceModelId = owner.id;
+    const userModelIds = users.map((u) => u.id);
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        userModelIds.map((userModelId) => [
+          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+        ])
+      );
+    });
 
     return new Ok(undefined);
   }
@@ -1497,10 +1504,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-      users.map((u) => [{ user: { id: u.id }, workspace: { id: owner.id } }])
-    );
+    const workspaceModelId = owner.id;
+    const userModelIds = users.map((u) => u.id);
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        userModelIds.map((userModelId) => [
+          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+        ])
+      );
+    });
 
     return new Ok(undefined);
   }
@@ -1586,83 +1598,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.invalidateGroupIdsCacheForUser({
-      user: { id: user.id },
-      workspace: { id: workspace.id },
-    });
-
-    return new Ok(undefined);
-  }
-
-  /**
-   * Allows the authenticated user to join the group.
-   *
-   * Unlike addMembers(), this method does not require admin/editor permissions.
-   * Users can add themselves to groups (for self-join flows like joining public projects).
-   *
-   * Only works for "regular" groups.
-   * TODO(remy): Replace this with dangerouslyAddMembers once available
-   */
-  async joinGroup(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<
-    Result<
-      undefined,
-      DustError<"user_already_member" | "system_or_global_group">
-    >
-  > {
-    const user = auth.getNonNullableUser();
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (this.kind !== "regular") {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only self-join regular groups."
-        )
-      );
-    }
-
-    const now = new Date();
-
-    const existingMembership = await GroupMembershipModel.findOne({
-      where: {
-        groupId: this.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: { [Op.lte]: now },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        status: "active",
-      },
-      transaction,
-    });
-
-    if (existingMembership) {
-      return new Err(
-        new DustError(
-          "user_already_member",
-          "User is already a member of this group."
-        )
-      );
-    }
-
-    await GroupMembershipModel.create(
-      {
-        groupId: this.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: now,
-        status: "active",
-      },
-      { transaction }
-    );
-
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.invalidateGroupIdsCacheForUser({
-      user: { id: user.id },
-      workspace: { id: workspace.id },
+    const userId = user.id;
+    const workspaceId = workspace.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.invalidateGroupIdsCacheForUser({
+        user: { id: userId },
+        workspace: { id: workspaceId },
+      });
     });
 
     return new Ok(undefined);
@@ -1768,11 +1710,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (affectedUserIds.length > 0) {
-      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-        affectedUserIds.map((userId) => [
-          { user: { id: userId }, workspace: { id: workspaceId } },
-        ])
-      );
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          affectedUserIds.map((userId) => [
+            { user: { id: userId }, workspace: { id: workspaceId } },
+          ])
+        );
+      });
     }
 
     return affectedUserIds;
@@ -1818,11 +1762,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (affectedUserIds.length > 0) {
-      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-        affectedUserIds.map((userId) => [
-          { user: { id: userId }, workspace: { id: workspaceId } },
-        ])
-      );
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          affectedUserIds.map((userId) => [
+            { user: { id: userId }, workspace: { id: workspaceId } },
+          ])
+        );
+      });
     }
 
     return affectedUserIds;
@@ -1904,13 +1850,15 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
-      // Always invalidate cache for all former members - safe even if transaction rolls back (just causes cache miss)
       if (memberUserIds.length > 0) {
-        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-          memberUserIds.map((userId) => [
-            { user: { id: userId }, workspace: { id: owner.id } },
-          ])
-        );
+        const workspaceId = owner.id;
+        invalidateCacheAfterCommit(transaction, async () => {
+          await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+            memberUserIds.map((userId) => [
+              { user: { id: userId }, workspace: { id: workspaceId } },
+            ])
+          );
+        });
       }
 
       return new Ok(undefined);

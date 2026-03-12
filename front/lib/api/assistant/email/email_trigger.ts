@@ -12,11 +12,13 @@ import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -28,6 +30,7 @@ import type { SupportedFileContentType } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString, isStringArray } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import fs from "fs";
 import sanitizeHtml from "sanitize-html";
@@ -35,8 +38,6 @@ import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { toFileContentFragment } from "../conversation/content_fragment";
-
-const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
@@ -53,15 +54,16 @@ export type EmailReplyContext = {
   fromFull: string;
   replyTo: string[];
   replyCc: string[];
+  threadingMessageId: string | null;
+  threadingInReplyTo: string | null;
+  threadingReferences: string | null;
   agentConfigurationId: string;
   workspaceId: string;
   conversationId: string;
 };
 
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((entry) => typeof entry === "string")
-  );
+function isNullableString(value: unknown): value is string | null {
+  return value === null || isString(value);
 }
 
 function isEmailReplyContext(value: unknown): value is EmailReplyContext {
@@ -70,23 +72,29 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
   }
   return (
     "subject" in value &&
-    typeof value.subject === "string" &&
+    isString(value.subject) &&
     "originalText" in value &&
-    typeof value.originalText === "string" &&
+    isString(value.originalText) &&
     "fromEmail" in value &&
-    typeof value.fromEmail === "string" &&
+    isString(value.fromEmail) &&
     "fromFull" in value &&
-    typeof value.fromFull === "string" &&
+    isString(value.fromFull) &&
     "replyTo" in value &&
     isStringArray(value.replyTo) &&
     "replyCc" in value &&
     isStringArray(value.replyCc) &&
+    "threadingMessageId" in value &&
+    isNullableString(value.threadingMessageId) &&
+    "threadingInReplyTo" in value &&
+    isNullableString(value.threadingInReplyTo) &&
+    "threadingReferences" in value &&
+    isNullableString(value.threadingReferences) &&
     "agentConfigurationId" in value &&
-    typeof value.agentConfigurationId === "string" &&
+    isString(value.agentConfigurationId) &&
     "workspaceId" in value &&
-    typeof value.workspaceId === "string" &&
+    isString(value.workspaceId) &&
     "conversationId" in value &&
-    typeof value.conversationId === "string"
+    isString(value.conversationId)
   );
 }
 
@@ -180,7 +188,7 @@ export async function deleteEmailReplyContext(
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
   ? "dev.dust.help"
-  : "run.dust.help";
+  : "dust.team";
 
 export type EmailAttachment = {
   filepath: string; // Temp file path from formidable
@@ -189,10 +197,17 @@ export type EmailAttachment = {
   size: number; // File size in bytes
 };
 
+export type EmailThreadingHeaders = {
+  messageId: string | null;
+  inReplyTo: string | null;
+  references: string | null;
+};
+
 export type InboundEmail = {
   subject: string;
   text: string;
   auth: { SPF: string; dkim: string };
+  threadingHeaders: EmailThreadingHeaders;
   envelope: {
     to: string[];
     cc: string[];
@@ -242,6 +257,56 @@ function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
 }
 
+function buildReferencesHeaderValue({
+  inReplyTo,
+  references,
+}: {
+  inReplyTo: string | null;
+  references: string | null;
+}): string | null {
+  if (!inReplyTo) {
+    return references;
+  }
+  if (!references) {
+    return inReplyTo;
+  }
+
+  const referenceTokens = references.split(/\s+/).filter((token) => token);
+  if (referenceTokens.includes(inReplyTo)) {
+    return references;
+  }
+
+  return [...referenceTokens, inReplyTo].join(" ");
+}
+
+export function buildReplyThreadingHeaders(email: InboundEmail): {
+  inReplyTo: string | null;
+  references: string | null;
+} {
+  const inReplyTo =
+    email.threadingHeaders.messageId ?? email.threadingHeaders.inReplyTo;
+  const references = buildReferencesHeaderValue({
+    inReplyTo,
+    references: email.threadingHeaders.references,
+  });
+
+  return { inReplyTo, references };
+}
+
+function buildSendgridThreadingHeaders(
+  email: InboundEmail
+): Record<string, string> {
+  const threadingHeaders = buildReplyThreadingHeaders(email);
+  return {
+    ...(threadingHeaders.inReplyTo
+      ? { "In-Reply-To": threadingHeaders.inReplyTo }
+      : {}),
+    ...(threadingHeaders.references
+      ? { References: threadingHeaders.references }
+      : {}),
+  };
+}
+
 export function buildSuccessReplyRecipients(email: InboundEmail): {
   to: string[];
   cc: string[];
@@ -264,33 +329,15 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
 
   return { to, cc };
 }
-export function getTargetEmailsForWorkspace({
-  allTargetEmails,
-  workspace,
-  isDefault,
-}: {
-  allTargetEmails: string[];
-  workspace: LightWorkspaceType;
-  isDefault: boolean;
-}): string[] {
-  return allTargetEmails.filter(
-    (email) =>
-      email.split("@")[0].endsWith(`[${workspace.sId}]`) ||
-      // calls with no brackets go to default workspace
-      (!email.split("@")[0].endsWith("]") && isDefault)
-  );
-}
-
-export async function userAndWorkspacesFromEmail({
+export async function userAndWorkspaceFromEmail({
   email,
 }: {
   email: string;
 }): Promise<
   Result<
     {
-      workspaces: LightWorkspaceType[];
+      workspace: LightWorkspaceType;
       user: UserResource;
-      defaultWorkspace: LightWorkspaceType;
     },
     EmailTriggerError
   >
@@ -305,7 +352,7 @@ export async function userAndWorkspacesFromEmail({
         `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
     });
   }
-  const workspaces = await WorkspaceModel.findAll({
+  const workspaceModels = await WorkspaceModel.findAll({
     include: [
       {
         model: MembershipModel,
@@ -317,9 +364,10 @@ export async function userAndWorkspacesFromEmail({
         },
       },
     ],
+    order: [["id", "DESC"]],
   });
 
-  if (!workspaces) {
+  if (workspaceModels.length === 0) {
     return new Err({
       type: "workspace_not_found",
       message:
@@ -328,48 +376,50 @@ export async function userAndWorkspacesFromEmail({
     });
   }
 
-  /* get latest conversation participation from user
-    uncomment when ungating
-  const latestParticipation = await ConversationParticipant.findOne({
-    where: {
-      userId: user.id,
-    },
-    include: [
-      {
-        model: Conversation,
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-  });*/
+  // Filter to workspaces with the email_agents feature flag enabled.
+  const eligibleWorkspaceModels: typeof workspaceModels = [];
+  for (const w of workspaceModels) {
+    const lightWorkspace = renderLightWorkspaceType({ workspace: w });
+    const flags = await getFeatureFlags(lightWorkspace);
+    if (flags.includes("email_agents")) {
+      eligibleWorkspaceModels.push(w);
+    }
+  }
 
-  // TODO: when ungating, implement good default logic to pick workspace
-  // a. most members?
-  // b. latest participation as above using the above (latestParticipation?.conversation?.workspaceId)
-  // c. most frequent-recent activity? (return 10 results with participants and pick the workspace with most convos)
-  // (will work fine since most users likely use only one workspace with a given email)
-  const workspace = isDevelopment()
-    ? workspaces[0] // In dev, use the first available workspace.
-    : workspaces.find(
-        (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
-      );
-  if (!workspace) {
+  if (eligibleWorkspaceModels.length === 0) {
     return new Err({
-      type: "unexpected_error",
-      message: "Failed to find a valid default workspace for user.",
+      type: "workspace_not_found",
+      message:
+        "Email interactions with agents are not enabled for any of your workspaces.",
     });
   }
 
-  const defaultWorkspace = renderLightWorkspaceType({
-    workspace,
+  // Pick the best workspace: prefer paying plans, then upgraded free plans,
+  // then fall back to the most recently created workspace.
+  const subscriptionsByWorkspaceId =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      eligibleWorkspaceModels.map((w) => w.id)
+    );
+
+  const payingWorkspace = eligibleWorkspaceModels.find((w) => {
+    const sub = subscriptionsByWorkspaceId[w.id];
+    return sub && !isFreePlan(sub.getPlan().code);
   });
 
-  // TODO: when ungating, replace [workspace] with workspaces here
+  const upgradedWorkspace = eligibleWorkspaceModels.find((w) => {
+    const sub = subscriptionsByWorkspaceId[w.id];
+    return sub && isUpgraded(sub.getPlan());
+  });
+
+  // Ordered by id DESC, so first = most recently created.
+  const mostRecentWorkspace = eligibleWorkspaceModels[0];
+
+  const selectedWorkspace =
+    payingWorkspace ?? upgradedWorkspace ?? mostRecentWorkspace;
+
   return new Ok({
-    workspaces: [workspace].map((workspace) =>
-      renderLightWorkspaceType({ workspace })
-    ),
+    workspace: renderLightWorkspaceType({ workspace: selectedWorkspace }),
     user,
-    defaultWorkspace,
   });
 }
 
@@ -693,6 +743,9 @@ export async function triggerFromEmail({
         fromFull: email.envelope.full,
         replyTo: successReplyRecipients.to,
         replyCc: successReplyRecipients.cc,
+        threadingMessageId: email.threadingHeaders.messageId,
+        threadingInReplyTo: email.threadingHeaders.inReplyTo,
+        threadingReferences: email.threadingHeaders.references,
         agentConfigurationId: agentConfig.sId,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
@@ -749,7 +802,7 @@ export async function sendToolValidationEmail({
     workspace.sId,
     conversation.sId,
     undefined,
-    baseUrl
+    config.getAppUrl()
   );
 
   // Build HTML for each blocked action.
@@ -812,6 +865,8 @@ export async function sendToolValidationEmail({
     `</blockquote>\n` +
     "<div>\n";
 
+  const headers = buildSendgridThreadingHeaders(email);
+
   const msg = {
     from: {
       name,
@@ -820,6 +875,7 @@ export async function sendToolValidationEmail({
     reply_to: sender,
     subject,
     html,
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   };
 
   try {
@@ -881,6 +937,8 @@ export async function replyToEmail({
     `</blockquote>\n` +
     "<div>\n";
 
+  const headers = buildSendgridThreadingHeaders(email);
+
   const msg = {
     from: {
       name,
@@ -889,6 +947,7 @@ export async function replyToEmail({
     reply_to: sender,
     subject,
     html,
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   };
 
   await sendEmailToRecipients({

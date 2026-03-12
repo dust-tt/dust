@@ -5,7 +5,7 @@ import {
 import {
   computeTextByteSize,
   MAX_RESOURCE_CONTENT_SIZE,
-  MAX_TEXT_CONTENT_SIZE,
+  MAX_TEXT_CONTENT_SIZE_BYTES,
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type {
@@ -26,7 +26,7 @@ import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -77,6 +77,7 @@ function sanitizeStringsDeep<T>(input: T): T {
 }
 
 export async function processToolNotification(
+  auth: Authenticator,
   notification: MCPProgressNotificationType,
   {
     action,
@@ -92,12 +93,11 @@ export async function processToolNotification(
 ): Promise<ToolNotificationEvent> {
   const output = notification.params._meta.data.output;
 
-  // Handle store_resource notifications by creating output items immediately
+  // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    await AgentMCPActionOutputItemModel.bulkCreate(
+    await action.createOutputItems(
+      auth,
       output.contents.map((content) => ({
-        workspaceId: action.workspaceId,
-        agentMCPActionId: action.id,
         content: sanitizeStringsDeep(content),
       }))
     );
@@ -169,7 +169,7 @@ export async function processToolResults(
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
           if (
-            computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE &&
+            computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE_BYTES &&
             toolConfiguration.mcpServerName !== "conversation_files"
           ) {
             const fileName = `${toolConfiguration.mcpServerName}_${Date.now()}.txt`;
@@ -235,6 +235,17 @@ export async function processToolResults(
             // who uploaded it to its own conversation but not the main agent's.
             // Skip for project_context files — they are already indexed via their own data source.
             if (file && file.useCase !== "project_context") {
+              // Files uploaded by client-side tools (e.g. the Chrome extension) may not have a
+              // conversationId in their metadata since the tool doesn't know it at upload time.
+              // Patch it here so the JIT data source creation works correctly.
+              if (
+                file.useCase === "conversation" &&
+                !file.useCaseMetadata?.conversationId
+              ) {
+                await file.setUseCaseMetadata(auth, {
+                  conversationId: conversation.sId,
+                });
+              }
               await uploadFileToConversationDataSource({ auth, file });
             }
             return {
@@ -365,10 +376,9 @@ export async function processToolResults(
     }
   );
 
-  const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
+  const outputItems = await action.createOutputItems(
+    auth,
     cleanContent.map((c) => ({
-      workspaceId: action.workspaceId,
-      agentMCPActionId: action.id,
       content: sanitizeStringsDeep(c.content),
       fileId: c.file?.id,
     }))
@@ -388,6 +398,8 @@ export async function processToolResults(
         fileId: c.file.sId,
         snippet: c.file.snippet,
         title: c.file.fileName,
+        createdAt: c.file.createdAt.getTime(),
+        updatedAt: c.file.updatedAt.getTime(),
         isInProjectContext: c.file.useCase === "project_context",
         ...(isHidden ? { hidden: true } : {}),
       } satisfies ActionGeneratedFileType;

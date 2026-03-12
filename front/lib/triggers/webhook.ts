@@ -16,9 +16,10 @@ import {
   checkWebhookRequestForRateLimit,
 } from "@app/lib/triggers/rate_limits";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
 import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type {
@@ -37,6 +38,8 @@ import {
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+
+const statsDClient = getStatsDClient();
 
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
@@ -58,14 +61,14 @@ export function checkSignature({
   algorithm,
   secret,
   headers,
-  body,
+  rawBody,
   provider,
 }: {
   headerName: string | null;
   algorithm: "sha1" | "sha256" | "sha512" | null;
   secret: string;
   headers: Record<string, string>;
-  body: unknown;
+  rawBody: string;
   provider: WebhookProvider | null;
 }): Result<
   void,
@@ -75,7 +78,7 @@ export function checkSignature({
     const verifyRes = FathomClient.verifyWebhook({
       secret,
       headers,
-      body: JSON.stringify(body),
+      body: rawBody,
     });
 
     if (verifyRes.isErr()) {
@@ -108,10 +111,8 @@ export function checkSignature({
     });
   }
 
-  const stringifiedBody = JSON.stringify(body);
-
   const isValid = verifySignature({
-    signedContent: stringifiedBody,
+    signedContent: rawBody,
     secret: secret,
     signature,
     algorithm,
@@ -718,11 +719,13 @@ export async function processWebhookRequest(
     webhookRequest,
     headers,
     body,
+    rawBody,
   }: {
     webhookSource: WebhookSourceResource;
     webhookRequest: WebhookRequestResource;
     headers: Record<string, string>;
     body: Record<string, unknown>;
+    rawBody: string;
   }
 ): Promise<Result<void, Error>> {
   const localLogger = logger.child({
@@ -737,7 +740,7 @@ export async function processWebhookRequest(
       algorithm: webhookSource.signatureAlgorithm,
       secret: webhookSource.secret,
       headers,
-      body,
+      rawBody,
       provider: webhookSource.provider,
     });
 

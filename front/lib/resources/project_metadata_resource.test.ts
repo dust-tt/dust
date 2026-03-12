@@ -57,7 +57,7 @@ describe("ProjectMetadataResource", () => {
     });
   });
 
-  describe("updateMetadata", () => {
+  describe("updateDescription", () => {
     it("updates fields and persists changes", async () => {
       const metadata = await ProjectMetadataResource.makeNew(
         auth,
@@ -67,9 +67,7 @@ describe("ProjectMetadataResource", () => {
         }
       );
 
-      await metadata.updateMetadata({
-        description: "Updated",
-      });
+      await metadata.updateDescription("Updated");
 
       const updated = await ProjectMetadataResource.fetchBySpace(
         auth,

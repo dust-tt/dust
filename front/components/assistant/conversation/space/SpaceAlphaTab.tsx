@@ -5,19 +5,19 @@ export const SpaceAlphaTab = () => {
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
         <p>
-          This feature is currently in alpha, and only available in the Dust
-          workspace ("projects" feature flag). The goal is to get feedback from
-          internal usage and quickly iterate.
+          This feature is currently in alpha, and only available to a select
+          group of customers. We are very interested in your feedback to improve
+          the feature.
         </p>
         <p>
-          Share your feedback in the{" "}
+          Share them to{" "}
           <LinkWrapper
-            href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
+            href="mailto:project-feedback@dust.tt"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-500 hover:text-blue-600"
           >
-            initiative slack channel
+            project-feedback@dust.tt
           </LinkWrapper>
           .{" "}
         </p>

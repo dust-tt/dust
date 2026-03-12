@@ -21,10 +21,11 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import assert from "assert";
 import { APIError, OpenAI } from "openai";
+import type { ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
 
-export class FireworksLLM extends LLM {
+export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
   private client: OpenAI;
 
   constructor(
@@ -36,42 +37,43 @@ export class FireworksLLM extends LLM {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, FIREWORKS_PROVIDER_ID, params);
 
-    const { FIREWORKS_API_KEY } = dustManagedCredentials();
-    if (!FIREWORKS_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_FIREWORKS_API_KEY environment variable is required"
-      );
-    }
+    const { FIREWORKS_API_KEY } = llmParameters.credentials;
+    assert(FIREWORKS_API_KEY, "FIREWORKS_API_KEY credential is required");
     this.client = new OpenAI({
       apiKey: FIREWORKS_API_KEY,
       baseURL: "https://api.fireworks.ai/inference/v1",
     });
   }
 
-  protected async *internalStream({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): ChatCompletionCreateParamsStreaming {
+    const tools =
+      specifications.length > 0 ? toTools(specifications) : undefined;
+
+    return {
+      model: this.modelId,
+      messages: toMessages(systemPromptToText(prompt), conversation),
+      stream: true,
+      temperature: this.temperature ?? undefined,
+      reasoning_effort: toReasoningParam(
+        this.reasoningEffort,
+        this.modelConfig.useNativeLightReasoning
+      ),
+      tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      ...(tools ? { tools } : {}),
+      response_format: toOutputFormatParam(this.responseFormat),
+    };
+  }
+
+  protected async *sendRequest(
+    payload: ChatCompletionCreateParamsStreaming
+  ): AsyncGenerator<LLMEvent> {
     try {
-      const tools =
-        specifications.length > 0 ? toTools(specifications) : undefined;
-
-      const events = await this.client.chat.completions.create({
-        model: this.modelId,
-        messages: toMessages(systemPromptToText(prompt), conversation),
-        stream: true,
-        temperature: this.temperature ?? undefined,
-        reasoning_effort: toReasoningParam(
-          this.reasoningEffort,
-          this.modelConfig.useNativeLightReasoning
-        ),
-        tool_choice: toToolChoiceParam(specifications, forceToolCall),
-        ...(tools ? { tools } : {}),
-        response_format: toOutputFormatParam(this.responseFormat),
-      });
-
+      const events = await this.client.chat.completions.create(payload);
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {

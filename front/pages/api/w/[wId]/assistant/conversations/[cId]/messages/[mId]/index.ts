@@ -161,21 +161,24 @@ async function handler(
 
       const renderedMessage = renderRes.value[0];
 
-      if (isUserMessageType(renderedMessage)) {
-        const conversationRes = await getConversation(auth, conversation.sId);
+      const conversationRes = await getConversation(auth, conversation.sId);
 
-        if (conversationRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Unable to get the conversation.",
-            },
-          });
-        }
+      if (conversationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Unable to get the conversation.",
+          },
+        });
+      }
+
+      const fullConversation = conversationRes.value;
+
+      if (isUserMessageType(renderedMessage)) {
         const deleteResult = await softDeleteUserMessage(auth, {
           message: renderedMessage,
-          conversation: conversationRes.value,
+          conversation: fullConversation,
         });
         if (deleteResult.isErr()) {
           return apiError(req, res, {
@@ -189,7 +192,7 @@ async function handler(
       } else if (isAgentMessageType(renderedMessage)) {
         const deleteResult = await softDeleteAgentMessage(auth, {
           message: renderedMessage,
-          conversation: conversation.toJSON(),
+          conversation: fullConversation,
         });
         if (deleteResult.isErr()) {
           return apiError(req, res, {

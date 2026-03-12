@@ -8,6 +8,7 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare archivedAt: CreationOptional<Date | null>;
 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
@@ -28,6 +29,10 @@ ProjectMetadataModel.init(
     },
     description: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    archivedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },

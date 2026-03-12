@@ -16,10 +16,10 @@ import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_
 import { executeWithLock } from "@app/lib/lock";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
@@ -131,6 +131,9 @@ export async function createDataSourceAndConnectorForProject(
         coreProjectId = dustProject.value.project.project_id.toString();
 
         // Create Core API data source
+        const credentials =
+          await ProviderCredentialResource.getCredentials(auth);
+
         const dustDataSource = await coreAPI.createDataSource({
           projectId: coreProjectId,
           config: {
@@ -147,7 +150,7 @@ export async function createDataSourceAndConnectorForProject(
               shadow_write_cluster: null,
             },
           },
-          credentials: dustManagedCredentials(),
+          credentials,
           name: dataSourceName,
         });
 

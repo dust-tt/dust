@@ -99,6 +99,10 @@ const IndustriesMenuConfig: MenuConfig = {
       href: "/home/industry/b2b-saas",
     },
     {
+      title: "Consulting",
+      href: "/home/industry/consulting",
+    },
+    {
       title: "Financial Services",
       href: "/home/industry/financial-services",
     },
@@ -167,6 +171,12 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/productivity",
     },
     {
+      title: "",
+    },
+    {
+      title: "",
+    },
+    {
       title: IndustriesMenuConfig.title,
     },
     IndustriesMenuConfig.items[0],
@@ -174,6 +184,7 @@ const SolutionsMenuConfig: MenuConfig = {
     IndustriesMenuConfig.items[2],
     IndustriesMenuConfig.items[3],
     IndustriesMenuConfig.items[4],
+    IndustriesMenuConfig.items[5],
   ],
 };
 
@@ -216,6 +227,10 @@ const ProductMenuConfig: MenuConfig = {
       title: "Frames",
       href: "/home/frames",
     },
+    {
+      title: "Integrations",
+      href: "/integrations",
+    },
   ],
 };
 
@@ -231,6 +246,10 @@ const BuildMenuConfig: MenuConfig = {
       title: "Guides & Tutorials",
       href: "https://docs.dust.tt/docs/use-cases",
       isExternal: true,
+    },
+    {
+      title: "Academy",
+      href: "/academy",
     },
   ],
 };
@@ -288,9 +307,7 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     BuildMenuConfig.items[0],
     BuildMenuConfig.items[1],
-    {
-      title: "",
-    },
+    BuildMenuConfig.items[2],
     {
       title: "",
     },
@@ -330,7 +347,7 @@ export const menuConfig: DocsConfig = {
     {
       title: SolutionsMenuConfig.title,
       label: "Dust for...",
-      rows: 6,
+      rows: 7,
       items: SolutionsMenuConfig.items,
     },
     {

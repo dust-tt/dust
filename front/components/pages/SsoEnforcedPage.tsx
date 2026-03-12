@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
+import Custom404 from "@app/pages/404";
 import { Button, Logo } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 export function SsoEnforcedPage() {
-  const router = useAppRouter();
   const workspaceId = useSearchParam("workspaceId");
   const returnTo = useSearchParam("returnTo");
   const { user } = useUser();
@@ -24,11 +24,9 @@ export function SsoEnforcedPage() {
   }, [organization, returnTo]);
 
   // Redirect to 404 if no workspaceId or no matching org.
-  useEffect(() => {
-    if (!workspaceId || (user && !organization)) {
-      void router.replace("/404");
-    }
-  }, [workspaceId, user, organization, router]);
+  if (!workspaceId || (user && !organization)) {
+    return <Custom404 />;
+  }
 
   if (!loginUrl) {
     return null;

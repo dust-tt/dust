@@ -308,7 +308,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           return handled;
         }),
       // Handle Cmd+ArrowRight (Mac) / Ctrl+ArrowRight (Windows/Linux) and End key to jump to end of line
-      "Mod-ArrowRight": jumpToEndOfLine,
+      "Cmd-ArrowRight": jumpToEndOfLine,
       End: jumpToEndOfLine,
     };
   },

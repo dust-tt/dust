@@ -71,12 +71,6 @@ export function usePatchAgentSuggestions({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSuggestions } = useAgentSuggestions({
-    agentConfigurationId,
-    workspaceId,
-    state: ["pending"],
-    disabled: true,
-  });
 
   const patchSuggestions = useCallback(
     async (
@@ -112,7 +106,6 @@ export function usePatchAgentSuggestions({
           return null;
         }
 
-        void mutateSuggestions();
         const data = await res.json();
         return data;
       } catch {
@@ -123,7 +116,7 @@ export function usePatchAgentSuggestions({
         return null;
       }
     },
-    [agentConfigurationId, mutateSuggestions, sendNotification, workspaceId]
+    [agentConfigurationId, sendNotification, workspaceId]
   );
 
   return { patchSuggestions };

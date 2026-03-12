@@ -1,3 +1,4 @@
+import type { listOwners } from "@app/lib/api/actions/servers/hubspot/client";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 
 export interface HubSpotObjectSummary {
@@ -166,6 +167,26 @@ export function formatTransformedPropertiesAsText(
 
   const typeText = creatableOnly ? "creatable properties" : "properties";
   return `Found ${properties.length} ${typeText} for ${objectType}:\n\n${formatted}`;
+}
+
+export function formatOwnersAsText(
+  owners: Awaited<ReturnType<typeof listOwners>>
+): string {
+  const formatted = owners
+    .map((owner) => {
+      const name = [owner.firstName, owner.lastName].filter(Boolean).join(" ");
+      let text = `${name || "Unnamed Owner"} (ID: ${owner.id})`;
+      if (owner.email) {
+        text += ` - ${owner.email}`;
+      }
+      if (owner.archived) {
+        text += ` [archived]`;
+      }
+      return text;
+    })
+    .join("\n\n");
+
+  return `${owners.length} owner(s):\n\n${formatted}`;
 }
 
 export function formatHubSpotCreateSuccess(

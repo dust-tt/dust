@@ -49,7 +49,7 @@ export function SkillDetailsButtonBar({
         {skill.canWrite && (
           <Button
             size="sm"
-            tooltip="Edit agent"
+            tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
             variant="outline"
             icon={PencilSquareIcon}

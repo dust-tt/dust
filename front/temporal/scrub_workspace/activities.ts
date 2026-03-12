@@ -25,6 +25,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -126,6 +127,7 @@ export async function scrubWorkspaceData({
   await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
+  await deleteSkills(auth);
   await deleteOnboardingTasks(auth);
   await deleteTags(auth);
   await deleteDatasources(auth);
@@ -230,6 +232,10 @@ async function archiveAssistants(auth: Authenticator) {
 
 async function deleteAgentMemories(auth: Authenticator) {
   await AgentMemoryResource.deleteAllForWorkspace(auth);
+}
+
+async function deleteSkills(auth: Authenticator) {
+  await SkillResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteOnboardingTasks(auth: Authenticator) {

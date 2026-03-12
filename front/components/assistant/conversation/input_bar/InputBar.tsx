@@ -12,7 +12,6 @@ import {
   useConversationSkills,
   useConversationTools,
 } from "@app/hooks/conversations";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -83,19 +82,12 @@ export const InputBar = React.memo(function InputBar({
     DataSourceViewContentNode[]
   >([]);
 
+  const { animate, setAnimate, getAndClearSelectedAgent, fileUploaderService } =
+    useContext(InputBarContext);
+
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
-  });
-
-  // Files upload.
-
-  const fileUploaderService = useFileUploaderService({
-    owner,
-    useCase: "conversation",
-    useCaseMetadata: conversation
-      ? { conversationId: conversation.sId }
-      : undefined,
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -118,8 +110,6 @@ export const InputBar = React.memo(function InputBar({
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, setAnimate, getAndClearSelectedAgent } =
-    useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedAgent = useMemo(
     () => getAndClearSelectedAgent(),

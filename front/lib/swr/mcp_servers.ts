@@ -12,6 +12,7 @@ import type {
   MCPServerTypeWithViews,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   MCPServerConnectionConnectionType,
@@ -280,27 +281,34 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
   const createInternalMCPServer = async ({
     name,
     oauthConnection,
+    useCase,
     includeGlobal,
     sharedSecret,
     customHeaders,
+    viewName,
   }: {
     name: string;
-    oauthConnection?: MCPConnectionType;
     includeGlobal: boolean;
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
-  }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
+    viewName?: string;
+  } & (
+    | { oauthConnection: MCPConnectionType; useCase?: never }
+    | { oauthConnection?: never; useCase: MCPOAuthUseCase }
+    | { oauthConnection?: never; useCase?: never }
+  )): Promise<Result<CreateMCPServerResponseBody, Error>> => {
     const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
         serverType: "internal",
-        useCase: oauthConnection?.useCase,
+        useCase: oauthConnection?.useCase ?? useCase,
         connectionId: oauthConnection?.connectionId,
         includeGlobal,
         ...(sharedSecret !== undefined ? { sharedSecret } : {}),
         ...(customHeaders !== undefined ? { customHeaders } : {}),
+        ...(viewName !== undefined ? { viewName } : {}),
       }),
     });
 
@@ -660,15 +668,18 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
+    credentialId,
     mcpServerId,
     mcpServerDisplayName,
     provider,
   }: {
-    connectionId: string;
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
-  }): Promise<PostConnectionResponseBody | null> => {
+  } & (
+    | { connectionId: string; credentialId?: never }
+    | { connectionId?: never; credentialId: string }
+  )): Promise<PostConnectionResponseBody | null> => {
     const response = await clientFetch(
       `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
       {
@@ -678,6 +689,7 @@ export function useCreateMCPServerConnection({
         },
         body: JSON.stringify({
           connectionId,
+          credentialId,
           mcpServerId,
           provider,
         }),
@@ -849,6 +861,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
+  const regionContext = useRegionContext();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -905,6 +918,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         provider,
         useCase,
         extraConfig,
+        regionInfo: regionContext.regionInfo,
       });
 
       if (cRes.isErr()) {

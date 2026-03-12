@@ -24,6 +24,7 @@ import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/projec
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type {
+  StructuredSystemPrompt,
   SystemPromptContext,
   SystemPromptSections,
 } from "@app/lib/api/llm/types/options";
@@ -270,7 +271,7 @@ function constructSkillsSection({
           `- **${name}**: ${agentFacingDescription}`
       )
       .join("\n");
-    skillsSection += skillList + "\n";
+    skillsSection += skillList + "\n\n";
   }
 
   return skillsSection;
@@ -404,6 +405,8 @@ export function constructPromptMultiActions(
     equippedSkills,
     memoriesContext,
     toolsetsContext,
+    userContext,
+    workspaceContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -418,6 +421,8 @@ export function constructPromptMultiActions(
     equippedSkills: SkillResource[];
     memoriesContext?: string;
     toolsetsContext?: string;
+    userContext?: string;
+    workspaceContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -429,6 +434,7 @@ export function constructPromptMultiActions(
   // Only enabled for `deep-dive` and `dust(-x)` agents.
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.SIDEKICK ||
     isDustLikeAgent(agentConfiguration.sId);
 
   const instructionsContent = constructInstructionsSection({
@@ -461,17 +467,16 @@ export function constructPromptMultiActions(
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
   if (hasStaticInstructions) {
-    // Tuple form [instructions, context] for prompt caching.
+    // Structured form with 3 cache tiers, ordered from most stable to most volatile.
     //
-    // The instructions block is cached across calls. It contains content that is
-    // stable for a given agent configuration: agent instructions, tools
-    // (directives + server listing), skills, format docs, and guidelines.
-    // Tools and skills can vary when JIT servers or mid-conversation skill
-    // activation occur, but this is uncommon enough that the cache hit rate
-    // is still favorable.
+    // Instructions (long cache): stable per agent config — agent instructions,
+    // tools (directives + server listing), skills, format docs, and guidelines.
     //
-    // The context block contains per-call dynamic content: date, conversation
-    // project, and user memories.
+    // Shared context (short cache): workspace-scoped data shared across users —
+    // date, project context, toolsets, workspace info. A cache breakpoint here
+    // lets different users in the same workspace share this prefix.
+    //
+    // Ephemeral context (no breakpoint): per-user data — memories, user profile.
     const fullInstructions = [
       instructionsContent,
       toolsSection,
@@ -483,17 +488,25 @@ export function constructPromptMultiActions(
       .filter((s) => s.trim() !== "")
       .join("\n");
 
-    const dynamicContext: SystemPromptContext[] = [
+    const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
       { role: "context" as const, content: projectContextSection },
-      { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: toolsetsContext ?? "" },
+      { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
-    return [
-      [{ role: "instruction", content: fullInstructions }],
-      dynamicContext,
-    ];
+    const ephemeralContext: SystemPromptContext[] = [
+      { role: "context" as const, content: memoriesContext ?? "" },
+      { role: "context" as const, content: userContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
+
+    const structured: StructuredSystemPrompt = {
+      instructions: [{ role: "instruction", content: fullInstructions }],
+      sharedContext,
+      ephemeralContext,
+    };
+
+    return structured;
   }
 
   // Flat context-only form: everything goes into context. Original section order.
@@ -506,7 +519,10 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: attachmentsSection },
     { role: "context" as const, content: pastedContentSection },
     { role: "context" as const, content: guidelinesSection },
+    { role: "context" as const, content: toolsetsContext ?? "" },
     { role: "context" as const, content: memoriesContext ?? "" },
+    { role: "context" as const, content: userContext ?? "" },
+    { role: "context" as const, content: workspaceContext ?? "" },
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;

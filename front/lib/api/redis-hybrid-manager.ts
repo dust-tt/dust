@@ -1,12 +1,15 @@
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { createRedisStreamClient } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import tracer from "@app/logger/tracer";
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
 import { commandOptions } from "redis";
+
+const statsDClient = getStatsDClient();
 
 type EventCallback = (event: EventPayload | "close") => void;
 
@@ -236,12 +239,15 @@ class RedisHybridManager {
             origin,
             attempt: i + 1,
             maxAttempts: MAX_PUBLISH_ATTEMPTS,
+            eventId,
           },
           "Error publishing to Redis, retrying..."
         );
-        // Sleep for ~10ms to avoid flooding the Redis stream with events.
+        // Sleep for at least 5ms to avoid flooding the Redis stream with events.
+        // Add jitter to avoid re-conflicting when restarting
+        // increase jitter for each failure to avoid even more conflicts
         await new Promise((resolve) =>
-          setTimeout(resolve, 5 + Math.floor(Math.random() * 5))
+          setTimeout(resolve, 5 + Math.floor(Math.random() * 5 * (i + 1)))
         );
       }
     }
@@ -265,8 +271,11 @@ class RedisHybridManager {
   public async subscribe(
     channelName: string,
     callback: EventCallback,
-    lastEventId: string | null = null,
-    origin: string
+    origin: string,
+    {
+      lastEventId = null,
+      skipHistory = false,
+    }: { lastEventId?: string | null; skipHistory?: boolean } = {}
   ): Promise<{
     history: EventPayload[];
     unsubscribe: () => void;
@@ -302,41 +311,75 @@ class RedisHybridManager {
           channelSetupDurationMs
         );
 
-        const eventsDuringHistoryFetch: EventPayload[] = [];
-        const eventsDuringHistoryFetchCallback: EventCallback = (
-          event: EventPayload | "close"
-        ) => {
-          if (event !== "close") {
-            eventsDuringHistoryFetch.push(event);
-          }
-        };
+        const history: EventPayload[] = [];
 
-        // Add to subscribers map during history fetch to avoid race condition
-        this.subscribers
-          .get(pubSubChannelName)!
-          .add(eventsDuringHistoryFetchCallback);
+        if (skipHistory) {
+          // No history needed — just register the callback for real-time pub/sub events.
+          this.subscribers.get(pubSubChannelName)!.add(callback);
+        } else {
+          const eventsDuringHistoryFetch: EventPayload[] = [];
+          const eventsDuringHistoryFetchCallback: EventCallback = (
+            event: EventPayload | "close"
+          ) => {
+            if (event !== "close") {
+              eventsDuringHistoryFetch.push(event);
+            }
+          };
 
-        const historyFetchStartMs = Date.now();
-        const { events: history, hasMore: historyHasMore } =
-          await this.getHistory(
-            streamClient,
-            streamName,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            lastEventId || "0-0"
+          // Add to subscribers map during history fetch to avoid race condition
+          this.subscribers
+            .get(pubSubChannelName)!
+            .add(eventsDuringHistoryFetchCallback);
+
+          const historyFetchStartMs = Date.now();
+          const { events: historyEvents, hasMore: historyHasMore } =
+            await this.getHistory(
+              streamClient,
+              streamName,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              lastEventId || "0-0"
+            );
+          const historyFetchDurationMs = Date.now() - historyFetchStartMs;
+          statsDClient.distribution(
+            "sse.subscribe.history_fetch_duration_ms",
+            historyFetchDurationMs
           );
-        const historyFetchDurationMs = Date.now() - historyFetchStartMs;
-        statsDClient.distribution(
-          "sse.subscribe.history_fetch_duration_ms",
-          historyFetchDurationMs
-        );
 
-        // Remove the temporary callback from the subscribers map
-        this.subscribers
-          .get(pubSubChannelName)!
-          .delete(eventsDuringHistoryFetchCallback);
+          // Remove the temporary callback from the subscribers map
+          this.subscribers
+            .get(pubSubChannelName)!
+            .delete(eventsDuringHistoryFetchCallback);
 
-        // Immediately add the real callback to the subscribers map
-        this.subscribers.get(pubSubChannelName)!.add(callback);
+          // Immediately add the real callback to the subscribers map
+          this.subscribers.get(pubSubChannelName)!.add(callback);
+
+          // Append the events during history fetch to the history, if any
+          const dedupeStartMs = Date.now();
+          history.push(...historyEvents);
+          if (eventsDuringHistoryFetch.length > 0) {
+            // Use Set for O(1) deduplication instead of O(n) find
+            const historyIds = new Set(history.map((h) => h.id));
+
+            for (const event of eventsDuringHistoryFetch) {
+              // deduplicate events
+              if (!historyIds.has(event.id)) {
+                history.push(event);
+              }
+            }
+            // Sort the history just in case
+            history.sort((a, b) => a.id.localeCompare(b.id));
+          }
+          const dedupeDurationMs = Date.now() - dedupeStartMs;
+          statsDClient.distribution(
+            "sse.subscribe.dedupe_duration_ms",
+            dedupeDurationMs
+          );
+
+          if (historyHasMore) {
+            // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
+            callback("close");
+          }
+        }
 
         // Track active subscription count for monitoring.
         this.activeSubscriptionCount++;
@@ -344,34 +387,7 @@ class RedisHybridManager {
           "sse.active_subscriptions",
           this.activeSubscriptionCount
         );
-        // Track subscription rate (increment counter to get rate per second).
         statsDClient.increment("sse.subscription_established", 1);
-
-        // Append the events during history fetch to the history, if any
-        const dedupeStartMs = Date.now();
-        if (eventsDuringHistoryFetch.length > 0) {
-          // Use Set for O(1) deduplication instead of O(n) find
-          const historyIds = new Set(history.map((h) => h.id));
-
-          for (const event of eventsDuringHistoryFetch) {
-            // deduplicate events
-            if (!historyIds.has(event.id)) {
-              history.push(event);
-            }
-          }
-          // Sort the history just in case
-          history.sort((a, b) => a.id.localeCompare(b.id));
-        }
-        const dedupeDurationMs = Date.now() - dedupeStartMs;
-        statsDClient.distribution(
-          "sse.subscribe.dedupe_duration_ms",
-          dedupeDurationMs
-        );
-
-        if (historyHasMore) {
-          // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
-          callback("close");
-        }
 
         // Track total subscription establishment time.
         const subscribeDurationMs = Date.now() - subscribeStartMs;
@@ -617,8 +633,8 @@ class RedisHybridManager {
           eventEmitter.emit("error", error);
         }
       },
-      lastEventId,
-      origin
+      origin,
+      { lastEventId }
     );
 
     // Create the async iterator using fromEvent.

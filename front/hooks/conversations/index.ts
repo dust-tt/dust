@@ -1,8 +1,8 @@
 export { useAgentMessageSkills } from "./useAgentMessageSkills";
+export { useAgentMessageTools } from "./useAgentMessageTools";
 export { useCancelMessage } from "./useCancelMessage";
 export { useConversation } from "./useConversation";
 export { useConversationFeedbacks } from "./useConversationFeedbacks";
-export { useConversationFiles } from "./useConversationFiles";
 export { useConversationMarkAsRead } from "./useConversationMarkAsRead";
 export {
   useConversationMessage,

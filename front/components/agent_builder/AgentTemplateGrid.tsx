@@ -4,19 +4,14 @@ import type {
   TemplateTagCodeType,
   TemplateTagsType,
 } from "@app/types/assistant/templates";
-import {
-  AssistantCard,
-  CardGrid,
-  ContextItem,
-  LargeAssistantCard,
-} from "@dust-tt/sparkle";
+import { CardGrid, ContextItem, LargeAssistantCard } from "@dust-tt/sparkle";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
   openTemplateModal: (templateId: string) => void;
   templateTagsMapping: TemplateTagsType;
   selectedTags: TemplateTagCodeType[];
-  hasCopilot: boolean;
+  hasSidekick: boolean;
   onTemplateClick: (templateId: string) => void;
 }
 
@@ -25,7 +20,7 @@ export function AgentTemplateGrid({
   openTemplateModal,
   templateTagsMapping,
   selectedTags,
-  hasCopilot,
+  hasSidekick,
   onTemplateClick,
 }: AgentTemplateGridProps) {
   if (!templates.length) {
@@ -53,10 +48,10 @@ export function AgentTemplateGrid({
                 title={templateTagsMapping[tagName].label}
                 hasBorder={false}
               />
-              {hasCopilot ? (
+              {hasSidekick ? (
                 <CardGrid>
                   {templatesForTag.map((template) => (
-                    <AssistantCard
+                    <LargeAssistantCard
                       key={template.sId}
                       title={template.handle}
                       pictureUrl={template.pictureUrl}

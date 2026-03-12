@@ -1,15 +1,13 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import { Slot } from "@radix-ui/react-slot";
+import { Counter } from "@sparkle/components/Counter";
+import { Icon } from "@sparkle/components/Icon";
 import {
-  Counter,
-  Icon,
   LinkWrapper,
   type LinkWrapperProps,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components/";
+} from "@sparkle/components/LinkWrapper";
 import type { SpinnerProps } from "@sparkle/components/Spinner";
+import { Spinner } from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

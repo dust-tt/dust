@@ -33,7 +33,7 @@ export const EmailLayout = ({
           {children}
         </div>
         <div style={{ width: "100%", textAlign: "left", marginTop: "20px" }}>
-          <a href={config.getClientFacingUrl()} target="_new">
+          <a href={config.getStaticWebsiteUrl()} target="_new">
             <img
               alt="Dust Logo"
               style={{ margin: "0 auto", border: "0px" }}
@@ -56,7 +56,7 @@ export const EmailLayout = ({
           <div>
             Manage your notifications in{" "}
             <a
-              href={`${config.getClientFacingUrl()}/w/${workspace.id}/me`}
+              href={`${config.getAppUrl()}/w/${workspace.id}/me`}
               target="_blank"
               style={{ color: "#1C91FF" }}
             >

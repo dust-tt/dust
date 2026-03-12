@@ -77,6 +77,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       inputTokens: 2500,
       outputTokens: 180,
       cachedTokens: 0,
+      reasoningTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 2680,
       uncachedInputTokens: 2500,

@@ -40,7 +40,7 @@ export function Img({ src, alt, owner }: ImgProps) {
   // Show loading state while fetching metadata.
   if (isFileMetadataLoading) {
     return (
-      <Citation containerClassName="s-aspect-square s-w-48">
+      <Citation containerClassName="aspect-square w-48">
         <CitationImage
           imgSrc={viewURL.toString()}
           downloadUrl={downloadURL.toString()}
@@ -57,7 +57,7 @@ export function Img({ src, alt, owner }: ImgProps) {
   }
 
   return (
-    <Citation containerClassName="s-aspect-square s-w-48">
+    <Citation containerClassName="aspect-square w-48">
       <CitationImage
         imgSrc={viewURL.toString()}
         downloadUrl={downloadURL.toString()}

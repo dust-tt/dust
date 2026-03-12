@@ -208,8 +208,8 @@ export const mockSuggestionChanges = [
   ].join("\n"),
 ];
 
-// Copilot conversation item type
-export type CopilotConversationItem = {
+// Sidekick conversation item type
+export type SidekickConversationItem = {
   id: string;
   type: "agent" | "user";
   name: string;
@@ -217,8 +217,8 @@ export type CopilotConversationItem = {
   content: string;
 };
 
-// Fake copilot conversation items for agent builder demo
-export const mockCopilotConversationItems: CopilotConversationItem[] = [
+// Fake sidekick conversation items for agent builder demo
+export const mockSidekickConversationItems: SidekickConversationItem[] = [
   {
     id: "intro-agent",
     type: "agent",

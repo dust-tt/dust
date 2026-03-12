@@ -159,6 +159,14 @@ async function handler(
                   message: "Could not find the associated MCP server views.",
                 },
               });
+            case "name_conflict":
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: updateResult.error.message,
+                },
+              });
             default:
               assertNever(updateResult.error.code);
           }
@@ -257,13 +265,45 @@ async function updateNameAndDescriptionForMCPServerViews(
     description?: string;
   }
 ): Promise<
-  Result<undefined, DustError<"mcp_server_view_not_found" | "unauthorized">>
+  Result<
+    undefined,
+    DustError<"mcp_server_view_not_found" | "unauthorized" | "name_conflict">
+  >
 > {
   const r = await getAllMCPServerViewsInWorkspace(auth, mcpServerId);
   if (r.isErr()) {
     return r;
   }
   const views = r.value;
+
+  // Check for name conflicts in the system space (which contains all tools).
+  // Names are set on the system view and propagate to all spaces, so checking
+  // the system space is sufficient.
+  if (name) {
+    const systemView = views.find((v) => v.space.kind === "system");
+    if (systemView) {
+      const systemViews = await MCPServerViewResource.listBySpace(
+        auth,
+        systemView.space
+      );
+      const hasConflict = systemViews.some((v) => {
+        if (v.mcpServerId === mcpServerId) {
+          return false;
+        }
+        const viewJson = v.toJSON();
+        return (viewJson.name ?? viewJson.server.name) === name;
+      });
+
+      if (hasConflict) {
+        return new Err(
+          new DustError(
+            "name_conflict",
+            `An existing tool is already using the name "${name}".`
+          )
+        );
+      }
+    }
+  }
 
   for (const view of views) {
     const result = await view.updateNameAndDescription(auth, name, description);

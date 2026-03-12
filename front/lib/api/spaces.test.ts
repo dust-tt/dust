@@ -29,21 +29,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://fake-core-api-url",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://fake-connectors-api-url",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-  },
-}));
-
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
@@ -503,6 +488,79 @@ describe("createSpaceAndGroup", () => {
       } finally {
         // Restore original value
         plan.limits.vaults.maxVaults = originalMaxVaults;
+      }
+    });
+
+    it("should allow creating a project when workspace limit is reached", async () => {
+      const plan = adminAuth.getNonNullablePlan();
+      const originalMaxVaults = plan.limits.vaults.maxVaults;
+
+      const testMaxVaults = 3;
+      plan.limits.vaults.maxVaults = testMaxVaults;
+
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      try {
+        const allSpaces = await SpaceResource.listWorkspaceSpaces(
+          adminAuth,
+          undefined
+        );
+        const regularSpaces = allSpaces.filter((s) => s.kind === "regular");
+        const spacesToCreate = Math.max(
+          0,
+          testMaxVaults - regularSpaces.length
+        );
+
+        for (let i = 0; i < spacesToCreate; i++) {
+          const result = await createSpaceAndGroup(
+            adminAuth,
+            {
+              name: `Limit Test Space ${i}`,
+              isRestricted: true,
+              spaceKind: "regular",
+              managementMode: "manual",
+              memberIds: [],
+            },
+            { ignoreWorkspaceLimit: false }
+          );
+          expect(result.isOk()).toBe(true);
+        }
+
+        // Creating another regular space should fail
+        const limitResult = await createSpaceAndGroup(adminAuth, {
+          name: "Would Exceed Limit",
+          isRestricted: true,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        });
+        expect(limitResult.isErr()).toBe(true);
+        if (limitResult.isErr()) {
+          expect(limitResult.error).toBeInstanceOf(DustError);
+          expect(limitResult.error.code).toBe("limit_reached");
+        }
+
+        // Creating a project should still succeed (limit is not checked for projects)
+        const projectResult = await createSpaceAndGroup(adminAuth, {
+          name: "Project When At Limit",
+          isRestricted: false,
+          spaceKind: "project",
+          managementMode: "manual",
+          memberIds: [],
+        });
+        expect(projectResult.isOk()).toBe(true);
+        if (projectResult.isOk()) {
+          expect(projectResult.value.kind).toBe("project");
+          expect(projectResult.value.name).toBe("Project When At Limit");
+        }
+      } finally {
+        plan.limits.vaults.maxVaults = originalMaxVaults;
+        createConnectorSpy.mockRestore();
       }
     });
 

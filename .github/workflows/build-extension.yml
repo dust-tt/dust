@@ -1,0 +1,42 @@
+name: Lint & Build (extension)
+
+on:
+  push:
+    paths:
+      - package-lock.json
+      - sdks/js/**
+      - extension/**
+      - .github/workflows/build-extension.yml
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+          build-sdks: "true"
+          build-sparkle: "true"
+      - working-directory: extension
+        run: npm run package:chrome:production
+        env:
+          DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+  tsgo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+          build-sdks: "true"
+          build-sparkle: "true"
+      - name: Typecheck
+        working-directory: extension
+        run: npm run tsgo

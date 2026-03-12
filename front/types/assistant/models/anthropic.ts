@@ -69,7 +69,10 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-  featureFlag: "claude_4_opus_feature",
+  supportsBatchProcessing: true,
+  availableIfOneOf: {
+    featureFlag: "claude_4_opus_feature",
+  },
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -92,6 +95,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -104,7 +108,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "Anthropic's Claude 4.5 Sonnet model with enhanced reasoning and tool use (200k context).",
-  shortDescription: "Anthropic's latest model.",
+  shortDescription: "Anthropic's previous balanced model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 64_000,
@@ -116,6 +120,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -137,6 +142,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -170,7 +176,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description:
     "Anthropic's Claude 4.5 Haiku model, cost effective and high throughput (200k context).",
-  shortDescription: "Anthropic's cost-effective model.",
+  shortDescription: "Anthropic's latest super-fast model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 64_000,
@@ -180,6 +186,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -204,7 +211,10 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
-  featureFlag: "claude_4_5_opus_feature",
+  supportsBatchProcessing: true,
+  availableIfOneOf: {
+    featureFlag: "claude_4_5_opus_feature",
+  },
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -229,9 +239,13 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
-  enterpriseOnly: true,
+  availableIfOneOf: {
+    enterprise: true,
+    featureFlag: "claude_4_5_opus_feature",
+  },
   customBetas: [
     "auto-thinking-2026-01-12",
     "effort-2025-11-24",
@@ -245,6 +259,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude Sonnet 4.6",
   // 200k, reducing it temporarily to avoid "prompt too long" errors on dust agent
   // due to reasoning tokens not being counted when estimating prompt size in countTokensForMessages
+  // Keeping 190k while Anthropic token count API rate limit hasn't been increased
   contextSize: 190_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
@@ -263,6 +278,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   customBetas: [

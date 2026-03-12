@@ -26,6 +26,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
         server_tool_use: null,
         inference_geo: null,
         iterations: null,
+        speed: null,
       },
       container: null,
       context_management: null,

@@ -5,7 +5,11 @@ import {
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
 import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  globalAgentInjectsMemory,
+  globalAgentInjectsUserContext,
+  globalAgentInjectsWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   normalizePrompt,
   systemPromptToText,
@@ -301,15 +305,15 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const sections = constructPromptMultiActions(authenticator1, params);
 
-    // Regular agents return a flat SystemPromptContext[] (no tuple).
-    const [instructions, context] = normalizePrompt(sections);
+    // Regular agents return a flat SystemPromptContext[] (no structured prompt).
+    const { instructions, sharedContext } = normalizePrompt(sections);
     expect(instructions).toHaveLength(0);
-    expect(context.length).toBeGreaterThan(0);
-    expect(context[0].content).toContain("# INSTRUCTIONS");
-    expect(context.every((s) => s.role === "context")).toBe(true);
+    expect(sharedContext.length).toBeGreaterThan(0);
+    expect(sharedContext[0].content).toContain("# INSTRUCTIONS");
+    expect(sharedContext.every((s) => s.role === "context")).toBe(true);
   });
 
-  it("should return tuple with instructions for deep-dive agent", () => {
+  it("should return structured prompt with instructions for deep-dive agent", () => {
     const deepDiveConfig = {
       ...agentConfig1,
       sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
@@ -328,13 +332,66 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const sections = constructPromptMultiActions(authenticator1, params);
 
-    // Deep-dive returns the tuple form [instructions, context].
-    const [instructions, context] = normalizePrompt(sections);
+    // Deep-dive returns the structured form with instructions separated.
+    const { instructions, sharedContext, ephemeralContext } =
+      normalizePrompt(sections);
     expect(instructions).toHaveLength(1);
     expect(instructions[0].role).toBe("instruction");
     expect(instructions[0].content).toContain("# INSTRUCTIONS");
-    expect(context.length).toBeGreaterThan(0);
-    expect(context.every((s) => s.role === "context")).toBe(true);
+    expect(sharedContext.length).toBeGreaterThan(0);
+    expect(sharedContext.every((s) => s.role === "context")).toBe(true);
+    // Deep-dive has no per-user context (no memories/user profile).
+    expect(ephemeralContext).toHaveLength(0);
+  });
+
+  it("should place workspace context in shared tier and user context in ephemeral tier for sidekick agent", () => {
+    const sidekickConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.SIDEKICK,
+      scope: "global" as const,
+    };
+
+    const userCtx =
+      "<user_context>\n- Job function: Engineering\n- Preferred platforms: Slack\n</user_context>";
+    const workspaceCtx =
+      "<workspace_context>\n## AVAILABLE MODELS\n1 model available.\n</workspace_context>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: sidekickConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      userContext: userCtx,
+      workspaceContext: workspaceCtx,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    const { instructions, sharedContext, ephemeralContext } =
+      normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    // User/workspace context must NOT be in the cached instructions block.
+    expect(instructions[0].content).not.toContain("<user_context>");
+    expect(instructions[0].content).not.toContain("<workspace_context>");
+
+    // Workspace context belongs in the shared tier (cached across users).
+    const wsSection = sharedContext.find((s) =>
+      s.content.includes("<workspace_context>")
+    );
+    expect(wsSection).toBeDefined();
+    expect(wsSection?.content).toContain("AVAILABLE MODELS");
+
+    // User context belongs in the ephemeral tier (per-user).
+    const userSection = ephemeralContext.find((s) =>
+      s.content.includes("<user_context>")
+    );
+    expect(userSection).toBeDefined();
+    expect(userSection?.content).toContain("Engineering");
   });
 
   it("should include memoriesContext in prompt output when provided", () => {
@@ -378,7 +435,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("<existing_memories>");
   });
 
-  it("should keep memory_guidelines in instructions but existing_memories in context for dust-like agents", () => {
+  it("should keep memory_guidelines in instructions but existing_memories in ephemeral tier for dust-like agents", () => {
     const dustConfig = {
       ...agentConfig1,
       sId: GLOBAL_AGENTS_SID.DUST,
@@ -401,15 +458,15 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
-    const [instructions, context] = normalizePrompt(sections);
+    const { instructions, ephemeralContext } = normalizePrompt(sections);
 
-    // Dust-like agents use the tuple form: memory_guidelines are in instructions.
+    // Dust-like agents: memory_guidelines are in instructions.
     expect(instructions).toHaveLength(1);
     expect(instructions[0].content).toContain("<memory_guidelines>");
     expect(instructions[0].content).not.toContain("<existing_memories>");
 
-    // existing_memories should be in a separate context section.
-    const memoriesSection = context.find((s) =>
+    // existing_memories should be in the ephemeral tier (per-user).
+    const memoriesSection = ephemeralContext.find((s) =>
       s.content.includes("<existing_memories>")
     );
     expect(memoriesSection).toBeDefined();
@@ -441,6 +498,39 @@ describe("globalAgentInjectsMemory", () => {
     expect(globalAgentInjectsMemory("my-custom-agent")).toBe(false);
     expect(globalAgentInjectsMemory("random-string")).toBe(false);
     expect(globalAgentInjectsMemory("")).toBe(false);
+  });
+});
+
+describe("globalAgentInjectsUserContext", () => {
+  it("should return true for sidekick agents", () => {
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
+      true
+    );
+  });
+
+  it("should return false for non-sidekick agents", () => {
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DUST)).toBe(false);
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(
+      false
+    );
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.GPT4)).toBe(false);
+  });
+});
+
+describe("globalAgentInjectsWorkspaceContext", () => {
+  it("should return true for sidekick agents", () => {
+    expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
+      true
+    );
+  });
+
+  it("should return false for non-sidekick agents", () => {
+    expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DUST)).toBe(
+      false
+    );
+    expect(
+      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DEEP_DIVE)
+    ).toBe(false);
   });
 });
 

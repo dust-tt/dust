@@ -7,6 +7,13 @@
  * adapter.
  */
 
+import type {
+  NetworkPolicy,
+  SandboxImageId,
+  SandboxResources,
+} from "@app/lib/api/sandbox/image/types";
+import type { Result } from "@app/types/shared/result";
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -21,12 +28,17 @@ export interface SandboxHandle {
 
 /**
  * Configuration for provisioning a new sandbox.
+ * Flat structure derived from SandboxImage.toCreateConfig() with optional overrides.
  */
 export interface SandboxCreateConfig {
-  /** Template or image identifier. Provider-specific. */
-  templateId?: string;
-  /** Environment variables injected at creation time. */
+  /** Typed image identifier (name + tag) - required. Use getSandboxImage().toCreateConfig(). */
+  imageId: SandboxImageId;
+  /** Environment variables for the sandbox runtime. */
   envVars?: Record<string, string>;
+  /** Network egress policy. */
+  network?: NetworkPolicy;
+  /** Resource allocation for the sandbox. */
+  resources?: SandboxResources;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +71,21 @@ export interface FileEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown (or returned) when the provider no longer knows about a sandbox.
+ * E.g. E2B killed it after its lifetime expired.
+ */
+export class SandboxNotFoundError extends Error {
+  constructor(providerId: string) {
+    super(`Sandbox ${providerId} not found at provider.`);
+    this.name = "SandboxNotFoundError";
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Provider interface
 // ---------------------------------------------------------------------------
 
@@ -66,19 +93,20 @@ export interface FileEntry {
  * Contract that all sandbox providers must satisfy.
  *
  * Every method receives the provider-assigned `providerId` (from
- * SandboxHandle) to identify the target sandbox. Methods reject on failure.
+ * SandboxHandle) to identify the target sandbox. Methods return `Result` to
+ * signal recoverable failures — callers never need try/catch.
  */
 export interface SandboxProvider {
-  create(config: SandboxCreateConfig): Promise<SandboxHandle>;
-  wake(providerId: string): Promise<SandboxHandle>;
-  sleep(providerId: string): Promise<void>;
-  destroy(providerId: string): Promise<void>;
+  create(config: SandboxCreateConfig): Promise<Result<SandboxHandle, Error>>;
+  wake(providerId: string): Promise<Result<SandboxHandle, Error>>;
+  sleep(providerId: string): Promise<Result<void, Error>>;
+  destroy(providerId: string): Promise<Result<void, Error>>;
 
   exec(
     providerId: string,
     command: string,
     opts?: ExecOptions
-  ): Promise<ExecResult>;
+  ): Promise<Result<ExecResult, Error>>;
 
   writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
 

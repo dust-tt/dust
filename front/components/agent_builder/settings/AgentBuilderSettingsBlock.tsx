@@ -18,7 +18,7 @@ export function AgentBuilderSettingsBlock({
       <div className="space-y-5">
         <div className="flex items-end gap-8">
           <div className="flex-grow">
-            <AgentBuilderNameSection />
+            <AgentBuilderNameSection isCreatingNew={isCreatingNew} />
           </div>
           <AgentBuilderAvatarSection isCreatingNew={isCreatingNew} />
         </div>

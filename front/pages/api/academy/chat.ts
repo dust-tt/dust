@@ -3,7 +3,7 @@ import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { isString } from "@app/types/shared/utils/general";
 import jwt from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -137,7 +137,7 @@ export default async function handler(
   // Validate origin to ensure request comes from our website
   const origin = req.headers.origin;
   const referer = req.headers.referer;
-  const allowedOrigin = config.getClientFacingUrl();
+  const allowedOrigin = config.getStaticWebsiteUrl();
 
   const isValidOrigin =
     (origin !== undefined && origin.startsWith(allowedOrigin)) ||
@@ -221,7 +221,9 @@ export default async function handler(
     userName,
   } = bodyValidation.data;
 
-  const { ANTHROPIC_API_KEY } = dustManagedCredentials();
+  const ANTHROPIC_API_KEY = EnvironmentConfig.getOptionalEnvVariable(
+    "DUST_MANAGED_ANTHROPIC_API_KEY"
+  );
   if (!ANTHROPIC_API_KEY) {
     logger.error("DUST_MANAGED_ANTHROPIC_API_KEY is not configured");
     return apiError(req, res, {

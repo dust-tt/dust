@@ -1,4 +1,7 @@
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameterOverwrites,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
@@ -22,7 +25,9 @@ export type FireworksWhitelistedModelId =
 
 export const FIREWORKS_MODEL_CONFIGS: Record<
   FireworksWhitelistedModelId,
-  { overwrites: Omit<LLMParameters, "modelId"> }
+  {
+    overwrites: LLMParameterOverwrites;
+  }
 > = {
   [FIREWORKS_DEEPSEEK_V3P2_MODEL_ID]: {
     overwrites: {},

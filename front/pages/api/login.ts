@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import { lookupWorkspace } from "@app/lib/api/regions/lookup";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -96,6 +98,8 @@ async function handler(
       fullName: user.name,
       lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },
+    utmParams,
+    userCreated,
   });
 
   const isInviteOnOtherWorkspace =
@@ -108,7 +112,40 @@ async function handler(
       workspaceId
     );
     if (flow === "unauthorized") {
-      // Only happen if the workspace associated with workOSOrganizationId is not found.
+      // Workspace not found on this region: redirect to the other region's /api/login (cookie is shared).
+      const workspaceRegionRes = await lookupWorkspace(workspaceId);
+      const currentRegion = multiRegionsConfig.getCurrentRegion();
+      if (
+        workspaceRegionRes.isOk() &&
+        workspaceRegionRes.value &&
+        workspaceRegionRes.value !== currentRegion
+      ) {
+        logger.info(
+          {
+            userId: user.sId,
+            workspaceId,
+            targetRegion: workspaceRegionRes.value,
+            sessionIsSSO: session.isSSO,
+            sessionWorkspaceId: session.workspaceId,
+            sessionOrganizationId: session.organizationId,
+            sessionAuthenticationMethod: session.authenticationMethod,
+            sessionRegion: session.region,
+          },
+          "Enterprise connection: redirecting to other region"
+        );
+        const targetUrl = multiRegionsConfig.getRegionUrl(
+          workspaceRegionRes.value
+        );
+        res.redirect(`${targetUrl}/api/login`);
+        return;
+      }
+
+      logger.error(
+        { userId: user.sId, workspaceId },
+        "Enterprise connection : workspace not found"
+      );
+
+      // Workspace not in other region or lookup failed: show login error.
       res.redirect(
         `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
@@ -167,6 +204,8 @@ async function handler(
       if (error instanceof AuthFlowError) {
         logger.error(
           {
+            userId: user.sId,
+            workspaceId: targetWorkspaceId,
             error,
           },
           "Error during login flow."
@@ -186,6 +225,16 @@ async function handler(
         error.workspaceId,
         null
       );
+
+      logger.error(
+        {
+          userId: user.sId,
+          workspaceId: targetWorkspaceId,
+          error,
+        },
+        "SSO enforcement : redirecting to SSO login."
+      );
+
       res.redirect(
         `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
@@ -256,7 +305,7 @@ const buildPostLoginUrl = (
     utmParams?: UTMParams;
   }
 ) => {
-  let path = `${config.getAppUrl(true)}/w/${workspaceId}`;
+  let path = `${config.getAppUrl()}/w/${workspaceId}`;
   if (options?.welcome) {
     path += "/welcome";
   }
@@ -270,6 +319,10 @@ const buildPostLoginUrl = (
       searchParams.set(key, value);
     }
   }
+
+  const currentRegion = multiRegionsConfig.getCurrentRegion();
+  searchParams.set("region", currentRegion);
+  searchParams.set("regionUrl", multiRegionsConfig.getRegionUrl(currentRegion));
 
   const queryString = searchParams.toString();
   return queryString ? `${path}?${queryString}` : path;

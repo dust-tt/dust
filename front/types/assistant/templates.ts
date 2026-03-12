@@ -40,7 +40,7 @@ export type TemplateTagsType = Record<
 
 export type TemplateInfo = {
   templateId: string;
-  copilotInstructions: string | null;
+  sidekickInstructions: string | null;
 };
 
 export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
@@ -172,7 +172,7 @@ export const CreateTemplateFormSchema = t.type({
   timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
-  copilotInstructions: t.union([t.string, t.undefined]),
+  sidekickInstructions: t.union([t.string, t.undefined]),
   presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,

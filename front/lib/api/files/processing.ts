@@ -1,4 +1,12 @@
 import config from "@app/lib/api/config";
+import { isSupportedForAvatar } from "@app/lib/api/files/use_cases/avatar";
+import { isSupportedForConversation } from "@app/lib/api/files/use_cases/conversation";
+import { isSupportedForFoldersDocument } from "@app/lib/api/files/use_cases/folders_document";
+import { isSupportedForProjectContext } from "@app/lib/api/files/use_cases/project_context";
+import { isSupportedForSkillAttachment } from "@app/lib/api/files/use_cases/skill_attachment";
+import { isSupportedForToolOutput } from "@app/lib/api/files/use_cases/tool_output";
+import { isSupportedForUpsertDocument } from "@app/lib/api/files/use_cases/upsert_document";
+import { isSupportedForUpsertTable } from "@app/lib/api/files/use_cases/upsert_table";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
@@ -9,15 +17,8 @@ import logger from "@app/logger/logger";
 import type {
   AllSupportedFileContentType,
   FileUseCase,
-  SupportedFileContentType,
 } from "@app/types/files";
-import {
-  extensionsForContentType,
-  isInteractiveContentType,
-  isSupportedAudioContentType,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
-} from "@app/types/files";
+import { extensionsForContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -26,8 +27,6 @@ import {
 } from "@app/types/shared/text_extraction";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
@@ -47,45 +46,6 @@ type ProcessingFunction = (
 ) => Promise<Result<undefined, Error>>;
 
 // Images processing functions.
-const resizeAndUploadToPublicBucket: ProcessingFunction = async (
-  auth: Authenticator,
-  file: FileResource
-) => {
-  const result = await makeResizeAndUploadImageToFileStorage(
-    AVATAR_IMG_MAX_SIZE_PIXELS
-  )(auth, file);
-  if (result.isErr()) {
-    return result;
-  }
-  const readStream = file.getReadStream({
-    auth,
-    version: "processed",
-  });
-  const writeStream = file.getWriteStream({
-    auth,
-    version: "public",
-  });
-  try {
-    await pipeline(readStream, writeStream);
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        error: err,
-      },
-      "Failed to upload file to public url."
-    );
-
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
-    return new Err(
-      new Error(`Failed uploading to public bucket. ${errorMessage}`)
-    );
-  }
-};
 
 const createReadableFromUrl = async (url: string): Promise<Readable> => {
   const response = await untrustedFetch(url);
@@ -95,34 +55,57 @@ const createReadableFromUrl = async (url: string): Promise<Readable> => {
   return Readable.fromWeb(response.body);
 };
 
-const makeResizeAndUploadImageToFileStorage = (maxSize: string) => {
-  return async (auth: Authenticator, file: FileResource) =>
-    resizeAndUploadToFileStorage(auth, file, {
-      ImageHeight: maxSize,
-      ImageWidth: maxSize,
-    });
+const resizeImage: ProcessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+) => {
+  const maxSize =
+    file.useCase === "avatar"
+      ? AVATAR_IMG_MAX_SIZE_PIXELS
+      : CONVERSATION_IMG_MAX_SIZE_PIXELS;
+
+  const resizeResult = await resizeAndWriteToProcessed(auth, file, maxSize);
+  if (resizeResult.isErr()) {
+    return resizeResult;
+  }
+
+  // Avatar images are also copied to the public bucket.
+  if (file.useCase === "avatar") {
+    const readStream = file.getReadStream({ auth, version: "processed" });
+    const writeStream = file.getWriteStream({ auth, version: "public" });
+    try {
+      await pipeline(readStream, writeStream);
+    } catch (err) {
+      return new Err(
+        new Error(
+          `Failed uploading to public bucket. ${normalizeError(err).message}`
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
 };
 
-interface ImageResizeParams {
-  ImageHeight: string;
-  ImageWidth: string;
-}
-
-const resizeAndUploadToFileStorage = async (
+/**
+ * Resize an image and write the result to the "processed" version. If the image is already within
+ * size limits, copies the original to processed without calling ConvertAPI.
+ */
+const resizeAndWriteToProcessed = async (
   auth: Authenticator,
   file: FileResource,
-  resizeParams: ImageResizeParams
-) => {
-  const maxSizePixels = parseInt(resizeParams.ImageWidth);
+  maxSize: string
+): Promise<Result<undefined, Error>> => {
+  const maxSizePixels = parseInt(maxSize);
 
-  // Check image dimensions before calling ConvertAPI
+  // Check image dimensions before calling ConvertAPI.
   try {
     const readStreamForProbe = file.getReadStream({
       auth,
       version: "original",
     });
 
-    // Read first 32KB (sufficient for all image format headers)
+    // Read first 32KB (sufficient for all image format headers).
     const chunks: Buffer[] = [];
     let totalSize = 0;
     const maxBufferSize = 32 * 1024;
@@ -148,7 +131,6 @@ const resizeAndUploadToFileStorage = async (
       dimensions.width <= maxSizePixels &&
       dimensions.height <= maxSizePixels
     ) {
-      // Upload without resizing
       const readStream = file.getReadStream({ auth, version: "original" });
       const writeStream = file.getWriteStream({
         auth,
@@ -168,7 +150,7 @@ const resizeAndUploadToFileStorage = async (
       return new Ok(undefined);
     }
   } catch (err) {
-    // If dimension check fails, fall back to ConvertAPI for safety
+    // If dimension check fails, fall back to ConvertAPI for safety.
     logger.warn(
       {
         fileModelId: file.id,
@@ -179,7 +161,7 @@ const resizeAndUploadToFileStorage = async (
     );
   }
 
-  // ConvertAPI flow
+  // ConvertAPI flow.
   if (!process.env.CONVERTAPI_API_KEY) {
     throw new Error("CONVERTAPI_API_KEY is not set");
   }
@@ -192,9 +174,6 @@ const resizeAndUploadToFileStorage = async (
 
   let result;
   try {
-    // Upload the original file content directly to ConvertAPI to avoid exposing a signed URL
-    // which could be fetched by the third-party service. This still sends the file contents to
-    // ConvertAPI for conversion but removes the use of a signed download URL.
     const uploadResult = await convertapi.upload(
       file.getReadStream({ auth, version: "original" }),
       `${file.fileName}.${originalFormat}`
@@ -208,7 +187,8 @@ const resizeAndUploadToFileStorage = async (
         ImageResolution: "72",
         ScaleImage: "true",
         ScaleIfLarger: "true",
-        ...resizeParams,
+        ImageHeight: maxSize,
+        ImageWidth: maxSize,
       },
       originalFormat,
       30
@@ -239,10 +219,9 @@ const resizeAndUploadToFileStorage = async (
       "Failed to resize image."
     );
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
-    return new Err(new Error(`Failed resizing image. ${errorMessage}`));
+    return new Err(
+      new Error(`Failed resizing image. ${normalizeError(err).message}`)
+    );
   }
 };
 
@@ -263,15 +242,17 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
       auth,
       version: "original",
     });
-    const writeStream = file.getWriteStream({
-      auth,
-      version: "processed",
-    });
 
     const processedStream = await new TextExtraction(
       config.getTextExtractionUrl(),
       { enableOcr: true, logger }
     ).fromStream(readStream, file.contentType);
+
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+      overrideContentType: "text/plain", // Text extractor extracts plain text from binary documents.
+    });
 
     await pipeline(processedStream, writeStream);
 
@@ -286,11 +267,10 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
       "Failed to extract text from File."
     );
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
     return new Err(
-      new Error(`Failed extracting text from File. ${errorMessage}`)
+      new Error(
+        `Failed extracting text from File. ${normalizeError(err).message}`
+      )
     );
   }
 };
@@ -299,7 +279,13 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  // Only handle supported audio types via getProcessingFunction gate.
+  // Skip transcription if the workspace has disabled voice transcription.
+  if (
+    auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription === false
+  ) {
+    return new Ok(undefined);
+  }
+
   // Strategy:
   // 1) Buffer original audio stream to a temporary file on disk.
   // 2) Build a minimal formidable-like File pointing to that temp filepath.
@@ -360,10 +346,10 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
       "Failed to extract text from Audio."
     );
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
     return new Err(
-      new Error(`Failed extracting text from Audio. ${errorMessage}`)
+      new Error(
+        `Failed extracting text from Audio. ${normalizeError(err).message}`
+      )
     );
   } finally {
     // 5) Cleanup temp file.
@@ -379,226 +365,115 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
   }
 };
 
-// Other text files processing.
-
-// We don't apply any processing to these files, we just store the raw text.
-const storeRawText: ProcessingFunction = async (
-  auth: Authenticator,
-  file: FileResource
-) => {
-  const readStream = file.getReadStream({
-    auth,
-    version: "original",
-  });
-  const writeStream = file.getWriteStream({
-    auth,
-    version: "processed",
-  });
-
-  try {
-    await pipeline(readStream, writeStream);
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        error: err,
-      },
-      "Failed to store raw text."
-    );
-
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
-    return new Err(new Error(`Failed to store raw text ${errorMessage}`));
-  }
-};
-
 // Preprocessing for file upload.
 
-const getProcessingFunction = ({
-  auth,
+// Shared map: content type -> processing function. Only content types that produce a meaningful
+// "processed" version are listed here. Content types not in this map are used as-is (original).
+const PROCESSING_BY_CONTENT_TYPE = new Map<
+  AllSupportedFileContentType,
+  ProcessingFunction
+>([
+  // Images (resized).
+  ["image/jpeg", resizeImage],
+  ["image/png", resizeImage],
+  ["image/gif", resizeImage],
+  ["image/webp", resizeImage],
+  ["image/bmp", resizeImage],
+
+  // Audio (transcribed).
+  ["audio/mpeg", extractTextFromAudioAndUpload],
+  ["audio/wav", extractTextFromAudioAndUpload],
+  ["audio/x-wav", extractTextFromAudioAndUpload],
+  ["audio/webm", extractTextFromAudioAndUpload],
+  ["audio/ogg", extractTextFromAudioAndUpload],
+  ["audio/x-m4a", extractTextFromAudioAndUpload],
+
+  // Documents (text extracted via Tika).
+  ["application/pdf", extractTextFromFileAndUpload],
+  ["application/msword", extractTextFromFileAndUpload],
+  [
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    extractTextFromFileAndUpload,
+  ],
+  ["application/vnd.ms-powerpoint", extractTextFromFileAndUpload],
+  [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    extractTextFromFileAndUpload,
+  ],
+  ["application/vnd.google-apps.document", extractTextFromFileAndUpload],
+  ["application/vnd.google-apps.presentation", extractTextFromFileAndUpload],
+
+  // Excel (text extracted via Tika → HTML table).
+  [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    extractTextFromFileAndUpload,
+  ],
+  ["application/vnd.ms-excel", extractTextFromFileAndUpload],
+]);
+
+// Returns the processing function that transforms the original file into a processed version (e.g.,
+// text extraction, image resize, audio transcription). Returns undefined when no transformation is
+// needed. The original file is used as-is. Processing is purely content-type-driven. Upload
+// support per use case is handled separately by the per-use-case files.
+function getProcessingFunction(
+  contentType: AllSupportedFileContentType
+): ProcessingFunction | undefined {
+  return PROCESSING_BY_CONTENT_TYPE.get(contentType);
+}
+
+// Whether uploading this content type for this use case is supported. Dispatches to per-use-case
+// files that each define their own set of supported content types.
+export function isUploadSupportedForContentType({
   contentType,
   useCase,
 }: {
-  auth: Authenticator;
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
-}): ProcessingFunction | undefined => {
-  // Interactive Content file types are not processed.
-  if (isInteractiveContentType(contentType)) {
-    return undefined;
-  }
-
-  // SVG files are stored as-is without any processing (no resize).
-  if (contentType === "image/svg+xml") {
-    if (["conversation", "project_context", "tool_output"].includes(useCase)) {
-      return storeRawText;
-    }
-    return undefined;
-  }
-
-  if (isSupportedImageContentType(contentType)) {
-    if (useCase === "conversation" || useCase === "project_context") {
-      return makeResizeAndUploadImageToFileStorage(
-        CONVERSATION_IMG_MAX_SIZE_PIXELS
-      );
-    } else if (useCase === "avatar") {
-      return resizeAndUploadToPublicBucket;
-    }
-    return undefined;
-  }
-
-  if (isSupportedDelimitedTextContentType(contentType)) {
-    if (
-      contentType ===
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-      contentType === "application/vnd.ms-excel"
-    ) {
-      // We use Tika to extract from Excel files, it will turn into an HTML table
-      // We will upsert from the HTML table later
-      return extractTextFromFileAndUpload;
-    } else if (
-      [
-        "conversation",
-        "upsert_document",
-        "folders_document",
-        "upsert_table",
-        "tool_output",
-        "project_context",
-      ].includes(useCase)
-    ) {
-      return storeRawText;
-    }
-    return undefined;
-  }
-
-  if (isSupportedAudioContentType(contentType)) {
-    if (
-      (useCase === "conversation" || useCase === "project_context") &&
-      // Only handle voice transcription if the workspace has enabled it.
-      auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
-    ) {
-      return extractTextFromAudioAndUpload;
-    }
-    return undefined;
-  }
-
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/vnd.ms-powerpoint":
-    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    case "application/vnd.google-apps.document":
-    case "application/vnd.google-apps.presentation":
-    case "application/pdf":
-      if (
-        [
-          "conversation",
-          "upsert_document",
-          "folders_document",
-          "project_context",
-        ].includes(useCase)
-      ) {
-        return extractTextFromFileAndUpload;
-      }
-      break;
-    case "application/octet-stream":
-    case "text/plain":
-    case "text/markdown":
-    case "text/html":
-    case "text/xml":
-    case "text/calendar":
-    case "text/css":
-    case "text/javascript":
-    case "text/typescript":
-    case "application/json":
-    case "application/xml":
-    case "application/x-sh":
-    case "text/x-sh":
-    case "text/x-python":
-    case "text/x-python-script":
-    case "application/x-yaml":
-    case "text/yaml":
-    case "text/vnd.yaml":
-    case "text/x-c":
-    case "text/x-csharp":
-    case "text/x-java-source":
-    case "text/x-php":
-    case "text/x-ruby":
-    case "text/x-sql":
-    case "text/x-swift":
-    case "text/x-rust":
-    case "text/x-go":
-    case "text/x-kotlin":
-    case "text/x-scala":
-    case "text/x-groovy":
-    case "text/x-perl":
-    case "text/x-perl-script":
-    case "message/rfc822":
-      if (
-        [
-          "conversation",
-          "upsert_document",
-          "tool_output",
-          "folders_document",
-          "project_context",
-        ].includes(useCase)
-      ) {
-        return storeRawText;
-      }
-      break;
-    case "text/vnd.dust.attachment.slack.thread":
-      if (useCase === "conversation" || useCase === "project_context") {
-        return storeRawText;
-      }
-      break;
-    case "text/vnd.dust.attachment.pasted":
-      if (useCase === "conversation" || useCase === "project_context") {
-        return storeRawText;
-      }
-      break;
-    case "application/vnd.dust.section.json":
-      if (useCase === "tool_output") {
-        return storeRawText;
-      }
-      break;
-    // Processing is assumed to be irrelevant for internal mime types.
+}): boolean {
+  switch (useCase) {
+    case "conversation":
+      return isSupportedForConversation(contentType);
+    case "avatar":
+      return isSupportedForAvatar(contentType);
+    case "tool_output":
+      return isSupportedForToolOutput(contentType);
+    case "project_context":
+      return isSupportedForProjectContext(contentType);
+    case "skill_attachment":
+      return isSupportedForSkillAttachment(contentType);
+    case "upsert_document":
+      return isSupportedForUpsertDocument(contentType);
+    case "folders_document":
+      return isSupportedForFoldersDocument(contentType);
+    case "upsert_table":
+      return isSupportedForUpsertTable(contentType);
     default:
-      if (isDustMimeType(contentType)) {
-        break;
-      }
-      assertNever(contentType);
+      assertNever(useCase);
   }
+}
 
-  return undefined;
-};
+/**
+ * Whether a file with this content type has a meaningful processed version (e.g., text extraction,
+ * image resize, audio transcription). When false, readers should use the "original" version
+ * directly. Purely content-type-driven — no use-case branching.
+ */
+export function hasProcessedVersion(
+  contentType: AllSupportedFileContentType
+): boolean {
+  return getProcessingFunction(contentType) !== undefined;
+}
 
-export const isUploadSupported = (arg: {
-  auth: Authenticator;
-  contentType: SupportedFileContentType;
-  useCase: FileUseCase;
-}): boolean => {
-  const processing = getProcessingFunction(arg);
-  return !!processing;
-};
-
-const maybeApplyProcessing: ProcessingFunction = async (
+const maybeApplyProcessing = async (
   auth: Authenticator,
   file: FileResource
-) => {
-  const start = performance.now();
-
-  const processing = getProcessingFunction({ auth, ...file });
+): Promise<Result<undefined, Error>> => {
+  const processing = getProcessingFunction(file.contentType);
   if (!processing) {
-    return new Err(
-      new Error(
-        `Processing not supported for content type ${file.contentType} and use case ${file.useCase}`
-      )
-    );
+    // No processing needed. The original file is used as-is.
+    return new Ok(undefined);
   }
 
+  const start = performance.now();
   const res = await processing(auth, file);
 
   const elapsed = performance.now() - start;
@@ -743,6 +618,7 @@ export async function processAndStoreFile(
     });
   }
 
-  await file.markAsReady();
+  await file.markAsReady(auth);
+
   return new Ok(file);
 }

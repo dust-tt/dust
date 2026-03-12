@@ -5,13 +5,22 @@ import {
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
 import type { ModelId } from "@connectors/types";
 import {
+  ActivityCancellationType,
+  condition,
+  defineSignal,
   executeChild,
   proxyActivities,
+  setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
 
+export const updateExcludedKeywordsSignal = defineSignal<
+  [{ newKeywords: string[]; maxTranscriptId: ModelId }]
+>("updateExcludedKeywords");
+
 const {
   gongCheckGarbageCollectionStateActivity,
+  gongDeleteExcludedTranscriptsActivity,
   gongDeleteOutdatedTranscriptsActivity,
   gongListAndSaveUsersActivity,
   gongSaveGarbageCollectionSuccessActivity,
@@ -20,6 +29,8 @@ const {
   gongSyncTranscriptsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+  heartbeatTimeout: "5 minutes",
+  cancellationType: ActivityCancellationType.TRY_CANCEL,
 });
 
 export async function gongSyncWorkflow({
@@ -136,4 +147,76 @@ export async function gongGarbageCollectWorkflow({
     });
     hasMoreTranscripts = hasMore;
   } while (hasMoreTranscripts);
+}
+
+/**
+ * Orchestrates keyword update cleanup after schedule is paused.
+ * Cleans up excluded transcripts in batches.
+ *
+ * The workflow stays alive and receives signals with updated keywords.
+ * If new keywords are added, cleanup restarts from the beginning.
+ * If keywords are only removed, cleanup continues from the current position.
+ */
+export async function gongKeywordUpdateWorkflow({
+  connectorId,
+  newKeywords,
+  maxTranscriptId,
+}: {
+  connectorId: ModelId;
+  newKeywords: string[];
+  maxTranscriptId: ModelId;
+}) {
+  let latestKeywords = newKeywords;
+  let latestMaxTranscriptId = maxTranscriptId;
+  let activeKeywords = [...newKeywords];
+  let keywordsUpdated = false;
+
+  setHandler(updateExcludedKeywordsSignal, (update) => {
+    latestKeywords = update.newKeywords;
+    latestMaxTranscriptId = update.maxTranscriptId;
+    keywordsUpdated = true;
+  });
+
+  // Wait for in-flight sync activities to settle after this.stop().
+  // Resets the 90s wait each time a new signal arrives (meaning a new
+  // stop/resume cycle just happened with fresh in-flight activities).
+  let settled = false;
+  while (!settled) {
+    keywordsUpdated = false;
+    const signalReceived = await condition(() => keywordsUpdated, "90 seconds");
+    if (!signalReceived) {
+      settled = true;
+    }
+  }
+
+  // Pick up the latest keywords after the settle period
+  activeKeywords = [...latestKeywords];
+
+  let hasMore = true;
+  let lastId: number | undefined = undefined;
+
+  while (hasMore) {
+    if (keywordsUpdated) {
+      // Only restart from the beginning if new keywords were added.
+      // If keywords were only removed, continue from current position.
+      const hasNewKeywords = latestKeywords.some(
+        (kw) => !activeKeywords.includes(kw)
+      );
+      if (hasNewKeywords) {
+        lastId = undefined;
+      }
+      activeKeywords = [...latestKeywords];
+      keywordsUpdated = false;
+    }
+
+    const result = await gongDeleteExcludedTranscriptsActivity({
+      connectorId,
+      excludeKeywords: activeKeywords,
+      lastId,
+      maxTranscriptId: latestMaxTranscriptId,
+    });
+
+    hasMore = result.hasMore;
+    lastId = result.lastId ?? undefined;
+  }
 }

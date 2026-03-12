@@ -13,3 +13,12 @@ export class AgentMessageCompletedEvent extends CustomEvent<void> {
     super(AGENT_MESSAGE_COMPLETED_EVENT);
   }
 }
+
+export const CONVERSATION_ATTACHMENTS_UPDATED_EVENT =
+  "conversation-attachments-updated";
+
+export class ConversationAttachmentsUpdatedEvent extends CustomEvent<void> {
+  constructor() {
+    super(CONVERSATION_ATTACHMENTS_UPDATED_EVENT);
+  }
+}

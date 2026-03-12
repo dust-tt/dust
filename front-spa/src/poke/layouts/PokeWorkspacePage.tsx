@@ -1,4 +1,5 @@
 import PokeLayout from "@dust-tt/front/components/poke/PokeLayout.tsx";
+import type { AuthContextValue } from "@dust-tt/front/lib/auth/AuthContext";
 import { usePokeAuthContext } from "@dust-tt/front/lib/swr/poke.ts";
 import { Spinner } from "@dust-tt/sparkle";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
@@ -40,7 +41,15 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
     );
   }
 
+  const fullAuthContext: AuthContextValue = {
+    ...authContext,
+    featureFlags: [],
+    vizUrl: "",
+  };
+
   return (
-    <PokeLayout authContext={authContext}>{children ?? <Outlet />}</PokeLayout>
+    <PokeLayout authContext={fullAuthContext}>
+      {children ?? <Outlet />}
+    </PokeLayout>
   );
 }

@@ -22,12 +22,19 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { ApiError, GoogleGenAI } from "@google/genai";
+import assert from "assert";
 
 import { handleError } from "./utils/errors";
 
-export class GoogleLLM extends LLM {
+interface GoogleGenerateContentRequestParams {
+  conversation: LLMStreamParameters["conversation"];
+  prompt: LLMStreamParameters["prompt"];
+  specifications: LLMStreamParameters["specifications"];
+  forceToolCall: LLMStreamParameters["forceToolCall"];
+}
+
+export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   private client: GoogleGenAI;
   protected modelId: GoogleAIStudioWhitelistedModelId;
 
@@ -39,36 +46,50 @@ export class GoogleLLM extends LLM {
     super(auth, GOOGLE_AI_STUDIO_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
-    const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
-    if (!GOOGLE_AI_STUDIO_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY environment variable is required"
-      );
-    }
+    const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
+    assert(
+      GOOGLE_AI_STUDIO_API_KEY,
+      "GOOGLE_AI_STUDIO_API_KEY credential is required"
+    );
 
     this.client = new GoogleGenAI({
       apiKey: GOOGLE_AI_STUDIO_API_KEY,
     });
   }
 
-  async *internalStream({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): GoogleGenerateContentRequestParams {
+    // Just capture the parameters; content conversion happens in sendRequest
+    return {
+      conversation,
+      prompt,
+      specifications,
+      forceToolCall,
+    };
+  }
+
+  protected async *sendRequest(
+    payload: GoogleGenerateContentRequestParams
+  ): AsyncGenerator<LLMEvent> {
     try {
       const contents = await Promise.all(
-        conversation.messages.map((message) => toContent(message, this.modelId))
+        payload.conversation.messages.map((message) =>
+          toContent(message, this.modelId)
+        )
       );
+
       const generateContentResponses =
         await this.client.models.generateContentStream({
           model: this.modelId,
           contents,
           config: {
             temperature: this.temperature ?? undefined,
-            tools: specifications.map(toTool),
-            systemInstruction: { text: systemPromptToText(prompt) },
+            tools: payload.specifications.map(toTool),
+            systemInstruction: { text: systemPromptToText(payload.prompt) },
             // We only need one
             candidateCount: 1,
             thinkingConfig: toThinkingConfig({
@@ -76,7 +97,10 @@ export class GoogleLLM extends LLM {
               reasoningEffort: this.reasoningEffort,
               useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
             }),
-            toolConfig: toToolConfigParam(specifications, forceToolCall),
+            toolConfig: toToolConfigParam(
+              payload.specifications,
+              payload.forceToolCall
+            ),
             // Structured response format
             responseMimeType: this.responseFormat
               ? "application/json"

@@ -15,7 +15,7 @@ export function useAgentConfigurationSkills({
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetAgentSkillsResponseBody> = fetcher;
 
-  const { data, isLoading } = useSWRWithDefaults(
+  const { data, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/skills`,
     skillsFetcher,
     { disabled }
@@ -24,5 +24,6 @@ export function useAgentConfigurationSkills({
   return {
     skills: data?.skills ?? emptyArray(),
     isSkillsLoading: isLoading,
+    mutateSkills: mutate,
   };
 }

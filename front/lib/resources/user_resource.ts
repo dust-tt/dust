@@ -9,15 +9,20 @@ import {
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { md5 } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { md5 } from "@app/types/shared/utils/hashing";
 import type {
   LightWorkspaceType,
   UserProviderType,
@@ -35,6 +40,8 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+const statsDClient = getStatsDClient();
+
 export interface SearchMembersPaginationParams {
   offset: number;
   limit: number;
@@ -43,8 +50,6 @@ export interface SearchMembersPaginationParams {
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 const TOOLS_VALIDATION_WILDCARD = "*";
-
-const USER_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 type CachedUserData = {
   id: ModelId;
@@ -84,8 +89,11 @@ export class UserResource extends BaseResource<UserModel> {
   ): Promise<[affectedCount: number]> {
     const result = await super.update(blob, transaction);
 
-    if (this.workOSUserId) {
-      await UserResource.invalidateUserByWorkOSIdCache(this.workOSUserId);
+    const workOSUserId = this.workOSUserId;
+    if (workOSUserId) {
+      invalidateCacheAfterCommit(transaction, () =>
+        UserResource.invalidateUserByWorkOSIdCache(workOSUserId)
+      );
     }
 
     return result;
@@ -212,10 +220,11 @@ export class UserResource extends BaseResource<UserModel> {
     };
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static fetchByWorkOSUserIdCached = cacheWithRedis(
     UserResource._fetchByWorkOSUserIdUncached,
     UserResource.userByWorkOSIdCacheKeyResolver,
-    { ttlMs: USER_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateUserByWorkOSIdCache = invalidateCacheWithRedis(

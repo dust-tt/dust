@@ -21,23 +21,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// Mock config to avoid requiring environment variables
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
-      apiKey: "test-api-key",
-    }),
-    getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
-      secret: "test-secret",
-      webhookSecret: "test-webhook-secret",
-    }),
-    getClientFacingUrl: () => "http://localhost:3000",
-  },
-}));
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("getJITServers", () => {
   let auth: Authenticator;
@@ -85,7 +69,7 @@ describe("getJITServers", () => {
 
     it("should include conversation_files server when attachments exist", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -96,6 +80,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -340,7 +325,7 @@ describe("getJITServers", () => {
   describe("attachment-based servers", () => {
     it("should include query_tables server when queryable attachments exist", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -351,6 +336,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -388,7 +374,7 @@ describe("getJITServers", () => {
 
     it("should include search server when searchable attachments exist", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.create(workspace, user, {
+      const file = await FileFactory.create(auth, user, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -403,6 +389,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.txt",
           contentType: "text/plain",
           contentFragmentVersion: "latest",
@@ -436,7 +423,7 @@ describe("getJITServers", () => {
 
     it("should not include query_tables server when no queryable attachments", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.create(workspace, user, {
+      const file = await FileFactory.create(auth, user, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -451,6 +438,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.txt",
           contentType: "text/plain",
           contentFragmentVersion: "latest",
@@ -479,7 +467,7 @@ describe("getJITServers", () => {
 
     it("should include conversation_files server when attachments exist but are not searchable", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -490,6 +478,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -521,7 +510,7 @@ describe("getJITServers", () => {
 
     it("should not include search server when attachments are not searchable (search server is distinct from conversation_files)", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -532,6 +521,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -571,7 +561,7 @@ describe("getJITServers", () => {
     it("should return multiple servers when conditions are met", async () => {
       // Create attachments.
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -582,6 +572,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",
@@ -649,7 +640,7 @@ describe("getJITServers", () => {
 
     it("should generate unique sIds for each server", async () => {
       const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(workspace, user, {
+      const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: conversation.sId,
@@ -660,6 +651,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
+          source: "user",
           title: "test.csv",
           contentType: "text/csv",
           contentFragmentVersion: "latest",

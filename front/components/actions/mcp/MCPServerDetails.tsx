@@ -16,6 +16,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
+  useMCPServers,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -23,7 +24,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 interface MCPServerDetailsProps {
@@ -51,6 +52,20 @@ export function MCPServerDetails({
     serverId: mcpServerView?.server.sId ?? "",
     disabled: !isOpen || !mcpServerView,
   });
+
+  const { mcpServers } = useMCPServers({
+    owner,
+    disabled: !isOpen || readOnly,
+  });
+
+  // Collect all effective view names from other servers (excluding the current one).
+  const existingViewNames = useMemo(
+    () =>
+      mcpServers
+        .filter((s) => s.sId !== mcpServerView?.server.sId)
+        .flatMap((s) => (s.views ?? []).map((v) => v.name ?? v.server.name)),
+    [mcpServers, mcpServerView]
+  );
   const { mutate: mutateMCPServersViewsForAdmin } =
     useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
@@ -72,18 +87,21 @@ export function MCPServerDetails({
   }, [mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
-    defaultValues: defaults,
+    values: defaults,
     mode: "onChange",
     shouldUnregister: false, // Keep all fields registered even when not rendered
+    resetOptions: {
+      keepDirtyValues: true, // Preserve user edits on SWR refetch.
+    },
     resolver: mcpServerView
-      ? zodResolver(getMCPServerFormSchema(mcpServerView))
+      ? zodResolver(
+          getMCPServerFormSchema(mcpServerView, {
+            existingViewNames,
+            initialName: mcpServerView.name ?? mcpServerView.server.name,
+          })
+        )
       : undefined,
   });
-
-  // Reset form when defaults change (e.g., when switching between servers)
-  useEffect(() => {
-    form.reset(defaults);
-  }, [defaults, form]);
 
   const applyToolChanges = async (
     toolChanges: Array<{

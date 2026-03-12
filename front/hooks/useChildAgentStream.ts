@@ -1,6 +1,6 @@
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useReducer } from "react";
 
@@ -77,7 +77,8 @@ function childAgentStreamReducer(
       return state;
 
     default:
-      assertNever(event);
+      assertNeverAndIgnore(event);
+      return state;
   }
 }
 

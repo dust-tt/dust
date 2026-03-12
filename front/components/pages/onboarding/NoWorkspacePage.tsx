@@ -1,8 +1,9 @@
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
+import Custom404 from "@app/pages/404";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   BarHeader,
@@ -11,10 +12,8 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
 export function NoWorkspacePage() {
-  const router = useAppRouter();
   const flow = useSearchParam("flow");
   const { user } = useUser();
   const { workspaceLookup, isWorkspaceLookupLoading } = useWorkspaceLookup({
@@ -22,11 +21,9 @@ export function NoWorkspacePage() {
   });
 
   // Redirect to 404 on error or missing data.
-  useEffect(() => {
-    if (!isWorkspaceLookupLoading && !workspaceLookup) {
-      void router.replace("/404");
-    }
-  }, [isWorkspaceLookupLoading, workspaceLookup, router]);
+  if (!isWorkspaceLookupLoading && !workspaceLookup) {
+    return <Custom404 />;
+  }
 
   if (!workspaceLookup) {
     return (

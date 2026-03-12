@@ -1,5 +1,5 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
+import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -8,7 +8,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { statsDClient } from "@app/logger/statsDClient";
+import { getStatsDClient } from "@app/lib/utils/statsd";
+
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
@@ -25,6 +26,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const statsDClient = getStatsDClient();
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
@@ -196,10 +199,13 @@ async function handler(
         }
       }
 
-      // Derive origin from conversation metadata - copilot conversations use agent_copilot origin.
-      const origin = isCopilotConversation(conversation.metadata)
-        ? "agent_copilot"
-        : "web";
+      // Derive origin: use explicitly provided origin, fall back to conversation metadata,
+      // then default to "web".
+      const origin =
+        context.origin ??
+        (isSidekickConversation(conversation.metadata)
+          ? "agent_sidekick"
+          : "web");
 
       const messageRes = await postUserMessage(auth, {
         conversation,

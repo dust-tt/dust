@@ -49,6 +49,7 @@ export class SkillFactory {
         requestedSpaceIds,
         status,
         icon: SKILL_ICON.name,
+        isDefault: false,
       },
       {
         mcpServerViews,

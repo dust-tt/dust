@@ -1,4 +1,7 @@
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameterOverwrites,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import {
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_1_MINI_MODEL_ID,
@@ -9,6 +12,7 @@ import {
   GPT_4O_MODEL_ID,
   GPT_5_1_MODEL_ID,
   GPT_5_2_MODEL_ID,
+  GPT_5_4_MODEL_ID,
   GPT_5_MINI_MODEL_ID,
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
@@ -42,21 +46,22 @@ export const OPENAI_WHITELISTED_MODEL_IDS = [
   GPT_5_MODEL_ID,
   GPT_5_1_MODEL_ID,
   GPT_5_2_MODEL_ID,
+  GPT_5_4_MODEL_ID,
 ] as const;
 export type OpenAIWhitelistedModelId =
   (typeof OPENAI_WHITELISTED_MODEL_IDS)[number];
 
-const NON_THINKING_OVERWRITES: Partial<LLMParameters> = {
+const NON_THINKING_OVERWRITES: LLMParameterOverwrites = {
   reasoningEffort: null,
 };
-const THINKING_OVERWRITES: Partial<LLMParameters> = {
+const THINKING_OVERWRITES: LLMParameterOverwrites = {
   temperature: null,
 };
 
 export const OPENAI_MODEL_CONFIGS: Record<
   OpenAIWhitelistedModelId,
   {
-    overwrites: Omit<LLMParameters, "modelId">;
+    overwrites: LLMParameterOverwrites;
     reasoningConfigMapping?: Partial<
       Record<ReasoningEffort, OpenAIReasoningEffort>
     >;
@@ -87,6 +92,7 @@ export const OPENAI_MODEL_CONFIGS: Record<
   },
   [GPT_5_1_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
   [GPT_5_2_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+  [GPT_5_4_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
 };
 
 export function overwriteLLMParameters(

@@ -7,14 +7,11 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  useRegionContext,
-  useRegionContextSafe,
-} from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
-import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
+import { usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types/poke";
 import { isDevelopment } from "@app/types/shared/env";
 import {
@@ -30,7 +27,6 @@ import { useCallback, useEffect, useState } from "react";
 const MIN_SEARCH_CHARACTERS = 2;
 
 interface PokeNavbarProps {
-  currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
   showRegionPicker?: boolean;
   title: string;
@@ -56,7 +52,6 @@ function getPokeItemChipColor(
 }
 
 function PokeNavbar({
-  currentRegion,
   regionUrls,
   showRegionPicker = false,
   title,
@@ -88,12 +83,7 @@ function PokeNavbar({
       </div>
       <div className="items-right flex items-center gap-4">
         <PokeFavoriteButton title={title} />
-        {showRegionPicker && currentRegion && (
-          <PokeRegionDropdown
-            currentRegion={currentRegion}
-            regionUrls={regionUrls}
-          />
-        )}
+        {showRegionPicker && <PokeRegionDropdown regionUrls={regionUrls} />}
         <PokeSearchCommand />
       </div>
     </nav>
@@ -102,26 +92,7 @@ function PokeNavbar({
 
 export default PokeNavbar;
 
-/**
- * Entry point that renders the appropriate search command based on mode.
- * - SPA mode: Multi-region search with region switching
- * - NextJS mode: Single-region search (legacy)
- */
 export function PokeSearchCommand() {
-  const regionContext = useRegionContextSafe();
-
-  // SPA mode has region context available.
-  if (regionContext) {
-    return <PokeSearchCommandSPA />;
-  }
-
-  return <PokeSearchCommandLegacy />;
-}
-
-/**
- * SPA mode: Search across all regions in parallel.
- */
-function PokeSearchCommandSPA() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -138,7 +109,7 @@ function PokeSearchCommandSPA() {
   const handleItemClick = useCallback(
     (item: PokeItemBase) => {
       // Switch region if the item is from a different region.
-      if (item.region && item.region !== regionInfo?.name && regionUrls) {
+      if (item.region && item.region !== regionInfo.name && regionUrls) {
         setRegionInfo({ name: item.region, url: regionUrls[item.region] });
       }
       setOpen(false);
@@ -157,37 +128,6 @@ function PokeSearchCommandSPA() {
       isError={isError}
       onItemClick={handleItemClick}
       showRegion
-    />
-  );
-}
-
-/**
- * NextJS mode: Single-region search (legacy).
- */
-function PokeSearchCommandLegacy() {
-  const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const { isError, isLoading, results } = usePokeSearch({
-    disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,
-    search: searchTerm,
-  });
-
-  const handleItemClick = useCallback(() => {
-    setOpen(false);
-  }, []);
-
-  return (
-    <PokeSearchCommandUI
-      open={open}
-      onOpenChange={setOpen}
-      searchTerm={searchTerm}
-      onSearchTermChange={setSearchTerm}
-      results={results}
-      isLoading={isLoading}
-      isError={isError}
-      onItemClick={handleItemClick}
-      showRegion={false}
     />
   );
 }

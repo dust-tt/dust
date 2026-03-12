@@ -19,7 +19,13 @@ import {
 import {
   globalAgentInjectsMemory,
   globalAgentInjectsToolsets,
+  globalAgentInjectsUserContext,
+  globalAgentInjectsWorkspaceContext,
 } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  buildUserContext,
+  buildWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -47,6 +53,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -69,6 +76,24 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
+
+// Concatenate two content strings, ensuring at least one whitespace character
+// between them when both are non-empty. This prevents words from being glued
+// together across successive LLM calls.
+function concatWithNewlineBoundary(
+  previous: string | null,
+  current: string | null
+): string {
+  if (!previous?.length || !current?.length) {
+    return (previous ?? "") + (current ?? "");
+  }
+  const prevEndsWs = /\s$/.test(previous);
+  const currStartsWs = /^\s/.test(current);
+  if (!prevEndsWs && !currStartsWs) {
+    return previous + "\n" + current;
+  }
+  return previous + current;
+}
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
@@ -334,6 +359,16 @@ export async function runModel(
     toolsetsContext = buildToolsetsContext(filteredToolsets);
   }
 
+  let userContext: string | undefined;
+  if (globalAgentInjectsUserContext(agentConfiguration.sId) && auth.user()) {
+    userContext = (await buildUserContext(auth)) ?? undefined;
+  }
+
+  let workspaceContext: string | undefined;
+  if (globalAgentInjectsWorkspaceContext(agentConfiguration.sId)) {
+    workspaceContext = await buildWorkspaceContext(auth);
+  }
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -348,6 +383,8 @@ export async function runModel(
     equippedSkills,
     memoriesContext,
     toolsetsContext,
+    userContext,
+    workspaceContext,
   });
 
   const specifications: AgentActionSpecification[] = [];
@@ -456,11 +493,15 @@ export async function runModel(
     workspaceId: conversation.owner.sId,
   };
 
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
+
   const llm = await getLLM(auth, {
+    credentials,
     modelId: model.modelId,
     temperature: agentConfiguration.model.temperature,
     reasoningEffort: agentConfiguration.model.reasoningEffort,
     responseFormat: agentConfiguration.model.responseFormat,
+    metaData: agentConfiguration.model.metaData,
     context: traceContext,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
@@ -650,7 +691,10 @@ export async function runModel(
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
-      content: (agentMessage.content ?? "") + processedContent,
+      content: concatWithNewlineBoundary(
+        agentMessage.content,
+        processedContent
+      ),
       completedTs,
       status: "succeeded",
       completionDurationMs: getCompletionDuration(
@@ -821,8 +865,10 @@ export async function runModel(
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
-  agentMessage.content =
-    (agentMessage.content ?? "") + (contentParser.getContent() ?? "");
+  agentMessage.content = concatWithNewlineBoundary(
+    agentMessage.content,
+    contentParser.getContent()
+  );
 
   if (chainOfThought.length) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

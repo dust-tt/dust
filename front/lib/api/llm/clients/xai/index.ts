@@ -19,10 +19,11 @@ import {
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import assert from "assert";
 import OpenAI, { APIError } from "openai";
+import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
 
-export class XaiLLM extends LLM {
+export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
   private client: OpenAI;
 
   constructor(
@@ -34,37 +35,38 @@ export class XaiLLM extends LLM {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, XAI_PROVIDER_ID, params);
 
-    const { XAI_API_KEY } = dustManagedCredentials();
-    if (!XAI_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_XAI_API_KEY environment variable is required"
-      );
-    }
+    const { XAI_API_KEY } = llmParameters.credentials;
+    assert(XAI_API_KEY, "XAI_API_KEY credential is required");
     this.client = new OpenAI({
       apiKey: XAI_API_KEY,
       baseURL: "https://api.x.ai/v1",
     });
   }
 
-  protected async *internalStream({
+  protected buildStreamRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    try {
-      const events = await this.client.responses.create({
-        model: this.modelId,
-        input: toInput(systemPromptToText(prompt), conversation, "system"),
-        stream: true,
-        // Reasoning not supported by xai responses api yet
-        // Using default value for reasoning models
-        temperature: this.temperature,
-        tools: specifications.map(toTool),
-        include: ["reasoning.encrypted_content"],
-        tool_choice: toToolOption(specifications, forceToolCall),
-      });
+  }: LLMStreamParameters): ResponseCreateParamsStreaming {
+    return {
+      model: this.modelId,
+      input: toInput(systemPromptToText(prompt), conversation, "system"),
+      stream: true,
+      // Reasoning not supported by xai responses api yet
+      // Using default value for reasoning models
+      temperature: this.temperature,
+      tools: specifications.map(toTool),
+      include: ["reasoning.encrypted_content"],
+      tool_choice: toToolOption(specifications, forceToolCall),
+    };
+  }
 
+  protected async *sendRequest(
+    payload: ResponseCreateParamsStreaming
+  ): AsyncGenerator<LLMEvent> {
+    try {
+      const events = await this.client.responses.create(payload);
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {

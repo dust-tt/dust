@@ -4,15 +4,19 @@ import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -22,6 +26,8 @@ import {
   ArrowDownOnSquareIcon,
   ArrowGoBackIcon,
   Button,
+  CheckCircleIcon,
+  CloudArrowUpIcon,
   CodeBlock,
   CommandLineIcon,
   DropdownMenu,
@@ -37,7 +43,14 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -88,6 +101,7 @@ function ExportContentDropdown({
 
     setIsExportingPdf(true);
     try {
+      // Use direct fetch instead of fetcher to avoid JSON parsing of binary PDF data.
       const response = await clientFetch(
         `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
         {
@@ -178,8 +192,9 @@ function ExportContentDropdown({
 }
 
 interface FrameRendererProps {
-  conversation: ConversationWithoutContentType;
+  conversation?: ConversationWithoutContentType;
   fileId: string;
+  projectId: string | null;
   owner: LightWorkspaceType;
   lastEditedByAgentConfigurationId?: string;
   contentHash?: string;
@@ -188,6 +203,7 @@ interface FrameRendererProps {
 export function FrameRenderer({
   conversation,
   fileId,
+  projectId,
   owner,
   lastEditedByAgentConfigurationId,
   contentHash,
@@ -198,6 +214,29 @@ export function FrameRenderer({
   const [isLoading, setIsLoading] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
   const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
+
+  const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: conversation?.spaceId ?? projectId ?? null,
+  });
+
+  const projectSaveState = useMemo(() => {
+    if (!projectInfo && isSpaceInfoLoading) {
+      return "unknown";
+    }
+    if (
+      !conversation?.spaceId ||
+      !projectInfo ||
+      projectInfo.kind !== "project"
+    ) {
+      return "unsupported";
+    }
+    if (!projectId) {
+      return "supported";
+    }
+
+    return "saved";
+  }, [conversation?.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
 
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -216,14 +255,18 @@ export function FrameRenderer({
     cacheKey: contentHash,
   });
 
-  const { fileMetadata } = useFileMetadata({
+  const { fileMetadata, mutateFileMetadata } = useFileMetadata({
     fileId,
     owner,
   });
 
+  const sendNotification = useSendNotification();
+  const confirm = useContext(ConfirmContext);
+  const [isSavingToProject, setIsSavingToProject] = useState(false);
+
   const { handleVisualizationRevert } = useVisualizationRevert({
     workspaceId: owner.sId,
-    conversationId: conversation.sId,
+    conversationId: conversation?.sId,
   });
 
   const isFileUsingConversationFiles = React.useMemo(
@@ -313,6 +356,78 @@ export function FrameRenderer({
     };
   }, [isFullScreen, exitFullScreen]);
 
+  const handleSaveToProject = useCallback(async () => {
+    const projectIdToSave = conversation?.spaceId;
+    if (!projectIdToSave) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: (
+        <>
+          Save to <strong>{projectInfo?.name ?? "project"}</strong>?
+        </>
+      ),
+      message: (
+        <>
+          <div>
+            The Frame will be part of the project knowledge, and be able to be
+            edited by any project member.
+          </div>
+          <div>This action cannot be undone.</div>
+        </>
+      ),
+      validateLabel: "Save",
+      validateVariant: "primary",
+    });
+    if (!confirmed) {
+      return;
+    }
+    setIsSavingToProject(true);
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/${fileId}/save-in-project`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: projectIdToSave }),
+        }
+      );
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to save to project",
+          description: errorData.message,
+        });
+        return;
+      }
+      sendNotification({
+        type: "success",
+        title: "Saved to project",
+        description: `Frame saved to "${projectInfo?.name ?? "project"}".`,
+      });
+      // Invalidate file metadata so parent and this component get updated projectId.
+      await mutateFileMetadata();
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Failed to save to project",
+        description: e instanceof Error ? e.message : "An error occurred",
+      });
+    } finally {
+      setIsSavingToProject(false);
+    }
+  }, [
+    confirm,
+    conversation?.spaceId,
+    fileId,
+    mutateFileMetadata,
+    owner.sId,
+    projectInfo?.name,
+    sendNotification,
+  ]);
+
   if (error) {
     return (
       <CenteredState>
@@ -323,7 +438,9 @@ export function FrameRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <InteractiveContentHeader onClose={onClosePanel}>
+      <InteractiveContentHeader
+        onClose={conversation ? onClosePanel : undefined}
+      >
         <div className="flex w-full items-center justify-between">
           <Button
             icon={showCode ? EyeIcon : CommandLineIcon}
@@ -344,6 +461,25 @@ export function FrameRenderer({
               owner={owner}
               isUsingConversationFiles={isFileUsingConversationFiles}
             />
+            {projectSaveState === "saved" && (
+              <Button
+                icon={CheckCircleIcon}
+                variant="ghost"
+                disabled={true}
+                label="Saved"
+                tooltip={`Saved in "${projectInfo?.name ?? "unknown project"}"`}
+              />
+            )}
+            {projectSaveState === "supported" && (
+              <Button
+                icon={CloudArrowUpIcon}
+                variant="ghost"
+                label={isSavingToProject ? "Saving…" : "Save"}
+                isLoading={isSavingToProject}
+                tooltip={`Save to "${projectInfo?.name ?? "unknown project"}"`}
+                onClick={handleSaveToProject}
+              />
+            )}
           </div>
         </div>
       </InteractiveContentHeader>
@@ -372,23 +508,24 @@ export function FrameRenderer({
                 identifier: `viz-${fileId}`,
               }}
               key={`viz-${fileId}`}
-              conversationId={conversation.sId}
+              conversationId={conversation?.sId ?? null}
               isInDrawer={true}
               ref={iframeRef}
             />
-            <PreviewActionButtons
-              owner={owner}
-              conversation={conversation}
-              lastEditedByAgentConfigurationId={
-                lastEditedByAgentConfigurationId
-              }
-              hasPreviousVersion={(fileMetadata?.version ?? 0) > 1}
-              onRevert={onRevert}
-              isFullScreen={isFullScreen}
-              exitFullScreen={exitFullScreen}
-              enterFullScreen={enterFullScreen}
-              reloadFile={reloadFile}
-            />
+            {conversation && (
+              <PreviewActionButtons
+                owner={owner}
+                lastEditedByAgentConfigurationId={
+                  lastEditedByAgentConfigurationId
+                }
+                hasPreviousVersion={(fileMetadata?.version ?? 0) > 1}
+                onRevert={onRevert}
+                isFullScreen={isFullScreen}
+                exitFullScreen={exitFullScreen}
+                enterFullScreen={enterFullScreen}
+                reloadFile={reloadFile}
+              />
+            )}
           </div>
         )}
       </div>
@@ -398,7 +535,6 @@ export function FrameRenderer({
 
 interface PreviewActionButtonsProps {
   owner: LightWorkspaceType;
-  conversation: ConversationWithoutContentType;
   lastEditedByAgentConfigurationId?: string;
   hasPreviousVersion: boolean;
   onRevert: () => void;
@@ -417,21 +553,24 @@ function PreviewActionButtons({
   exitFullScreen,
   reloadFile,
 }: PreviewActionButtonsProps) {
+  const clientType = useClientType();
   return (
     <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
-      <Tooltip
-        label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
-        side="left"
-        tooltipTriggerAsChild
-        trigger={
-          <Button
-            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
-            variant="ghost"
-            size="xs"
-            onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-          />
-        }
-      />
+      {clientType !== "extension" && (
+        <Tooltip
+          label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+          side="left"
+          tooltipTriggerAsChild
+          trigger={
+            <Button
+              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              variant="ghost"
+              size="xs"
+              onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+            />
+          }
+        />
+      )}
       {lastEditedByAgentConfigurationId && (
         <Tooltip
           label={

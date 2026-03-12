@@ -1,10 +1,19 @@
-import config from "@app/lib/api/config";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { clientEventSource } from "@app/lib/egress/client";
+import {
+  EventSourcePolyfill,
+  type Event as PolyfillEvent,
+  type MessageEvent as PolyfillMessageEvent,
+} from "event-source-polyfill";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_DELAY_BASE_MS = 3000; // 3 seconds base delay
 const RECONNECT_DELAY_JITTER_MS = 5000; // +0-5 seconds random jitter
 const MAX_RECONNECT_ATTEMPTS = 10;
+// Server-side SSE endpoints can be idle up to 3 minutes (conversation events)
+// before sending "done". The polyfill's default heartbeat timeout is 45s which
+// would cause spurious reconnects during normal idle periods.
+const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Stable EventSource Manager
@@ -30,7 +39,7 @@ const MAX_RECONNECT_ATTEMPTS = 10;
  */
 const stableEventSourceManager = {
   // Map to store active EventSource instances, keyed by unique identifiers
-  sources: new Map<string, EventSource>(),
+  sources: new Map<string, EventSourcePolyfill>(),
 
   /**
    * Creates a new EventSource instance and stores it in the sources map.
@@ -39,21 +48,18 @@ const stableEventSourceManager = {
    * @returns The newly created EventSource instance
    */
   create(url: string, uniqueId: string) {
-    // EventSource does not support custom headers
-    // so we append the commit hash as a query parameter.
     const urlWithCommitHash = new URL(url, document.baseURI);
     urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
 
-    // Extract everything except the origin.
+    // Build a relative path so clientEventSource can rewrite and authenticate it.
     const pathWithQueryAndHash =
       urlWithCommitHash.pathname +
       urlWithCommitHash.search +
       urlWithCommitHash.hash;
 
-    const newSource = new EventSource(
-      `${config.getApiBaseUrl()}${pathWithQueryAndHash}`,
-      { withCredentials: true }
-    );
+    const newSource = clientEventSource(pathWithQueryAndHash, {
+      heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
+    });
     this.sources.set(uniqueId, newSource);
 
     return newSource;
@@ -114,7 +120,7 @@ export function useEventSource(
 
     let source = sourceManager.get(uniqueId);
     // If the source is closed or doesn't exist, create a new one.
-    if (!source || source.readyState === EventSource.CLOSED) {
+    if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
       source = sourceManager.create(url, uniqueId);
     }
 
@@ -126,7 +132,7 @@ export function useEventSource(
       }
     };
 
-    source.onmessage = (event: MessageEvent<string>) => {
+    source.onmessage = (event: PolyfillMessageEvent) => {
       if (event.data === "done") {
         source.close();
 
@@ -139,7 +145,7 @@ export function useEventSource(
       lastEvent.current = event.data;
     };
 
-    source.onerror = (event: Event) => {
+    source.onerror = (event: PolyfillEvent) => {
       console.error("EventSource error", event);
       source.close();
 

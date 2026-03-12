@@ -8,7 +8,7 @@ import type {
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/slack/utils";
 import { isSlackWebhookEventReqBody } from "@connectors/api/webhooks/slack/utils";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackClient,
@@ -149,11 +149,29 @@ const _webhookSlackAPIHandler = async (
             }
 
             const slackClient = await getSlackClient(slackConfig.connectorId);
-
-            const myUserId = await getBotUserIdMemoized(
+            const botUserIdRes = await getBotUserIdResponse(
               slackClient,
               slackConfig.connectorId
             );
+
+            if (botUserIdRes.isErr()) {
+              logger.error(
+                {
+                  connectorId: slackConfig.connectorId,
+                  error: botUserIdRes.error,
+                },
+                "Failed to get bot user ID for DM handler"
+              );
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: `Failed to authenticate with Slack: ${botUserIdRes.error.message}`,
+                },
+              });
+            }
+
+            const myUserId = botUserIdRes.value;
             if (event.user === myUserId) {
               // Message sent from the bot itself.
               return res.status(200).send();
@@ -537,11 +555,29 @@ const _webhookSlackAPIHandler = async (
           }
 
           const slackClient = await getSlackClient(slackConfig.connectorId);
-
-          const myUserId = await getBotUserIdMemoized(
+          const botUserIdRes = await getBotUserIdResponse(
             slackClient,
             slackConfig.connectorId
           );
+
+          if (botUserIdRes.isErr()) {
+            logger.error(
+              {
+                connectorId: slackConfig.connectorId,
+                error: botUserIdRes.error,
+              },
+              "Failed to get bot user ID for member_joined_channel handler"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Failed to authenticate with Slack: ${botUserIdRes.error.message}`,
+              },
+            });
+          }
+
+          const myUserId = botUserIdRes.value;
 
           // if the bot is not the one joining the channel, ignore
           if (event.user !== myUserId) {

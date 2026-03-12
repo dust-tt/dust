@@ -5,11 +5,11 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
-import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
 import { default as agentManagementServer } from "@app/lib/api/actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
+import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
+import { default as agentSidekickContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
@@ -18,6 +18,7 @@ import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/ser
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
+import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/api/actions/servers/front";
@@ -203,12 +204,14 @@ export async function getInternalMCPServer(
       return outlookMailServer(auth, agentLoopContext);
     case "outlook_calendar":
       return outlookCalendarServer(auth, agentLoopContext);
-    case "agent_copilot_agent_state":
-      return agentCopilotAgentStateServer(auth, agentLoopContext);
-    case "agent_copilot_context":
-      return agentCopilotContextServer(auth, agentLoopContext);
+    case "agent_sidekick_agent_state":
+      return agentSidekickAgentStateServer(auth, agentLoopContext);
+    case "agent_sidekick_context":
+      return agentSidekickContextServer(auth, agentLoopContext);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
+    case "fathom":
+      return fathomServer(auth, agentLoopContext);
     case "freshservice":
       return freshserviceServer(auth, agentLoopContext);
     case "data_warehouses":

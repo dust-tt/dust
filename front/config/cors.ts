@@ -16,8 +16,7 @@ const STATIC_ALLOWED_ORIGINS = [
   "https://poke.dust.tt",
   // Main app (front-spa).
   "https://app.dust.tt",
-  // Legacy poke (Next.js).
-  // TODO(2026-01-28 SPA): Remove once poke.dust.tt is fully rolled out.
+  // Next.js server (landing page, OAuth, API routes).
   "https://dust.tt",
   "https://eu.dust.tt",
 ] as const;

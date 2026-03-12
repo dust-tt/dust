@@ -58,11 +58,25 @@ When branching on a discriminated union or string union, prefer an exhaustive `s
 ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
 are added.
 
+Two variants are available:
+
+- **`assertNever`**: Throws at runtime. Use when missing a case is a bug (server-side code,
+  internal client logic, client-created data).
+- **`assertNeverAndIgnore`**: Does NOT throw at runtime. Use in client-side code that processes
+  API data (event streams, API responses, connector types, etc.) where the server may add new
+  enum values before the client is updated. The unknown value is silently ignored instead of
+  crashing the app.
+
+Both provide the same compile-time exhaustiveness checking. Using the wrong variant is a bug:
+using `assertNever` on API data can crash the app when the server adds a new value, and using
+`assertNeverAndIgnore` on internal logic can silently swallow programming errors.
+
 Example:
 
 ```
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNever, assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
+// Internal logic: use assertNever (crash on missing case)
 type Status = "approved" | "rejected" | "expired";
 
 function titleForStatus(status: Status): string {
@@ -75,6 +89,19 @@ function titleForStatus(status: Status): string {
       return "Expired";
     default:
       return assertNever(status);
+  }
+}
+
+// Processing API data: use assertNeverAndIgnore (gracefully ignore unknown values)
+function handleStreamEvent(event: AgentMessageEvent): State {
+  switch (event.type) {
+    case "generation_tokens":
+      return { ...state, content: state.content + event.text };
+    case "agent_error":
+      return { ...state, status: "error" };
+    default:
+      assertNeverAndIgnore(event);
+      return state;
   }
 }
 ```
@@ -383,14 +410,14 @@ Example:
 interface ResourceType {
 id: string;
 }
+const agentSId = agent.sId;          // String identifier
+const agentId = agent.id;            // Numeric ModelId
 
 // GOOD
 interface ResourceType {
 sId: string;
 id: ModelId;
 }
-
-// Variable naming
 const agentId = agent.sId;           // String identifier
 const agentModelId = agent.id;       // Numeric ModelId
 ```
@@ -459,6 +486,56 @@ AgentMessageModel.hasMany(AgentMCPActionModel, {
   concurrently: true,
 }
 ```
+
+### [BACK14] No breaking changes in PRIVATE API endpoints
+
+Breaking changes in PRIVATE API endpoints are prohibited. The PRIVATE API serves multiple clients
+(web app, browser extensions, etc.) that may be running different versions. Breaking
+changes can cause crashes or data corruption for users who haven't updated to the latest version.
+
+All changes to PRIVATE API endpoints must be backward compatible. Follow these steps based on the
+type of change:
+
+**1. Deleting an endpoint:**
+
+- Do NOT delete the endpoint immediately
+- Mark the endpoint as deprecated in code comments with deprecation date
+- Create the replacement endpoint or functionality first
+- Monitor usage metrics to ensure all clients have migrated
+- Only delete after confirmed all clients have stopped using it
+- If deletion is urgent, coordinate a synchronized release across all clients
+
+**2. Adding a mandatory input parameter:**
+
+- Do NOT add required parameters immediately
+- First: Add the parameter as optional with sensible defaults
+- Update all client code to send the parameter
+- Make the parameter required only after a period of time
+- Document the default behavior clearly in code comments
+- Example: Add `userId` as optional defaulting to current authenticated user, then make it required once all clients are updated
+
+**3. Changing a validation schema (stricter validation):**
+
+- Do NOT tighten validation rules on existing fields immediately
+- Add new optional fields with strict validation instead
+- Only enforce stricter validation after all clients are compliant
+
+**4. Removing a response field:**
+
+- Do NOT remove fields from responses immediately
+- First: Update all client code to stop using the field
+- Remove the field from backend response only after a period of time
+- If removal is urgent, create a new endpoint version instead
+
+**5. Adding or removing enum values in responses:**
+
+- **Adding** a new enum value to responses:
+  - Ensure all clients handle unknown enum values gracefully with a fallback
+
+- **Removing** an enum value from responses:
+  - Do NOT remove enum values immediately
+  - First: Update all client code to stop relying on the removed value
+  - Stop returning the enum value from backend only after a period of time
 
 ## MCP
 
@@ -562,6 +639,30 @@ export function useCreateFolder({
 };
 ```
 
+When a component is not always visible (modal, sheet, drawer, panel), its SWR hooks should accept
+and forward a `disabled` flag tied to visibility to avoid unnecessary API calls when the component
+is mounted but not shown. Skip `disabled` only when prefetching is intentional.
+
+```typescript
+// BAD — fetches on every mount, even when the sheet is closed
+function MCPServerDetails({ owner }: MCPServerDetailsProps) {
+  const { mcpServers } = useMCPServers({ owner });
+  // ...
+}
+
+// GOOD — fetch is skipped while the sheet is closed
+function MCPServerDetails({ owner, disabled }: MCPServerDetailsProps) {
+  const { mcpServers } = useMCPServers({ owner, disabled });
+  // ...
+}
+
+<MCPServerDetails owner={owner} disabled={!isOpen} />
+```
+
+Reviewer: If you see an SWR hook called unconditionally inside a conditionally-visible component,
+require the author to either add a `disabled` prop forwarded to the hook or justify the prefetch
+with a comment.
+
 In NextJS pages, getServerSideProps should not fetch data and return more that what's
 available in authenticator. Rather rely on API endpoint and SWR calls.
 
@@ -569,3 +670,23 @@ available in authenticator. Rather rely on API endpoint and SWR calls.
 
 Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the
 load time is expected to be small.
+
+### [REACT4] Stable references on Context provider values
+
+Object or array literals passed as Context provider `value` create a new reference on every
+render, triggering re-renders of all consumers. Always memoize Context values.
+
+```typescript
+// BAD — every consumer re-renders on each parent render
+<MyContext.Provider value={{ items: id ? [id] : [] }}>
+
+// GOOD — consumers only re-render when id changes
+const value = useMemo(() => ({ items: id ? [id] : [] }), [id]);
+<MyContext.Provider value={value}>
+```
+
+For regular component props, only memoize when the child is wrapped in `React.memo` or the prop
+is used as a hook dependency. Do not add `useMemo` preemptively.
+
+Reviewer: If you see an inline object or array literal passed directly as a Context provider
+value, require the author to memoize it.

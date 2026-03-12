@@ -108,6 +108,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const restoreAnimation = disableAnimation();
     document.documentElement.classList.toggle("dark", nextIsDark);
+    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
     document.documentElement.classList.toggle("s-dark", nextIsDark);
 
     if (nextIsDark) {

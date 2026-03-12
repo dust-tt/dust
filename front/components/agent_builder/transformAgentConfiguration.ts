@@ -2,9 +2,15 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -56,12 +62,18 @@ export function transformAgentConfigurationToFormData(
 export function getDefaultAgentFormData({
   user,
   owner,
+  hasSidekick,
 }: {
   user: UserType;
   owner: WorkspaceType;
+  hasSidekick?: boolean;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = getLargeWhitelistedModel(owner);
+  const preferredModel = hasSidekick
+    ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+    : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  const fallbackModel = hasSidekick
+    ? getSmallWhitelistedModel(owner)
+    : getLargeWhitelistedModel(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
   // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
@@ -111,19 +123,28 @@ export function transformTemplateToFormData(
   owner: WorkspaceType,
   hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
-  const defaultFormData = getDefaultAgentFormData({ user, owner });
-  const hasCopilotAccess =
-    hasFeature("agent_builder_copilot") && owner.role === "admin";
+  const hasSidekickAccess =
+    hasFeature("agent_builder_copilot") &&
+    (owner.role === "admin" ||
+      (hasFeature("agent_builder_copilot_builders") &&
+        owner.role === "builder"));
+  const defaultFormData = getDefaultAgentFormData({
+    user,
+    owner,
+    hasSidekick: hasSidekickAccess,
+  });
 
   return {
     ...defaultFormData,
-    // Don't constrain copilot with preset instructions when the user has copilot access.
-    instructions: hasCopilotAccess
+    // Don't constrain sidekick with preset instructions when the user has sidekick access.
+    instructions: hasSidekickAccess
       ? defaultFormData.instructions
       : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
-      name: template.handle ?? defaultFormData.agentSettings.name,
+      name: hasSidekickAccess
+        ? defaultFormData.agentSettings.name
+        : (template.handle ?? defaultFormData.agentSettings.name),
       description:
         template.userFacingDescription ??
         defaultFormData.agentSettings.description,

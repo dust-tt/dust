@@ -1,0 +1,83 @@
+import {
+  FullWidthSection,
+  H1,
+  P,
+} from "@app/components/home/ContentComponents";
+import {
+  getIcon,
+  ResourceAvatar,
+} from "@app/components/resources/resources_icons";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { Button, ExternalLinkIcon, RocketIcon } from "@dust-tt/sparkle";
+
+import type { IntegrationBase } from "../types";
+
+interface IntegrationHeroSectionProps {
+  integration: IntegrationBase;
+  seoTitle: string;
+  seoSubtitle: string;
+}
+
+export function IntegrationHeroSection({
+  integration,
+  seoTitle,
+  seoSubtitle,
+}: IntegrationHeroSectionProps) {
+  const IconComponent = getIcon(integration.icon);
+
+  return (
+    <FullWidthSection className="bg-white">
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
+        <div className="mb-6">
+          <ResourceAvatar icon={IconComponent} size="lg" />
+        </div>
+
+        <H1
+          mono
+          className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
+        >
+          {seoTitle}
+        </H1>
+
+        <P size="lg" className="mb-4 max-w-2xl text-muted-foreground">
+          {seoSubtitle}
+        </P>
+
+        {integration.authorizationRequired && (
+          <P size="sm" className="mb-8 text-muted-foreground">
+            Requires authorization to connect
+          </P>
+        )}
+
+        {/* CTAs */}
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Button
+            variant="highlight"
+            size="md"
+            label="Get started with Dust"
+            icon={RocketIcon}
+            href="/home/contact"
+            onClick={withTracking(
+              TRACKING_AREAS.HOME,
+              `integration_${integration.slug}_hero_cta_primary`
+            )}
+          />
+          {integration.documentationUrl && (
+            <Button
+              variant="outline"
+              size="md"
+              label="View documentation"
+              icon={ExternalLinkIcon}
+              href={integration.documentationUrl}
+              target="_blank"
+              onClick={withTracking(
+                TRACKING_AREAS.HOME,
+                `integration_${integration.slug}_hero_cta_docs`
+              )}
+            />
+          )}
+        </div>
+      </div>
+    </FullWidthSection>
+  );
+}

@@ -159,4 +159,4 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
   );
 };
 
-export default CollapseButton;
+export { CollapseButton };

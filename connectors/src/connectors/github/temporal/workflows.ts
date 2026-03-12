@@ -106,28 +106,40 @@ export async function githubFullSyncWorkflow(
       const fullSyncWorkflowId = getFullSyncWorkflowId(connectorId);
       const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}-syncCodeOnly-${syncCodeOnly}`;
       promises.push(
-        queue.add(() =>
-          executeChild(githubRepoSyncWorkflow, {
-            workflowId: childWorkflowId,
-            searchAttributes: {
-              connectorId: [connectorId],
-            },
-            args: [
-              {
-                dataSourceConfig,
-                connectorId,
-                repoName: repo.name,
-                repoId: repo.id,
-                repoLogin: repo.login,
-                syncCodeOnly,
-                isFullSync: true,
-                forceCodeResync,
+        queue.add(async () => {
+          try {
+            await executeChild(githubRepoSyncWorkflow, {
+              workflowId: childWorkflowId,
+              searchAttributes: {
+                connectorId: [connectorId],
               },
-            ],
-            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-            memo: workflowInfo().memo,
-          })
-        )
+              args: [
+                {
+                  dataSourceConfig,
+                  connectorId,
+                  repoName: repo.name,
+                  repoId: repo.id,
+                  repoLogin: repo.login,
+                  syncCodeOnly,
+                  isFullSync: true,
+                  forceCodeResync,
+                },
+              ],
+              parentClosePolicy:
+                ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+              memo: workflowInfo().memo,
+            });
+          } catch (err) {
+            if (
+              err instanceof Error &&
+              err.name === "WorkflowExecutionAlreadyStartedError"
+            ) {
+              // Workflow already running for this repo, it will be synced by that execution.
+              return;
+            }
+            throw err;
+          }
+        })
       );
     }
   }
@@ -152,27 +164,38 @@ export async function githubReposSyncWorkflow(
   for (const repo of repos) {
     const childWorkflowId = getRepoSyncWorkflowId(connectorId, repo.id);
     promises.push(
-      queue.add(() =>
-        executeChild(githubRepoSyncWorkflow, {
-          workflowId: childWorkflowId,
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [
-            {
-              dataSourceConfig,
-              connectorId,
-              repoName: repo.name,
-              repoId: repo.id,
-              repoLogin: orgLogin,
-              syncCodeOnly: false,
-              isFullSync: false,
+      queue.add(async () => {
+        try {
+          await executeChild(githubRepoSyncWorkflow, {
+            workflowId: childWorkflowId,
+            searchAttributes: {
+              connectorId: [connectorId],
             },
-          ],
-          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-          memo: workflowInfo().memo,
-        })
-      )
+            args: [
+              {
+                dataSourceConfig,
+                connectorId,
+                repoName: repo.name,
+                repoId: repo.id,
+                repoLogin: orgLogin,
+                syncCodeOnly: false,
+                isFullSync: false,
+              },
+            ],
+            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+            memo: workflowInfo().memo,
+          });
+        } catch (err) {
+          if (
+            err instanceof Error &&
+            err.name === "WorkflowExecutionAlreadyStartedError"
+          ) {
+            // Workflow already running for this repo, it will be synced by that execution.
+            return;
+          }
+          throw err;
+        }
+      })
     );
   }
 

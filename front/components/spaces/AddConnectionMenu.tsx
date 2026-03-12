@@ -3,7 +3,9 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -34,7 +36,7 @@ import { isOAuthProvider } from "@app/types/oauth/lib";
 import type { PlanType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
@@ -72,11 +74,13 @@ export async function setupConnection({
   provider,
   useCase = "connection",
   extraConfig,
+  regionInfo,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
+  regionInfo: RegionInfo | null;
 }): Promise<
   Result<{ connectionId: string; relatedCredentialId?: string }, Error>
 > {
@@ -90,6 +94,7 @@ export async function setupConnection({
     provider,
     useCase,
     extraConfig,
+    regionInfo,
   });
   if (!cRes.isOk()) {
     return cRes;
@@ -130,6 +135,7 @@ export const AddConnectionMenu = ({
   const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
+  const regionContext = useRegionContext();
 
   const handleOnClose = useCallback(
     () =>
@@ -239,6 +245,7 @@ export const AddConnectionMenu = ({
         owner,
         provider,
         extraConfig,
+        regionInfo: regionContext.regionInfo,
       });
       if (connectionRes.isErr()) {
         throw connectionRes.error;
@@ -482,7 +489,7 @@ export const AddConnectionMenu = ({
             case undefined:
               return null;
             default:
-              assertNever(c);
+              assertNeverAndIgnore(c);
           }
         })}
 

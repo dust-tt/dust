@@ -517,11 +517,26 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       currentTime.getTime() - createdAt.getTime()
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const shouldRedact =
+      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES;
+
     const secret = this.sharedSecret
-      ? differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
+      ? shouldRedact
         ? redactString(this.sharedSecret, 4)
         : this.sharedSecret
       : null;
+
+    const headers =
+      this.customHeaders && shouldRedact
+        ? Object.fromEntries(
+            Object.entries(this.customHeaders).map(([key, value]) => [
+              key,
+              value !== null && value !== undefined
+                ? redactString(String(value), 4)
+                : value,
+            ])
+          )
+        : this.customHeaders;
 
     return {
       sId: this.sId,
@@ -541,7 +556,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       lastError: this.lastError,
       sharedSecret: secret,
-      customHeaders: this.customHeaders,
+      customHeaders: headers,
       documentationUrl: null,
     };
   }

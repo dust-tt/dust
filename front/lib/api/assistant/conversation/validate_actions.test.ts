@@ -26,10 +26,10 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
-  createAgentMessages,
   createUserMentions,
   dismissMention,
 } from "@app/lib/api/assistant/conversation/mentions";
+import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,

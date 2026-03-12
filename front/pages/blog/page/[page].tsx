@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,

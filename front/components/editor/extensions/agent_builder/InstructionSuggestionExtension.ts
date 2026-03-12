@@ -46,12 +46,14 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
+    "suggestion-deletion rounded line-through bg-red-100 text-red-800 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
-  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+    "suggestion-deletion rounded line-through bg-red-50 text-gray-400 cursor-default",
+  add: "suggestion-addition rounded bg-blue-100 text-blue-800 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400",
+    "suggestion-addition rounded bg-blue-50 text-gray-400 cursor-default",
+  blockHighlightDimmed:
+    "suggestion-highlight rounded bg-gray-100 cursor-default",
 };
 
 export function diffBlockContent(
@@ -170,6 +172,7 @@ function findBlockByBlockId(
 
 // Create inline diff decorations for a single block (deletion + addition widgets).
 function buildBlockDecorations({
+  applyBlockHighlight,
   blockPos,
   decorations,
   isHighlighted,
@@ -178,6 +181,7 @@ function buildBlockDecorations({
   schema,
   suggestionId,
 }: {
+  applyBlockHighlight: boolean;
   blockPos: number;
   decorations: Decoration[];
   isHighlighted: boolean;
@@ -188,6 +192,16 @@ function buildBlockDecorations({
 }): void {
   const changes = diffBlockContent(oldNode, newNode, schema);
   const contentStart = blockPos + 1;
+
+  // Selected only: entire block gets dimmed highlight.
+  if (applyBlockHighlight && changes.length > 0) {
+    decorations.push(
+      Decoration.node(blockPos, blockPos + oldNode.nodeSize, {
+        class: CLASSES.blockHighlightDimmed,
+        [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+      })
+    );
+  }
 
   for (const change of changes) {
     if (change.fromA !== change.toA) {
@@ -205,10 +219,15 @@ function buildBlockDecorations({
 
     if (change.fromB !== change.toB) {
       const insertedSlice = newNode.content.cut(change.fromB, change.toB);
+      const isCrossType = oldNode.type !== newNode.type;
+      // When old block is a different type, place the addition after it so the new content doesn't render inside the old block's container.
+      const widgetPos = isCrossType
+        ? blockPos + oldNode.nodeSize
+        : contentStart + change.fromA;
 
       decorations.push(
         Decoration.widget(
-          contentStart + change.fromA,
+          widgetPos,
           () => {
             const span = document.createElement("span");
             span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
@@ -216,7 +235,13 @@ function buildBlockDecorations({
             span.contentEditable = "false";
 
             const serializer = DOMSerializer.fromSchema(schema);
-            serializer.serializeFragment(insertedSlice, {}, span);
+            if (isCrossType) {
+              // Serialize the full block node so the preview shows the new type
+              const blockEl = serializer.serializeNode(newNode, {});
+              span.appendChild(blockEl);
+            } else {
+              serializer.serializeFragment(insertedSlice, {}, span);
+            }
 
             // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
             const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
@@ -237,10 +262,48 @@ function buildBlockDecorations({
   }
 }
 
+function addBlockAdditionWidget(
+  pos: number,
+  newChild: PMNode,
+  isHighlighted: boolean,
+  decorations: Decoration[],
+  schema: Schema,
+  suggestionId: string
+): void {
+  const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+  decorations.push(
+    Decoration.widget(
+      pos,
+      () => {
+        const div = document.createElement("div");
+        div.className = className;
+        div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+        div.contentEditable = "false";
+        div.style.width = "fit-content";
+
+        const serializer = DOMSerializer.fromSchema(schema);
+        serializer.serializeFragment(Fragment.from(newChild), {}, div);
+
+        div.querySelectorAll("*").forEach((el) => {
+          if (el instanceof HTMLElement) {
+            el.className = el.className
+              ? `${el.className} ${className}`
+              : className;
+          }
+        });
+
+        return div;
+      },
+      { side: -1 }
+    )
+  );
+}
+
 // Create per-child-block decorations for root-level targets. Matches old and
 // new children by position and diffs each pair for word-level inline diffs.
 // Extra new blocks are shown as full additions, extra old blocks as deletions.
 function buildRootDecorations({
+  applyBlockHighlight,
   decorations,
   isHighlighted,
   newRoot,
@@ -249,6 +312,7 @@ function buildRootDecorations({
   schema,
   suggestionId,
 }: {
+  applyBlockHighlight: boolean;
   decorations: Decoration[];
   isHighlighted: boolean;
   newRoot: PMNode;
@@ -262,6 +326,16 @@ function buildRootDecorations({
   oldRoot.content.forEach((child) => oldChildren.push(child));
   newRoot.content.forEach((child) => newChildren.push(child));
 
+  // Apply a single decoration spanning the full root for a continuous highlight (no gaps between blocks).
+  if (applyBlockHighlight) {
+    decorations.push(
+      Decoration.node(rootPos, rootPos + oldRoot.nodeSize, {
+        class: CLASSES.blockHighlightDimmed,
+        [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+      })
+    );
+  }
+
   const maxLen = Math.max(oldChildren.length, newChildren.length);
   let oldOffset = 0;
 
@@ -272,56 +346,56 @@ function buildRootDecorations({
     const childPos = rootPos + 1 + oldOffset;
 
     if (oldChild && newChild) {
-      // Both exist: diff within this block pair.
-      buildBlockDecorations({
-        blockPos: childPos,
-        newNode: newChild,
-        oldNode: oldChild,
-        schema,
-        suggestionId,
-        isHighlighted,
-        decorations,
-      });
+      if (oldChild.content.size > 0) {
+        buildBlockDecorations({
+          applyBlockHighlight: false, // Root handles the highlight as a single decoration.
+          blockPos: childPos,
+          newNode: newChild,
+          oldNode: oldChild,
+          schema,
+          suggestionId,
+          isHighlighted,
+          decorations,
+        });
+      } else {
+        // Old block is empty (e.g. the default placeholder paragraph in a new editor).
+        // Skip pairing — pairing would place the addition widget *after* the empty block,
+        // causing a blank line before the first heading/paragraph in the card.
+        addBlockAdditionWidget(
+          childPos,
+          newChild,
+          isHighlighted,
+          decorations,
+          schema,
+          suggestionId
+        );
+      }
       oldOffset += oldChild.nodeSize;
     } else if (oldChild) {
       // Block was removed: mark entire block content as deletion.
-      const contentStart = childPos + 1;
-      decorations.push(
-        Decoration.inline(contentStart, contentStart + oldChild.content.size, {
-          class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
-          [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-        })
-      );
+      if (oldChild.content.size > 0) {
+        const contentStart = childPos + 1;
+        decorations.push(
+          Decoration.inline(
+            contentStart,
+            contentStart + oldChild.content.size,
+            {
+              class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
+              [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+            }
+          )
+        );
+      }
       oldOffset += oldChild.nodeSize;
     } else if (newChild) {
       // Block was added: insert as a widget after the last old child.
-      decorations.push(
-        Decoration.widget(
-          childPos,
-          () => {
-            const div = document.createElement("div");
-            div.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
-            div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
-            div.contentEditable = "false";
-            div.style.width = "fit-content";
-
-            const serializer = DOMSerializer.fromSchema(schema);
-            serializer.serializeFragment(Fragment.from(newChild), {}, div);
-
-            // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
-            const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
-            div.querySelectorAll("*").forEach((el) => {
-              if (el instanceof HTMLElement) {
-                el.className = el.className
-                  ? `${el.className} ${className}`
-                  : className;
-              }
-            });
-
-            return div;
-          },
-          { side: -1 }
-        )
+      addBlockAdditionWidget(
+        childPos,
+        newChild,
+        isHighlighted,
+        decorations,
+        schema,
+        suggestionId
       );
     }
   }
@@ -330,7 +404,8 @@ function buildRootDecorations({
 function buildDecorations(
   state: EditorState,
   suggestions: Map<string, StoredSuggestion>,
-  highlightedId: string | null
+  highlightedId: string | null,
+  showBlockHighlight: boolean
 ): DecorationSet {
   if (suggestions.size === 0) {
     return DecorationSet.empty;
@@ -341,6 +416,7 @@ function buildDecorations(
 
   for (const [suggestionId, suggestion] of suggestions) {
     const isHighlighted = suggestionId === highlightedId;
+    const applyBlockHighlight = showBlockHighlight && isHighlighted;
 
     for (const op of suggestion.operations) {
       const found = findBlockByBlockId(state.doc, op.targetBlockId);
@@ -362,6 +438,7 @@ function buildDecorations(
         newNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME
       ) {
         buildRootDecorations({
+          applyBlockHighlight,
           oldRoot: blockNode,
           newRoot: newNode,
           rootPos: blockPos,
@@ -372,6 +449,7 @@ function buildDecorations(
         });
       } else {
         buildBlockDecorations({
+          applyBlockHighlight,
           oldNode: blockNode,
           newNode,
           blockPos,
@@ -387,7 +465,26 @@ function buildDecorations(
   return DecorationSet.create(state.doc, decorations);
 }
 
-function createPlugin(getHighlightedId: () => string | null) {
+// Check if a transaction step modifies a specific range
+function stepModifiesRange(
+  step: { forEach: (f: (oldStart: number, oldEnd: number) => void) => void },
+  rangeStart: number,
+  rangeEnd: number
+): boolean {
+  let modifies = false;
+  step.forEach((oldStart, oldEnd) => {
+    // Ranges overlap if they don't end before or start after each other
+    if (oldEnd > rangeStart && oldStart < rangeEnd) {
+      modifies = true;
+    }
+  });
+  return modifies;
+}
+
+function createPlugin(
+  getHighlightedId: () => string | null,
+  showBlockHighlight: boolean
+) {
   return new Plugin<PluginState>({
     key: pluginKey,
 
@@ -417,6 +514,14 @@ function createPlugin(getHighlightedId: () => string | null) {
           dirty = true;
         }
 
+        if (meta?.type === "removeAll") {
+          suggestions = new Map(suggestions);
+          for (const id of meta.ids) {
+            suggestions.delete(id);
+          }
+          dirty = true;
+        }
+
         if (meta?.type === "highlight") {
           highlightedId = meta.id;
           dirty = true;
@@ -430,7 +535,8 @@ function createPlugin(getHighlightedId: () => string | null) {
             decorations: buildDecorations(
               newState,
               suggestions,
-              effectiveHighlightedId
+              effectiveHighlightedId,
+              showBlockHighlight
             ),
           };
         }
@@ -445,6 +551,50 @@ function createPlugin(getHighlightedId: () => string | null) {
           pluginKey.getState(editorState)?.decorations ?? DecorationSet.empty
         );
       },
+    },
+
+    filterTransaction(tr, state) {
+      if (!tr.docChanged || tr.getMeta(pluginKey)) {
+        return true;
+      }
+
+      const pluginState = pluginKey.getState(state);
+      if (!pluginState || pluginState.suggestions.size === 0) {
+        return true;
+      }
+
+      // Collect all suggestion block content ranges upfront to avoid redundant lookups.
+      // Typical case: 1-5 suggestions with 1-2 operations each = ~10 ranges max.
+      // Even with 20 suggestions × 5 operations × 5 steps = 500 iterations, this is negligible.
+      const suggestionRanges: Array<{ start: number; end: number }> = [];
+      for (const suggestion of pluginState.suggestions.values()) {
+        for (const op of suggestion.operations) {
+          const found = findBlockByBlockId(state.doc, op.targetBlockId);
+          if (found) {
+            suggestionRanges.push({
+              start: found.pos + 1,
+              end: found.pos + found.node.nodeSize - 1,
+            });
+          }
+        }
+      }
+
+      // Check each transaction step against all suggestion ranges.
+      // This is O(steps × ranges) but typically O(1-5 × 1-10) = ~50 operations max.
+      for (let i = 0; i < tr.steps.length; i++) {
+        const map = tr.mapping.slice(0, i);
+
+        for (const range of suggestionRanges) {
+          const mappedStart = map.map(range.start);
+          const mappedEnd = map.map(range.end);
+
+          if (stepModifiesRange(tr.mapping.maps[i], mappedStart, mappedEnd)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
     },
   });
 }
@@ -561,8 +711,16 @@ export function getSuggestionBlockRect(
   return top <= bottom ? { top, bottom } : null;
 }
 
-export const InstructionSuggestionExtension = Extension.create({
+export const InstructionSuggestionExtension = Extension.create<{
+  showBlockHighlight: boolean;
+}>({
   name: "instructionSuggestion",
+
+  addOptions() {
+    return {
+      showBlockHighlight: true,
+    };
+  },
 
   addStorage() {
     return {
@@ -571,7 +729,12 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addProseMirrorPlugins() {
-    return [createPlugin(() => this.storage.highlightedSuggestionId)];
+    return [
+      createPlugin(
+        () => this.storage.highlightedSuggestionId,
+        this.options.showBlockHighlight
+      ),
+    ];
   },
 
   addCommands() {
@@ -664,20 +827,39 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ commands, editor }) => {
-          const ids = getActiveSuggestionIds(editor.state);
+        ({ commands, state, tr }) => {
+          const ids = getActiveSuggestionIds(state);
+          if (ids.length === 0) {
+            return false;
+          }
 
-          // Process all suggestions even if some fail, return true only if all succeeded.
-          return ids.map((id) => commands.acceptSuggestion(id)).every(Boolean);
+          // commands.acceptSuggestion shares the same tr, so content
+          // replacements accumulate correctly. However each call overwrites
+          // the plugin meta, so only the last suggestion would be removed
+          // from plugin state. We fix this by overwriting the meta with all
+          // IDs after the loop.
+          const allSucceeded = ids
+            .map((id) => commands.acceptSuggestion(id))
+            .every(Boolean);
+          tr.setMeta(pluginKey, { type: "removeAll", ids });
+
+          return allSucceeded;
         },
 
       rejectAllSuggestions:
         () =>
-        ({ commands, editor }) => {
-          const ids = getActiveSuggestionIds(editor.state);
+        ({ state, tr, dispatch }) => {
+          const ids = getActiveSuggestionIds(state);
+          if (ids.length === 0) {
+            return false;
+          }
 
-          // Process all suggestions even if some fail, return true only if all succeeded.
-          return ids.map((id) => commands.rejectSuggestion(id)).every(Boolean);
+          if (dispatch) {
+            tr.setMeta(pluginKey, { type: "removeAll", ids });
+            dispatch(tr);
+          }
+
+          return true;
         },
 
       setHighlightedSuggestion:

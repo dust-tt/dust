@@ -2,18 +2,14 @@
   "name": "connectors",
   "version": "0.1.0",
   "engines": {
-    "node": "22.22.0"
+    "node": ">=22.22.0"
   },
   "scripts": {
-    "format": "npm run format:lefthook -- .",
-    "format:lefthook": "biome format --write",
-    "format:check": "biome format .",
-    "lint": "npm run lint:lefthook -- .",
-    "lint:lefthook": "biome lint",
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
+    "build:temporal-bundles": "tsx scripts/temporal-build/build-temporal-bundles.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",
-    "start:worker": "tsx ./src/start_worker.ts",
+    "start:worker": "USE_TEMPORAL_BUNDLES=true node ./dist/start_worker.js",
     "start:dev": "tsx ./src/start.ts -p 3002",
     "start:dev:web": "tsx ./src/start_server.ts -p 3002",
     "start:dev:worker": "tsx ./src/start_worker.ts",
@@ -30,6 +26,7 @@
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
     "@google-cloud/bigquery": "^7.9.2",
+    "@google-cloud/resource-manager": "^6.2.1",
     "@google-cloud/storage": "^7.13.0",
     "@jsonjoy.com/util": "^1.1.3",
     "@mendable/firecrawl-js": "^1.29.1",
@@ -110,12 +107,10 @@
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
-    "@typescript/native-preview": "7.0.0-dev.20260105.1",
     "danger": "^13.0.4",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.27.3",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }
 }

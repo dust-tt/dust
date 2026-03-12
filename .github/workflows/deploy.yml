@@ -45,12 +45,12 @@ on:
           - "us"
           - "eu"
       deploy_spa_app:
-        description: "Deploy SPA for app (front only)"
+        description: "Deploy SPA for app (front/front-edge)"
         required: false
         default: true
         type: boolean
       deploy_spa_poke:
-        description: "Deploy SPA for poke (front only)"
+        description: "Deploy SPA for poke (front/front-edge)"
         required: false
         default: true
         type: boolean
@@ -64,6 +64,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ensure-sandbox-images:
+    if: inputs.component == 'front' || inputs.component == 'front-edge'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/sandbox-img-registry.yml
+    secrets: inherit
+
   check-branch:
     runs-on: ubuntu-latest
     steps:
@@ -202,7 +210,8 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [prepare, notify-start, build]
+    needs: [prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images]
+    if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -227,7 +236,8 @@ jobs:
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
           DEPLOY_SPA_APP: ${{ inputs.deploy_spa_app }}
           DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
-          RUN_ID: ${{ github.run_id }}
+          SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
+          SPA_POKE_VERSION_ID: ${{ needs.deploy-poke.outputs.version_id }}
           PLAYWRIGHT_SHA: ${{ github.sha }}
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
@@ -246,7 +256,7 @@ jobs:
               playwright_sha: process.env.PLAYWRIGHT_SHA,
             };
 
-            // When deploying front/front-edge with SPA enabled, tell dust-infra to dispatch back
+            // When deploying front (production) with SPA enabled, tell dust-infra to dispatch back
             // after a successful rollout so the SPA is deployed to production only once the API
             // is live.
             if (isFront && (deploySpaApp || deploySpaAppPoke)) {
@@ -259,11 +269,12 @@ jobs:
                 event_type: 'deploy-spa-production',
                 payload: {
                   app,
-                  run_id: process.env.RUN_ID,
                   image_tag: process.env.IMAGE_TAG,
                   sha: process.env.PLAYWRIGHT_SHA,
                   slack_thread_ts: process.env.SLACK_THREAD_TS,
                   slack_channel: process.env.SLACK_CHANNEL,
+                  spa_app_version_id: process.env.SPA_APP_VERSION_ID,
+                  spa_poke_version_id: process.env.SPA_POKE_VERSION_ID,
                 },
               });
             }
@@ -287,7 +298,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
-  # Phase 1: Upload SPA to CF Pages as preview (assets propagate, production alias unchanged).
+  # Upload SPA version to CF Workers (not yet promoted to production).
   # Starts in parallel with Docker build to save time.
   deploy-app:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_app

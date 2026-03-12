@@ -27,8 +27,10 @@ import {
 } from "@connectors/connectors/microsoft/lib/utils";
 import {
   isAccessBlockedError,
+  isBillingPolicyError,
   isGeneralExceptionError,
   isItemNotFoundError,
+  isJSONParsingError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
@@ -237,6 +239,17 @@ export async function getRootNodesToSyncFromResources(
               );
               return null;
             }
+            if (isBillingPolicyError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  internalId: resource.internalId,
+                  error: error.message,
+                },
+                "Billing policy error from Microsoft, skipping root resource"
+              );
+              return null;
+            }
             if (error instanceof ExternalOAuthTokenError) {
               // Do not throw immediately, the token may still be valid for other roots.
               oauthTokenErrors.push(error);
@@ -279,6 +292,11 @@ export async function getRootNodesToSyncFromResources(
           { errorCode: error.code, errorMessage: error.message },
           "Skipping sites-root due to 401 generalException - possible permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
         );
+      } else if (isBillingPolicyError(error)) {
+        logger.warn(
+          { error: error.message },
+          "Billing policy error from Microsoft, skipping sites-root"
+        );
       } else {
         throw error;
       }
@@ -320,6 +338,13 @@ export async function getRootNodesToSyncFromResources(
                   errorMessage: error.message,
                 },
                 "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
+              return { results: [] };
+            }
+            if (isBillingPolicyError(error)) {
+              logger.warn(
+                { sitePath, error: error.message },
+                "Billing policy error from Microsoft, skipping site drives"
               );
               return { results: [] };
             }
@@ -747,6 +772,22 @@ export async function syncFiles({
           parent,
         },
         "Skipping syncFiles due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+    if (isBillingPolicyError(e)) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "Billing policy error from Microsoft, skipping syncFiles"
       );
       return {
         count: 0,
@@ -1515,6 +1556,17 @@ async function getDeltaData({
         heartbeatFunction: heartbeat,
       });
     }
+    if (isBillingPolicyError(e)) {
+      logger.warn(
+        {
+          internalId: node.internalId,
+          error: e.message,
+        },
+        "Billing policy error from Microsoft, skipping delta sync for node"
+      );
+      // Return empty results with current deltaLink so we retry next cycle.
+      return { results: [], deltaLink: node.deltaLink };
+    }
     throw e;
   }
 }
@@ -1694,6 +1746,45 @@ export async function microsoftGarbageCollectionActivity({
             body: null,
           })),
         };
+      } else if (isBillingPolicyError(error)) {
+        logger.warn(
+          { connectorId, error: error.message },
+          "Billing policy error from Microsoft during garbage collection batch, skipping chunk"
+        );
+        continue;
+      } else if (isJSONParsingError(error)) {
+        // Batch returned malformed JSON — try individual requests to diagnose.
+        const failedUrls: string[] = [];
+        for (const req of chunk) {
+          try {
+            await getItem(logger, client, req.url);
+          } catch {
+            failedUrls.push(req.url);
+          }
+        }
+
+        if (failedUrls.length > 0) {
+          logger.warn(
+            {
+              connectorId,
+              error: error.message,
+              chunkSize: chunk.length,
+              failedUrls,
+            },
+            "Batch request failed with JSON parsing error and some individual requests also failed, skipping chunk"
+          );
+        } else {
+          logger.warn(
+            {
+              connectorId,
+              error: error.message,
+              chunkSize: chunk.length,
+              chunkUrls: chunk.map((req) => req.url),
+            },
+            "Batch request failed with JSON parsing error but all individual requests succeeded, skipping chunk"
+          );
+        }
+        continue;
       } else {
         throw error;
       }
@@ -2157,6 +2248,18 @@ export async function processDeltaChangesFromGCS({
             } else {
               skipped++;
             }
+          } else if (isBillingPolicyError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId,
+                error: error.message,
+              },
+              "Billing policy error from Microsoft, skipping file"
+            );
+            skipped++;
+          } else {
+            throw error;
           }
         }
       }

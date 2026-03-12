@@ -3,8 +3,8 @@ import {
   getIssueComments,
   getJiraBaseUrl,
   searchJiraIssuesUsingJql,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import { renderIssue } from "@app/lib/actions/mcp_internal_actions/servers/jira/rendering";
+} from "@app/lib/api/actions/servers/jira/jira_api_helper";
+import { renderIssue } from "@app/lib/api/actions/servers/jira/rendering";
 import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "@app/lib/providers/constants";
 import type {
   ToolDownloadParams,

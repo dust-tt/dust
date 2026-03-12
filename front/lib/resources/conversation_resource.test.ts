@@ -5,7 +5,9 @@ import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
   MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -373,11 +375,15 @@ describe("fetchMCPServerViews", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView1],
       enabled: true,
+      source: "conversation",
+      agentConfigurationId: null,
     });
     await ConversationResource.upsertMCPServerViews(authenticator, {
       conversation: conversation,
       mcpServerViews: [mcpServerView2],
       enabled: false,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     const results = await ConversationResource.fetchMCPServerViews(
@@ -420,6 +426,8 @@ describe("fetchMCPServerViews", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView],
       enabled: true,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     const remoteMCPServer2 = await RemoteMCPServerFactory.create(workspace);
@@ -438,6 +446,8 @@ describe("fetchMCPServerViews", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView2],
       enabled: false,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     const allResults = await ConversationResource.fetchMCPServerViews(
@@ -617,6 +627,73 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     // Admin should see all conversations.
     expect(adminConvoIds).toContain(conversations.accessible[0]);
     expect(adminConvoIds).toContain(conversations.restricted[0]);
+  });
+
+  it("fetchById should respect space-based permissions", async () => {
+    // Regular user can access conversations in global space
+    const userAccessibleConversation = await ConversationResource.fetchById(
+      userAuth,
+      conversations.accessible[0]
+    );
+    expect(userAccessibleConversation).not.toBeNull();
+    expect(userAccessibleConversation?.sId).toBe(conversations.accessible[0]);
+
+    // Regular user cannot access conversations restricted to admin-only space
+    const userRestrictedConversation = await ConversationResource.fetchById(
+      userAuth,
+      conversations.restricted[0]
+    );
+    expect(userRestrictedConversation).toBeNull();
+
+    // Admin can access both conversations
+    const adminAccessibleConversation = await ConversationResource.fetchById(
+      adminAuth,
+      conversations.accessible[0]
+    );
+    const adminRestrictedConversation = await ConversationResource.fetchById(
+      adminAuth,
+      conversations.restricted[0]
+    );
+
+    expect(adminAccessibleConversation).not.toBeNull();
+    expect(adminAccessibleConversation?.sId).toBe(conversations.accessible[0]);
+    expect(adminRestrictedConversation).not.toBeNull();
+    expect(adminRestrictedConversation?.sId).toBe(conversations.restricted[0]);
+  });
+
+  it("fetchByIds should respect space-based permissions", async () => {
+    const sIds = [conversations.accessible[0], conversations.restricted[0]];
+
+    // Regular user should only get back accessible conversations
+    const userConversations = await ConversationResource.fetchByIds(
+      userAuth,
+      sIds
+    );
+    const userConvoIds = userConversations.map((c) => c.sId);
+    expect(userConvoIds).toContain(conversations.accessible[0]);
+    expect(userConvoIds).not.toContain(conversations.restricted[0]);
+
+    // Admin should get back all conversations
+    const adminConversations = await ConversationResource.fetchByIds(
+      adminAuth,
+      sIds
+    );
+    const adminConvoIds = adminConversations.map((c) => c.sId);
+    expect(adminConvoIds).toContain(conversations.accessible[0]);
+    expect(adminConvoIds).toContain(conversations.restricted[0]);
+  });
+
+  it("fetchByIds should bypass permission checks when dangerouslySkipPermissionFiltering is true", async () => {
+    const sIds = [conversations.accessible[0], conversations.restricted[0]];
+
+    const conversationsWithoutPermissions =
+      await ConversationResource.fetchByIds(userAuth, sIds, {
+        dangerouslySkipPermissionFiltering: true,
+      });
+
+    const convoIds = conversationsWithoutPermissions.map((c) => c.sId);
+    expect(convoIds).toContain(conversations.accessible[0]);
+    expect(convoIds).toContain(conversations.restricted[0]);
   });
 
   it("should handle conversations with no requested spaces", async () => {
@@ -3683,6 +3760,84 @@ describe("Space Handling", () => {
       ).length;
       expect(nonCfCount).toBe(2);
     });
+
+    it("should exclude branch messages from pagination and allow duplicate ranks across branches", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+      const user = auth.getNonNullableUser();
+
+      // Create a main-thread user message at rank 0
+      const mainUserMessageRow = await UserMessageModel.create({
+        userId: user.id,
+        workspaceId: workspace.id,
+        content: "Main thread message",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+
+      const mainMessage = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversationResource.id,
+        parentId: null,
+        userMessageId: mainUserMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      // Create a branch from that message
+      const branch = await ConversationBranchModel.create({
+        state: "open",
+        previousMessageId: mainMessage.id,
+        conversationId: conversationResource.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+      });
+
+      // Create a branch user message at the same rank, attached to the branch
+      const branchUserMessageRow = await UserMessageModel.create({
+        userId: user.id,
+        workspaceId: workspace.id,
+        content: "Branch message",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+
+      await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversationResource.id,
+        parentId: null,
+        userMessageId: branchUserMessageRow.id,
+        workspaceId: workspace.id,
+        branchId: branch.id,
+      });
+
+      const page = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 10,
+      });
+
+      // Only the main-thread message should be included in pagination
+      expect(page.hasMore).toBe(false);
+      expect(page.messages).toHaveLength(1);
+      expect(page.messages[0].id).toBe(mainMessage.id);
+      expect(page.messages[0].rank).toBe(0);
+      expect(page.messages[0].branchId).toBeNull();
+    });
   });
 });
 
@@ -4782,17 +4937,30 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 
 const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_skills",
+  "agent_message_feedback",
+  "conversation_branch",
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_skills",
   "data_source",
   "message",
+  "sandbox",
   "user_conversation_reads",
   "user_project_digest",
+  "conversation_butler_suggestion",
+];
+
+const KNOWN_MESSAGE_RELATED_MODELS = [
+  // Tables that have a foreign key to the `message` table.
+  "message",
+  "message_reaction",
+  "mention",
+  "conversation_butler_suggestion",
+  "conversation_branch",
 ];
 
 describe("ConversationResource cleanup on delete", () => {
-  describe("model relationship detection", () => {
+  describe("conversation model relationship detection", () => {
     /**
      * This test ensures that when a conversation is deleted, all related resources are properly cleaned up.
      * If you add a new model with a `conversationId` foreign key, you MUST:
@@ -4853,6 +5021,70 @@ describe("ConversationResource cleanup on delete", () => {
 
       // Verify they match exactly.
       expect(modelsWithConversationFK).toEqual(knownModels);
+    });
+  });
+
+  describe("message model relationship detection", () => {
+    /**
+     * This test ensures that when a message is deleted, all related resources are properly cleaned up.
+     * If you add a new model with a `messageId` foreign key, you MUST:
+     * 1. Add it to the KNOWN_MESSAGE_RELATED_MODELS list above
+     * 2. Add proper cleanup logic in `destroyConversation` / `destroyMessageRelatedResources`
+     */
+
+    it("should detect any new models with message relationships", async () => {
+      loadAllModels();
+      const models = frontSequelize.models;
+      const modelsWithMessageFK: string[] = [];
+
+      // Scan all models for foreign keys pointing to the messages table.
+      const messageTableName = MessageModel.getTableName();
+      Object.entries(models).forEach(([modelName, model]) => {
+        const attributes = model.getAttributes();
+
+        const hasMessageFK = Object.values(attributes).some((attr) => {
+          const ref = (attr as { references?: { model?: string } }).references;
+          return ref?.model === messageTableName;
+        });
+
+        if (hasMessageFK) {
+          modelsWithMessageFK.push(modelName);
+        }
+      });
+
+      // Sort for consistent comparison.
+      modelsWithMessageFK.sort();
+      const knownModels = [...KNOWN_MESSAGE_RELATED_MODELS].sort();
+
+      if (modelsWithMessageFK.length !== knownModels.length) {
+        const missing = modelsWithMessageFK.filter(
+          (m) => !knownModels.includes(m)
+        );
+        const extra = knownModels.filter(
+          (m) => !modelsWithMessageFK.includes(m)
+        );
+
+        let errorMessage = "Message-related models have changed!\n\n";
+
+        if (missing.length > 0) {
+          errorMessage += `New models detected with message relationships:\n${missing.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "You MUST:\n" +
+            "1. Add these models to KNOWN_MESSAGE_RELATED_MODELS in conversation_resource.test.ts\n" +
+            "2. Add proper cleanup logic in `destroyConversation` / `destroyMessageRelatedResources`\n";
+        }
+
+        if (extra.length > 0) {
+          errorMessage += `Models removed or renamed:\n${extra.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "Remove these from KNOWN_MESSAGE_RELATED_MODELS in conversation_resource.test.ts\n";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Verify they match exactly.
+      expect(modelsWithMessageFK).toEqual(knownModels);
     });
   });
 });

@@ -5,8 +5,9 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
@@ -17,6 +18,8 @@ import type {
   ServerNotification,
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
+
+const statsDClient = getStatsDClient();
 
 export function registerTool(
   auth: Authenticator,

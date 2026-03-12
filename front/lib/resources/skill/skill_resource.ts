@@ -9,6 +9,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
+  SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
@@ -19,6 +20,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -50,6 +52,8 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type {
+  SkillSourceMetadata,
+  SkillSourceType,
   SkillStatus,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
@@ -86,6 +90,7 @@ type SkillResourceConstructorOptions =
       // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
+      fileAttachments: FileResource[];
       globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
@@ -93,6 +98,7 @@ type SkillResourceConstructorOptions =
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
+      fileAttachments: FileResource[];
       globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
@@ -103,6 +109,7 @@ type SkillVersionCreationAttributes =
     skillConfigurationId: ModelId;
     version: number;
     mcpServerViewIds: ModelId[];
+    fileAttachmentIds: ModelId[];
   };
 
 type ConversationSkillCreationAttributes =
@@ -183,6 +190,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
+  private fileAttachments: FileResource[];
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
@@ -195,6 +203,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Attributes<SkillConfigurationModel>,
     {
       dataSourceConfigurations,
+      fileAttachments,
       globalSId,
       mcpServerConfigurations,
       editorGroup,
@@ -205,6 +214,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     this.dataSourceConfigurations = dataSourceConfigurations;
     this.editorGroup = editorGroup ?? null;
+    this.fileAttachments = fileAttachments ?? [];
     this.globalSId = globalSId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
@@ -319,10 +329,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       addCurrentUserAsEditor = true,
       attachedKnowledge = [],
+      fileAttachments = [],
     }: {
       mcpServerViews: MCPServerViewResource[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
+      fileAttachments?: FileResource[];
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
@@ -354,6 +366,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
+      // File attachments for the skill.
+      await SkillFileAttachmentModel.bulkCreate(
+        fileAttachments.map((file) => ({
+          workspaceId: owner.id,
+          skillConfigurationId: skill.id,
+          fileId: file.id,
+          fileName: file.fileName,
+        })),
+        { transaction }
+      );
+
       // Compute what data source configurations to create (no existing configs for new skill).
       const { toUpsert } = this.computeDataSourceConfigurationChanges(owner, {
         attachedKnowledge,
@@ -369,6 +392,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new this(this.model, skill.get(), {
         dataSourceConfigurations,
         editorGroup,
+        fileAttachments,
         mcpServerConfigurations: mcpServerViews.map((view) => ({
           view,
         })),
@@ -539,6 +563,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         "skillConfigurationId"
       );
 
+      const fileAttachmentModels = await SkillFileAttachmentModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: {
+            [Op.in]: allowedCustomSkillIds,
+          },
+        },
+      });
+
+      const allFileResources = await FileResource.fetchByModelIdsWithAuth(
+        auth,
+        fileAttachmentModels.map((a) => a.fileId)
+      );
+
+      const fileResourceById = new Map(allFileResources.map((f) => [f.id, f]));
+
+      const fileAttachmentsBySkillId = groupBy(
+        fileAttachmentModels,
+        "skillConfigurationId"
+      );
+
       // Fetch editor groups for all skills.
       const skillEditorGroupsMap = new Map<number, GroupResource>();
 
@@ -602,6 +647,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           })),
           editorGroup: skillEditorGroupsMap.get(customSkill.id),
           dataSourceConfigurations: skillDataSourceConfigs,
+          fileAttachments: removeNulls(
+            (fileAttachmentsBySkillId[customSkill.id] ?? []).map(
+              (a) => fileResourceById.get(a.fileId) ?? null
+            )
+          ),
         });
       });
     }
@@ -798,6 +848,77 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
+   * Does not support global agents as we rely on the ID for mapping.
+   */
+  static async listByAgentConfigurations(
+    auth: Authenticator,
+    agentConfigurations: AgentConfigurationType[]
+  ): Promise<
+    { agentConfiguration: AgentConfigurationType; skill: SkillResource }[]
+  > {
+    assert(
+      agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
+      "Global agents are not supported"
+    );
+
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch all agent-skill relationships for the given agents.
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId: agentConfigurations.map((c) => c.id),
+        workspaceId: workspace.id,
+      },
+    });
+
+    // Fetch all unique skills in one batch.
+    const allSkills = await this.fetchBySkillReferences(
+      auth,
+      agentSkills.map((s) => ({
+        customSkillId: s.customSkillId,
+        globalSkillId: s.globalSkillId,
+      }))
+    );
+
+    const skillByCustomId = new Map<ModelId, SkillResource>();
+    const skillByGlobalId = new Map<string, SkillResource>();
+    for (const skill of allSkills) {
+      if (skill.globalSId) {
+        skillByGlobalId.set(skill.globalSId, skill);
+      } else {
+        skillByCustomId.set(skill.id, skill);
+      }
+    }
+
+    // Map skills back to each config.
+    const configById = new Map(agentConfigurations.map((c) => [c.id, c]));
+    return removeNulls(
+      Object.entries(
+        groupBy(agentSkills, (s) => s.agentConfigurationId)
+      ).flatMap(([configId, refs]) => {
+        const agentConfiguration = configById.get(parseInt(configId, 10));
+        if (!agentConfiguration) {
+          return [];
+        }
+        return refs.map((ref) => {
+          if (ref.globalSkillId) {
+            const skill = skillByGlobalId.get(ref.globalSkillId);
+            return skill ? { agentConfiguration, skill } : null;
+          } else if (ref.customSkillId) {
+            const skill = skillByCustomId.get(ref.customSkillId);
+            return skill ? { agentConfiguration, skill } : null;
+          }
+        });
+      })
+    );
+  }
+
+  /**
    * Returns skill references for an agent configuration.
    * For global agents, returns references from the config's skills field.
    * For non-global agents, queries the database.
@@ -880,6 +1001,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return skills;
+  }
+
+  /**
+   * List discoverable skills: custom default skills + non-auto-enabled global
+   * skills.
+   */
+  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status: "active",
+        isDefault: true,
+      },
+    });
   }
 
   /**
@@ -1033,20 +1167,46 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       { agentLoopData }
     );
 
+    let discoverableSkills: SkillResource[] = [];
+    if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
+      discoverableSkills = await this.listDiscoverable(auth);
+    }
+
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
 
-    const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
-    // Skills that are already enabled are not equipped.
-    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const equippedSkills = allAgentSkills.filter(
-      (s) => !enabledSkillIds.has(s.sId)
-    );
+    const sortByName = (a: SkillResource, b: SkillResource) =>
+      a.name.localeCompare(b.name);
+
+    // Compute the enabled skills: auto-enabled skills + conversation-enabled skills.
+    const enabledSkills = [
+      ...autoEnabledSkills.sort(sortByName),
+      ...conversationEnabledSkills.sort(sortByName),
+    ];
 
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
       enabledSkills
     );
+
+    // Compute the equipped skills: agent skills not already enabled +
+    // discoverable skills not already enabled or equipped.
+    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId)
+    );
+
+    const agentEquippedSkillIds = new Set(
+      agentEquippedSkills.map((s) => s.sId)
+    );
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
+    );
+
+    const equippedSkills = [
+      ...agentEquippedSkills.sort(sortByName),
+      ...discoveredSkills.sort(sortByName),
+    ];
 
     return {
       enabledSkills: augmentedEnabledSkills,
@@ -1208,12 +1368,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         icon: def.icon,
         extendedSkillId: null,
+        source: null,
+        sourceMetadata: null,
+        isDefault: def.isAutoEnabled !== true,
       },
       {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
         globalSId: def.sId,
         mcpServerConfigurations,
+        fileAttachments: [],
       }
     );
   }
@@ -1394,10 +1558,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       allMcpServerViews.map((view) => [view.id, view])
     );
 
+    // Build map to cache FileResource instances.
+    const allFileAttachmentIds = uniq(
+      sortedVersionModels.flatMap((model) => model.fileAttachmentIds)
+    );
+    const allFiles = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      allFileAttachmentIds
+    );
+    const fileMap = new Map(allFiles.map((file) => [file.id, file]));
+
     // Convert version models to SkillResource instances.
     return sortedVersionModels.map((versionModel) => {
       const mcpServerViews = removeNulls(
         versionModel.mcpServerViewIds.map((id) => mcpServerViewMap.get(id))
+      );
+      const fileAttachments = removeNulls(
+        versionModel.fileAttachmentIds.map((id) => fileMap.get(id))
       );
 
       const skill = new SkillResource(
@@ -1416,12 +1593,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon: versionModel.icon,
           requestedSpaceIds: versionModel.requestedSpaceIds,
           extendedSkillId: versionModel.extendedSkillId,
+          source: versionModel.source,
+          sourceMetadata: versionModel.sourceMetadata,
+          isDefault: versionModel.isDefault,
         },
         {
           // We ignore data source configurations for historical versions.
           // As when the user saves we re-compute those from the nodes.
           dataSourceConfigurations: [],
           editorGroup: this.editorGroup ?? undefined,
+          fileAttachments,
           mcpServerConfigurations: mcpServerViews.map((view) => ({
             view,
           })),
@@ -1538,21 +1719,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentFacingDescription,
       attachedKnowledge,
+      fileAttachments,
       icon,
       instructions,
       mcpServerViews,
       name,
       requestedSpaceIds,
+      source,
+      sourceMetadata,
       status,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
       attachedKnowledge: SkillAttachedKnowledge[];
+      fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
+      source?: SkillSourceType;
+      sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
       userFacingDescription: string;
     }
@@ -1578,6 +1765,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds,
           editedBy,
           ...(status ? { status } : {}),
+          ...(source ? { source } : {}),
+          ...(sourceMetadata ? { sourceMetadata } : {}),
         },
         transaction
       );
@@ -1598,6 +1787,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
     });
+
+    if (fileAttachments) {
+      await this.setFileAttachments(auth, fileAttachments);
+    }
   }
 
   /**
@@ -1793,10 +1986,57 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   }
 
-  async delete(
+  private async setFileAttachments(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<number, Error>> {
+    fileAttachments: FileResource[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const existingAttachments = await SkillFileAttachmentModel.findAll({
+      where: {
+        skillConfigurationId: this.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    const desiredFileModelIds = new Set(fileAttachments.map((f) => f.id));
+    const existingFileModelIds = new Set(
+      existingAttachments.map((a) => a.fileId)
+    );
+
+    // Remove join table rows for detached files (keep the files for version history).
+    const toRemove = existingAttachments.filter(
+      (a) => !desiredFileModelIds.has(a.fileId)
+    );
+    if (toRemove.length > 0) {
+      await SkillFileAttachmentModel.destroy({
+        where: {
+          id: { [Op.in]: toRemove.map((a) => a.id) },
+          workspaceId: workspace.id,
+        },
+      });
+    }
+
+    // Create new attachments.
+    const toCreate = fileAttachments.filter(
+      (f) => !existingFileModelIds.has(f.id)
+    );
+    if (toCreate.length > 0) {
+      await SkillFileAttachmentModel.bulkCreate(
+        toCreate.map((file) => ({
+          workspaceId: workspace.id,
+          skillConfigurationId: this.id,
+          fileId: file.id,
+          fileName: file.fileName,
+        }))
+      );
+    }
+
+    // Update instance to avoid stale data.
+    this.fileAttachments = fileAttachments;
+  }
+
+  async delete(auth: Authenticator): Promise<Result<number, Error>> {
     try {
       assert(
         this.canWrite(auth),
@@ -1805,52 +2045,85 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const workspace = auth.getNonNullableWorkspace();
 
-      // Delete agent-skill associations.
-      await AgentSkillModel.destroy({
-        where: {
-          customSkillId: this.id,
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
-
       const whereWorkspaceIdAndSkillId = {
         skillConfigurationId: this.id,
         workspaceId: workspace.id,
       };
 
-      // Delete the GroupSkillModel entry and the associated editor group.
-      await GroupSkillModel.destroy({
+      // Collect file IDs from current attachments and all version snapshots.
+      const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
         where: whereWorkspaceIdAndSkillId,
-        transaction,
+      });
+      const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
+
+      const versionRows = await SkillVersionModel.findAll({
+        where: whereWorkspaceIdAndSkillId,
+        attributes: ["fileAttachmentIds"],
+      });
+      const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
+
+      const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
+      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+        auth,
+        allFileIds
+      );
+
+      const affectedCount = await withTransaction(async (transaction) => {
+        // Delete agent-skill associations.
+        await AgentSkillModel.destroy({
+          where: {
+            customSkillId: this.id,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
+
+        // Delete the GroupSkillModel entry and the associated editor group.
+        await GroupSkillModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        if (this.editorGroup) {
+          await this.editorGroup.delete(auth, { transaction });
+        }
+
+        await SkillFileAttachmentModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        await SkillDataSourceConfigurationModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        await SkillMCPServerConfigurationModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        await SkillVersionModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        return this.model.destroy({
+          where: {
+            id: this.id,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
       });
 
-      if (this.editorGroup) {
-        await this.editorGroup.delete(auth, { transaction });
+      // Delete files from cloud storage outside the transaction (I/O with GCS).
+      for (const file of filesToDelete) {
+        const res = await file.delete(auth);
+        if (res.isErr()) {
+          return res;
+        }
       }
-
-      await SkillDataSourceConfigurationModel.destroy({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-
-      await SkillMCPServerConfigurationModel.destroy({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-
-      await SkillVersionModel.destroy({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-
-      const affectedCount = await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
 
       return new Ok(affectedCount);
     } catch (error) {
@@ -1894,7 +2167,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         (ref.customSkillId !== null && ref.customSkillId === this.id)
     );
 
-    if (!hasSkill) {
+    // Allow enabling default skills if the agent has the discover_skills skill.
+    const hasDiscoverSkills =
+      this.isDefault &&
+      refs.some((ref) => ref.globalSkillId === "discover_skills");
+
+    if (!hasSkill && !hasDiscoverSkills) {
       return new Err(
         new Error(
           `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
@@ -2006,6 +2284,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await editorGroup.delete(auth);
     }
 
+    // Delete file attachments and their underlying files.
+    const fileAttachments = await SkillFileAttachmentModel.findAll({
+      where: { workspaceId },
+    });
+    if (fileAttachments.length > 0) {
+      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+        auth,
+        fileAttachments.map((a) => a.fileId)
+      );
+      await SkillFileAttachmentModel.destroy({
+        where: { workspaceId },
+      });
+      for (const file of filesToDelete) {
+        const res = await file.delete(auth);
+        if (res.isErr()) {
+          throw res.error;
+        }
+      }
+    }
+
     await SkillDataSourceConfigurationModel.destroy({
       where: { workspaceId },
     });
@@ -2045,6 +2343,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.globalSId ? null : this.instructions,
       requestedSpaceIds,
       icon: this.icon ?? null,
+      source: this.source,
+      sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {
         const serializedView = view.toJSON();
         const server = serializedView.server;
@@ -2062,6 +2362,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           },
         };
       }),
+      fileAttachments: this.fileAttachments.map((file) => ({
+        fileId: file.sId,
+        fileName: file.fileName,
+      })),
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable,
       extendedSkillId: this.extendedSkillId,
@@ -2087,6 +2391,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const mcpServerViewIds = mcpServerConfigurations.map(
       (config) => config.mcpServerViewId
     );
+
+    // Fetch current file attachment IDs for this skill.
+    const fileAttachments = await SkillFileAttachmentModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: this.id,
+      },
+      transaction,
+    });
+
+    const fileAttachmentIds = fileAttachments.map((a) => a.fileId);
 
     // Calculate the next version number by counting existing versions.
     const where: WhereOptions<SkillVersionModel> = {
@@ -2114,8 +2429,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds: this.requestedSpaceIds,
       editedBy: this.editedBy,
       mcpServerViewIds,
+      fileAttachmentIds,
+      source: this.source,
+      sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      isDefault: this.isDefault,
     };
 
     await SkillVersionModel.create(versionData, {

@@ -718,15 +718,15 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       });
 
     if (dataPath) {
-      const sourceRegionDustFacingUrl =
-        await sourceRegionActivities.getRegionDustFacingUrl();
+      const sourceRegionApiBaseUrl =
+        await sourceRegionActivities.getRegionApiBaseUrl();
 
       await destinationRegionActivities.processDataSourceDocuments({
         destIds,
         dataPath,
         destRegion,
         sourceRegion,
-        sourceRegionDustFacingUrl,
+        sourceRegionApiBaseUrl,
         workspaceId,
       });
     }
@@ -774,15 +774,15 @@ export async function workspaceRelocateDataSourceFoldersWorkflow({
         workspaceId,
       });
 
-    const sourceRegionDustFacingUrl =
-      await sourceRegionActivities.getRegionDustFacingUrl();
+    const sourceRegionApiBaseUrl =
+      await sourceRegionActivities.getRegionApiBaseUrl();
 
     await destinationRegionActivities.processDataSourceFolders({
       destIds,
       dataPath,
       destRegion,
       sourceRegion,
-      sourceRegionDustFacingUrl,
+      sourceRegionApiBaseUrl,
       workspaceId,
     });
 
@@ -830,15 +830,15 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
         limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
     if (dataPath) {
-      const sourceRegionDustFacingUrl =
-        await sourceRegionActivities.getRegionDustFacingUrl();
+      const sourceRegionApiBaseUrl =
+        await sourceRegionActivities.getRegionApiBaseUrl();
 
       await destinationRegionActivities.processDataSourceTables({
         destIds,
         dataPath,
         destRegion,
         sourceRegion,
-        sourceRegionDustFacingUrl,
+        sourceRegionApiBaseUrl,
         workspaceId,
       });
     }

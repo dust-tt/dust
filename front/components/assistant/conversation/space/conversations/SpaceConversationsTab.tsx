@@ -168,6 +168,7 @@ export function SpaceConversationsTab({
               owner={owner}
               space={spaceInfo}
               hasConversations={hasHistory}
+              unreadCount={unreadConversationIds.length}
             />
           )}
 

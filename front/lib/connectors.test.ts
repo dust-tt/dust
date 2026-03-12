@@ -11,6 +11,7 @@ vi.mock("@app/lib/api/config", () => ({
   default: {
     getClientFacingUrl: vi.fn(() => "dust.tt"),
     getAppUrl: vi.fn(() => "dust.tt"),
+    getApiBaseUrl: vi.fn(() => "https://dust.tt"),
   },
 }));
 
@@ -20,7 +21,7 @@ import config from "@app/lib/api/config";
 describe("nodeCandidateFromUrl", () => {
   beforeEach(() => {
     // Reset the mock before each test
-    vi.mocked(config.getClientFacingUrl).mockReturnValue("https://dust.tt");
+    vi.mocked(config.getApiBaseUrl).mockReturnValue("https://dust.tt");
   });
   describe("Confluence", () => {
     it("should extract node ID from Confluence page URL", () => {

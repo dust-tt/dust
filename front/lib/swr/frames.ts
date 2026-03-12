@@ -24,6 +24,8 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
     frameMetadata: data?.file,
     // Set only if user is a conversation participant.
     conversationUrl: data?.conversationUrl ?? null,
+    // Set only if user can read the project.
+    projectUrl: data?.projectUrl ?? null,
     accessToken: data?.accessToken ?? null,
     isFrameLoading: !error && !data,
     error,

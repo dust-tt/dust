@@ -65,7 +65,7 @@ export function InviteChoosePage() {
                     key={invitation.workspaceName}
                     className={cn(
                       "bg-muted-background dark:bg-muted-background-night",
-                      "s-border-border dark:s-border-border-night",
+                      "border-border dark:border-border-night",
                       "flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm"
                     )}
                   >

@@ -1,7 +1,7 @@
 import {
   downloadAndProcessMicrosoftFile,
   searchMicrosoftDriveItems,
-} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+} from "@app/lib/api/actions/servers/microsoft/utils";
 import {
   PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
   PROVIDER_SEARCH_MAX_PAGE_SIZE,

@@ -25,6 +25,7 @@ import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/d
 import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
+import { MCPSandboxActionDetails } from "@app/components/actions/mcp/details/MCPSandboxActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
@@ -371,6 +372,10 @@ export function MCPActionDetails({
     toolName === CONVERSATION_CAT_FILE_ACTION_NAME
   ) {
     return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (internalMCPServerName === "sandbox") {
+    return <MCPSandboxActionDetails {...toolOutputDetailsProps} />;
   }
 
   return (

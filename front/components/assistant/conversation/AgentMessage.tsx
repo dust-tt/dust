@@ -50,6 +50,7 @@ import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { ConversationAttachmentsUpdatedEvent } from "@app/lib/notifications/events";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
@@ -66,13 +67,13 @@ import {
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightWorkspaceType,
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -286,7 +287,13 @@ export function AgentMessage({
               conversationId,
             });
             break;
-          case "agent_action_success":
+          case "agent_action_success": {
+            const action = eventPayload.data.action;
+            if (action.generatedFiles.length > 0) {
+              window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+            }
+            break;
+          }
           case "end-of-stream":
           case "tool_error":
           case "tool_notification":
@@ -295,7 +302,7 @@ export function AgentMessage({
             // Do nothing
             break;
           default:
-            assertNever(eventPayload.data);
+            assertNeverAndIgnore(eventPayload.data);
         }
       },
       [
@@ -574,6 +581,7 @@ export function AgentMessage({
         {...messageFeedback}
         owner={owner}
         agentConfigurationId={agentMessage.configuration.sId}
+        agentName={agentMessage.configuration.name}
         isGlobalAgent={isGlobalAgent}
       />
     );
@@ -761,7 +769,7 @@ export function AgentMessage({
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
-      <div className="inline-flex items-center gap-2 @sm:hidden">
+      <div className="inline-flex items-center gap-2 @xs:hidden">
         <ConversationMessageAvatar
           avatarUrl={agentConfiguration.pictureUrl}
           name={agentConfiguration.name}
@@ -785,7 +793,7 @@ export function AgentMessage({
       </div>
 
       <ConversationMessageAvatar
-        className="hidden @sm:flex"
+        className="hidden @xs:flex"
         avatarUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         isBusy={agentMessage.status === "created"}
@@ -795,7 +803,7 @@ export function AgentMessage({
 
       <div className="flex w-full min-w-0 flex-col gap-3">
         <ConversationMessageTitle
-          className="hidden @sm:flex"
+          className="hidden @xs:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
           infoChip={
@@ -947,15 +955,20 @@ function AgentMessageContent({
   );
 
   // References logic.
-  function updateActiveReferences(
-    document: MCPReferenceCitation,
-    index: number
-  ) {
-    const existingIndex = activeReferences.find((r) => r.index === index);
-    if (!existingIndex) {
-      setActiveReferences([...activeReferences, { index, document }]);
-    }
-  }
+  const updateActiveReferences = useCallback(
+    (document: MCPReferenceCitation, index: number) => {
+      const existingIndex = activeReferences.find((r) => r.index === index);
+      if (!existingIndex) {
+        setActiveReferences([...activeReferences, { index, document }]);
+      }
+    },
+    [activeReferences, setActiveReferences]
+  );
+
+  const citationsContextValue = useMemo(
+    () => ({ references, updateActiveReferences }),
+    [references, updateActiveReferences]
+  );
 
   const handleToolSetupComplete = React.useCallback(
     (toolId: string) => {
@@ -1013,6 +1026,7 @@ function AgentMessageContent({
       case "blocked_authentication_required":
         return (
           <MCPServerPersonalAuthenticationRequired
+            blockedAction={blockedAction}
             triggeringUser={triggeringUser}
             owner={owner}
             mcpServerId={blockedAction.metadata.mcpServerId}
@@ -1030,6 +1044,7 @@ function AgentMessageContent({
       case "blocked_file_authorization_required":
         return (
           <GoogleDriveFileAuthorizationRequired
+            blockedAction={blockedAction}
             triggeringUser={triggeringUser}
             owner={owner}
             fileAuthorizationInfo={blockedAction.fileAuthorizationInfo}
@@ -1127,16 +1142,15 @@ function AgentMessageContent({
 
       {agentMessage.content !== null && (
         <div>
-          <CitationsContext.Provider
-            value={{
-              references,
-              updateActiveReferences,
-            }}
-          >
+          <CitationsContext.Provider value={citationsContextValue}>
             <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}
               isStreaming={streaming && lastTokenClassification === "tokens"}
+              streamingState={getStreamingState(
+                streaming && lastTokenClassification === "tokens",
+                agentMessage.status
+              )}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
@@ -1196,6 +1210,19 @@ function AgentMessageContent({
       )}
     </div>
   );
+}
+
+function getStreamingState(
+  isStreaming: boolean,
+  messageStatus: string
+): StreamingState {
+  if (isStreaming) {
+    return "streaming";
+  }
+  if (messageStatus === "cancelled") {
+    return "cancelled";
+  }
+  return "none";
 }
 
 function getCitations({

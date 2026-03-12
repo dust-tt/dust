@@ -7,6 +7,7 @@ import type {
   HeadProps,
   ImageProps,
   RouterEvents,
+  RouterEventType,
   ScriptProps,
   TransitionOptions,
   UrlObject,
@@ -36,7 +37,6 @@ import { ReactRouterLinkWrapper } from "./ReactRouterLinkWrapper";
  */
 function useSafeNavigate() {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useNavigate();
   } catch {
     return null;
@@ -49,7 +49,6 @@ function useSafeNavigate() {
  */
 function useSafeLocation() {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useLocation();
   } catch {
     return null;
@@ -62,7 +61,6 @@ function useSafeLocation() {
  */
 function useSafeSearchParams() {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useRouterSearchParams();
   } catch {
     return [new URLSearchParams(window.location.search), () => {}] as const;
@@ -103,18 +101,25 @@ function urlToString(url: string | UrlObject): string {
  * Global event emitter for router events in extension
  * This mimics Next.js router events to work with NavigationLoadingContext
  */
-type RouterEventCallback = (url: string) => void;
+type RouterEventHandler = (url: string) => void;
+
+const routerEventListeners: Map<string, Set<RouterEventHandler>> = new Map();
 
 function createRouterEvents(): RouterEvents {
   return {
-    on: (event: string, callback: RouterEventCallback) => {
-      return;
+    on: (event: RouterEventType, handler: RouterEventHandler) => {
+      if (!routerEventListeners.has(event)) {
+        routerEventListeners.set(event, new Set());
+      }
+      routerEventListeners.get(event)!.add(handler);
     },
-    off: (event: string, callback: RouterEventCallback) => {
-      return;
+    off: (event: RouterEventType, handler: RouterEventHandler) => {
+      routerEventListeners.get(event)?.delete(handler);
     },
-    emit: (event: string, ...args: unknown[]) => {
-      return;
+    emit: (event: RouterEventType, ...args: unknown[]) => {
+      routerEventListeners
+        .get(event)
+        ?.forEach((handler) => handler(String(args[0] ?? "")));
     },
   };
 }
@@ -402,7 +407,6 @@ export function Image({
  */
 export function usePageContext<T>(): T | null {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useOutletContext<T>();
   } catch {
     return null;
@@ -415,7 +419,6 @@ export function usePageContext<T>(): T | null {
  */
 export function usePathParams(): Record<string, string | undefined> {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
     return useRouterParams();
   } catch {
     return {};

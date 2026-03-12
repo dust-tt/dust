@@ -129,6 +129,7 @@ export interface PluginManifest<
   resourceTypes: R[];
   warning?: string;
   isHidden?: boolean;
+  readonly?: boolean;
   redactResult?: boolean;
 }
 

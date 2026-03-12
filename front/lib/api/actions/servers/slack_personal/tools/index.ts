@@ -1,20 +1,6 @@
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  executeListUserGroups,
-  executePostMessage,
-  executeReadThreadMessages,
-  executeScheduleMessage,
-  executeSearchChannels,
-  executeSearchUser,
-  getSlackClient,
-  isSlackMissingScope,
-  resolveChannelDisplayName,
-  resolveChannelId,
-  resolveUserDisplayName,
-  SLACK_THREAD_LISTING_LIMIT,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -23,6 +9,25 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import {
+  executeArchiveChannel,
+  executeCreateChannel,
+  executeInviteToChannel,
+  executeListUserGroups,
+  executePostMessage,
+  executeReadCanvas,
+  executeReadThreadMessages,
+  executeScheduleMessage,
+  executeSearchChannels,
+  executeSearchUser,
+  executeWriteCanvas,
+  getSlackClient,
+  isSlackMissingScope,
+  resolveChannelDisplayName,
+  resolveChannelId,
+  resolveUserDisplayName,
+  SLACK_THREAD_LISTING_LIMIT,
+} from "@app/lib/api/actions/servers/slack/helpers";
 import { SLACK_PERSONAL_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
@@ -36,7 +41,6 @@ import {
   parseTimeFrame,
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import uniqBy from "lodash/uniqBy";
 
@@ -643,15 +647,16 @@ export function createSlackPersonalTools(
       }
     },
 
-    search_channels: async ({ query, scope }, { authInfo }) => {
+    search_channels: async ({ query, search_all }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeSearchChannels(query, scope, {
+        return await executeSearchChannels(query, search_all, {
           accessToken,
+          mcpServerId,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -825,6 +830,130 @@ export function createSlackPersonalTools(
         latest,
         accessToken,
       });
+    },
+
+    read_canvas: async (
+      { canvas_id, section_types, contains_text },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeReadCanvas({
+          canvas_id,
+          section_types,
+          contains_text,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error reading canvas: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    write_canvas: async (
+      { canvas_id, operation, content, section_id, title, channel_id },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeWriteCanvas({
+          canvas_id,
+          operation,
+          content,
+          section_id,
+          title,
+          channel_id,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error writing canvas: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    create_channel: async (
+      { name, is_private, leave_after_creation },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeCreateChannel({
+          name,
+          is_private,
+          leave_after_creation,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error creating channel: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    invite_to_channel: async ({ channel, users }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeInviteToChannel({ channel, users, accessToken });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(
+            `Error inviting users to channel: ${normalizeError(error)}`
+          )
+        );
+      }
+    },
+
+    archive_channel: async ({ channel }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeArchiveChannel({ channel, accessToken });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error archiving channel: ${normalizeError(error)}`)
+        );
+      }
     },
   };
 

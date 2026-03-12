@@ -29,10 +29,14 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
+import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
-import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
+import { serializeMention } from "@app/lib/mentions/format";
+import {
+  AgentMessageCompletedEvent,
+  ConversationAttachmentsUpdatedEvent,
+} from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentGenerationCancelledEvent,
@@ -40,6 +44,9 @@ import type {
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  ButlerDoneEvent,
+  ButlerSuggestionCreatedEvent,
+  ButlerThinkingEvent,
   ConversationTitleEvent,
   ConversationWithoutContentType,
   LightMessageType,
@@ -52,9 +59,11 @@ import {
   toMentionType,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { cn } from "@dust-tt/sparkle";
 import type {
   ListScrollLocation,
   VirtuosoMessageListMethods,
@@ -74,7 +83,6 @@ import React, {
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -90,6 +98,7 @@ interface ConversationViewerProps {
   setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
+  clientSideMCPServerIds?: string[];
 }
 
 function easeOutQuint(x: number): number {
@@ -115,6 +124,7 @@ export const ConversationViewer = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   setPlanLimitReached,
+  clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const ref =
     useRef<
@@ -305,6 +315,64 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
   });
 
+  const [suggestionsByMessageSId, setSuggestionsByMessageSId] = useState(
+    () => new Map<string, ButlerSuggestionPublicType[]>()
+  );
+
+  const [isButlerThinking, setIsButlerThinking] = useState(false);
+
+  const handleSuggestionAction = useCallback(
+    async (
+      suggestionSId: string,
+      status: "accepted" | "dismissed"
+    ): Promise<void> => {
+      // Look up the suggestion before removing it so we can act on acceptance.
+      let matchedSuggestion: ButlerSuggestionPublicType | undefined;
+      for (const suggestions of suggestionsByMessageSId.values()) {
+        matchedSuggestion = suggestions.find((s) => s.sId === suggestionSId);
+        if (matchedSuggestion) {
+          break;
+        }
+      }
+
+      // If accepting a call_agent or create_frame suggestion, submit the message with the agent mention.
+      if (
+        status === "accepted" &&
+        (matchedSuggestion?.suggestionType === "call_agent" ||
+          matchedSuggestion?.suggestionType === "create_frame")
+      ) {
+        const { agentSId, agentName, prompt } = matchedSuggestion.metadata;
+        void submitMessage({
+          input: `${serializeMention({ name: agentName, sId: agentSId })} ${prompt}`,
+          mentions: [{ configurationId: agentSId }],
+          contentFragments: { uploaded: [], contentNodes: [] },
+        });
+      }
+
+      // Optimistic update: remove the suggestion from local state.
+      setSuggestionsByMessageSId((prev) => {
+        const next = new Map<string, ButlerSuggestionPublicType[]>();
+        for (const [msgSId, suggestions] of prev) {
+          const filtered = suggestions.filter((s) => s.sId !== suggestionSId);
+          if (filtered.length > 0) {
+            next.set(msgSId, filtered);
+          }
+        }
+        return next;
+      });
+
+      await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/butler_suggestions/${suggestionSId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+    },
+    [conversationId, owner.sId, suggestionsByMessageSId, submitMessage]
+  );
+
   // Hooks related to conversation events streaming.
 
   const debouncedMarkAsRead = useMemo(
@@ -324,7 +392,10 @@ export const ConversationViewer = ({
           | AgentMessageNewEvent
           | AgentMessageDoneEvent
           | AgentGenerationCancelledEvent
-          | ConversationTitleEvent;
+          | ConversationTitleEvent
+          | ButlerSuggestionCreatedEvent
+          | ButlerThinkingEvent
+          | ButlerDoneEvent;
       } = JSON.parse(eventStr);
       const event = eventPayload.data;
 
@@ -382,6 +453,10 @@ export const ConversationViewer = ({
                 );
               }
               void debouncedMarkAsRead(conversationId);
+
+              if (userMessage.contentFragments.length > 0) {
+                window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+              }
             }
             break;
           case "agent_message_new":
@@ -464,6 +539,22 @@ export const ConversationViewer = ({
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
+          case "butler_thinking":
+            setIsButlerThinking(true);
+            break;
+          case "butler_done":
+            setIsButlerThinking(false);
+            break;
+          case "butler_suggestion_created":
+            setIsButlerThinking(false);
+            setSuggestionsByMessageSId((prev) => {
+              const { suggestion } = event;
+              const existing = prev.get(suggestion.sourceMessageSId) ?? [];
+              const next = new Map(prev);
+              next.set(suggestion.sourceMessageSId, [...existing, suggestion]);
+              return next;
+            });
+            break;
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");
@@ -519,7 +610,9 @@ export const ConversationViewer = ({
           input,
           mentions: mentions.map(toMentionType),
           contentFragments,
-          clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
+          clientSideMCPServerIds:
+            clientSideMCPServerIds ??
+            agentBuilderContext?.clientSideMCPServerIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
         };
 
@@ -642,6 +735,7 @@ export const ConversationViewer = ({
     },
     [
       agentBuilderContext?.clientSideMCPServerIds,
+      clientSideMCPServerIds,
       agentBuilderContext?.skipToolsValidation,
       conversationId,
       mutateConversations,
@@ -716,6 +810,9 @@ export const ConversationViewer = ({
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
+      isButlerThinking,
+      suggestionsByMessageSId,
+      handleSuggestionAction,
       additionalMarkdownComponents,
       additionalMarkdownPlugins,
       isProjectMember,
@@ -731,6 +828,9 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    isButlerThinking,
+    suggestionsByMessageSId,
+    handleSuggestionAction,
     additionalMarkdownComponents,
     additionalMarkdownPlugins,
     isProjectMember,
@@ -765,11 +865,11 @@ export const ConversationViewer = ({
           ItemContent={MessageItem}
           StickyFooter={AgentInputBar}
           // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
-          className={classNames(
+          className={cn(
             "dd-privacy-mask",
-            "s-@container/conversation",
-            "h-full w-full",
-            agentBuilderContext ? "px-4" : "px-4 md:px-8"
+            "@container/conversation",
+            "h-full w-full px-4",
+            !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"
           computeItemKey={computeItemKey}
@@ -779,7 +879,7 @@ export const ConversationViewer = ({
           EmptyPlaceholder={ConversationViewerEmptyState}
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
-          enforceStickyFooterAtBottom={true}
+          enforceStickyFooterAtBottom
         />
       </VirtuosoMessageListLicense>
     </>

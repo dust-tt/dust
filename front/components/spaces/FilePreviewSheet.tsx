@@ -1,3 +1,4 @@
+import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -11,17 +12,25 @@ import {
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import {
+  getFileFormatCategory,
+  isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
-  isSupportedAudioContentType,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
 } from "@app/types/files";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+
+/** Minimal file shape for preview (e.g. conversation files). Only sId, fileName, contentType are used by the renderer. */
+export type MinimalFileForPreview = {
+  sId: string;
+  fileName: string;
+  contentType: string;
+};
+
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Button,
+  CodeBlock,
   ExternalLinkIcon,
   Markdown,
   Sheet,
@@ -54,11 +63,13 @@ function isViewerCompatible(contentType: string): boolean {
 }
 
 type FilePreviewCategory =
+  | "frame"
+  | "code"
   | "pdf"
   | "viewer"
   | "audio"
   | "markdown"
-  | "csv"
+  | "delimited"
   | "text"
   | "image";
 
@@ -69,6 +80,16 @@ interface FilePreviewConfig {
 }
 
 function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+  const category = getFileFormatCategory(contentType);
+
+  if (isInteractiveContentType(contentType)) {
+    return {
+      category: "frame",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
   if (isPdfContentType(contentType)) {
     return {
       category: "pdf",
@@ -85,14 +106,6 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (isSupportedAudioContentType(contentType)) {
-    return {
-      category: "audio",
-      needsProcessedVersion: true,
-      supportsExternalViewer: false,
-    };
-  }
-
   if (isMarkdownContentType(contentType)) {
     return {
       category: "markdown",
@@ -101,15 +114,31 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (isSupportedDelimitedTextContentType(contentType)) {
+  if (category === "code" || category === "data") {
     return {
-      category: "csv",
+      category: "code",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
     };
   }
 
-  if (isSupportedImageContentType(contentType)) {
+  if (category === "audio") {
+    return {
+      category: "audio",
+      needsProcessedVersion: true,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (category === "delimited") {
+    return {
+      category: "delimited",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (category === "image") {
     return {
       category: "image",
       needsProcessedVersion: false,
@@ -158,7 +187,7 @@ function AudioFileRenderer({
 }
 
 interface FileContentRendererProps {
-  file: FileWithCreatorType;
+  file: FileWithCreatorType | MinimalFileForPreview;
   owner: WorkspaceType;
   previewConfig: FilePreviewConfig;
   rawFileContent: string | null;
@@ -221,20 +250,43 @@ function FileContentRenderer({
         />
       );
 
+    case "frame":
+      return (
+        <FrameRenderer
+          fileId={file.sId}
+          projectId={
+            "useCaseMetadata" in file
+              ? (file.useCaseMetadata?.spaceId ?? null)
+              : null
+          }
+          owner={owner}
+          lastEditedByAgentConfigurationId={undefined}
+          contentHash={undefined}
+        />
+      );
+    case "code":
+      return (
+        <CodeBlock
+          className="language-json max-h-60 overflow-y-auto"
+          wrapLongLines={true}
+        >
+          {rawFileContent}
+        </CodeBlock>
+      );
     case "markdown":
-    case "csv":
+    case "delimited":
     case "text":
       if (processedContent) {
         return <TextContent text={processedContent.text} />;
       }
       return null;
     default:
-      assertNever(previewConfig.category);
+      assertNeverAndIgnore(previewConfig.category);
   }
 }
 
 interface FilePreviewContentProps {
-  file: FileWithCreatorType | null;
+  file: FileWithCreatorType | MinimalFileForPreview | null;
   owner: WorkspaceType;
   isOpen: boolean;
 }
@@ -364,7 +416,7 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
 
 interface FilePreviewSheetProps {
   owner: WorkspaceType;
-  file: FileWithCreatorType | null;
+  file: FileWithCreatorType | MinimalFileForPreview | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }

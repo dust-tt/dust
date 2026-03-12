@@ -1,4 +1,4 @@
-import { getElevenLabsClient } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/utils";
+import { getElevenLabsClient } from "@app/lib/api/actions/servers/elevenlabs/utils";
 import type {
   VoiceGender,
   VoiceUseCase,

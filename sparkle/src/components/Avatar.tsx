@@ -1,6 +1,4 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Tooltip } from "@sparkle/components";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";

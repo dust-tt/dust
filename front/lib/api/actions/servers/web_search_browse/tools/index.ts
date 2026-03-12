@@ -14,13 +14,11 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  summarizeWithAgent,
-  summarizeWithLLM,
-} from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
+import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -29,12 +27,10 @@ import {
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
 import logger from "@app/logger/logger";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -112,21 +108,21 @@ async function handleWebbrowser(
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
   const { toolConfiguration } = agentLoopContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
 
-  const summaryAgentId = useSummarization
-    ? GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY
-    : null;
+  const browsingProvider = Math.random() < 0.8 ? "firecrawl" : "spider";
 
   const results = await browseUrls(urls, 8, format, {
     screenshotMode,
     links,
+    provider: browsingProvider,
   });
 
-  if (useSummarization && summaryAgentId) {
+  if (useSummarization) {
     const runCtx = agentLoopContext.runContext;
     const conversationId = runCtx.conversation.sId;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
@@ -150,26 +146,14 @@ async function handleWebbrowser(
         const fileContent = markdown ?? "";
 
         const startTime = Date.now();
-        const summarizationMethod: "none" | "agent" | "llm" =
-          fileContent.length <= MIN_CHARACTERS_TO_SUMMARIZE
-            ? "none"
-            : Math.random() < 0.5
-              ? "agent"
-              : "llm";
+        const summarizationMethod: "none" | "llm-fastest" | "llm" =
+          fileContent.length <= MIN_CHARACTERS_TO_SUMMARIZE ? "none" : "llm";
 
         let snippetRes: Result<string, Error> | null = null;
 
         switch (summarizationMethod) {
           case "none":
             snippetRes = new Ok(fileContent);
-            break;
-          case "agent":
-            snippetRes = await summarizeWithAgent({
-              auth,
-              agentLoopRunContext: runCtx,
-              summaryAgentId,
-              content: fileContent,
-            });
             break;
           case "llm":
             snippetRes = await summarizeWithLLM({
@@ -286,11 +270,15 @@ async function handleWebbrowser(
     } = result;
     const contentText = format === "html" ? html : markdown;
 
-    const tokensRes = await tokenCountForTexts([contentText ?? ""], {
-      providerId: DEFAULT_WEBSEARCH_MODEL_CONFIG.providerId,
-      modelId: DEFAULT_WEBSEARCH_MODEL_CONFIG.modelId,
-      tokenizer: DEFAULT_WEBSEARCH_MODEL_CONFIG.tokenizer,
-    });
+    const tokensRes = await tokenCountForTexts(
+      [contentText ?? ""],
+      {
+        providerId: DEFAULT_WEBSEARCH_MODEL_CONFIG.providerId,
+        modelId: DEFAULT_WEBSEARCH_MODEL_CONFIG.modelId,
+        tokenizer: DEFAULT_WEBSEARCH_MODEL_CONFIG.tokenizer,
+      },
+      credentials
+    );
 
     if (tokensRes.isErr()) {
       const browseResultResource = {

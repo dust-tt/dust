@@ -9,7 +9,7 @@ export function getSignInUrl({
   invitationEmail?: string;
   userExists: boolean;
 }) {
-  let signUpUrl = `${config.getClientFacingUrl()}/api/workos/login?returnTo=${encodeURIComponent(signupCallbackUrl)}`;
+  let signUpUrl = `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(signupCallbackUrl)}`;
   if (!userExists) {
     signUpUrl += "&screenHint=sign-up";
   }

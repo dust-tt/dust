@@ -6,15 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       app:
-        description: "SPA to deploy to production (app, poke, or all)"
+        description: "SPA to deploy to production (app or poke)"
         type: choice
         options:
           - app
           - poke
-          - all
         required: true
-      run_id:
-        description: "Run ID of the deploy workflow that uploaded the SPA artifacts"
+      version_id:
+        description: "Worker version ID to promote (from deploy-spa workflow)"
         type: string
         required: true
 
@@ -37,22 +36,29 @@ jobs:
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
-
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
         with:
-          name: spa-dist-${{ matrix.app }}
-          path: front-spa/dist/${{ matrix.app }}
-          run-id: ${{ github.event.client_payload.run_id || inputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: "22.22.0"
 
-      - name: Deploy to production
+      - name: Resolve version ID
+        id: version
+        run: |
+          # repository_dispatch: per-app version IDs in payload
+          # workflow_dispatch: single version_id input
+          VERSION_ID="${{ github.event.client_payload[format('spa_{0}_version_id', matrix.app)] || inputs.version_id }}"
+          if [ -z "$VERSION_ID" ]; then
+            echo "::error::No version ID provided for ${{ matrix.app }}. Cannot promote without an explicit version ID."
+            exit 1
+          fi
+          echo "id=${VERSION_ID}" >> $GITHUB_OUTPUT
+          echo "Promoting version: ${VERSION_ID}"
+
+      - name: Promote version to production
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
-          command: pages deploy dist/${{ matrix.app }} --project-name=${{ matrix.app }}-dust-tt
+          command: versions deploy ${{ steps.version.outputs.id }}@100% --config wrangler-${{ matrix.app }}.toml -y
 
       - name: Create deploy tag
         if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}

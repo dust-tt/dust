@@ -9,9 +9,8 @@ import { launchUserProjectDigestWorkflow } from "@app/temporal/project_user_dige
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-// const COOLDOWN_HOURS = 24;
-// const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
-const COOLDOWN_MS = 0;
+const COOLDOWN_MINUTES = 5;
+const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
 
 export type PostGenerateUserProjectDigestResponseBody = {
   success: true;
@@ -62,14 +61,14 @@ export async function handler(
         const timeSinceLastDigestMs =
           Date.now() - new Date(latestDigest.createdAt).getTime();
         if (timeSinceLastDigestMs < COOLDOWN_MS) {
-          const remainingHours = Math.ceil(
-            (COOLDOWN_MS - timeSinceLastDigestMs) / (60 * 60 * 1000)
+          const remainingMinutes = Math.ceil(
+            (COOLDOWN_MS - timeSinceLastDigestMs) / (60 * 1000)
           );
           return apiError(req, res, {
             status_code: 429,
             api_error: {
               type: "rate_limit_error",
-              message: `Please wait ${remainingHours} hour${remainingHours > 1 ? "s" : ""} before generating a new digest.`,
+              message: `Please wait ${remainingMinutes} minute${remainingMinutes > 1 ? "s" : ""} before generating a new digest.`,
             },
           });
         }

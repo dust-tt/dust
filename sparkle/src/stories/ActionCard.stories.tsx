@@ -2,7 +2,12 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ActionCard, Hoverable } from "@sparkle/components";
-import { BookOpenIcon, CommandLineIcon } from "@sparkle/icons/app";
+import {
+  BookOpenIcon,
+  CommandLineIcon,
+  MagnifyingGlassIcon,
+  PlanetIcon,
+} from "@sparkle/icons/app";
 
 const meta: Meta<typeof ActionCard> = {
   title: "Modules/ActionCard",
@@ -60,6 +65,31 @@ export const Examples = () => (
           label: "Click here",
           onClick: () => console.log("Click here"),
         }}
+      />
+    </div>
+  </div>
+);
+
+export const DiffStatus = () => (
+  <div className="s-flex s-gap-3">
+    <div className="s-w-80">
+      <ActionCard
+        icon={MagnifyingGlassIcon}
+        cardContainerClassName="s-h-36"
+        label="Web Search"
+        description="Search & browse the web for up-to-date information."
+        canAdd={false}
+        diffStatus="added"
+      />
+    </div>
+    <div className="s-w-80">
+      <ActionCard
+        icon={PlanetIcon}
+        cardContainerClassName="s-h-36"
+        label="Code Interpreter"
+        description="Run code snippets in a sandboxed environment."
+        canAdd={false}
+        diffStatus="removed"
       />
     </div>
   </div>

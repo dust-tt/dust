@@ -199,7 +199,7 @@ export function useFileContent({
   return {
     error,
     fileContent: data,
-    isFileContentLoading: !error && !data,
+    isFileContentLoading: !error && !data && !config?.disabled,
     mutateFileContent: mutate,
   };
 }

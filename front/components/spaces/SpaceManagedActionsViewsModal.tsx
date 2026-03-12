@@ -38,6 +38,7 @@ export default function SpaceManagedActionsViewsModel({
     useAvailableMCPServers({
       owner,
       space,
+      disabled: !menuOpen,
     });
 
   useEffect(() => {

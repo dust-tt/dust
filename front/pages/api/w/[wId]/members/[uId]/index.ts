@@ -144,6 +144,14 @@ async function handler(
                   message: "Could not find the membership.",
                 },
               });
+            case "last_admin":
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: "Cannot revoke the last admin of a workspace.",
+                },
+              });
             case "already_revoked":
             case "invalid_end_at":
               break;

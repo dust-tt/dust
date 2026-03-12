@@ -4,10 +4,11 @@ import {
   makeMessageUpdateBlocksAndText,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
+import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
-  getBotUserIdMemoized,
+  getBotUserIdResponse,
   getUserName,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -70,7 +71,7 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
+import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
 
@@ -531,10 +532,14 @@ async function processErrorResult(
         ? res.error.message
         : `An error occurred : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
 
-    const { slackChatBotMessage, mainMessage } =
+    const { slackChatBotMessage, mainMessage, streamTs } =
       res.error instanceof SlackMessageError
         ? res.error
-        : { mainMessage: undefined, slackChatBotMessage: undefined };
+        : {
+            mainMessage: undefined,
+            streamTs: undefined,
+            slackChatBotMessage: undefined,
+          };
 
     const conversationUrl = makeConversationUrl(
       connector.workspaceId,
@@ -548,15 +553,16 @@ async function processErrorResult(
       connector.workspaceId,
       errorMessage
     );
-    if (mainMessage && mainMessage.ts) {
+
+    const updateTs = streamTs ?? mainMessage?.ts;
+
+    if (updateTs) {
       reportSlackUsage({
         connectorId: connector.id,
         method: "chat.update",
         channelId: slackChannel,
         useCase: "bot",
       });
-
-      const mainMessageTs = mainMessage.ts;
 
       await throttleWithRedis(
         RATE_LIMITS["chat.update"],
@@ -566,7 +572,7 @@ async function processErrorResult(
           slackClient.chat.update({
             ...errorPost,
             channel: slackChannel,
-            ts: mainMessageTs,
+            ts: updateTs,
           }),
         { source: "processErrorResult" }
       );
@@ -823,10 +829,16 @@ async function answerMessage(
   let textAfterBotMention: string | null = null;
 
   if (matches) {
-    const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
+    const userIdResponse = await getBotUserIdResponse(
+      slackClient,
+      connector.id
+    );
+    if (userIdResponse.isErr()) {
+      throw userIdResponse.error;
+    }
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
-      if (userId === mySlackUser) {
+      if (userId === userIdResponse.value) {
         const botMentionIndex = message.indexOf(m);
         if (botMentionIndex !== -1 && !textAfterBotMention) {
           textAfterBotMention = message.slice(botMentionIndex + m.length);
@@ -994,21 +1006,42 @@ async function answerMessage(
     }
   }
 
-  const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
-      assistantName: mention.agentName,
-      agentConfigurations: mostPopularAgentConfigurations,
-      isThinking: true,
-    }),
-    channel: slackChannel,
-    thread_ts: slackMessageTs,
-    metadata: {
-      event_type: "user_message",
-      event_payload: {
-        message_id: slackChatBotMessage.id,
+  const useNativeStreaming = await getNativeStreamingFromFeatureFlag(dustAPI);
+
+  let mainMessage: ChatPostMessageResponse | undefined;
+  let streamHandler: SlackStreamHandler | undefined;
+
+  if (useNativeStreaming) {
+    streamHandler = new SlackStreamHandler(slackClient, connector.id);
+    streamHandler.start({
+      slackChannel,
+      slackMessageTs,
+      slackThreadTs,
+      slackTeamId,
+      slackUserId,
+    });
+    await streamHandler.setThinking(
+      mention.agentName === "dust"
+        ? `is thinking...`
+        : `(${mention.agentName}) is thinking...`
+    );
+  } else {
+    mainMessage = await slackClient.chat.postMessage({
+      ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
+        assistantName: mention.agentName,
+        agentConfigurations: mostPopularAgentConfigurations,
+        isThinking: true,
+      }),
+      channel: slackChannel,
+      thread_ts: slackMessageTs,
+      metadata: {
+        event_type: "user_message",
+        event_payload: {
+          message_id: slackChatBotMessage.id,
+        },
       },
-    },
-  });
+    });
+  }
 
   const buildSlackMessageError = (
     errRes: Err<Error | APIError>,
@@ -1033,7 +1066,8 @@ async function answerMessage(
       new SlackMessageError(
         errRes.error.message,
         slackChatBotMessage.get(),
-        mainMessage
+        mainMessage,
+        streamHandler?.messageTs
       )
     );
   };
@@ -1145,10 +1179,12 @@ async function answerMessage(
     connector,
     conversation,
     mainMessage,
+    streamHandler,
     slack: {
       slackChannelId: slackChannel,
       slackClient,
       slackMessageTs,
+      slackTeamId,
       slackUserInfo,
       slackUserId,
     },
@@ -1305,11 +1341,18 @@ async function makeContentFragments(
     }
   }
 
-  const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
+  const botUserIdResponse = await getBotUserIdResponse(
+    slackClient,
+    connector.id
+  );
+  if (botUserIdResponse.isErr()) {
+    throw botUserIdResponse.error;
+  }
+
   allMessages = allMessages.filter(
     (m) =>
       // If this message is from the bot, we don't send it as a content fragment.
-      m.user !== botUserId &&
+      m.user !== botUserIdResponse.value &&
       // If this message is a mention to the bot, we don't send it as a content fragment.
       !slackBotMessages.find((sbm) => sbm.messageTs === m.ts)
   );
@@ -1504,4 +1547,14 @@ async function isAgentAccessingRestrictedSpace(
       )
     );
   }
+}
+
+async function getNativeStreamingFromFeatureFlag(
+  dustAPI: DustAPI
+): Promise<boolean> {
+  const flagsRes = await dustAPI.getWorkspaceFeatureFlags();
+  if (flagsRes.isErr()) {
+    return false;
+  }
+  return flagsRes.value.includes("slack_native_streaming");
 }

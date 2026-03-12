@@ -61,12 +61,8 @@ pre-commit:
 
     # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
     package-lock-check:
-      glob: "*/{package,package-lock}.json"
-      run: |
-        if ! scripts/check-package-lock-sync.sh; then
-          echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
-          exit 1
-        fi
+      glob: "**/package*.json"
+      run: scripts/check-package-lock-sync.sh
       priority: 1
 
     # Front directory checks
@@ -95,8 +91,26 @@ pre-commit:
       root: connectors/
       run: npm run tsgo
 
+    # Core (Rust) format check
+    core-fmt:
+      tags: core
+      glob: "*.rs"
+      root: core/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
+    # Dust Sandbox (Rust) format check
+    dust-sandbox-fmt:
+      tags: dust-sandbox
+      glob: "*.rs"
+      root: cli/dust-sandbox/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
-      glob: "*.{js,jsx,ts,tsx,json,css,scss,md}"
+      glob: "*.{js,jsx,ts,tsx,css,scss,md}"
+      # Rust projects' .md files are not covered by biome.
+      exclude: "{core,cli/dust-sandbox}/**"
       run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true

@@ -99,6 +99,27 @@ export async function runAgentLoopWorker() {
     },
   });
 
+  // Monitor InMemorySpanExporter growth to detect potential memory leaks.
+  // TODO(fabien): remove when we have enough data
+  const SPAN_SAMPLE_SIZE = 100;
+  const MONITOR_INTERVAL_MS = 60_000;
+  setInterval(() => {
+    const spans = spanExporter.getFinishedSpans();
+    const spanCount = spans.length;
+    const sampleSize = Math.min(SPAN_SAMPLE_SIZE, spanCount);
+    const sampleBytes =
+      sampleSize > 0
+        ? Buffer.byteLength(JSON.stringify(spans.slice(0, sampleSize)), "utf8")
+        : 0;
+    const estimatedTotalBytes =
+      spanCount > 0 ? Math.round((sampleBytes / sampleSize) * spanCount) : 0;
+
+    logger.info(
+      { spanCount, estimatedTotalBytes },
+      "InMemorySpanExporter span count for agent loop worker"
+    );
+  }, MONITOR_INTERVAL_MS).unref();
+
   // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
   process.on("SIGTERM", () => worker.shutdown());
 

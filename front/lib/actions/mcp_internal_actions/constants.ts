@@ -2,14 +2,14 @@ import type { InternalAllowedIconType } from "@app/components/resources/resource
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
-import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
+import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
@@ -18,6 +18,7 @@ import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/da
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
+import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -130,8 +131,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
-  "agent_copilot_agent_state",
-  "agent_copilot_context",
+  "agent_sidekick_agent_state",
+  "agent_sidekick_context",
   "agent_management",
   "agent_memory",
   "agent_router",
@@ -143,6 +144,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
   "file_generation",
+  "fathom",
   "freshservice",
   "github",
   "gmail",
@@ -558,6 +560,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("openai_usage_mcp");
     },
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -707,11 +710,10 @@ export const INTERNAL_MCP_SERVERS = {
   ashby: {
     id: 40,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("ashby_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -720,11 +722,10 @@ export const INTERNAL_MCP_SERVERS = {
   salesloft: {
     id: 41,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("salesloft_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
+    allowMultipleInstances: true,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -745,10 +746,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 43,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slab_mcp");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -817,15 +816,25 @@ export const INTERNAL_MCP_SERVERS = {
   statuspage: {
     id: 49,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("statuspage_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: STATUSPAGE_SERVER,
+  },
+  fathom: {
+    id: 50,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: FATHOM_SERVER,
   },
   primitive_types_debugger: {
     id: 1004,
@@ -927,6 +936,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -959,11 +969,10 @@ export const INTERNAL_MCP_SERVERS = {
   front: {
     id: 1018,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("front_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
@@ -1004,7 +1013,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: PROJECT_MANAGER_SERVER,
   },
-  agent_copilot_context: {
+  agent_sidekick_context: {
     id: 1022,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1015,9 +1024,9 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: AGENT_COPILOT_CONTEXT_SERVER,
+    metadata: AGENT_SIDEKICK_CONTEXT_SERVER,
   },
-  agent_copilot_agent_state: {
+  agent_sidekick_agent_state: {
     id: 1023,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1028,7 +1037,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
+    metadata: AGENT_SIDEKICK_AGENT_STATE_SERVER,
   },
   sandbox: {
     id: 1024,

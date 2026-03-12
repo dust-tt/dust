@@ -1,10 +1,9 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Button, Spinner } from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
 import {
   downloadFile,
   ImageZoomDialog,
 } from "@sparkle/components/ImageZoomDialog";
+import { Spinner } from "@sparkle/components/Spinner";
 import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

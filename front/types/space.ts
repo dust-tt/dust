@@ -27,6 +27,7 @@ export type SpaceType = {
 export type ProjectType = SpaceType & {
   description: string | null;
   isMember: boolean;
+  archivedAt: number | null;
 };
 
 export function isProjectType(

@@ -6,6 +6,7 @@ use hyper::body::Buf;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
+use tracing::info;
 use url::Url;
 use urlencoding::encode;
 
@@ -48,6 +49,15 @@ pub async fn get_data_source_project_and_view_filter(
         Ok(key) => key,
         Err(_) => Err(anyhow!("Environment variable `DUST_FRONT_API` is not set."))?,
     };
+
+    info!(
+        project_id = env.project.project_id(),
+        run_id = env.run_id.as_str(),
+        workspace_id = workspace_id.as_str(),
+        data_source_id = data_source_id.as_str(),
+        is_system_run = is_system_run,
+        "registry lookup"
+    );
 
     let url = format!(
         "{}/api/registry/data_sources/lookup?workspace_id={}&data_source_id={}&is_system_run={}",

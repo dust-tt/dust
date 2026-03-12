@@ -3,18 +3,15 @@ import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
-
 import handler from "./index";
 
 // Mock the data_sources module to spy on upsertTable
@@ -265,14 +262,15 @@ describe("POST /api/w/[wId]/mcp/", () => {
   });
 
   it("should create an internal MCP server with bearer token credentials", async () => {
-    const { req, res, workspace } = await setupTest("admin", "POST");
+    const { req, res, authenticator } = await setupTest("admin", "POST");
 
-    await FeatureFlagFactory.basic("slab_mcp", workspace);
+    const sharedSecret = "test-secret-123";
+
     req.body = {
-      name: "slab" as InternalMCPServerNameType,
+      name: "slab" satisfies InternalMCPServerNameType,
       serverType: "internal",
       includeGlobal: true,
-      sharedSecret: "test-secret-123",
+      sharedSecret,
       customHeaders: [
         { key: "X-Custom-Header", value: "custom-value" },
         { key: "Authorization", value: "Bearer should-be-kept" },
@@ -296,16 +294,16 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(responseData.server.customHeaders["X-Custom-Header"]).toContain("•");
 
     const server = responseData.server;
-    const credential = await InternalMCPServerCredentialModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        internalMCPServerId: server.sId,
-      },
-    });
+    const credentials =
+      await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+        authenticator,
+        server.sId
+      );
 
-    expect(credential).toBeDefined();
-    expect(credential?.sharedSecret).toBe("test-secret-123");
-    expect(credential?.customHeaders).toEqual({
+    expect(credentials).toBeDefined();
+    expect(credentials?.sharedSecret).toBeTruthy();
+    expect(credentials?.sharedSecret).toBe(sharedSecret);
+    expect(credentials?.customHeaders).toEqual({
       Authorization: "Bearer should-be-kept",
       "X-Custom-Header": "custom-value",
     });

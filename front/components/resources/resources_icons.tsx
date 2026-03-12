@@ -25,6 +25,7 @@ import {
   AsanaLogo,
   AshbyLogo,
   AttioLogo,
+  BigQueryLogo,
   CanvaLogo,
   CommandLineIcon,
   ConfluenceLogo,
@@ -36,6 +37,7 @@ import {
   GithubLogo,
   GitlabLogo,
   GmailLogo,
+  GongLogo,
   GoogleSpreadsheetLogo,
   GranolaLogo,
   GuruLogo,
@@ -47,12 +49,16 @@ import {
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
+  MiroLogo,
   MondayLogo,
   NotionLogo,
   OpenaiLogo,
   ProductboardLogo,
   PuzzleIcon,
   SalesforceLogo,
+  SalesloftLogo,
+  SemrushLogo,
+  SlabLogo,
   SlackLogo,
   SnowflakeLogo,
   Avatar as SparkleAvatar,
@@ -80,10 +86,9 @@ export function ResourceAvatar({
 }: ResourceAvatarProps) {
   return (
     <SparkleAvatar
-      iconColor={iconColor ?? "s-text-foreground dark:s-text-foreground-night"}
+      iconColor={iconColor ?? "text-foreground dark:text-foreground-night"}
       backgroundColor={
-        backgroundColor ??
-        "s-bg-muted-background dark:s-bg-muted-background-night"
+        backgroundColor ?? "bg-muted-background dark:bg-muted-background-night"
       }
       {...props}
     />
@@ -117,6 +122,7 @@ export const InternalActionIcons = {
   AsanaLogo,
   AttioLogo,
   AshbyLogo,
+  BigQueryLogo,
   ToolsIcon,
   CanvaLogo,
   CommandLineIcon,
@@ -129,6 +135,7 @@ export const InternalActionIcons = {
   GithubLogo,
   GitlabLogo,
   GmailLogo,
+  GongLogo,
   GoogleSpreadsheetLogo,
   GranolaLogo,
   GuruLogo,
@@ -140,12 +147,16 @@ export const InternalActionIcons = {
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
+  MiroLogo,
   MondayLogo,
   NotionLogo,
   OpenaiLogo,
   ProductboardLogo,
   PuzzleIcon,
   SalesforceLogo,
+  SemrushLogo,
+  SalesloftLogo,
+  SlabLogo,
   SlackLogo,
   SnowflakeLogo,
   StatuspageLogo,

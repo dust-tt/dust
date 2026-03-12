@@ -53,6 +53,13 @@ vi.mock("@app/lib/utils/cache", () => ({
         };
       }
     ),
+  invalidateCacheAfterCommit: vi
+    .fn()
+    .mockImplementation(
+      (_transaction: unknown, invalidateFn: () => Promise<void>): void => {
+        void invalidateFn();
+      }
+    ),
 }));
 
 import type { Authenticator } from "@app/lib/auth";

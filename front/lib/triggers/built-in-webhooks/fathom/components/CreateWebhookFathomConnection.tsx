@@ -1,5 +1,5 @@
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
-import { RECORDING_TYPE_OPTIONS } from "@app/lib/triggers/built-in-webhooks/fathom/constants";
+import { CREATABLE_RECORDING_TYPE_OPTIONS } from "@app/lib/triggers/built-in-webhooks/fathom/constants";
 import { CheckBoxWithTextAndDescription, Label, Page } from "@dust-tt/sparkle";
 import type { TriggeredFor } from "fathom-typescript/sdk/models/shared";
 import { useEffect, useState } from "react";
@@ -34,7 +34,7 @@ export function CreateWebhookFathomConnection({
 }: WebhookCreateFormComponentProps) {
   const [selectedRecordingTypes, setSelectedRecordingTypes] = useState<
     TriggeredFor[]
-  >(["my_recordings", "shared_external_recordings"]);
+  >(["shared_external_recordings", "shared_team_recordings"]);
 
   const [includeTranscript, setIncludeTranscript] = useState(true);
   const [includeSummary, setIncludeSummary] = useState(true);
@@ -105,7 +105,7 @@ export function CreateWebhookFathomConnection({
             Select at least one type of recording to receive
           </p>
           <div className="space-y-2">
-            {RECORDING_TYPE_OPTIONS.map((option) => (
+            {CREATABLE_RECORDING_TYPE_OPTIONS.map((option) => (
               <CheckBoxWithTextAndDescription
                 key={option.value}
                 text={option.label}

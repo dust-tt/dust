@@ -39,6 +39,7 @@ export function shouldSyncTicket(
   }
   if (
     !configuration.syncUnresolvedTickets &&
+    ticket.status &&
     !["closed", "solved"].includes(ticket.status)
   ) {
     return {

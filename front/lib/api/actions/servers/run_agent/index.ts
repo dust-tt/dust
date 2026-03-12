@@ -4,13 +4,6 @@ import type {
   MCPProgressNotificationType,
   RunAgentQueryProgressOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
-import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
-import type {
-  ChildAgentBlob,
-  RunAgentBlockingEvent,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type {
   ToolDefinition,
   ToolHandlerExtra,
@@ -30,11 +23,18 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
 } from "@app/lib/api/actions/servers/run_agent/metadata";
+import { isTransientStreamError } from "@app/lib/api/actions/servers/run_agent/network_errors";
+import type {
+  ChildAgentBlob,
+  RunAgentBlockingEvent,
+} from "@app/lib/api/actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/api/actions/servers/run_agent/types";
 import {
   getCitationsFromActions,
   getRefs,
@@ -43,11 +43,7 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getApiKeyNameHeader,
-  getFeatureFlags,
-  prodAPICredentialsForOwner,
-} from "@app/lib/auth";
+import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -61,10 +57,8 @@ import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
   AgentMessagePublicType,
   ConversationPublicType,
-  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
@@ -121,9 +115,6 @@ const runAgent = async (
     agentLoopContext?.runContext,
     "agentLoopContext is required to run the run_agent tool"
   );
-
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const useChildStream = featureFlags.includes("run_agent_child_stream");
 
   const abortSignal = signal ?? null;
   let childCancellationPromise: Promise<void> | null = null;
@@ -492,54 +483,8 @@ const runAgent = async (
         // Separate content based on classification.
         if (event.classification === "chain_of_thought") {
           chainOfThought += event.text;
-          // When the child stream FF is on, the frontend subscribes directly
-          // to the child agent's EventSource, so we don't need this event
-          if (!useChildStream && sendNotification) {
-            const notification: MCPProgressNotificationType = {
-              method: "notifications/progress",
-              params: {
-                progress: 0,
-                total: 1,
-                progressToken: 0,
-                _meta: {
-                  data: {
-                    label: "Agent thinking...",
-                    output: {
-                      type: "run_agent_chain_of_thought",
-                      childAgentId: parsedChildAgentId,
-                      conversationId: conversation.sId,
-                      chainOfThought: event.text,
-                    },
-                  },
-                },
-              },
-            };
-            await sendNotification(notification);
-          }
         } else if (event.classification === "tokens") {
           finalContent += event.text;
-          if (!useChildStream && sendNotification) {
-            const notification: MCPProgressNotificationType = {
-              method: "notifications/progress",
-              params: {
-                progress: 0,
-                total: 1,
-                progressToken: 0,
-                _meta: {
-                  data: {
-                    label: "Agent responding...",
-                    output: {
-                      type: "run_agent_generation_tokens",
-                      childAgentId: parsedChildAgentId,
-                      conversationId: conversation.sId,
-                      text: event.text,
-                    },
-                  },
-                },
-              },
-            };
-            await sendNotification(notification);
-          }
         } else if (
           event.classification === "closing_delimiter" &&
           event.delimiterClassification === "chain_of_thought" &&
@@ -547,28 +492,6 @@ const runAgent = async (
         ) {
           // For closing chain of thought delimiters, add a newline.
           chainOfThought += "\n";
-          if (!useChildStream && sendNotification) {
-            const notification: MCPProgressNotificationType = {
-              method: "notifications/progress",
-              params: {
-                progress: 0,
-                total: 1,
-                progressToken: 0,
-                _meta: {
-                  data: {
-                    label: "Agent thinking...",
-                    output: {
-                      type: "run_agent_chain_of_thought",
-                      childAgentId: parsedChildAgentId,
-                      conversationId: conversation.sId,
-                      chainOfThought: "\n",
-                    },
-                  },
-                },
-              },
-            };
-            await sendNotification(notification);
-          }
         }
       } else if (event.type === "agent_error") {
         const errorMessage = `Agent error: ${event.error.message}`;

@@ -29,7 +29,6 @@ import {
   isSupportedFileContentType,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 /**
@@ -171,13 +170,15 @@ export function createProjectManagerTools(
           // Don't fail - file is uploaded, just not indexed yet.
         }
 
+        // Adapt the message based on the input
+        let message: string;
+        if (sourceFileId) {
+          message = `File "${fileName}" (${file.sId}) created in project context successfully by copying from the source file (${sourceFileId}). These 2 files are NOT the same, you must use the appropriate file ID depending if you want to work on the original file or the new one.`;
+        } else {
+          message = `File "${fileName}" (${file.sId}) created in project context successfully from provided content.`;
+        }
+
         return new Ok([
-          ...makeSuccessResponse({
-            success: true,
-            fileId: file.sId,
-            fileName: file.fileName,
-            message: `File "${fileName}" added to project context successfully.`,
-          }),
           {
             type: "resource" as const,
             resource: {
@@ -187,7 +188,7 @@ export function createProjectManagerTools(
               title: file.fileName,
               contentType: file.contentType,
               snippet: null,
-              text: `File "${file.fileName}" added to project context.`,
+              text: message,
             },
           },
         ]);
@@ -280,12 +281,6 @@ export function createProjectManagerTools(
         }
 
         return new Ok([
-          ...makeSuccessResponse({
-            success: true,
-            fileId: file.sId,
-            fileName: file.fileName,
-            message: `File "${file.fileName}" updated successfully.`,
-          }),
           {
             type: "resource" as const,
             resource: {
@@ -295,7 +290,7 @@ export function createProjectManagerTools(
               title: file.fileName,
               contentType: file.contentType,
               snippet: null,
-              text: `File "${file.fileName}" updated in project context.`,
+              text: `File "${file.fileName}" (${file.sId}) updated in project context successfully.`,
             },
           },
         ]);
@@ -328,15 +323,7 @@ export function createProjectManagerTools(
           });
         } else {
           // Update existing metadata.
-          const updateRes = await metadata.updateMetadata({ description });
-          if (updateRes.isErr()) {
-            return new Err(
-              new MCPError(
-                `Failed to update project description: ${updateRes.error.message}`,
-                { tracked: false }
-              )
-            );
-          }
+          await metadata.updateDescription(description);
         }
 
         return new Ok(
@@ -425,6 +412,7 @@ export function createProjectManagerTools(
             spaceId: space.sId,
             options: {
               updatedSince: cutoffDate.getTime(),
+              excludeTest: true,
             },
           });
 

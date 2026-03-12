@@ -1,5 +1,5 @@
 import type React from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 interface FileDropContextType {
   droppedFiles: File[];
@@ -25,8 +25,13 @@ interface FileDropProviderProps {
 export const FileDropProvider = ({ children }: FileDropProviderProps) => {
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
 
+  const value = useMemo(
+    () => ({ droppedFiles, setDroppedFiles }),
+    [droppedFiles]
+  );
+
   return (
-    <FileDropContext.Provider value={{ droppedFiles, setDroppedFiles }}>
+    <FileDropContext.Provider value={value}>
       {children}
     </FileDropContext.Provider>
   );

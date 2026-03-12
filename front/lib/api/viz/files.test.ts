@@ -1,4 +1,7 @@
-import { canAccessFileInConversation } from "@app/lib/api/viz/files";
+import {
+  canAccessFileInConversation,
+  canAccessFileInProject,
+} from "@app/lib/api/viz/files";
 import { Authenticator } from "@app/lib/auth";
 import {
   MessageModel,
@@ -26,7 +29,7 @@ describe("canAccessFileInConversation", () => {
 
   describe("unsupported use cases", () => {
     it("should return error for unsupported use case", async () => {
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -40,11 +43,10 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -55,7 +57,7 @@ describe("canAccessFileInConversation", () => {
 
   describe("requested conversation not found", () => {
     it("should return error when requested conversation does not exist", async () => {
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -64,11 +66,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: "some-conversation-id" },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        "nonexistent-conversation-id"
-      );
+        requestedConversationId: "nonexistent-conversation-id",
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -84,7 +85,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -93,11 +94,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -111,7 +111,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -120,11 +120,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -140,7 +139,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -149,11 +148,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: "nonexistent-conversation-id" },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -172,7 +170,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -181,11 +179,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: conversation2.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation1.sId
-      );
+        requestedConversationId: conversation1.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -251,7 +248,7 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Create file associated with sub-conversation
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -261,11 +258,10 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Should allow access from parent conversation
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        parentConversation.sId
-      );
+        requestedConversationId: parentConversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -281,7 +277,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -290,11 +286,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -360,7 +355,7 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Create file associated with sub-conversation
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -370,11 +365,10 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Should allow access from parent conversation
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        parentConversation.sId
-      );
+        requestedConversationId: parentConversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -416,7 +410,7 @@ describe("canAccessFileInConversation", () => {
         spaceId: project.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -425,11 +419,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: project.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -443,7 +436,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -452,11 +445,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -472,7 +464,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -481,11 +473,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: "nonexistent-space-id" },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -501,7 +492,7 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -510,11 +501,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: regularSpace.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -555,7 +545,7 @@ describe("canAccessFileInConversation", () => {
         spaceId: project1.id,
       });
 
-      const file = await FileFactory.create(workspace, null, {
+      const file = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "test.txt",
         fileSize: 100,
@@ -564,11 +554,340 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: project2.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
+        requestedConversationId: conversation.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Access to file denied");
+      }
+    });
+  });
+});
+
+describe("canAccessFileInProject", () => {
+  let workspace: LightWorkspaceType;
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+  });
+
+  describe("unsupported use cases", () => {
+    it("should return error for unsupported use case", async () => {
+      const project = await SpaceFactory.project(workspace);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "avatar",
+        useCaseMetadata: null,
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Unsupported file use case");
+      }
+    });
+  });
+
+  describe("requested project not found", () => {
+    it("should return error when requested project does not exist", async () => {
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "some-space-id" },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: "nonexistent-project-id",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Requested project not found");
+      }
+    });
+  });
+
+  async function addUserToProject(
+    project: Awaited<ReturnType<typeof SpaceFactory.project>>
+  ) {
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const projectSpaceGroup = project.groups.find((g) => g.kind === "regular");
+    if (projectSpaceGroup) {
+      const addRes = await projectSpaceGroup.dangerouslyAddMember(
+        internalAdminAuth,
+        { user: user.toJSON() }
       );
+      if (addRes.isErr()) {
+        throw new Error(
+          `Failed to add user to project space group: ${addRes.error.message}`
+        );
+      }
+    }
+    await auth.refresh();
+  }
+
+  describe("conversation useCase", () => {
+    it("should allow access when file conversation belongs to the requested project", async () => {
+      const project = await SpaceFactory.project(workspace);
+      await addUserToProject(project);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project.id,
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
+    });
+
+    it("should return error when file is not associated with a conversation", async () => {
+      const project = await SpaceFactory.project(workspace);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: null,
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "File is not associated with a conversation"
+        );
+      }
+    });
+
+    it("should return error when file conversation does not exist", async () => {
+      const project = await SpaceFactory.project(workspace);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "nonexistent-conversation-id" },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("File conversation not found");
+      }
+    });
+
+    it("should deny access when file conversation belongs to a different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+      await addUserToProject(project2);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project2.id,
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project1.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Access to file denied");
+      }
+    });
+  });
+
+  describe("tool_output useCase", () => {
+    it("should allow access when file conversation belongs to the requested project", async () => {
+      const project = await SpaceFactory.project(workspace);
+      await addUserToProject(project);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project.id,
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
+    });
+
+    it("should deny access when file conversation belongs to a different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+      await addUserToProject(project2);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project2.id,
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project1.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Access to file denied");
+      }
+    });
+  });
+
+  describe("project_context useCase", () => {
+    it("should allow access when file belongs to the requested project", async () => {
+      const project = await SpaceFactory.project(workspace);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
+    });
+
+    it("should return error when file is not associated with a project", async () => {
+      const project = await SpaceFactory.project(workspace);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: null,
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "File is not associated with a project"
+        );
+      }
+    });
+
+    it("should deny access when file belongs to a different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "test.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project2.sId },
+      });
+
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project1.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {

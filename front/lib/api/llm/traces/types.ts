@@ -13,6 +13,7 @@ interface LLMTraceContextBase {
   /** Type of operation that triggered the LLM call */
   operationType:
     | "agent_builder_description_suggestion"
+    | "butler_analyze_conversation"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_instruction_suggestion"
     | "agent_builder_name_suggestion"
@@ -22,7 +23,9 @@ interface LLMTraceContextBase {
     | "agent_suggestion"
     | "conversation_title_suggestion"
     | "conversation_unread_summary"
-    | "copilot_template_suggestion"
+    | "reinforced_agent_aggregate_suggestions"
+    | "reinforced_agent_analyze_conversation"
+    | "sidekick_template_suggestion"
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"
@@ -30,6 +33,7 @@ interface LLMTraceContextBase {
     | "skills_similarity_checker"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
+    | "user_project_digest"
     | "voice_agent_finder"
     | "web_content_summarization"
     | "workspace_tags_suggestion";

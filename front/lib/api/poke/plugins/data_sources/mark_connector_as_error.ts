@@ -27,6 +27,11 @@ export const markConnectorAsErrorPlugin = createPlugin({
         })),
         multiple: false,
       },
+      reason: {
+        type: "string",
+        label: "Reason",
+        description: "Reason for performing the operation",
+      },
     },
   },
   execute: async (auth, dataSource, args) => {

@@ -195,12 +195,13 @@ export async function upsertTableFromCsv({
   }
 
   if (file) {
+    const { bucket, path } = file.getContentBucketAndPath(auth);
     const csvRes = await coreAPI.tableUpsertCSVContent({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       tableId,
-      bucket: file.getBucketForVersion("processed").name,
-      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      bucket,
+      bucketCSVPath: path,
       truncate,
     });
 

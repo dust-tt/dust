@@ -11,15 +11,19 @@ import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
-import { GenericServerException } from "@workos-inc/node";
+import { GenericServerException, OauthException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const statsDClient = getStatsDClient();
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined
@@ -40,8 +44,12 @@ export default async function handler(
       return handleLogin(req, res);
     case "callback":
       return handleCallback(req, res);
+    case "authenticate":
+      return handleAuthenticate(req, res);
     case "logout":
       return handleLogout(req, res);
+    case "revoke-session":
+      return handleRevokeSession(req, res);
     default:
       return res.status(400).json({ error: "Invalid action" });
   }
@@ -49,7 +57,20 @@ export default async function handler(
 
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { organizationId, screenHint, loginHint, returnTo } = req.query;
+    const {
+      organizationId,
+      screenHint,
+      loginHint,
+      returnTo,
+      redirect_uri,
+      code_challenge,
+      code_challenge_method,
+    } = req.query;
+
+    const redirectUri =
+      redirect_uri && isString(redirect_uri)
+        ? redirect_uri
+        : `${config.getAuthRedirectBaseUrl()}/api/workos/callback`;
 
     let organizationIdToUse;
 
@@ -98,7 +119,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
       // Use auth redirect base URL for WorkOS callbacks
-      redirectUri: `${config.getAuthRedirectBaseUrl()}/api/workos/callback`,
+      redirectUri,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
       state:
@@ -107,6 +128,10 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
           : undefined,
       ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
       ...(isString(loginHint) ? { loginHint } : {}),
+      ...(isString(code_challenge) ? { codeChallenge: code_challenge } : {}),
+      ...(isString(code_challenge_method) && code_challenge_method === "S256"
+        ? { codeChallengeMethod: code_challenge_method }
+        : {}),
     });
 
     res.redirect(authorizationUrl);
@@ -117,10 +142,93 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function authenticate(code: string, organizationId?: string) {
+async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
+  const { code, grant_type, refresh_token, code_verifier } = req.body;
+
+  if (grant_type && !isString(grant_type)) {
+    return res
+      .status(400)
+      .json({ error: "Invalid grant_type", type: "invalid_request_error" });
+  }
+
+  if (grant_type === "refresh_token") {
+    if (!refresh_token || !isString(refresh_token)) {
+      return res.status(400).json({
+        error: "Invalid refresh token",
+        type: "invalid_request_error",
+      });
+    }
+    try {
+      const result =
+        await getWorkOS().userManagement.authenticateWithRefreshToken({
+          refreshToken: refresh_token,
+          clientId: config.getWorkOSClientId(),
+        });
+      return res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof OauthException) {
+        return res
+          .status(error.status)
+          .json({ error: error.errorDescription, type: error.error });
+      } else {
+        logger.error({ error }, "Error during WorkOS token refresh");
+        return res.status(500).json({
+          error: "Authentication failed",
+          type: "internal_server_error",
+        });
+      }
+    }
+  }
+
+  if (!code || !isString(code)) {
+    return res.status(400).json({ error: "Invalid code" });
+  }
+
+  if (code_verifier && !isString(code_verifier)) {
+    return res.status(400).json({ error: "Invalid code verifier" });
+  }
+  try {
+    const authResult = await authenticate({
+      code,
+      codeVerifier: code_verifier,
+    });
+
+    const jwtPayload = JSON.parse(
+      Buffer.from(authResult.accessToken.split(".")[1], "base64").toString()
+    );
+    const expiresIn = jwtPayload.exp
+      ? jwtPayload.exp - Math.floor(Date.now() / 1000)
+      : undefined;
+
+    return res.status(200).json({ ...authResult, expiresIn });
+  } catch (error) {
+    if (error instanceof OauthException) {
+      return res
+        .status(error.status)
+        .json({ error: error.errorDescription, type: error.error });
+    } else {
+      logger.error({ error }, "Error during WorkOS authentication");
+      return res.status(500).json({
+        error: "Authentication failed",
+        type: "internal_server_error",
+      });
+    }
+  }
+}
+
+async function authenticate({
+  code,
+  codeVerifier,
+  organizationId,
+}: {
+  code: string;
+  codeVerifier?: string;
+  organizationId?: string;
+}) {
   try {
     return await getWorkOS().userManagement.authenticateWithCode({
       code,
+      codeVerifier,
       clientId: config.getWorkOSClientId(),
       session: {
         sealSession: true,
@@ -174,7 +282,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       authenticationMethod,
       sealedSession,
       accessToken,
-    } = await authenticate(code, stateObj.organizationId);
+    } = await authenticate({ code, organizationId: stateObj.organizationId });
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
@@ -201,6 +309,20 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       ttl: 0,
     });
 
+    // Record login activity at authentication time (covers SCIM/provisioned users
+    // who may bypass /api/login via returnTo redirects).
+    try {
+      const dustUser = await UserResource.fetchByWorkOSUserId(user.id);
+      if (dustUser) {
+        await dustUser.recordLoginActivity();
+      }
+    } catch (loginTrackingError) {
+      logger.error(
+        { error: loginTrackingError, workOSUserId: user.id },
+        "Failed to record login activity at authentication"
+      );
+    }
+
     const currentRegion = multiRegionsConfig.getCurrentRegion();
     let targetRegion: RegionType | null = "us-central1";
 
@@ -218,7 +340,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       sanitizedReturnTo &&
       sanitizedReturnTo.startsWith("/api/login?inviteToken=")
     ) {
-      const inviteUrl = new URL(sanitizedReturnTo, config.getClientFacingUrl());
+      const inviteUrl = new URL(sanitizedReturnTo, config.getApiBaseUrl());
       const inviteToken = inviteUrl.searchParams.get("inviteToken");
       if (inviteToken) {
         const inviteRes =
@@ -382,9 +504,36 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const validatedReturnTo = validateRelativePath(returnTo);
   const sanitizedReturnTo = validatedReturnTo.valid
     ? validatedReturnTo.sanitizedPath
-    : config.getClientFacingUrl();
+    : config.getStaticWebsiteUrl();
 
   redirectTo(res, sanitizedReturnTo);
+}
+
+/**
+ * Revoke a specific WorkOS session via API (same as handleLogout but accepts
+ * session_id from request body instead of reading from cookie).
+ * Used by the Chrome extension which authenticates with Bearer tokens.
+ */
+async function handleRevokeSession(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const { session_id } = req.body;
+
+  if (!session_id || !isString(session_id)) {
+    return res.status(400).json({ error: "Invalid session_id" });
+  }
+
+  try {
+    await getWorkOS().userManagement.revokeSession({
+      sessionId: session_id,
+    });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error({ error }, "Error during WorkOS session revocation");
+    return res.status(500).json({ error: "Session revocation failed" });
+  }
 }
 
 function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
@@ -395,6 +544,6 @@ function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
   ) {
     res.redirect(sanitizedReturnTo);
   } else {
-    res.redirect(`${config.getAppUrl(true)}${sanitizedReturnTo}`);
+    res.redirect(`${config.getAppUrl()}${sanitizedReturnTo}`);
   }
 }

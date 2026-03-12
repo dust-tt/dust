@@ -1,21 +1,19 @@
 {
   "name": "@dust-tt/front-spa",
   "version": "0.1.0",
-  "type": "module",
   "engines": {
-    "node": "22.22.0"
+    "node": ">=22.22.0"
   },
+  "type": "module",
   "scripts": {
     "dev:poke": "VITE_APP_NAME=poke VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
     "dev:app": "VITE_APP_NAME=app VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
-    "build:poke": "VITE_APP_NAME=poke vite build && cp public-poke/_redirects dist/poke/_redirects",
-    "build:app": "VITE_APP_NAME=app vite build && cp public-app/_redirects dist/app/_redirects",
+    "build:poke": "VITE_APP_NAME=poke vite build && cp _headers dist/poke/_headers",
+    "build:app": "VITE_APP_NAME=app vite build && cp _headers dist/app/_headers",
     "build": "npm run build:poke && npm run build:app",
     "preview:poke": "VITE_APP_NAME=poke vite preview",
     "preview:app": "VITE_APP_NAME=app vite preview",
-    "lint": "biome lint .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "tsgo": "tsgo"
   },
   "dependencies": {
     "@dust-tt/front": "*",
@@ -35,7 +33,7 @@
     "tailwind-scrollbar-hide": "^1.1.7",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.3",
-    "vite": "^5.4.0"
+    "@typescript/native-preview": "^7.0.0-dev.20260224.1",
+    "vite": "^7.3.1"
   }
 }

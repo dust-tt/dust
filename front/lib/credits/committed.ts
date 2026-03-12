@@ -13,12 +13,15 @@ import {
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import type Stripe from "stripe";
+
+const statsDClient = getStatsDClient();
 
 export async function startCreditFromProOneOffInvoice({
   auth,

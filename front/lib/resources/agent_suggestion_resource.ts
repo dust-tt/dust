@@ -14,6 +14,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   AgentSuggestionKind,
+  AgentSuggestionSource,
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -250,6 +251,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     agentId: string,
     filters?: {
       states?: AgentSuggestionState[];
+      sources?: AgentSuggestionSource[];
       kind?: AgentSuggestionKind;
       limit?: number;
     }
@@ -272,10 +274,18 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const agentConfigIds = agentConfigs.map((ac) => ac.id);
 
     // Build the where clause with optional filters.
+    // By default, exclude synthetic suggestions (internal to the reinforcement
+    // pipeline) unless an explicit sources filter is provided.
+    const sourceFilter =
+      filters?.sources && filters.sources.length > 0
+        ? { source: filters.sources }
+        : { source: { [Op.ne]: "synthetic" } };
+
     const whereClause: WhereOptions<AgentSuggestionModel> = {
       agentConfigurationId: agentConfigIds,
       ...(filters?.states &&
         filters.states.length > 0 && { state: filters.states }),
+      ...sourceFilter,
       ...(filters?.kind && { kind: filters.kind }),
     };
 

@@ -83,6 +83,7 @@ export const getConfig = async ({
       main: resolvePath("./main.tsx"),
       background: resolvePath("./background.ts"),
       page: resolvePath("./page.ts"),
+      "content-script": resolvePath("./content-script.ts"),
     },
     output: {
       path: buildDirPath,
@@ -108,7 +109,7 @@ export const getConfig = async ({
         net: false,
         redis: false,
         zlib: false,
-        assert: false,
+        assert: require.resolve("assert"),
         http: require.resolve("stream-http"),
         https: require.resolve("https-browserify"),
       },
@@ -158,6 +159,13 @@ export const getConfig = async ({
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
         NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
           process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
+          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
+        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
+          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
@@ -183,6 +191,14 @@ export const getConfig = async ({
           {
             from: resolvePath("../../ui/main.html"),
             to: path.join(buildDirPath, "main.html"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.html"),
+            to: path.join(buildDirPath, "request-mic.html"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.js"),
+            to: path.join(buildDirPath, "request-mic.js"),
           },
           {
             context: resolvePath("../../ui/images"),

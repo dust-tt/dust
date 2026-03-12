@@ -13,6 +13,7 @@ export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const GPT_5_MODEL_ID = "gpt-5" as const;
 export const GPT_5_1_MODEL_ID = "gpt-5.1" as const;
 export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
+export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
 export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
 export const O1_MODEL_ID = "o1" as const;
@@ -80,6 +81,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -100,6 +102,7 @@ export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
@@ -120,6 +123,7 @@ export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
@@ -140,6 +144,7 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -161,6 +166,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
+  supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
@@ -215,6 +221,7 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -238,6 +245,7 @@ export const GPT_5_1_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -252,6 +260,31 @@ export const GPT_5_2_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "OpenAI's GPT 5.2 model for complex reasoning tasks (400k context).",
+  shortDescription: "OpenAI's previous flagship model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+};
+export const GPT_5_4_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_4_MODEL_ID,
+  displayName: "GPT 5.4",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 5.4 model for complex reasoning and agentic tasks (1M context).",
   shortDescription: "OpenAI's latest flagship model.",
   isLegacy: false,
   isLatest: true,
@@ -262,6 +295,7 @@ export const GPT_5_2_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -286,6 +320,7 @@ export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -309,6 +344,7 @@ export const GPT_5_NANO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -331,8 +367,12 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  featureFlag: "openai_o1_feature",
-  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  availableIfOneOf: {
+    featureFlag: "openai_o1_feature",
+  },
+  customAvailableIf: {
+    featureFlag: "openai_o1_custom_assistants_feature",
+  },
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
@@ -354,7 +394,9 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  customAvailableIf: {
+    featureFlag: "openai_o1_custom_assistants_feature",
+  },
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
@@ -377,6 +419,7 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -400,6 +443,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -422,6 +466,7 @@ export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "o200k_base" },

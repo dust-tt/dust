@@ -7,58 +7,35 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
+import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
   LLMStreamParameters,
-  SystemPromptInput,
 } from "@app/lib/api/llm/types/options";
-import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import type { Content } from "@app/types/assistant/generation";
-import { isTextContent } from "@app/types/assistant/generation";
 import type {
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { startObservation } from "@langfuse/tracing";
+import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-function contentToText(contents: Content[]): string {
-  return contents
-    .filter(isTextContent)
-    .map((c) => c.text)
-    .join("\n");
-}
+const statsDClient = getStatsDClient();
 
-function buildDefaultTraceInput(
-  prompt: SystemPromptInput,
-  conversation: LLMStreamParameters["conversation"]
-): unknown[] {
-  return [
-    { role: "system", content: systemPromptToText(prompt) },
-    ...conversation.messages.map((message): unknown => {
-      if (message.role !== "user") {
-        return message;
-      }
-
-      return { ...message, content: contentToText(message.content) };
-    }),
-  ];
-}
-
-export abstract class LLM {
+export abstract class LLM<TPayload = unknown> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
@@ -71,8 +48,8 @@ export abstract class LLM {
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
   protected readonly traceId: LLMTraceId;
-  protected readonly getTraceInput?: LLMTraceCustomization["getTraceInput"];
   protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
+  protected generation: LangfuseGeneration | null = null;
 
   protected constructor(
     auth: Authenticator,
@@ -80,7 +57,6 @@ export abstract class LLM {
     {
       bypassFeatureFlag = false,
       context,
-      getTraceInput,
       getTraceOutput,
       modelId,
       reasoningEffort = "none",
@@ -110,7 +86,6 @@ export abstract class LLM {
     this.authenticator = auth;
     this.context = context;
     this.traceId = createLLMTraceId(randomUUID());
-    this.getTraceInput = getTraceInput;
     this.getTraceOutput = getTraceOutput;
   }
 
@@ -152,17 +127,10 @@ export abstract class LLM {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
-    // Use custom trace input if provided, otherwise use the full conversation.
-    // Full conversation with system prompt for observation (actual LLM call details).
-    const observationInput = buildDefaultTraceInput(prompt, conversation);
-
-    // Simplified input for trace if custom getter provided.
-    const traceInput = this.getTraceInput?.(conversation) ?? observationInput;
-
-    const generation = startObservation(
+    this.generation = startObservation(
       "llm-completion",
       {
-        input: observationInput,
+        input: undefined,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -176,9 +144,8 @@ export abstract class LLM {
       { asType: "generation" }
     );
 
-    generation.updateTrace({
+    this.generation.updateTrace({
       name: startCase(this.context.operationType),
-      input: traceInput,
       metadata: {
         dustTraceId: this.traceId,
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
@@ -224,127 +191,133 @@ export abstract class LLM {
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 
-    for await (const event of this.completeStream(streamParameters)) {
-      if (currentEvent === null) {
-        timeToFirstEventMs = Date.now() - startTime;
-      }
-      currentEvent = event;
-      buffer.addEvent(currentEvent);
-
-      if (currentEvent.type === "interaction_id") {
-        buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
-        generation.updateTrace({
-          metadata: {
-            modelInteractionId: currentEvent.content.modelInteractionId,
-          },
-        });
-      }
-
-      if (currentEvent.type !== "success" && currentEvent.type !== "error") {
-        yield currentEvent;
-        continue;
-      }
-
-      // Logging before it gets stopped and retried downstream
-      if (currentEvent.type === "error") {
-        // Temporary: track LLM error metric
-        statsDClient.increment("llm_error.count", 1, metricTags);
-        generation.updateTrace({
-          tags: ["isError:true", `errorType:${currentEvent.content.type}`],
-        });
-
-        logger.error(
-          {
-            llmEventType: "error",
-            errorContent: currentEvent.content,
-            modelId: this.modelId,
-            context: this.context,
-            traceId: this.traceId,
-          },
-          "LLM Error"
-        );
-      }
-
-      if (currentEvent.type === "success") {
-        // Temporary: track LLM success metric
-        statsDClient.increment("llm_success.count", 1, metricTags);
-
-        logger.info(
-          {
-            llmEventType: "success",
-            modelId: this.modelId,
-            context: this.context,
-            traceId: this.traceId,
-          },
-          "LLM Success"
-        );
-      }
-
-      const durationMs = Date.now() - startTime;
-      buffer
-        .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
-        .catch(() => {});
-
-      const { tokenUsage, ...rest } = buffer.currentOutput;
-
-      generation.update({
-        output: { ...rest },
-      });
-
-      // Use custom trace output transformer if provided, otherwise use the full output.
-      if (this.getTraceOutput) {
-        const traceOutput = this.getTraceOutput(rest);
-        if (traceOutput) {
-          generation.updateTrace({ output: traceOutput });
+    try {
+      for await (const event of this.completeStream(streamParameters)) {
+        if (currentEvent === null) {
+          timeToFirstEventMs = Date.now() - startTime;
         }
-      } else {
-        generation.updateTrace({ output: { ...rest } });
-      }
+        currentEvent = event;
+        buffer.addEvent(currentEvent);
 
-      if (tokenUsage) {
-        generation.update({
-          usageDetails: {
-            // Report the uncached input tokens if provider supports it.
-            input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
-            output: tokenUsage.outputTokens,
-            total: tokenUsage.totalTokens,
-            cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
-            cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
-            reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
-          },
+        if (currentEvent.type === "interaction_id") {
+          buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
+          this.generation.updateTrace({
+            metadata: {
+              modelInteractionId: currentEvent.content.modelInteractionId,
+            },
+          });
+        }
+
+        if (currentEvent.type !== "success" && currentEvent.type !== "error") {
+          yield currentEvent;
+          continue;
+        }
+
+        // Logging before it gets stopped and retried downstream
+        if (currentEvent.type === "error") {
+          // Temporary: track LLM error metric
+          statsDClient.increment("llm_error.count", 1, metricTags);
+          this.generation.updateTrace({
+            tags: ["isError:true", `errorType:${currentEvent.content.type}`],
+          });
+
+          logger.error(
+            {
+              llmEventType: "error",
+              errorContent: currentEvent.content,
+              modelId: this.modelId,
+              context: this.context,
+              traceId: this.traceId,
+            },
+            "LLM Error"
+          );
+        }
+
+        if (currentEvent.type === "success") {
+          // Temporary: track LLM success metric
+          statsDClient.increment("llm_success.count", 1, metricTags);
+
+          logger.info(
+            {
+              llmEventType: "success",
+              modelId: this.modelId,
+              context: this.context,
+              traceId: this.traceId,
+            },
+            "LLM Success"
+          );
+        }
+
+        const durationMs = Date.now() - startTime;
+        buffer
+          .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
+          .catch(() => {});
+
+        const { tokenUsage, ...rest } = buffer.currentOutput;
+
+        this.generation.update({
+          output: { ...rest },
         });
-      }
 
-      if (buffer.error) {
-        generation.update({
-          level: "ERROR",
-          statusMessage: buffer.error.message,
-          metadata: {
-            errorType: buffer.error.type,
-            errorMessage: buffer.error.message,
-          },
+        // Use custom trace output transformer if provided, otherwise use the full output.
+        if (this.getTraceOutput) {
+          const traceOutput = this.getTraceOutput(rest);
+          if (traceOutput) {
+            this.generation.updateTrace({ output: traceOutput });
+          }
+        } else {
+          this.generation.updateTrace({ output: { ...rest } });
+        }
+
+        if (tokenUsage) {
+          this.generation.update({
+            usageDetails: {
+              // Report the uncached input tokens if provider supports it.
+              input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
+              output: tokenUsage.outputTokens,
+              total: tokenUsage.totalTokens,
+              cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
+              cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
+              reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
+            },
+          });
+        }
+
+        if (buffer.error) {
+          this.generation.update({
+            level: "ERROR",
+            statusMessage: buffer.error.message,
+            metadata: {
+              errorType: buffer.error.type,
+              errorMessage: buffer.error.message,
+            },
+          });
+        }
+
+        const run = await RunResource.makeNew({
+          appId: null,
+          dustRunId: this.traceId,
+          runType: "deploy",
+          // Assumption made that this class exclusively uses Dust credentials.
+          useWorkspaceCredentials: false,
+          workspaceId: this.authenticator.getNonNullableWorkspace().id,
         });
+
+        // Run usage is only populated if the run is successful.
+        if (buffer.runTokenUsage) {
+          await run.recordTokenUsage(
+            this.authenticator,
+            buffer.runTokenUsage,
+            this.modelId
+          );
+        }
+
+        yield currentEvent;
+
+        break;
       }
-
-      generation.end();
-
-      const run = await RunResource.makeNew({
-        appId: null,
-        dustRunId: this.traceId,
-        runType: "deploy",
-        // Assumption made that this class exclusively uses Dust credentials.
-        useWorkspaceCredentials: false,
-        workspaceId: this.authenticator.getNonNullableWorkspace().id,
-      });
-
-      // Run usage is only populated if the run is successful.
-      if (buffer.runTokenUsage) {
-        await run.recordTokenUsage(buffer.runTokenUsage, this.modelId);
-      }
-
-      yield currentEvent;
-
-      break;
+    } finally {
+      this.generation.end();
     }
   }
 
@@ -353,6 +326,10 @@ export abstract class LLM {
    */
   getTraceId(): LLMTraceId {
     return this.traceId;
+  }
+
+  getResponseFormat(): string | null {
+    return this.responseFormat;
   }
 
   /**
@@ -368,7 +345,67 @@ export abstract class LLM {
     yield* this.streamWithTracing(streamParameters);
   }
 
-  protected abstract internalStream(
+  /**
+   * Submit a batch of conversations for asynchronous processing.
+   * Returns a string that can be used to poll status and retrieve results.
+   * Each entry in the map is keyed by a conversation identifier (custom_id).
+   */
+  async sendBatchProcessing(
+    _conversations: Map<string, LLMStreamParameters>
+  ): Promise<string> {
+    throw new Error(
+      `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
+    );
+  }
+
+  /**
+   * Poll the status of a previously submitted batch.
+   */
+  async getBatchStatus(_batchId: string): Promise<BatchStatus> {
+    throw new Error(
+      `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
+    );
+  }
+
+  /**
+   * Retrieve the results of a completed batch.
+   * Only call this when getBatchStatus returns "ready".
+   */
+  async getBatchResult(_batchId: string): Promise<BatchResult> {
+    throw new Error(
+      `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
+    );
+  }
+
+  /**
+   * Build the request payload that will be sent to the LLM provider.
+   *
+   * Contract: Implement this method to return the provider-specific request object.
+   * The payload is automatically captured for tracing.
+   */
+  protected abstract buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
-  ): AsyncGenerator<LLMEvent>;
+  ): TPayload;
+
+  /**
+   * Send the request to the LLM provider and yield events.
+   *
+   * Contract: Implement this method as an async generator to handle
+   * provider-specific API calls and response streaming.
+   */
+  protected abstract sendRequest(payload: TPayload): AsyncGenerator<LLMEvent>;
+
+  /**
+   * Orchestrates the request lifecycle: build -> capture for tracing -> send.
+   */
+  protected async *internalStream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
+    const payload = this.buildStreamRequestPayload(streamParameters);
+
+    // Update the generation span with the actual payload.
+    this.generation?.update({ input: payload });
+
+    yield* this.sendRequest(payload);
+  }
 }

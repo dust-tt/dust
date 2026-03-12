@@ -23,6 +23,14 @@ const killSwitchMap: Record<
     title: "Data Source Views",
     description: "Disable saving of data source views",
   },
+  global_blacklist_anthropic: {
+    title: "Global Blacklist Anthropic",
+    description: "Disable Anthropic models in global agents",
+  },
+  global_blacklist_openai: {
+    title: "Global Blacklist OpenAI",
+    description: "Disable OpenAI models in global agents",
+  },
 };
 
 export function KillPage() {

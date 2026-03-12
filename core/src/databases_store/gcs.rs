@@ -174,12 +174,12 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
                     // Use Hashmaps with the row_id as the key.
                     let previous_rows_map = previous_rows
                         .into_iter()
-                        .map(|r| (r.row_id.clone(), r.clone()))
+                        .map(|r| (r.row_id.clone(), r))
                         .collect::<HashMap<_, _>>();
 
                     let new_rows_map = rows
                         .into_iter()
-                        .map(|r| (r.row_id.clone(), r.clone()))
+                        .map(|r| (r.row_id.clone(), r))
                         .collect::<HashMap<_, _>>();
 
                     // Merge the two maps to get the final rows.

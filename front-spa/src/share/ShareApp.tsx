@@ -12,6 +12,7 @@ const router = createBrowserRouter(
   [
     {
       element: <RootRouterLayout />,
+      errorElement: <GlobalErrorFallback />,
       children: [
         // Frame: /share/frame/:token
         {
@@ -33,12 +34,12 @@ const router = createBrowserRouter(
 
 export default function ShareApp() {
   return (
-    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-      <RegionProvider>
+    <RegionProvider>
+      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <ErrorBoundary fallback={<GlobalErrorFallback />}>
           <RouterProvider router={router} />
         </ErrorBoundary>
-      </RegionProvider>
-    </FetcherProvider>
+      </FetcherProvider>
+    </RegionProvider>
   );
 }

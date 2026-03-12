@@ -35,6 +35,7 @@ type KnownModelLLMId =
   | "gpt-4.1-mini-2025-04-14"
   | "gpt-5.1"
   | "gpt-5.2"
+  | "gpt-5.4"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -337,7 +338,7 @@ const USER_MESSAGE_ORIGINS = [
   "zapier",
   "zendesk",
   "onboarding_conversation",
-  "agent_copilot",
+  "agent_sidekick",
   "project_butler",
   "project_kickoff",
 ] as const;
@@ -668,16 +669,18 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_copilot"
+  | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "ashby_tool"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
+  | "conversation_butler"
+  | "conversation_branches"
   | "project_butler"
   | "projects"
   | "databricks_tool"
@@ -687,12 +690,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "discover_skills"
+  | "email_agents"
   | "dust_academy"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "front_tool"
   | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
@@ -708,26 +712,26 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "reinforced_agents"
   | "restrict_agents_publishing"
+  | "restrict_agents_publishing_to_admins"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
-  | "salesloft_tool"
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
+  | "slack_native_streaming"
   | "slideshow"
   | "snowflake_tool"
-  | "statuspage_tool"
-  | "run_agent_child_stream"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
   | "conversations_slack_notifications"
+  | "anthropic_reasoning_token_count"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -749,12 +753,14 @@ const LightWorkspaceSchema = z.object({
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 export type WorkspaceType = z.infer<typeof WorkspaceSchema>;
+/** @deprecated Use WorkspaceType + separate extension config endpoint instead. */
 export type ExtensionWorkspaceType = z.infer<typeof ExtensionWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
+/** @deprecated Use WorkspaceSchema + separate extension config endpoint instead. */
 const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
   blacklistedDomains: z.array(z.string()).nullable(),
 });
@@ -1230,6 +1236,8 @@ const NotificationRunAgentContentSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   query: z.string(),
+  childConversationUrl: z.string().nullable().optional(),
+  childConversationEventsUrl: z.string().nullable().optional(),
 });
 
 const NotificationRunAgentChainOfThoughtSchema = z.object({
@@ -2787,6 +2795,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   // See also front/types/files.ts.
   | "folders_document"
   | "project_context"
+  | "skill_attachment"
 >();
 
 export const FileTypeSchema = z.object({
@@ -2824,6 +2833,7 @@ export type FileUploadedRequestResponseType = z.infer<
 export const PublicFrameResponseBodySchema = z.object({
   accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  projectUrl: z.string().nullable(),
   file: FileTypeSchema,
 });
 
@@ -2891,12 +2901,29 @@ export function isAgentMention(arg: MentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
 
+/**
+ * Compile-time exhaustiveness checking that throws at runtime.
+ * Use this when missing a case is a bug (internal logic, client-created data).
+ * For client-side code processing API data where unknown values should be
+ * safely ignored, use assertNeverAndIgnore instead.
+ */
 export function assertNever(x: never): never {
   throw new Error(
     `${
       typeof x === "object" ? JSON.stringify(x) : x
     } is not of type never. This should never happen.`
   );
+}
+
+/**
+ * Like assertNever, provides compile-time exhaustiveness checking on switch statements,
+ * but does NOT crash at runtime. Use this in client-side code that processes API data
+ * (event streams, API responses) where new enum values or event types may be added
+ * server-side before the client is updated.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function assertNeverAndIgnore(_x: never): void {
+  // Intentionally empty.
 }
 
 export function removeNulls<T>(arr: (T | null | undefined)[]): T[] {
@@ -2991,6 +3018,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "AsanaLogo"
   | "AshbyLogo"
   | "AttioLogo"
+  | "BigQueryLogo"
   | "ToolsIcon"
   | "CanvaLogo"
   | "CommandLineIcon"
@@ -3003,6 +3031,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GithubLogo"
   | "GitlabLogo"
   | "GmailLogo"
+  | "GongLogo"
   | "GoogleSpreadsheetLogo"
   | "GranolaLogo"
   | "GuruLogo"
@@ -3014,12 +3043,16 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MicrosoftLogo"
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
+  | "MiroLogo"
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"
+  | "SemrushLogo"
+  | "SalesloftLogo"
+  | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
   | "StatuspageLogo"
@@ -3234,6 +3267,30 @@ export const GetMCPServerViewsQuerySchema = z.object({
 export type GetMCPServerViewsQueryType = z.infer<
   typeof GetMCPServerViewsQuerySchema
 >;
+
+export const CallMCPToolRequestBodySchema = z.object({
+  toolName: z.string(),
+  arguments: z.record(z.unknown()).optional(),
+});
+
+export type CallMCPToolRequestBodyType = z.infer<
+  typeof CallMCPToolRequestBodySchema
+>;
+
+const CallMCPToolContentBlockSchema = z.object({
+  type: z.string(),
+  text: z.string().optional(),
+});
+
+export const CallMCPToolResponseSchema = z.object({
+  success: z.literal(true),
+  result: z.object({
+    content: z.array(CallMCPToolContentBlockSchema),
+    isError: z.boolean(),
+  }),
+});
+
+export type CallMCPToolResponseType = z.infer<typeof CallMCPToolResponseSchema>;
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,

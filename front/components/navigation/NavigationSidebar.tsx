@@ -15,7 +15,6 @@ import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
-  classNames,
   cn,
   LinkWrapper,
   NavigationList,
@@ -168,7 +167,7 @@ export const NavigationSidebar = React.forwardRef<
       )}
       {user && (
         <div
-          className={classNames(
+          className={cn(
             "flex items-center border-t px-2 py-2",
             "border-border-dark dark:border-border-darker-night",
             "text-foreground dark:text-foreground-night"

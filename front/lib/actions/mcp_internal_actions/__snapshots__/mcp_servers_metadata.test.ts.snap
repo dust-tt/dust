@@ -2,10 +2,24 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
-  "agent_copilot_agent_state": {
+  "agent_management": {
+    "create_agent": "high",
+  },
+  "agent_memory": {
+    "compact_memory": "never_ask",
+    "edit_entries": "never_ask",
+    "erase_entries": "never_ask",
+    "record_entries": "never_ask",
+    "retrieve": "never_ask",
+  },
+  "agent_router": {
+    "list_all_published_agents": "never_ask",
+    "suggest_agents_for_content": "never_ask",
+  },
+  "agent_sidekick_agent_state": {
     "get_agent_info": "never_ask",
   },
-  "agent_copilot_context": {
+  "agent_sidekick_context": {
     "get_agent_feedback": "never_ask",
     "get_agent_insights": "never_ask",
     "get_agent_template": "never_ask",
@@ -28,20 +42,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "suggest_tools": "never_ask",
     "update_suggestions_state": "never_ask",
   },
-  "agent_management": {
-    "create_agent": "high",
-  },
-  "agent_memory": {
-    "compact_memory": "never_ask",
-    "edit_entries": "never_ask",
-    "erase_entries": "never_ask",
-    "record_entries": "never_ask",
-    "retrieve": "never_ask",
-  },
-  "agent_router": {
-    "list_all_published_agents": "never_ask",
-    "suggest_agents_for_content": "never_ask",
-  },
   "ashby": {
     "create_candidate_note": "high",
     "create_referral": "high",
@@ -49,7 +49,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_interview_feedback": "never_ask",
     "get_referral_form": "never_ask",
     "get_report_data": "never_ask",
+    "list_job_postings": "never_ask",
     "search_candidates": "never_ask",
+    "update_job_posting": "high",
   },
   "common_utilities": {
     "generate_random_float": "never_ask",
@@ -89,6 +91,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "extract_data": {
     "extract_information_from_documents": "never_ask",
+  },
+  "fathom": {
+    "get_transcript": "never_ask",
+    "list_meetings": "never_ask",
   },
   "file_generation": {
     "convert_file_format": "never_ask",
@@ -450,6 +456,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "sandbox": {
     "bash": "never_ask",
+    "describe_environment": "never_ask",
   },
   "schedules_management": {
     "create_schedule": "high",
@@ -469,20 +476,24 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_posts": "never_ask",
   },
   "slack": {
+    "archive_channel": "high",
+    "create_channel": "high",
+    "invite_to_channel": "high",
     "list_messages": "never_ask",
     "list_user_groups": "never_ask",
     "post_message": "medium",
+    "read_canvas": "never_ask",
     "read_thread_messages": "never_ask",
     "schedule_message": "medium",
     "search_channels": "never_ask",
     "search_messages": "never_ask",
     "search_user": "never_ask",
     "semantic_search_messages": "never_ask",
+    "write_canvas": "low",
   },
   "slack_bot": {
     "add_reaction": "low",
     "list_public_channels": "never_ask",
-    "list_user_groups": "never_ask",
     "post_message": "low",
     "read_channel_history": "never_ask",
     "read_thread_messages": "never_ask",
@@ -495,6 +506,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "retrieve_slideshow_file": "never_ask",
   },
   "snowflake": {
+    "describe_semantic_view": "never_ask",
     "describe_table": "never_ask",
     "list_databases": "never_ask",
     "list_schemas": "never_ask",
@@ -570,7 +582,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "draft_reply": "low",
     "get_ticket": "never_ask",
     "list_ticket_fields": "never_ask",
+    "post_reply": "high",
     "search_tickets": "never_ask",
+    "update_ticket_tags": "low",
   },
 }
 `;

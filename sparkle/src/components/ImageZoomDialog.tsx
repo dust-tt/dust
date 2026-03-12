@@ -1,12 +1,6 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  Spinner,
-} from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
+import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
+import { Spinner } from "@sparkle/components/Spinner";
 import {
   ArrowDownOnSquareIcon,
   ChevronLeftIcon,

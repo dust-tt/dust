@@ -1,6 +1,13 @@
 {
-  "eslint.workingDirectories": ["./front", "./docs", "./connectors", "./xp1"],
-  "rust-analyzer.linkedProjects": ["./core/Cargo.toml"],
+  "eslint.workingDirectories": [
+    "./front",
+    "./docs",
+    "./connectors",
+    "./xp1"
+  ],
+  "rust-analyzer.linkedProjects": [
+    "./core/Cargo.toml"
+  ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "github-actions.workflows.pinned.workflows": [],
   "editor.formatOnSave": true,

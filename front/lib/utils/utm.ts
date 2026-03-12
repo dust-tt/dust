@@ -15,6 +15,18 @@ export type UTMParams = Partial<
   Record<(typeof MARKETING_PARAMS)[number], string>
 >;
 
+// UTM parameter keys (separate from click IDs).
+const UTM_KEYS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+] as const;
+
+// Standard attribution window for UTM cookies.
+const UTM_COOKIE_EXPIRY_DAYS = 30;
+
 // Click ID keys that should be persisted as first-party cookies.
 const CLICK_ID_KEYS = ["gclid", "fbclid", "msclkid", "li_fat_id"] as const;
 
@@ -63,6 +75,43 @@ export function persistClickIdCookies(params: UTMParams): void {
   }
 }
 
+// Write UTM parameter values as first-party cookies.
+export function persistUTMCookies(params: UTMParams): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  for (const key of UTM_KEYS) {
+    const value = params[key];
+    if (value) {
+      const expires = new Date(
+        Date.now() + UTM_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+      ).toUTCString();
+      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
+    }
+  }
+}
+
+// Read UTM cookies back as UTMParams.
+function getUTMCookies(): UTMParams {
+  if (typeof document === "undefined") {
+    return {};
+  }
+
+  const params: UTMParams = {};
+  const cookies = document.cookie.split("; ");
+
+  for (const key of UTM_KEYS) {
+    const prefix = `_dust_${key}=`;
+    const cookie = cookies.find((c) => c.startsWith(prefix));
+    if (cookie) {
+      params[key] = decodeURIComponent(cookie.slice(prefix.length));
+    }
+  }
+
+  return params;
+}
+
 // Read click ID cookies back as UTMParams.
 function getClickIdCookies(): UTMParams {
   if (typeof document === "undefined") {
@@ -83,19 +132,20 @@ function getClickIdCookies(): UTMParams {
   return params;
 }
 
-// Get stored UTM parameters from sessionStorage, with cookie fallback for click IDs.
+// Get stored UTM parameters from sessionStorage, with cookie fallback for click IDs and UTM params.
 export const getStoredUTMParams = (): UTMParams => {
   if (typeof window === "undefined") {
     return {};
   }
 
   try {
-    const cookieParams = getClickIdCookies();
+    const clickIdCookieParams = getClickIdCookies();
+    const utmCookieParams = getUTMCookies();
     const storedData = sessionStorage.getItem("utm_data");
     const sessionParams: UTMParams = storedData ? JSON.parse(storedData) : {};
 
-    // sessionStorage wins when both present.
-    return { ...cookieParams, ...sessionParams };
+    // Cookies provide the base, sessionStorage wins when both present.
+    return { ...clickIdCookieParams, ...utmCookieParams, ...sessionParams };
   } catch {
     return {};
   }

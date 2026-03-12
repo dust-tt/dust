@@ -1,6 +1,9 @@
 {
   "name": "dust-sandbox",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "private": true,
   "dependencies": {
     "@dust-tt/client": "^1.0.0",

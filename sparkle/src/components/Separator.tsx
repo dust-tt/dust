@@ -1,5 +1,5 @@
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
 const Separator = React.forwardRef<
@@ -14,7 +14,7 @@ const Separator = React.forwardRef<
       ref={ref}
       decorative={decorative}
       orientation={orientation}
-      className={classNames(
+      className={cn(
         "s-shrink-0",
         "s-bg-separator dark:s-bg-separator-night",
         orientation === "horizontal"

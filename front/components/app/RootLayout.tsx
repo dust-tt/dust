@@ -1,26 +1,28 @@
 import { ConfirmPopupArea } from "@app/components/Confirm";
+import { NoOpDesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
-import { LinkWrapper } from "@app/lib/platform";
-import { Notification, SparkleContext } from "@dust-tt/sparkle";
+import { Notification } from "@dust-tt/sparkle";
+import { ConversationSidePanelProvider } from "../assistant/conversation/ConversationSidePanelContext";
 
 /**
  * This layout is used in _app only
  */
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function RootLayout({ children }: { children: React.ReactNode }) {
   useStripUtmParams();
 
   return (
-    <SparkleContext.Provider value={{ components: { link: LinkWrapper } }}>
+    <ThemeProvider>
       <SidebarProvider>
-        <ConfirmPopupArea>
-          <Notification.Area>{children}</Notification.Area>
-        </ConfirmPopupArea>
+        <NoOpDesktopNavigationProvider>
+          <ConfirmPopupArea>
+            <ConversationSidePanelProvider>
+              <Notification.Area>{children}</Notification.Area>
+            </ConversationSidePanelProvider>
+          </ConfirmPopupArea>
+        </NoOpDesktopNavigationProvider>
       </SidebarProvider>
-    </SparkleContext.Provider>
+    </ThemeProvider>
   );
 }

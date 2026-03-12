@@ -151,8 +151,11 @@ export function MCPRunAgentActionDetails({
     if (resultResource) {
       return resultResource.resource.uri;
     }
+    if (childStreamIds) {
+      return `/w/${owner.sId}/conversation/${childStreamIds.conversationId}`;
+    }
     return null;
-  }, [resultResource]);
+  }, [resultResource, childStreamIds, owner.sId]);
 
   const references = useMemo(() => {
     if (!resultResource?.resource.refs) {

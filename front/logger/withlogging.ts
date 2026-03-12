@@ -1,5 +1,6 @@
 import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
-import { getSession } from "@app/lib/auth";
+import type { BearerTokenError } from "@app/lib/auth";
+import { getSession, getSessionFromBearerToken } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
@@ -9,11 +10,13 @@ import type {
   BaseResource,
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import tracer from "@app/logger/tracer";
 import type {
   APIErrorWithStatusCode,
   WithAPIErrorResponse,
 } from "@app/types/error";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type {
@@ -21,12 +24,21 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
-
 import logger from "./logger";
-import { statsDClient } from "./statsDClient";
+
+const statsDClient = getStatsDClient();
 
 export type RequestContext = {
   [key: string]: ResourceLogJSON;
+};
+
+const BEARER_TOKEN_ERROR_MESSAGES: Record<BearerTokenError, string> = {
+  expired_oauth_token_error: "The access token expired.",
+  invalid_oauth_token_error:
+    "The request does not have valid authentication credentials.",
+  user_not_found: "The user is not registered.",
+  not_authenticated:
+    "The request does not have valid authentication credentials.",
 };
 
 // Sequelize errors (ValidationError, UniqueConstraintError, etc.) have a
@@ -106,10 +118,29 @@ export function withLogging<T>(
     const clientIp = getClientIp(req);
     const now = new Date();
 
-    const session = await tracer.trace(
-      "workos.getSession",
-      async () => await getSession(req, res)
-    );
+    // Try bearer token first, then fall back to cookie-based session.
+    const sessionResult = await tracer.trace("auth.getSession", async () => {
+      const bearerTokenRes = await getSessionFromBearerToken(req);
+      if (bearerTokenRes.isErr() || bearerTokenRes.value) {
+        return bearerTokenRes;
+      }
+      // No bearer token present — try cookie-based session.
+      const cookieSession = await getSession(req, res);
+      return new Ok(cookieSession);
+    });
+
+    if (sessionResult.isErr()) {
+      apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: sessionResult.error,
+          message: BEARER_TOKEN_ERROR_MESSAGES[sessionResult.error],
+        },
+      });
+      return;
+    }
+    const session = sessionResult.value;
+
     const sessionId = session?.sessionId ?? "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack

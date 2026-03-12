@@ -115,7 +115,6 @@ export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
-  featureFlag: "gemini_3_1_pro_feature",
 };
 export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",

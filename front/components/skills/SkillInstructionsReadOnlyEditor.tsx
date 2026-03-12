@@ -11,12 +11,14 @@ interface SkillInstructionsReadOnlyEditorProps {
   content: string;
   owner: LightWorkspaceType;
   onKnowledgeItemsChange?: (items: KnowledgeItem[]) => void;
+  className?: string;
 }
 
 export function SkillInstructionsReadOnlyEditor({
   content,
   owner,
   onKnowledgeItemsChange,
+  className,
 }: SkillInstructionsReadOnlyEditorProps) {
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
@@ -43,7 +45,11 @@ export function SkillInstructionsReadOnlyEditor({
 
   return (
     <SpacesProvider owner={owner}>
-      <SkillInstructionsEditorContent editor={editor} isReadOnly />
+      <SkillInstructionsEditorContent
+        editor={editor}
+        isReadOnly
+        className={className}
+      />
     </SpacesProvider>
   );
 }

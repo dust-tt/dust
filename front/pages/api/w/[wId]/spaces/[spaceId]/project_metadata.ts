@@ -79,10 +79,20 @@ async function handler(
         // Create new metadata
         metadata = await ProjectMetadataResource.makeNew(auth, space, {
           description: body.description ?? null,
+          archivedAt: body.archive ? new Date() : null,
         });
       } else {
         // Update existing metadata
-        await metadata.updateMetadata(body);
+        if (body.archive !== undefined) {
+          if (body.archive) {
+            await metadata.archive();
+          } else {
+            await metadata.unarchive();
+          }
+        }
+        if (body.description !== undefined) {
+          await metadata.updateDescription(body.description);
+        }
       }
 
       return res.status(200).json({

@@ -16,6 +16,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -510,9 +511,11 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const renderedConvo = convoRes.value;
       const messages = renderedConvo.modelConversation.messages;
 
+      const credentials = await ProviderCredentialResource.getCredentials(auth);
       const tokenCountRes = await tokenCountForTexts(
         getTextRepresentationFromMessages(messages),
-        model
+        model,
+        credentials
       );
       if (tokenCountRes.isErr()) {
         throw new Error(tokenCountRes.error.message);
@@ -836,6 +839,7 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
             webhookSource,
             headers,
             body,
+            rawBody: JSON.stringify(body),
           });
           if (result.isErr()) {
             localLogger.error(

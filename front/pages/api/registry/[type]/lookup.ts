@@ -85,6 +85,15 @@ async function handler(
 
   const allowConversationsDataSources = req.query.is_system_run === "true";
 
+  logger.info(
+    {
+      type: req.query.type,
+      workspaceId: userWorkspaceId,
+      allowConversationsDataSources,
+    },
+    "Received registry lookup request"
+  );
+
   switch (req.method) {
     case "GET":
       switch (req.query.type) {
@@ -185,6 +194,19 @@ async function handleDataSourceView(
   dataSourceViewId: string,
   allowConversationsDataSources: boolean
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
+  logger.info(
+    {
+      dataSourceView: {
+        id: dataSourceViewId,
+      },
+      workspace: {
+        id: auth.getNonNullableWorkspace().id,
+        sId: auth.getNonNullableWorkspace().sId,
+      },
+    },
+    "Looking up registry with dataSourceView"
+  );
+
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     dataSourceViewId
@@ -233,7 +255,7 @@ async function handleDataSource(
         sId: auth.getNonNullableWorkspace().sId,
       },
     },
-    "Looking up registry with data source id"
+    "Looking up registry with DataSource"
   );
 
   const dataSource = await DataSourceResource.fetchByNameOrId(

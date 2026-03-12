@@ -169,7 +169,7 @@ export function AgentObservability({
             <Spinner />
           </div>
         ) : (
-          <CardGrid>
+          <CardGrid adaptColumns>
             <ValueCard
               title="Active Users"
               className="h-24"

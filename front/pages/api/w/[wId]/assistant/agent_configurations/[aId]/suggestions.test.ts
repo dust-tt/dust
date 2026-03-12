@@ -253,7 +253,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
         },
         analysis: "Test analysis",
         state: "pending",
-        source: "copilot",
+        source: "sidekick",
       }
     );
 
@@ -273,7 +273,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
       state: "approved",
       kind: "instructions",
       analysis: "Test analysis",
-      source: "copilot",
+      source: "sidekick",
       suggestion: {
         content: "<p>new text</p>",
         targetBlockId: "block123",

@@ -1,9 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { ProjectType } from "@app/types/space";
-import { Op } from "sequelize";
 
 export async function enrichProjectsWithMetadata(
   auth: Authenticator,
@@ -13,24 +11,20 @@ export async function enrichProjectsWithMetadata(
     return [];
   }
 
-  const workspaceId = auth.getNonNullableWorkspace().id;
   const spaceIds = spaces.map((s) => s.id);
 
-  const records = await ProjectMetadataModel.findAll({
-    where: {
-      spaceId: { [Op.in]: spaceIds },
-      workspaceId,
-    },
-  });
-
-  const metadataMap = new Map<ModelId, string | null>();
-  for (const pm of records) {
-    metadataMap.set(pm.spaceId, pm.description);
-  }
+  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+    auth,
+    spaceIds
+  );
+  const metadataMap = new Map<number, ProjectMetadataResource>(
+    metadatas.map((m) => [m.spaceId, m])
+  );
 
   return spaces.map((space) => ({
     ...space.toJSON(),
-    description: metadataMap.get(space.id) ?? null,
+    description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
+    archivedAt: metadataMap.get(space.id)?.archivedAt?.getTime() ?? null,
   }));
 }

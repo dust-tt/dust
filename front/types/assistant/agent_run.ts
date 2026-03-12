@@ -8,7 +8,10 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  GlobalAgentContext,
+} from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
@@ -34,6 +37,9 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "agent_message_deleted",
   "user_message_deleted",
 ] as const;
+
+// Cache for 200 seconds, which maps to P95 execution time of the agent loop.
+const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
 export type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
@@ -152,8 +158,23 @@ export async function getAgentLoopData(
       new Error(`Failed to deserialize authenticator: ${authResult.error.code}`)
     );
   }
-  const auth = authResult.value;
 
+  return getAgentLoopDataWithAuth(authResult.value, agentLoopArgs);
+}
+
+/**
+ * Same as getAgentLoopData but accepts a pre-built Authenticator, avoiding redundant
+ * Authenticator.fromJSON calls when the caller already has a valid auth.
+ */
+export async function getAgentLoopDataWithAuth(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): Promise<
+  Result<
+    AgentLoopExecutionData & { auth: Authenticator },
+    AgentLoopDataError | Error
+  >
+> {
   const {
     agentMessageId,
     agentMessageVersion,
@@ -260,15 +281,37 @@ export async function getAgentLoopData(
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
-  // Fetch the agent configuration as we need the full version of the agent configuration.
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentMessage.configuration.sId,
+  const agentId = agentMessage.configuration.sId;
+
+  const globalAgentContext: GlobalAgentContext = {
+    userMessageRank: userMessage.rank,
+    sidekickIsNewAgentFromScratch:
+      conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
+      undefined,
+  };
+
+  // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.
+  // The key will be different for a new message or a new version of the same message (retries).
+  const agentConfiguration = await cacheWithRedis<
+    AgentConfigurationType | null,
+    Parameters<typeof getAgentConfiguration<"full">>
+  >(
+    getAgentConfiguration,
+    () =>
+      `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
+    {
+      ttlMs: AGENT_CONFIGURATION_CACHE_TTL_MS,
+    }
+  )(auth, {
+    agentId,
     // We do define agentMessage.configuration.version for global agent, ignoring this value here.
     agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
       ? undefined
       : agentMessage.configuration.version,
-    variant: "full",
+    variant: "full" as const,
+    globalAgentContext,
   });
+
   if (!agentConfiguration) {
     return new Err(new Error("Agent configuration not found"));
   }

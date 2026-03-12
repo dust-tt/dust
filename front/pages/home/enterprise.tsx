@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";

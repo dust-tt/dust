@@ -1,13 +1,8 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import {
-  Button,
-  Card,
-  type CardProps,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
+import { Card, type CardProps } from "@sparkle/components/Card";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
+import { Spinner } from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";

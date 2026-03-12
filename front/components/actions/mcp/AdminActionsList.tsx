@@ -27,13 +27,7 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import {
-  Chip,
-  classNames,
-  DataTable,
-  EmptyCTA,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Chip, cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -53,7 +47,7 @@ const NameCell = ({ row }: { row: RowData }) => {
   return (
     <DataTable.CellContent grow>
       <div
-        className={classNames(
+        className={cn(
           "flex flex-row items-center gap-3 py-3",
           mcpServerView ? "" : "opacity-50"
         )}
@@ -142,10 +136,26 @@ export const AdminActionsList = ({
     setIsCreateOpen(true);
   };
 
+  const existingViewNames = useMemo(
+    () =>
+      mcpServers.flatMap((s) =>
+        (s.views ?? []).map((v) => v.name ?? v.server.name)
+      ),
+    [mcpServers]
+  );
+
   const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
+    // Open the dialog when OAuth/bearer token is required, OR when a
+    // multi-instance server already has an instance with the same name
+    // (so the user can pick a custom name).
+    const hasNameConflict =
+      mcpServer.allowMultipleInstances &&
+      existingViewNames.includes(mcpServer.name);
+
     if (
       mcpServer.authorization ??
-      requiresBearerTokenConfiguration(mcpServer)
+      requiresBearerTokenConfiguration(mcpServer) ??
+      hasNameConflict
     ) {
       setInternalMCPServerToCreate(mcpServer);
       setDefaultServerConfig(undefined);
@@ -378,6 +388,7 @@ export const AdminActionsList = ({
         owner={owner}
         setMCPServerToShow={setMcpServerToShow}
         defaultServerConfig={defaultServerConfig}
+        existingViewNames={existingViewNames}
       />
       {rows.length > 0 &&
         portalToHeader(

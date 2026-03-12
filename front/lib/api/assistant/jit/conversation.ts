@@ -14,11 +14,13 @@ import assert from "assert";
  */
 export async function getConversationMCPServers(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  agentConfigurationId?: string
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const conversationMCPServerViews =
     await ConversationResource.fetchMCPServerViews(auth, conversation, {
       onlyEnabled: true,
+      agentConfigurationId,
     });
 
   // Batch-fetch all MCP server views.

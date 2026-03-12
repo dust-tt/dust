@@ -354,6 +354,7 @@ async function createMeetingPrepSkill(
         requestedSpaceIds: [],
         icon: SKILL_ICON,
         extendedSkillId: null,
+        isDefault: false,
       },
       { transaction }
     );

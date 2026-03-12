@@ -65,6 +65,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
       inputTokens: 1766,
       outputTokens: 128,
       cachedTokens: 0,
+      reasoningTokens: 0,
       cacheCreationTokens: 0,
       uncachedInputTokens: 1766,
       totalTokens: 1894,

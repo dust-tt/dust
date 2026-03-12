@@ -8,7 +8,8 @@ import { Outlet } from "react-router-dom";
  */
 export function ConversationRouterLayout() {
   const owner = useWorkspace();
-  const { subscription, user, isAdmin, isBuilder } = useAuth();
+  const { subscription, user, isAdmin, isBuilder, featureFlags, vizUrl } =
+    useAuth();
 
   const pageProps = {
     workspace: owner,
@@ -16,6 +17,8 @@ export function ConversationRouterLayout() {
     user,
     isAdmin,
     isBuilder,
+    featureFlags,
+    vizUrl,
   };
 
   return (

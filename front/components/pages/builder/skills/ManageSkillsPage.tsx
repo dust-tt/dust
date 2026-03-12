@@ -1,5 +1,6 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
@@ -9,7 +10,11 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -18,6 +23,11 @@ import type { SkillWithRelationsType } from "@app/types/assistant/skill_configur
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FolderOpenIcon,
   MagnifyingGlassIcon,
   Page,
   PlusIcon,
@@ -78,9 +88,11 @@ function sortSkillsByName(skills: SkillWithRelationsType[]) {
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
   const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
@@ -181,12 +193,14 @@ export function ManageSkillsPage() {
   }, [searchBarRef.current]);
 
   useEffect(() => {
+    if (isImportDialogOpen) {
+      return;
+    }
+
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === "/") {
         event.preventDefault();
-        if (searchBarRef.current) {
-          searchBarRef.current.focus();
-        }
+        searchBarRef.current?.focus();
       }
     };
 
@@ -194,7 +208,7 @@ export function ManageSkillsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, []);
+  }, [isImportDialogOpen]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -219,6 +233,12 @@ export function ManageSkillsPage() {
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
+      {isImportDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportDialogOpen(false)}
+          owner={owner}
+        />
+      )}
       <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
         <Page.Header
           title="Manage Skills"
@@ -237,12 +257,32 @@ export function ManageSkillsPage() {
                 setSkillSearch(s);
               }}
             />
-            <Button
-              label="Create skill"
-              href={getSkillBuilderRoute(owner.sId, "new")}
-              icon={PlusIcon}
-              tooltip="Create a new skill"
-            />
+            {hasFeature("sandbox_tools") ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button label="Create skill" icon={PlusIcon} isSelect />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label="From scratch"
+                    icon={SKILL_ICON}
+                    href={getSkillBuilderRoute(owner.sId, "new")}
+                  />
+                  <DropdownMenuItem
+                    label="From existing"
+                    icon={FolderOpenIcon}
+                    onClick={() => setIsImportDialogOpen(true)}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                label="Create skill"
+                href={getSkillBuilderRoute(owner.sId, "new")}
+                icon={PlusIcon}
+                tooltip="Create a new skill"
+              />
+            )}
           </div>
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>

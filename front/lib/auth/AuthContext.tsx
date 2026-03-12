@@ -4,7 +4,7 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { createContext, useCallback, useContext } from "react";
 
 // Context for pages that have workspace (app pages, workspace-scoped poke pages).
-// User is non-nullable because withDefaultUserAuthRequirements guarantees authentication.
+// User is non-nullable because authentication is guaranteed by the session wrapper.
 export interface AuthContextValue {
   user: UserType;
   workspace: LightWorkspaceType;
@@ -26,7 +26,8 @@ export function useAuth(): AuthContextValue {
 }
 
 export function useFeatureFlags() {
-  const { featureFlags } = useAuth();
+  const ctx = useContext(AuthContext);
+  const featureFlags = ctx?.featureFlags ?? [];
 
   const hasFeature = useCallback(
     (flag: WhitelistableFeature | null | undefined) => {

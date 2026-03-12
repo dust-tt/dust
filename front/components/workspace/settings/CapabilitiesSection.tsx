@@ -6,10 +6,10 @@ import { ContextItem, Page } from "@dust-tt/sparkle";
 
 export function CapabilitiesSection({
   owner,
-  showRestrictAgentsPublishing,
+  publishingRestrictionMessage,
 }: {
   owner: WorkspaceType;
-  showRestrictAgentsPublishing: boolean;
+  publishingRestrictionMessage: string | null;
 }) {
   return (
     <Page.Vertical align="stretch" gap="md">
@@ -18,7 +18,11 @@ export function CapabilitiesSection({
         <div className="h-full border-b border-border dark:border-border-night" />
         <InteractiveContentSharingToggle owner={owner} />
         <VoiceTranscriptionToggle owner={owner} />
-        {showRestrictAgentsPublishing && <RestrictAgentsPublishingCapability />}
+        {publishingRestrictionMessage && (
+          <RestrictAgentsPublishingCapability
+            subElement={publishingRestrictionMessage}
+          />
+        )}
       </ContextItem.List>
     </Page.Vertical>
   );

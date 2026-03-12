@@ -33,7 +33,7 @@ export function renderPermissionProfiles(
       reason: supported
         ? null
         : `Permission level "${permissionLevel}" is not supported. ` +
-          `Only "all" and "specific teams" profiles can be used.`,
+          `Only profiles with "all" or "specific teams" access can be used as participant filters.`,
     };
   });
 }

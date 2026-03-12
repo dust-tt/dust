@@ -68,6 +68,7 @@ export type PlanType = {
   name: string;
   limits: LimitsType;
   trialPeriodDays: number;
+  isByok: boolean;
 };
 
 export type SubscriptionType = {

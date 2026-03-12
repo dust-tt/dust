@@ -143,6 +143,7 @@ export async function fetchRevokedWorkspace(
 
 export async function getUserWithWorkspaces<T extends boolean>(
   user: UserResource,
+  /** @deprecated Will be removed once all extension clients use the new config endpoint. */
   populateExtensionConfig: T = false as T
 ): Promise<
   T extends true ? UserTypeWithExtensionWorkspaces : UserTypeWithWorkspaces

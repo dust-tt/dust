@@ -14,7 +14,7 @@ import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
 import { buildShell, shellQuote } from "./shell";
 
 // Keep in sync with front/scripts/seed/* (workspace created by dust-hive seed SQL).
-const WORKSPACE_SID = "DevWkSpace";
+export const WORKSPACE_SID = "DevWkSpace";
 
 // Generate a random 10-character alphanumeric ID
 // This is compatible with front's generateRandomModelSId() output format

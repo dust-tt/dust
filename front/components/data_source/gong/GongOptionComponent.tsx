@@ -18,7 +18,7 @@ import {
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
@@ -26,8 +26,11 @@ const GONG_TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 const GONG_ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 const GONG_PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
 const GONG_PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
+const GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 
 const PROFILE_NAME_MAX_LENGTH = 15;
+const MAX_EXCLUDE_KEYWORDS = 50;
+const MAX_EXCLUDE_KEYWORD_LENGTH = 100;
 
 interface GongPermissionProfile {
   id: string;
@@ -89,6 +92,13 @@ function PermissionProfileSelector({
     dataSource,
     configKey: GONG_PERMISSION_PROFILES_CONFIG_KEY,
   });
+  const [localProfileId, setLocalProfileId] = useState(
+    permissionProfileIdConfigValue ?? ""
+  );
+
+  useEffect(() => {
+    setLocalProfileId(permissionProfileIdConfigValue ?? "");
+  }, [permissionProfileIdConfigValue]);
 
   const permissionProfiles = useMemo<GongPermissionProfile[]>(() => {
     if (!permissionProfilesConfigValue) {
@@ -105,17 +115,18 @@ function PermissionProfileSelector({
     }
   }, [permissionProfilesConfigValue]);
 
-  const selectedProfile = useMemo(() => {
-    if (!permissionProfileIdConfigValue) {
+  const hasUnsavedChanges =
+    permissionProfileIdConfigValue !== undefined &&
+    localProfileId !== permissionProfileIdConfigValue;
+
+  const displayedProfile = useMemo(() => {
+    if (!localProfileId) {
       return null;
     }
-    return (
-      permissionProfiles.find((p) => p.id === permissionProfileIdConfigValue) ??
-      null
-    );
-  }, [permissionProfileIdConfigValue, permissionProfiles]);
+    return permissionProfiles.find((p) => p.id === localProfileId) ?? null;
+  }, [localProfileId, permissionProfiles]);
 
-  const handleSelect = async (profileId: string) => {
+  const handleSave = async () => {
     setLoading(true);
     // The config API only accepts strings, so "" means "no filter" (normalized
     // to null on the connector side).
@@ -124,7 +135,7 @@ function PermissionProfileSelector({
       {
         headers: { "Content-Type": "application/json" },
         method: "POST",
-        body: JSON.stringify({ configValue: profileId }),
+        body: JSON.stringify({ configValue: localProfileId }),
       }
     );
     if (res.ok) {
@@ -132,7 +143,7 @@ function PermissionProfileSelector({
       sendNotification({
         type: "success",
         title: "Gong configuration updated",
-        description: "Permission profile successfully updated.",
+        description: "Participant filter successfully updated.",
       });
     } else {
       const err = await res.json();
@@ -147,62 +158,74 @@ function PermissionProfileSelector({
 
   return (
     <ContextItem
-      title="Permission Profile"
+      title="Participant Filter"
       visual={<ContextItem.Visual visual={GongLogo} />}
       action={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              label={
-                selectedProfile
-                  ? selectedProfile.name.length > PROFILE_NAME_MAX_LENGTH
-                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) +
-                      "..."
-                    : selectedProfile.name
-                  : "All calls"
-              }
-              isSelect
-              disabled={disabled || loading}
-              tooltip={selectedProfile?.name}
-              className="w-40 overflow-hidden px-4"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              label="All calls"
-              onClick={() => handleSelect("")}
-            />
-            {permissionProfiles.map((profile) => {
-              const item = (
-                <DropdownMenuItem
-                  key={profile.id}
-                  label={profile.name}
-                  disabled={!profile.supported}
-                  onClick={() => handleSelect(profile.id)}
-                />
-              );
-              if (profile.reason) {
-                return (
-                  <DropdownTooltipTrigger
+        <div className="flex flex-row space-x-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                label={
+                  displayedProfile
+                    ? displayedProfile.name.length > PROFILE_NAME_MAX_LENGTH
+                      ? displayedProfile.name.slice(
+                          0,
+                          PROFILE_NAME_MAX_LENGTH
+                        ) + "..."
+                      : displayedProfile.name
+                    : "All participants"
+                }
+                isSelect
+                disabled={disabled || loading}
+                tooltip={displayedProfile?.name}
+                className="w-40 overflow-hidden px-4"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                label="All participants"
+                onClick={() => setLocalProfileId("")}
+              />
+              {permissionProfiles.map((profile) => {
+                const item = (
+                  <DropdownMenuItem
                     key={profile.id}
-                    description={profile.reason}
-                  >
-                    {item}
-                  </DropdownTooltipTrigger>
+                    label={profile.name}
+                    disabled={!profile.supported}
+                    onClick={() => setLocalProfileId(profile.id)}
+                  />
                 );
-              }
-              return item;
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                if (profile.reason) {
+                  return (
+                    <DropdownTooltipTrigger
+                      key={profile.id}
+                      description={profile.reason}
+                    >
+                      {item}
+                    </DropdownTooltipTrigger>
+                  );
+                }
+                return item;
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSave}
+            disabled={disabled || loading || !hasUnsavedChanges}
+            label={loading ? "Saving..." : "Save"}
+          />
+        </div>
       }
     >
       <ContextItem.Description>
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          Only calls with at least one participant from the profile&apos;s user
-          list will be synced. Changing the profile only affects future syncs.
+          Filter calls by participant group. Only calls where at least one
+          participant is assigned to the selected profile will be synced.
+          Changing the filter only affects future syncs.
         </div>
       </ContextItem.Description>
     </ContextItem>
@@ -251,15 +274,33 @@ export function GongOptionComponent({
   });
   const accountsEnabled = accountsConfigValue === "true";
 
+  const {
+    configValue: excludeKeywordsConfigValue,
+    mutateConfig: mutateExcludeKeywords,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY,
+  });
+
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    retentionPeriodConfigValue || ""
+    retentionPeriodConfigValue ?? ""
   );
+
+  const [excludeKeywords, setExcludeKeywords] = useState<string>(
+    excludeKeywordsConfigValue ?? ""
+  );
+
+  // Sync state when config value loads/changes
+  useEffect(() => {
+    if (excludeKeywordsConfigValue !== undefined) {
+      setExcludeKeywords(excludeKeywordsConfigValue ?? "");
+    }
+  }, [excludeKeywordsConfigValue]);
 
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  // TODO: fix the auto-save pattern here and replace with an actual save on the sheet.
   const handleConfigUpdate = async (configKey: string, newValue: string) => {
     // Validate that the value is either empty or a positive integer
     if (
@@ -300,6 +341,10 @@ export function GongOptionComponent({
           await mutateAccountsConfig();
           description = "Accounts synchronization successfully updated.";
           break;
+        case GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY:
+          await mutateExcludeKeywords();
+          description = "Exclude keywords successfully updated.";
+          break;
         default:
           description = "Configuration successfully updated.";
       }
@@ -334,6 +379,48 @@ export function GongOptionComponent({
           dataSource={dataSource}
           disabled={readOnly || !isAdmin || loading}
         />
+
+        <ContextItem
+          title="Exclude calls by title keywords"
+          visual={<ContextItem.Visual visual={GongLogo} />}
+          action={
+            <div className="flex flex-row space-x-3 pt-6">
+              <Input
+                name="excludeTitleKeywords"
+                placeholder="e.g. internal, test, demo"
+                value={excludeKeywords}
+                onChange={(e) => setExcludeKeywords(e.target.value)}
+                disabled={readOnly || !isAdmin || loading}
+                className="w-64"
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={async () => {
+                  await handleConfigUpdate(
+                    GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY,
+                    excludeKeywords
+                  );
+                }}
+                disabled={readOnly || !isAdmin || loading}
+                label="Save"
+              />
+            </div>
+          }
+        >
+          <ContextItem.Description>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              Exclude calls whose title contains these keywords
+              (case-insensitive, comma-separated).
+              <br />
+              Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
+              {MAX_EXCLUDE_KEYWORD_LENGTH} characters each.
+              <br />
+              Adding keywords removes existing matching transcripts. Removing
+              keywords only affects future syncs.
+            </div>
+          </ContextItem.Description>
+        </ContextItem>
 
         <ContextItem
           title="Retention Period"

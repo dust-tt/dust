@@ -1,6 +1,7 @@
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { isChromeExtension } from "@app/lib/utils/extension";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -12,6 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // A 1-minute recording will be around 400kB
 // 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
 const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
+
+const MICROPHONE_POPUP_TIMEOUT_MS = 60_000; // 1 minute
 
 type VoiceTranscriberStatus =
   | "idle"
@@ -346,7 +349,70 @@ const buildAudioFile = (chunks: Blob[], mimeType: string) => {
   return new File([blob], filename, { type: mimeType });
 };
 
-const requestMicrophone = async (): Promise<MediaStream> => {
+const getMicrophonePermissionState = async (): Promise<PermissionState> => {
+  const status = await navigator.permissions.query({
+    name: "microphone",
+  });
+  return status.state;
+};
+
+const openMicrophoneAccessPopup = async (): Promise<void> => {
+  const createdWindow = await chrome.windows.create({
+    url: `chrome-extension://${chrome.runtime.id}/request-mic.html`,
+    type: "popup",
+    width: 400,
+    height: 400,
+  });
+
+  if (!createdWindow?.id) {
+    return;
+  }
+
+  const windowId = createdWindow.id;
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.windows.onRemoved.removeListener(onWindowClose);
+      chrome.windows.remove(windowId);
+      reject(new Error("Microphone access popup timed out"));
+    }, MICROPHONE_POPUP_TIMEOUT_MS);
+
+    function onWindowClose(closedWindowId: number) {
+      if (closedWindowId === windowId) {
+        clearTimeout(timeout);
+        chrome.windows.onRemoved.removeListener(onWindowClose);
+        resolve();
+      }
+    }
+
+    chrome.windows.onRemoved.addListener(onWindowClose);
+  });
+};
+
+const extensionRequestMicrophonePermission = async (): Promise<MediaStream> => {
+  const state = await getMicrophonePermissionState();
+
+  if (state === "denied") {
+    // Open extension settings so user can manually re-enable microphone
+    await chrome.tabs.create({
+      url: `chrome://settings/content/siteDetails?site=chrome-extension%3A%2F%2F${chrome.runtime.id}%2F`,
+    });
+    throw new DOMException("Microphone permission denied", "NotAllowedError");
+  }
+
+  if (state === "prompt") {
+    // Side panel can't show the prompt — fall back to popup window
+    await openMicrophoneAccessPopup();
+    return navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+  // Permission is already granted
+  return navigator.mediaDevices.getUserMedia({ audio: true });
+};
+
+export const requestMicrophone = async (): Promise<MediaStream> => {
+  if (isChromeExtension()) {
+    return extensionRequestMicrophonePermission();
+  }
   return navigator.mediaDevices.getUserMedia({ audio: true });
 };
 

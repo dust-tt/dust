@@ -6,6 +6,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -54,7 +55,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Create frame file with conversation context.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -66,7 +67,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     const frameShareInfo = await frameFile.getShareInfo();
 
     // Create target file in same conversation.
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -123,7 +124,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Create frame file with conversation context.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -135,7 +136,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     const frameShareInfo = await frameFile.getShareInfo();
 
     // Create target file in same conversation.
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -192,7 +193,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Create frame file with conversation context.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -204,7 +205,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     const frameShareInfo = await frameFile.getShareInfo();
 
     // Create target file in same conversation.
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -268,7 +269,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Frame from conversation A.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -285,7 +286,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     }
 
     // Target file from conversation B (should be rejected).
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -330,6 +331,273 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
   });
 
+  describe("project context access tests", () => {
+    async function addUserToProject(
+      project: Awaited<ReturnType<typeof SpaceFactory.project>>
+    ) {
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const user = auth.getNonNullableUser();
+      const projectSpaceGroup = project.groups.find(
+        (g) => g.kind === "regular"
+      );
+      if (projectSpaceGroup) {
+        const addRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: user.toJSON() }
+        );
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to project: ${addRes.error.message}`
+          );
+        }
+      }
+      await auth.refresh();
+    }
+
+    it("should allow access when frame is in project and target file is project_context in same project", async () => {
+      const project = await SpaceFactory.project(workspace);
+      await addUserToProject(project);
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const targetFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["File content"])
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    it("should allow access when frame is in project and target file is in conversation belonging to project", async () => {
+      const project = await SpaceFactory.project(workspace);
+      await addUserToProject(project);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project.id,
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const targetFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["File content"])
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    it("should reject access when frame is in project and target file is in different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project1.sId },
+      });
+
+      const targetFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project2.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    });
+
+    it("should reject access when frame is in project and target file is in conversation belonging to different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+      await addUserToProject(project2);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project2.id,
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project1.sId },
+      });
+
+      const targetFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    });
+  });
+
   it("should reject access to non-conversation files", async () => {
     // Create a real conversation
     const conversation = await ConversationFactory.create(auth, {
@@ -338,7 +606,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     });
 
     // Frame from conversation.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -355,7 +623,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     }
 
     // Target file with different use case (should be rejected).
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "image/png",
       fileName: "avatar.png",
       fileSize: 2000,
@@ -401,7 +669,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
   it("should reject access when frame has no conversation context", async () => {
     // Frame from conversation.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
@@ -418,7 +686,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     }
 
     // Target file with different use case (should be rejected).
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "image/png",
       fileName: "avatar.png",
       fileSize: 2000,
@@ -457,14 +725,14 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Frame missing conversation context.",
+        message: "Frame missing conversation context or project context.",
       },
     });
   });
 
   it("should reject access when file is not a frame", async () => {
     // Frame from conversation.
-    const frameFile = await FileFactory.create(workspace, null, {
+    const frameFile = await FileFactory.create(auth, null, {
       contentType: "image/png",
       fileName: "frame.html",
       fileSize: 1000,
@@ -477,7 +745,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject requests without Authorization header", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -505,7 +773,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject malformed Authorization header", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -535,7 +803,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject empty Bearer token", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -565,7 +833,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject invalid JWT token", async () => {
-    const targetFile = await FileFactory.create(workspace, null, {
+    const targetFile = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "target.txt",
       fileSize: 500,
@@ -672,7 +940,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const childConversation = childData.conversation;
 
       // Create frame file in parent conversation A.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -682,7 +950,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       });
 
       // Create target file in sub-conversation B.
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "sub-conversation-file.txt",
         fileSize: 500,
@@ -810,7 +1078,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const conversationB = conversationBData.conversation;
 
       // Create frame file in conversation A.
-      const frameFile = await FileFactory.create(workspace, null, {
+      const frameFile = await FileFactory.create(auth, null, {
         contentType: frameContentType,
         fileName: "frame.html",
         fileSize: 1000,
@@ -820,7 +1088,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       });
 
       // Create target file in unrelated conversation B.
-      const targetFile = await FileFactory.create(workspace, null, {
+      const targetFile = await FileFactory.create(auth, null, {
         contentType: "text/plain",
         fileName: "sub-conversation-file.txt",
         fileSize: 500,

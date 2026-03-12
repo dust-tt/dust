@@ -1,4 +1,5 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
+import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import {
   Icon,
   InformationCircleIcon,
@@ -8,16 +9,24 @@ import {
 } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
-export function InternalBearerTokenSection() {
+interface InternalBearerTokenSectionProps {
+  serverName?: string;
+}
+
+export function InternalBearerTokenSection({
+  serverName,
+}: InternalBearerTokenSectionProps) {
   const {
     register,
     formState: { errors },
   } = useFormContext<CreateMCPServerDialogFormValues>();
 
+  const { label, placeholder, tooltip } = getTokenFieldLabel(serverName);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center space-x-2">
-        <Label htmlFor="bearerToken">Bearer Token (Authorization)</Label>
+        <Label htmlFor="bearerToken">{label}</Label>
         <Tooltip
           trigger={
             <Icon
@@ -26,12 +35,12 @@ export function InternalBearerTokenSection() {
               className="text-gray-400"
             />
           }
-          label="This will be sent alongside the request as a Bearer token in the Authorization header."
+          label={tooltip}
         />
       </div>
       <Input
         id="bearerToken"
-        placeholder="Paste the Bearer Token here"
+        placeholder={placeholder}
         {...register("sharedSecret")}
         isError={!!errors.sharedSecret}
         message={errors.sharedSecret?.message}

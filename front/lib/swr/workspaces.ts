@@ -3,13 +3,15 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
+import type { GetWorkspaceSkillUsageResponse } from "@app/pages/api/w/[wId]/analytics/skill-usage";
+import type { GetWorkspaceSkillsResponse } from "@app/pages/api/w/[wId]/analytics/skills";
 import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
 import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
 import type { GetWorkspaceToolsResponse } from "@app/pages/api/w/[wId]/analytics/tools";
@@ -30,6 +32,7 @@ import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -42,6 +45,15 @@ export function isRegionRedirect(data: unknown): data is RegionRedirectError {
     // (data as RegionRedirectError).redirect !== null &&
     // "region" in (data as RegionRedirectError).redirect &&
     // "url" in (data as RegionRedirectError).redirect
+  );
+}
+
+function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "redirectUrl" in data &&
+    typeof data.redirectUrl === "string"
   );
 }
 
@@ -252,6 +264,64 @@ export function useWorkspaceToolUsage({
     isToolUsageLoading: !error && !data && !disabled,
     isToolUsageError: error,
     isToolUsageValidating: isValidating,
+  };
+}
+
+export function useWorkspaceSkills({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetWorkspaceSkillsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/skills?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    skills: data?.skills ?? emptyArray(),
+    isSkillsLoading: !error && !data && !disabled,
+    isSkillsError: error,
+    isSkillsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceSkillUsage({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  skillName,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  skillName?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetWorkspaceSkillUsageResponse> = fetcher;
+  const params = new URLSearchParams({ days: String(days) });
+  if (skillName) {
+    params.set("skillName", skillName);
+  }
+  const key = `/api/w/${workspaceId}/analytics/skill-usage?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    skillUsage: data?.points ?? emptyArray(),
+    isSkillUsageLoading: !error && !data && !disabled,
+    isSkillUsageError: error,
+    isSkillUsageValidating: isValidating,
   };
 }
 
@@ -571,7 +641,7 @@ export function useAuthContext(
 ) {
   const { workspaceId, disabled } = options;
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
 
   const url = workspaceId
     ? `/api/w/${workspaceId}/auth-context`
@@ -594,11 +664,14 @@ export function useAuthContext(
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+    if (regionRedirect) {
+      regionContext.setRegionInfo(
+        {
+          name: regionRedirect.region,
+          url: regionRedirect.url,
+        },
+        { keepInStorage: true }
+      );
       void mutate();
     }
   }, [regionRedirect, mutate, regionContext]);
@@ -679,7 +752,7 @@ export function useJoinData({
   conversationId: string | null;
 }) {
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -701,19 +774,39 @@ export function useJoinData({
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+    if (regionRedirect) {
+      regionContext.setRegionInfo(
+        {
+          name: regionRedirect.region,
+          url: regionRedirect.url,
+        },
+        { keepInStorage: true }
+      );
       void mutate();
     }
   }, [regionRedirect, mutate, regionContext]);
 
+  // The join API returns { redirectUrl: "..." } (e.g. for invalid/expired
+  // tokens). This is not a standard API error response, so the fetcher wraps
+  // it in new Error(jsonText) — we parse it back out here.
+  const redirectUrl = useMemo(() => {
+    if (!error || isRegionRedirectResponse || !(error instanceof Error)) {
+      return null;
+    }
+    const parsed = safeParseJSON(error.message);
+    if (parsed.isOk() && isRedirectResponse(parsed.value)) {
+      return parsed.value.redirectUrl;
+    }
+    return null;
+  }, [error, isRegionRedirectResponse]);
+
   return {
     joinData: data ?? null,
-    isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
-    isJoinDataError: isRegionRedirectResponse ? undefined : error,
+    joinDataError: error ?? null,
+    isJoinDataLoading:
+      (!error && !data) || !!isRegionRedirectResponse || !!redirectUrl,
+    mutateJoinData: mutate,
+    redirectUrl,
   };
 }
 

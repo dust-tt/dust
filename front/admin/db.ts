@@ -33,6 +33,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
@@ -46,9 +47,11 @@ import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import {
   SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
+  SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
@@ -68,6 +71,7 @@ import {
   ProviderModel,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -94,6 +98,7 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
@@ -150,6 +155,7 @@ export function loadAllModels() {
     ExtensionConfigurationModel,
     PlanModel,
     SubscriptionModel,
+    ProviderCredentialModel,
     TemplateModel,
     CreditModel,
     ProgrammaticUsageConfigurationModel,
@@ -196,11 +202,15 @@ export function loadAllModels() {
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
+    SkillFileAttachmentModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
     UserProjectDigestModel,
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
+    SandboxModel,
+    ConversationButlerSuggestionModel,
+    ConversationBranchModel,
   ];
 }
 

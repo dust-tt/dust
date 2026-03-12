@@ -103,6 +103,7 @@ async function handler(
           instructions,
           icon: skillIcon,
           extendedSkillId: null,
+          isDefault: false,
         },
         {
           mcpServerViewIds,

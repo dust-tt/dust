@@ -50,6 +50,7 @@ export const ModelConfigurationSchema = z.object({
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
   disablePrefill: z.boolean().optional(),
+  supportsBatchProcessing: z.boolean().optional(),
 });
 
 // Base type inferred from the schema.
@@ -73,10 +74,21 @@ export type ModelConfigurationType = Omit<
   minimumReasoningEffort: AgentReasoningEffort;
   maximumReasoningEffort: AgentReasoningEffort;
   defaultReasoningEffort: AgentReasoningEffort;
-  featureFlag?: WhitelistableFeature;
-  customAssistantFeatureFlag?: WhitelistableFeature;
+  // If undefined, model is available.
+  // If object is empty, model is not available.
+  // If defined, model must satisfy one of the conditions to be available.
+  availableIfOneOf?: {
+    // If set to true and workspace is enterprise, model is available.
+    enterprise?: boolean;
+    // If set, model is available if feature flag is enabled.
+    featureFlag?: WhitelistableFeature;
+  };
+  // Pre-requisite: must be available.
+  // If object is empty, model is not custom available.
+  customAvailableIf?: {
+    featureFlag?: WhitelistableFeature;
+  };
   tokenizer: TokenizerConfig;
-  enterpriseOnly?: boolean;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

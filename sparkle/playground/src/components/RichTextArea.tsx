@@ -101,7 +101,7 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
         className={cn(menuStyleClasses.container, "s-w-72 s-p-0 s-shadow-lg")}
       >
         {items.length === 0 ? (
-          <div className="s-px-3 s-py-3 s-text-sm s-text-muted-foreground">
+          <div className="s-px-3 s-py-3 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
             No matches
           </div>
         ) : (
@@ -130,11 +130,11 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
                 isRounded={item.type === "user"}
               />
               <div className="s-flex s-min-w-0 s-flex-1 s-items-center">
-                <div className="s-heading-sm s-truncate s-text-foreground">
+                <div className="s-heading-sm s-truncate s-text-foreground dark:s-text-foreground-night">
                   {item.label}
                 </div>
               </div>
-              <span className="s-text-xs s-font-normal s-text-muted-foreground">
+              <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
                 {item.type === "user" ? "Member" : "Agent"}
               </span>
             </button>
@@ -331,7 +331,7 @@ const suggestionSelectionVariants = cva(
         kind: "add",
         state: "selected",
         className:
-          "s-rounded s-bg-highlight-100 dark:s-bg-highlight-100 s-text-highlight-800 dark:s-text-highlight-800-night",
+          "s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800 dark:s-text-highlight-800-night",
       },
       {
         kind: "add",
@@ -343,7 +343,7 @@ const suggestionSelectionVariants = cva(
         kind: "remove",
         state: "selected",
         className:
-          "s-rounded s-bg-warning-100 s-text-warning-800 dark:s-text-warning-800-night",
+          "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 dark:s-text-warning-800-night",
       },
       {
         kind: "remove",
@@ -589,7 +589,7 @@ type RichTextAreaProps = {
   topBarClassName?: string;
   placeholder?: string;
   topBar?: React.ReactNode;
-  onAskCopilot?: (payload: {
+  onAskSidekick?: (payload: {
     selectedText: string;
     start: number;
     end: number;
@@ -603,7 +603,7 @@ type RichTextAreaProps = {
   defaultValue?: string;
   variant?: "default" | "compact" | "embedded";
   showFormattingMenu?: boolean;
-  showAskCopilotMenu?: boolean;
+  showAskSidekickMenu?: boolean;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
@@ -614,7 +614,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       topBarClassName,
       placeholder,
       topBar,
-      onAskCopilot,
+      onAskSidekick,
       onSuggestionsChange,
       onTextChange,
       onFocus,
@@ -624,7 +624,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       defaultValue,
       variant = "default",
       showFormattingMenu = false,
-      showAskCopilotMenu = true,
+      showAskSidekickMenu: showAskSidekickMenu = true,
     },
     ref
   ) => {
@@ -661,7 +661,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         attributes: {
           class: cn(
             richTextAreaVariants({ variant: editorVariant }),
-            "sparkle-richtextarea",
+            "sparkle-richtextarea selection:s-bg-highlight-100 dark:selection:s-bg-highlight-150-night",
             className
           ),
         },
@@ -1091,7 +1091,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         .focus()
         .deleteRange({ from: start, to: end })
         .insertContentAt(start, textToKeep)
-        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Copilot from showing
+        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Sidekick from showing
         .run();
     };
 
@@ -1112,7 +1112,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         .focus()
         .deleteRange({ from: start, to: end })
         .insertContentAt(start, textToKeep)
-        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Copilot from showing
+        .setTextSelection(start + textToKeep.length) // Collapse selection to prevent Ask Sidekick from showing
         .run();
     };
 
@@ -1159,12 +1159,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
 
     return (
       <>
-        <style>{`.sparkle-richtextarea ::selection { background-color: #DFE0E2; }`}</style>
         {hasTopBar ? (
           <div
             className={cn(
               "s-flex s-w-full s-flex-col",
-              "s-rounded-xl s-border s-bg-muted-background s-transition s-duration-100",
+              "s-rounded-xl s-border s-bg-muted-background dark:s-bg-muted-background-night s-transition s-duration-100",
               "s-border-border dark:s-border-border-night",
               "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
               "focus-within:s-outline-none focus-within:s-ring-2",
@@ -1262,8 +1261,8 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               </HoveringBar>
             </BubbleMenu>
           )}
-          {/* Ask Copilot BubbleMenu - only show when text is selected and not on suggestion */}
-          {showAskCopilotMenu && onAskCopilot && (
+          {/* Ask Sidekick BubbleMenu - only show when text is selected and not on suggestion */}
+          {showAskSidekickMenu && onAskSidekick && (
             <BubbleMenu
               editor={editor}
               shouldShow={shouldShowSelectionMenu}
@@ -1272,14 +1271,14 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
             >
               <HoveringBar size="xs">
                 <Button
-                  label="Ask Copilot"
+                  label="Ask Sidekick"
                   size="xs"
                   variant="ghost"
                   icon={SparklesIcon}
                   onClick={() => {
                     const payload = getSelectionPayload();
                     if (payload) {
-                      onAskCopilot?.(payload);
+                      onAskSidekick?.(payload);
                     }
                   }}
                 />
@@ -1291,7 +1290,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   onClick={() => {
                     const payload = getSelectionPayload();
                     if (payload) {
-                      onAskCopilot?.(payload);
+                      onAskSidekick?.(payload);
                     }
                   }}
                 />

@@ -3,7 +3,7 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
+import { isModelCustomAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -31,11 +31,11 @@ async function handler(
       // Include both standard models and custom models (from GCS at build time)
       const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
       const models: ModelConfigurationType[] = allUsedModels.filter((m) =>
-        isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
+        isModelCustomAvailableAndWhitelisted(m, featureFlags, plan, owner)
       );
       const reasoningModels: ModelConfigurationType[] =
         REASONING_MODEL_CONFIGS.filter((m) =>
-          isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
+          isModelCustomAvailableAndWhitelisted(m, featureFlags, plan, owner)
         );
 
       return res.status(200).json({ models, reasoningModels });

@@ -5,39 +5,33 @@ import Custom404 from "@app/pages/404";
 import {
   Button,
   DustLogoSquare,
+  ExclamationCircleIcon,
   Hoverable,
+  Icon,
   LoginIcon,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
-function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "redirectUrl" in data &&
-    typeof (data as { redirectUrl: unknown }).redirectUrl === "string"
-  );
-}
-
 export function JoinPage() {
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
 
-  const { joinData, isJoinDataLoading, isJoinDataError } = useJoinData({
+  const {
+    joinData,
+    isJoinDataLoading,
+    redirectUrl,
+    joinDataError,
+    mutateJoinData,
+  } = useJoinData({
     wId,
     token,
     conversationId,
   });
 
-  const errorData = isJoinDataError?.response?.data;
-  const redirectUrl = isRedirectResponse(errorData)
-    ? errorData.redirectUrl
-    : null;
-
-  // Redirect to login-error page when the invite token is invalid.
+  // Redirect when the API returns a redirect URL (e.g. invalid/expired token).
   useEffect(() => {
     if (redirectUrl) {
       window.location.href = redirectUrl;
@@ -45,7 +39,45 @@ export function JoinPage() {
   }, [redirectUrl]);
 
   // Show 404 for unknown workspaces or missing auto-join domains.
-  if (!isJoinDataLoading && !redirectUrl && !joinData) {
+  if (!isJoinDataLoading && !joinData) {
+    if (joinDataError) {
+      const errorMessage =
+        joinDataError instanceof Error
+          ? joinDataError.message
+          : typeof joinDataError === "object" &&
+              joinDataError !== null &&
+              "error" in joinDataError
+            ? (joinDataError as { error: { message: string } }).error.message
+            : String(joinDataError);
+
+      return (
+        <div className="flex h-dvh items-center justify-center">
+          <div className="flex max-w-md flex-col gap-3 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <Icon
+                visual={ExclamationCircleIcon}
+                size="lg"
+                className="dark:text-warning-400-night text-warning-400"
+              />
+              <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                Something went wrong
+              </p>
+              <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                We couldn't load the invitation. Please try again.
+              </p>
+              <p className="copy-xs font-mono text-muted-foreground dark:text-muted-foreground-night">
+                {errorMessage}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              label="Retry"
+              onClick={() => void mutateJoinData()}
+            />
+          </div>
+        </div>
+      );
+    }
     return <Custom404 />;
   }
 

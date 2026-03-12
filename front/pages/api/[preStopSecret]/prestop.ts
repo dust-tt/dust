@@ -6,12 +6,15 @@ import {
 } from "@app/lib/constants/timeouts";
 import { markShuttingDown } from "@app/lib/shutdown_signal";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { WakeLockEntry } from "@app/lib/wake_lock";
 import { getWakeLockDetails, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { withLogging } from "@app/logger/withlogging";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const statsDClient = getStatsDClient();
 
 const PRESTOP_LOG_INTERVAL_MS = 1000; // 1 second log interval.
 const PRESTOP_LOG_MAX_LOCKS = 3; // Show top 3 longest running wake locks.

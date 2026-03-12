@@ -8,7 +8,7 @@ import {
   VIZ_SLIDESHOW_MIME_TYPE,
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
+} from "@app/lib/api/actions/servers/common/viz/instructions";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,

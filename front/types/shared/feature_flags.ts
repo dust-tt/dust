@@ -31,16 +31,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   agent_builder_copilot: {
-    description: "Enable Copilot in Agent Builder",
+    description: "Enable Sidekick in Agent Builder (admins only by default)",
+    stage: "dust_only",
+  },
+  agent_builder_copilot_builders: {
+    description: "Allow workspace builders to use Sidekick in Agent Builder",
     stage: "dust_only",
   },
   agent_builder_shrink_wrap: {
     description: "Enable 'Turn into agent' button on agent messages",
     stage: "dust_only",
-  },
-  ashby_tool: {
-    description: "Ashby tool for ATS integration",
-    stage: "on_demand",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
@@ -82,6 +82,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   restrict_agents_publishing: {
     description: "Restrict publishing agents to builders and admins",
+    stage: "on_demand",
+  },
+  restrict_agents_publishing_to_admins: {
+    description: "Restrict publishing agents to admins only",
     stage: "on_demand",
   },
   google_sheets_tool: {
@@ -134,10 +138,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
-  salesloft_tool: {
-    description: "Salesloft MCP tool",
-    stage: "dust_only",
-  },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
     stage: "on_demand",
@@ -161,11 +161,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   monday_tool: {
     description: "Monday MCP tool",
-    stage: "rolling_out",
-  },
-  front_tool: {
-    description:
-      "Front MCP tool for managing support conversations, messages, and customer interactions.",
     stage: "rolling_out",
   },
   gemini_3_1_pro_feature: {
@@ -198,12 +193,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
+  slack_native_streaming: {
+    description:
+      "Use Slack's native streaming API for bot responses instead of throttled chat.update loop",
+    stage: "dust_only",
+  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
-    stage: "on_demand",
-  },
-  slab_mcp: {
-    description: "Slab MCP server",
     stage: "on_demand",
   },
   legacy_dust_apps: {
@@ -213,6 +209,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
+    stage: "dust_only",
+  },
+  email_agents: {
+    description: "Enable triggering and interacting with agents via email",
     stage: "dust_only",
   },
   project_butler: {
@@ -227,35 +227,42 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  statuspage_tool: {
-    description: "Statuspage MCP tool for incident management",
-    stage: "on_demand",
-  },
   sandbox_tools: {
     description:
       "Sandbox MCP tool for executing code in isolated Linux containers",
-    stage: "dust_only",
-  },
-  dust_no_spa: {
-    description: "Disable redirect to Dust SPA",
-    stage: "on_demand",
-  },
-  dust_spa: {
-    description: "Redirect all pages to Dust SPA",
-    stage: "dust_only",
-  },
-  run_agent_child_stream: {
-    description:
-      "Subscribe directly to child agent EventSource in run_agent action " +
-      "details (potential optimization undergoing tests)",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
   },
+  conversation_butler: {
+    description:
+      "Enable conversation butler for automated conversation management",
+    stage: "dust_only",
+  },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
+    stage: "dust_only",
+  },
+  anthropic_reasoning_token_count: {
+    description:
+      "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
+    // Not really on_demand but we want to be able to enable it for customers
+    stage: "on_demand",
+  },
+  conversation_branches: {
+    description: "Enable conversation branches",
+    stage: "dust_only",
+  },
+  reinforced_agents: {
+    description:
+      "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
+    stage: "dust_only",
+  },
+  discover_skills: {
+    description:
+      "Enable default skills discovery on global agents (do not enable for customers)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

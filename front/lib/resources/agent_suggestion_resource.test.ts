@@ -136,13 +136,13 @@ describe("AgentSuggestionResource", () => {
             action: "add",
             skillId: "data_analysis",
           },
-          source: "copilot",
+          source: "sidekick",
         }
       );
 
       expect(suggestion).toBeDefined();
       expect(suggestion.kind).toBe("skills");
-      expect(suggestion.source).toBe("copilot");
+      expect(suggestion.source).toBe("sidekick");
 
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
@@ -167,13 +167,13 @@ describe("AgentSuggestionResource", () => {
             action: "remove",
             skillId: "old_skill",
           },
-          source: "copilot",
+          source: "sidekick",
         }
       );
 
       expect(suggestion).toBeDefined();
       expect(suggestion.kind).toBe("skills");
-      expect(suggestion.source).toBe("copilot");
+      expect(suggestion.source).toBe("sidekick");
 
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
@@ -396,7 +396,7 @@ describe("AgentSuggestionResource", () => {
             },
             analysis: null,
             state: "pending",
-            source: "copilot",
+            source: "sidekick",
           }
         )
       ).rejects.toThrow("User does not have permission to edit this agent");
@@ -630,6 +630,90 @@ describe("AgentSuggestionResource", () => {
       expect(results).toHaveLength(1);
       expect(results[0].kind).toBe("instructions");
       expect(results[0].state).toBe("pending");
+    });
+
+    it("should exclude synthetic suggestions by default", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "reinforcement" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "sidekick" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId
+        );
+
+      expect(suggestions).toHaveLength(2);
+      expect(suggestions.map((s) => s.source).sort()).toEqual([
+        "reinforcement",
+        "sidekick",
+      ]);
+    });
+
+    it("should return only synthetic suggestions when filtering by source", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "reinforcement" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { sources: ["synthetic"] }
+        );
+
+      expect(suggestions).toHaveLength(1);
+      expect(suggestions[0].source).toBe("synthetic");
+    });
+
+    it("should support filtering by multiple sources", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "reinforcement" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "sidekick" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { sources: ["synthetic", "reinforcement"] }
+        );
+
+      expect(suggestions).toHaveLength(2);
+      expect(suggestions.map((s) => s.source).sort()).toEqual([
+        "reinforcement",
+        "synthetic",
+      ]);
     });
 
     it("should return empty array for non-existent agent", async () => {

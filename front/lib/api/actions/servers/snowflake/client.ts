@@ -23,6 +23,11 @@ interface SnowflakeColumn {
   nullable: boolean;
 }
 
+interface SnowflakeSemanticViewInfo {
+  dimensions: Array<{ name: string; dataType: string; tableName: string }>;
+  metrics: Array<{ name: string; dataType: string; tableName: string }>;
+}
+
 interface SnowflakeQueryResult {
   columns: SnowflakeColumn[];
   rows: Record<string, unknown>[];
@@ -380,6 +385,23 @@ export class SnowflakeClient {
       tables.push(...views);
     }
 
+    // Also get semantic views (failure is non-fatal - some schemas may not have semantic views)
+    const semanticViewsResult = await this.executeStatement(
+      `SHOW SEMANTIC VIEWS IN SCHEMA "${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"`
+    );
+    if (semanticViewsResult.isOk()) {
+      const semanticViews = semanticViewsResult.value.rows
+        .map((row) => {
+          const name = getRowStringMultiKey(row, "name", "NAME");
+          if (!name) {
+            return null;
+          }
+          return { name, kind: "SEMANTIC_VIEW" };
+        })
+        .filter((v): v is { name: string; kind: string } => v !== null);
+      tables.push(...semanticViews);
+    }
+
     return new Ok(tables);
   }
 
@@ -458,6 +480,47 @@ export class SnowflakeClient {
     }
 
     return new Ok(undefined);
+  }
+
+  async describeSemanticView(
+    database: string,
+    schema: string,
+    semanticView: string
+  ): Promise<Result<SnowflakeSemanticViewInfo, Error>> {
+    const escapedName = `"${escapeSnowflakeIdentifier(database)}"."${escapeSnowflakeIdentifier(schema)}"."${escapeSnowflakeIdentifier(semanticView)}"`;
+
+    const dimensionsResult = await this.executeStatement(
+      `SHOW SEMANTIC DIMENSIONS IN ${escapedName}`
+    );
+    if (dimensionsResult.isErr()) {
+      return dimensionsResult;
+    }
+
+    const dimensions = dimensionsResult.value.rows
+      .map((row) => ({
+        name: getRowStringMultiKey(row, "name", "NAME") ?? "",
+        dataType: getRowStringMultiKey(row, "data_type", "DATA_TYPE") ?? "",
+        tableName: getRowStringMultiKey(row, "table_name", "TABLE_NAME") ?? "",
+      }))
+      .filter((d) => d.name !== "");
+
+    // Metrics query is non-fatal - some semantic views may only have dimensions.
+    const metricsResult = await this.executeStatement(
+      `SHOW SEMANTIC METRICS IN ${escapedName}`
+    );
+
+    const metrics = metricsResult.isOk()
+      ? metricsResult.value.rows
+          .map((row) => ({
+            name: getRowStringMultiKey(row, "name", "NAME") ?? "",
+            dataType: getRowStringMultiKey(row, "data_type", "DATA_TYPE") ?? "",
+            tableName:
+              getRowStringMultiKey(row, "table_name", "TABLE_NAME") ?? "",
+          }))
+          .filter((m) => m.name !== "")
+      : [];
+
+    return new Ok({ dimensions, metrics });
   }
 
   async readOnlyQuery(

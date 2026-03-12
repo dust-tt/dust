@@ -548,7 +548,7 @@ export function TemplateDetailPage() {
       presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       helpInstructions: "",
       helpActions: "",
-      copilotInstructions: "",
+      sidekickInstructions: "",
       emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
       backgroundColor: "bg-pink-300",
       tags: [],
@@ -717,7 +717,7 @@ export function TemplateDetailPage() {
             control={form.control}
             name="agentFacingDescription"
             title="Agent Facing Description"
-            placeholder="Description for agent copilot context"
+            placeholder="Description for agent Sidekick context"
             previewMardown={true}
           />
           <TextareaField
@@ -736,9 +736,9 @@ export function TemplateDetailPage() {
           />
           <TextareaField
             control={form.control}
-            name="copilotInstructions"
-            title="Copilot Instructions"
-            placeholder="Instructions for the copilot..."
+            name="sidekickInstructions"
+            title="Sidekick Instructions"
+            placeholder="Instructions for the Sidekick..."
             previewMardown={true}
           />
           <PresetActionsField

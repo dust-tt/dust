@@ -1,13 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   TeamsChannel,
   TeamsChat,
   TeamsMessage,
   TeamsUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
-import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+} from "@app/lib/api/actions/servers/microsoft/utils";
+import { getGraphClient } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_TEAMS_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import {
   renderChannels,
@@ -174,6 +174,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       let apiCall = client
         .api("/me/chats")
         .orderby("lastMessagePreview/createdDateTime desc")
+        .expand("lastMessagePreview")
         .top(maxLimit);
 
       // Build filter conditions

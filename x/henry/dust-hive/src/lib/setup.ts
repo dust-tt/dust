@@ -30,6 +30,10 @@ export interface DependencyConfig {
   sdks: "symlink" | "install";
   front: "symlink" | "install";
   connectors: "symlink" | "install";
+  sparkle: "symlink" | "install";
+  frontspa: "symlink" | "install";
+  extension: "symlink" | "install";
+  viz: "symlink" | "install";
 }
 
 // Symlink node_modules from source to destination
@@ -213,6 +217,10 @@ const DEFAULT_CONFIG: DependencyConfig = {
   sdks: "symlink",
   front: "symlink",
   connectors: "symlink",
+  sparkle: "symlink",
+  frontspa: "symlink",
+  extension: "symlink",
+  viz: "symlink",
 };
 
 // Install all dependencies for a worktree
@@ -273,7 +281,7 @@ export async function installAllDependencies(
     }
   }
 
-  // Handle node_modules for front, connectors, sparkle, and front-spa
+  // Handle node_modules for front, connectors, sparkle, front-spa, extension, and viz
   // With npm workspaces, most deps are hoisted to root. These only have local overrides.
   const workspaceProjects = [
     {
@@ -289,16 +297,28 @@ export async function installAllDependencies(
       dest: `${worktreePath}/connectors`,
     },
     {
-      key: "front" as const, // Uses same config as front
+      key: "sparkle" as const, // Uses same config as front
       name: "sparkle",
       mainNodeModules: `${repoRoot}/sparkle/node_modules`,
       dest: `${worktreePath}/sparkle`,
     },
     {
-      key: "front" as const, // Uses same config as front
+      key: "frontspa" as const, // Uses same config as front
       name: "front-spa",
       mainNodeModules: `${repoRoot}/front-spa/node_modules`,
       dest: `${worktreePath}/front-spa`,
+    },
+    {
+      key: "extension" as const, // Uses same config as front
+      name: "extension",
+      mainNodeModules: `${repoRoot}/extension/node_modules`,
+      dest: `${worktreePath}/extension`,
+    },
+    {
+      key: "viz" as const, // Uses same config as front
+      name: "viz",
+      mainNodeModules: `${repoRoot}/viz/node_modules`,
+      dest: `${worktreePath}/viz`,
     },
   ];
 

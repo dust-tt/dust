@@ -3,10 +3,10 @@ import { ChevronDownIcon, Chip, cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { visit } from "unist-util-visit";
 
-type InstructionBlockProps = {
+interface InstructionBlockProps {
   tagName: string;
   children: React.ReactNode;
-};
+}
 
 /**
  * Renders an instruction block with styled tag chips in readonly markdown display.

@@ -2,18 +2,15 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Size limits for MCP tool outputs
 
-// Approximate baseline context window size we target:
-// 200k tokens * ~4 characters per token * 2 bytes per character.
-const BASELINE_CONTEXT_WINDOW_SIZE = 2 * 4 * 200 * 1000;
-// We don't want to go over 1/4 of the baseline context window size in one tool result.
-export const MAX_TEXT_CONTENT_SIZE = BASELINE_CONTEXT_WINDOW_SIZE / 4;
+// Max bytes for a single text block in a tool result before it gets offloaded to a file.
+export const MAX_TEXT_CONTENT_SIZE_BYTES = 20 * 1024; // 20KB.
 export const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
 export const MAX_RESOURCE_CONTENT_SIZE = 20 * 1024 * 1024; // 20MB.
 
-export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 64_000; // Approximately 16K tokens.
+export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
 export function computeTextByteSize(text: string): number {
-  return text.length * 2; // UTF-8 approximate
+  return Buffer.byteLength(text, "utf8");
 }
 
 export function computeBase64ByteSize(base64: string): number {
@@ -23,11 +20,14 @@ export function computeBase64ByteSize(base64: string): number {
 export function getMaxSize(item: CallToolResult["content"][number]) {
   switch (item.type) {
     case "text":
-      return MAX_TEXT_CONTENT_SIZE;
+      return MAX_TEXT_CONTENT_SIZE_BYTES;
+
     case "image":
       return MAX_IMAGE_CONTENT_SIZE;
+
     case "resource":
       return MAX_RESOURCE_CONTENT_SIZE;
+
     default:
       return 1 * 1024 * 1024; // 1MB default
   }
@@ -39,8 +39,10 @@ export function calculateContentSize(
   switch (item.type) {
     case "text":
       return computeTextByteSize(item.text);
+
     case "image":
       return computeBase64ByteSize(item.data);
+
     case "resource":
       if (
         "blob" in item.resource &&
@@ -53,8 +55,10 @@ export function calculateContentSize(
         return computeTextByteSize(item.resource.text);
       }
       return 0;
+
     case "audio":
       return item.data.length;
+
     default:
       return 0;
   }

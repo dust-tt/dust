@@ -87,7 +87,7 @@ describe("processAndUpsertToDataSource", () => {
 
   it("should call upsertTable with the right parameters for a CSV file", async () => {
     // Create a file
-    const file = await FileFactory.csv(workspace, null, {
+    const file = await FileFactory.csv(auth, null, {
       useCase: "conversation",
       fileName: "test-file.csv",
       status: "ready",
@@ -145,7 +145,7 @@ describe("processAndUpsertToDataSource", () => {
   it("should append to existing generatedTables when processing a CSV file", async () => {
     // Create a file with existing useCaseMetadata containing generatedTables
     const existingTableId = "existing-table-id";
-    const file = await FileFactory.csv(workspace, null, {
+    const file = await FileFactory.csv(auth, null, {
       useCase: "conversation",
       fileName: "test-file-with-existing-tables.csv",
       status: "ready",
@@ -192,7 +192,7 @@ describe("processAndUpsertToDataSource", () => {
 
   it("should process an Excel file with multiple sheets with conversation usecase", async () => {
     // Create an Excel file
-    const file = await FileFactory.create(workspace, null, {
+    const file = await FileFactory.create(auth, null, {
       contentType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       fileName: "test-excel-file.xlsx",
@@ -289,7 +289,7 @@ id,category,description
 
   it("should process an Excel file with multiple sheets with upsert_table usecase", async () => {
     // Create an Excel file
-    const file = await FileFactory.create(workspace, null, {
+    const file = await FileFactory.create(auth, null, {
       contentType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       fileName: "test-excel-file.xlsx",

@@ -1,6 +1,4 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Button, type RegularButtonProps } from "@sparkle/components/";
+import { Button, type RegularButtonProps } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 

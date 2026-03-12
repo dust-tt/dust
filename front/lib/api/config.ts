@@ -12,8 +12,19 @@ export function setBaseUrlResolver(fn: (() => string) | null): void {
 
 // Returns the resolver's URL if set, or empty string.
 // Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
-export function getBaseUrlFromResolver(): string {
+export function getBaseUrl(): string {
   return baseUrlResolver?.() || "";
+}
+
+// Pluggable default RequestInit resolver (e.g. credentials/headers per context).
+let defaultInitResolver: (() => RequestInit) | null = null;
+
+export function setDefaultInitResolver(fn: (() => RequestInit) | null): void {
+  defaultInitResolver = fn;
+}
+
+export function getDefaultInit(): RequestInit | null {
+  return defaultInitResolver?.() ?? null;
 }
 
 const config = {
@@ -23,6 +34,7 @@ const config = {
     return baseUrlResolver?.() || config.getClientFacingUrl();
   },
 
+  // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
@@ -40,16 +52,15 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
-  // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
+  getStaticWebsiteUrl: (): string => {
+    return config.getClientFacingUrl();
+  },
+  // URL for the main app pages (/w/..., /share/..., etc.).
   // Use this for page URLs, not API endpoints.
-  // TODO(spa): make NEXT_PUBLIC_DUST_APP_URL mandatory, remove allowRelativeUrl parameter.
-  getAppUrl: (allowRelativeUrl: boolean = false): string => {
+  getAppUrl: (): string => {
     // Using process.env here to make sure the function is usable on the client side.
     if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
-      if (allowRelativeUrl) {
-        return "";
-      }
-      return config.getClientFacingUrl();
+      throw new Error("NEXT_PUBLIC_DUST_APP_URL is required");
     }
 
     return process.env.NEXT_PUBLIC_DUST_APP_URL;
@@ -63,7 +74,7 @@ const config = {
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
-      config.getClientFacingUrl()
+      config.getApiBaseUrl()
     );
   },
   getDustApiAudience: (): string => {
@@ -116,6 +127,9 @@ const config = {
   },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  },
+  getPostHogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
   },
   getCustomerIoSiteId: (): string => {
     return EnvironmentConfig.getEnvVariable("CUSTOMERIO_SITE_ID");
@@ -174,6 +188,9 @@ const config = {
   getAcademyJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_ACADEMY_JWT_SECRET");
   },
+  getSandboxJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_SANDBOX_JWT_SECRET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
@@ -182,6 +199,9 @@ const config = {
   },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
+  },
+  getRegion: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("REGION");
   },
   // OAuth
   getOAuthGithubApp: (): string => {
@@ -446,21 +466,34 @@ const config = {
   getGatedAssetsTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
+  // Secrets for secure storage of keys and bearer tokens.
+  getDeveloperSecretsSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPERS_SECRETS_SECRET");
+  },
+  getMCPServerCredentialsSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_MCP_SERVER_CREDENTIALS_SECRET"
+    );
+  },
   // E2B Sandbox.
-  getE2BSandboxConfig: ():
-    | { apiKey: string; templateId: string; domain: string | undefined }
-    | undefined => {
-    const apiKey = EnvironmentConfig.getOptionalEnvVariable("E2B_API_KEY");
-    const templateId =
-      EnvironmentConfig.getOptionalEnvVariable("E2B_TEMPLATE_ID");
-    if (!apiKey || !templateId) {
-      return undefined;
-    }
+  getE2BSandboxConfig: (): {
+    apiKey: string;
+    domain: string | undefined;
+  } => {
     return {
-      apiKey,
-      templateId,
+      apiKey: EnvironmentConfig.getEnvVariable("E2B_API_KEY"),
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
+  },
+  getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
+    );
+  },
+  getSandboxGcpArtifactRegistry: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SBX_GCP_ARTIFACT_REGISTRY"
+    );
   },
 };
 

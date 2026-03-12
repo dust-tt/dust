@@ -74,6 +74,7 @@ export function InteractiveContentContainer({
           <FrameRenderer
             conversation={conversation}
             fileId={contentId}
+            projectId={fileMetadata.useCaseMetadata.spaceId ?? null}
             lastEditedByAgentConfigurationId={
               fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
             }

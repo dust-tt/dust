@@ -146,6 +146,7 @@ describe("renderAllMessages", () => {
       content: content as ConversationType["content"],
       triggerId: null,
       metadata: {},
+      branchId: null,
     } as ConversationType;
   }
 

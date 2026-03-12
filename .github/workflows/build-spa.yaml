@@ -1,0 +1,28 @@
+name: Typecheck (spa)
+
+on:
+  push:
+    paths:
+      - package-lock.json
+      - front/**
+      - front-spa/**
+      - sparkle/**
+      - sdks/js/**
+      - .github/workflows/build-and-test-spa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  tsgo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
+          node-version: '22.22.0'
+      - name: Typecheck
+        run: npm -w front-spa run tsgo -- --version && npm -w front-spa run tsgo

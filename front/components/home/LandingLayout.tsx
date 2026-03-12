@@ -18,7 +18,7 @@ import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
-import { Button, DustLogo } from "@dust-tt/sparkle";
+import { Button, cn, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -99,6 +99,7 @@ export default function LandingLayout({
   // you can have dark theme so we need to remove them manually
   useEffect(() => {
     document.documentElement.classList.remove("dark");
+    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
     document.documentElement.classList.remove("s-dark");
     document.body.classList.remove("bg-background-night");
   }, []);
@@ -254,10 +255,10 @@ const CookieBanner = ({
 
   return (
     <div
-      className={classNames(
+      className={cn(
         "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-6 border-t border-slate-700 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-sm md:flex-row md:gap-8",
-        "s-transition-opacity s-duration-300 s-ease-in-out",
-        isVisible ? "s-opacity-100" : "s-opacity-0",
+        "transition-opacity duration-300 ease-in-out",
+        isVisible ? "opacity-100" : "opacity-0",
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         className || ""
       )}
@@ -384,6 +385,7 @@ const Header = () => {
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
   utmParam?: string;
+  baseUrl?: string;
 }
 
 const logoVariants = cva("", {
@@ -401,11 +403,13 @@ const logoVariants = cva("", {
 export const PublicWebsiteLogo = ({
   size = "default",
   utmParam,
+  baseUrl,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
+  const href = `${baseUrl ?? ""}/home${utmParam ? `?${utmParam}` : ""}`;
 
   return (
-    <Link href={`/home${utmParam ? `?${utmParam}` : ""}`}>
+    <Link href={href}>
       <DustLogo className={className} />
     </Link>
   );

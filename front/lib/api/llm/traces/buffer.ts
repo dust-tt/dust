@@ -14,14 +14,17 @@ import type {
 import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+const statsDClient = getStatsDClient();
 
 const LLM_TRACE_PREFIX = "llm_trace_";
 

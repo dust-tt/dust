@@ -1,4 +1,4 @@
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetShareFrameMetadataResponseBody } from "@app/pages/api/share/frame/[token]";
@@ -13,7 +13,7 @@ export function useShareFrameMetadata({
   const { fetcher } = useFetcher();
   const shareMetadataFetcher: Fetcher<GetShareFrameMetadataResponseBody> =
     fetcher;
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
 
   const swrKey = shareToken ? `/api/share/frame/${shareToken}` : null;
 
@@ -33,7 +33,7 @@ export function useShareFrameMetadata({
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
+    if (regionRedirect) {
       regionContext.setRegionInfo({
         name: regionRedirect.region,
         url: regionRedirect.url,

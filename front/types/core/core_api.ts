@@ -1,5 +1,4 @@
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
@@ -18,6 +17,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { Project } from "@app/types/project";
 import type { CredentialsType } from "@app/types/provider";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type {
   BlockType,
   RunConfig,
@@ -1523,13 +1523,14 @@ export class CoreAPI {
     modelId,
     providerId,
     tokenizer,
+    credentials,
   }: {
     text: string;
     modelId: string;
     providerId: string;
     tokenizer: TokenizerConfig;
+    credentials: LLMCredentialsType;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
-    const credentials = dustManagedCredentials();
     const response = await this._fetchWithError(`${this._url}/tokenize`, {
       method: "POST",
       headers: {
@@ -1552,12 +1553,13 @@ export class CoreAPI {
     texts,
     modelId,
     providerId,
+    credentials,
   }: {
     texts: string[];
     modelId: string;
     providerId: string;
+    credentials: LLMCredentialsType;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[][] }>> {
-    const credentials = dustManagedCredentials();
     const response = await this._fetchWithError(`${this._url}/tokenize/batch`, {
       method: "POST",
       headers: {
@@ -1580,14 +1582,14 @@ export class CoreAPI {
     modelId,
     providerId,
     tokenizer,
+    credentials,
   }: {
     texts: string[];
     modelId: string;
     providerId: string;
     tokenizer: TokenizerConfig;
+    credentials: CredentialsType;
   }): Promise<CoreAPIResponse<{ counts: number[] }>> {
-    const credentials = dustManagedCredentials();
-
     const response = await this._fetchWithError(
       `${this._url}/tokenize/batch/count`,
       {

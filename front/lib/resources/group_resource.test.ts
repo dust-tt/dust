@@ -1,4 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { default as cls } from "cls-hooked";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
@@ -15,58 +16,63 @@ vi.mock("@app/lib/api/redis", () => ({
   ),
 }));
 
-vi.mock("@app/lib/utils/cache", () => ({
-  cacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return async (...args: Args): Promise<JsonSerializable<T>> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-          const cached = inMemoryCache.get(key);
-          if (cached) {
-            return JSON.parse(cached) as JsonSerializable<T>;
-          }
-          const result = await fn(...args);
-          inMemoryCache.set(key, JSON.stringify(result));
-          return result;
-        };
-      }
-    ),
-  invalidateCacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return async (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-          inMemoryCache.delete(key);
-        };
-      }
-    ),
-  batchInvalidateCacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return async (argsList: Args[]): Promise<void> => {
-          for (const args of argsList) {
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/utils/cache")>();
+  return {
+    ...actual,
+    cacheWithRedis: vi
+      .fn()
+      .mockImplementation(
+        <T, Args extends unknown[]>(
+          fn: CacheableFunction<JsonSerializable<T>, Args>,
+          resolver: (...args: Args) => string
+        ) => {
+          return async (...args: Args): Promise<JsonSerializable<T>> => {
+            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            const cached = inMemoryCache.get(key);
+            if (cached) {
+              return JSON.parse(cached) as JsonSerializable<T>;
+            }
+            const result = await fn(...args);
+            inMemoryCache.set(key, JSON.stringify(result));
+            return result;
+          };
+        }
+      ),
+    invalidateCacheWithRedis: vi
+      .fn()
+      .mockImplementation(
+        <T, Args extends unknown[]>(
+          fn: CacheableFunction<JsonSerializable<T>, Args>,
+          resolver: (...args: Args) => string
+        ) => {
+          return async (...args: Args): Promise<void> => {
             const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
             inMemoryCache.delete(key);
-          }
-        };
-      }
-    ),
-}));
+          };
+        }
+      ),
+    batchInvalidateCacheWithRedis: vi
+      .fn()
+      .mockImplementation(
+        <T, Args extends unknown[]>(
+          fn: CacheableFunction<JsonSerializable<T>, Args>,
+          resolver: (...args: Args) => string
+        ) => {
+          return async (argsList: Args[]): Promise<void> => {
+            for (const args of argsList) {
+              const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+              inMemoryCache.delete(key);
+            }
+          };
+        }
+      ),
+  };
+});
 
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -512,6 +518,47 @@ describe("GroupResource", () => {
 
       // Cache should be invalidated for the initial member
       expect(inMemoryCache.has(cacheKey)).toBe(false);
+    });
+
+    it("defers cache invalidation until after transaction commits", async () => {
+      // Populate cache first
+      await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
+      const cacheKey = getCacheKeyForUser(user.id, workspace.id);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      // Get the test's transaction from CLS namespace to create a nested transaction
+      const namespace = cls.getNamespace("test-namespace");
+      const parentTransaction = namespace?.get("transaction");
+      expect(parentTransaction).toBeDefined();
+
+      // Create a nested transaction (savepoint) within the test's transaction
+      const transaction = await frontSequelize.transaction({
+        transaction: parentTransaction,
+      });
+
+      try {
+        // Create group with member inside transaction
+        await GroupResource.makeNew(
+          {
+            name: "Transaction Cache Test",
+            workspaceId: workspace.id,
+            kind: "regular",
+          },
+          { memberIds: [user.id], transaction }
+        );
+
+        // Cache should NOT be invalidated yet (transaction not committed)
+        expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+        // Commit the nested transaction (releases savepoint and triggers afterCommit)
+        await transaction.commit();
+
+        // NOW cache should be invalidated
+        expect(inMemoryCache.has(cacheKey)).toBe(false);
+      } catch (err) {
+        await transaction.rollback();
+        throw err;
+      }
     });
   });
 });

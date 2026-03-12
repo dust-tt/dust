@@ -21,14 +21,17 @@ import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
+
+const statsDClient = getStatsDClient();
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
@@ -100,7 +103,7 @@ export async function* runToolWithStreaming(
     {
       progressToken: action.id,
       makeToolNotificationEvent: (notification) =>
-        processToolNotification(notification, {
+        processToolNotification(auth, notification, {
           action,
           agentConfiguration,
           conversation,
@@ -117,7 +120,7 @@ export async function* runToolWithStreaming(
     statsDClient.increment("mcp_actions_error.count", 1, tags);
 
     const endDate = performance.now();
-    yield await handleMCPActionError({
+    yield await handleMCPActionError(auth, {
       action,
       agentConfiguration,
       agentMessage,

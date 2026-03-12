@@ -5,7 +5,6 @@
     "./biome-plugins/noRawSql.grit",
     "./biome-plugins/noBulkLodash.grit",
     "./biome-plugins/noDirectSparkleNotification.grit",
-    "./biome-plugins/noNextImports.grit",
     "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
     "./biome-plugins/noMcpServerInstructions.grit",
     "./biome-plugins/enforceClientTypesInPublicApi.grit",
@@ -36,7 +35,8 @@
       "!!extension/shared/lib/swr.ts",
       "!!extension/packages",
       "!!**/package-lock.json",
-      "!!**/__snapshots__"
+      "!!**/__snapshots__",
+      "!!**/.git"
     ]
   },
   "formatter": {
@@ -57,7 +57,7 @@
       "sdks/js/**",
       "viz/**",
       "extension/**",
-      "cli/**",
+      "cli/dust-cli/**",
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
@@ -81,7 +81,15 @@
   },
   "overrides": [
     {
-      "includes": ["cli/**", "sparkle/**"],
+      "includes": ["**", "!front/pages/**"],
+      "plugins": ["./biome-plugins/noNextImports.grit"]
+    },
+    {
+      "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
+      "plugins": ["./biome-plugins/noSparkleClassInFront.grit"]
+    },
+    {
+      "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"
       }
@@ -92,7 +100,7 @@
         "rules": {
           "correctness": {
             "useHookAtTopLevel": "error",
-            "useExhaustiveDependencies": "warn"
+            "useExhaustiveDependencies": "error"
           }
         }
       }
@@ -159,7 +167,7 @@
       "sdks/js/**",
       "viz/**",
       "extension/**",
-      "cli/**",
+      "cli/dust-cli/**",
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",

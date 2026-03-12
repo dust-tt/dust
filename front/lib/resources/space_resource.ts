@@ -40,7 +40,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -291,30 +291,27 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const nameConditions: Record<symbol, string> = {};
-
-    if (query?.trim()) {
-      nameConditions[Op.iLike] = `%${query}%`;
-    }
-
-    if (pagination.lastValue) {
-      const operator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
-      nameConditions[operator] = pagination.lastValue;
-    }
-
-    const whereClause: WhereOptions<SpaceModel> = {
-      kind: "project",
-    };
-
-    if (Object.getOwnPropertySymbols(nameConditions).length > 0) {
-      whereClause.name = nameConditions;
-    }
+    const cursorOperator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
 
     const fetchLimit = pagination.limit + 1;
+    const orderDirection =
+      pagination.orderDirection === "desc" ? "DESC" : "ASC";
 
     const spaces = await this.baseFetch(auth, {
-      where: whereClause,
-      order: [["name", pagination.orderDirection === "desc" ? "DESC" : "ASC"]],
+      where: {
+        kind: "project",
+        ...(query?.trim() && { name: { [Op.iLike]: `%${query}%` } }),
+        ...(pagination.lastValue && {
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.fn("LOWER", Sequelize.col("spaces.name")),
+              cursorOperator,
+              pagination.lastValue.toLowerCase()
+            ),
+          ],
+        }),
+      },
+      order: [[Sequelize.literal(`LOWER("spaces"."name")`), orderDirection]],
       limit: fetchLimit,
     });
 

@@ -17,6 +17,15 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+export type SingleResourceToolOutput<
+  T extends {
+    uri: string;
+    mimeType?: string;
+  },
+> = {
+  content: [{ type: "resource"; resource: T }];
+};
+
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
@@ -1029,6 +1038,25 @@ export const AuthRequiredOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export type AuthRequiredOutputResourceType = z.infer<
+  typeof AuthRequiredOutputResourceSchema
+>;
+
+export const FileAuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_file_auth_required"),
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType_file: z.string(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type FileAuthRequiredOutputResourceType = z.infer<
+  typeof FileAuthRequiredOutputResourceSchema
+>;
+
 export const BlockedAwaitingInputOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_blocked_awaiting_input"),
@@ -1038,6 +1066,10 @@ export const BlockedAwaitingInputOutputResourceSchema = z.object({
   state: z.any(),
 });
 
+export type BlockedAwaitingInputOutputResourceType = z.infer<
+  typeof BlockedAwaitingInputOutputResourceSchema
+>;
+
 export const EarlyExitOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_early_exit"),
@@ -1046,10 +1078,15 @@ export const EarlyExitOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export type EarlyExitOutputResourceType = z.infer<
+  typeof EarlyExitOutputResourceSchema
+>;
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
+  FileAuthRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

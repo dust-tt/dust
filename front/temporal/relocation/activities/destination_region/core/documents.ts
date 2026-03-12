@@ -1,6 +1,8 @@
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -12,7 +14,6 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 
 export async function processDataSourceDocuments({
@@ -20,14 +21,14 @@ export async function processDataSourceDocuments({
   dataPath,
   destRegion,
   sourceRegion,
-  sourceRegionDustFacingUrl,
+  sourceRegionApiBaseUrl,
   workspaceId,
 }: {
   destIds: CreateDataSourceProjectResult;
   dataPath: string;
   destRegion: RegionType;
   sourceRegion: RegionType;
-  sourceRegionDustFacingUrl: string;
+  sourceRegionApiBaseUrl: string;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
@@ -41,21 +42,19 @@ export async function processDataSourceDocuments({
   const data =
     await readFromRelocationStorage<CoreDocumentAPIRelocationBlob>(dataPath);
 
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  const credentials = dustManagedCredentials();
-  const destRegionDustFacingUrl = config.getClientFacingUrl();
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const destRegionApiBaseUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(
     data.blobs.documents,
     async (d) => {
       // If the source URL starts with the source region Dust URL, replace it with the destination region Dust URL.
       const sourceUrl =
-        d.source_url && d.source_url.startsWith(sourceRegionDustFacingUrl)
-          ? d.source_url.replace(
-              sourceRegionDustFacingUrl,
-              destRegionDustFacingUrl
-            )
+        d.source_url && d.source_url.startsWith(sourceRegionApiBaseUrl)
+          ? d.source_url.replace(sourceRegionApiBaseUrl, destRegionApiBaseUrl)
           : d.source_url;
 
       // There are some issues with the parents field.

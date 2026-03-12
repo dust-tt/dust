@@ -1,7 +1,6 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -17,18 +16,14 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
-import { useAppRouter } from "@app/lib/platform";
+import { useClientType } from "@app/lib/context/clientType";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import {
-  getAgentBuilderRoute,
-  getManageSkillsRoute,
-} from "@app/lib/utils/router";
+import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -46,10 +41,17 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
+  AttachmentIcon,
   Button,
+  CameraIcon,
   Chip,
-  Cog6ToothIcon,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  GlobeAltIcon,
+  PlusIcon,
   TextIcon,
   Toolbar,
   VoicePicker,
@@ -65,12 +67,14 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { InputBarContext } from "./InputBarContext";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
   "attachment",
   "agents-list",
   "agents-list-with-actions",
+  "turn-into-agent",
   "voice",
   "fullscreen",
 ] as const;
@@ -133,18 +137,16 @@ const InputBarContainer = ({
   user,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const router = useAppRouter();
-  const { hasFeature } = useFeatureFlags();
-  const canTurnIntoAgent =
-    hasFeature("agent_builder_shrink_wrap") &&
-    conversation !== undefined &&
-    isBuilder(owner);
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
+  const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const plusButtonRef = useRef<HTMLDivElement>(null);
+  const clientType = useClientType();
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -548,13 +550,39 @@ const InputBarContainer = ({
 
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
-  const { animate } = useContext(InputBarContext);
+  const { animate, captureActions } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
       // Schedule focus to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
+
+  // Focus the input bar when the extension panel is opened (content-script sidebar or Front iframe).
+  // Not gated by disableAutoFocus: that flag prevents autofocus on mount (to avoid mobile keyboard
+  // popping up), but focusing when the user explicitly opens the panel is intentional.
+  useEffect(() => {
+    if (clientType !== "extension") {
+      return;
+    }
+    // Focus immediately on mount (handles navigation within an already-open panel).
+    queueMicrotask(() => editorService.focusEnd());
+
+    const handleWindowFocus = () => {
+      queueMicrotask(() => editorService.focusEnd());
+    };
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "DUST_SIDEBAR_SHOWN") {
+        queueMicrotask(() => editorService.focusEnd());
+      }
+    };
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [clientType, editorService]);
 
   // Restore draft when switching conversations (including new conversations).
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -569,8 +597,14 @@ const InputBarContainer = ({
     }
 
     const draft = getDraft();
+    const editorContainsOnlyStickyMentions =
+      !editorService.isEmpty() &&
+      editorService.getTrimmedText() === stickyMentionsTextContent.current;
     // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
-    if (draft && editorService.isEmpty()) {
+    if (
+      draft &&
+      (editorService.isEmpty() || editorContainsOnlyStickyMentions)
+    ) {
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.setContent(draft.text));
     }
@@ -583,7 +617,7 @@ const InputBarContainer = ({
     getDraft,
   ]);
 
-  useHandleMentions(
+  const { stickyMentionsTextContent } = useHandleMentions(
     editorService,
     stickyMentions,
     selectedAgent,
@@ -651,7 +685,7 @@ const InputBarContainer = ({
                       : undefined
                   }
                   target="_blank"
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -669,7 +703,7 @@ const InputBarContainer = ({
                       : undefined
                   }
                   target="_blank"
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined
@@ -687,7 +721,7 @@ const InputBarContainer = ({
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -699,7 +733,7 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined
@@ -744,36 +778,38 @@ const InputBarContainer = ({
                     className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") && (
-                    <>
-                      <input
-                        accept={getSupportedFileExtensions().join(",")}
-                        onChange={async (e) => {
-                          await fileUploaderService.handleFileChange(e);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                          editorService.focusEnd();
-                        }}
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        type="file"
-                        multiple={true}
-                      />
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                        conversation={conversation}
-                        space={space}
-                      />
-                    </>
-                  )}
+                  {actions.includes("attachment") &&
+                    clientType !== "extension" && (
+                      <>
+                        <input
+                          accept={getSupportedFileExtensions().join(",")}
+                          onChange={async (e) => {
+                            await fileUploaderService.handleFileChange(e);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                            editorService.focusEnd();
+                          }}
+                          ref={fileInputRef}
+                          style={{ display: "none" }}
+                          type="file"
+                          multiple={true}
+                        />
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="dropdown"
+                        />
+                      </>
+                    )}
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
@@ -802,23 +838,6 @@ const InputBarContainer = ({
                       disabled={disableInput}
                     />
                   )}
-                  {canTurnIntoAgent && (
-                    <Button
-                      variant="ghost-secondary"
-                      icon={Cog6ToothIcon}
-                      size={buttonSize}
-                      tooltip="Turn into agent"
-                      onClick={() => {
-                        const route = getAgentBuilderRoute(
-                          owner.sId,
-                          "new",
-                          `conversationId=${conversation.sId}`
-                        );
-                        void router.push(route);
-                      }}
-                      disabled={disableInput}
-                    />
-                  )}
                 </div>
               )}
               <div className="grow" />
@@ -836,6 +855,80 @@ const InputBarContainer = ({
                       showStopLabel={!isMobile}
                     />
                   )}
+                {clientType === "extension" && (
+                  <>
+                    <div ref={plusButtonRef}>
+                      <DropdownMenu
+                        open={isCaptureDropdownOpen}
+                        onOpenChange={setIsCaptureDropdownOpen}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost-secondary"
+                            icon={PlusIcon}
+                            size={buttonSize}
+                            disabled={disableInput}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {actions.includes("attachment") && (
+                            <DropdownMenuItem
+                              icon={AttachmentIcon}
+                              label="Attach knowledge"
+                              onClick={() => {
+                                setIsCaptureDropdownOpen(false);
+                                setShowKnowledgePicker(true);
+                              }}
+                            />
+                          )}
+                          {captureActions && (
+                            <>
+                              <DropdownMenuItem
+                                icon={GlobeAltIcon}
+                                label="Attach page content"
+                                disabled={
+                                  captureActions.isCapturing ||
+                                  fileUploaderService.isProcessingFiles
+                                }
+                                onClick={() => captureActions.onCapture("text")}
+                              />
+                              <DropdownMenuItem
+                                icon={CameraIcon}
+                                label="Take screenshot"
+                                disabled={
+                                  captureActions.isCapturing ||
+                                  fileUploaderService.isProcessingFiles
+                                }
+                                onClick={() =>
+                                  captureActions.onCapture("screenshot")
+                                }
+                              />
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    {actions.includes("attachment") && (
+                      <InputBarAttachmentsPicker
+                        fileUploaderService={fileUploaderService}
+                        owner={owner}
+                        isLoading={false}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        attachedNodes={attachedNodes}
+                        disabled={disableInput}
+                        buttonSize={buttonSize}
+                        conversation={conversation}
+                        space={space}
+                        type="dropdown"
+                        onFileChange={() => setShowKnowledgePicker(false)}
+                        externalOpen={showKnowledgePicker}
+                        onExternalOpenChange={setShowKnowledgePicker}
+                        anchorRef={plusButtonRef}
+                      />
+                    )}
+                  </>
+                )}
                 <Button
                   size={buttonSize}
                   isLoading={

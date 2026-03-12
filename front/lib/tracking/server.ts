@@ -2,6 +2,8 @@ import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import { PostHogServerSideTracking } from "@app/lib/tracking/posthog/server";
+import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -23,8 +25,32 @@ import * as _ from "lodash";
 import type { UserResource } from "../resources/user_resource";
 
 export class ServerSideTracking {
-  static trackSignup(_: { user: UserType }) {
-    // Do nothing for now
+  static trackSignup({
+    user,
+    utmParams,
+    userCreated,
+  }: {
+    user: UserType;
+    utmParams?: UTMParams;
+    userCreated?: boolean;
+  }) {
+    try {
+      CustomerioServerSideTracking.trackSignup({ user });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track signup on Customer.io"
+      );
+    }
+
+    try {
+      PostHogServerSideTracking.trackSignup({ user, utmParams, userCreated });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track signup on PostHog"
+      );
+    }
   }
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {

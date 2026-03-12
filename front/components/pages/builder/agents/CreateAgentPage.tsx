@@ -55,15 +55,19 @@ export function CreateAgentPage() {
   });
 
   const { hasFeature } = useFeatureFlags();
-  const { isAdmin } = useAuth();
-  const hasCopilot = hasFeature("agent_builder_copilot") && isAdmin;
+  const { isAdmin, isBuilder } = useAuth();
+  const hasSidekick =
+    hasFeature("agent_builder_copilot") &&
+    (isAdmin || (hasFeature("agent_builder_copilot_builders") && isBuilder));
   const { assistantTemplates } = useAssistantTemplates();
 
   const { filteredTemplates, availableTags } = useMemo(() => {
     const validTemplates = assistantTemplates.filter(
       (template) =>
         isTemplateTagCodeArray(template.tags) &&
-        (!hasCopilot || template.hasCopilotInstructions)
+        (hasSidekick
+          ? template.hasSidekickInstructions
+          : template.hasPresetInstructions)
     );
 
     const filtered = validTemplates.filter((template) => {
@@ -88,7 +92,7 @@ export function CreateAgentPage() {
     const tags = getUniqueTemplateTags(validTemplates);
 
     return { filteredTemplates: filtered, availableTags: tags };
-  }, [assistantTemplates, selectedTags, searchTerm, hasCopilot]);
+  }, [assistantTemplates, selectedTags, searchTerm, hasSidekick]);
 
   const openTemplateModal = async (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -136,7 +140,7 @@ export function CreateAgentPage() {
     <div id="pageContent">
       <Page variant="modal">
         <div className="flex flex-col gap-6">
-          {hasCopilot ? (
+          {hasSidekick ? (
             <Page.Header
               title="Start with a template"
               description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
@@ -226,7 +230,7 @@ export function CreateAgentPage() {
                   openTemplateModal={openTemplateModal}
                   templateTagsMapping={templateTagsMapping}
                   selectedTags={selectedTags}
-                  hasCopilot={hasCopilot}
+                  hasSidekick={hasSidekick}
                   onTemplateClick={(id) =>
                     router.push(
                       getAgentBuilderRoute(owner.sId, "new", `templateId=${id}`)
@@ -238,7 +242,7 @@ export function CreateAgentPage() {
           )}
         </div>
       </Page>
-      {!hasCopilot && (
+      {!hasSidekick && (
         <AgentTemplateModal
           owner={owner}
           templateId={selectedTemplateId}

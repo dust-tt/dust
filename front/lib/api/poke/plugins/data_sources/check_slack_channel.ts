@@ -13,6 +13,7 @@ export const checkSlackChannelPlugin = createPlugin({
   manifest: {
     id: "check-slack-channel",
     name: "Check Slack Channel",
+    readonly: true,
     description:
       "Check if a Slack channel exists and is accessible by the connector",
     resourceTypes: ["data_sources"],

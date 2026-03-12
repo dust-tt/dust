@@ -1,8 +1,11 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { ContentBlockWrapper } from "@sparkle/components";
+import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
+import {
+  type MarkdownNode,
+  sameNodePosition,
+} from "@sparkle/components/markdown/utils";
 import { cva } from "class-variance-authority";
-import React from "react";
+import React, { memo } from "react";
 
 export const blockquoteVariants = cva(
   [
@@ -31,39 +34,43 @@ export const blockquoteVariants = cva(
 interface BlockquoteBlockProps {
   children: React.ReactNode;
   variant?: "surface";
-  buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
+  node?: MarkdownNode;
 }
 
-export function BlockquoteBlock({
-  children,
-  variant = "surface",
-  buttonDisplay = "inside",
-}: BlockquoteBlockProps) {
-  const elementAt1 = React.Children.toArray(children)[1];
-  const childrenContent =
-    elementAt1 && React.isValidElement(elementAt1)
-      ? elementAt1.props.children
-      : null;
+export const BlockquoteBlock = memo(
+  ({ children, variant = "surface" }: BlockquoteBlockProps) => {
+    const { canCopyQuotes } = useMarkdownStyle();
+    const buttonDisplay = canCopyQuotes ? "inside" : null;
 
-  // Convert array content to string if necessary
-  const contentAsString = Array.isArray(childrenContent)
-    ? childrenContent.filter((c) => typeof c === "string").join("")
-    : childrenContent;
+    const elementAt1 = React.Children.toArray(children)[1];
+    const childrenContent =
+      elementAt1 && React.isValidElement(elementAt1)
+        ? elementAt1.props.children
+        : null;
 
-  // Only pass content if it exists
-  const clipboardContent = contentAsString
-    ? { "text/plain": contentAsString }
-    : undefined;
+    // Convert array content to string if necessary
+    const contentAsString = Array.isArray(childrenContent)
+      ? childrenContent.filter((c) => typeof c === "string").join("")
+      : childrenContent;
 
-  return (
-    <ContentBlockWrapper
-      content={clipboardContent}
-      className="s-my-2"
-      buttonDisplay={buttonDisplay}
-    >
-      <blockquote className={blockquoteVariants({ variant, buttonDisplay })}>
-        {children}
-      </blockquote>
-    </ContentBlockWrapper>
-  );
-}
+    // Only pass content if it exists
+    const clipboardContent = contentAsString
+      ? { "text/plain": contentAsString }
+      : undefined;
+
+    return (
+      <ContentBlockWrapper
+        content={clipboardContent}
+        className="s-my-2"
+        buttonDisplay={buttonDisplay}
+      >
+        <blockquote className={blockquoteVariants({ variant, buttonDisplay })}>
+          {children}
+        </blockquote>
+      </ContentBlockWrapper>
+    );
+  },
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && prev.variant === next.variant
+);
+BlockquoteBlock.displayName = "BlockquoteBlock";

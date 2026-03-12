@@ -1,8 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { generateUserProjectDigestActivity } from "@app/temporal/project_user_digest_queue/activities";
 import { QUEUE_NAME } from "@app/temporal/project_user_digest_queue/config";
+import { generateUserProjectDigestWorkflow } from "@app/temporal/project_user_digest_queue/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -40,7 +40,7 @@ export async function launchUserProjectDigestWorkflow({
   });
 
   try {
-    await client.workflow.start(generateUserProjectDigestActivity, {
+    await client.workflow.start(generateUserProjectDigestWorkflow, {
       args: [authType, { spaceId }],
       taskQueue: QUEUE_NAME,
       workflowId,

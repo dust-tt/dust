@@ -11,7 +11,12 @@ import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/Enterpri
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  FREE_NO_PLAN_CODE,
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+  isProPlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
@@ -356,6 +361,16 @@ export function PlanLimitationsTable({
                 <PokeTableCell>Is Deep Dive allowed?</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.isDeepDiveAllowed ? "✅" : "❌"}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>Is Opus enabled?</PokeTableCell>
+                <PokeTableCell>
+                  {isDustCompanyPlan(activePlan.code) ||
+                  isEntreprisePlanPrefix(activePlan.code)
+                    ? "✅"
+                    : "❌"}
                 </PokeTableCell>
               </PokeTableRow>
 

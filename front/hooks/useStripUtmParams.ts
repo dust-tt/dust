@@ -3,6 +3,7 @@ import {
   extractUTMParams,
   MARKETING_PARAMS,
   persistClickIdCookies,
+  persistUTMCookies,
 } from "@app/lib/utils/utm";
 import { useEffect } from "react";
 
@@ -26,6 +27,7 @@ export function useStripUtmParams() {
       if (Object.keys(utmData).length > 0) {
         sessionStorage.setItem("utm_data", JSON.stringify(utmData));
         persistClickIdCookies(utmData);
+        persistUTMCookies(utmData);
 
         const url = new URL(window.location.href);
         let hasMarketingParam = false;

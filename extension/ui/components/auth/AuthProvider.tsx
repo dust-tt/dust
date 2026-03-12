@@ -1,8 +1,8 @@
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { SubscriptionType } from "@app/types/plan";
-import type { ExtensionWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
-import type { AuthError, StoredUser } from "@extension/shared/services/auth";
+import type { AuthError } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
@@ -14,13 +14,13 @@ type ExtensionAuthContextType = {
   authError: AuthError | null;
   setAuthError: (error: AuthError | null) => void;
   redirectToSSOLogin: (workspace: WorkspaceType) => void;
-  user: StoredUser | null;
-  workspace: ExtensionWorkspaceType | undefined;
+  user: UserTypeWithWorkspaces | null;
+  workspace: WorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
-  handleLogin: () => void;
+  handleLogin: (args?: { organizationId?: string }) => void;
   handleLogout: () => void;
-  handleSelectWorkspace: (workspace: WorkspaceType) => void;
+  handleSelectOrganization: (organizationId: string) => void;
 };
 
 const ExtensionAuthContext = createContext<ExtensionAuthContextType | null>(
@@ -77,6 +77,7 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
       canUseProduct: true,
     },
     trialPeriodDays: 0,
+    isByok: false,
   },
   requestCancelAt: null,
 };
@@ -91,6 +92,7 @@ interface ExtensionAuthProviderProps {
  *   ExtensionAuthContext — consumed with useExtensionAuth().
  * - Bridges to the front's AuthContext so that shared front components (e.g.
  *   ConversationViewer sub-components) can call useAuth() without error.
+ * - Uses RegionContext for URL resolution (dustDomain).
  *
  * Mirrors the ExtensionFetcherProvider / FetcherProvider pattern.
  */
@@ -109,7 +111,8 @@ export function ExtensionAuthProvider({
     isLoading,
     handleLogin,
     handleLogout,
-    handleSelectWorkspace,
+    handleSelectOrganization,
+    featureFlags,
   } = useAuthHook();
 
   const extensionAuthValue = useMemo(
@@ -125,7 +128,7 @@ export function ExtensionAuthProvider({
       isLoading,
       handleLogin,
       handleLogout,
-      handleSelectWorkspace,
+      handleSelectOrganization,
     }),
     [
       token,
@@ -139,7 +142,7 @@ export function ExtensionAuthProvider({
       isLoading,
       handleLogin,
       handleLogout,
-      handleSelectWorkspace,
+      handleSelectOrganization,
     ]
   );
 
@@ -153,10 +156,10 @@ export function ExtensionAuthProvider({
       subscription: EXTENSION_SUBSCRIPTION,
       isAdmin: isAdmin(workspace),
       isBuilder: isBuilder(workspace),
-      featureFlags: [],
-      vizUrl: "",
+      featureFlags,
+      vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
     };
-  }, [user, workspace]);
+  }, [user, workspace, featureFlags]);
 
   return (
     <ExtensionAuthContext.Provider value={extensionAuthValue}>

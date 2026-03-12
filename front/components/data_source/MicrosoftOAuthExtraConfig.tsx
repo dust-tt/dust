@@ -1,5 +1,5 @@
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
-import { classNames, Input, SliderToggle, TextArea } from "@dust-tt/sparkle";
+import { cn, Input, SliderToggle, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
 export function MicrosoftOAuthExtraConfig({
@@ -77,7 +77,7 @@ export function MicrosoftOAuthExtraConfig({
       </div>
       {useServicePrincipal && (
         <div
-          className={classNames(
+          className={cn(
             "flex flex-col gap-2",
             !useServicePrincipal ? "opacity-50" : ""
           )}

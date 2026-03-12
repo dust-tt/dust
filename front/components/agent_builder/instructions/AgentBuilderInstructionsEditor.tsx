@@ -1,20 +1,18 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useCopilotHighlight } from "@app/components/agent_builder/copilot/CopilotHighlightContext";
-import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
-import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
+import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { SuggestionBubbleMenu } from "@app/components/agent_builder/sidekick/SuggestionBubbleMenu";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import {
   getActiveSuggestions,
-  getSuggestionBlockRect,
   InstructionSuggestionExtension,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
@@ -43,14 +41,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 import { BLUR_EVENT_NAME, INSTRUCTIONS_DEBOUNCE_MS } from "./constants";
 
@@ -128,7 +119,7 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
 
 const editorVariants = cva(
   [
-    "overflow-auto p-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto p-2 resize-y min-h-60 max-h-[2048px]",
     "transition-all duration-200",
   ],
   {
@@ -184,7 +175,7 @@ export function AgentBuilderInstructionsEditor({
   children,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
-  const hasCopilot = useIsAgentBuilderCopilotEnabled();
+  const hasSidekick = useIsAgentBuilderSidekickEnabled();
 
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -200,15 +191,11 @@ export function AgentBuilderInstructionsEditor({
   const suggestionHandler = blockDropdown.suggestionOptions;
   const initialContentSetRef = useRef(false);
 
-  const suggestionsContext = useCopilotSuggestions();
-  const { highlightedSuggestionId } = useCopilotHighlight();
+  const suggestionsContext = useSidekickSuggestions();
 
   const editorWrapperRef = useRef<HTMLDivElement>(null);
-  const [lineStyle, setLineStyle] = useState<{
-    top: number;
-    height: number;
-  } | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: owner.sId is intentional — owner is a SWR-deserialized object that gets a new reference on every revalidation (revalidateOnFocus). Using owner.sId (a stable primitive) prevents extensions from changing identity and the editor from being needlessly recreated.
   const extensions = useMemo(() => {
     const extensions: Extensions = [
       ...buildAgentInstructionsReadOnlyExtensions(),
@@ -261,7 +248,7 @@ export function AgentBuilderInstructionsEditor({
     ];
 
     return extensions;
-  }, [owner, suggestionHandler]);
+  }, [owner.sId, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
@@ -305,21 +292,20 @@ export function AgentBuilderInstructionsEditor({
 
   // Set initial content after editor is created, then focus
   // This is separated from useEditor() to avoid Safari race conditions
-  // Only runs once when editor is first created
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    if (!editor || editor.isDestroyed || initialContentSetRef.current) {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    // Skip if this exact editor instance was already initialized.
+    if (initialContentSetRef.current && editorRef.current === editor) {
       return;
     }
 
     editorRef.current = editor;
     // Mark as set immediately to prevent race conditions
     initialContentSetRef.current = true;
-
-    // Register the editor with the suggestions context if available.
-    if (suggestionsContext) {
-      suggestionsContext.registerEditor(editor);
-    }
 
     // Use requestAnimationFrame to ensure DOM is fully ready
     // This fixes "Applying a mismatched transaction" error in Safari/iOS
@@ -328,7 +314,7 @@ export function AgentBuilderInstructionsEditor({
         return;
       }
 
-      // Prefer HTML content if available (preserves block IDs for copilot targeting).
+      // Prefer HTML content if available (preserves block IDs for sidekick targeting).
       // Fall back to markdown for agents without stored HTML.
       if (instructionsHtmlField.value) {
         editor.commands.setContent(instructionsHtmlField.value, {
@@ -349,6 +335,11 @@ export function AgentBuilderInstructionsEditor({
           // For HTML loads, this preserves existing IDs; for markdown loads, this generates new ones.
           instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
           editor.commands.focus("end");
+
+          // Register with the suggestions context now that content is fully set.
+          if (suggestionsContext) {
+            suggestionsContext.registerEditor(editor);
+          }
         }
       });
     });
@@ -412,7 +403,7 @@ export function AgentBuilderInstructionsEditor({
       // Use requestAnimationFrame to ensure DOM is ready (Safari fix).
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          // Prefer HTML content if available (preserves block IDs for copilot targeting).
+          // Prefer HTML content if available (preserves block IDs for sidekick targeting).
           // Fall back to markdown for agents without stored HTML.
           if (instructionsHtmlField.value) {
             editor.commands.setContent(instructionsHtmlField.value, {
@@ -483,50 +474,6 @@ export function AgentBuilderInstructionsEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
 
-  const updateLineStyle = useCallback(() => {
-    if (!highlightedSuggestionId || !editorWrapperRef.current || !editor) {
-      setLineStyle(null);
-      return;
-    }
-
-    const blockRect = getSuggestionBlockRect(editor, highlightedSuggestionId);
-    if (!blockRect) {
-      setLineStyle(null);
-      return;
-    }
-
-    const formRect = editorWrapperRef.current.getBoundingClientRect();
-    const clampedTop = Math.max(blockRect.top, formRect.top);
-    const clampedBottom = Math.min(blockRect.bottom, formRect.bottom);
-
-    if (clampedTop >= clampedBottom) {
-      setLineStyle(null);
-      return;
-    }
-
-    setLineStyle({
-      top: clampedTop - formRect.top,
-      height: clampedBottom - clampedTop,
-    });
-  }, [highlightedSuggestionId, editor]);
-
-  useLayoutEffect(() => {
-    updateLineStyle();
-  }, [updateLineStyle]);
-
-  useEffect(() => {
-    if (!highlightedSuggestionId || !editor) {
-      return;
-    }
-    const scrollContainer = editor.view.dom.parentElement;
-    scrollContainer?.addEventListener("scroll", updateLineStyle);
-    window.addEventListener("resize", updateLineStyle);
-    return () => {
-      scrollContainer?.removeEventListener("scroll", updateLineStyle);
-      window.removeEventListener("resize", updateLineStyle);
-    };
-  }, [highlightedSuggestionId, editor, updateLineStyle]);
-
   const toolbarExtra =
     React.Children.toArray(children).find(
       (child): child is React.ReactElement<{ children: ReactNode }> =>
@@ -534,9 +481,9 @@ export function AgentBuilderInstructionsEditor({
     )?.props?.children ?? null;
 
   const pendingInstructionSuggestions = suggestionsContext
-    ? suggestionsContext
-        .getPendingSuggestions()
-        .filter((s) => s.kind === "instructions")
+    ? suggestionsContext.pendingSuggestions.filter(
+        (s) => s.kind === "instructions"
+      )
     : [];
   const hasPendingInstructionSuggestions =
     pendingInstructionSuggestions.length > 0;
@@ -553,23 +500,12 @@ export function AgentBuilderInstructionsEditor({
       ref={editorWrapperRef}
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
     >
-      {hasCopilot && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1 w-0.5 rounded-full bg-highlight-300 transition-all duration-150 dark:bg-highlight-300-night"
-          style={
-            lineStyle
-              ? { top: lineStyle.top, height: lineStyle.height, opacity: 1 }
-              : { top: 0, height: 0, opacity: 0 }
-          }
-        />
-      )}
       <EditorContent editor={editor} />
-      {editor && hasCopilot && (
+      {editor && hasSidekick && (
         <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
       )}
-      {!hasCopilot && (
-        // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+      {!hasSidekick && (
+        // TODO(sidekick): Remove the whole InstructionTipsPopover and endpoint when sidekick is released.
         <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
         </div>
@@ -587,7 +523,7 @@ export function AgentBuilderInstructionsEditor({
             onAcceptAll={handleAcceptAll}
             onRejectAll={handleRejectAll}
             showSuggestionActions={
-              hasCopilot && hasPendingInstructionSuggestions
+              hasSidekick && hasPendingInstructionSuggestions
             }
             toolbarExtra={toolbarExtra}
           />

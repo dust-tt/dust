@@ -94,10 +94,13 @@ export async function getBuilderNameSuggestions(
   inputs: BuilderSuggestionInputType
 ): Promise<Result<SuggestionResults, Error>> {
   const prompt =
-    "The user is currently creating an agent based on a large language model." +
+    "The user is currently creating an agent based on a large language model. " +
     "The agent has instructions and a description. You are provided with a single " +
     "message, consisting of this information if it is available. Your role is to " +
-    "suggest good names for the agent. Names can not include whitespaces.";
+    "suggest good names for the agent. Names can not include whitespaces. " +
+    "Names must follow these rules: " +
+    "- Match the tone of the name to the agent instructions. " +
+    "- The name should immediately convey what the agent does.";
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
   const res = await runMultiActionsAgent(

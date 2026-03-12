@@ -22,8 +22,8 @@ import {
 import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
@@ -66,14 +66,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.GPT5,
         name: "gpt5",
-        description: GPT_5_MODEL_CONFIG.description,
+        description: GPT_5_4_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.GPT5_THINKING:
       return {
         sId: GLOBAL_AGENTS_SID.GPT5_THINKING,
         name: "gpt5-thinking",
-        description: GPT_5_MINI_MODEL_CONFIG.description,
+        description: GPT_5_4_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.GPT5_NANO:
@@ -284,6 +284,20 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust but running OpenAI models.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+        name: "dust-oai-medium",
+        description: "Same as dust-oai but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+        name: "dust-oai-high",
+        description: "Same as dust-oai but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_NEXT:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT,
@@ -450,11 +464,11 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.COPILOT:
+    case GLOBAL_AGENTS_SID.SIDEKICK:
       return {
-        sId: GLOBAL_AGENTS_SID.COPILOT,
-        name: "copilot",
-        description: "An agent that suggest improvements for another agent.",
+        sId: GLOBAL_AGENTS_SID.SIDEKICK,
+        name: "Sidekick",
+        description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.NOOP:

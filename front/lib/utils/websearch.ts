@@ -1,5 +1,5 @@
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types/api/credentials";
+import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -9,7 +9,7 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
-const credentials = dustManagedCredentials();
+const credentials = dustManagedServiceCredentials();
 
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";

@@ -2,9 +2,10 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
+import { isModelCustomAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -44,7 +45,7 @@ export async function getAvailableModelsForWorkspace(
 
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
   return allUsedModels.filter((m) =>
-    isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
+    isModelCustomAvailableAndWhitelisted(m, featureFlags, plan, owner)
   );
 }
 
@@ -52,6 +53,8 @@ export async function getAvailableModelsForWorkspace(
  * Lists available tools (MCP server views) that can be added to agents.
  * Returns tools from all spaces the user is a member of, filtered to only
  * include tools with "manual" or "auto" availability.
+ * Excludes knowledge tools (search, query tables, include data, etc.) that
+ * require data source configuration, these are handled separately as knowledge.
  */
 export async function listAvailableTools(
   auth: Authenticator
@@ -72,6 +75,7 @@ export async function listAvailableTools(
       (v) =>
         v.server.availability === "manual" || v.server.availability === "auto"
     )
+    .filter((v) => !isToolWithKnowledge(v))
     .map((mcpServerView) => ({
       sId: mcpServerView.sId,
       name: getMcpServerViewDisplayName(mcpServerView),

@@ -1,4 +1,4 @@
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
@@ -186,7 +186,7 @@ export function usePokeAuthContext(
 ) {
   const { fetcher } = useFetcher();
   const { workspaceId, disabled } = options;
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
 
   const url = workspaceId
     ? `/api/poke/workspaces/${workspaceId}/auth-context`
@@ -207,7 +207,7 @@ export function usePokeAuthContext(
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
+    if (regionRedirect) {
       regionContext.setRegionInfo({
         name: regionRedirect.region,
         url: regionRedirect.url,

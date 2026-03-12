@@ -334,6 +334,7 @@ export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPA
 
   declare agentMCPActionId: ForeignKey<AgentMCPActionModel["id"]>;
   declare content: CallToolResult["content"][number];
+  declare contentGcsPath: string | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
 
   declare file: NonAttribute<FileModel>;
@@ -366,6 +367,10 @@ AgentMCPActionOutputItemModel.init(
         },
       },
     },
+    contentGcsPath: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_mcp_action_output_item",
@@ -390,6 +395,11 @@ AgentMCPActionOutputItemModel.init(
         fields: ["workspaceId", "agentMCPActionId"],
         concurrently: true,
         name: "agent_mcp_action_output_items_workspace_id_agent_mcp_action_id",
+      },
+      {
+        fields: ["workspaceId", "agentMCPActionId", "contentGcsPath"],
+        concurrently: true,
+        name: "agent_mcp_action_output_items_ws_action_gcs_path",
       },
     ],
   }

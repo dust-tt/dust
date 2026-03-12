@@ -7,7 +7,7 @@ import {
   VIZ_REACT_COMPONENT_GUIDELINES,
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
+} from "@app/lib/api/actions/servers/common/viz/instructions";
 import {
   CREATE_SLIDESHOW_FILE_TOOL_NAME,
   EDIT_SLIDESHOW_FILE_TOOL_NAME,

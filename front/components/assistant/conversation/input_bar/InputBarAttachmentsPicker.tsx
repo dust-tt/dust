@@ -29,18 +29,22 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   AttachmentIcon,
   Button,
+  ChevronRightIcon,
   CloudArrowUpIcon,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  type DropdownMenuFilterOption,
   DropdownMenuFilters,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
   Input,
@@ -65,11 +69,16 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
+  type: "dropdown" | "subdropdown";
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
+  onFileChange?: () => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 const PAGE_SIZE = 25;
@@ -195,10 +204,21 @@ export const InputBarAttachmentsPicker = ({
   buttonSize = "xs",
   conversation,
   space,
+  type,
+  onFileChange,
+  externalOpen,
+  onExternalOpenChange,
+  anchorRef,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const isExternallyControlled = externalOpen !== undefined;
+  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
+  const setIsOpen = isExternallyControlled
+    ? (open: boolean) => onExternalOpenChange?.(open)
+    : setInternalOpen;
   const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
     useState<Record<string, boolean>>({});
   const {
@@ -392,30 +412,72 @@ export const InputBarAttachmentsPicker = ({
   );
 
   const allUnselected = selectedFilterKeys.length === 0;
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+
   return (
-    <DropdownMenu
+    <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
+        setIsOpen(open);
         if (open) {
           setSearch("");
         }
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          icon={AttachmentIcon}
-          size={buttonSize}
-          disabled={disabled || isLoading}
-          onClick={() => setIsOpen(!isOpen)}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      {type === "dropdown" && !isExternallyControlled ? (
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            icon={AttachmentIcon}
+            size={buttonSize}
+            disabled={disabled || isLoading}
+            onClick={() => setIsOpen(!isOpen)}
+          />
+        </DropdownMenuTrigger>
+      ) : type === "dropdown" && isExternallyControlled ? (
+        <DropdownMenuTrigger asChild>
+          <div
+            ref={(el) => {
+              if (el && anchorRef?.current) {
+                const rect = anchorRef.current.getBoundingClientRect();
+                el.style.position = "fixed";
+                el.style.top = `${rect.top}px`;
+                el.style.left = `${rect.left}px`;
+                el.style.width = `${rect.width}px`;
+                el.style.height = `${rect.height}px`;
+                el.style.pointerEvents = "none";
+                el.style.opacity = "0";
+              }
+            }}
+          />
+        </DropdownMenuTrigger>
+      ) : (
+        <DropdownMenuSubTrigger
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+        >
+          <AttachmentIcon className="w-5 h-5" />
+          Attach knowledge
+          <ChevronRightIcon className="w-5 h-5" />
+        </DropdownMenuSubTrigger>
+      )}
+      <ContentWrapper
         className="h-80 w-80 xs:h-96 xs:w-96"
         collisionPadding={15}
-        align="start"
-        onInteractOutside={() => setIsOpen(false)}
         onEscapeKeyDown={() => setIsOpen(false)}
+        {...(type === "subdropdown"
+          ? {
+              onClick: (e) => e.stopPropagation(),
+            }
+          : {
+              align: isExternallyControlled ? "end" : "start",
+              onInteractOutside: () => setIsOpen(false),
+            })}
         dropdownHeaders={
           <>
             <Input
@@ -423,6 +485,7 @@ export const InputBarAttachmentsPicker = ({
               ref={fileInputRef}
               style={{ display: "none" }}
               onChange={async (e) => {
+                onFileChange?.();
                 setIsOpen(false);
                 await fileUploaderService.handleFileChange(e);
                 if (fileInputRef.current) {
@@ -560,7 +623,7 @@ export const InputBarAttachmentsPicker = ({
             </div>
           </div>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </ContentWrapper>
+    </Wrapper>
   );
 };

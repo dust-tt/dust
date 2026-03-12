@@ -70,7 +70,7 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
               by {feedback.userWhoGaveFeedbackFullName} in{" "}
               <a
                 href={
-                  config.getClientFacingUrl() +
+                  config.getAppUrl() +
                   getConversationRoute(workspace.id, feedback.conversationId)
                 }
                 target="_blank"

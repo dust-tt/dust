@@ -1,6 +1,6 @@
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useDustAPI } from "@extension/shared/lib/dust_api";
 import { normalizeError } from "@extension/shared/lib/utils";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -18,7 +18,7 @@ export function useMcpServer() {
   const [error, setError] = useState<Error | null>(null);
   const serverRef = useRef<any>(null);
 
-  const dustAPI = useDustAPI();
+  const { workspace } = useExtensionAuth();
 
   // Function to disconnect the server.
   const disconnectServer = useCallback(async () => {
@@ -58,8 +58,12 @@ export function useMcpServer() {
           return;
         }
 
+        if (!workspace) {
+          return;
+        }
+
         const result = await platform.mcp.getOrCreateServer(
-          dustAPI,
+          workspace,
           (serverId) => {
             setServerId(serverId);
           }

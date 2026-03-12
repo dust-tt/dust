@@ -747,6 +747,167 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10012,
+    name: "Miro",
+    description:
+      "Miro tools for collaborative whiteboarding, diagramming, and visual workspace management.",
+    url: "https://mcp.miro.com/",
+    icon: "MiroLogo",
+    documentationUrl: "https://developers.miro.com/docs/miro-mcp",
+    connectionInstructions:
+      "Miro uses OAuth 2.1 with dynamic client registration. Authentication is team-level — you will be prompted to select your Miro team during sign-in. Enterprise plan users need an admin to enable MCP access first.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      board_list_items: "never_ask",
+      context_explore: "never_ask",
+      context_get: "never_ask",
+      diagram_get_dsl: "never_ask",
+      doc_get: "never_ask",
+      image_get_url: "never_ask",
+      image_get_data: "never_ask",
+      table_list_rows: "never_ask",
+
+      diagram_create: "low",
+      doc_create: "low",
+      doc_update: "low",
+      table_create: "low",
+      table_sync_rows: "low",
+    },
+    toolDisplayLabels: {
+      board_list_items: {
+        running: "Listing board items on Miro",
+        done: "List board items on Miro",
+      },
+      context_explore: {
+        running: "Exploring board on Miro",
+        done: "Explore board on Miro",
+      },
+      context_get: {
+        running: "Reading board content on Miro",
+        done: "Read board content on Miro",
+      },
+      diagram_get_dsl: {
+        running: "Fetching diagram format on Miro",
+        done: "Fetch diagram format on Miro",
+      },
+      doc_get: {
+        running: "Reading doc on Miro",
+        done: "Read doc on Miro",
+      },
+      image_get_url: {
+        running: "Retrieving image URL on Miro",
+        done: "Retrieve image URL on Miro",
+      },
+      image_get_data: {
+        running: "Retrieving image on Miro",
+        done: "Retrieve image on Miro",
+      },
+      table_list_rows: {
+        running: "Listing table rows on Miro",
+        done: "List table rows on Miro",
+      },
+      diagram_create: {
+        running: "Creating diagram on Miro",
+        done: "Create diagram on Miro",
+      },
+      doc_create: {
+        running: "Creating doc on Miro",
+        done: "Create doc on Miro",
+      },
+      doc_update: {
+        running: "Updating doc on Miro",
+        done: "Update doc on Miro",
+      },
+      table_create: {
+        running: "Creating table on Miro",
+        done: "Create table on Miro",
+      },
+      table_sync_rows: {
+        running: "Syncing table rows on Miro",
+        done: "Sync table rows on Miro",
+      },
+    },
+  },
+  {
+    id: 10013,
+    name: "Semrush",
+    description:
+      "Semrush tools for SEO research, keyword analysis, competitor insights, and digital marketing data.",
+    url: "https://mcp.semrush.com/v1/mcp",
+    icon: "SemrushLogo",
+    documentationUrl: "https://developer.semrush.com/api/basics/semrush-mcp/",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      trends_research: "never_ask",
+      organic_research: "never_ask",
+      backlink_research: "never_ask",
+      keyword_research: "never_ask",
+      overview_research: "never_ask",
+      subdomain_research: "never_ask",
+      subfolder_research: "never_ask",
+      tracking_research: "never_ask",
+      projects_research: "never_ask",
+      url_research: "never_ask",
+      siteaudit_research: "never_ask",
+      get_report_schema: "never_ask",
+      execute_report: "low", // only tool that consumes Semrush API units; all others are discovery only
+    },
+    toolDisplayLabels: {
+      trends_research: {
+        running: "Fetching trends on Semrush",
+        done: "Fetch trends on Semrush",
+      },
+      organic_research: {
+        running: "Analyzing organic search on Semrush",
+        done: "Analyze organic search on Semrush",
+      },
+      backlink_research: {
+        running: "Analyzing backlinks on Semrush",
+        done: "Analyze backlinks on Semrush",
+      },
+      keyword_research: {
+        running: "Researching keywords on Semrush",
+        done: "Research keywords on Semrush",
+      },
+      overview_research: {
+        running: "Fetching domain overview on Semrush",
+        done: "Fetch domain overview on Semrush",
+      },
+      subdomain_research: {
+        running: "Analyzing subdomains on Semrush",
+        done: "Analyze subdomains on Semrush",
+      },
+      subfolder_research: {
+        running: "Analyzing subfolders on Semrush",
+        done: "Analyze subfolders on Semrush",
+      },
+      tracking_research: {
+        running: "Fetching position tracking on Semrush",
+        done: "Fetch position tracking on Semrush",
+      },
+      projects_research: {
+        running: "Fetching projects on Semrush",
+        done: "Fetch projects on Semrush",
+      },
+      url_research: {
+        running: "Analyzing URL on Semrush",
+        done: "Analyze URL on Semrush",
+      },
+      siteaudit_research: {
+        running: "Running site audit on Semrush",
+        done: "Run site audit on Semrush",
+      },
+      get_report_schema: {
+        running: "Fetching report schema on Semrush",
+        done: "Fetch report schema on Semrush",
+      },
+      execute_report: {
+        running: "Executing report on Semrush",
+        done: "Execute report on Semrush",
+      },
+    },
+  },
   //Removed temporaly gitlab server
   /*
   {

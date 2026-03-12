@@ -2,6 +2,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { DEFAULT_TOKEN_COUNT_ADJUSTMENT } from "@app/types/assistant/assistant";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { CredentialsType } from "@app/types/provider";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
@@ -12,8 +14,8 @@ import _ from "lodash";
 import config from "./api/config";
 
 // Tokenizing large text payloads causes memory stress in core API, leading to OOM issues.
-// We limit batch size to 100 texts per request to prevent memory exhaustion.
-const MAX_BATCH_SIZE = 100;
+// We limit batch size to 50 texts per request to prevent memory exhaustion.
+const MAX_BATCH_SIZE = 50;
 
 // Limit concurrent requests to core API to avoid overloading.
 const TOKENIZATION_CONCURRENCY = 3;
@@ -25,7 +27,8 @@ export async function tokenCountForTexts(
     modelId: string;
     tokenCountAdjustment?: number;
     tokenizer: TokenizerConfig;
-  }
+  },
+  credentials: CredentialsType
 ): Promise<Result<Array<number>, Error>> {
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -40,6 +43,7 @@ export async function tokenCountForTexts(
           providerId: model.providerId,
           modelId: model.modelId,
           tokenizer: model.tokenizer,
+          credentials,
         }),
       { concurrency: TOKENIZATION_CONCURRENCY }
     );
@@ -70,7 +74,8 @@ export async function tokenCountForTexts(
 export async function tokenSplit(
   text: string,
   model: { providerId: string; modelId: string; tokenizer: TokenizerConfig },
-  splitAt: number
+  splitAt: number,
+  credentials: LLMCredentialsType
 ): Promise<Result<string, Error>> {
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -79,6 +84,7 @@ export async function tokenSplit(
       providerId: model.providerId,
       modelId: model.modelId,
       tokenizer: model.tokenizer,
+      credentials,
     });
     if (res.isErr()) {
       return new Err(

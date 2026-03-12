@@ -1,17 +1,46 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import {
   ClipboardIcon,
   IconButton,
   MovingMailIcon,
+  Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
+const INVITATION_EXPIRATION_TIME_MS = INVITATION_EXPIRATION_TIME_SEC * 1000;
+
+function formatExpiresIn(createdAt: number): {
+  label: string;
+  isExpired: boolean;
+  exactDate: string;
+} {
+  const expiresAtMs =
+    new Date(createdAt).getTime() + INVITATION_EXPIRATION_TIME_MS;
+  const nowMs = Date.now();
+  const diffMs = expiresAtMs - nowMs;
+  const exactDate = new Date(expiresAtMs).toLocaleString();
+
+  if (diffMs <= 0) {
+    const agoMs = Math.abs(diffMs);
+    const agoHours = Math.floor(agoMs / (1000 * 60 * 60));
+    const agoDays = Math.floor(agoHours / 24);
+    const label = agoDays > 0 ? `${agoDays}d ago` : `${agoHours}h ago`;
+    return { label, isExpired: true, exactDate };
+  }
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  const label = days > 0 ? `in ${days}d` : `in ${hours}h`;
+  return { label, isExpired: false, exactDate };
+}
+
 export function makeColumnsForInvitations(
   onRevokeInvitation: (email: string) => Promise<void>,
-  onResendInvitation: (invitationId: string) => Promise<void>
+  onReinvite: (invitationId: string) => Promise<void>
 ): ColumnDef<MembershipInvitationTypeWithLink>[] {
   return [
     {
@@ -33,10 +62,20 @@ export function makeColumnsForInvitations(
       ),
     },
     {
-      accessorKey: "isExpired",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Expired" />
-      ),
+      id: "expires",
+      header: "Expires",
+      cell: ({ row }) => {
+        const createdAt: number = row.original.createdAt;
+        const { label, isExpired, exactDate } = formatExpiresIn(createdAt);
+        return (
+          <Tooltip
+            label={exactDate}
+            trigger={
+              <span className={isExpired ? "text-red-500" : ""}>{label}</span>
+            }
+          />
+        );
+      },
     },
     {
       accessorKey: "inviteLink",
@@ -67,8 +106,8 @@ export function makeColumnsForInvitations(
       },
     },
     {
-      id: "resend",
-      header: "Resend",
+      id: "reinvite",
+      header: "Reinvite",
       cell: ({ row }) => {
         const invitation = row.original;
 
@@ -77,9 +116,9 @@ export function makeColumnsForInvitations(
             icon={MovingMailIcon}
             size="xs"
             variant="outline"
-            tooltip="Resend invitation email"
+            tooltip="Reinvite (revokes current and sends a new invitation)"
             onClick={async () => {
-              await onResendInvitation(invitation.sId);
+              await onReinvite(invitation.sId);
             }}
           />
         );

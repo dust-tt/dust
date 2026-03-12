@@ -42,8 +42,11 @@ async function handler(
     });
   }
 
-  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-  if (killSwitches?.includes("save_agent_configurations")) {
+  const isSaveAgentConfigurationsEnabled =
+    await KillSwitchResource.isKillSwitchEnabledCached(
+      "save_agent_configurations"
+    );
+  if (isSaveAgentConfigurationsEnabled) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

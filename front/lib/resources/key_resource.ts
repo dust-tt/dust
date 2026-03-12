@@ -24,8 +24,6 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-const KEY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes.
-
 type CachedKeyData = Omit<
   Attributes<KeyModel>,
   "secret" | "lastUsedAt" | "createdAt" | "updatedAt"
@@ -89,10 +87,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     };
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static fetchBySecretCached = cacheWithRedis(
     KeyResource._fetchBySecretUncached,
     KeyResource.keyCacheKeyResolver,
-    { ttlMs: KEY_CACHE_TTL_MS }
+    {}
   );
 
   private static invalidateKeyCache = invalidateCacheWithRedis(

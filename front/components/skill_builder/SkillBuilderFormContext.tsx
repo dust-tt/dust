@@ -4,11 +4,18 @@ import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
+const AGENT_FACING_DESCRIPTION_MAX_LENGTH = 750;
+
 export const attachedKnowledgeSchema = z.object({
   dataSourceViewId: z.string(),
   nodeId: z.string(),
   spaceId: z.string(),
   title: z.string(),
+});
+
+const fileAttachmentSchema = z.object({
+  fileId: z.string(),
+  fileName: z.string(),
 });
 
 export const skillBuilderFormSchema = z.object({
@@ -18,13 +25,18 @@ export const skillBuilderFormSchema = z.object({
     .pipe(z.string().min(1, "Skill name is required")),
   agentFacingDescription: z
     .string()
-    .min(1, "Description of when to use the skill is required"),
+    .min(1, "Description of when to use the skill is required")
+    .max(
+      AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+      `Description must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less`
+    ),
   userFacingDescription: z.string().min(1, "Skill description is required"),
   instructions: z.string().min(1, "Skill instructions are required"),
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
   extendedSkillId: z.string().nullable(),
+  fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
 });
 

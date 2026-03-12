@@ -1,5 +1,7 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
+import logger from "@app/logger/logger";
+import type { Transaction } from "sequelize";
 
 const SPIN_WAIT_INTERVAL_MS = 100;
 
@@ -49,7 +51,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
-    ttlMs: number;
+    ttlMs?: number;
     redisUri?: string;
     useDistributedLock?: boolean;
     skipIfLocked?: false;
@@ -61,7 +63,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
-    ttlMs: number;
+    ttlMs?: number;
     redisUri?: string;
     useDistributedLock: true;
     // When true and the distributed lock is taken, return null immediately.
@@ -81,7 +83,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     skipIfLocked = false,
     cacheNullValues = true,
   }: {
-    ttlMs: number;
+    ttlMs?: number;
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
@@ -91,7 +93,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     cacheNullValues?: boolean;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
-  if (ttlMs > 60 * 60 * 24 * 1000) {
+  if (ttlMs !== undefined && ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
@@ -140,9 +142,13 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
       const result = await fn(...args);
       if (cacheNullValues || result != null) {
-        await redisCli.set(key, JSON.stringify(result), {
-          PX: ttlMs,
-        });
+        if (ttlMs !== undefined) {
+          await redisCli.set(key, JSON.stringify(result), {
+            PX: ttlMs,
+          });
+        } else {
+          await redisCli.set(key, JSON.stringify(result));
+        }
       }
       return result;
     } finally {
@@ -223,4 +229,36 @@ function unlock(key: string) {
     throw new Error("Unreachable: unlock called without lock");
   }
   unlockFn();
+}
+
+/**
+ * Defers cache invalidation until after a transaction commits.
+ * This prevents a race condition where:
+ * 1. Cache is invalidated inside the transaction
+ * 2. Another request reads the DB (can't see uncommitted data)
+ * 3. Cache repopulated with stale data
+ * 4. Transaction commits
+ * 5. Cache now has stale data for TTL duration
+ */
+export function invalidateCacheAfterCommit(
+  transaction: Transaction | undefined,
+  invalidateFn: () => Promise<void>
+): void {
+  if (transaction) {
+    transaction.afterCommit(() =>
+      invalidateFn().catch((err) => {
+        logger.error(
+          { panic: true, err },
+          "Failed to invalidate cache after transaction commit"
+        );
+      })
+    );
+  } else {
+    invalidateFn().catch((err) => {
+      logger.error(
+        { panic: true, err },
+        "Failed to invalidate cache after transaction commit"
+      );
+    });
+  }
 }

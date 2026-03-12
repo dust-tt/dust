@@ -10,7 +10,7 @@ import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
 import type { PokeAgentMessageType } from "@app/types/poke";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -622,7 +622,7 @@ export function ConversationPage() {
                         );
                       }
                       default:
-                        assertNever(m);
+                        assertNeverAndIgnore(m);
                     }
                   })}
                 </div>

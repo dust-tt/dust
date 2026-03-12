@@ -45,7 +45,7 @@ export async function maybeUpsertFileAttachment(
           fileResource.useCase === "conversation" &&
           !fileResource.useCaseMetadata
         ) {
-          await fileResource.setUseCaseMetadata({
+          await fileResource.setUseCaseMetadata(auth, {
             conversationId: conversation.sId,
           });
 

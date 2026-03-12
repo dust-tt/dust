@@ -6,7 +6,7 @@ import type { DustAPI } from ".";
 
 const logger = console;
 
-const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
 
 /**

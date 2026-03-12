@@ -13,6 +13,7 @@ import { useCookies } from "react-cookie";
 interface PublicFrameRendererProps {
   fileId: string;
   fileName?: string;
+  hideHeader?: boolean;
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
@@ -21,11 +22,12 @@ interface PublicFrameRendererProps {
 export function PublicFrameRenderer({
   fileId,
   fileName,
+  hideHeader = false,
   shareToken,
   workspaceId,
   vizUrl,
 }: PublicFrameRendererProps) {
-  const { conversationUrl, isFrameLoading, error, accessToken } =
+  const { conversationUrl, projectUrl, isFrameLoading, error, accessToken } =
     usePublicFrame({
       shareToken,
     });
@@ -58,11 +60,14 @@ export function PublicFrameRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <PublicInteractiveContentHeader
-        title={formatFilenameForDisplay(fileName ?? "Frame")}
-        user={user}
-        conversationUrl={conversationUrl}
-      />
+      {!hideHeader && (
+        <PublicInteractiveContentHeader
+          title={formatFilenameForDisplay(fileName ?? "Frame")}
+          user={user}
+          conversationUrl={conversationUrl}
+          projectUrl={projectUrl}
+        />
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

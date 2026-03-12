@@ -4,7 +4,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 export class ConversationMCPServerViewModel extends WorkspaceAwareModel<ConversationMCPServerViewModel> {
   declare createdAt: CreationOptional<Date>;
@@ -14,6 +14,8 @@ export class ConversationMCPServerViewModel extends WorkspaceAwareModel<Conversa
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare enabled: CreationOptional<boolean>;
+  declare source: string;
+  declare agentConfigurationId: string | null;
 
   // Associations
   declare conversation: NonAttribute<ConversationModel>;
@@ -62,6 +64,14 @@ ConversationMCPServerViewModel.init(
       allowNull: false,
       defaultValue: true,
     },
+    source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "conversation_mcp_server_view",
@@ -70,7 +80,21 @@ ConversationMCPServerViewModel.init(
       {
         unique: true,
         fields: ["workspaceId", "conversationId", "mcpServerViewId"],
-        name: "conversation_mcp_server_views_conversation_mcp_server_view_id",
+        name: "idx_conv_mcp_srv_views_wid_cid_msvi_null_agent",
+        where: { agentConfigurationId: null },
+        concurrently: true,
+      },
+      {
+        unique: true,
+        fields: [
+          "workspaceId",
+          "conversationId",
+          "mcpServerViewId",
+          "agentConfigurationId",
+        ],
+        name: "idx_conv_mcp_srv_views_wid_cid_msvi_agent",
+        where: { agentConfigurationId: { [Op.ne]: null } },
+        concurrently: true,
       },
       {
         fields: ["workspaceId", "conversationId"],

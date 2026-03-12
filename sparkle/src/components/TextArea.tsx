@@ -20,6 +20,7 @@ const textAreaVariants = cva(
     "s-flex s-w-full s-px-3 s-py-2 s-text-sm",
     "s-text-foreground dark:s-text-foreground-night",
     "s-bg-muted-background dark:s-bg-muted-background-night",
+    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
     "s-ring-offset-background",
     "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
     "focus-visible:s-border-border dark:focus-visible:s-border-border-night focus-visible:s-ring"
@@ -101,7 +102,9 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && showErrorLabel && (
-          <div className="s-ml-2 s-text-xs s-text-warning-500">{error}</div>
+          <div className="s-ml-2 s-text-xs s-text-warning-500 dark:s-text-warning-500-night">
+            {error}
+          </div>
         )}
       </div>
     );

@@ -55,6 +55,7 @@ jobs:
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         uses: ./.github/actions/setup-node-deps
         with:
+          node-version: "22.22.0"
           build-sdks: "true"
           build-sparkle: "true"
 
@@ -100,6 +101,8 @@ jobs:
       - name: Setup Node Dependencies
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
 
       - name: Run Danger for connectors
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}

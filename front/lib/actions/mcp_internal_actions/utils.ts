@@ -4,6 +4,12 @@ import {
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type {
+  AuthRequiredOutputResourceType,
+  EarlyExitOutputResourceType,
+  FileAuthRequiredOutputResourceType,
+  SingleResourceToolOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -22,7 +28,7 @@ export function makeInternalMCPServer(
 export function makePersonalAuthenticationError(
   provider: OAuthProvider,
   scope?: string
-) {
+): SingleResourceToolOutput<AuthRequiredOutputResourceType> {
   return {
     content: [
       {
@@ -50,7 +56,7 @@ export function makeFileAuthorizationError({
   fileName: string;
   connectionId: string;
   mimeType: string;
-}) {
+}): SingleResourceToolOutput<FileAuthRequiredOutputResourceType> {
   return {
     content: [
       {
@@ -76,7 +82,7 @@ export function makeMCPToolExit({
 }: {
   message: string;
   isError: boolean;
-}) {
+}): SingleResourceToolOutput<EarlyExitOutputResourceType> {
   return {
     content: [
       {

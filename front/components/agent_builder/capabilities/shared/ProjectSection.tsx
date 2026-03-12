@@ -57,7 +57,11 @@ export function ProjectSection() {
   });
 
   const allProjects = useMemo(
-    () => spaces.filter((s): s is ProjectType => isProjectType(s)),
+    // Keep only non-archived projects.
+    () =>
+      spaces
+        .filter((s) => isProjectType(s))
+        .filter((s) => s.archivedAt === null),
     [spaces]
   );
 

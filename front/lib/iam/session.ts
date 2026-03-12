@@ -261,18 +261,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
   };
 }
 
-export const withDefaultUserAuthPaywallWhitelisted =
-  makeGetServerSidePropsRequirementsWrapper({
-    requireUserPrivilege: "user",
-    requireCanUseProduct: false,
-  });
-
-export const withDefaultUserAuthRequirements =
-  makeGetServerSidePropsRequirementsWrapper({
-    requireUserPrivilege: "user",
-    requireCanUseProduct: true,
-  });
-
 export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "superuser",

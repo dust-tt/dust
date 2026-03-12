@@ -95,6 +95,7 @@ async function handler(
       "gongAccountsEnabled",
       "gongPermissionProfileId",
       "gongPermissionProfiles",
+      "gongExcludeTitleKeywords",
       "privateIntegrationCredentialId",
     ].includes(configKey)
   ) {

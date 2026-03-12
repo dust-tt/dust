@@ -30,6 +30,7 @@ export async function syncOneFileTextDocument(
   maxDocumentLen: number
 ) {
   let documentContent: CoreAPIDataSourceDocumentSection | null = null;
+  let skipReason: string | undefined;
 
   const mimeTypesToDownload = getMimeTypesToDownload({
     pdfEnabled: config?.pdfEnabled || false,
@@ -39,11 +40,15 @@ export async function syncOneFileTextDocument(
   const documentId = getInternalId(file.id);
 
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
-    documentContent = await handleGoogleDriveExport(
-      oauth2client,
-      file,
-      localLogger
-    );
+    const res = await handleGoogleDriveExport(oauth2client, file, localLogger);
+    documentContent = res.content;
+    if (res.skipReason) {
+      localLogger.info(
+        {},
+        `Google Drive document skipped with skip reason ${res.skipReason}`
+      );
+      skipReason = res.skipReason;
+    }
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     try {
       documentContent = await handleFileExport(
@@ -66,6 +71,7 @@ export async function syncOneFileTextDocument(
       }
     }
   }
+
   if (documentContent) {
     const upsertTimestampMs = await upsertGdriveDocument(
       dataSourceConfig,
@@ -84,10 +90,21 @@ export async function syncOneFileTextDocument(
       connectorId,
       documentId,
       file,
-      undefined,
+      skipReason,
       upsertTimestampMs
     );
     return true;
   }
-  return false;
+
+  if (skipReason) {
+    await updateGoogleDriveFiles(
+      connectorId,
+      documentId,
+      file,
+      skipReason,
+      undefined
+    );
+  }
+
+  return !skipReason;
 }

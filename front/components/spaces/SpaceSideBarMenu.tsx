@@ -44,7 +44,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -230,7 +230,8 @@ const getSpaceSectionDetails = (
       return { label: "Administration", displayCreateSpaceButton: false };
 
     default:
-      assertNever(kind);
+      assertNeverAndIgnore(kind);
+      return { label: kind, displayCreateSpaceButton: false };
   }
 };
 

@@ -112,11 +112,15 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView1],
       enabled: true,
+      source: "conversation",
+      agentConfigurationId: null,
     });
     await ConversationResource.upsertMCPServerViews(auth, {
       conversation: conversation,
       mcpServerViews: [mcpServerView2],
       enabled: false,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     await handler(req, res);
@@ -208,6 +212,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         conversation: conversation,
         mcpServerViews: [mcpServerView],
         enabled: false,
+        source: "conversation",
+        agentConfigurationId: null,
       });
 
       req.body = {
@@ -251,6 +257,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         conversation: conversation,
         mcpServerViews: [mcpServerView],
         enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
       });
 
       req.body = {
@@ -303,6 +311,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         conversation: conversation,
         mcpServerViews: [mcpServerView],
         enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
       });
 
       req.body = {

@@ -1,6 +1,5 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -9,6 +8,7 @@ import {
   MessageReactionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
@@ -18,6 +18,8 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type {
   ConversationError,
@@ -42,13 +44,11 @@ async function destroyActionsRelatedResources(
     agentMessageIds
   );
 
-  // Destroy MCP action output items.
-  await AgentMCPActionOutputItemModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      agentMCPActionId: mcpActions.map((a) => a.id),
-    },
-  });
+  // Destroy MCP action output items (including GCS cleanup).
+  await AgentMCPActionResource.destroyOutputItemsByActionIds(
+    auth,
+    mcpActions.map((a) => a.id)
+  );
 
   // Destroy the actions.
   await AgentMCPActionResource.deleteByAgentMessageId(auth, {
@@ -61,6 +61,27 @@ async function destroyMessageRelatedResources(
   messageIds: ModelId[]
 ) {
   const owner = auth.getNonNullableWorkspace();
+
+  await ConversationBranchModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      previousMessageId: messageIds,
+    },
+  });
+
+  await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      sourceMessageId: messageIds,
+    },
+  });
+
+  await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      resultMessageId: messageIds,
+    },
+  });
 
   await MessageReactionModel.destroy({
     where: {
@@ -179,6 +200,14 @@ export async function destroyConversation(
 
   const conversation = conversationRes.value;
 
+  // Clean up all branches attached to this conversation before deleting messages.
+  await ConversationBranchModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+  });
+
   const messages = await MessageModel.findAll({
     attributes: [
       "id",
@@ -258,12 +287,34 @@ export async function destroyConversation(
     },
   });
 
+  await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+  });
+
   await ConversationSkillModel.destroy({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
     },
   });
+
+  await SandboxResource.deleteByConversationId(auth, conversation.sId);
+
+  // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
+  // FileResource records associated with this conversation (via
+  // useCaseMetadata.conversationId) are never deleted here. Both the DB rows and their GCS files
+  // at the canonical path (files/w/{wId}/{fileId}/*) are left orphaned.
+  // Delete all conversation mount path files from GCS. This is temporary and should be self
+  // contained in the FileResource.
+  // await getPrivateUploadBucket().deleteByPrefix(
+  //   getConversationFilesBasePath({
+  //     workspaceId: owner.sId,
+  //     conversationId: conversation.sId,
+  //   })
+  // );
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,

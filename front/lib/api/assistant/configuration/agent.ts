@@ -10,6 +10,11 @@ import {
 } from "@app/lib/api/assistant/configuration/helpers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  canPublishForAuth,
+  getPublishingRestrictionLevel,
+  PUBLISHING_RESTRICTIONS,
+} from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -53,11 +58,13 @@ import type {
   AgentFetchVariant,
   AgentModelConfigurationType,
   AgentStatus,
+  GlobalAgentContext,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -242,9 +249,11 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
   {
     agentIds,
     variant,
+    globalAgentContext,
   }: {
     agentIds: string[];
     variant: V;
+    globalAgentContext?: GlobalAgentContext;
   }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
@@ -262,7 +271,9 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let globalAgents: AgentConfigurationType[] = [];
     if (globalAgentIds.length > 0) {
-      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant, {
+        globalAgentContext,
+      });
     }
 
     const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
@@ -325,7 +336,13 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     agentId,
     agentVersion,
     variant,
-  }: { agentId: string; agentVersion?: number; variant: V }
+    globalAgentContext,
+  }: {
+    agentId: string;
+    agentVersion?: number;
+    variant: V;
+    globalAgentContext?: GlobalAgentContext;
+  }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null
@@ -348,6 +365,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
       variant,
+      globalAgentContext,
     });
     return (
       (agent as V extends "light"
@@ -433,6 +451,15 @@ export async function createAgentConfiguration(
     return new Err(new Error("Invalid picture url."));
   }
 
+  if (model.responseFormat) {
+    const formatValidation = validateResponseFormat(model.responseFormat);
+    if (!formatValidation.isValid) {
+      return new Err(
+        new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+      );
+    }
+  }
+
   let version = 0;
 
   let userFavorite = false;
@@ -455,25 +482,15 @@ export async function createAgentConfiguration(
       }
     }
     if (existingAgent && existingAgent.scope !== "visible") {
-      if (
-        !(await canPublishAgent(auth)) &&
-        scope === "visible" &&
-        status === "active"
-      ) {
-        return new Err(
-          new Error("Publishing agents is restricted to builders and admins.")
-        );
+      const { canPublish, message } = await canPublishAgent(auth);
+      if (!canPublish && scope === "visible" && status === "active") {
+        return new Err(new Error(message!));
       }
     }
   } else {
-    if (
-      !(await canPublishAgent(auth)) &&
-      scope === "visible" &&
-      status === "active"
-    ) {
-      return new Err(
-        new Error("Publishing agents is restricted to builders and admins.")
-      );
+    const { canPublish, message } = await canPublishAgent(auth);
+    if (!canPublish && scope === "visible" && status === "active") {
+      return new Err(new Error(message ?? "Publishing agents is restricted."));
     }
   }
 
@@ -1563,16 +1580,16 @@ export async function updateAgentPermissions(
   }
 }
 
-async function canPublishAgent(auth: Authenticator): Promise<boolean> {
+async function canPublishAgent(auth: Authenticator): Promise<{
+  canPublish: boolean;
+  message: string | null;
+}> {
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
-  if (
-    featureFlags.includes("restrict_agents_publishing") &&
-    !auth.isBuilder()
-  ) {
-    return false;
+  const level = getPublishingRestrictionLevel(featureFlags);
+  if (!level || canPublishForAuth(auth, level)) {
+    return { canPublish: true, message: null };
   }
-  return true;
+  return { canPublish: false, message: PUBLISHING_RESTRICTIONS[level].message };
 }
 
 export async function updateAgentConfigurationScope(
@@ -1589,15 +1606,14 @@ export async function updateAgentConfigurationScope(
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
   }
 
+  const { canPublish, message } = await canPublishAgent(auth);
   if (
-    !(await canPublishAgent(auth)) &&
+    !canPublish &&
     agentConfig.scope !== "visible" &&
     scope === "visible" &&
     agentConfig.status === "active"
   ) {
-    return new Err(
-      new Error("Publishing agents is restricted to builders and admins.")
-    );
+    return new Err(new Error(message ?? "Publishing agents is restricted."));
   }
 
   const previousScope = agentConfig.scope;

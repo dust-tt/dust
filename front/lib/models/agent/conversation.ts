@@ -1,5 +1,6 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import type { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -16,7 +17,7 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, literal } from "sequelize";
+import { DataTypes, literal, Op } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -552,6 +553,7 @@ export class AgentMessageFeedbackModel extends WorkspaceAwareModel<AgentMessageF
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare isConversationShared: boolean;
   declare dismissed: boolean;
 
@@ -600,6 +602,14 @@ AgentMessageFeedbackModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: "conversations",
+        key: "id",
+      },
+    },
   },
   {
     modelName: "agent_message_feedback",
@@ -620,9 +630,19 @@ AgentMessageFeedbackModel.init(
         name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );
+
+ConversationModel.hasMany(AgentMessageFeedbackModel, {
+  foreignKey: { name: "conversationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentMessageFeedbackModel.belongsTo(ConversationModel, {
+  as: "conversation",
+  foreignKey: { name: "conversationId", allowNull: true },
+});
 
 AgentMessageModel.hasMany(AgentMessageFeedbackModel, {
   as: "feedbacks",
@@ -649,6 +669,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
+  declare branchId: ForeignKey<ConversationBranchModel["id"]> | null;
 
   declare parentId: ForeignKey<MessageModel["id"]> | null;
   declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
@@ -661,6 +682,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
+  declare branch?: NonAttribute<ConversationBranchModel>;
 }
 
 MessageModel.init(
@@ -693,6 +715,11 @@ MessageModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    branchId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "message",
@@ -702,14 +729,45 @@ MessageModel.init(
         unique: true,
         fields: ["sId"],
       },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
+      // Index when the branchId criteria is not set in queries.
+      // No uniqueness constraint as uniqueness is enforced by the branchId null/not null indexes below.
       {
-        unique: true,
-        fields: ["conversationId", "rank", "version"],
+        fields: ["workspaceId", "conversationId", "rank", "version"],
+        name: "messages_workspace_id_conversation_id_rank_version",
+        concurrently: true,
       },
+      // We need two separate indexes for the different cases of branchId being null or not.
+      // Because a null value is not considered distinct in an unique index.
       {
         unique: true,
         fields: ["workspaceId", "conversationId", "rank", "version"],
+        where: {
+          branchId: {
+            [Op.is]: null,
+          },
+        },
+        name: "messages_workspace_id_conversation_id_rank_version_branch_null",
+        concurrently: true,
+      },
+      {
+        unique: true,
+        fields: [
+          "workspaceId",
+          "conversationId",
+          "rank",
+          "version",
+          "branchId",
+        ],
+        where: {
+          branchId: {
+            [Op.ne]: null,
+          },
+        },
+        name: "messages_workspace_id_conversation_id_rank_version_branch_id",
+        concurrently: true,
+      },
+      {
+        fields: ["branchId"],
         concurrently: true,
       },
       {
@@ -727,9 +785,6 @@ MessageModel.init(
       {
         fields: ["parentId"],
         concurrently: true,
-      },
-      {
-        fields: ["workspaceId", "conversationId"],
       },
       {
         fields: ["workspaceId", "conversationId", "sId"],

@@ -55,6 +55,7 @@ export const PlanTypeSchema = t.type({
     canUseProduct: t.boolean,
   }),
   trialPeriodDays: t.number,
+  isByok: t.boolean,
 });
 
 export type UpsertPokePlanResponseBody = {
@@ -151,6 +152,7 @@ async function handler(
         maxVaultsInWorkspace: body.limits.vaults.maxVaults,
         trialPeriodDays: body.trialPeriodDays,
         canUseProduct: body.limits.canUseProduct,
+        isByok: body.isByok,
       });
       res.status(200).json({
         plan: body,

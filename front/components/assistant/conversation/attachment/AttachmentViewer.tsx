@@ -4,7 +4,6 @@ import type {
 } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { getIcon } from "@app/components/resources/resources_icons";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
   getInternalMCPServerIconByName,
   isInternalMCPServerName,
@@ -30,33 +29,28 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { InputBarContext } from "../input_bar/InputBarContext";
+
+interface AttachmentViewerProps {
+  viewerOpen: boolean;
+  setViewerOpen: (open: boolean) => void;
+  attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
+  owner: LightWorkspaceType;
+}
 
 export const AttachmentViewer = ({
   viewerOpen,
   setViewerOpen,
   attachmentCitation,
-  conversationId,
   owner,
-}: {
-  viewerOpen: boolean;
-  setViewerOpen: (open: boolean) => void;
-  attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
-  conversationId?: string | null;
-  owner: LightWorkspaceType;
-}) => {
-  const fileUploaderService = useFileUploaderService({
-    owner: owner,
-    useCase: "conversation",
-    useCaseMetadata: {
-      conversationId: conversationId ?? undefined,
-    },
-  });
-
+}: AttachmentViewerProps) => {
   const [text, setText] = useState<string | undefined>();
 
   const isAudio = isAudioContentType(attachmentCitation);
   const isMarkdown = attachmentCitation.contentType === "text/markdown";
+
+  const { fileUploaderService } = useContext(InputBarContext);
 
   // For input bar attachments, try to get the local file blob for reading content directly.
   // For fragments/mcp, we always fetch from server.

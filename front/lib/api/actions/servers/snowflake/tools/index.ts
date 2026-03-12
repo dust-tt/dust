@@ -27,6 +27,7 @@ interface SnowflakeQueryTagMetadata {
   agent_name: string;
   conversation_id: string;
   user_id: string | null;
+  user_email: string | null;
 }
 
 // Builds Snowflake query tag for agent-level usage tracking.
@@ -49,6 +50,7 @@ function buildQueryTagMetadata(
     agent_name: agentConfiguration.name,
     conversation_id: conversation.sId,
     user_id: user?.sId ?? null,
+    user_email: user?.email ?? null,
   };
 
   return JSON.stringify(metadata);
@@ -201,7 +203,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: `Found ${tables.length} tables/views in "${database}"."${schema}"`,
+        text: `Found ${tables.length} tables/views/semantic views in "${database}"."${schema}"`,
       },
       {
         type: "text" as const,
@@ -243,6 +245,45 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
             table,
             columns,
           },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  describe_semantic_view: async (
+    { database, schema, semantic_view },
+    { authInfo, agentLoopContext, auth }
+  ) => {
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      agentLoopContext,
+      auth
+    );
+    if (clientRes.isErr()) {
+      return clientRes;
+    }
+
+    const result = await clientRes.value.describeSemanticView(
+      database,
+      schema,
+      semantic_view
+    );
+    if (result.isErr()) {
+      return new Err(new MCPError(result.error.message));
+    }
+
+    const { dimensions, metrics } = result.value;
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Semantic view "${database}"."${schema}"."${semantic_view}" has ${dimensions.length} dimensions and ${metrics.length} metrics`,
+      },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          { database, schema, semantic_view, dimensions, metrics },
           null,
           2
         ),

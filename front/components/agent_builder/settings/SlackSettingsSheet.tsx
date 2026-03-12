@@ -38,6 +38,7 @@ export type SlackChannel = {
 };
 
 interface SlackChannelsListProps {
+  disabled?: boolean;
   existingSelection: SlackChannel[];
   onSelectionChange: (channels: SlackChannel[]) => void;
   owner: WorkspaceType;
@@ -45,6 +46,7 @@ interface SlackChannelsListProps {
 }
 
 function SlackChannelsList({
+  disabled,
   existingSelection,
   onSelectionChange,
   owner,
@@ -55,6 +57,7 @@ function SlackChannelsList({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
       dataSource: slackDataSource,
+      disabled,
       filterPermission: "write",
       owner,
       parentId: null,
@@ -320,6 +323,7 @@ export function SlackSettingsSheet({
 
             {isAdmin(owner) && (
               <SlackChannelsList
+                disabled={!isOpen}
                 existingSelection={localSlackChannels}
                 onSelectionChange={handleSelectionChange}
                 owner={owner}

@@ -391,17 +391,13 @@ export class ConversationFactory {
         contentType === "text/plain" || contentType === "text/markdown"
           ? contentType
           : "text/plain";
-      const file = await FileFactory.create(
-        workspace,
-        auth.getNonNullableUser(),
-        {
-          contentType: fileContentType,
-          fileName: fileName ?? `${title}.txt`,
-          fileSize: 100,
-          status: "ready",
-          useCase: "conversation",
-        }
-      );
+      const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+        contentType: fileContentType,
+        fileName: fileName ?? `${title}.txt`,
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+      });
       finalFileId = file.id;
     }
 

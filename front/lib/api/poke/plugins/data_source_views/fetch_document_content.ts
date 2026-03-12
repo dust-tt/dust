@@ -11,6 +11,7 @@ export const fetchDocumentContentPlugin = createPlugin({
     description:
       "Retrieves the full content of a specific document from a data source view",
     resourceTypes: ["data_source_views"],
+    readonly: true,
     args: {
       documentId: {
         type: "string",

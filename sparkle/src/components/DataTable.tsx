@@ -1,9 +1,7 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { Checkbox } from "@sparkle/components/Checkbox";
 import {
-  Avatar,
-  Button,
-  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -14,18 +12,17 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Icon,
-  IconButton,
-  Pagination,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components";
+} from "@sparkle/components/Dropdown";
+import { Icon } from "@sparkle/components/Icon";
+import { IconButton } from "@sparkle/components/IconButton";
+import { Pagination } from "@sparkle/components/Pagination";
 import {
   radioIndicatorStyles,
   radioStyles,
 } from "@sparkle/components/RadioGroup";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { Spinner } from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
@@ -821,8 +818,9 @@ DataTable.Row = function Row({
           "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
           "s-border-separator dark:s-border-separator-night",
           (onClick || onDoubleClick) &&
-            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
-          props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
+            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background-night",
+          props["data-selected"] &&
+            "s-bg-muted-background/50 dark:s-bg-muted-background-night/50",
           widthClassName,
           className
         )}

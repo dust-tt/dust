@@ -91,10 +91,11 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       "Post a message to a public channel, private channel, or DM. You MUST ONLY post to channels or users that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
-        .string()
+        .union([z.string(), z.string().array().min(2)])
         .describe(
-          "The channel or user to post the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `search_user` tool. " +
-            "Messages sent to a user will be sent as a direct message."
+          "Use a string to post to a channel (name or ID) or a single user (user ID for DM). " +
+            "Use an array of at least 2 user IDs to create a group DM (e.g. ['U123', 'U456']). " +
+            "Arrays only support user IDs, not channel names or IDs."
         ),
       message: z
         .string()
@@ -200,23 +201,20 @@ Query parameter accepts:
 - Channel ID (e.g., 'C01234ABCD') - instant lookup
 - Channel name or keywords (e.g., 'marketing') - searches channel names, topics, and descriptions, returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches
 
-Scope parameter (applies only to text searches):
-- 'auto' (default) - searches joined channels first, then falls back to all public channels if no results
-- 'joined' - searches only joined channels
-- 'all' - searches only all public channels
-
-Use 'auto' scope by default unless searching for a specific channel subset.`,
+By default, searches only joined channels (public, private, IMs, group DMs).
+Set search_all=true only if the user explicitly requests to search all public workspace channels.`,
     schema: {
       query: z
         .string()
         .describe(
           "Channel ID (e.g., 'C01234ABCD'), channel name, or search keywords. Channel IDs are automatically detected."
         ),
-      scope: z
-        .enum(["auto", "joined", "all"])
-        .default("auto")
+      search_all: z
+        .boolean()
+        .optional()
+        .default(false)
         .describe(
-          "'auto' (default, always use this unless user specifies), 'joined' (only joined channels), 'all' (only public channels). Ignored when query is a channel ID."
+          "Only set to true if the user explicitly requests searching all public workspace channels. By default, searches only joined channels. Ignored when query is a channel ID."
         ),
     },
     stake: "never_ask",
@@ -285,6 +283,168 @@ Use 'auto' scope by default unless searching for a specific channel subset.`,
     displayLabels: {
       running: "Reading Slack thread messages",
       done: "Read Slack thread messages",
+    },
+  },
+  read_canvas: {
+    description:
+      "Find sections within a Slack canvas. " +
+      "Returns section IDs that can be used with write_canvas to insert, replace, or delete specific sections.",
+    schema: {
+      canvas_id: z.string().describe("The canvas file ID (e.g. 'F01234ABCD')."),
+      section_types: z
+        .array(z.enum(["h1", "h2", "h3", "any_header"]))
+        .optional()
+        .describe(
+          "Filter by section type. Defaults to ['any_header'] to return all headings"
+        ),
+      contains_text: z
+        .string()
+        .optional()
+        .describe(
+          "Narrow results to sections containing this text. Can be combined with section_types."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Reading Slack canvas sections",
+      done: "Read Slack canvas sections",
+    },
+  },
+  write_canvas: {
+    description:
+      "Create or edit a Slack canvas.\n\n" +
+      "**Creating a new canvas** (omit canvas_id):\n" +
+      "  - Optionally provide title, content (initial markdown), and channel_id to pin it to a channel tab.\n" +
+      "**Editing an existing canvas** (provide canvas_id + operation):\n" +
+      "  - insert_at_end / insert_at_start: add content at the end or beginning (requires content).\n" +
+      "  - insert_after / insert_before: insert content relative to a section (requires content + section_id from read_canvas).\n" +
+      "  - replace: replace entire canvas or a specific section (requires content; section_id optional).\n" +
+      "  - delete: remove a specific section (requires section_id).\n" +
+      "  - rename: rename the canvas (requires title).\n\n" +
+      "Content must be Markdown. Use read_canvas to get section IDs before doing relative edits.",
+    schema: {
+      canvas_id: z
+        .string()
+        .optional()
+        .describe(
+          "The canvas file ID to edit (e.g. 'F01234ABCD'). Omit to create a new canvas."
+        ),
+      operation: z
+        .enum([
+          "insert_at_end",
+          "insert_at_start",
+          "insert_after",
+          "insert_before",
+          "replace",
+          "delete",
+          "rename",
+        ])
+        .optional()
+        .describe(
+          "The edit operation to perform. Required when canvas_id is provided. " +
+            "Defaults to insert_at_end. " +
+            "insert_after/insert_before/delete require a section_id. " +
+            "rename requires a title."
+        ),
+      content: z
+        .string()
+        .optional()
+        .describe(
+          "Markdown content to insert or replace. Required for all operations except delete and rename."
+        ),
+      section_id: z
+        .string()
+        .optional()
+        .describe(
+          "Section ID from read_canvas. Required for insert_after, insert_before, and delete. " +
+            "Optional for replace (omit to replace entire canvas)."
+        ),
+      title: z
+        .string()
+        .optional()
+        .describe(
+          "Canvas title. Required for the rename operation. Optional when creating a new canvas."
+        ),
+      channel_id: z
+        .string()
+        .optional()
+        .describe(
+          "Channel ID to pin the newly created canvas to (e.g. 'C01234ABCD'). Only used when creating a new canvas."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Writing Slack canvas",
+      done: "Write Slack canvas",
+    },
+  },
+  create_channel: {
+    description:
+      "Create a new Slack channel (public or private). Returns the created channel's details including its ID. Note: Slack always adds the authenticated user to a newly created channel. Use leave_after_creation=true to immediately leave after creating.",
+    schema: {
+      name: z
+        .string()
+        .describe(
+          "The name of the channel to create. Channel names must be lowercase, without spaces (use hyphens instead), and max 80 characters."
+        ),
+      is_private: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          "Whether to create a private channel. Defaults to false (public channel)."
+        ),
+      leave_after_creation: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          "If true, the authenticated user will immediately leave the channel after creating it. Useful when creating a channel on behalf of others. Note: for private channels, leaving means losing access. Defaults to false."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Creating Slack channel",
+      done: "Create Slack channel",
+    },
+  },
+  invite_to_channel: {
+    description:
+      "Invite one or more users to a Slack channel. Users must be specified by their Slack user IDs. Use the search_user tool first if you need to find user IDs.",
+    schema: {
+      channel: z
+        .string()
+        .describe(
+          "The channel name or ID to invite users to (e.g. 'general' or 'C01234ABCD')."
+        ),
+      users: z
+        .string()
+        .array()
+        .min(1)
+        .describe(
+          "Array of Slack user IDs to invite (e.g. ['U01234ABCD', 'U56789EFGH']). Use search_user to find user IDs."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Inviting users to Slack channel",
+      done: "Invite users to Slack channel",
+    },
+  },
+  archive_channel: {
+    description:
+      "Archive a Slack channel. Archived channels are read-only and hidden from the channel list by default. This action can be undone by unarchiving the channel.",
+    schema: {
+      channel: z
+        .string()
+        .describe(
+          "The channel name or ID to archive (e.g. 'old-project' or 'C01234ABCD')."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Archiving Slack channel",
+      done: "Archive Slack channel",
     },
   },
 });

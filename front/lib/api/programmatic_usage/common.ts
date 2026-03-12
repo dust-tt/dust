@@ -33,7 +33,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   zapier: "programmatic",
   zendesk: "user",
   onboarding_conversation: "user",
-  agent_copilot: "user",
+  agent_sidekick: "user",
   project_butler: "user",
   project_kickoff: "user",
 };

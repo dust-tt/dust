@@ -51,7 +51,7 @@ RemoteMCPServerModel.init(
       allowNull: false,
     },
     version: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: DEFAULT_MCP_ACTION_VERSION,
     },

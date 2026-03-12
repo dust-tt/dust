@@ -1,3 +1,4 @@
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import {
   CLOSING_TAG_REGEX,
   INSTRUCTION_BLOCK_REGEX,
@@ -571,20 +572,21 @@ export const InstructionBlockExtension =
         }
 
         const tagName = match[1] || "instructions";
+        const content = match[2];
 
         let tokens;
         try {
           // Attempt to tokenize nested content with original text in a try-catch
           // Sometimes we can't tokenize with non-breakable-space content, hence
           // the .trim() fallback
-          tokens = lexer.blockTokens(match[2]);
+          tokens = lexer.blockTokens(content);
         } catch (error) {
           try {
-            tokens = lexer.blockTokens(match[2].trim());
+            tokens = lexer.blockTokens(content.trim());
             logger.warn("Marked lexer state corruption, passed with trim()", {
               error: normalizeError(error),
               sourceString: src,
-              match2: match[2],
+              match2: content,
             });
           } catch (error) {
             // Marked lexer state corruption - fallback to treating as undefined, so we still at least display the content
@@ -594,7 +596,7 @@ export const InstructionBlockExtension =
               {
                 error: normalizeError(error),
                 sourceString: src,
-                match2: match[2].trim(),
+                match2: content.trim(),
               }
             );
             return undefined;
@@ -607,7 +609,7 @@ export const InstructionBlockExtension =
           attrs: {
             type: tagName.toLowerCase(),
           },
-          text: match[2],
+          text: content,
           tokens,
         };
       },
@@ -615,7 +617,17 @@ export const InstructionBlockExtension =
 
     parseMarkdown: (token, helpers) => {
       const tagType = token.attrs?.type ?? "instructions";
-      const content = helpers.parseChildren(token.tokens ?? []);
+      const rawContent = helpers.parseChildren(token.tokens ?? []);
+
+      // instructionsRoot: parseHTMLToken wraps malformed/unmatched tags via generateJSON(html,
+      // baseExtensions). Since the schema is doc > instructionsRoot > block+, ProseMirror wraps
+      // the fragment in instructionsRoot, which then appears as a child here. We unwrap it to
+      // preserve its block children rather than dropping them.
+      const content = rawContent.flatMap((node) =>
+        node.type === INSTRUCTIONS_ROOT_NODE_NAME
+          ? (node.content ?? [])
+          : [node]
+      );
 
       return {
         type: "instructionBlock",

@@ -1,6 +1,6 @@
 import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
-  getBotUserIdMemoized,
+  getBotUserIdResponse,
   shouldIndexSlackMessage,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -870,10 +870,11 @@ export async function syncThread(
     threadTs,
   });
 
-  const botUserId = await withSlackErrorHandling(() =>
-    getBotUserIdMemoized(slackClient, connectorId)
-  );
-  allMessages = allMessages.filter((m) => m.user !== botUserId);
+  const botUserIdRes = await getBotUserIdResponse(slackClient, connectorId);
+  if (botUserIdRes.isErr()) {
+    throw botUserIdRes.error;
+  }
+  allMessages = allMessages.filter((m) => m.user !== botUserIdRes.value);
 
   if (allMessages.length === 0) {
     // No threaded messages, so we're done.

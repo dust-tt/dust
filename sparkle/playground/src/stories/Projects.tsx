@@ -467,7 +467,7 @@ function DustMain() {
                     />
                   ))
                 ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                     No participants
                   </div>
                 )}
@@ -490,9 +490,11 @@ function DustMain() {
 
   if (!user) {
     return (
-      <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
+      <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
         <div className="s-text-center">
-          <p className="s-text-foreground">Loading...</p>
+          <p className="s-text-foreground dark:s-text-foreground-night">
+            Loading...
+          </p>
         </div>
       </div>
     );
@@ -653,7 +655,7 @@ function DustMain() {
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
                 label="Inbox"
-                className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                className="s-border-b s-border-t s-border-border dark:s-border-border-night s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
                 actionOnHover={false}
                 action={
                   <Button
@@ -941,7 +943,7 @@ function DustMain() {
           value="spaces"
           className="s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground">
+          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
             Spaces - TBD
           </div>
         </TabsContent>
@@ -949,7 +951,7 @@ function DustMain() {
           value="admin"
           className="s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground">
+          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
             Admin - TBD
           </div>
         </TabsContent>
@@ -1235,14 +1237,14 @@ function DustMain() {
       />
     ) : (
       // Priority 4: Show welcome/new conversation view
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
+      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground">
+          <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
             Welcome, Edouard!{" "}
           </div>
           <InputBar placeholder="Ask a question" />
           <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <div className="s-heading-lg s-text-foreground">
+            <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
               Universal search
             </div>
             <SearchInput
@@ -1253,13 +1255,15 @@ function DustMain() {
               className="s-w-full"
             />
           </div>
-          <div className="s-heading-lg s-text-foreground">Chat with…</div>
+          <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+            Chat with…
+          </div>
         </div>
       </div>
     );
 
   return (
-    <div className="s-flex s-h-screen s-w-full s-bg-background">
+    <div className="s-flex s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
       <SidebarLayout
         ref={sidebarLayoutRef}
         sidebar={sidebarContent}

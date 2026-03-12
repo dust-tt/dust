@@ -47,6 +47,9 @@ export async function listAttachments(
           f.fileId,
           getAttachmentFromFile({
             fileId: f.fileId,
+            source: "agent",
+            createdAt: f.createdAt ?? 0,
+            updatedAt: f.updatedAt ?? 0,
             contentType: f.contentType,
             title: f.title,
             snippet: f.snippet,
@@ -74,6 +77,9 @@ export async function listAttachments(
           f.sId,
           getAttachmentFromFile({
             fileId: f.sId,
+            source: null,
+            createdAt: f.createdAt.getTime(),
+            updatedAt: f.updatedAt.getTime(),
             contentType: f.contentType,
             title: f.fileName,
             snippet: f.snippet,

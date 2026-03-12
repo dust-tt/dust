@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
 import React, { type ReactNode } from "react";
@@ -101,6 +99,7 @@ export interface ConversationListItemProps {
   time: string;
   replySection?: ReactNode;
   onClick?: () => void;
+  showFocus?: boolean;
 }
 
 export function ConversationListItem({
@@ -110,9 +109,41 @@ export function ConversationListItem({
   time,
   replySection,
   onClick,
+  showFocus = false,
 }: ConversationListItemProps) {
+  const [isFocusVisible, setIsFocusVisible] = React.useState(false);
+  const hasPlayedFocusForCurrentTriggerRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!showFocus) {
+      hasPlayedFocusForCurrentTriggerRef.current = false;
+      return;
+    }
+
+    if (hasPlayedFocusForCurrentTriggerRef.current) {
+      return;
+    }
+
+    hasPlayedFocusForCurrentTriggerRef.current = true;
+    setIsFocusVisible(true);
+
+    const timeoutId = setTimeout(() => {
+      setIsFocusVisible(false);
+    }, 2000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [showFocus]);
+
   return (
-    <ListItem onClick={onClick} groupName="conversation-item">
+    <ListItem
+      onClick={onClick}
+      groupName="conversation-item"
+      className={`s-transition-colors s-duration-500 ${
+        isFocusVisible ? "s-bg-highlight-50 dark:s-bg-highlight-100-night" : ""
+      }`}
+    >
       {creator ? (
         <Avatar
           name={creator.fullName}

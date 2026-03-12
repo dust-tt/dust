@@ -45,6 +45,9 @@ export async function submitSkillBuilderForm({
         tools: formData.tools.map((tool) => ({
           mcpServerViewId: tool.configuration.mcpServerViewId,
         })),
+        fileAttachments: formData.fileAttachments.map((f) => ({
+          fileId: f.fileId,
+        })),
         attachedKnowledge: formData.attachedKnowledge ?? [],
       }),
     });

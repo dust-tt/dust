@@ -1,19 +1,18 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import { sectionFullText } from "@app/types/core/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -591,9 +590,9 @@ async function handler(
         ?.substring(6)
         ?.trim();
 
-      // Use titleInTags if no title is provided.
+      // Use titleInTags if no title is provided, then documentId as last resort (same behavior as uploading in the web app).
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const title = r.data.title?.trim() || titleInTags || UNTITLED_TITLE;
+      const title = r.data.title?.trim() || titleInTags || documentId;
 
       if (!titleInTags) {
         tags.push(`title:${title}`);
@@ -648,7 +647,8 @@ async function handler(
         });
       } else {
         // Data source operations are performed with our credentials.
-        const credentials = dustManagedCredentials();
+        const credentials =
+          await ProviderCredentialResource.getCredentials(auth);
 
         // Create document with the Dust internal API.
         const upsertRes = await coreAPI.upsertDataSourceDocument({

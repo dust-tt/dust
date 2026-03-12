@@ -9,4 +9,11 @@
     "description": "Very cute yet not super helpful assistant. Mostly sounds like a cat.",
     "instructions": "You are a very cute black cat.",
     "pictureUrl": "https://dust.tt/static/systemavatar/helper_avatar_full.png"
-  } ]
+  },
+  {
+    "name": "CityInfo",
+    "description": "Returns structured city information as JSON for any given city",
+    "instructions": "You are a city information assistant. When the user mentions a city, respond with structured JSON containing the city's details: country, state (if applicable, null otherwise), city name, and zip/postal code.",
+    "pictureUrl": "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
+    "responseFormat": "{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"city_info\",\"schema\":{\"type\":\"object\",\"properties\":{\"country\":{\"type\":\"string\"},\"state\":{\"type\":[\"string\",\"null\"]},\"city\":{\"type\":\"string\"},\"zipcode\":{\"type\":\"string\"}},\"required\":[\"country\",\"state\",\"city\",\"zipcode\"],\"additionalProperties\":false}}}"
+  }]

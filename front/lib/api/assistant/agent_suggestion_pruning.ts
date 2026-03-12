@@ -341,7 +341,8 @@ function getDescendantBlockIds(
  * Conflict rules:
  * - Same block ID: New suggestion replaces old one
  * - Parent-child hierarchy: Parent change invalidates child suggestions
- * - instructions-root: Full rewrite invalidates all block suggestions
+ * - instructions-root (new): Full rewrite invalidates all block suggestions
+ * - instructions-root (existing): Block-level new suggestions invalidate existing root (mutually exclusive)
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
@@ -411,6 +412,12 @@ export async function pruneConflictingInstructionSuggestions(
 
     // Conflict 2: Child block (existing targets a descendant that will be replaced)
     if (allDescendantBlockIds.has(existingTargetId)) {
+      toMarkOutdated.push(existingSugg);
+      continue;
+    }
+
+    // Conflict 3: Existing is instructions-root but new suggestions are block-level.
+    if (existingTargetId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
       toMarkOutdated.push(existingSugg);
     }
   }

@@ -1,35 +1,57 @@
 import assert from "node:assert";
-
+import type { APIPromise } from "@anthropic-ai/sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
+import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
 import type {
-  MessageDeltaUsage,
+  Message,
+  MessageCountTokensParams,
+  MessageParam,
   MessageStreamEvent,
+  MessageTokensCount,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
+  LLMOutputItem,
   ReasoningDeltaEvent,
   ReasoningGeneratedEvent,
   TextDeltaEvent,
   TextGeneratedEvent,
+  TokenUsage,
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isRecord } from "@app/types/shared/utils/general";
 import cloneDeep from "lodash/cloneDeep";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  countTokensCallback?: (
+    body: MessageCountTokensParams
+  ) => APIPromise<MessageTokensCount>
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
+  // Accumulate token usage to return later
+  const tokenUsageAccumulator: Required<TokenUsage> = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedTokens: 0,
+    cacheCreationTokens: 0,
+    uncachedInputTokens: 0,
+    totalTokens: 0,
+    reasoningTokens: 0,
+  };
 
   // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
@@ -41,12 +63,23 @@ export async function* streamLLMEvents(
     for (const ev of handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
-      metadata
+      metadata,
+      tokenUsageAccumulator
     )) {
       aggregate.add(ev);
       yield ev;
     }
   }
+
+  await estimateReasoningTokens(
+    tokenUsageAccumulator,
+    aggregate.textGenerated,
+    aggregate.toolCalls,
+    countTokensCallback,
+    metadata
+  );
+
+  yield tokenUsage(tokenUsageAccumulator, metadata);
 
   yield {
     type: "success",
@@ -61,7 +94,8 @@ export async function* streamLLMEvents(
 function* handleMessageStreamEvent(
   messageStreamEvent: BetaRawMessageStreamEvent,
   stateContainer: { state: StreamState },
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
   switch (messageStreamEvent.type) {
     case "message_start":
@@ -100,7 +134,11 @@ function* handleMessageStreamEvent(
       );
       break;
     case "message_delta":
-      yield* handleMessageDelta(messageStreamEvent, metadata);
+      yield* handleMessageDelta(
+        messageStreamEvent,
+        metadata,
+        tokenUsageAccumulator
+      );
       break;
     default:
       assertNever(messageStreamEvent);
@@ -221,9 +259,22 @@ function* handleContentBlockStop(
 
 function* handleMessageDelta(
   event: Extract<BetaRawMessageStreamEvent, { type: "message_delta" }>,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
-  yield tokenUsage(event.usage, metadata);
+  // Accumulate token usage instead of yielding it
+  const cachedTokens = event.usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = event.usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = event.usage.input_tokens ?? 0;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
+  const outputTokens = event.usage.output_tokens;
+
+  tokenUsageAccumulator.inputTokens = inputTokens;
+  tokenUsageAccumulator.outputTokens = outputTokens;
+  tokenUsageAccumulator.cachedTokens = cachedTokens;
+  tokenUsageAccumulator.cacheCreationTokens = cacheCreationTokens;
+  tokenUsageAccumulator.uncachedInputTokens = uncachedInputTokens;
+  tokenUsageAccumulator.totalTokens = inputTokens + outputTokens;
 
   if (event.delta.stop_reason) {
     yield* handleStopReason(event.delta.stop_reason, metadata);
@@ -268,6 +319,61 @@ function* handleStopReason(
         metadata
       );
       break;
+  }
+}
+
+/**
+ * Estimates reasoning tokens by comparing total output tokens against a count
+ * of non-reasoning output tokens (text + tool calls). Mutates tokenUsageAccumulator
+ * in place.
+ */
+async function estimateReasoningTokens(
+  tokenUsageAccumulator: Required<TokenUsage>,
+  textGenerated: TextGeneratedEvent | undefined,
+  toolCalls: ToolCallEvent[] | undefined,
+  countTokensCallback:
+    | ((body: MessageCountTokensParams) => APIPromise<MessageTokensCount>)
+    | undefined,
+  metadata: LLMClientMetadata
+): Promise<void> {
+  const outputTokensWithoutReasoning: MessageParam[] = [];
+
+  if (textGenerated) {
+    outputTokensWithoutReasoning.push({
+      content: textGenerated.content.text,
+      role: "user" as const,
+    });
+  }
+  if (toolCalls) {
+    for (const call of toolCalls) {
+      outputTokensWithoutReasoning.push({
+        content: `${call.content.name} ${JSON.stringify(call.content.arguments)}`,
+        role: "user" as const,
+      });
+    }
+  }
+
+  try {
+    // Anthropic does not send the output token count details.
+    // This allows a rough estimation of the reasoning tokens.
+    const tokenCount = (await countTokensCallback?.({
+      model: metadata.modelId,
+      messages: outputTokensWithoutReasoning,
+    })) ?? {
+      input_tokens: tokenUsageAccumulator.outputTokens,
+    };
+    const reasoningTokens = Math.max(
+      0,
+      tokenUsageAccumulator.outputTokens - tokenCount.input_tokens
+    );
+    tokenUsageAccumulator.reasoningTokens = reasoningTokens;
+    tokenUsageAccumulator.outputTokens =
+      tokenUsageAccumulator.outputTokens - reasoningTokens;
+  } catch (err) {
+    logger.error("Failed getting token details from Anthropic", {
+      error: normalizeError(err),
+      metadata,
+    });
   }
 }
 
@@ -322,25 +428,12 @@ function reasoningGenerated(
 }
 
 function tokenUsage(
-  usage: MessageDeltaUsage,
+  tokenUsageAccumulator: Required<TokenUsage>,
   metadata: LLMClientMetadata
 ): TokenUsageEvent {
-  const cachedTokens = usage.cache_read_input_tokens ?? 0;
-  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
-  const uncachedInputTokens = usage.input_tokens ?? 0;
-  // Include all input tokens to keep consistency with core implementation
-  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
-
   return {
     type: "token_usage",
-    content: {
-      inputTokens,
-      outputTokens: usage.output_tokens,
-      cachedTokens,
-      cacheCreationTokens,
-      uncachedInputTokens,
-      totalTokens: inputTokens + usage.output_tokens,
-    },
+    content: tokenUsageAccumulator,
     metadata,
   };
 }
@@ -365,4 +458,167 @@ function toolCall({
     },
     metadata,
   };
+}
+
+/**
+ * Converts a single Anthropic batch result to a list of LLMEvents,
+ * mirroring what streamLLMEvents would have produced for a streaming call.
+ */
+export async function batchResultToLLMEvents(
+  result: MessageBatchResult,
+  metadata: LLMClientMetadata,
+  countTokensCallback?: (
+    body: MessageCountTokensParams
+  ) => APIPromise<MessageTokensCount>
+): Promise<LLMEvent[]> {
+  switch (result.type) {
+    case "succeeded":
+      return succeededMessageToEvents(
+        result.message,
+        metadata,
+        countTokensCallback
+      );
+    case "errored":
+      return [
+        new EventError(
+          {
+            type: "server_error",
+            message: result.error.error.message,
+            isRetryable: false,
+          },
+          metadata
+        ),
+      ];
+    case "canceled":
+      return [
+        new EventError(
+          {
+            type: "stream_error",
+            message: "Batch request was canceled.",
+            isRetryable: false,
+          },
+          metadata
+        ),
+      ];
+    case "expired":
+      return [
+        new EventError(
+          {
+            type: "stream_error",
+            message: "Batch request expired before processing completed.",
+            isRetryable: true,
+          },
+          metadata
+        ),
+      ];
+    default:
+      assertNever(result);
+  }
+}
+
+async function succeededMessageToEvents(
+  message: Message,
+  metadata: LLMClientMetadata,
+  countTokensCallback?: (
+    body: MessageCountTokensParams
+  ) => APIPromise<MessageTokensCount>
+): Promise<LLMEvent[]> {
+  const events: LLMEvent[] = [];
+
+  events.push({
+    type: "interaction_id",
+    content: { modelInteractionId: message.id },
+    metadata,
+  });
+
+  const textBlocks: string[] = [];
+  const toolCalls: ToolCallEvent[] = [];
+  let reasoningGeneratedEvent: ReasoningGeneratedEvent | undefined = undefined;
+
+  for (const block of message.content) {
+    switch (block.type) {
+      case "text":
+        textBlocks.push(block.text);
+        events.push(textGenerated(block.text, metadata));
+        break;
+      case "thinking":
+        reasoningGeneratedEvent = reasoningGenerated(
+          block.thinking,
+          metadata,
+          block.signature
+        );
+        events.push(reasoningGeneratedEvent);
+        break;
+      case "tool_use": {
+        const input =
+          typeof block.input === "object" &&
+          block.input !== null &&
+          isRecord(block.input)
+            ? block.input
+            : {};
+        const toolCallEvent: ToolCallEvent = {
+          type: "tool_call",
+          content: { id: block.id, name: block.name, arguments: input },
+          metadata,
+        };
+        toolCalls.push(toolCallEvent);
+        events.push(toolCallEvent);
+        break;
+      }
+      default:
+        // Ignore other block types (redacted_thinking, server_tool_use, etc.)
+        break;
+    }
+  }
+
+  const usage = message.usage;
+  const cachedTokens = usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = usage.input_tokens;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
+  const tokenUsageAccumulator = {
+    inputTokens,
+    outputTokens: usage.output_tokens,
+    cachedTokens,
+    cacheCreationTokens,
+    uncachedInputTokens,
+    totalTokens: inputTokens + usage.output_tokens,
+    reasoningTokens: 0,
+  };
+
+  const textGeneratedEvent: TextGeneratedEvent | undefined =
+    textBlocks.length > 0
+      ? textGenerated(textBlocks.join(""), metadata)
+      : undefined;
+
+  await estimateReasoningTokens(
+    tokenUsageAccumulator,
+    textGeneratedEvent,
+    toolCalls.length > 0 ? toolCalls : undefined,
+    countTokensCallback,
+    metadata
+  );
+
+  events.push(tokenUsage(tokenUsageAccumulator, metadata));
+
+  const aggregated: LLMOutputItem[] = [];
+
+  if (textGeneratedEvent) {
+    aggregated.push(textGeneratedEvent);
+  }
+  if (reasoningGeneratedEvent) {
+    aggregated.push(reasoningGeneratedEvent);
+  }
+  aggregated.push(...toolCalls);
+
+  events.push({
+    type: "success",
+    aggregated,
+    textGenerated: textGeneratedEvent,
+    reasoningGenerated: reasoningGeneratedEvent,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    metadata,
+  });
+
+  return events;
 }

@@ -38,7 +38,11 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import {
   getWorkspaceFirstAdmin,
@@ -71,8 +75,6 @@ import type Stripe from "stripe";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
-
-const SUBSCRIPTION_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 type CachedSubscription = {
   id: number;
@@ -118,8 +120,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       { ...blob },
       { transaction }
     );
-    await SubscriptionResource.invalidateSubscriptionCache(
-      subscription.workspaceId
+    const workspaceId = subscription.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
     );
     return new SubscriptionResource(
       SubscriptionModel,
@@ -189,10 +192,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return new SubscriptionResource(SubscriptionModel, blob, data.plan);
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static fetchActiveByWorkspaceModelIdCached = cacheWithRedis(
     SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
     SubscriptionResource.subscriptionCacheKeyResolver,
-    { ttlMs: SUBSCRIPTION_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   static async fetchActiveByWorkspaceModelId(
@@ -1032,7 +1036,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   // Payment status.
@@ -1044,7 +1051,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   async setPaymentFailingStatus(
@@ -1057,7 +1067,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   async markAsCanceled(
@@ -1073,7 +1086,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   async markAsActive(
@@ -1081,7 +1097,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     transaction?: Transaction
   ): Promise<void> {
     await this.update({ status: "active", trialing }, transaction);
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   /**

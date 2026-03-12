@@ -49,6 +49,27 @@ export function isGeneralExceptionError(err: unknown): err is GraphError {
   );
 }
 
+// "Billing Policy Not Found Or Invalid" errors indicate a Microsoft 365
+// billing/licensing misconfiguration on the customer's tenant. These are not
+// actionable on our side and should be skipped gracefully.
+export function isBillingPolicyError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.message.includes("Billing Policy Not Found Or Invalid")
+  );
+}
+
+// Identifies JSON parsing errors that may occur when Microsoft's API returns
+// malformed JSON or error responses that are not properly formatted.
+export function isJSONParsingError(err: unknown): err is Error {
+  return (
+    err instanceof SyntaxError ||
+    (err instanceof Error &&
+      err.message.includes("JSON") &&
+      (err.message.includes("parse") || err.message.includes("Expected")))
+  );
+}
+
 export class MicrosoftCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {

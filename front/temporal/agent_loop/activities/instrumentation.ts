@@ -1,4 +1,6 @@
-import { statsDClient } from "@app/logger/statsDClient";
+import { getStatsDClient } from "@app/lib/utils/statsd";
+
+const statsDClient = getStatsDClient();
 
 // StatsD metric names.
 export const METRICS = {

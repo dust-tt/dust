@@ -38,7 +38,7 @@ export function AgentCreatedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Agent {agentHandle} has been created!</DialogTitle>
+          <DialogTitle>Agent {agentHandle} created!</DialogTitle>
         </DialogHeader>
         <DialogContainer>
           You can now use {agentHandle} in conversations. Start a chat or keep

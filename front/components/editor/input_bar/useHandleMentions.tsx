@@ -50,6 +50,8 @@ const useHandleMentions = (
       }
     }
   }, [selectedAgent, editorService]);
+
+  return { stickyMentionsTextContent };
 };
 
 export default useHandleMentions;

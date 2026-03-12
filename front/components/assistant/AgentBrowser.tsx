@@ -7,6 +7,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
@@ -212,6 +213,7 @@ export function AgentBrowser({
   >(null);
 
   const router = useAppRouter();
+  const clientType = useClientType();
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortType, setSortType] = useState<
@@ -454,30 +456,35 @@ export function AgentBrowser({
           )}
         </SearchDropdownMenu>
 
-        <div className="hidden sm:block">
-          <div className="flex gap-2">
-            {!isRestrictedFromAgentCreation && (
-              <div ref={createAgentButtonRef}>
-                <CreateDropdown owner={owner} dataGtmLocation="homepage" />
-              </div>
-            )}
+        {clientType === "web" && (
+          <div className="hidden sm:block">
+            <div className="flex gap-2">
+              {!isRestrictedFromAgentCreation && (
+                <div ref={createAgentButtonRef}>
+                  <CreateDropdown owner={owner} dataGtmLocation="homepage" />
+                </div>
+              )}
 
-            {isBuilder(owner) ? (
-              <ManageDropdownMenu owner={owner} />
-            ) : (
-              <Button
-                href={getAgentBuilderRoute(owner.sId, "manage")}
-                variant="primary"
-                icon={ContactsRobotIcon}
-                label="Manage agents"
-                data-gtm-label="assistantManagementButton"
-                data-gtm-location="homepage"
-                size="sm"
-                onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
-              />
-            )}
+              {isBuilder(owner) ? (
+                <ManageDropdownMenu owner={owner} />
+              ) : (
+                <Button
+                  href={getAgentBuilderRoute(owner.sId, "manage")}
+                  variant="primary"
+                  icon={ContactsRobotIcon}
+                  label="Manage agents"
+                  data-gtm-label="assistantManagementButton"
+                  data-gtm-location="homepage"
+                  size="sm"
+                  onClick={withTracking(
+                    TRACKING_AREAS.BUILDER,
+                    "manage_agents"
+                  )}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <AgentDetails

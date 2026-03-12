@@ -1,7 +1,7 @@
-import { StatsD } from "hot-shots";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export const statsDClient = new StatsD();
+const statsDClient = getStatsDClient();
 
 // TODO(2026-01-12): Delete once helm chart has been updated to use /api/healthz/ready.
 

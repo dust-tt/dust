@@ -5,14 +5,16 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BarChartIcon,
+  BoltIcon,
   BracesIcon,
+  BrainIcon,
   CardIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
-  GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ShapesIcon,
@@ -73,6 +75,7 @@ export type SubNavigationAssistantsId =
 export type SubNavigationAdminId =
   | "subscription"
   | "workspace"
+  | "model_providers"
   | "members"
   | "providers"
   | "api_keys"
@@ -83,6 +86,7 @@ export type SubNavigationAdminId =
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   workspace: ["/w/[wId]/workspace"],
+  model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   subscription: ["/w/[wId]/subscription"],
   api_keys: ["/w/[wId]/developers/api-keys"],
@@ -189,6 +193,7 @@ export const getTopNavigationTabs = (
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
           "/w/[wId]/workspace",
+          "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
           "/w/[wId]/analytics",
           "/w/[wId]/actions",
@@ -238,9 +243,16 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: GlobeAltIcon,
+          icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
+        },
+        {
+          id: "model_providers",
+          label: "Model Providers",
+          icon: BrainIcon,
+          href: `/w/${owner.sId}/model-providers`,
+          current: isCurrent("model_providers"),
         },
         {
           id: "analytics",
@@ -252,7 +264,7 @@ export const subNavigationAdmin = ({
         {
           id: "subscription",
           label: "Subscription",
-          icon: ShapesIcon,
+          icon: CardIcon,
           href: `/w/${owner.sId}/subscription`,
           current: isCurrent("subscription"),
         },
@@ -273,8 +285,8 @@ export const subNavigationAdmin = ({
         },
         {
           id: "credits_usage",
-          label: "Programmatic usage",
-          icon: CardIcon,
+          label: "Programmatic Usage",
+          icon: BoltIcon,
           href: `/w/${owner.sId}/developers/credits-usage`,
           current: isCurrent("credits_usage"),
         },
@@ -288,10 +300,11 @@ export const subNavigationAdmin = ({
       menus: [
         {
           id: "providers",
-          label: "Providers",
+          label: "App Credentials",
           icon: ShapesIcon,
           href: `/w/${owner.sId}/developers/providers`,
           current: isCurrent("providers"),
+          featureFlag: "legacy_dust_apps",
         },
         {
           id: "dev_secrets",

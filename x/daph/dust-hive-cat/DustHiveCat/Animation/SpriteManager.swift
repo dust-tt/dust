@@ -64,16 +64,14 @@ class SpriteManager {
             }
         }
 
-        // If not found in subfolder, try in DustHiveCat_DustHiveCat.bundle (Swift PM resource bundle)
+        // If not found in subfolder, try in Bundle.module (Swift PM resource bundle)
         if frames.isEmpty {
-            if let moduleBundle = Bundle(identifier: "DustHiveCat.DustHiveCat"),
-               let modulePath = moduleBundle.resourcePath {
-                for i in 0..<frameCount {
-                    let frameName = String(format: "%02d_%@_%@", i, catType, animation)
-                    let path = "\(modulePath)/\(catType)/\(frameName).png"
-                    if let image = NSImage(contentsOfFile: path) {
-                        frames.append(image)
-                    }
+            let modulePath = Bundle.module.resourcePath ?? Bundle.module.bundlePath
+            for i in 0..<frameCount {
+                let frameName = String(format: "%02d_%@_%@", i, catType, animation)
+                let path = "\(modulePath)/\(catType)/\(frameName).png"
+                if let image = NSImage(contentsOfFile: path) {
+                    frames.append(image)
                 }
             }
         }

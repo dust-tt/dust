@@ -67,27 +67,30 @@ export const AddToolsMenu = ({
         className="w-96"
         align="end"
         mountPortalContainer={portalContainer}
+        dropdownHeaders={
+          <DropdownMenuSearchbar
+            autoFocus
+            placeholder="Search tools..."
+            name="search"
+            value={searchText}
+            onChange={setSearchText}
+            disabled={isAvailableMCPServersLoading}
+            button={
+              <Button
+                icon={PlusIcon}
+                label="Add MCP Server"
+                // Empty call is required given onClick passes a MouseEvent
+                onClick={withTracking(
+                  TRACKING_AREAS.TOOLS,
+                  "add_mcp_server",
+                  () => createRemoteMCPServer()
+                )}
+                size="sm"
+              />
+            }
+          />
+        }
       >
-        <DropdownMenuSearchbar
-          placeholder="Search tools..."
-          name="search"
-          value={searchText}
-          onChange={setSearchText}
-          disabled={isAvailableMCPServersLoading}
-          button={
-            <Button
-              icon={PlusIcon}
-              label="Add MCP Server"
-              // Empty call is required given onClick passes a MouseEvent
-              onClick={withTracking(
-                TRACKING_AREAS.TOOLS,
-                "add_mcp_server",
-                () => createRemoteMCPServer()
-              )}
-              size="sm"
-            />
-          }
-        />
         {isAvailableMCPServersLoading && (
           <div className="flex justify-center py-4">
             <Spinner size="sm" />{" "}

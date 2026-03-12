@@ -1,13 +1,12 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { DUST_US_URL, FRONT_EXTENSION_URL } from "@extension/shared/lib/config";
 import { generatePKCE } from "@extension/shared/lib/utils";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getConnectionDetails,
-  getDustDomain,
+  getRegionInfoFromClaims,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
@@ -74,7 +73,7 @@ export class FrontAuthService extends AuthService {
     options: Record<string, string>
   ): Promise<{ code: string }> {
     const queryString = new URLSearchParams(options).toString();
-    const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
+    const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
     const result = await openAndWaitForPopup<{
       code: string;
@@ -100,7 +99,13 @@ export class FrontAuthService extends AuthService {
     return result.data;
   }
 
-  async login({ forcedConnection }: { forcedConnection?: string }) {
+  async login({
+    forcedConnection,
+    organizationId,
+  }: {
+    forcedConnection?: string;
+    organizationId?: string;
+  }) {
     const { codeVerifier, codeChallenge } = await generatePKCE();
 
     // Store code verifier for later use
@@ -108,12 +113,11 @@ export class FrontAuthService extends AuthService {
 
     try {
       const options: Record<string, string> = {
-        response_type: "code",
         redirect_uri: FRONT_EXTENSION_URL,
         code_challenge_method: "S256",
         code_challenge: codeChallenge,
-        provider: "authkit",
         connection: forcedConnection ?? "",
+        ...(organizationId ? { organizationId } : {}),
       };
 
       const result = await this.openAuthPopup(options);
@@ -128,12 +132,10 @@ export class FrontAuthService extends AuthService {
       }
 
       const tokenParams = new URLSearchParams({
-        grant_type: "authorization_code",
         code_verifier: storedCodeVerifier,
         code: result.code,
-        redirect_uri: FRONT_EXTENSION_URL,
       });
-      const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
+      const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -160,86 +162,55 @@ export class FrontAuthService extends AuthService {
       // Store tokens
       const tokens = await this.saveTokens({
         success: true,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || "",
-        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken || "",
+        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
       });
 
-      const claims = jwtDecode<Record<string, string>>(data.access_token);
+      const claims = jwtDecode<Record<string, string>>(data.accessToken);
 
-      const dustDomain = getDustDomain(claims);
-      const connectionDetails = getConnectionDetails(claims);
+      const regionInfo = getRegionInfoFromClaims(claims);
 
-      if (
-        data.authentication_method === "SSO" &&
-        !connectionDetails.connectionStrategy
-      ) {
-        connectionDetails.connectionStrategy = data.authentication_method;
-      }
+      await this.storage.set("regionInfo", regionInfo);
 
-      // Get user details and workspaces
-      const res = await this.fetchMe({
-        accessToken: data.access_token,
-        dustDomain,
-      });
-
-      if (res.isErr()) {
-        return res;
-      }
-
-      const workspaces = res.value.user.workspaces;
-
-      const selectedWorkspace =
-        workspaces.find((w) => w.sId === res.value.user.selectedWorkspace) ||
-        workspaces[0];
-
-      const storedUser = await this.saveUser({
-        ...res.value.user,
-        ...connectionDetails,
-        dustDomain,
-        selectedWorkspace: selectedWorkspace?.sId ?? null,
-      });
-      return new Ok({ tokens, user: storedUser });
+      return new Ok({ tokens, regionInfo });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
   }
 
   async logout(): Promise<boolean> {
-    const queryParams: Record<string, string> = {
-      returnTo: FRONT_EXTENSION_URL,
-    };
-
     const accessToken = await this.getAccessToken();
-    if (accessToken) {
-      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-      if (decodedPayload) {
-        queryParams.session_id = decodedPayload.sid || "";
-      }
-    }
-
-    const user = await this.getStoredUser();
-    if (!user) {
+    if (!accessToken) {
       return true;
     }
 
-    const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
-      queryParams
-    )}`;
+    const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+    const sessionId = decodedPayload?.sid;
+    if (!sessionId) {
+      return true;
+    }
 
-    const result = await openAndWaitForPopup<void>(
-      logoutUrl,
-      "Logout",
-      (popup) => {
-        const popupUrl = popup.location.href;
-        return popupUrl.includes(FRONT_EXTENSION_URL)
-          ? { data: undefined }
-          : null;
+    const regionInfo = await this.getRegionInfoFromStorage();
+    if (!regionInfo) {
+      return true;
+    }
+
+    const response = await fetch(
+      `${regionInfo.url}/api/workos/revoke-session`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: "omit",
+        body: JSON.stringify({ session_id: sessionId }),
       }
     );
 
-    if (result.error) {
-      throw result.error;
+    if (!response.ok) {
+      throw new Error(`Revoke session failed: ${response.status}`);
     }
 
     return true;
@@ -253,7 +224,7 @@ export class FrontAuthService extends AuthService {
       tokens.expiresAt < Date.now() ||
       forceRefresh
     ) {
-      const refreshRes = await this.refreshToken();
+      const refreshRes = await this.refreshToken(tokens);
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
       } else {
@@ -264,28 +235,29 @@ export class FrontAuthService extends AuthService {
     return tokens?.accessToken ?? null;
   }
 
-  async refreshToken(): Promise<Result<StoredTokens, AuthError>> {
+  async refreshToken(
+    tokens: StoredTokens | null
+  ): Promise<Result<StoredTokens, AuthError>> {
     try {
-      const tokenParams: Record<string, string> = {
-        grant_type: "refresh_token",
-        refresh_token: (await this.getStoredTokens())?.refreshToken || "",
-      };
-
-      if (!tokenParams.refresh_token) {
-        return new Err(
-          new AuthError("invalid_oauth_token_error", "No refresh token")
-        );
+      tokens = tokens ?? (await this.getStoredTokens());
+      if (!tokens) {
+        return new Err(new AuthError("not_authenticated", "No tokens found."));
       }
 
-      const user = await this.getStoredUser();
-      if (!user) {
+      const tokenParams: Record<string, string> = {
+        grant_type: "refresh_token",
+        refresh_token: tokens.refreshToken ?? "",
+      };
+
+      const regionInfo = await this.getRegionInfoFromStorage();
+      if (!regionInfo) {
         return new Err(
-          new AuthError("invalid_oauth_token_error", "No user found")
+          new AuthError("invalid_oauth_token_error", "No region info found")
         );
       }
 
       const response = await fetch(
-        `${user.dustDomain}/api/v1/auth/authenticate`,
+        `${regionInfo.url}/api/workos/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -303,9 +275,9 @@ export class FrontAuthService extends AuthService {
       const data = await response.json();
       const storedTokens = await this.saveTokens({
         success: true,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || "",
-        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken || "",
+        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
       });
       return new Ok(storedTokens);
     } catch (error) {

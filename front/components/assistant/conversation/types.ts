@@ -16,6 +16,7 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -80,6 +81,12 @@ export type VirtuosoMessageListContext = {
     skipToolsValidation?: boolean;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+  suggestionsByMessageSId: Map<string, ButlerSuggestionPublicType[]>;
+  handleSuggestionAction: (
+    suggestionSId: string,
+    status: "accepted" | "dismissed"
+  ) => Promise<void>;
+  isButlerThinking: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   // Project membership fields (undefined for non-project conversations)
@@ -102,7 +109,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
         message.context.origin === "project_kickoff" ||
-        isCopilotBootstrapMessage(message))) ||
+        isSidekickBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -141,8 +148,8 @@ export const makeInitialMessageStreamState = (
 export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
   uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;
 
-export const isCopilotBootstrapMessage = (
+export const isSidekickBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
-  return message.context.origin === "agent_copilot" && message.rank === 0;
+  return message.context.origin === "agent_sidekick" && message.rank === 0;
 };

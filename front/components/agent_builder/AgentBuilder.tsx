@@ -11,18 +11,18 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
-import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
-import {
-  CopilotSuggestionsProvider,
-  useCopilotSuggestions,
-} from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
-import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
 } from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
+import { SidekickPanelProvider } from "@app/components/agent_builder/SidekickPanelContext";
+import {
+  SidekickSuggestionsProvider,
+  useSidekickSuggestions,
+} from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/useMCPServer";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
@@ -117,6 +117,7 @@ export default function AgentBuilder({
   const { mcpServerViews } = useMCPServerViewsContext();
   const { hasFeature } = useFeatureFlags();
   const { fetcherWithBody } = useFetcher();
+  const hasSidekick = useIsAgentBuilderSidekickEnabled();
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -138,11 +139,13 @@ export default function AgentBuilder({
 
   const agentConfigurationIdForSkills =
     duplicateAgentId ?? agentConfiguration?.sId ?? null;
-  const { skills, isSkillsLoading } = useAgentConfigurationSkills({
-    owner,
-    agentConfigurationId: agentConfigurationIdForSkills ?? "",
-    disabled: !agentConfigurationIdForSkills,
-  });
+  const { skills, isSkillsLoading, mutateSkills } = useAgentConfigurationSkills(
+    {
+      owner,
+      agentConfigurationId: agentConfigurationIdForSkills ?? "",
+      disabled: !agentConfigurationIdForSkills,
+    }
+  );
 
   const { editors } = useEditors({
     owner,
@@ -248,6 +251,7 @@ export default function AgentBuilder({
     return getDefaultAgentFormData({
       owner,
       user,
+      hasSidekick,
     });
   }, [
     agentConfiguration,
@@ -256,6 +260,7 @@ export default function AgentBuilder({
     user,
     owner,
     hasFeature,
+    hasSidekick,
   ]);
 
   const form = useForm<AgentBuilderFormData>({
@@ -431,14 +436,14 @@ export default function AgentBuilder({
         sendNotification({
           title: isCreatingNew ? "Agent created" : "Agent saved",
           description: isCreatingNew
-            ? "Your agent has been successfully created"
+            ? "Agent created!"
             : "Your agent has been successfully saved",
           type: "success",
         });
       }
 
       // Mutate triggers and actions to refresh from backend
-      await Promise.all([mutateTriggers(), mutateActions()]);
+      await Promise.all([mutateTriggers(), mutateActions(), mutateSkills()]);
       onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {
@@ -533,7 +538,7 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <CopilotSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
+        <SidekickSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
           <AgentBuilderContent
             agentConfiguration={agentConfiguration}
             pendingAgentId={pendingAgentId}
@@ -547,17 +552,19 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
+            isDuplicate={!!duplicateAgentId}
             templateInfo={
               assistantTemplate
                 ? {
                     templateId: assistantTemplate.sId,
-                    copilotInstructions: assistantTemplate.copilotInstructions,
+                    sidekickInstructions:
+                      assistantTemplate.sidekickInstructions,
                   }
                 : undefined
             }
             conversationId={conversationId}
           />
-        </CopilotSuggestionsProvider>
+        </SidekickSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
   );
@@ -586,6 +593,7 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
+  isDuplicate: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
 }
@@ -603,25 +611,31 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
+  isDuplicate,
   templateInfo,
   conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
-  const isCopilotEnabled = useIsAgentBuilderCopilotEnabled();
+  const isSidekickEnabled = useIsAgentBuilderSidekickEnabled();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
-  const suggestionsContext = useCopilotSuggestions();
+  const { pendingSuggestions, getCommittedInstructionsHtml } =
+    useSidekickSuggestions();
 
-  const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
-    enabled: isCopilotEnabled,
+  const { serverId: clientSideMCPServerId } = useSidekickMCPServer({
+    enabled: isSidekickEnabled,
   });
 
+  const clientSideMCPServerIds = useMemo(
+    () => (clientSideMCPServerId ? [clientSideMCPServerId] : []),
+    [clientSideMCPServerId]
+  );
+
   const handleSaveWithValidation = useCallback(async () => {
-    const pendingInstructionSuggestions = suggestionsContext
-      .getPendingSuggestions()
-      .filter((s) => s.kind === "instructions");
-    const committedInstructions =
-      suggestionsContext.getCommittedInstructionsHtml();
+    const pendingInstructionSuggestions = pendingSuggestions.filter(
+      (s) => s.kind === "instructions"
+    );
+    const committedInstructions = getCommittedInstructionsHtml();
 
     // Avoid allowing to save if there are no committed instructions.
     if (!committedInstructions.trim()) {
@@ -652,7 +666,13 @@ function AgentBuilderContent({
     }
 
     handleSave();
-  }, [suggestionsContext, confirm, sendNotification, handleSave]);
+  }, [
+    pendingSuggestions,
+    getCommittedInstructionsHtml,
+    confirm,
+    sendNotification,
+    handleSave,
+  ]);
 
   return (
     <>
@@ -675,7 +695,7 @@ function AgentBuilderContent({
         />
       )}
       <AgentBuilderLayout
-        copilotEnabled={isCopilotEnabled}
+        sidekickEnabled={isSidekickEnabled}
         leftPanel={
           <AgentBuilderLeftPanel
             title={title}
@@ -694,17 +714,17 @@ function AgentBuilderContent({
           />
         }
         rightPanel={
-          <CopilotPanelProvider
+          <SidekickPanelProvider
             targetAgentConfigurationId={
               agentConfiguration?.sId ?? pendingAgentId ?? null
             }
             targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
-            clientSideMCPServerIds={
-              clientSideMCPServerId ? [clientSideMCPServerId] : []
-            }
+            clientSideMCPServerIds={clientSideMCPServerIds}
             isNewAgent={isNewAgent}
+            isDuplicate={isDuplicate}
             templateInfo={templateInfo}
             conversationId={conversationId}
+            suppressAutoStart={isCreatedDialogOpen}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
@@ -712,7 +732,7 @@ function AgentBuilderContent({
                 conversationId={conversationId}
               />
             </ConversationSidePanelProvider>
-          </CopilotPanelProvider>
+          </SidekickPanelProvider>
         }
       />
     </>

@@ -161,6 +161,7 @@ export function getSteps(
           workspaceId,
           conversationId,
           agentMessageId: message.sId,
+          errorContent: content.content.value,
         },
         "agent message step with error content in renderConversationForModelMultiActions"
       );

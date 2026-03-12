@@ -14,8 +14,8 @@ import {
 } from "@app/types/assistant/models/mistral";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
 import {
+  GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_MODEL_CONFIG,
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
@@ -67,7 +67,7 @@ export function getLargeNonAnthropicWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_5_MODEL_CONFIG;
+    return GPT_5_4_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_3_PRO_MODEL_CONFIG;
@@ -124,6 +124,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_QUICK = "dust-quick",
   DUST_QUICK_MEDIUM = "dust-quick-medium",
   DUST_OAI = "dust-oai",
+  DUST_OAI_MEDIUM = "dust-oai-medium",
+  DUST_OAI_HIGH = "dust-oai-high",
   DUST_GOOG = "dust-goog",
   DUST_GOOG_MEDIUM = "dust-goog-medium",
   DUST_NEXT = "dust-next",
@@ -145,7 +147,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
   DUST_PLANNING = "dust-planning",
-  COPILOT = "copilot",
+  SIDEKICK = "sidekick",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
@@ -186,7 +188,7 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 }
 
 const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
-  GLOBAL_AGENTS_SID.COPILOT,
+  GLOBAL_AGENTS_SID.SIDEKICK,
 ]);
 
 export function canShowAgentConversationActions(agentId: string): boolean {
@@ -236,6 +238,8 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_EDGE,
   GLOBAL_AGENTS_SID.DUST_QUICK,
   GLOBAL_AGENTS_SID.DUST_OAI,
+  GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
 ];
 const globalAgentIndexMap = new Map(
   GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])

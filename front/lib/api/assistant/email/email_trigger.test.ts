@@ -1,5 +1,6 @@
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
+  buildReplyThreadingHeaders,
   buildSuccessReplyRecipients,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { describe, expect, it } from "vitest";
@@ -10,6 +11,11 @@ describe("buildSuccessReplyRecipients", () => {
       subject: "Test",
       text: "Hello",
       auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: null,
+        inReplyTo: null,
+        references: null,
+      },
       envelope: {
         from: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
@@ -31,6 +37,11 @@ describe("buildSuccessReplyRecipients", () => {
       subject: "Test",
       text: "Hello",
       auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: null,
+        inReplyTo: null,
+        references: null,
+      },
       envelope: {
         from: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
@@ -52,6 +63,11 @@ describe("buildSuccessReplyRecipients", () => {
       subject: "Test",
       text: "Hello",
       auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: null,
+        inReplyTo: null,
+        references: null,
+      },
       envelope: {
         from: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
@@ -65,6 +81,86 @@ describe("buildSuccessReplyRecipients", () => {
     expect(recipients).toEqual({
       to: ["sender@dust.tt", "teammate@dust.tt"],
       cc: ["observer@dust.tt"],
+    });
+  });
+});
+
+describe("buildReplyThreadingHeaders", () => {
+  it("uses the inbound message-id for in-reply-to and references", () => {
+    const threadingHeaders = buildReplyThreadingHeaders({
+      subject: "Test",
+      text: "Hello",
+      auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: "<incoming-message-id@dust.tt>",
+        inReplyTo: null,
+        references: null,
+      },
+      envelope: {
+        from: "sender@dust.tt",
+        full: "Sender <sender@dust.tt>",
+        to: [],
+        cc: [],
+        bcc: [],
+      },
+      attachments: [],
+    });
+
+    expect(threadingHeaders).toEqual({
+      inReplyTo: "<incoming-message-id@dust.tt>",
+      references: "<incoming-message-id@dust.tt>",
+    });
+  });
+
+  it("appends in-reply-to to references when missing", () => {
+    const threadingHeaders = buildReplyThreadingHeaders({
+      subject: "Test",
+      text: "Hello",
+      auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: "<incoming-message-id@dust.tt>",
+        inReplyTo: null,
+        references: "<older-message-id@dust.tt>",
+      },
+      envelope: {
+        from: "sender@dust.tt",
+        full: "Sender <sender@dust.tt>",
+        to: [],
+        cc: [],
+        bcc: [],
+      },
+      attachments: [],
+    });
+
+    expect(threadingHeaders).toEqual({
+      inReplyTo: "<incoming-message-id@dust.tt>",
+      references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
+    });
+  });
+
+  it("does not duplicate in-reply-to in references", () => {
+    const threadingHeaders = buildReplyThreadingHeaders({
+      subject: "Test",
+      text: "Hello",
+      auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: "<incoming-message-id@dust.tt>",
+        inReplyTo: null,
+        references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
+      },
+      envelope: {
+        from: "sender@dust.tt",
+        full: "Sender <sender@dust.tt>",
+        to: [],
+        cc: [],
+        bcc: [],
+      },
+      attachments: [],
+    });
+
+    expect(threadingHeaders).toEqual({
+      inReplyTo: "<incoming-message-id@dust.tt>",
+      references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
     });
   });
 });

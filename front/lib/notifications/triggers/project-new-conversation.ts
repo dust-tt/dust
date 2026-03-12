@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -100,6 +101,19 @@ const triggerProjectNewConversationNotifications = async (
   // Wait before triggering the notification. This is useful to ensure that
   // the conversation has a title and its participants are fully created.
   await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY_MS));
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId,
+    {
+      excludeTest: true,
+    }
+  );
+
+  // Conversation was deleted within the delay or conversation has visibility test
+  if (!conversationResource) {
+    return new Ok(undefined);
+  }
 
   // Fetch all members of the project
   const space = await SpaceResource.fetchById(auth, conversation.spaceId);

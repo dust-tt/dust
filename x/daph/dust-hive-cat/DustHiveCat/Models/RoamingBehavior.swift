@@ -12,9 +12,10 @@ class RoamingBehavior {
 
     private(set) var state: CatState = .idle {
         didSet {
-            delegate?.roamingDidChangeState(state)
-            // Only run movement timer when actually moving
+            // Update movement timer first, then notify delegate
+            // so the delegate can override (e.g. pause during transitions)
             updateMovementTimerForState()
+            delegate?.roamingDidChangeState(state)
         }
     }
 

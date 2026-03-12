@@ -77,6 +77,7 @@ export const createMCPServerDialogFormSchema = mcpServerOAuthFormSchema.extend({
   customHeaders: z
     .array(z.object({ key: z.string(), value: z.string() }))
     .default([]),
+  viewName: z.string().optional(),
 });
 
 export type CreateMCPServerDialogFormValues = z.infer<

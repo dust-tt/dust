@@ -2,7 +2,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 // Define the text sizes and weights
 const textSizes = {
@@ -89,7 +89,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
             Object.entries(fontWeights).map(([weightKey, weightClass]) => (
               <div
                 key={`${sizeKey}-${weightKey}`}
-                className={classNames(sizeClass, weightClass)}
+                className={cn(sizeClass, weightClass)}
               >
                 <div>{`${sizeKey} ${weightKey}`}</div>
                 <p>{loremIpsum}</p>
@@ -99,10 +99,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
         </div>
         <div className="s-mt-6 s-grid s-gap-16 s-bg-repeat s-py-8">
           {Object.entries(extraTextSizes).map(([sizeKey, sizeClass]) => (
-            <div
-              key={sizeKey}
-              className={classNames(sizeClass, "s-font-medium")}
-            >
+            <div key={sizeKey} className={cn(sizeClass, "s-font-medium")}>
               <div>{`${sizeKey} medium`}</div>
               <p>{loremIpsum}</p>
             </div>
@@ -137,7 +134,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
                 <p>{copyLoremIpsum}</p>
               </div>
             </div>
-            <div className={classNames(copyClass, "s-italic")}>
+            <div className={cn(copyClass, "s-italic")}>
               <div>{`Copy ${sizeKey} Italic`}</div>
               <div
                 className="s-mt-2"
@@ -157,7 +154,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
                 <p>{copyLoremIpsum}</p>
               </div>
             </div>
-            <div className={classNames(copyClass, "s-font-mono")}>
+            <div className={cn(copyClass, "s-font-mono")}>
               <div>{`Copy ${sizeKey} Mono`}</div>
               <div
                 className="s-mt-2"

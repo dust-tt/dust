@@ -9,7 +9,7 @@ async function buildWorker() {
       entryPoints: ["start_worker.ts"],
       bundle: true,
       platform: "node",
-      target: "node20",
+      target: "node22",
       outfile: "dist/start_worker.js",
       alias: {
         "@app": ".",

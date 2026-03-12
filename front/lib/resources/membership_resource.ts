@@ -9,7 +9,11 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -364,8 +368,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
-  private static readonly ROLE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
   private static readonly roleCacheKeyResolver = ({
     userModelId,
     workspaceModelId,
@@ -397,11 +399,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return membership?.role ?? "none";
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static getActiveRoleForUserInWorkspaceCached = cacheWithRedis(
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
       MembershipResource.roleCacheKeyResolver(params),
-    { ttlMs: MembershipResource.ROLE_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateRoleCache = invalidateCacheWithRedis(
@@ -588,8 +591,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return result;
   }
 
-  private static readonly SEATS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
   // Seat counting with caching - used to track active seats in a workspace
   private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;
@@ -608,10 +609,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static countActiveSeatsInWorkspaceCached = cacheWithRedis(
     MembershipResource._countActiveSeatsInWorkspaceUncached,
     MembershipResource.seatsCacheKeyResolver,
-    { ttlMs: MembershipResource.SEATS_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateActiveSeatsCache = invalidateCacheWithRedis(
@@ -635,7 +637,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       this.workspaceId,
     ]);
     if (workspace) {
-      await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+      const workspaceId = workspace.sId;
+      invalidateCacheAfterCommit(transaction, () =>
+        MembershipResource.invalidateActiveSeatsCache(workspaceId)
+      );
     }
 
     return result;
@@ -757,10 +762,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Invalidate the active seats cache for this workspace.
-    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
-    await MembershipResource.invalidateRoleCache({
-      userModelId: user.id,
-      workspaceModelId: workspace.id,
+    const workspaceId = workspace.sId;
+    const userModelId = user.id;
+    const workspaceModelId = workspace.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+      await MembershipResource.invalidateRoleCache({
+        userModelId,
+        workspaceModelId,
+      });
     });
 
     return new MembershipResource(MembershipModel, newMembership.get());
@@ -789,16 +799,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     endAt = new Date(),
     transaction,
+    allowLastAdminRevocation = false,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     endAt?: Date;
     transaction?: Transaction;
+    allowLastAdminRevocation?: boolean;
   }): Promise<
     Result<
       { role: MembershipRoleType; startAt: Date; endAt: Date },
       {
-        type: "not_found" | "already_revoked" | "invalid_end_at";
+        type: "not_found" | "already_revoked" | "invalid_end_at" | "last_admin";
       }
     >
   > {
@@ -816,6 +828,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (membership.endAt) {
       return new Err({ type: "already_revoked" });
     }
+
+    // Prevent revoking the last admin of a workspace.
+    if (membership.role === "admin" && !allowLastAdminRevocation) {
+      const adminsCount = await this.getMembersCountForWorkspace({
+        workspace,
+        activeOnly: true,
+        rolesFilter: ["admin"],
+        transaction,
+      });
+
+      if (adminsCount < 2) {
+        return new Err({ type: "last_admin" });
+      }
+    }
+
     await MembershipModel.update(
       { endAt },
       { where: { id: membership.id }, transaction }
@@ -858,10 +885,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Invalidate the active seats cache for this workspace.
-    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
-    await MembershipResource.invalidateRoleCache({
-      userModelId: user.id,
-      workspaceModelId: workspace.id,
+    const workspaceId = workspace.sId;
+    const userModelId = user.id;
+    const workspaceModelId = workspace.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+      await MembershipResource.invalidateRoleCache({
+        userModelId,
+        workspaceModelId,
+      });
     });
 
     // We do not invalidate GroupMembership here
@@ -959,16 +991,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         { where: { id: membership.id }, transaction }
       );
 
-      await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+      const workspaceId = workspace.sId;
+      const userModelId = user.id;
+      const workspaceModelId = workspace.id;
+      invalidateCacheAfterCommit(transaction, async () => {
+        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+        await MembershipResource.invalidateRoleCache({
+          userModelId,
+          workspaceModelId,
+        });
+      });
 
       await this.updateWorkOSMembershipRole({
         user,
         workspace,
         newRole,
-      });
-      await MembershipResource.invalidateRoleCache({
-        userModelId: user.id,
-        workspaceModelId: workspace.id,
       });
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
@@ -1136,12 +1173,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       transaction,
     });
 
-    if (workspace) {
-      await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
-    }
-    await MembershipResource.invalidateRoleCache({
-      userModelId: this.userId,
-      workspaceModelId: this.workspaceId,
+    const workspaceId = workspace?.sId;
+    const userModelId = this.userId;
+    const workspaceModelId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, async () => {
+      if (workspaceId) {
+        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+      }
+      await MembershipResource.invalidateRoleCache({
+        userModelId,
+        workspaceModelId,
+      });
     });
 
     return new Ok(undefined);

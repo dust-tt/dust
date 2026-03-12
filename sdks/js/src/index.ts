@@ -944,15 +944,21 @@ export class DustAPI {
     conversationId,
     action,
     mcpServerViewId,
+    agentConfigurationId,
   }: {
     conversationId: string;
     action: "add" | "delete";
     mcpServerViewId: string;
+    agentConfigurationId?: string;
   }) {
     const res = await this.request({
       method: "POST",
       path: `assistant/conversations/${conversationId}/tools`,
-      body: { action, mcp_server_view_id: mcpServerViewId },
+      body: {
+        action,
+        mcp_server_view_id: mcpServerViewId,
+        agent_configuration_id: agentConfigurationId,
+      },
     });
 
     const r = await this._resultFromResponse(

@@ -1,12 +1,13 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { Authenticator } from "@app/lib/auth";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
 
@@ -26,6 +27,7 @@ export async function createDataSourceProject({
 
   localLogger.info("[Core] Creating data source project.");
 
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
   const dustProject = await coreAPI.createProject();
   if (dustProject.isErr()) {
@@ -37,10 +39,12 @@ export async function createDataSourceProject({
     throw new Error("Failed to create internal project for the data source.");
   }
 
+  const credentials = await ProviderCredentialResource.getCredentials(auth);
+
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
     config: sourceRegionCoreDataSource.config,
-    credentials: dustManagedCredentials(),
+    credentials,
     // Temporary to unblock migration. Name was not returned by the core API.
     name: sourceRegionCoreDataSource.name ?? "",
   });

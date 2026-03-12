@@ -1,20 +1,17 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import {
-  Counter,
-  Icon,
-  LinkWrapper,
-  type LinkWrapperProps,
-  ScrollArea,
-  ScrollBar,
-} from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
+import { Counter } from "@sparkle/components/Counter";
+import { Icon } from "@sparkle/components/Icon";
+import {
+  LinkWrapper,
+  type LinkWrapperProps,
+} from "@sparkle/components/LinkWrapper";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

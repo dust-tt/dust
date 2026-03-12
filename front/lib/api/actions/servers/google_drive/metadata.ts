@@ -326,6 +326,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     schema: {
       fileId: z.string().describe("The ID of the file to comment on."),
       content: z.string().describe("The text content of the comment."),
+      canEdit: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -340,6 +346,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       fileId: z.string().describe("The ID of the file containing the comment."),
       commentId: z.string().describe("The ID of the comment to reply to."),
       content: z.string().describe("The plain text content of the reply."),
+      canEdit: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -358,6 +370,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       "Text must be inserted within paragraph bounds, not at structural element boundaries (e.g., insert at startIndex + 1 for table cells).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
+      canEdit: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+        ),
       requests: GoogleDocsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
@@ -378,6 +396,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       "For more complex operations like formatting, merging cells, or updating existing data, use update_spreadsheet instead.",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      canEdit: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+        ),
       range: z
         .string()
         .describe(
@@ -418,6 +442,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       spreadsheetId: z
         .string()
         .describe("The ID of the spreadsheet to update."),
+      canEdit: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+        ),
       requests: GoogleSheetsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the spreadsheet. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
@@ -441,6 +471,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       presentationId: z
         .string()
         .describe("The ID of the presentation to update."),
+      canEdit: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+        ),
       requests: GoogleSlidesRequestsArraySchema.describe(
         "An array of batch update requests to apply to the presentation. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +

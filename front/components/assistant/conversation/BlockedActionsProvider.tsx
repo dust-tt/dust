@@ -9,6 +9,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -257,20 +258,33 @@ export function BlockedActionsProvider({
     };
   }, []);
 
+  const value = useMemo(
+    () => ({
+      enqueueBlockedAction,
+      removeCompletedAction,
+      removeAllBlockedActionsForMessage,
+      hasPendingValidations,
+      getBlockedActions,
+      getFirstBlockedActionForMessage,
+      startPulsingAction,
+      stopPulsingAction,
+      isActionPulsing,
+    }),
+    [
+      enqueueBlockedAction,
+      removeCompletedAction,
+      removeAllBlockedActionsForMessage,
+      hasPendingValidations,
+      getBlockedActions,
+      getFirstBlockedActionForMessage,
+      startPulsingAction,
+      stopPulsingAction,
+      isActionPulsing,
+    ]
+  );
+
   return (
-    <BlockedActionsContext.Provider
-      value={{
-        enqueueBlockedAction,
-        removeCompletedAction,
-        removeAllBlockedActionsForMessage,
-        hasPendingValidations,
-        getBlockedActions,
-        getFirstBlockedActionForMessage,
-        startPulsingAction,
-        stopPulsingAction,
-        isActionPulsing,
-      }}
-    >
+    <BlockedActionsContext.Provider value={value}>
       {children}
     </BlockedActionsContext.Provider>
   );

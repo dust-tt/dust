@@ -38,9 +38,10 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
+
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
@@ -53,6 +54,8 @@ import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
 import { promisify } from "util";
 import { z } from "zod";
+
+const statsDClient = getStatsDClient();
 
 export type GetResponseBody = {
   success: boolean;
@@ -498,39 +501,39 @@ async function handler(
             stripeSubscription &&
             isCreditPurchaseInvoice(invoice) &&
             !isEnterpriseSubscription(stripeSubscription);
-          // When we received a failed payment for a pro credit purchase,
-          // We do NOT want to send an email to the admin telling them
-          // their subscription is going to be cancelled
-          // This is because credits have not been provisioned yet, and we
-          // will end-up voiding the invoice if it continues failing
-          if (isProCreditPurchaseInvoice) {
-            const result = await voidFailedProCreditPurchaseInvoice({
-              auth,
-              invoice,
-            });
-            if (result.isErr()) {
-              // For eng-oncall
-              // This case is supposed to be extremely rare, as there are not a lot of things that can fail
-              // during an invoice void, you will need to inspect the invoice directly in stripe to see what
-              // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
-              // contact Stripe owners in case of doubt
-              logger.error(
-                {
-                  error: result.error,
-                  panic: true,
-                  stripeError: true,
-                  invoiceId: invoice.id,
-                },
-                "[Stripe Webhook] Error handling failed credit purchase"
-              );
-            } else if (result.value.voided) {
-              logger.warn(
-                { invoiceId: invoice.id },
-                "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
-              );
+          // When we received a failed payment for a credit purchase (pro or enterprise),
+          // we do NOT want to set the payment failing status or send an email to the admin
+          // telling them their subscription is going to be cancelled.
+          // Credits have not been provisioned yet — for pro, we void the invoice after
+          // repeated failures; for enterprise, they are paid in arrears or with a 30-day notice.
+          if (isCreditPurchaseInvoice(invoice)) {
+            if (isProCreditPurchaseInvoice) {
+              const result = await voidFailedProCreditPurchaseInvoice({
+                auth,
+                invoice,
+              });
+              if (result.isErr()) {
+                // For eng-oncall
+                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+                // contact Stripe owners in case of doubt
+                logger.error(
+                  {
+                    error: result.error,
+                    panic: true,
+                    stripeError: true,
+                    invoiceId: invoice.id,
+                  },
+                  "[Stripe Webhook] Error handling failed credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.warn(
+                  { invoiceId: invoice.id },
+                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+                );
+              }
             }
-            // On the other hand credit purchase from enterprise are paid in arrears or with a 30days notice
-            // Either way, we want to go through the usual flow for payment failures
           } else {
             const owner = auth.workspace();
             const subscriptionType = auth.subscription();
@@ -888,44 +891,60 @@ async function handler(
             break;
           } // should not happen by definition of the subscription.updated event
 
-          // Billing cycle changed
-          if ("current_period_start" in previousAttributes) {
+          const subscriptionBecameActive =
+            previousAttributes.status === "incomplete" &&
+            stripeSubscription.status === "active";
+          const subscriptionCycleChanged =
+            "current_period_start" in previousAttributes;
+
+          if (subscriptionBecameActive || subscriptionCycleChanged) {
             const subscription = await SubscriptionResource.fetchByStripeId(
               stripeSubscription.id
             );
-            if (subscription) {
-              const workspace = await WorkspaceResource.fetchByModelId(
-                subscription.workspaceId
+            if (!subscription) {
+              logger.warn(
+                {
+                  stripeEventId: event.id,
+                  stripeEventType: event.type,
+                  stripeSubscriptionId: stripeSubscription.id,
+                },
+                "[Stripe Webhook] Subscription not found."
               );
-              assert(
-                workspace !== null,
-                "Workspace not found for subscription in customer.subscription.updated."
+              return res.status(200).json({ success: true });
+            }
+
+            const workspace = await WorkspaceResource.fetchByModelId(
+              subscription.workspaceId
+            );
+            assert(
+              workspace !== null,
+              "Workspace not found for subscription in customer.subscription.updated."
+            );
+
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+
+            const freeCreditsResult = await grantFreeCreditsForSubscription({
+              auth,
+              stripeSubscription,
+            });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  error: freeCreditsResult.error,
+                  subscriptionId: stripeSubscription.id,
+                  workspaceId: workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits"
               );
+            }
 
-              const auth = await Authenticator.internalAdminForWorkspace(
-                workspace.sId
-              );
-
-              const freeCreditsResult = await grantFreeCreditsForSubscription({
-                auth,
-                stripeSubscription,
-              });
-
-              if (freeCreditsResult.isErr()) {
-                logger.error(
-                  {
-                    error: freeCreditsResult.error,
-                    subscriptionId: stripeSubscription.id,
-                    workspaceId: workspace.sId,
-                  },
-                  "[Stripe Webhook] Error granting free credits on renewal"
-                );
-              }
-
+            if (subscriptionCycleChanged) {
               const paygEnabled = await isPAYGEnabled(auth);
 
               if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {
-                // Allocate PAYG credits for the new billing cycle
                 const currentPeriod = StripeBillingPeriodSchema.safeParse({
                   current_period_start: stripeSubscription.current_period_start,
                   current_period_end: stripeSubscription.current_period_end,
@@ -972,15 +991,6 @@ async function handler(
                   );
                 }
               }
-            } else {
-              logger.warn(
-                {
-                  stripeEventId: event.id,
-                  stripeEventType: event.type,
-                  stripeSubscriptionId: stripeSubscription.id,
-                },
-                "[Stripe Webhook] Subscription not found for billing cycle change."
-              );
             }
           }
 
@@ -1096,14 +1106,10 @@ async function handler(
             });
             const adminEmails = members.map((u) => u.email);
             if (adminEmails.length === 0) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message:
-                    "[Stripe Webhook] canceling subscription: Error getting admin emails.",
-                },
-              });
+              logger.warn(
+                { workspaceId: workspace.sId, stripeError: true },
+                "[Stripe Webhook] No active admins found, skipping cancel/reactivate email."
+              );
             }
             // send email to admins
             for (const adminEmail of adminEmails) {

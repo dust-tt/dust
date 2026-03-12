@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -8,13 +7,17 @@ import {
   processWebhookRequest,
   storePayloadInGCS,
 } from "@app/lib/triggers/webhook";
-import { statsDClient } from "@app/logger/statsDClient";
+import { getStatsDClient } from "@app/lib/utils/statsd";
+
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
+import getRawBody from "raw-body";
+
+const statsDClient = getStatsDClient();
 
 /**
  * @swagger
@@ -58,9 +61,7 @@ import type { NextApiResponse } from "next";
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: "2mb",
-    },
+    bodyParser: false,
   },
 };
 
@@ -69,7 +70,7 @@ async function handler(
 
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method, body, headers, query } = req;
+  const { method, headers, query } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -88,6 +89,22 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Content-Type must be application/json.",
+      },
+    });
+  }
+
+  // Read the raw body for signature verification (must match exactly what the
+  // sender signed), then parse JSON for processing.
+  const rawBody = (await getRawBody(req, { limit: "2mb" })).toString("utf8");
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(rawBody) as Record<string, unknown>;
+  } catch {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid JSON body.",
       },
     });
   }
@@ -183,6 +200,7 @@ async function handler(
     webhookRequest,
     headers: filteredHeaders,
     body,
+    rawBody,
   });
 
   if (result.isErr()) {

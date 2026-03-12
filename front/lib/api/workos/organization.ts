@@ -74,10 +74,12 @@ export async function getOrCreateWorkOSOrganization(
       );
     }
 
-    await WorkspaceResource.updateWorkOSOrganizationId(
-      workspace.id,
-      organization.id
-    );
+    if (workspace.workOSOrganizationId !== organization.id) {
+      await WorkspaceResource.updateWorkOSOrganizationId(
+        workspace.id,
+        organization.id
+      );
+    }
 
     return new Ok(organization);
   } catch (error) {
