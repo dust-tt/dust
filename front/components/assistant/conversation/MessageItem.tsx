@@ -164,6 +164,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               triggeringUser={triggeringUser}
               conversationId={context.conversation.sId}
+              isFirstMessage={!prevData}
               isLastMessage={!nextData}
               agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}

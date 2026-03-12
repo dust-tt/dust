@@ -55,6 +55,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
   canShowAgentConversationActions,
+  GLOBAL_AGENTS_SID,
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
@@ -147,6 +148,7 @@ function PrunedContextChip() {
 
 interface AgentMessageProps {
   conversationId: string;
+  isFirstMessage: boolean;
   isLastMessage: boolean;
   agentMessage: MessageTemporaryState;
   messageFeedback: FeedbackSelectorBaseProps;
@@ -164,6 +166,7 @@ interface AgentMessageProps {
 
 export function AgentMessage({
   conversationId,
+  isFirstMessage,
   isLastMessage,
   agentMessage,
   messageFeedback,
@@ -545,13 +548,19 @@ export function AgentMessage({
     !shouldStream &&
     !isAgentMessageHandingOver;
 
+  // Hide feedback for Sidekick's first message (intro/greeting).
+  const isSidekickFirstMessage =
+    isFirstMessage &&
+    agentMessage.configuration.sId === GLOBAL_AGENTS_SID.SIDEKICK;
+
   const shouldShowFeedback =
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
     agentMessage.configuration.status !== "draft" &&
     (!isGlobalAgent ||
-      isGlobalAgentWithFeedback(agentMessage.configuration.sId));
+      isGlobalAgentWithFeedback(agentMessage.configuration.sId)) &&
+    !isSidekickFirstMessage;
 
   const retryMessage = useRetryMessage({ owner });
 
