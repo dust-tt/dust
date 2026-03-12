@@ -560,8 +560,8 @@ const InputBarContainer = ({
     return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
   }, []);
 
-  const pageShortcut = isMac ? "cmd+shift+P" : "ctrl+shift+P";
-  const screenshotShortcut = isMac ? "cmd+shift+S" : "ctrl+shift+S";
+  const pageShortcut = isMac ? "⇧⌘P" : "Ctrl+Maj+P";
+  const screenshotShortcut = isMac ? "⇧⌘S" : "Ctrl+Maj+S";
 
   useEffect(() => {
     // captureActions is defined only in the extension, so the shortcuts won't work in the web app
@@ -931,6 +931,7 @@ const InputBarContainer = ({
                                 endComponent={
                                   <DropdownMenuShortcut
                                     shortcut={pageShortcut}
+                                    className="text-xs"
                                   />
                                 }
                               />
@@ -947,6 +948,7 @@ const InputBarContainer = ({
                                 endComponent={
                                   <DropdownMenuShortcut
                                     shortcut={screenshotShortcut}
+                                    className="text-xs"
                                   />
                                 }
                               />
