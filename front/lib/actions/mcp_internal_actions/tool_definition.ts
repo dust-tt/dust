@@ -33,6 +33,14 @@ export type ToolHandlers<T extends Record<string, { schema: ZodRawShape }>> = {
   ) => Promise<ToolHandlerResult>;
 };
 
+export type ClientToolHandlers<
+  T extends Record<string, { schema: ZodRawShape }>,
+> = {
+  [K in keyof T]: (
+    params: z.infer<z.ZodObject<T[K]["schema"]>>
+  ) => Promise<ToolHandlerResult>;
+};
+
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
@@ -45,7 +53,22 @@ export interface ToolDefinition<
   displayLabels: ToolDisplayLabels;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
-    extra?: ToolHandlerExtra
+    extra: ToolHandlerExtra
+  ) => Promise<ToolHandlerResult>;
+}
+
+interface ClientToolDefinition<
+  TName extends string = string,
+  TSchema extends ZodRawShape = ZodRawShape,
+> {
+  name: TName;
+  enableAlerting?: boolean;
+  description: string;
+  schema: TSchema;
+  stake: MCPToolStakeLevelType;
+  displayLabels: ToolDisplayLabels;
+  handler: (
+    params: z.infer<z.ZodObject<TSchema>>
   ) => Promise<ToolHandlerResult>;
 }
 
@@ -60,6 +83,19 @@ export function createToolsRecord<
   return Object.fromEntries(
     Object.entries(tools).map(([key, value]) => [key, { ...value, name: key }])
   ) as { [K in keyof T]: T[K] & { name: K } };
+}
+
+export function buildClientTools<T extends Record<string, ToolMeta>>(
+  metadata: T,
+  handlers: ClientToolHandlers<T>
+): ClientToolDefinition[] {
+  return (Object.keys(metadata) as (keyof T & string)[]).map(
+    (key) =>
+      ({
+        ...metadata[key],
+        handler: handlers[key],
+      }) as unknown as ClientToolDefinition
+  );
 }
 
 export function buildTools<T extends Record<string, ToolMeta>>(

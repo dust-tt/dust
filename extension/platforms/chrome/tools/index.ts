@@ -1,7 +1,7 @@
 import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
 import {
-  buildTools,
-  type ToolHandlers,
+  buildClientTools,
+  type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getCurrentPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
 import type { CaptureService } from "@extension/shared/services/capture";
@@ -28,7 +28,7 @@ export function registerAllTools(
   workspaceId: string
 ): void {
   registerInteractWithPageTool(server);
-  const handlers: ToolHandlers<typeof CHROME_TOOLS_METADATA> = {
+  const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
     get_current_browser_page: (params) =>
       getCurrentPageTool({ ...params, captureService }),
     get_current_browser_page_view: (params) =>
@@ -41,7 +41,7 @@ export function registerAllTools(
     reload_browser_tab: (params) => reloadBrowserTabTool(params),
   };
 
-  const tools = buildTools(CHROME_TOOLS_METADATA, handlers);
+  const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
 
   for (const tool of tools) {
     server.tool(tool.name, tool.description, tool.schema, async (params) => {
