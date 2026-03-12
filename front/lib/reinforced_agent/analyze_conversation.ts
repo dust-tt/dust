@@ -1,14 +1,18 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import {
+  buildReinforcedLLMParams,
+  runReinforcedAnalysis,
+} from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
-function buildAnalysisPrompt(
+export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
   conversationText: string
-): string {
+): { systemPrompt: string; userMessage: string } {
   const descriptionSection = agentConfig.description
     ? `Description: ${agentConfig.description}`
     : "";
@@ -16,18 +20,7 @@ function buildAnalysisPrompt(
     ? `\n### Current instructions\n${agentConfig.instructionsHtml}`
     : "";
 
-  return `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
-
-## Agent being analyzed
-Name: ${agentConfig.name}
-${descriptionSection}
-${instructionsSection}
-
-## Conversation to analyze
-
-<conversation>
-${conversationText}
-</conversation>
+  const systemPrompt = `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
 
 ## Your task
 Analyze the conversation and identify areas where the agent's instructions could be improved. Pay special attention to any user feedback (thumbs up/down and comments) as direct signals of satisfaction or dissatisfaction. Focus on:
@@ -43,6 +36,63 @@ The content must contain exactly what should go in the instructions block, with 
 It is in HTML format, so make sure to preserve any HTML tags from the original instructions.
 
 You MUST call the tool. Always call it. If no improvements are needed, return an empty suggestions array.`;
+
+  const userMessage = `## Agent being analyzed
+Name: ${agentConfig.name}
+${descriptionSection}
+${instructionsSection}
+
+## Conversation to analyze
+
+<conversation>
+${conversationText}
+</conversation>`;
+
+  return { systemPrompt, userMessage };
+}
+
+/**
+ * Build the batch map for conversation analysis.
+ * Returns null if there are no valid conversations or the agent is global.
+ */
+export async function buildConversationAnalysisBatchMap(
+  auth: Authenticator,
+  {
+    agentConfigurationId,
+    conversationIds,
+  }: {
+    agentConfigurationId: string;
+    conversationIds: string[];
+  }
+): Promise<Map<string, LLMStreamParameters> | null> {
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "full",
+  });
+  if (!agentConfig || agentConfig.id < 0) {
+    return null;
+  }
+
+  const batchMap = new Map<string, LLMStreamParameters>();
+
+  for (const conversationId of conversationIds) {
+    const conversationRes = await getShrinkWrappedConversation(auth, {
+      conversationId,
+      includeFeedback: true,
+    });
+    if (conversationRes.isErr()) {
+      logger.warn(
+        { conversationId, error: conversationRes.error },
+        "ReinforcedAgent: conversation not found, skipping in batch"
+      );
+      continue;
+    }
+
+    const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+    batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
+  }
+
+  return batchMap.size > 0 ? batchMap : null;
 }
 
 /**
@@ -61,7 +111,6 @@ export async function analyzeConversationForReinforcement(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Fetch agent configuration.
   const [agentConfig] = await getAgentConfigurations(auth, {
     agentIds: [agentConfigurationId],
     variant: "full",
@@ -74,11 +123,9 @@ export async function analyzeConversationForReinforcement(
     return;
   }
   if (agentConfig.id < 0) {
-    // Skip global agents.
     return;
   }
 
-  // Get shrink-wrapped conversation text with inline feedback.
   const conversationRes = await getShrinkWrappedConversation(auth, {
     conversationId,
     includeFeedback: true,

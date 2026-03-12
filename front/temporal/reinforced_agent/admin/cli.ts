@@ -12,16 +12,18 @@ import parseArgs from "minimist";
 
 function usage() {
   console.error(`Usage:
-  start                                              Start the cron workflow
-  stop                                               Stop the cron workflow
-  run-now                                            Trigger the top-level workflow immediately
-  run-workspace --workspace-id <sId>                 Run for a specific workspace
-  run-agent --workspace-id <sId> --agent-id <sId>    Run for a specific agent`);
+  start                                                              Start the cron workflow
+  stop                                                               Stop the cron workflow
+  run-now                                                            Trigger the top-level workflow immediately
+  run-workspace --workspace-id <sId> [--batch]                       Run for a specific workspace (--batch defaults to false)
+  run-agent --workspace-id <sId> --agent-id <sId> [--batch]         Run for a specific agent (--batch defaults to false)`);
 }
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2), {
     string: ["workspace-id", "agent-id"],
+    boolean: ["batch"],
+    default: { batch: false },
   });
 
   const [command] = argv._;
@@ -50,7 +52,10 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await startReinforcedAgentWorkspaceWorkflow({ workspaceId });
+      await startReinforcedAgentWorkspaceWorkflow({
+        workspaceId,
+        useBatchMode: argv["batch"],
+      });
       return;
     }
     case "run-agent": {
@@ -64,6 +69,7 @@ const main = async () => {
       await startReinforcedAgentForAgentWorkflow({
         workspaceId,
         agentConfigurationId: agentId,
+        useBatchMode: argv["batch"],
       });
       return;
     }
