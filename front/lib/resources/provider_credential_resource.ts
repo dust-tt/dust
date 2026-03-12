@@ -298,6 +298,7 @@ function mapOauthCredentialsToLlmCredentials(
     switch (providerId) {
       case "openai": {
         result.OPENAI_API_KEY = content.api_key;
+        result.OPENAI_EMBEDDING_API_KEY = content.api_key;
         break;
       }
       case "anthropic": {

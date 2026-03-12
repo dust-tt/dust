@@ -4,6 +4,7 @@ import { z } from "zod";
 
 export type LLMCredentialsType = {
   OPENAI_API_KEY?: string;
+  OPENAI_EMBEDDING_API_KEY?: string;
   OPENAI_BASE_URL?: string;
   OPENAI_USE_EU_ENDPOINT?: string;
   ANTHROPIC_API_KEY?: string;

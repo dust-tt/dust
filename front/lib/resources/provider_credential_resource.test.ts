@@ -189,6 +189,7 @@ describe("ProviderCredentialResource", () => {
 
       expect(result).toEqual({
         OPENAI_API_KEY: "sk-openai-test",
+        OPENAI_EMBEDDING_API_KEY: "sk-openai-test",
         ANTHROPIC_API_KEY: "sk-anthropic-test",
       });
     });
