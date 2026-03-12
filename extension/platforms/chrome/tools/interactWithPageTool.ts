@@ -6,12 +6,7 @@ const inputSchema = z.object({
   action: z
     .enum(["get_elements", "click_element", "type_text", "delete_text"])
     .describe("Action to perform."),
-  tab_id: z
-    .number()
-    .nullish()
-    .describe(
-      "The ID of the tab to interact with. If not specified, the active tab will be used."
-    ),
+  tab_id: z.number().describe("The ID of the tab to interact with."),
   element_id: z
     .string()
     .nullish()

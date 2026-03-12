@@ -87,13 +87,13 @@ export type CaptureFullPageMessage = {
 
 export type GetPageElementsMessage = {
   type: "GET_ELEMENTS";
-  tabId: number | null | undefined;
+  tabId: number;
 };
 export type GetPageElementsResponse = { elements: string; error?: string };
 
 export type ClickPageElementMessage = {
   type: "CLICK_ELEMENT";
-  tabId: number | null | undefined;
+  tabId: number;
   elementId: string;
 };
 export type ClickPageElementResponse = {
@@ -104,7 +104,7 @@ export type ClickPageElementResponse = {
 
 export type TypeTextMessage = {
   type: "TYPE_TEXT";
-  tabId: number | null | undefined;
+  tabId: number;
   elementId: string;
   text: string;
   variant: "replace" | "append";
@@ -118,7 +118,7 @@ export type TypeTextResponse = {
 
 export type DeleteTextMessage = {
   type: "DELETE_TEXT";
-  tabId: number | null | undefined;
+  tabId: number;
   elementId: string;
 };
 
@@ -264,18 +264,18 @@ export const sendTabActionMessage = (message: TabActionMessage) => {
 
 export function sendInteractWithPageMessage(input: {
   action: "get_elements";
-  tabId: number | null | undefined;
+  tabId: number;
 }): Promise<GetPageElementsResponse>;
 
 export function sendInteractWithPageMessage(input: {
   action: "click_element";
-  tabId: number | null | undefined;
+  tabId: number;
   elementId: string;
 }): Promise<ClickPageElementResponse>;
 
 export function sendInteractWithPageMessage(input: {
   action: "type_text";
-  tabId: number | null | undefined;
+  tabId: number;
   elementId: string;
   text: string;
   variant: "replace" | "append";
@@ -283,28 +283,28 @@ export function sendInteractWithPageMessage(input: {
 
 export function sendInteractWithPageMessage(input: {
   action: "delete_text";
-  tabId: number | null | undefined;
+  tabId: number;
   elementId: string;
 }): Promise<DeleteTextResponse>;
 
 export function sendInteractWithPageMessage(
   input:
-    | { action: "get_elements"; tabId: number | null | undefined }
+    | { action: "get_elements"; tabId: number }
     | {
         action: "click_element";
-        tabId: number | null | undefined;
+        tabId: number;
         elementId: string;
       }
     | {
         action: "type_text";
-        tabId: number | null | undefined;
+        tabId: number;
         elementId: string;
         text: string;
         variant: "replace" | "append";
       }
     | {
         action: "delete_text";
-        tabId: number | null | undefined;
+        tabId: number;
         elementId: string;
       }
 ): Promise<
