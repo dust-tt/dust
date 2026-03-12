@@ -381,7 +381,10 @@ export async function userAndWorkspaceFromEmail({
   for (const w of workspaceModels) {
     const lightWorkspace = renderLightWorkspaceType({ workspace: w });
     const flags = await getFeatureFlags(lightWorkspace);
-    if (flags.includes("email_agents")) {
+    if (
+      flags.includes("email_agents") &&
+      lightWorkspace.metadata?.allowEmailAgents === true
+    ) {
       eligibleWorkspaceModels.push(w);
     }
   }
