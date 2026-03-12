@@ -13,8 +13,6 @@ import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
-const statsDClient = getStatsDClient();
-
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 function cleanUtf8Content(content: string): string {
@@ -127,8 +125,12 @@ export async function upsertDocumentActivity(
       },
       "[UpsertQueue] Failed document upsert"
     );
-    statsDClient.increment("upsert_queue_document_error.count", 1, statsDTags);
-    statsDClient.distribution(
+    getStatsDClient().increment(
+      "upsert_queue_document_error.count",
+      1,
+      statsDTags
+    );
+    getStatsDClient().distribution(
       "upsert_queue_upsert_document_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
@@ -150,13 +152,17 @@ export async function upsertDocumentActivity(
     },
     "[UpsertQueue] Successful document upsert"
   );
-  statsDClient.increment("upsert_queue_document_success.count", 1, statsDTags);
-  statsDClient.distribution(
+  getStatsDClient().increment(
+    "upsert_queue_document_success.count",
+    1,
+    statsDTags
+  );
+  getStatsDClient().distribution(
     "upsert_queue_upsert_document_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
-  statsDClient.distribution(
+  getStatsDClient().distribution(
     "upsert_queue_document.duration.distribution",
     Date.now() - enqueueTimestamp,
     []

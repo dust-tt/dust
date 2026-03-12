@@ -55,8 +55,6 @@ import type Stripe from "stripe";
 import { promisify } from "util";
 import { z } from "zod";
 
-const statsDClient = getStatsDClient();
-
 export type GetResponseBody = {
   success: boolean;
   message?: string;
@@ -823,7 +821,7 @@ async function handler(
             assertStripeSubscriptionIsValid(stripeSubscription);
 
           if (validStatus.isErr()) {
-            statsDClient.increment("stripe.subscription.invalid", 1, [
+            getStatsDClient().increment("stripe.subscription.invalid", 1, [
               "event_type:customer.subscription.created",
             ]);
 
@@ -1148,7 +1146,7 @@ async function handler(
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
           if (validStatus.isErr()) {
-            statsDClient.increment("stripe.subscription.invalid", 1, [
+            getStatsDClient().increment("stripe.subscription.invalid", 1, [
               "event_type:customer.subscription.updated",
             ]);
 

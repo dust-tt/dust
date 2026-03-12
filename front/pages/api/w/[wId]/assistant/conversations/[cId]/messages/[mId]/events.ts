@@ -14,8 +14,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<void>>,
@@ -122,7 +120,7 @@ async function handler(
         const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
         if (!writeSuccessful) {
           backpressureCount++;
-          statsDClient.increment("streaming.backpressure.count", 1, [
+          getStatsDClient().increment("streaming.backpressure.count", 1, [
             "endpoint_type:internal",
             "endpoint:message_events",
           ]);
@@ -138,7 +136,7 @@ async function handler(
       const doneWriteSuccessful = res.write("data: done\n\n");
       if (!doneWriteSuccessful) {
         backpressureCount++;
-        statsDClient.increment("streaming.backpressure.count", 1, [
+        getStatsDClient().increment("streaming.backpressure.count", 1, [
           "endpoint_type:internal",
           "endpoint:message_events",
         ]);

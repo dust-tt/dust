@@ -17,8 +17,6 @@ import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 import getRawBody from "raw-body";
 
-const statsDClient = getStatsDClient();
-
 /**
  * @swagger
  * /api/v1/w/{wId}/triggers/hooks/{webhookSourceId}:
@@ -167,7 +165,7 @@ async function handler(
 
   const provider = webhookSource.provider ?? "custom";
 
-  statsDClient.increment("webhook_request.count", 1, [
+  getStatsDClient().increment("webhook_request.count", 1, [
     `provider:${provider}`,
     `workspace_id:${workspace.sId}`,
   ]);

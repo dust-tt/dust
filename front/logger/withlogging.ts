@@ -26,8 +26,6 @@ import type {
 } from "next";
 import logger from "./logger";
 
-const statsDClient = getStatsDClient();
-
 export type RequestContext = {
   [key: string]: ResourceLogJSON;
 };
@@ -225,7 +223,7 @@ export function withLogging<T>(
         `error_type:unhandled_internal_server_error`,
       ];
 
-      statsDClient.increment("api_errors.count", 1, tags);
+      getStatsDClient().increment("api_errors.count", 1, tags);
 
       // Try to return a 500 as it's likely nothing was returned yet.
       res.status(500).json({
@@ -247,8 +245,12 @@ export function withLogging<T>(
       `status_code:${res.statusCode}`,
     ];
 
-    statsDClient.increment("requests.count", 1, tags);
-    statsDClient.distribution("requests.duration.distribution", elapsed, tags);
+    getStatsDClient().increment("requests.count", 1, tags);
+    getStatsDClient().distribution(
+      "requests.duration.distribution",
+      elapsed,
+      tags
+    );
 
     logger.info(
       {
@@ -306,7 +308,7 @@ export function apiError<T>(
     `error_type:${apiError.api_error.type}`,
   ];
 
-  statsDClient.increment("api_errors.count", 1, tags);
+  getStatsDClient().increment("api_errors.count", 1, tags);
 
   res.status(apiError.status_code).json({
     error: apiError.api_error,
@@ -352,13 +354,13 @@ export function withGetServerSidePropsLogging<
 
       const tags = [`returnType:${returnType}`, `route:${route}`];
 
-      statsDClient.increment("get_server_side_props.count", 1, tags);
-      statsDClient.distribution(
+      getStatsDClient().increment("get_server_side_props.count", 1, tags);
+      getStatsDClient().distribution(
         "get_server_side_props.duration.distribution",
         elapsed,
         tags
       );
-      statsDClient.distribution(
+      getStatsDClient().distribution(
         "get_server_side_props.response_size.distribution",
         Buffer.byteLength(JSON.stringify(res)),
         tags
@@ -400,7 +402,7 @@ export function withGetServerSidePropsLogging<
         "Unhandled getServerSideProps Error"
       );
 
-      statsDClient.increment(
+      getStatsDClient().increment(
         "get_server_side_props_unhandled_errors.count",
         1,
         [`route:${route}`]

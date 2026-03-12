@@ -27,8 +27,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 export type PostMessagesResponseBody = {
   message: UserMessageType;
   contentFragments: ContentFragmentType[];
@@ -114,7 +112,7 @@ async function handler(
 
       const messageLatency = performance.now() - messageStartTime;
 
-      statsDClient.distribution(
+      getStatsDClient().distribution(
         "assistant.messages.fetch.latency",
         messageLatency
       );
@@ -122,7 +120,10 @@ async function handler(
         JSON.stringify(messagesRes.value),
         "utf8"
       );
-      statsDClient.distribution("assistant.messages.fetch.raw_size", rawSize);
+      getStatsDClient().distribution(
+        "assistant.messages.fetch.raw_size",
+        rawSize
+      );
 
       res.status(200).json(messagesRes.value);
       break;

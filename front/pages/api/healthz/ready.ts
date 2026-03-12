@@ -3,8 +3,6 @@ import { isInShutdown } from "@app/lib/shutdown_signal";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 /**
  * Readiness probe endpoint.
  *
@@ -27,8 +25,8 @@ export default async function handler(
   // Check if pod is shutting down.
   if (isInShutdown()) {
     const durationMs = performance.now() - startMs;
-    statsDClient.distribution("healthz.ready.duration_ms", durationMs);
-    statsDClient.increment("healthz.ready.shutdown");
+    getStatsDClient().distribution("healthz.ready.duration_ms", durationMs);
+    getStatsDClient().increment("healthz.ready.shutdown");
 
     res.status(503).json({ status: "shutting_down" });
     return;
@@ -38,5 +36,5 @@ export default async function handler(
   res.status(200).json({ status: "ready", commitHash: COMMIT_HASH });
 
   const durationMs = performance.now() - startMs;
-  statsDClient.distribution("healthz.ready.duration_ms", durationMs);
+  getStatsDClient().distribution("healthz.ready.duration_ms", durationMs);
 }

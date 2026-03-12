@@ -15,8 +15,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ConversationEventType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const statsDClient = getStatsDClient();
-
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/events:
@@ -158,7 +156,7 @@ async function handler(
         );
         if (!writeSuccessful) {
           backpressureCount++;
-          statsDClient.increment("streaming.backpressure.count", 1, [
+          getStatsDClient().increment("streaming.backpressure.count", 1, [
             "endpoint_type:v1",
             "endpoint:conversation_events",
           ]);
@@ -175,7 +173,7 @@ async function handler(
       const doneWriteSuccessful = res.write("data: done\n\n");
       if (!doneWriteSuccessful) {
         backpressureCount++;
-        statsDClient.increment("streaming.backpressure.count", 1, [
+        getStatsDClient().increment("streaming.backpressure.count", 1, [
           "endpoint_type:v1",
           "endpoint:conversation_events",
         ]);

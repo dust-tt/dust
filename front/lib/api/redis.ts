@@ -7,8 +7,6 @@ export type { RedisClientType };
 
 import { createClient } from "redis";
 
-const statsDClient = getStatsDClient();
-
 const clients = new Map<string, RedisClientType>();
 
 export interface RedisClientOptions {
@@ -78,11 +76,15 @@ async function createRedisClient({
   newClient.on("ready", () => logger.info({}, "Redis Client Ready"));
   newClient.on("connect", () => {
     logger.info({ origin }, "Redis Client Connected");
-    statsDClient.increment("redis.connection.count", 1, [`origin:${origin}`]);
+    getStatsDClient().increment("redis.connection.count", 1, [
+      `origin:${origin}`,
+    ]);
   });
   newClient.on("end", () => {
     logger.info({ origin }, "Redis Client End");
-    statsDClient.decrement("redis.connection.count", 1, [`origin:${origin}`]);
+    getStatsDClient().decrement("redis.connection.count", 1, [
+      `origin:${origin}`,
+    ]);
   });
 
   await newClient.connect();

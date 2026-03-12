@@ -1,7 +1,5 @@
 import { getStatsDClient } from "@app/lib/utils/statsd";
 
-const statsDClient = getStatsDClient();
-
 // StatsD metric names.
 export const METRICS = {
   LOOP_COMPLETIONS: "agent_loop.completions",
@@ -48,5 +46,5 @@ export const METRICS = {
 
 // Log start of complete agent loop - only called once per loop (from client.ts).
 export function logAgentLoopStart(): void {
-  statsDClient.increment(METRICS.LOOP_STARTS, 1);
+  getStatsDClient().increment(METRICS.LOOP_STARTS, 1);
 }
