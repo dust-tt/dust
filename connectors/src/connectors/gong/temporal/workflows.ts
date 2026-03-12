@@ -203,7 +203,7 @@ export async function gongKeywordUpdateWorkflow({
     });
 
     hasMore = result.hasMore;
-    lastId = result.lastId ?? null;
+    lastId = result.lastId;
 
     // If a signal arrived during the activity, restart from the beginning.
     // The signal handler already reset lastId to null and added keywords to the set.
