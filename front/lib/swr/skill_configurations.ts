@@ -18,9 +18,7 @@ import type {
 } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/detect";
-import type { DetectSkillsFromFilesResponseBody } from "@app/pages/api/w/[wId]/skills/detect-files";
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
-import type { ImportSkillsFromFilesResponseBody } from "@app/pages/api/w/[wId]/skills/import-files";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type {
   SkillStatus,
@@ -527,7 +525,7 @@ export function useDetectSkillsFromFiles({
 
       try {
         const res = await clientFetch(
-          `/api/w/${owner.sId}/skills/detect-files`,
+          `/api/w/${owner.sId}/skills/detect`,
           {
             method: "POST",
             body: formData,
@@ -540,7 +538,7 @@ export function useDetectSkillsFromFiles({
           return;
         }
 
-        const data: DetectSkillsFromFilesResponseBody = await res.json();
+        const data: DetectSkillsResponseBody = await res.json();
         setDetectedSkills(data.skills);
       } catch {
         setDetectError("Failed to detect skills from the uploaded files.");
@@ -586,7 +584,7 @@ export function useImportSkillsFromFiles({
         }
 
         const res = await clientFetch(
-          `/api/w/${owner.sId}/skills/import-files`,
+          `/api/w/${owner.sId}/skills/import`,
           {
             method: "POST",
             body: formData,
@@ -603,7 +601,7 @@ export function useImportSkillsFromFiles({
           return { successCount: 0, errors: [errorData.message] };
         }
 
-        const data: ImportSkillsFromFilesResponseBody = await res.json();
+        const data: ImportSkillsResponseBody = await res.json();
 
         void mutateActiveSkills();
 
