@@ -56,6 +56,7 @@ import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
+  isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
@@ -548,7 +549,9 @@ export function AgentMessage({
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
-    agentMessage.configuration.status !== "draft";
+    agentMessage.configuration.status !== "draft" &&
+    (!isGlobalAgent ||
+      isGlobalAgentWithFeedback(agentMessage.configuration.sId));
 
   const retryMessage = useRetryMessage({ owner });
 

@@ -1,4 +1,5 @@
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -96,6 +97,12 @@ export function FeedbackSelector({
   agentName,
   isGlobalAgent,
 }: FeedbackSelectorProps) {
+  // "Improve this agent" would be confusing in the context of sidekick so we show "Improve @sidekick" instead
+  const improveLabel =
+    agentConfigurationId === GLOBAL_AGENTS_SID.SIDEKICK
+      ? `Improve @${agentName}`
+      : "Improve this agent";
+
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [thumbDirection, setThumbDirection] =
     React.useState<ThumbReaction>("up");
@@ -176,7 +183,7 @@ export function FeedbackSelector({
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("down")}
           icon={MagicIcon}
-          label="Improve this agent"
+          label={improveLabel}
           className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
         />
       </ButtonGroup>

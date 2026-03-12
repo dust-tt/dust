@@ -187,6 +187,17 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 
+// If you want to show feedback buttons for global agents, add sId here.
+const GLOBAL_AGENTS_WITH_FEEDBACK = new Set<string>([
+  GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.DEEP_DIVE,
+  GLOBAL_AGENTS_SID.SIDEKICK,
+]);
+
+export function isGlobalAgentWithFeedback(sId: string): boolean {
+  return GLOBAL_AGENTS_WITH_FEEDBACK.has(sId);
+}
+
 const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
   GLOBAL_AGENTS_SID.SIDEKICK,
 ]);
