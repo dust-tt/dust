@@ -429,7 +429,8 @@ export async function getPageElementsDiff(
 
   const [execution] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    func: () => {
+    args: [tab.id],
+    func: (tabId: number) => {
       const w = window as unknown as DustWindow;
 
       if (!w.__dustElementMap || !w.__dustElementSnapshots) {
@@ -441,6 +442,8 @@ export async function getPageElementsDiff(
         __dustElementMap: elementMap,
         __dustElementSnapshots: snapshots,
       } = w;
+
+      const elementPrefix = `el_${tabId.toString(36)}_`;
 
       // ── Build reverse map: DOM node → elementId ───────────────────────────
       const domNodeToId = new Map<HTMLElement, string>();
@@ -508,7 +511,7 @@ export async function getPageElementsDiff(
         } else {
           let elementId: string;
           do {
-            elementId = `element_${counter++}`;
+            elementId = `${elementPrefix}${counter++}`;
           } while (elementMap[elementId] !== undefined);
 
           const newSnapshot: ElementSnapshot = { ...current, elementId };
