@@ -21,6 +21,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { Mistral } from "@mistralai/mistralai";
 import type { ChatCompletionRequest } from "@mistralai/mistralai/models/components";
@@ -156,6 +157,10 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       case BatchJobStatus.Failed:
       case BatchJobStatus.TimeoutExceeded:
       case BatchJobStatus.Cancelled:
+        logger.warn(
+          { batchId, status: job.status, provider: "mistral" },
+          "LLM Batch has been aborted"
+        );
         return "aborted";
       case BatchJobStatus.Queued:
       case BatchJobStatus.Running:
@@ -190,9 +195,9 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
         JSON.parse(trimmed)
       );
       if (!parsed.success) {
-        throw new Error(
-          `Failed to parse Mistral batch output line: ${parsed.error.message}`
-        );
+        const message = `Failed to parse Mistral batch output line: ${parsed.error.message}`;
+        logger.warn({ batchId, provider: "mistral" }, message);
+        throw new Error(message);
       }
 
       const { custom_id, response, error } = parsed.data;
