@@ -212,9 +212,9 @@ jobs:
         id: preview_url
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}-worker.preview.dust.tt" >> $GITHUB_OUTPUT
+            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}.preview.dust.tt" >> $GITHUB_OUTPUT
           else
-            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}-worker.preview.dust.tt" >> $GITHUB_OUTPUT
+            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> $GITHUB_OUTPUT
           fi
 
       - name: Summary
