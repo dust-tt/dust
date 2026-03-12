@@ -104,7 +104,7 @@ async function handler(
             statsd.distribution(
               "voice_transcription.total.duration_ms",
               performance.now() - totalStartMs,
-              [`status:silent`]
+              [`status:aborted`]
             );
             res.end();
             return;
@@ -153,7 +153,6 @@ async function handler(
       performance.now() - totalStartMs,
       [`status:error`]
     );
-    statsd.increment("voice_transcription.errors", 1);
 
     res.status(500).json({
       error: {
