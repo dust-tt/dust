@@ -931,7 +931,7 @@ const InputBarContainer = ({
                                 endComponent={
                                   <DropdownMenuShortcut
                                     shortcut={pageShortcut}
-                                    className="text-xs"
+                                    className="text-xs text-faint dark:text-faint-night"
                                   />
                                 }
                               />
@@ -948,7 +948,7 @@ const InputBarContainer = ({
                                 endComponent={
                                   <DropdownMenuShortcut
                                     shortcut={screenshotShortcut}
-                                    className="text-xs"
+                                    className="text-xs text-faint dark:text-faint-night"
                                   />
                                 }
                               />
