@@ -1,11 +1,6 @@
 import type { RegionInfo } from "@app/lib/api/regions/config";
 import type { Result } from "@app/types/shared/result";
-import {
-  DEFAULT_DUST_API_DOMAIN,
-  DUST_EU_URL,
-  DUST_US_URL,
-  WORKOS_CLAIM_NAMESPACE,
-} from "@extension/shared/lib/config";
+import { DUST_EU_URL, DUST_US_URL } from "@extension/shared/lib/config";
 import type { StorageService } from "@extension/shared/services/storage";
 
 export type StoredTokens = {
@@ -105,7 +100,7 @@ export abstract class AuthService {
   ): Promise<Result<StoredTokens, AuthError>>;
 }
 
-const REGION_CLAIM = `${WORKOS_CLAIM_NAMESPACE}region`;
+const REGION_CLAIM = `https://dust.tt/region`;
 
 export function getRegionInfoFromClaims(
   claims: Record<string, string>
@@ -114,9 +109,7 @@ export function getRegionInfoFromClaims(
   const regionName: RegionType = isRegionType(region) ? region : "us-central1";
   return {
     name: regionName,
-    url:
-      (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
-      DEFAULT_DUST_API_DOMAIN,
+    url: (isRegionType(region) && DOMAIN_FOR_REGION[region]) || DUST_US_URL,
   };
 }
 

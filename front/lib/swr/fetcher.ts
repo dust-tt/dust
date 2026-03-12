@@ -96,13 +96,3 @@ export const fetcherWithBody: FetcherWithBodyFn = async (
 
   return resHandler(res);
 };
-
-type UrlsAndOptions = { url: string; options: RequestInit };
-
-export const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
-  const f = async (url: string, options: RequestInit) => fetcher(url, options);
-
-  return Promise.all<T>(
-    urlsAndOptions.map(({ url, options }) => f(url, options))
-  );
-};
