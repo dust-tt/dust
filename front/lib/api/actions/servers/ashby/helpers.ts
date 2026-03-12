@@ -144,18 +144,6 @@ export async function findUniqueCandidate(
   return new Ok(candidates[0]);
 }
 
-export async function withAuth<T>(
-  { authInfo }: ToolHandlerExtra,
-  action: (token: string) => Promise<Result<T, MCPError>>
-): Promise<Result<T, MCPError>> {
-  const token = authInfo?.token;
-  if (!token) {
-    return new Err(new MCPError("No access token provided"));
-  }
-
-  return action(token);
-}
-
 function normalizeTitle(title: string): string {
   return title
     .replace(/[*_~`#]/g, "")
