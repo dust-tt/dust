@@ -444,14 +444,27 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
     void rejectSuggestion(agentSuggestion);
   };
 
+  const isReasoningOnlyChange =
+    relations.model?.modelId === modelSettingsField.value?.modelId;
+
+  const effort =
+    suggestion.reasoningEffort ?? relations.model?.defaultReasoningEffort;
+  const formattedReasoning = effort
+    ? effort.charAt(0).toUpperCase() + effort.slice(1)
+    : "Default";
+
   return (
     <ActionCardBlock
-      title={`Change model to: ${modelName}`}
+      title={
+        isReasoningOnlyChange
+          ? `Change model reasoning to: ${formattedReasoning}`
+          : `Change model to: ${modelName}`
+      }
+      acceptedTitle={`Model changed to ${modelName} with ${formattedReasoning} reasoning`}
+      rejectedTitle={`${modelName} model with ${formattedReasoning} reasoning suggestion rejected`}
       description={analysis ?? undefined}
       state={cardState}
       applyLabel="Accept"
-      acceptedTitle={`Model changed to ${modelName}`}
-      rejectedTitle={`${modelName} model suggestion rejected`}
       actionsPosition="header"
       onClickAccept={() => handleAccept(agentSuggestion)}
       onClickReject={() => handleReject(agentSuggestion)}
