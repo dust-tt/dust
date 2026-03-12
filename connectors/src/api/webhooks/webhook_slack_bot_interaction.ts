@@ -311,7 +311,7 @@ const _webhookSlackBotInteractionsAPIHandler = async (
 
         const { status: approved, agentName, toolName } = valueValidation.right;
 
-        const text = `Agent \`@${agentName}\`'s request to use tool \`${toolName}\` was ${
+        const text = `Agent \`${agentName}\`'s request to use tool \`${toolName}\` was ${
           approved === "approved" ? "✅ approved" : "❌ rejected"
         }`;
 
