@@ -4,6 +4,7 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
+import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
 import type {
   ServerMetadata,
   ToolMeta,
@@ -95,7 +96,6 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { CHROME_TOOLS_METADATA } from "../mcp_client_side/metadata";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";

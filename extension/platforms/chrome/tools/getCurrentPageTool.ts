@@ -8,7 +8,7 @@ import type { CaptureService } from "@extension/shared/services/capture";
  * Registers the get-current-browser-page tool with the MCP server.
  * Extracts the text content of a browser tab.
  */
-export async function getCurrentPageTool({
+export async function getPageTool({
   tabId,
   captureService,
 }: {

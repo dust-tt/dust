@@ -3,11 +3,11 @@ import {
   buildClientTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getCurrentPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
+import { getPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getPageViewTool } from "./getPageViewTool";
-import { registerInteractWithPageTool } from "./interactWithPageTool";
+import { interactWithPageTool } from "./interactWithPageTool";
 import { listBrowserTabsTool } from "./listTabsTool";
 import {
   activateBrowserTabTool,
@@ -27,11 +27,9 @@ export function registerAllTools(
   captureService: CaptureService | null,
   workspaceId: string
 ): void {
-  registerInteractWithPageTool(server);
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
-    get_current_browser_page: (params) =>
-      getCurrentPageTool({ ...params, captureService }),
-    get_current_browser_page_view: (params) =>
+    get_browser_page: (params) => getPageTool({ ...params, captureService }),
+    get_browser_page_view: (params) =>
       getPageViewTool({ ...params, captureService, workspaceId }),
     list_browser_tabs: () => listBrowserTabsTool(),
     activate_browser_tab: (params) => activateBrowserTabTool(params),
@@ -39,6 +37,7 @@ export function registerAllTools(
     move_browser_tab: (params) => moveBrowserTabTool(params),
     open_browser_tab: (params) => openBrowserTab(params),
     reload_browser_tab: (params) => reloadBrowserTabTool(params),
+    interact_with_page: (params) => interactWithPageTool(params),
   };
 
   const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
