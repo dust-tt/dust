@@ -1,8 +1,8 @@
+import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   type DetectedSkillStatus,
   isImportableSkillStatus,
 } from "@app/lib/skill_detection";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   Checkbox,
   Chip,
@@ -43,7 +43,7 @@ export function DetectedSkillsList({
         <ContentMessage
           title="Detection failed"
           icon={InformationCircleIcon}
-          variant="rose"
+          variant="warning"
           size="lg"
         >
           {detectError}

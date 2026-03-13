@@ -67,7 +67,7 @@ export function ImportFromRepositoryTab({
   };
 
   return (
-    <div className="pt-4">
+    <div className="flex flex-col gap-3 pt-4">
       <Input
         name={field.name}
         ref={field.ref}
