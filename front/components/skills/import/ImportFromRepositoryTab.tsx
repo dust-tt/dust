@@ -9,7 +9,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Input } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect } from "react";
-import { useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 interface ImportFromRepositoryTabProps {
   owner: LightWorkspaceType;
@@ -26,7 +26,8 @@ export function ImportFromRepositoryTab({
   onDetectingChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
-  const { register } = useFormContext<ImportFormValues>();
+  const { control } = useFormContext<ImportFormValues>();
+  const { field } = useController({ name: "repoUrl", control });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
@@ -62,14 +63,17 @@ export function ImportFromRepositoryTab({
   return (
     <>
       <Input
-        {...register("repoUrl", {
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-            const trimmed = e.target.value.trim();
-            if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
-              triggerDetect(trimmed);
-            }
-          },
-        })}
+        name={field.name}
+        ref={field.ref}
+        value={field.value}
+        onChange={(e) => {
+          const trimmed = e.target.value.trim();
+          field.onChange(trimmed);
+          if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
+            triggerDetect(trimmed);
+          }
+        }}
+        onBlur={field.onBlur}
         placeholder="https://github.com/owner/repo"
         disabled={isImporting}
       />
