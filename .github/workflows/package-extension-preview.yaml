@@ -1,0 +1,55 @@
+name: Package Extension preview on PR label
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  package-chrome:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'package-extension-preview')
+      || (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'package-extension-preview'))
+    uses: ./.github/workflows/package-extension.yaml
+    with:
+      target: "chrome:production"
+    secrets: inherit
+
+  comment-package-chrome:
+    needs: [package-chrome]
+    if: ${{ !failure() && !cancelled() && needs.package-chrome.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment artifact link on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- package-extension-preview -->';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `${marker}\n📦 **Extension packaged (chrome:production)**\n\nDownload the artifact from the [workflow run](${runUrl}).`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
