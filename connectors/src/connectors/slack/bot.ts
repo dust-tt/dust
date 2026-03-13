@@ -1012,13 +1012,24 @@ async function answerMessage(
   let streamHandler: SlackStreamHandler | undefined;
 
   if (useNativeStreaming) {
+    let streamRecipientUserId = slackUserId;
+    if (!streamRecipientUserId) {
+      const botUserIdRes = await getBotUserIdResponse(
+        slackClient,
+        connector.id
+      );
+      if (botUserIdRes.isErr()) {
+        throw botUserIdRes.error;
+      }
+      streamRecipientUserId = botUserIdRes.value;
+    }
     streamHandler = new SlackStreamHandler(slackClient, connector.id);
     streamHandler.start({
       slackChannel,
       slackMessageTs,
       slackThreadTs,
       slackTeamId,
-      slackUserId,
+      slackUserId: streamRecipientUserId,
     });
     await streamHandler.setThinking(
       mention.agentName === "dust"
