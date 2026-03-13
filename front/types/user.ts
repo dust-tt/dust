@@ -40,6 +40,9 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
+/**
+ * @swaggerschema Workspace (swagger_schemas.ts), PrivateWorkspace (swagger_private_schemas.ts)
+ */
 export type LightWorkspaceType = {
   id: ModelId;
   sId: string;
@@ -73,6 +76,9 @@ export type UserProviderType =
   | "waad"
   | null;
 
+/**
+ * @swaggerschema User (swagger_schemas.ts)
+ */
 export type UserType = {
   sId: string;
   id: ModelId;
@@ -92,6 +98,9 @@ export type UserTypeWithWorkspace = UserType & {
   origin?: MembershipOriginType;
 };
 
+/**
+ * @swaggerschema PrivateUser (swagger_private_schemas.ts)
+ */
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
   organizations?: WorkOSOrganizationType[];

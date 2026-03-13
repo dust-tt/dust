@@ -132,6 +132,9 @@ export type GlobalAgentContext = {
   sidekickIsNewAgentFromScratch?: boolean;
 };
 
+/**
+ * @swaggerschema AgentConfiguration (swagger_schemas.ts), PrivateLightAgentConfiguration (swagger_private_schemas.ts)
+ */
 export type LightAgentConfigurationType = {
   id: ModelId;
 
