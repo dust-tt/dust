@@ -4,7 +4,10 @@ import type {
   UsageMetricsInterval,
 } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildAgentAnalyticsBaseQuery,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -16,7 +19,7 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   interval: z.enum(["day", "week"]).optional().default("day"),
-  timezone: z.string().optional().default("UTC"),
+  timezone: timezoneSchema,
 });
 
 export type GetWorkspaceUsageMetricsResponse = {
