@@ -1,11 +1,7 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import {
-  bucketsToArray,
-  formatDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -14,6 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { estypes } from "@elastic/elasticsearch";
 import { stringify } from "csv-stringify/sync";
+import moment from "moment-timezone";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 import { z } from "zod";
@@ -130,7 +127,9 @@ async function handler(
               messageCount: b.doc_count,
               lastMessageSent:
                 typeof lastMessageMs === "number"
-                  ? formatDateFromMillis(lastMessageMs, q.data.timezone)
+                  ? moment(lastMessageMs)
+                      .tz(q.data.timezone)
+                      .format("YYYY-MM-DD")
                   : "",
               activeDaysCount: Array.isArray(activeDaysBuckets)
                 ? activeDaysBuckets.filter((d) => d.doc_count > 0).length

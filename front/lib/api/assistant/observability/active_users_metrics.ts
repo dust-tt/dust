@@ -4,11 +4,11 @@ import {
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { getStartOfTodayInTimezone } from "@app/lib/utils/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
+import moment from "moment-timezone";
 
 export interface ActiveUsersMetricsPoint {
   timestamp: number;
@@ -134,7 +134,7 @@ export async function fetchActiveUsersMetrics(
   sortedTimestamps.sort((a, b) => a - b);
 
   // Determine the cutoff timestamp - we only return points for the requested range
-  const startOfToday = getStartOfTodayInTimezone(timezone);
+  const startOfToday = moment.tz(timezone).startOf("day").valueOf();
   const cutoffTimestamp = startOfToday - (days - 1) * MS_PER_DAY;
 
   // Collect timestamps in the requested range for membership counting.

@@ -137,8 +137,6 @@ export function bucketsToArray<TBucket>(
   return Array.isArray(buckets) ? buckets : Object.values(buckets);
 }
 
-export { formatDateFromMillis } from "@app/lib/utils/timezone";
-
 export function formatUTCDateFromMillis(ms: number): string {
   const d = new Date(ms);
   const y = d.getUTCFullYear();
