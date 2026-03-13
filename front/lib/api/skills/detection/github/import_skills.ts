@@ -1,6 +1,5 @@
 import {
   detectSkillsFromGitHubRepo,
-  fetchSkillFileAttachments,
   initGitHubRepoClient,
   isSkillFromGitHubRepo,
 } from "@app/lib/api/skills/detection/github/detect_skills";
@@ -8,7 +7,6 @@ import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detectio
 import type { GitHubSkillDetectionError } from "@app/lib/api/skills/detection/github/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -75,14 +73,6 @@ export async function importSkillsFromGitHub(
         return;
       }
 
-      const fileAttachments = await fetchSkillFileAttachments(auth, skill, {
-        octokit,
-        owner,
-        repo,
-      });
-
-      let skillId: string;
-
       if (existing) {
         const attachedKnowledge = await existing.getAttachedKnowledge(auth);
 
@@ -95,7 +85,6 @@ export async function importSkillsFromGitHub(
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
-          fileAttachments,
           source: "github",
           sourceMetadata: {
             repoUrl,
@@ -103,7 +92,6 @@ export async function importSkillsFromGitHub(
           },
         });
 
-        skillId = existing.sId;
         updated.push(existing);
       } else {
         let icon: string | null = null;
@@ -140,17 +128,10 @@ export async function importSkillsFromGitHub(
             },
             isDefault: false,
           },
-          { mcpServerViews: [], fileAttachments }
+          { mcpServerViews: [] }
         );
 
-        skillId = skillResource.sId;
         imported.push(skillResource);
-      }
-
-      if (fileAttachments.length > 0) {
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId,
-        });
       }
     },
     { concurrency: IMPORT_CONCURRENCY }
