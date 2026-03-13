@@ -61,6 +61,28 @@ export function getKnowledgeLookupMethodLabel(
   }
 }
 
+export function getKnowledgeLookupMethodDescription(
+  serverName?: string | null,
+  fallbackDescription?: string
+) {
+  if (!serverName) {
+    return "";
+  }
+
+  switch (serverName) {
+    case SEARCH_SERVER_NAME:
+      return "Search content whose meaning best matches your message (not suited for analytics).";
+    case TABLE_QUERY_V2_SERVER_NAME:
+      return "Query structured data like a spreadsheet or database for data analyses.";
+    case INCLUDE_DATA_SERVER_NAME:
+      return "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data.";
+    case EXTRACT_DATA_SERVER_NAME:
+      return "Parse documents to create structured datasets.";
+    default:
+      return fallbackDescription ?? "";
+  }
+}
+
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   search: {
     icon: MagnifyingGlassIcon,
