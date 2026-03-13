@@ -31,6 +31,7 @@ AssistantCardMore.displayName = "AssistantCardMore";
 
 interface AssistantCardProps extends BaseAssistantCardProps {
   action?: React.ReactNode;
+  iconSize?: "sm" | "md";
 }
 
 export const AssistantCard = React.forwardRef<
@@ -49,6 +50,7 @@ export const AssistantCard = React.forwardRef<
       subtitle,
       action,
       variant = "primary",
+      iconSize = "md",
     },
     ref
   ) => {
@@ -63,7 +65,7 @@ export const AssistantCard = React.forwardRef<
         variant={variant}
       >
         <div className="s-flex s-gap-3">
-          <Avatar visual={pictureUrl} size="md" />
+          <Avatar visual={pictureUrl} size={iconSize} />
           <div
             className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
           >

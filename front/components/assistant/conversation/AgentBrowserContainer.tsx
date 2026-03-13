@@ -1,5 +1,7 @@
 import { AgentBrowser } from "@app/components/assistant/AgentBrowser";
+import { useClientType } from "@app/lib/context/clientType";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames, smoothScrollIntoView } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -21,6 +23,10 @@ export function AgentBrowserContainer({
   const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
+
+  const clientType = useClientType();
+  const isMobile = useIsMobile();
+  const isMobileOrExtension = isMobile || clientType === "extension";
 
   const handleAgentClick = useCallback(
     // On click, scroll to the input bar and set the selected agent.
@@ -49,9 +55,11 @@ export function AgentBrowserContainer({
         "duration-400 flex h-full w-full max-w-3xl flex-col gap-2 py-8"
       )}
     >
-      <div id="agents-list-header">
-        <Page.SectionHeader title="Chat with..." />
-      </div>
+      {!isMobileOrExtension && (
+        <div id="agents-list-header">
+          <Page.SectionHeader title="Chat with..." />
+        </div>
+      )}
       <AgentBrowser
         owner={owner}
         agentConfigurations={agentConfigurations}

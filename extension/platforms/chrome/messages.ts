@@ -129,6 +129,15 @@ export type DeleteTextResponse = {
   error?: string;
 };
 
+export type GetSessionInfoMessage = {
+  type: "GET_SESSION_INFO";
+};
+
+export type GetSessionInfoResponse = {
+  tabsCount: number;
+  currentTabHasForm: boolean;
+};
+
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response: U | undefined) => {
@@ -359,3 +368,10 @@ export const sendAttachSelection = (
     ...opts,
   });
 };
+
+export const sendGetSessionInfoMessage =
+  (): Promise<GetSessionInfoResponse> => {
+    return sendMessage<GetSessionInfoMessage, GetSessionInfoResponse>({
+      type: "GET_SESSION_INFO",
+    });
+  };

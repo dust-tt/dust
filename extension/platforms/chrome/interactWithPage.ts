@@ -24,6 +24,40 @@ type DustWindow = {
   __dustElementIdCounter: number;
 };
 
+const HAS_FORM_THRESHOLD = 10;
+
+export async function checkHasForm(
+  tab: chrome.tabs.Tab | undefined
+): Promise<Result<boolean, Error>> {
+  if (!tab?.id) {
+    return new Err(new Error("Tab not found."));
+  }
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    args: [HAS_FORM_THRESHOLD],
+    func: (threshold: number) => {
+      const selector = "input, textarea, select";
+      const nodes = document.querySelectorAll<HTMLElement>(selector);
+
+      if (nodes.length < threshold) {
+        return "NO_FORM";
+      }
+
+      return "HAS_FORM";
+    },
+  });
+
+  const result =
+    execution && typeof execution.result === "string"
+      ? execution.result === "HAS_FORM"
+        ? true
+        : false
+      : false;
+
+  return new Ok(result);
+}
+
 export async function getPageElements(
   tab: chrome.tabs.Tab | undefined
 ): Promise<Result<string, Error>> {

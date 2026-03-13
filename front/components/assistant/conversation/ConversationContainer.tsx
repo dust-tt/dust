@@ -26,7 +26,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Page } from "@dust-tt/sparkle";
+import { Card, LightbulbIcon, Page } from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -35,6 +35,10 @@ interface ConversationContainerProps {
   user: UserType;
   conversationId?: string | null;
   clientSideMCPServerIds?: string[];
+  suggestion?: {
+    title: string;
+    description: string;
+  };
 }
 
 export function ConversationContainerVirtuoso({
@@ -43,6 +47,7 @@ export function ConversationContainerVirtuoso({
   user,
   conversationId: conversationIdProp,
   clientSideMCPServerIds,
+  suggestion,
 }: ConversationContainerProps) {
   const conversationIdFromRouter = useActiveConversationId();
   const activeConversationId =
@@ -190,6 +195,22 @@ export function ConversationContainerVirtuoso({
               disableAutoFocus={false}
             />
           </div>
+
+          {suggestion && (
+            <div className="w-full max-w-3xl mt-1">
+              <Card variant="highlight" size="lg" containerClassName="w-full">
+                <div className="flex w-full flex-col gap-2 text-sm">
+                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
+                    <LightbulbIcon className="text-highlight-600 h-5 w-5" />
+                    <div className="w-full">{suggestion.title}</div>
+                  </div>
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {suggestion.description}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
           <AgentBrowserContainer
             onAgentConfigurationClick={(agent) => {
               setSelectedAgent(toRichAgentMentionType(agent));
