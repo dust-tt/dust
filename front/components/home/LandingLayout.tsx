@@ -17,6 +17,7 @@ import { useGeolocation } from "@app/lib/swr/geo";
 import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
+import { getOrCreateAnonymousId } from "@app/lib/utils/anonymous_id";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import { Button, cn, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
@@ -115,15 +116,15 @@ export default function LandingLayout({
     }
 
     if (geoData && geoData.isGDPR === false) {
-      // For non-GDPR countries (like US), auto-accept cookies immediately.
-      // This writes the dust-cookies-accepted=auto cookie so that downstream
-      // consumers (useStripUtmParams, PostHogTracker) can detect consent.
-      setCookieApproval("auto");
+      // For non-GDPR countries (like US), show banner and set cookies to auto
+      setShowCookieBanner(true);
+      setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
+      getOrCreateAnonymousId();
     } else {
       // For GDPR countries, just show the banner
       setShowCookieBanner(true);
     }
-  }, [geoData, isGeoDataLoading, cookieValue, setCookieApproval]);
+  }, [geoData, isGeoDataLoading, cookieValue]);
 
   return (
     <>
