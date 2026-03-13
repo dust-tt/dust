@@ -43,13 +43,32 @@ export async function getPageElements(
       const w = window as unknown as DustWindow;
       const { selector, CONTENT, getElementName } = w.__dustUtils;
 
-      w.__dustElementMap = {};
-      w.__dustElementSnapshots = {};
-      w.__dustElementIdCounter = 0;
+      // Initialize maps only if they don't exist yet — preserve existing IDs
+      if (!w.__dustElementMap) {
+        w.__dustElementMap = {};
+      }
+      if (!w.__dustElementSnapshots) {
+        w.__dustElementSnapshots = {};
+      }
+      if (!w.__dustElementIdCounter) {
+        w.__dustElementIdCounter = 0;
+      }
 
       const elementPrefix = `el_${tabId.toString(36)}_`;
 
+      // Build reverse map: DOM node → existing elementId
+      const domNodeToId = new Map<HTMLElement, string>();
+      for (const [elementId, weakRef] of Object.entries(w.__dustElementMap)) {
+        const el = weakRef.deref();
+        if (el) {
+          domNodeToId.set(el, elementId);
+        }
+      }
+
+      let counter = w.__dustElementIdCounter;
       const elements: ElementSnapshot[] = [];
+      const seenIds = new Set<string>();
+
       const nodes = document.querySelectorAll<HTMLElement>(selector);
 
       nodes.forEach((el) => {
@@ -66,10 +85,23 @@ export async function getPageElements(
           return;
         }
 
-        const elementId = `${elementPrefix}${w.__dustElementIdCounter++}`;
-        w.__dustElementMap[elementId] = new WeakRef<HTMLElement>(el);
-
         const tag = el.tagName.toLowerCase();
+
+        // Reuse existing ID if this DOM node was already tracked
+        const existingId = domNodeToId.get(el);
+        let elementId: string;
+
+        if (existingId !== undefined) {
+          elementId = existingId;
+        } else {
+          do {
+            elementId = `${elementPrefix}${counter++}`;
+          } while (w.__dustElementMap[elementId] !== undefined);
+          w.__dustElementMap[elementId] = new WeakRef<HTMLElement>(el);
+        }
+
+        seenIds.add(elementId);
+
         const snapshot: ElementSnapshot = {
           elementId,
           tag,
@@ -86,6 +118,16 @@ export async function getPageElements(
         w.__dustElementSnapshots[elementId] = snapshot;
         elements.push(snapshot);
       });
+
+      w.__dustElementIdCounter = counter;
+
+      // Clean up entries for elements no longer in the DOM
+      for (const elementId of Object.keys(w.__dustElementMap)) {
+        if (!seenIds.has(elementId)) {
+          delete w.__dustElementMap[elementId];
+          delete w.__dustElementSnapshots[elementId];
+        }
+      }
 
       return JSON.stringify(elements);
     },
