@@ -13,6 +13,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  collapsible_agent_messages: {
+    description:
+      "Collapse long agent messages in conversations with a show more/less toggle",
+    stage: "dust_only",
+  },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
     stage: "dust_only",
