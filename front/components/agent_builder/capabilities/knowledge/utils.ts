@@ -7,11 +7,11 @@ import {
 } from "@app/components/agent_builder/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
-import {
-  DATA_WAREHOUSE_SERVER_NAME,
-  SEARCH_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { DATA_WAREHOUSE_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
+import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { QUERY_TABLES_V2_SERVER } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
@@ -36,8 +36,24 @@ export interface CapabilityConfig {
   };
 }
 
-const INCLUDE_DATA_SERVER_NAME = "include_data";
-const EXTRACT_DATA_SERVER_NAME = "extract_data";
+const KNOWLEDGE_LOOKUP_METHOD_OVERRIDES = {
+  [SEARCH_SERVER.serverInfo.name]: {
+    label: "Content search",
+    description: SEARCH_SERVER.serverInfo.description,
+  },
+  [QUERY_TABLES_V2_SERVER.serverInfo.name]: {
+    label: "Analytics (tables, spreadsheets...)",
+    description: QUERY_TABLES_V2_SERVER.serverInfo.description,
+  },
+  [INCLUDE_DATA_SERVER.serverInfo.name]: {
+    label: "Include all data",
+    description: INCLUDE_DATA_SERVER.serverInfo.description,
+  },
+  [EXTRACT_DATA_SERVER.serverInfo.name]: {
+    label: "Advanced processing",
+    description: EXTRACT_DATA_SERVER.serverInfo.description,
+  },
+} as const;
 
 export function getKnowledgeLookupMethodLabel(
   serverName?: string | null,
@@ -47,18 +63,15 @@ export function getKnowledgeLookupMethodLabel(
     return "";
   }
 
-  switch (serverName) {
-    case SEARCH_SERVER_NAME:
-      return "Content search";
-    case TABLE_QUERY_V2_SERVER_NAME:
-      return "Analytics (tables, spreadsheets...)";
-    case INCLUDE_DATA_SERVER_NAME:
-      return "Include all data";
-    case EXTRACT_DATA_SERVER_NAME:
-      return "Advanced processing";
-    default:
-      return fallbackLabel ?? asDisplayToolName(serverName);
+  const override =
+    KNOWLEDGE_LOOKUP_METHOD_OVERRIDES[
+      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_OVERRIDES
+    ];
+  if (override) {
+    return override.label;
   }
+
+  return fallbackLabel ?? asDisplayToolName(serverName);
 }
 
 export function getKnowledgeLookupMethodDescription(
@@ -69,22 +82,19 @@ export function getKnowledgeLookupMethodDescription(
     return "";
   }
 
-  switch (serverName) {
-    case SEARCH_SERVER_NAME:
-      return "Search content whose meaning best matches your message (not suited for analytics).";
-    case TABLE_QUERY_V2_SERVER_NAME:
-      return "Query structured data like a spreadsheet or database for data analyses.";
-    case INCLUDE_DATA_SERVER_NAME:
-      return "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data.";
-    case EXTRACT_DATA_SERVER_NAME:
-      return "Parse documents to create structured datasets.";
-    default:
-      return fallbackDescription ?? "";
+  const override =
+    KNOWLEDGE_LOOKUP_METHOD_OVERRIDES[
+      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_OVERRIDES
+    ];
+  if (override) {
+    return override.description;
   }
+
+  return fallbackDescription ?? "";
 }
 
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
-  search: {
+  [SEARCH_SERVER.serverInfo.name]: {
     icon: MagnifyingGlassIcon,
     configPageTitle: "Configure Knowledge",
     configPageDescription: "",
@@ -95,7 +105,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       placeholder: "This data contains…",
     },
   },
-  include_data: {
+  [INCLUDE_DATA_SERVER.serverInfo.name]: {
     icon: ActionIncludeIcon,
     configPageTitle: "Configure Include Data",
     configPageDescription: "Set time range and describe what data to include.",
@@ -107,7 +117,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
         "Describe what data you want to include from your selected data sources...",
     },
   },
-  extract_data: {
+  [EXTRACT_DATA_SERVER.serverInfo.name]: {
     icon: ActionScanIcon,
     configPageTitle: "Configure Extract Data",
     configPageDescription:
@@ -120,7 +130,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       maxLength: DESCRIPTION_MAX_LENGTH,
     },
   },
-  [TABLE_QUERY_V2_SERVER_NAME]: {
+  [QUERY_TABLES_V2_SERVER.serverInfo.name]: {
     icon: TableIcon,
     configPageTitle: "Configure Query Tables",
     configPageDescription:

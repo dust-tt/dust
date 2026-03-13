@@ -105,18 +105,18 @@ export function ProcessingMethodSection() {
         if (sources.in.some(isNonTableDataItem)) {
           warning = (
             <>
-              <strong>
+              <span className="font-semibold">
                 {getKnowledgeLookupMethodLabel(
                   mcpServerView.server.name,
                   getMcpServerViewDisplayName(mcpServerView)
                 )}
-              </strong>{" "}
-              will ignore text documents and files in your selection. Create
-              separate knowledge tools if you need both.
+              </span>
+              &nbsp;will ignore text documents and files in your selection.
+              Create separate knowledge tools if you need both.
               <br />
-              <strong>Note:</strong> When you select a folder, only tables
-              directly inside it will be included. Tables in nested subfolders
-              won't be automatically added.
+              <span className="font-semibold">Note:</span>&nbsp;When you select
+              a folder, only tables directly inside it will be included. Tables
+              in nested subfolders won't be automatically added.
             </>
           );
         }
@@ -125,14 +125,14 @@ export function ProcessingMethodSection() {
         if (sources.in.every(isRemoteDatabaseOrTableItem)) {
           warning = (
             <>
-              <strong>
+              <span className="font-semibold">
                 {getKnowledgeLookupMethodLabel(
                   mcpServerView.server.name,
                   getMcpServerViewDisplayName(mcpServerView)
                 )}
-              </strong>{" "}
-              will ignore tables in your selection. Switch processing method if
-              you want to use your structured data.
+              </span>
+              &nbsp;will ignore tables in your selection. Switch processing
+              method if you want to use your structured data.
             </>
           );
         }
