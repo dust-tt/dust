@@ -141,7 +141,7 @@ interface AshbyJobPostingUpdateDetailsProps {
   jobId: string;
   title?: string;
   descriptionHtml?: string;
-  workplaceType?: string;
+  workplaceType?: string | null;
 }
 
 function AshbyJobPostingUpdateDetails({
