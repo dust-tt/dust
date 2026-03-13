@@ -343,7 +343,7 @@ export class OAuthAPI {
       }
     } else {
       const err = json?.error;
-      const res = json?.response;
+      const jsonResponse = json?.response;
 
       if (err && isOAuthAPIError(err)) {
         this._logger.error(
@@ -357,8 +357,8 @@ export class OAuthAPI {
           "OAuthAPI error"
         );
         return new Err(err);
-      } else if (res) {
-        return new Ok(res);
+      } else if (jsonResponse) {
+        return new Ok(jsonResponse);
       } else {
         const err: OAuthAPIError = {
           code: "unexpected_response_format",
