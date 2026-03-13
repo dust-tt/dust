@@ -191,7 +191,7 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           title: attachment.file_name,
           text: `Attachment: ${attachment.file_name}`,
           snippet: storedFile.snippet,
-          uri: "",
+          uri: storedFile.getPublicUrl(auth),
         };
         contentBlocks.push({
           type: "resource" as const,
