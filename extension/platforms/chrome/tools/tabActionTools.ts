@@ -4,11 +4,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { sendTabActionMessage } from "@extension/platforms/chrome/messages";
 import { normalizeError } from "@extension/shared/lib/utils";
 
-/**
- * Registers tab manipulation tools with the MCP server.
- */
+// Registers tab manipulation tools with the MCP server.
 
-export async function activateBrowserTabTool({
+export async function switchBrowserTabTool({
   tabId,
 }: {
   tabId: number;

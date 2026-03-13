@@ -5,10 +5,10 @@ import { normalizeError } from "@extension/shared/lib/utils";
 import type { CaptureService } from "@extension/shared/services/capture";
 
 /**
- * Registers the get-current-browser-page tool with the MCP server.
+ * Registers the attach_page_text tool with the MCP server.
  * Extracts the text content of a browser tab.
  */
-export async function getPageTool({
+export async function attachPageTextTool({
   tabId,
   captureService,
 }: {
