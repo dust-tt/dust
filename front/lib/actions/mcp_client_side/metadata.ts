@@ -47,6 +47,17 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       done: "Browser tabs listed",
     },
   },
+  get_current_tab_info: {
+    description:
+      "Retrieves the tab ID, title, and URL of the currently active browser tab. " +
+      "Use this to quickly understand what the user is currently looking at without needing to list all tabs.",
+    schema: {},
+    stake: "low",
+    displayLabels: {
+      running: "Getting current tab info...",
+      done: "Current tab info retrieved",
+    },
+  },
   activate_browser_tab: {
     description:
       "Switches to the specified browser tab, making it the active tab. " +
