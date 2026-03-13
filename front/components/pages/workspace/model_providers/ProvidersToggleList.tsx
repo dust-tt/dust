@@ -2,31 +2,20 @@ import { ProviderToggleContextItem } from "@app/components/pages/workspace/model
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import { ContextItem } from "@dust-tt/sparkle";
-import { type Dispatch, type SetStateAction, useCallback } from "react";
 
 interface ProvidersToggleListProps {
   providersSelection: ProvidersSelection;
-  setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
+  onToggleProvider: (provider: ModelProviderIdType) => void;
   isWorkspaceValidating: boolean;
   modelsDescriptionByProvider: Partial<Record<ModelProviderIdType, string>>;
 }
 
 export function ProvidersToggleList({
   providersSelection,
-  setProvidersSelection,
+  onToggleProvider,
   isWorkspaceValidating,
   modelsDescriptionByProvider,
 }: ProvidersToggleListProps) {
-  const toggleProvider = useCallback(
-    (provider: ModelProviderIdType) => {
-      setProvidersSelection((previousSelection: ProvidersSelection) => ({
-        ...previousSelection,
-        [provider]: !previousSelection[provider],
-      }));
-    },
-    [setProvidersSelection]
-  );
-
   return (
     <ContextItem.List>
       {(
@@ -40,7 +29,7 @@ export function ProvidersToggleList({
           providerId={providerId}
           description={description}
           providersSelection={providersSelection}
-          handleToggleChange={() => toggleProvider(providerId)}
+          handleToggleChange={() => onToggleProvider(providerId)}
           disabled={isWorkspaceValidating}
         />
       ))}
