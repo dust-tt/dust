@@ -2,6 +2,7 @@ import { Button } from "@dust-tt/sparkle";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
+const COLLAPSIBLE_THRESHOLD_PX = 420;
 const COLLAPSED_HEIGHT_PX = 320;
 
 interface CollapsibleContentProps {
@@ -28,7 +29,7 @@ export function CollapsibleContent({
 
     const el = contentRef.current;
     if (el) {
-      setExceedsThreshold(el.scrollHeight > COLLAPSED_HEIGHT_PX);
+      setExceedsThreshold(el.scrollHeight > COLLAPSIBLE_THRESHOLD_PX);
     }
   }, [isStreaming]);
 
