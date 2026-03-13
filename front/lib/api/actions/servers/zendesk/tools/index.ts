@@ -86,7 +86,9 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     let users: ZendeskUser[] = [];
 
     if (needComments) {
-      const commentsResult = await client.getTicketComments(ticketId);
+      const commentsResult = await client.getTicketComments(ticketId, {
+        includeInlineImages: includeAttachments,
+      });
 
       if (commentsResult.isErr()) {
         return new Err(

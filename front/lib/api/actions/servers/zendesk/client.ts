@@ -297,10 +297,16 @@ class ZendeskClient {
   }
 
   async getTicketComments(
-    ticketId: number
+    ticketId: number,
+    { includeInlineImages = false }: { includeInlineImages?: boolean } = {}
   ): Promise<Result<ZendeskTicketComment[], Error>> {
+    const url = new URL(`tickets/${ticketId}/comments`);
+    if (includeInlineImages) {
+      url.searchParams.append("include_inline_images", "");
+    }
+
     const result = await this.request(
-      `tickets/${ticketId}/comments`,
+      url.toString(),
       ZendeskTicketCommentsResponseSchema
     );
 
