@@ -126,24 +126,41 @@ async function fetchBlobContent(
 }
 
 /**
- * Detects Agent Skills (https://agentskills.io/specification) in a GitHub
- * repository by scanning for SKILL.md files via the Git Trees API.
+ * Parses a GitHub repo URL and creates an authenticated Octokit client.
+ * Shared setup for both skill detection and import flows.
  */
-export async function detectSkillsFromGitHubRepo({
+export function initGitHubRepoClient({
   repoUrl,
   accessToken,
 }: {
   repoUrl: string;
   accessToken?: string | null;
-}): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
+}): Result<
+  { octokit: InstanceType<typeof Octokit>; owner: string; repo: string },
+  GitHubSkillDetectionError
+> {
   const parseResult = parseGitHubRepoUrl(repoUrl);
   if (parseResult.isErr()) {
     return parseResult;
   }
   const { owner, repo } = parseResult.value;
-
   const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
+  return new Ok({ octokit, owner, repo });
+}
 
+/**
+ * Detects Agent Skills (https://agentskills.io/specification) in a GitHub
+ * repository by scanning for SKILL.md files via the Git Trees API.
+ */
+export async function detectSkillsFromGitHubRepo({
+  octokit,
+  owner,
+  repo,
+}: {
+  octokit: InstanceType<typeof Octokit>;
+  owner: string;
+  repo: string;
+}): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
   const treeResult = await fetchRepoTree(octokit, { owner, repo });
   if (treeResult.isErr()) {
     return treeResult;
