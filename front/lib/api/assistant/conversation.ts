@@ -792,11 +792,13 @@ export async function postUserMessage(
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-    // Mark the conversation as read for the current user.
-    await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation,
-      transaction: t,
-    });
+    if (!doNotAssociateUser) {
+      // Mark the conversation as read for the current user.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        transaction: t,
+      });
+    }
 
     return {
       userMessage,
