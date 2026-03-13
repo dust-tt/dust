@@ -1,0 +1,31 @@
+front/lib/resources/provider_credential_resource.test.ts
+  4fc0f17c22631c1d 192
+core/src/data_sources/splitter.rs
+  4fc0f17c22631c1d 537
+front/types/provider_credential.ts
+  4fc0f17c22631c1d 7
+core/src/providers/openai.rs
+  4fc0f17c22631c1d 1202-1223,1228,1230,1235
+front/lib/resources/provider_credential_resource.ts
+  4fc0f17c22631c1d 301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "8f4cbd9eb215f3ec8ff15d60213b947109a3e26d",
+  "prompts": {
+    "4fc0f17c22631c1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b4ba8e6-3712-494d-98d9-3ea2548441c6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 33,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    }
+  }
+}
