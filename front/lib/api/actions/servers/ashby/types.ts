@@ -552,11 +552,9 @@ export type AshbyJobPostingInfoResponse = z.infer<
 
 // Job posting update
 
-export const AshbyJobPostingWorkplaceTypeSchema = z.enum([
-  "OnSite",
-  "Hybrid",
-  "Remote",
-]).nullable();
+export const AshbyJobPostingWorkplaceTypeSchema = z
+  .enum(["OnSite", "Hybrid", "Remote"])
+  .nullable();
 
 export type AshbyJobPostingWorkplaceType = z.infer<
   typeof AshbyJobPostingWorkplaceTypeSchema
