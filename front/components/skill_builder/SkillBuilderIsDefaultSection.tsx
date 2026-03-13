@@ -58,9 +58,8 @@ export function SkillBuilderIsDefaultSection() {
           <DialogHeader hideButton>
             <DialogTitle>Allow agents to discover this skill?</DialogTitle>
             <DialogDescription>
-              Agents with{" "}
-              <span className="font-semibold">Discover Skills</span> will be
-              able to find and enable this skill on their own.
+              Agents with <span className="font-semibold">Discover Skills</span>{" "}
+              will be able to find and enable this skill on their own.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
