@@ -1,7 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -9,7 +9,7 @@ export class ProviderCredentialModel extends WorkspaceAwareModel<ProviderCredent
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare providerId: ModelProviderIdType;
+  declare providerId: ByokModelProviderIdType;
   declare credentialId: string;
   declare isHealthy: boolean;
   declare placeholder: string;

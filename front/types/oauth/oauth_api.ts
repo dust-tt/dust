@@ -1,10 +1,14 @@
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ApiKeyCredentialContentSchema } from "@app/types/provider_credential";
+import type { z } from "zod";
 import type {
   ConnectionCredentials,
   CredentialsProvider,
   OAuthConnectionType,
   OAuthProvider,
   OauthAPIGetCredentialsResponse,
-  OauthAPIPostCredentialsResponse,
+  OauthAPIPostConnectionCredentialsResponse,
+  OauthAPIPostModelProviderCredentialsResponse,
 } from "../oauth/lib";
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";
@@ -36,6 +40,16 @@ export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
 }
 
 export type OAuthAPIResponse<T> = Result<T, OAuthAPIError>;
+
+type CrendentialsMetadata = {
+  userId: string;
+  workspaceId: string;
+};
+
+export type ModelProviderPostCredentialsBody = {
+  provider: ByokModelProviderIdType;
+  credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+};
 
 export class OAuthAPI {
   _logger: LoggerInterface;
@@ -168,12 +182,33 @@ export class OAuthAPI {
     userId,
     workspaceId,
     credentials,
-  }: {
+  }: CrendentialsMetadata & {
     provider: CredentialsProvider;
-    userId: string;
-    workspaceId: string;
     credentials: ConnectionCredentials;
-  }): Promise<OAuthAPIResponse<OauthAPIPostCredentialsResponse>> {
+  }): Promise<OAuthAPIResponse<OauthAPIPostConnectionCredentialsResponse>>;
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
+  }: CrendentialsMetadata & ModelProviderPostCredentialsBody): Promise<
+    OAuthAPIResponse<OauthAPIPostModelProviderCredentialsResponse>
+  >;
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
+  }: CrendentialsMetadata &
+    (
+      | { provider: CredentialsProvider; credentials: ConnectionCredentials }
+      | ModelProviderPostCredentialsBody
+    )): Promise<
+    OAuthAPIResponse<
+      | OauthAPIPostConnectionCredentialsResponse
+      | OauthAPIPostModelProviderCredentialsResponse
+    >
+  > {
     const response = await this._fetchWithError(`${this._url}/credentials`, {
       method: "POST",
       headers: {

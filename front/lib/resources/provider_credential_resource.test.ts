@@ -2,7 +2,7 @@ import { ProviderCredentialResource } from "@app/lib/resources/provider_credenti
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
 import { Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetCredentials = vi.fn();
 
@@ -19,13 +19,19 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
 });
 
 describe("ProviderCredentialResource", () => {
+  beforeEach(() => {
+    mockGetCredentials.mockResolvedValue(
+      new Ok({ credential: { content: { api_key: "sk-test" } } })
+    );
+  });
+
   describe("listByWorkspace", () => {
     it("throws when plan does not have isByok enabled", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       await expect(
         ProviderCredentialResource.listByWorkspace(authenticator)
-      ).rejects.toThrow("BYOK is not enabled");
+      ).rejects.toThrow("BYOK must be enabled");
     });
 
     it("returns empty array when no credentials exist", async () => {
@@ -34,10 +40,10 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
 
-      expect(credentials).toEqual([]);
+      expect(result).toEqual([]);
     });
 
     it("returns all credentials for the workspace", async () => {
@@ -50,11 +56,11 @@ describe("ProviderCredentialResource", () => {
       await ProviderCredentialFactory.basic(workspace, "openai");
       await ProviderCredentialFactory.basic(workspace, "anthropic");
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
 
-      expect(credentials).toHaveLength(2);
-      expect(credentials.map((c) => c.providerId).sort()).toEqual([
+      expect(result).toHaveLength(2);
+      expect(result.map((c) => c.providerId).sort()).toEqual([
         "anthropic",
         "openai",
       ]);
@@ -70,9 +76,10 @@ describe("ProviderCredentialResource", () => {
       const workspace = authenticator.getNonNullableWorkspace();
       await ProviderCredentialFactory.basic(workspace, "openai");
 
-      const [credential] =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
 
+      const [credential] = result;
       const json = credential.toJSON();
 
       expect(json.sId).toMatch(/^pcr_/);
@@ -96,8 +103,10 @@ describe("ProviderCredentialResource", () => {
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
-      const [credential] =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
+
+      const [credential] = result;
       await credential.delete(authenticator);
 
       const remaining =
@@ -129,10 +138,10 @@ describe("ProviderCredentialResource", () => {
     it("returns Dust-managed LLM credentials for non-BYOK workspaces", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.getCredentials(authenticator);
 
-      expect(credentials).toEqual({
+      expect(result).toEqual({
         ANTHROPIC_API_KEY: "",
         AZURE_OPENAI_API_KEY: "",
         AZURE_OPENAI_ENDPOINT: "",
@@ -163,12 +172,7 @@ describe("ProviderCredentialResource", () => {
         ({ credentialsId }: { credentialsId: string }) => {
           if (credentialsId === "cred-openai") {
             return new Ok({
-              credential: {
-                content: {
-                  api_key: "sk-openai-test",
-                  base_url: "https://custom.openai.com",
-                },
-              },
+              credential: { content: { api_key: "sk-openai-test" } },
             });
           }
           if (credentialsId === "cred-anthropic") {
@@ -180,14 +184,12 @@ describe("ProviderCredentialResource", () => {
         }
       );
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.getCredentials(authenticator);
 
-      expect(credentials).toEqual({
+      expect(result).toEqual({
         OPENAI_API_KEY: "sk-openai-test",
-        OPENAI_BASE_URL: "https://custom.openai.com",
         ANTHROPIC_API_KEY: "sk-anthropic-test",
-        OPENAI_USE_EU_ENDPOINT: "false",
       });
     });
 
@@ -197,10 +199,10 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.getCredentials(authenticator);
 
-      expect(credentials).toEqual({});
+      expect(result).toEqual({});
     });
 
     it("throws when OAuth fetch fails for a provider", async () => {
