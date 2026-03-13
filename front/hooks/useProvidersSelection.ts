@@ -35,34 +35,20 @@ export function useProvidersSelection(
     setProvidersSelection(initialProvidersSelection);
   }, [initialProvidersSelection]);
 
-  const toggleProvider = useCallback(
-    async (provider: ModelProviderIdType) => {
-      const newSelection = {
-        ...providersSelection,
-        [provider]: !providersSelection[provider],
-      };
-      const activeProviders = MODEL_PROVIDER_IDS.filter(
-        (key) => newSelection[key]
-      );
-
-      if (activeProviders.length === 0) {
-        sendNotifications({
-          type: "error",
-          title: "One provider required",
-          description:
-            "Please select at least one provider to continue with the update.",
-        });
-        return;
-      }
-
+  const saveProviders = useCallback(
+    async (
+      newSelection: ProvidersSelection,
+      previousSelection: ProvidersSelection
+    ) => {
       setProvidersSelection(newSelection);
-
       try {
         const response = await clientFetch(`/api/w/${owner.sId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            whiteListedProviders: activeProviders,
+            whiteListedProviders: MODEL_PROVIDER_IDS.filter(
+              (key) => newSelection[key]
+            ),
             defaultEmbeddingProvider:
               workspace?.defaultEmbeddingProvider ?? null,
           }),
@@ -80,7 +66,7 @@ export function useProvidersSelection(
 
         await mutateWorkspace();
       } catch {
-        setProvidersSelection(providersSelection);
+        setProvidersSelection(previousSelection);
         sendNotifications({
           type: "error",
           title: "Update Failed",
@@ -90,12 +76,42 @@ export function useProvidersSelection(
     },
     [
       owner.sId,
-      providersSelection,
       workspace?.defaultEmbeddingProvider,
       mutateWorkspace,
       sendNotifications,
     ]
   );
 
-  return { providersSelection, setProvidersSelection, toggleProvider };
+  const toggleProvider = useCallback(
+    async (provider: ModelProviderIdType) => {
+      const newSelection = {
+        ...providersSelection,
+        [provider]: !providersSelection[provider],
+      };
+
+      if (MODEL_PROVIDER_IDS.filter((key) => newSelection[key]).length === 0) {
+        sendNotifications({
+          type: "error",
+          title: "One provider required",
+          description:
+            "Please select at least one provider to continue with the update.",
+        });
+        return;
+      }
+
+      await saveProviders(newSelection, providersSelection);
+    },
+    [providersSelection, saveProviders, sendNotifications]
+  );
+
+  const selectAllProviders = useCallback(async () => {
+    await saveProviders(ALL_PROVIDERS_SELECTED, providersSelection);
+  }, [providersSelection, saveProviders]);
+
+  return {
+    providersSelection,
+    setProvidersSelection,
+    toggleProvider,
+    selectAllProviders,
+  };
 }

@@ -8,7 +8,7 @@ export function ModelProvidersPage() {
   const owner = useWorkspace();
   const { workspace, isWorkspaceValidating, mutateWorkspace } =
     useWorkspaceDetails({ owner });
-  const { providersSelection, setProvidersSelection, toggleProvider } =
+  const { providersSelection, toggleProvider, selectAllProviders } =
     useProvidersSelection(workspace, owner, mutateWorkspace);
 
   return (
@@ -22,10 +22,10 @@ export function ModelProvidersPage() {
         {workspace && (
           <ModelProvidersPageContent
             workspace={workspace}
-            setProvidersSelection={setProvidersSelection}
             providersSelection={providersSelection}
             isWorkspaceValidating={isWorkspaceValidating}
             onToggleProvider={toggleProvider}
+            onSelectAllProviders={selectAllProviders}
           />
         )}
       </Page.Vertical>
