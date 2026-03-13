@@ -7,7 +7,10 @@ import {
 } from "@app/components/resources/resources_icons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
@@ -216,7 +219,7 @@ export function ProcessingMethodSection() {
                   )}
                   icon={getAvatar(view.server)}
                   onClick={() => onChange(view)}
-                  description={view.server.description}
+                  description={getMcpServerViewDescription(view)}
                 />
               ))}
           </DropdownMenuContent>
