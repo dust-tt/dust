@@ -33,6 +33,7 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
+import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
@@ -292,6 +293,16 @@ export async function getConversationMessageType(
 
   if (!message) {
     return null;
+  }
+
+  if (message.branchSId) {
+    const branch = await ConversationBranchResource.fetchById(
+      auth,
+      message.branchSId
+    );
+    if (!branch || !branch.canRead(auth)) {
+      return null;
+    }
   }
 
   if (message.userMessageId) {
@@ -2108,4 +2119,36 @@ async function isMessagesLimitReached(
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
+}
+
+export async function isConversationEventAllowedForAuth(
+  auth: Authenticator,
+  {
+    event,
+  }: {
+    event: ConversationEvents;
+  }
+): Promise<boolean> {
+  const type = event.type;
+  switch (type) {
+    case "user_message_new":
+    case "agent_message_new":
+      if (event.message.branchId) {
+        // It's okay to fetch the branch here because theses events are only sent once per message.
+        const branch = await ConversationBranchResource.fetchById(
+          auth,
+          event.message.branchId
+        );
+        return !!branch && branch.canRead(auth);
+      }
+      return true;
+    case "agent_message_done":
+    case "butler_suggestion_created":
+    case "butler_done":
+    case "butler_thinking":
+    case "conversation_title":
+      return true;
+    default:
+      assertNever(type);
+  }
 }

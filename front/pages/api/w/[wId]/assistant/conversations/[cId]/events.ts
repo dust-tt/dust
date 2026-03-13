@@ -36,6 +36,7 @@
 // This endpoint is redirected (307) to /api/sse/w/[wId]/assistant/conversations/[cId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
+import { isConversationEventAllowedForAuth } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -115,6 +116,14 @@ async function handler(
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
+        // Some events are targetted toward a specific user.
+        const isAllowed = await isConversationEventAllowedForAuth(auth, {
+          event: event.data,
+        });
+        if (!isAllowed) {
+          continue;
+        }
+
         const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
         if (!writeSuccessful) {
           backpressureCount++;

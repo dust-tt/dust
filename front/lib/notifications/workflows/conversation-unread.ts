@@ -199,8 +199,8 @@ const getConversationDetails = async ({
     .flat()
     .find((msg) => msg.sId === payload.messageId);
   if (!message) {
-    // Message doesn't exist at all - unexpected.
-    throw new Error(`Message not found: ${payload.messageId}`);
+    // Message doesn't exist at all - could be true if it's in a branch.
+    return new Err(new ConversationError("message_not_found"));
   }
   if (message.visibility === "deleted") {
     // Message was deleted during workflow delay - expected.
