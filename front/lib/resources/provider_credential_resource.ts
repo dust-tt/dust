@@ -7,6 +7,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import {
@@ -19,6 +20,7 @@ import {
   PROVIDER_TO_CREDENTIAL_KEY,
   type ProviderCredentialType,
 } from "@app/types/provider_credential";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -31,6 +33,19 @@ import type { Attributes, ModelStatic } from "sequelize";
 import type { z } from "zod";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 5;
+
+type CachedProviderCredential = {
+  id: number;
+  workspaceId: number;
+  providerId: ByokModelProviderIdType;
+  credentialId: string;
+  isHealthy: boolean;
+  placeholder: string;
+  editedByUserId: number | null;
+  createdAt: number;
+  updatedAt: number;
+  credentials: { api_key: string };
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -115,7 +130,70 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     );
   }
 
-  // TODO (BYOK): cache this method
+  private static readonly providerCredentialCacheKeyResolver = (
+    workspaceModelId: ModelId
+  ) => `provider_credentials:workspaceId:${workspaceModelId}`;
+
+  private static async _baseFetchUncached(
+    workspaceModelId: ModelId
+  ): Promise<CachedProviderCredential[]> {
+    const models = await ProviderCredentialResource.model.findAll({
+      where: { workspaceId: workspaceModelId },
+    });
+
+    const resources = await concurrentExecutor(
+      models,
+      ProviderCredentialResource.makeNewFromModel,
+      { concurrency: 8 }
+    );
+
+    return resources.map((r) => ({
+      id: r.id,
+      workspaceId: r.workspaceId,
+      providerId: r.providerId,
+      credentialId: r.credentialId,
+      isHealthy: r.isHealthy,
+      placeholder: r.placeholder,
+      editedByUserId: r.editedByUserId,
+      createdAt: r.createdAt.getTime(),
+      updatedAt: r.updatedAt.getTime(),
+      credentials: r.credentials,
+    }));
+  }
+
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
+  private static baseFetchCached = cacheWithRedis(
+    ProviderCredentialResource._baseFetchUncached,
+    ProviderCredentialResource.providerCredentialCacheKeyResolver,
+    { cacheNullValues: false }
+  );
+
+  private static invalidateProviderCredentialCache = invalidateCacheWithRedis(
+    ProviderCredentialResource._baseFetchUncached,
+    ProviderCredentialResource.providerCredentialCacheKeyResolver
+  );
+
+  private static fromCachedData(
+    data: CachedProviderCredential
+  ): ProviderCredentialResource {
+    const blob: Attributes<ProviderCredentialModel> = {
+      id: data.id,
+      workspaceId: data.workspaceId,
+      providerId: data.providerId,
+      credentialId: data.credentialId,
+      isHealthy: data.isHealthy,
+      placeholder: data.placeholder,
+      editedByUserId: data.editedByUserId,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+    };
+    return new ProviderCredentialResource(
+      ProviderCredentialModel,
+      blob,
+      data.credentials
+    );
+  }
+
   private static async baseFetch(
     auth: Authenticator
   ): Promise<ProviderCredentialResource[]> {
@@ -123,16 +201,9 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     assert(plan.isByok, "BYOK must be enabled to fetch provider credentials.");
 
     const workspace = auth.getNonNullableWorkspace();
+    const cached = await this.baseFetchCached(workspace.id);
 
-    const models = await this.model.findAll({
-      where: { workspaceId: workspace.id },
-    });
-
-    const resources = await concurrentExecutor(models, this.makeNewFromModel, {
-      concurrency: 8,
-    });
-
-    return resources;
+    return cached.map(this.fromCachedData);
   }
 
   static async makeNew(
@@ -202,6 +273,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       editedByUserId: user.id,
     });
 
+    await this.invalidateProviderCredentialCache(workspace.id);
+
     return new ProviderCredentialResource(
       ProviderCredentialModel,
       model.get(),
@@ -242,18 +315,25 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     await ProviderCredentialModel.destroy({
       where: { workspaceId: workspace.id },
     });
+
+    await this.invalidateProviderCredentialCache(workspace.id);
   }
 
   async delete(
     auth: Authenticator
   ): Promise<Result<number | undefined, Error>> {
     try {
+      const workspace = auth.getNonNullableWorkspace();
       const affectedCount = await this.model.destroy({
         where: {
           id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: workspace.id,
         },
       });
+
+      await ProviderCredentialResource.invalidateProviderCredentialCache(
+        workspace.id
+      );
 
       return new Ok(affectedCount);
     } catch (error) {
