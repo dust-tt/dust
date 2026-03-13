@@ -19,6 +19,7 @@ import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
@@ -68,6 +69,8 @@ function UserMessageEditor({
   isSaving,
   onSave,
 }: UserMessageEditorProps) {
+  const isMobile = useIsMobile();
+
   if (!editor) {
     return null;
   }
@@ -88,9 +91,9 @@ function UserMessageEditor({
         className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
-      <BubbleMenu editor={editor} className="hidden sm:flex">
+      <BubbleMenu editor={editor} className={cn("flex", isMobile && "hidden")}>
         {editor && (
-          <Toolbar className="hidden sm:inline-flex">
+          <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
             <ToolBarContent editor={editor} />
           </Toolbar>
         )}
