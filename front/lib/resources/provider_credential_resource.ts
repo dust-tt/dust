@@ -29,7 +29,7 @@ import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
 
-const API_KEY_REVEAL_WINDOW_MINUTES = 5;
+const API_KEY_REVEAL_WINDOW_MINUTES = 2;
 
 type CachedProviderCredential = {
   id: ModelId;
