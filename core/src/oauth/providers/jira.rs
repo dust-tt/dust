@@ -35,6 +35,23 @@ impl JiraConnectionProvider {
     pub fn new() -> Self {
         JiraConnectionProvider {}
     }
+
+    fn handle_refresh_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        match &error {
+            ProviderHttpRequestError::RequestFailed {
+                status, message, ..
+            } => {
+                let is_revoked = is_jira_refresh_token_revoked(*status, message);
+                info!(message, is_revoked, status, "JIRA refresh OAuth error");
+                if is_revoked {
+                    ProviderError::TokenRevokedError
+                } else {
+                    self.default_handle_provider_request_error(error)
+                }
+            }
+            _ => self.default_handle_provider_request_error(error),
+        }
+    }
 }
 
 fn is_jira_refresh_token_revoked(status: u16, message: &str) -> bool {
@@ -80,7 +97,7 @@ impl Provider for JiraConnectionProvider {
 
         let raw_json = execute_request(ConnectionProvider::Jira, req)
             .await
-            .map_err(|e| self.handle_provider_request_error(e))?;
+            .map_err(|e| self.default_handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -142,7 +159,7 @@ impl Provider for JiraConnectionProvider {
 
         let raw_json = execute_request(ConnectionProvider::Jira, req)
             .await
-            .map_err(|e| self.handle_provider_request_error(e))?;
+            .map_err(|e| self.handle_refresh_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -193,27 +210,6 @@ impl Provider for JiraConnectionProvider {
         };
         Ok(raw_json)
     }
-
-    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
-        match &error {
-            ProviderHttpRequestError::RequestFailed {
-                status, message, ..
-            } => {
-                let is_revoked = is_jira_refresh_token_revoked(*status, message);
-                info!(message, is_revoked, status, "JIRA OAuth error");
-                if is_revoked {
-                    ProviderError::TokenRevokedError
-                } else {
-                    // Call the default implementation for non-revocation errors.
-                    self.default_handle_provider_request_error(error)
-                }
-            }
-            _ => {
-                // Call the default implementation for other cases.
-                self.default_handle_provider_request_error(error)
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -248,12 +244,25 @@ mod tests {
     fn maps_revoked_refresh_failures_to_token_revoked_error() {
         let provider = JiraConnectionProvider::new();
         let error =
-            provider.handle_provider_request_error(ProviderHttpRequestError::RequestFailed {
+            provider.handle_refresh_request_error(ProviderHttpRequestError::RequestFailed {
                 provider: ConnectionProvider::Jira,
                 status: 400,
                 message: "invalid_grant".to_string(),
             });
 
         assert!(matches!(error, ProviderError::TokenRevokedError));
+    }
+
+    #[test]
+    fn finalize_invalid_grant_stays_generic() {
+        let provider = JiraConnectionProvider::new();
+        let error =
+            provider.handle_provider_request_error(ProviderHttpRequestError::RequestFailed {
+                provider: ConnectionProvider::Jira,
+                status: 400,
+                message: "invalid_grant".to_string(),
+            });
+
+        assert!(!matches!(error, ProviderError::TokenRevokedError));
     }
 }
