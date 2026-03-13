@@ -303,10 +303,10 @@ class ZendeskClient {
     const params = new URLSearchParams();
     if (includeInlineImages) {
       // https://developer.zendesk.com/api-reference/ticketing/tickets/ticket_comments/#parameters
-      params.append("include_inline_images", "");
+      params.append("include_inline_images", "true");
     }
     const result = await this.request(
-      `tickets/${ticketId}/comments${params.toString()}`,
+      `tickets/${ticketId}/comments?${params.toString()}`,
       ZendeskTicketCommentsResponseSchema
     );
 
