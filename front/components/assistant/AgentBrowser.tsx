@@ -470,7 +470,7 @@ export function AgentBrowser({
               ) : (
                 <Button
                   href={getAgentBuilderRoute(owner.sId, "manage")}
-                  variant="primary"
+                  variant="outline-ghost"
                   icon={ContactsRobotIcon}
                   label="Manage agents"
                   data-gtm-label="assistantManagementButton"
@@ -512,7 +512,7 @@ export function AgentBrowser({
                 <DropdownMenuTrigger asChild>
                   <Button
                     isSelect
-                    variant="outline"
+                    variant="ghost"
                     label={sortTypeLabel}
                     size="sm"
                   />
@@ -547,7 +547,7 @@ export function AgentBrowser({
                 {uniqueTags.map((tag) => (
                   <Button
                     size="xs"
-                    variant={selectedTag === tag.sId ? "primary" : "outline"}
+                    variant={selectedTag === tag.sId ? "outline-ghost" : "ghost"}
                     key={tag.sId}
                     label={tag.name}
                     onClick={() => {

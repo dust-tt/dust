@@ -460,7 +460,7 @@ export function AgentMessage({
       <Button
         key="stop-msg-button"
         label="Stop agent"
-        variant="ghost-secondary"
+        variant="outline-ghost"
         size="xs"
         onClick={async () => {
           await cancelMessage([sId]);
@@ -629,7 +629,7 @@ export function AgentMessage({
       <ButtonGroup key="split-button-group">
         <Button
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="outline"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
@@ -638,7 +638,7 @@ export function AgentMessage({
         <ButtonGroupDropdown
           trigger={
             <Button
-              variant="outline"
+              variant="outline-ghost"
               size="xs"
               icon={MoreIcon}
               className="text-muted-foreground"
@@ -655,7 +655,7 @@ export function AgentMessage({
         <Button
           key="copy-msg-button"
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
@@ -667,7 +667,7 @@ export function AgentMessage({
         <Button
           key="copy-msg-link-button"
           tooltip="Copy message link"
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyMessageLink}
           icon={LinkIcon}
@@ -681,7 +681,7 @@ export function AgentMessage({
         <Button
           key="retry-msg-button"
           tooltip="Retry"
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={() => {
             void retryHandler({
@@ -1188,7 +1188,7 @@ function AgentMessageContent({
             <ButtonGroupDropdown
               trigger={
                 <Button
-                  variant="outline"
+                  variant="outline-ghost"
                   size="xs"
                   icon={MoreIcon}
                   className="text-muted-foreground"

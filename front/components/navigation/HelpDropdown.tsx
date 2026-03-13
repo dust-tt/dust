@@ -118,7 +118,7 @@ export function HelpDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" label="Help" icon={HeartIcon} isSelect />
+        <Button variant="outline-ghost" label="Help" icon={HeartIcon} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         onCloseAutoFocus={(e) => {

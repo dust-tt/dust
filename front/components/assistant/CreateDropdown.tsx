@@ -47,7 +47,7 @@ export const CreateDropdown = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="primary"
+          variant="outline-ghost"
           icon={PlusIcon}
           label="Create"
           data-gtm-label="assistantCreationButton"

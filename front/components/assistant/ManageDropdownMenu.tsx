@@ -28,7 +28,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="primary"
+          variant="outline-ghost"
           label="Manage"
           icon={ContactsRobotIcon}
           size="sm"

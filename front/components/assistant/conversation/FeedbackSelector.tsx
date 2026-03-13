@@ -182,7 +182,7 @@ export function FeedbackSelector({
     <div className="flex items-center">
       <ButtonGroup>
         <Button
-          variant={feedback?.thumb === "up" ? "primary" : "outline"}
+          variant={feedback?.thumb === "up" ? "primary" : "outline-ghost"}
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("up")}
@@ -190,7 +190,7 @@ export function FeedbackSelector({
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
-          variant={feedback?.thumb === "down" ? "primary" : "outline"}
+          variant={feedback?.thumb === "down" ? "primary" : "outline-ghost"}
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("down")}

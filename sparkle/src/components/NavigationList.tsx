@@ -34,8 +34,7 @@ const NavigationListItemStyles = cva(
           "s-text-foreground dark:s-text-foreground-night",
           "s-bg-primary-100 dark:s-bg-primary-200-night"
         ),
-        unselected:
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        unselected: "s-text-foreground dark:s-text-muted-foreground-night",
       },
     },
     defaultVariants: {
@@ -235,8 +234,8 @@ NavigationListItemAction.displayName = "NavigationListItemAction";
 const variantStyles = cva("", {
   variants: {
     variant: {
-      primary: "s-text-foreground dark:s-text-foreground-night",
-      secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      primary: "s-text-gray-600 dark:s-text-muted-foreground-night",
+      secondary: "s-text-gray-600 dark:s-text-muted-foreground-night",
     },
     isSticky: {
       true: cn(
@@ -286,7 +285,7 @@ const NavigationListLabel = React.forwardRef<
 NavigationListLabel.displayName = "NavigationListLabel";
 
 const variantCompactStyles = cva(
-  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground dark:s-text-foreground-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-gray-600 dark:s-text-muted-foreground-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
   {
     variants: {
       isSticky: {
@@ -352,8 +351,8 @@ const collapseableStyles = cva(
   {
     variants: {
       variant: {
-        primary: "s-text-foreground dark:s-text-foreground-night",
-        secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        primary: "s-text-gray-600 dark:s-text-muted-foreground-night",
+        secondary: "s-text-gray-600 dark:s-text-muted-foreground-night",
       },
       isCollapsible: {
         true: cn(
