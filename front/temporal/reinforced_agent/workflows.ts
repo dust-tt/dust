@@ -1,3 +1,4 @@
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type * as activities from "@app/temporal/reinforced_agent/activities";
 import {
   ApplicationFailure,
@@ -58,6 +59,14 @@ const { processAggregationBatchResultActivity } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
+// Note on concurrency: we can reach (WORKSPACE_CONCURRENCY x AGENT_CONCURRENCY) simulateneous workflows
+// and it may be way higher than the worker's maxConcurrentActivityTaskExecutions but this is OK
+// as a lot of the time will be spent waiting for the batch to finish so many workflows should not
+// have any activity running.
+const WORKSPACE_CONCURRENCY = 8;
+const AGENT_CONCURRENCY = 8;
+const CONVERSATION_ANALYSIS_CONCURRENCY = 4;
+
 const BATCH_POLL_INTERVAL_MIN_MS = 30_000; // 30 seconds (linear backoff start).
 const BATCH_POLL_INTERVAL_MAX_MS = 5 * 60_000; // 5 minutes (linear backoff cap).
 const BATCH_POLL_INTERVAL_STEP_MS = 10_000; // 10 seconds (linear backoff step).
@@ -73,13 +82,16 @@ export async function reinforcedAgentWorkflow(): Promise<void> {
 
   const workspaceIds = await getFlaggedWorkspacesActivity();
 
-  for (const workspaceId of workspaceIds) {
-    await startChild(reinforcedAgentWorkspaceWorkflow, {
-      workflowId: `reinforced-agent-workspace-${workspaceId}`,
-      args: [{ workspaceId, useBatchMode: true }],
-      parentClosePolicy: ParentClosePolicy.ABANDON,
-    });
-  }
+  await concurrentExecutor(
+    workspaceIds,
+    (workspaceId) =>
+      startChild(reinforcedAgentWorkspaceWorkflow, {
+        workflowId: `reinforced-agent-workspace-${workspaceId}`,
+        args: [{ workspaceId, useBatchMode: true }],
+        parentClosePolicy: ParentClosePolicy.ABANDON,
+      }),
+    { concurrency: WORKSPACE_CONCURRENCY }
+  );
 }
 
 /**
@@ -94,13 +106,16 @@ export async function reinforcedAgentWorkspaceWorkflow({
 }): Promise<void> {
   const agentIds = await getAgentConfigurationsActivity({ workspaceId });
 
-  for (const agentConfigurationId of agentIds) {
-    await startChild(reinforcedAgentForAgentWorkflow, {
-      workflowId: `reinforced-agent-${workspaceId}-${agentConfigurationId}`,
-      args: [{ workspaceId, agentConfigurationId, useBatchMode }],
-      parentClosePolicy: ParentClosePolicy.ABANDON,
-    });
-  }
+  await concurrentExecutor(
+    agentIds,
+    (agentConfigurationId) =>
+      startChild(reinforcedAgentForAgentWorkflow, {
+        workflowId: `reinforced-agent-${workspaceId}-${agentConfigurationId}`,
+        args: [{ workspaceId, agentConfigurationId, useBatchMode }],
+        parentClosePolicy: ParentClosePolicy.ABANDON,
+      }),
+    { concurrency: AGENT_CONCURRENCY }
+  );
 }
 
 /**
@@ -193,14 +208,17 @@ export async function reinforcedAgentForAgentWorkflow({
       });
     }
   } else {
-    // Phase 1: Analyze each conversation sequentially via streaming.
-    for (const conversationId of conversationIds) {
-      await analyzeConversationActivity({
-        workspaceId,
-        agentConfigurationId,
-        conversationId,
-      });
-    }
+    // Phase 1: Analyze all conversations in parallel via streaming.
+    await concurrentExecutor(
+      conversationIds,
+      (conversationId) =>
+        analyzeConversationActivity({
+          workspaceId,
+          agentConfigurationId,
+          conversationId,
+        }),
+      { concurrency: CONVERSATION_ANALYSIS_CONCURRENCY }
+    );
 
     // Phase 2: Aggregate synthetic suggestions into pending.
     await aggregateSuggestionsActivity({
