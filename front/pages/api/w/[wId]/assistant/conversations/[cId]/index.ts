@@ -1,3 +1,121 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}:
+ *   get:
+ *     summary: Get a conversation
+ *     description: Retrieve a specific conversation by its ID.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversation:
+ *                   $ref: '#/components/schemas/PrivateConversation'
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete or leave a conversation
+ *     description: Delete a conversation or leave it if it is shared.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted or left conversation
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Update a conversation
+ *     description: Update a conversation's title, mark it as read, or move it to a different space.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - title
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *               - type: object
+ *                 required:
+ *                   - read
+ *                 properties:
+ *                   read:
+ *                     type: boolean
+ *                     enum: [true]
+ *               - type: object
+ *                 required:
+ *                   - spaceId
+ *                 properties:
+ *                   spaceId:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Successfully updated conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";

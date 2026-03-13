@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { invalidateKeyCapCache } from "@app/lib/api/programmatic_usage/key_cap";
 import type { Authenticator } from "@app/lib/auth";

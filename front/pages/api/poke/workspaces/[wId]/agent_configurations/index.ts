@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAuthors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";

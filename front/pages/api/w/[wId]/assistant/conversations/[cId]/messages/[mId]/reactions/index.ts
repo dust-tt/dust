@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

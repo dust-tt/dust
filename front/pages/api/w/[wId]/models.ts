@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,

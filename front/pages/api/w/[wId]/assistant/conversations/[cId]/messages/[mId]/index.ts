@@ -1,3 +1,90 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}:
+ *   get:
+ *     summary: Get a message
+ *     description: Retrieve a specific message by its ID within a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   oneOf:
+ *                     - $ref: '#/components/schemas/PrivateUserMessage'
+ *                     - $ref: '#/components/schemas/PrivateAgentMessage'
+ *                     - $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Message or conversation not found
+ *   delete:
+ *     summary: Delete a message
+ *     description: Soft-delete a user or agent message from a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Message or conversation not found
+ */
 import {
   softDeleteAgentMessage,
   softDeleteUserMessage,

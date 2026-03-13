@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

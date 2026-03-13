@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";

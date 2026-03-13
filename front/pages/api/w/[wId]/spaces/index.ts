@@ -1,3 +1,107 @@
+/**
+ * @swagger
+ * /api/w/{wId}/spaces:
+ *   get:
+ *     summary: List spaces
+ *     description: Returns all spaces in the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: role
+ *         required: false
+ *         description: Filter by role (e.g. admin to list all workspace spaces)
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: kind
+ *         required: false
+ *         description: Filter by space kind (e.g. system)
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 spaces:
+ *                   type: array
+ *                   items:
+ *                     oneOf:
+ *                       - $ref: '#/components/schemas/PrivateSpace'
+ *                       - $ref: '#/components/schemas/PrivateProject'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a space
+ *     description: Creates a new space in the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isRestricted
+ *               - name
+ *               - spaceKind
+ *               - managementMode
+ *             properties:
+ *               isRestricted:
+ *                 type: boolean
+ *               name:
+ *                 type: string
+ *               spaceKind:
+ *                 type: string
+ *                 enum: [regular, project]
+ *               managementMode:
+ *                 type: string
+ *                 enum: [manual, group]
+ *               memberIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Required when managementMode is manual
+ *               groupIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Required when managementMode is group
+ *     responses:
+ *       201:
+ *         description: Successfully created space
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";

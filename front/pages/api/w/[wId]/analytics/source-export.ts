@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";

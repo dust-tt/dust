@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";

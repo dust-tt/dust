@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing

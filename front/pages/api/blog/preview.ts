@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";

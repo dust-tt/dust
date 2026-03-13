@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";

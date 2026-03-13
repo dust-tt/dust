@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchAvailableTools } from "@app/lib/api/assistant/observability/tool_usage";

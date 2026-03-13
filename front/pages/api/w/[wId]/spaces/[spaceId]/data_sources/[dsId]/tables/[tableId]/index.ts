@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

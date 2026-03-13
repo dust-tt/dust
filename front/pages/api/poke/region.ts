@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import {
   handleLookupInvitations,

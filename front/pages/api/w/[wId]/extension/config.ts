@@ -1,3 +1,30 @@
+/**
+ * @swagger
+ * /api/w/{wId}/extension/config:
+ *   get:
+ *     summary: Get extension configuration
+ *     description: Returns the extension configuration for the workspace, including blacklisted domains.
+ *     tags:
+ *       - Private Extension
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Extension configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PrivateExtensionConfig'
+ *       401:
+ *         description: Unauthorized
+ */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";

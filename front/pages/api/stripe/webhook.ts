@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
 import {
   sendAdminSubscriptionPaymentFailedEmail,

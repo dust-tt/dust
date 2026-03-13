@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 /* eslint-disable dust/enforce-client-types-in-public-api */
 // Disabling because POKE but should probably be refactored to use internal types.
 

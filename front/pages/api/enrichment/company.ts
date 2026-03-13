@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";

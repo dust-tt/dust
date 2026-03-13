@@ -439,13 +439,17 @@ class Conversation extends Model { }
 class ConversationModel extends Model { }
 ```
 
-### [BACK12] Endpoint backward compatibility
+### [BACK12] No breaking changes in API endpoints
 
-When updating an existing endpoint and its expected payload, ensure backward compatibility with
-clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must
-be optional and accept `undefined` as a value even if the latest client code always sends a value.
+**Public API (`pages/api/v1/`):** Breaking changes are never allowed. External consumers depend on
+a stable contract. Schemas must be append-only: never remove fields. When adding a new field, it
+must be optional and accept `undefined` as a value even if the latest client code always sends a
+value.
 
-This prevents breaking clients who are still running an older version.
+**Private API (`pages/api/`):** Breaking changes are acceptable only after enough time has passed
+to be confident that no old clients are still deployed. Until then, follow the same backward
+compatibility rules as the public API. When introducing a breaking change, first deploy the
+updated client code, wait for all old clients to cycle out, then clean up the old contract.
 
 Example:
 
@@ -463,38 +467,7 @@ interface UpdateResourceBody {
 }
 ```
 
-### [BACK13] Foreign key must be indexed
-
-When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
-objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
-scans when deleting objects from table `A`.
-
-```
-AgentMCPActionModel.belongsTo(AgentMessageModel, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-  as: "agentMessage",
-});
-
-AgentMessageModel.hasMany(AgentMCPActionModel, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-// Must be accompanied above in the model definition by index:
-
-{
-  fields: ["agentMessageId"],
-  concurrently: true,
-}
-```
-
-### [BACK14] No breaking changes in PRIVATE API endpoints
-
-Breaking changes in PRIVATE API endpoints are prohibited. The PRIVATE API serves multiple clients
-(web app, browser extensions, etc.) that may be running different versions. Breaking
-changes can cause crashes or data corruption for users who haven't updated to the latest version.
-
-All changes to PRIVATE API endpoints must be backward compatible. Follow these steps based on the
-type of change:
+Follow these steps based on the type of change:
 
 **1. Deleting an endpoint:**
 
@@ -536,6 +509,45 @@ type of change:
   - Do NOT remove enum values immediately
   - First: Update all client code to stop relying on the removed value
   - Stop returning the enum value from backend only after a period of time
+
+### [BACK13] Foreign key must be indexed
+
+When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
+objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
+scans when deleting objects from table `A`.
+
+```
+AgentMCPActionModel.belongsTo(AgentMessageModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
+});
+
+AgentMessageModel.hasMany(AgentMCPActionModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+// Must be accompanied above in the model definition by index:
+
+{
+  fields: ["agentMessageId"],
+  concurrently: true,
+}
+```
+
+### [BACK14] Keep Swagger documentation in sync with API schema changes
+
+Any change to the schema of a public or private API endpoint — including deeply nested objects in
+request or response bodies — must be reflected in the existing Swagger documentation. This applies
+to adding, removing, or modifying fields at any level of nesting.
+
+In particular, check and update the following files when modifying API schemas:
+
+- `pages/api/swagger_private_schemas.ts` for private API shared schemas
+- `pages/api/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
+- The `@swagger` annotation in the endpoint file itself
+
+Every endpoint must have either `@swagger` (with proper documentation) or `@ignoreswagger` 
+(for internal/undocumented endpoints). This is enforced by the `lint:swagger-annotations` check.
 
 ## MCP
 

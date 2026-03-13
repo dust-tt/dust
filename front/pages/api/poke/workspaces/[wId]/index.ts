@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";

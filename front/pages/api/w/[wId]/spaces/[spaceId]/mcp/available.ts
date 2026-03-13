@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
