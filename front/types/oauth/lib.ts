@@ -1,6 +1,9 @@
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ApiKeyCredentialContentSchema } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import * as t from "io-ts";
+import type z from "zod";
 
 // Extra config type for OAuth setup - generic key-value pairs for provider-specific config
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);
@@ -777,10 +780,23 @@ export function isModjoCredentials(
   return "api_key" in credentials;
 }
 
-export type OauthAPIPostCredentialsResponse = {
+export type ModelProviderPostCredentialsBody = {
+  provider: ByokModelProviderIdType;
+  credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+};
+
+export type OauthAPIPostConnectionCredentialsResponse = {
   credential: {
     credential_id: string;
     provider: CredentialsProvider;
+    created: number;
+  };
+};
+
+export type OauthAPIPostModelProviderCredentialsResponse = {
+  credential: {
+    credential_id: string;
+    provider: ByokModelProviderIdType;
     created: number;
   };
 };
