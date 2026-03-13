@@ -14,6 +14,7 @@ import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
@@ -47,6 +48,10 @@ async function handler(
 
   // Extract UTM params to preserve through login redirects
   const utmParams = extractUTMParams(req.query);
+
+  // Read the persistent anonymous device ID to stitch pre-signup events.
+  const anonymousId =
+    readAnonymousIdFromCookies(req.headers.cookie) ?? undefined;
 
   // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
@@ -99,6 +104,7 @@ async function handler(
       lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },
     utmParams,
+    anonymousId,
     userCreated,
   });
 
