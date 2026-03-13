@@ -20,6 +20,11 @@ interface GetSandboxToolsResponseType {
   serverViews: MCPServerViewType[];
 }
 
+/**
+ * @ignoreswagger
+ * internal endpoint
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetSandboxToolsResponseType>>,
