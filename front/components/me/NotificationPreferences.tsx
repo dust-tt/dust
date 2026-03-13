@@ -12,6 +12,7 @@ import type {
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
+  DEFAULT_NOTIFICATION_DELAY,
   DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION,
   isNotificationCondition,
   isNotificationPreferencesDelay,
@@ -51,6 +52,7 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   "30_minutes": "every 30 minutes",
   "1_hour": "every hour",
   daily: "a day",
+  weekly: "a week",
 };
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
@@ -67,7 +69,6 @@ const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS: Record<
   never: "Never notify me",
 };
 
-const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
 const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
 const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
 const NOVU_REQUEST_ERROR_CODE = "novu_preferences_request_failed";
