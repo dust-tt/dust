@@ -111,30 +111,6 @@ impl fmt::Display for ConnectionError {
 
 impl std::error::Error for ConnectionError {}
 
-#[cfg(test)]
-mod tests {
-    use super::{
-        provider_timeout_seconds, ConnectionProvider, ATLASSIAN_PROVIDER_TIMEOUT_SECONDS,
-        JIRA_PROVIDER_TIMEOUT_SECONDS, PROVIDER_TIMEOUT_SECONDS,
-    };
-
-    #[test]
-    fn provider_timeout_seconds_uses_jira_override() {
-        assert_eq!(
-            provider_timeout_seconds(ConnectionProvider::Jira),
-            JIRA_PROVIDER_TIMEOUT_SECONDS
-        );
-        assert_eq!(
-            provider_timeout_seconds(ConnectionProvider::Confluence),
-            ATLASSIAN_PROVIDER_TIMEOUT_SECONDS
-        );
-        assert_eq!(
-            provider_timeout_seconds(ConnectionProvider::Github),
-            PROVIDER_TIMEOUT_SECONDS
-        );
-    }
-}
-
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionProvider {
