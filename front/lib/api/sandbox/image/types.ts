@@ -68,6 +68,7 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
   allowlist: [
     "storage.googleapis.com",
+    "dust.tt",
     "*.dust.tt",
     "pypi.org",
     "registry.npmjs.org",
