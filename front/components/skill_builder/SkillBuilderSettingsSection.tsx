@@ -35,8 +35,12 @@ export function SkillBuilderSettingsSection() {
         </div>
       </div>
       {hasFeature("discover_skills") && (
-        <Collapsible>
-          <CollapsibleTrigger label="Advanced" variant="secondary" />
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger variant="secondary">
+            <span className="text-base text-foreground dark:text-foreground-night">
+              Advanced
+            </span>
+          </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="pt-3">
               <SkillBuilderIsDefaultSection />
