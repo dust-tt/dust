@@ -9,13 +9,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -46,6 +39,7 @@ import {
   DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   EmojiPicker,
   Input,
@@ -55,6 +49,7 @@ import {
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
+import { ChevronDownIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Control } from "react-hook-form";
@@ -359,33 +354,41 @@ function SelectField({
     <PokeFormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeSelect
-              value={field.value as string}
-              onValueChange={field.onChange}
-            >
-              <PokeFormControl>
-                <PokeSelectTrigger>
-                  <PokeSelectValue placeholder={title ?? name} />
-                </PokeSelectTrigger>
-              </PokeFormControl>
-              <PokeSelectContent>
-                <div className="bg-muted-background dark:bg-muted-background-night">
+      render={({ field }) => {
+        const selectedOption = options.find((o) => o.value === field.value);
+        const displayLabel =
+          selectedOption?.display ?? selectedOption?.value ?? title ?? name;
+
+        return (
+          <PokeFormItem>
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+            <PokeFormControl>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    label={displayLabel}
+                    icon={ChevronDownIcon}
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
                   {options.map((option) => (
-                    <PokeSelectItem key={option.value} value={option.value}>
-                      {option.display ?? option.value}
-                    </PokeSelectItem>
+                    <DropdownMenuItem
+                      key={option.value}
+                      label={option.display ?? option.value}
+                      onClick={() => field.onChange(option.value)}
+                    />
                   ))}
-                </div>
-              </PokeSelectContent>
-            </PokeSelect>
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </PokeFormControl>
+            <PokeFormMessage />
+          </PokeFormItem>
+        );
+      }}
     />
   );
 }

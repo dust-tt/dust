@@ -6,13 +6,14 @@ import {
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
 import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
-import { Input } from "@dust-tt/sparkle";
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+} from "@dust-tt/sparkle";
+import { ChevronDownIcon } from "lucide-react";
 import type { Control, FieldValues, Path } from "react-hook-form";
 
 interface SelectFieldOption {
@@ -35,34 +36,41 @@ export function SelectField<T extends FieldValues>({
     <PokeFormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeSelect
-              onValueChange={field.onChange}
-              value={field.value as string}
-            >
-              <PokeFormControl>
-                <PokeSelectTrigger>
-                  <PokeSelectValue placeholder={title ?? name} />
-                </PokeSelectTrigger>
-              </PokeFormControl>
-              <PokeSelectContent>
-                <div className="bg-muted-background dark:bg-muted-background-night">
+      render={({ field }) => {
+        const selectedOption = options.find((o) => o.value === field.value);
+        const displayLabel =
+          selectedOption?.display ?? selectedOption?.value ?? title ?? name;
+
+        return (
+          <PokeFormItem>
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+            <PokeFormControl>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    label={displayLabel}
+                    icon={ChevronDownIcon}
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
                   {options.map((option) => (
-                    <PokeSelectItem key={option.value} value={option.value}>
-                      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                      {option.display ? option.display : option.value}
-                    </PokeSelectItem>
+                    <DropdownMenuItem
+                      key={option.value}
+                      label={option.display ?? option.value}
+                      onClick={() => field.onChange(option.value)}
+                    />
                   ))}
-                </div>
-              </PokeSelectContent>
-            </PokeSelect>
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </PokeFormControl>
+            <PokeFormMessage />
+          </PokeFormItem>
+        );
+      }}
     />
   );
 }
