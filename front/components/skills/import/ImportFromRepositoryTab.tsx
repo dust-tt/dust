@@ -16,6 +16,7 @@ interface ImportFromRepositoryTabProps {
   selectedNames: Set<string>;
   setSelectedNames: Dispatch<SetStateAction<Set<string>>>;
   onDetectingChange: (isDetecting: boolean) => void;
+  onDetectedCountChange: (count: number) => void;
   isImporting: boolean;
 }
 
@@ -24,6 +25,7 @@ export function ImportFromRepositoryTab({
   selectedNames,
   setSelectedNames,
   onDetectingChange,
+  onDetectedCountChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
   const { control } = useFormContext<ImportFormValues>();
@@ -43,10 +45,14 @@ export function ImportFromRepositoryTab({
     setSelectedNames(initial);
   }, [detectedSkills, setSelectedNames]);
 
-  // Report detecting state to the parent dialog.
+  // Sync detecting state to the parent. Expects a stable callback (e.g. setState).
   useEffect(() => {
     onDetectingChange(isDetecting);
   }, [isDetecting, onDetectingChange]);
+
+  useEffect(() => {
+    onDetectedCountChange(detectedSkills.length);
+  }, [detectedSkills.length, onDetectedCountChange]);
 
   const toggleSkill = (name: string) => {
     setSelectedNames((prev) => {

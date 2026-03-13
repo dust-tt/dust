@@ -45,6 +45,7 @@ export function ImportSkillsDialog({
 }: ImportSkillsDialogProps) {
   const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
   const [isDetecting, setIsDetecting] = useState(false);
+  const [detectedCount, setDetectedCount] = useState(0);
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
@@ -71,8 +72,8 @@ export function ImportSkillsDialog({
   const selectedCount = selectedNames.size;
 
   const description =
-    selectedCount > 0
-      ? `${selectedCount} skill${pluralize(selectedCount)} selected for import.`
+    detectedCount > 0
+      ? `${detectedCount} skill${pluralize(detectedCount)} detected. Select the ones to import.`
       : TAB_DESCRIPTION[activeTab];
 
   return (
@@ -109,6 +110,7 @@ export function ImportSkillsDialog({
                   selectedNames={selectedNames}
                   setSelectedNames={setSelectedNames}
                   onDetectingChange={setIsDetecting}
+                  onDetectedCountChange={setDetectedCount}
                   isImporting={isImporting}
                 />
               </TabsContent>
