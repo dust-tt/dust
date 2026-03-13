@@ -77,11 +77,6 @@ SHELLEOF`)
         "uv pip install --python /opt/venv pandas numpy matplotlib requests openpyxl pdfplumber",
     }
   )
-  .registerTool({
-    name: "bun",
-    description: "JavaScript runtime",
-    runtime: "node",
-  })
   .registerTool(
     [
       {
