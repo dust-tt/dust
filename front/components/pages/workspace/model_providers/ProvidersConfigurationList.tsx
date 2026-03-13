@@ -3,6 +3,7 @@ import { useProviderCredentials } from "@app/lib/swr/provider_credentials";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContextItem } from "@dust-tt/sparkle";
+import keyBy from "lodash/keyBy";
 
 interface ProvidersConfigurationListProps {
   owner: LightWorkspaceType;
@@ -13,7 +14,10 @@ export function ProvidersConfigurationList({
   owner,
   modelsDescriptionByProvider,
 }: ProvidersConfigurationListProps) {
-  const { isProviderCredentialsLoading } = useProviderCredentials({ owner });
+  const { isProviderCredentialsLoading, providerCredentials } =
+    useProviderCredentials({ owner });
+
+  const credentialsByProvider = keyBy(providerCredentials, "providerId");
 
   return (
     <ContextItem.List>
@@ -29,6 +33,7 @@ export function ProvidersConfigurationList({
           providerId={providerId}
           description={description}
           isLoading={isProviderCredentialsLoading}
+          apiKey={credentialsByProvider[providerId]?.placeholder}
         />
       ))}
     </ContextItem.List>

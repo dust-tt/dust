@@ -1,4 +1,4 @@
-import { useCreateProviderCredential } from "@app/lib/swr/provider_credentials";
+import { useProviderCredentialActions } from "@app/lib/swr/provider_credentials";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -58,6 +58,7 @@ interface KeyConfigurationSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   logo: ComponentType;
+  apiKey: string | undefined;
 }
 
 export function KeyConfigurationSheet({
@@ -66,15 +67,20 @@ export function KeyConfigurationSheet({
   isOpen,
   onOpenChange,
   logo,
+  apiKey: initialApiKey,
 }: KeyConfigurationSheetProps) {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(initialApiKey ?? "");
   const [isSaving, setIsSaving] = useState(false);
 
-  const { createProviderCredential } = useCreateProviderCredential({ owner });
+  const { saveProviderCredential } = useProviderCredentialActions({ owner });
 
   const handleSave = async () => {
     setIsSaving(true);
-    const result = await createProviderCredential({ providerId, apiKey });
+    const result = await saveProviderCredential({
+      providerId,
+      apiKey,
+      isNew: initialApiKey === undefined,
+    });
     setIsSaving(false);
 
     if (result) {

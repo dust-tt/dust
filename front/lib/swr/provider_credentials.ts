@@ -40,25 +40,27 @@ export function useProviderCredentials({
   };
 }
 
-export function useCreateProviderCredential({
+export function useProviderCredentialActions({
   owner,
 }: {
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useSendNotification();
 
-  const createProviderCredential = useCallback(
+  const saveProviderCredential = useCallback(
     async ({
       providerId,
       apiKey,
+      isNew = true,
     }: {
       providerId: ByokModelProviderIdType;
       apiKey: string;
+      isNew?: boolean;
     }): Promise<ProviderCredentialType | null> => {
       const response = await clientFetch(
         `/api/w/${owner.sId}/provider_credentials`,
         {
-          method: "POST",
+          method: isNew ? "POST" : "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             providerId,
@@ -90,5 +92,5 @@ export function useCreateProviderCredential({
     [owner.sId, sendNotification]
   );
 
-  return { createProviderCredential };
+  return { saveProviderCredential };
 }
