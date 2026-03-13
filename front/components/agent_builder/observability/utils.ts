@@ -10,11 +10,9 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import {
-  formatDateFromMillis,
-  getMidnightInTimezone,
-} from "@app/lib/utils/timezone";
+import { formatDateFromMillis } from "@app/lib/utils/timezone";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import moment from "moment-timezone";
 
 export type VersionMarker = { version: string; timestamp: number };
 
@@ -217,8 +215,8 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
   }
 
   const [startDate, endDate] = getTimeRangeBounds(periodDays, tz);
-  const startTime = getMidnightInTimezone(startDate, tz);
-  const endTime = getMidnightInTimezone(endDate, tz);
+  const startTime = moment.tz(startDate, tz).valueOf();
+  const endTime = moment.tz(endDate, tz).valueOf();
 
   const byTimestamp = new Map<number, T>(pts.map((p) => [p.timestamp, p]));
 

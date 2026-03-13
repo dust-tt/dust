@@ -4,13 +4,6 @@ export function formatDateFromMillis(ms: number, timezone: string): string {
   return moment(ms).tz(timezone).format("YYYY-MM-DD");
 }
 
-export function getMidnightInTimezone(
-  dateStr: string,
-  timezone: string
-): number {
-  return moment.tz(dateStr, timezone).valueOf();
-}
-
 export function getStartOfTodayInTimezone(timezone: string): number {
   return moment.tz(timezone).startOf("day").valueOf();
 }

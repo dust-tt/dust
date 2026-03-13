@@ -12,7 +12,6 @@ import {
   useWorkspaceSkillUsage,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import { getMidnightInTimezone } from "@app/lib/utils/timezone";
 import {
   Button,
   ButtonsSwitch,
@@ -23,6 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import moment from "moment-timezone";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -212,8 +212,8 @@ export function WorkspaceSkillUsageChart({
 
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const [startDate, endDate] = getTimeRangeBounds(period, browserTimezone);
-    const startTimeMs = getMidnightInTimezone(startDate, browserTimezone);
-    const endTimeMs = getMidnightInTimezone(endDate, browserTimezone);
+    const startTimeMs = moment.tz(startDate, browserTimezone).valueOf();
+    const endTimeMs = moment.tz(endDate, browserTimezone).valueOf();
     const dayMs = 24 * 60 * 60 * 1000;
     const numDays = Math.floor((endTimeMs - startTimeMs) / dayMs) + 1;
 

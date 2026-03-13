@@ -1,6 +1,6 @@
 import {
   bucketsToArray,
-  formatDateFromMillis,
+  formatUTCDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
@@ -66,22 +66,19 @@ type SkillListAggs = {
   };
 };
 
-function bucketToPoint(bucket: DateBucket, timezone: string): SkillUsagePoint {
+function bucketToPoint(bucket: DateBucket): SkillUsagePoint {
   return {
     timestamp: bucket.key,
-    date: formatDateFromMillis(bucket.key, timezone),
+    date: formatUTCDateFromMillis(bucket.key),
     uniqueUsers: bucket.skills_nested?.unique_users?.cardinality?.value ?? 0,
     executionCount: bucket.skills_nested?.doc_count ?? 0,
   };
 }
 
-function filteredBucketToPoint(
-  bucket: FilteredDateBucket,
-  timezone: string
-): SkillUsagePoint {
+function filteredBucketToPoint(bucket: FilteredDateBucket): SkillUsagePoint {
   return {
     timestamp: bucket.key,
-    date: formatDateFromMillis(bucket.key, timezone),
+    date: formatUTCDateFromMillis(bucket.key),
     uniqueUsers:
       bucket.skills_nested?.filtered?.unique_users?.cardinality?.value ?? 0,
     executionCount: bucket.skills_nested?.filtered?.doc_count ?? 0,
@@ -151,7 +148,7 @@ export async function fetchSkillUsageMetrics(
       result.value.aggregations?.by_date?.buckets
     );
 
-    return new Ok(dateBuckets.map((b) => filteredBucketToPoint(b, timezone)));
+    return new Ok(dateBuckets.map((b) => filteredBucketToPoint(b)));
   }
 
   const result = await searchAnalytics<never, SkillUsageAggs>(baseQuery, {
@@ -167,7 +164,7 @@ export async function fetchSkillUsageMetrics(
     result.value.aggregations?.by_date?.buckets
   );
 
-  return new Ok(dateBuckets.map((b) => bucketToPoint(b, timezone)));
+  return new Ok(dateBuckets.map((b) => bucketToPoint(b)));
 }
 
 export async function fetchAvailableSkills(
