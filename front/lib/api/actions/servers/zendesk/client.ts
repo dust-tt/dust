@@ -300,14 +300,13 @@ class ZendeskClient {
     ticketId: number,
     { includeInlineImages = false }: { includeInlineImages?: boolean } = {}
   ): Promise<Result<ZendeskTicketComment[], Error>> {
-    const url = new URL(`tickets/${ticketId}/comments`);
+    const params = new URLSearchParams();
     if (includeInlineImages) {
       // https://developer.zendesk.com/api-reference/ticketing/tickets/ticket_comments/#parameters
-      url.searchParams.append("include_inline_images", "");
+      params.append("include_inline_images", "");
     }
-
     const result = await this.request(
-      url.toString(),
+      `tickets/${ticketId}/comments${params.toString()}`,
       ZendeskTicketCommentsResponseSchema
     );
 
