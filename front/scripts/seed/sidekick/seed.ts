@@ -84,7 +84,9 @@ makeScript({}, async ({ execute }, logger) => {
   // Enable the agent_builder_copilot feature flag
   logger.info("Enabling agent_builder_copilot feature flag...");
   if (execute) {
-    await FeatureFlagResource.enableMany(ctx.workspace, ["agent_builder_copilot"]);
+    await FeatureFlagResource.enableMany(ctx.workspace, [
+      "agent_builder_copilot",
+    ]);
     logger.info("Feature flag enabled");
   }
 
