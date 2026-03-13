@@ -7,10 +7,14 @@ import {
 } from "@app/components/agent_builder/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
-import { DATA_WAREHOUSE_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  DATA_WAREHOUSE_SERVER_NAME,
+  SEARCH_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   ActionIncludeIcon,
   ActionScanIcon,
@@ -32,11 +36,36 @@ export interface CapabilityConfig {
   };
 }
 
+const INCLUDE_DATA_SERVER_NAME = "include_data";
+const EXTRACT_DATA_SERVER_NAME = "extract_data";
+
+export function getKnowledgeLookupMethodLabel(
+  serverName?: string | null,
+  fallbackLabel?: string
+) {
+  if (!serverName) {
+    return "";
+  }
+
+  switch (serverName) {
+    case SEARCH_SERVER_NAME:
+      return "Content search";
+    case TABLE_QUERY_V2_SERVER_NAME:
+      return "Analytics (tables, spreadsheets...)";
+    case INCLUDE_DATA_SERVER_NAME:
+      return "Include all data";
+    case EXTRACT_DATA_SERVER_NAME:
+      return "Advanced processing";
+    default:
+      return fallbackLabel ?? asDisplayToolName(serverName);
+  }
+}
+
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   search: {
     icon: MagnifyingGlassIcon,
-    configPageTitle: "Configure Search",
-    configPageDescription: "Describe what you want to search for.",
+    configPageTitle: "Configure Knowledge",
+    configPageDescription: "",
     descriptionConfig: {
       title: "What’s the data?",
       description:

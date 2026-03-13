@@ -1,3 +1,4 @@
+import { getKnowledgeLookupMethodLabel } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
@@ -101,9 +102,14 @@ export function ProcessingMethodSection() {
         if (sources.in.some(isNonTableDataItem)) {
           warning = (
             <>
-              <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
-              ignore text documents and files in your selection. Create a
-              separated knowledge tools if you need both.
+              <strong>
+                {getKnowledgeLookupMethodLabel(
+                  mcpServerView.server.name,
+                  getMcpServerViewDisplayName(mcpServerView)
+                )}
+              </strong>{" "}
+              will ignore text documents and files in your selection. Create
+              separate knowledge tools if you need both.
               <br />
               <strong>Note:</strong> When you select a folder, only tables
               directly inside it will be included. Tables in nested subfolders
@@ -116,9 +122,14 @@ export function ProcessingMethodSection() {
         if (sources.in.every(isRemoteDatabaseOrTableItem)) {
           warning = (
             <>
-              <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
-              ignore tables in your selection. Switch processing method if you
-              want to use your structured data.
+              <strong>
+                {getKnowledgeLookupMethodLabel(
+                  mcpServerView.server.name,
+                  getMcpServerViewDisplayName(mcpServerView)
+                )}
+              </strong>{" "}
+              will ignore tables in your selection. Switch processing method if
+              you want to use your structured data.
             </>
           );
         }
@@ -159,7 +170,7 @@ export function ProcessingMethodSection() {
   return (
     <div className="mt-2 flex flex-col space-y-4">
       <div>
-        <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
+        <h3 className="mb-2 text-lg font-semibold">Knowledge lookup method</h3>
         <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Sets the approach for finding and retrieving information from your
           data sources. Need help? Check our{" "}
@@ -180,7 +191,10 @@ export function ProcessingMethodSection() {
               isLoading={isMCPServerViewsLoading}
               label={
                 mcpServerView
-                  ? getMcpServerViewDisplayName(mcpServerView)
+                  ? getKnowledgeLookupMethodLabel(
+                      mcpServerView.server.name,
+                      getMcpServerViewDisplayName(mcpServerView)
+                    )
                   : "loading..."
               }
               icon={
@@ -199,7 +213,10 @@ export function ProcessingMethodSection() {
               serversToDisplay.map((view) => (
                 <DropdownMenuItem
                   key={view.id}
-                  label={getMcpServerViewDisplayName(view)}
+                  label={getKnowledgeLookupMethodLabel(
+                    view.server.name,
+                    getMcpServerViewDisplayName(view)
+                  )}
                   icon={getAvatar(view.server)}
                   onClick={() => onChange(view)}
                   description={getMcpServerViewDescription(view)}
@@ -210,7 +227,7 @@ export function ProcessingMethodSection() {
       </div>
 
       <span className="text-sm text-muted-foreground dark:text-muted-foreground">
-        {mcpServerView?.server.description}
+        {mcpServerView ? getMcpServerViewDescription(mcpServerView) : null}
       </span>
 
       {warningContent && (
