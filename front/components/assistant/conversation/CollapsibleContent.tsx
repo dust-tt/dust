@@ -54,7 +54,7 @@ export function CollapsibleContent({
           <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background dark:from-background-night" />
         )}
       </div>
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex items-center gap-3">
         {shouldShowToggle && (
           <Button
             variant="outline"

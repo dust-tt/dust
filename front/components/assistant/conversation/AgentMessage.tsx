@@ -835,7 +835,7 @@ export function AgentMessage({
         type="agent"
       />
 
-      <div className="flex w-full min-w-0 flex-col gap-3">
+      <div className="flex w-full min-w-0 flex-col gap-2">
         <ConversationMessageTitle
           className="hidden @xs:flex"
           name={agentConfiguration.name}
