@@ -187,9 +187,8 @@ export function WorkspaceToolUsageChart({
 
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
-    const [startDate, endDate] = getTimeRangeBounds(period);
-    const startTime = new Date(startDate + "T00:00:00Z").getTime();
-    const endTime = new Date(endDate + "T00:00:00Z").getTime();
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const [startTime, endTime] = getTimeRangeBounds(period, browserTimezone);
     const dayMs = 24 * 60 * 60 * 1000;
     const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
 

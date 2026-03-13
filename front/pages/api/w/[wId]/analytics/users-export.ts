@@ -1,11 +1,10 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  bucketsToArray,
-  formatUTCDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+  buildAgentAnalyticsBaseQuery,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -14,12 +13,14 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { estypes } from "@elastic/elasticsearch";
 import { stringify } from "csv-stringify/sync";
+import moment from "moment-timezone";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 import { z } from "zod";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
+  timezone: timezoneSchema,
 });
 
 type TopUserExportBucket = {
@@ -60,8 +61,8 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { days } = req.query;
-      const q = QuerySchema.safeParse({ days });
+      const { days, timezone } = req.query;
+      const q = QuerySchema.safeParse({ days, timezone });
       if (!q.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -95,6 +96,7 @@ async function handler(
                   date_histogram: {
                     field: "timestamp",
                     calendar_interval: "day",
+                    time_zone: q.data.timezone,
                   },
                 },
               },
@@ -128,7 +130,9 @@ async function handler(
               messageCount: b.doc_count,
               lastMessageSent:
                 typeof lastMessageMs === "number"
-                  ? formatUTCDateFromMillis(lastMessageMs)
+                  ? moment(lastMessageMs)
+                      .tz(q.data.timezone)
+                      .format("YYYY-MM-DD")
                   : "",
               activeDaysCount: Array.isArray(activeDaysBuckets)
                 ? activeDaysBuckets.filter((d) => d.doc_count > 0).length

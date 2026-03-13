@@ -87,7 +87,8 @@ function filteredBucketToPoint(bucket: FilteredDateBucket): SkillUsagePoint {
 
 export async function fetchSkillUsageMetrics(
   baseQuery: estypes.QueryDslQueryContainer,
-  skillName: string | null
+  skillName: string | null,
+  timezone: string = "UTC"
 ): Promise<Result<SkillUsagePoint[], Error>> {
   const nestedAggs: Record<string, estypes.AggregationsAggregationContainer> =
     skillName
@@ -122,7 +123,7 @@ export async function fetchSkillUsageMetrics(
       date_histogram: {
         field: "timestamp",
         calendar_interval: "day",
-        time_zone: "UTC",
+        time_zone: timezone,
       },
       aggs: {
         skills_nested: {
