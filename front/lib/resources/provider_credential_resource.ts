@@ -30,6 +30,8 @@ import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
 import type { z } from "zod";
 
+const API_KEY_REVEAL_WINDOW_MINUTES = 5;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface ProviderCredentialResource
@@ -265,7 +267,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
     const apiKey =
-      differenceInMinutes > 5
+      differenceInMinutes > API_KEY_REVEAL_WINDOW_MINUTES
         ? redactString(this.credentials.api_key, 4)
         : this.credentials.api_key;
 
