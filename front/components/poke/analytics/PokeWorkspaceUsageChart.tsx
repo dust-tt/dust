@@ -13,7 +13,16 @@ import {
   usePokeWorkspaceActiveUsersMetrics,
   usePokeWorkspaceUsageMetrics,
 } from "@app/poke/swr/analytics";
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import {
+  Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 import {
   CartesianGrid,
@@ -26,6 +35,22 @@ import {
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 type UsageDisplayMode = "activity" | "users";
+
+const COMMON_TIMEZONES = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Asia/Tokyo",
+  "Asia/Shanghai",
+  "Asia/Kolkata",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+];
 
 function getLineType(
   period: ObservabilityTimeRangeType
@@ -228,12 +253,14 @@ export function PokeWorkspaceUsageChart({
   period,
 }: PokeWorkspaceUsageChartProps) {
   const [displayMode, setDisplayMode] = useState<UsageDisplayMode>("activity");
+  const [timezone, setTimezone] = useState("UTC");
 
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     usePokeWorkspaceUsageMetrics({
       workspaceId,
       days: period,
       interval: "day",
+      timezone,
       disabled: !workspaceId || displayMode === "users",
     });
 
@@ -244,6 +271,7 @@ export function PokeWorkspaceUsageChart({
   } = usePokeWorkspaceActiveUsersMetrics({
     workspaceId,
     days: period,
+    timezone,
     disabled: !workspaceId || displayMode !== "users",
   });
 
@@ -253,14 +281,16 @@ export function PokeWorkspaceUsageChart({
     usageMetrics,
     "timeRange",
     period,
-    zeroFactory
+    zeroFactory,
+    timezone
   );
 
   const activeUsersData = padSeriesToTimeRange<ActiveUsersMetricsDatum>(
     activeUsersMetrics,
     "timeRange",
     period,
-    activeUsersZeroFactory
+    activeUsersZeroFactory,
+    timezone
   ).map((point) => ({
     ...point,
     dau: toPercentage(point.dau, point.memberCount),
@@ -279,18 +309,38 @@ export function PokeWorkspaceUsageChart({
   const description = getDescriptionForMode(displayMode, period);
 
   const controls = (
-    <ButtonsSwitchList defaultValue={displayMode} size="xs">
-      <ButtonsSwitch
-        value="activity"
-        label="Activity"
-        onClick={() => setDisplayMode("activity")}
-      />
-      <ButtonsSwitch
-        value="users"
-        label="Users"
-        onClick={() => setDisplayMode("users")}
-      />
-    </ButtonsSwitchList>
+    <div className="flex items-center gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button label={timezone} variant="outline" size="xs" isSelect />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup value={timezone}>
+            {COMMON_TIMEZONES.map((tz) => (
+              <DropdownMenuRadioItem
+                key={tz}
+                value={tz}
+                onClick={() => setTimezone(tz)}
+              >
+                {tz}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ButtonsSwitchList defaultValue={displayMode} size="xs">
+        <ButtonsSwitch
+          value="activity"
+          label="Activity"
+          onClick={() => setDisplayMode("activity")}
+        />
+        <ButtonsSwitch
+          value="users"
+          label="Users"
+          onClick={() => setDisplayMode("users")}
+        />
+      </ButtonsSwitchList>
+    </div>
   );
 
   return (
