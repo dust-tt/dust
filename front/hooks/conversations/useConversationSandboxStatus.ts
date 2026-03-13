@@ -15,15 +15,15 @@ export function useConversationSandboxStatus({
   const { fetcher } = useFetcher();
   const sandboxFetcher: Fetcher<GetConversationSandboxResponseBody> = fetcher;
 
-  const disabled = options?.disabled;
-
   const { data, error, mutate } = useSWRWithDefaults(
-    conversationId && !disabled
+    conversationId
       ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox`
       : null,
     sandboxFetcher,
     options
   );
+
+  const disabled = options?.disabled;
 
   return {
     sandboxStatus: data?.sandboxStatus ?? null,
