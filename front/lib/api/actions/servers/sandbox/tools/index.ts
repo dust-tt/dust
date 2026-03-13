@@ -9,6 +9,10 @@ import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/met
 import config from "@app/lib/api/config";
 import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
+  mountConversationFiles,
+  refreshGcsToken,
+} from "@app/lib/api/sandbox/gcs/mount";
+import {
   createToolManifest,
   getSandboxImage,
   toolManifestToJSON,
@@ -17,6 +21,7 @@ import {
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/user";
@@ -95,7 +100,34 @@ export function createSandboxTools(
         return new Err(new MCPError(ensureResult.error.message));
       }
 
-      const { sandbox } = ensureResult.value;
+      const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+
+      // Mount GCS conversation files (fire-and-forget).
+      // On fresh creation or wake-from-sleep, /tmp is empty so we need a full mount.
+      // For already-running sandboxes we just refresh the token.
+      const imageResult = getSandboxImage(auth);
+      if (imageResult.isOk()) {
+        const image = imageResult.value;
+
+        if (freshlyCreated || wokeFromSleep) {
+          void mountConversationFiles(auth, sandbox, conversation, image).catch(
+            (err) => logger.error({ err }, "GCS mount failed (fire-and-forget)")
+          );
+        } else {
+          void refreshGcsToken(auth, sandbox, conversation, image).catch(
+            (err) =>
+              logger.error(
+                { err },
+                "GCS token refresh failed (fire-and-forget)"
+              )
+          );
+        }
+      } else {
+        logger.error(
+          { err: imageResult.error },
+          "Failed to get sandbox image for GCS mount"
+        );
+      }
 
       const sandboxToken = generateSandboxExecToken(auth, {
         agentConfiguration,

@@ -10,6 +10,7 @@ import type {
   ManifestFormat,
   NetworkPolicy,
   Operation,
+  SandboxCapability,
   SandboxImageId,
   SandboxResources,
   ToolEntry,
@@ -32,6 +33,7 @@ interface SandboxImageState {
   network: NetworkPolicy;
   workdir: string;
   runEnv: Readonly<Record<string, string>>;
+  capabilities: ReadonlySet<SandboxCapability>;
   imageId?: SandboxImageId;
 }
 
@@ -44,6 +46,7 @@ export class SandboxImage {
   readonly workdir: string;
   readonly runEnv: Readonly<Record<string, string>>;
   readonly startupScript?: string;
+  readonly capabilities: ReadonlySet<SandboxCapability>;
   readonly imageId?: SandboxImageId;
 
   private constructor(state: SandboxImageState) {
@@ -54,6 +57,7 @@ export class SandboxImage {
     this.network = state.network;
     this.workdir = state.workdir;
     this.runEnv = state.runEnv;
+    this.capabilities = state.capabilities;
     this.imageId = state.imageId;
   }
 
@@ -66,6 +70,7 @@ export class SandboxImage {
       network: updates.network ?? this.network,
       workdir: updates.workdir ?? this.workdir,
       runEnv: updates.runEnv ?? this.runEnv,
+      capabilities: updates.capabilities ?? this.capabilities,
       imageId: updates.imageId ?? this.imageId,
     });
   }
@@ -79,6 +84,7 @@ export class SandboxImage {
       network: DEFAULT_NETWORK,
       workdir: "/home/user",
       runEnv: {},
+      capabilities: new Set(),
     });
   }
 
@@ -91,6 +97,7 @@ export class SandboxImage {
       network: DEFAULT_NETWORK,
       workdir: "/home/user",
       runEnv: {},
+      capabilities: new Set(),
     });
   }
 
@@ -170,6 +177,16 @@ export class SandboxImage {
     return this.clone({
       runEnv: { ...this.runEnv, ...vars },
     });
+  }
+
+  withCapability(cap: SandboxCapability): SandboxImage {
+    const next = new Set(this.capabilities);
+    next.add(cap);
+    return this.clone({ capabilities: next });
+  }
+
+  hasCapability(cap: SandboxCapability): boolean {
+    return this.capabilities.has(cap);
   }
 
   withResources(resources: SandboxResources): SandboxImage {

@@ -72,6 +72,7 @@ SHELLEOF`)
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
   )
+  .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")

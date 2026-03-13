@@ -24,6 +24,7 @@ export type {
   NetworkMode,
   NetworkPolicy,
   Operation,
+  SandboxCapability,
   SandboxImageId,
   SandboxResources,
   ToolEntry,
