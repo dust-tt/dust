@@ -166,6 +166,9 @@ interface SearchResultsProps {
   activeSpaceId: string | null;
   hideTriggeredConversations: boolean;
   setHideTriggeredConversations: (hide: boolean) => void;
+  isMultiSelect: boolean;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
 }
 
 function SearchResults({
@@ -187,6 +190,9 @@ function SearchResults({
   activeSpaceId,
   hideTriggeredConversations,
   setHideTriggeredConversations,
+  isMultiSelect,
+  selectedConversations,
+  toggleConversationSelection,
 }: SearchResultsProps) {
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
 
@@ -359,9 +365,9 @@ function SearchResults({
                 key={conv.sId}
                 conversation={conv}
                 owner={owner}
-                isMultiSelect={false}
-                selectedConversations={[]}
-                toggleConversationSelection={() => {}}
+                isMultiSelect={isMultiSelect}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}
               />
             ))
@@ -1040,6 +1046,9 @@ export function AgentSidebarMenu({
                 activeSpaceId={activeSpaceId}
                 hideTriggeredConversations={hideTriggeredConversations}
                 setHideTriggeredConversations={setHideTriggeredConversations}
+                isMultiSelect={isMultiSelect}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
               />
             ) : (
               conversationsList
