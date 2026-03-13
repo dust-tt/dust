@@ -22,6 +22,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { Readable } from "stream";
 import type { z } from "zod";
 
 export class ZendeskApiError extends Error {
@@ -296,10 +297,16 @@ class ZendeskClient {
   }
 
   async getTicketComments(
-    ticketId: number
+    ticketId: number,
+    { includeInlineImages = false }: { includeInlineImages?: boolean } = {}
   ): Promise<Result<ZendeskTicketComment[], Error>> {
+    const params = new URLSearchParams();
+    if (includeInlineImages) {
+      // https://developer.zendesk.com/api-reference/ticketing/tickets/ticket_comments/#parameters
+      params.append("include_inline_images", "true");
+    }
     const result = await this.request(
-      `tickets/${ticketId}/comments`,
+      `tickets/${ticketId}/comments?${params.toString()}`,
       ZendeskTicketCommentsResponseSchema
     );
 
@@ -342,6 +349,48 @@ class ZendeskClient {
     }
 
     return new Ok(result.value.tags);
+  }
+
+  async fetchAttachment(
+    contentUrl: string
+  ): Promise<Result<{ body: Readable; contentLength: number | null }, Error>> {
+    const url = new URL(contentUrl);
+    // Only send Zendesk credentials to our own subdomain to avoid leaking
+    // the token to external hosts.
+    const isOwnZendeskUrl = url.hostname === `${this.subdomain}.zendesk.com`;
+
+    const headers: Record<string, string> = {};
+    if (isOwnZendeskUrl) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await untrustedFetch(contentUrl, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      return new Err(
+        new ZendeskApiError(
+          `Failed to download attachment (${response.status}): ${response.statusText}`,
+          { isInvalidInput: false }
+        )
+      );
+    }
+
+    if (!response.body) {
+      return new Err(
+        new ZendeskApiError("Attachment response body is null", {
+          isInvalidInput: false,
+        })
+      );
+    }
+
+    const contentLengthHeader = response.headers.get("content-length");
+    return new Ok({
+      body: Readable.fromWeb(response.body),
+      contentLength: contentLengthHeader ? parseInt(contentLengthHeader) : null,
+    });
   }
 
   async getUsersByIds(
