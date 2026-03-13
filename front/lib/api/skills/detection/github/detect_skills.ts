@@ -160,7 +160,7 @@ export async function detectSkillsFromGitHubRepo({
   octokit: InstanceType<typeof Octokit>;
   owner: string;
   repo: string;
-}): Promise<Result<GitHubDetectedSkill[], GitHubSkillDetectionError>> {
+}): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
   const treeResult = await fetchRepoTree(octokit, { owner, repo });
   if (treeResult.isErr()) {
     return treeResult;
