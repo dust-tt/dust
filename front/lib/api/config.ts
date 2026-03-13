@@ -495,6 +495,9 @@ const config = {
       "SBX_GCP_ARTIFACT_REGISTRY"
     );
   },
+  getGoogleCloudProjectId: (): string => {
+    return EnvironmentConfig.getEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
+  },
 };
 
 export default config;

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -128,28 +129,45 @@ export async function mintDownscopedGcsToken({
   });
 }
 
+// Custom role created in dust-infra with only storage.buckets.get.
+// No predefined role grants buckets.get without also granting objects.list, and CAB does not
+// support specifying individual permissions, only roles.
+const SANDBOX_STORAGE_MOUNT_ROLE_ID = "sandbox_storage_mount";
+
+function getStorageMountRole(): string {
+  return `projects/${config.getGoogleCloudProjectId()}/roles/${SANDBOX_STORAGE_MOUNT_ROLE_ID}`;
+}
+
 /**
- * Build Credential Access Boundary rules that restrict a token to a single
- * conversation prefix within a bucket.
+ * Build Credential Access Boundary rules that restrict a token to a single conversation prefix
+ * within a bucket.
  *
- * Two rules:
+ * Three rules (evaluated with OR semantics by the STS endpoint):
  *
- *  1. legacyBucketReader (unconditional) — grants buckets.get + objects.list at the bucket level.
- *     gcsfuse needs both at mount time.
- *     Note: legacyBucketReader does NOT include objects.get — the token cannot
- *     read object contents, only list paths and get bucket metadata.
- *     TODO(2026-03-12 SANDBOX): Restrict objects.list to our prefix via objectListPrefix
- *     CAB condition once we confirm buckets.get works with it.
+ *  1. Custom role (storage.buckets.get only) — unconditional.
+ *     gcsfuse needs bucket metadata at mount time. Using a custom role avoids leaking objects.list
+ *     which is bundled in every predefined role that includes buckets.get.
  *
- *  2. objectUser with resource.name condition — read/write scoped to prefix.
+ *  2. legacyBucketReader with objectListPrefix condition — grants objects.list restricted to our
+ *     prefix. The objectListPrefix CAB attribute is only present on list requests. buckets.get
+ *     falls through to rule 1 instead.
+ *
+ *  3. objectUser with resource.name condition — read/write scoped to prefix.
  */
 function buildAccessBoundaryRules(bucket: string, prefix: string) {
   const bucketResource = `//storage.googleapis.com/projects/_/buckets/${bucket}`;
 
   return [
     {
+      availablePermissions: [`inRole:${getStorageMountRole()}`],
+      availableResource: bucketResource,
+    },
+    {
       availablePermissions: ["inRole:roles/storage.legacyBucketReader"],
       availableResource: bucketResource,
+      availabilityCondition: {
+        expression: `api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('${prefix}/')`,
+      },
     },
     {
       availablePermissions: ["inRole:roles/storage.objectUser"],
