@@ -403,7 +403,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
     const apiKey =
       differenceInMinutes > API_KEY_REVEAL_WINDOW_MINUTES
-        ? redactString(this._credentials.api_key, 4)
+        ? redactString(this._credentials.api_key.slice(-20), 4)
         : this._credentials.api_key;
 
     return {
