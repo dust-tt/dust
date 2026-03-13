@@ -115,15 +115,15 @@ export default function LandingLayout({
     }
 
     if (geoData && geoData.isGDPR === false) {
-      // For non-GDPR countries (like US), show banner and set cookies to auto
-      setShowCookieBanner(true);
-      setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
-      // Note: We don't set the cookie value here, letting the user choose to accept/reject
+      // For non-GDPR countries (like US), auto-accept cookies immediately.
+      // This writes the dust-cookies-accepted=auto cookie so that downstream
+      // consumers (useStripUtmParams, PostHogTracker) can detect consent.
+      setCookieApproval("auto");
     } else {
       // For GDPR countries, just show the banner
       setShowCookieBanner(true);
     }
-  }, [geoData, isGeoDataLoading, cookieValue]);
+  }, [geoData, isGeoDataLoading, cookieValue, setCookieApproval]);
 
   return (
     <>
