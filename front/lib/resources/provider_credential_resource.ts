@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
@@ -7,12 +8,14 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import type { ConnectionCredentials } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import type { LLMCredentialsType } from "@app/types/provider_credential";
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import {
-  PROVIDER_CREDENTIAL_CONTENT_SCHEMAS,
+  type ModelProviderPostCredentialsBody,
+  OAuthAPI,
+} from "@app/types/oauth/oauth_api";
+import {
+  ApiKeyCredentialContentSchema,
+  type LLMCredentialsType,
   PROVIDER_TO_CREDENTIAL_KEY,
   type ProviderCredentialType,
 } from "@app/types/provider_credential";
@@ -21,8 +24,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { redactString } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
+import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
+import type { z } from "zod";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -32,11 +38,15 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   static model: ModelStaticWorkspaceAware<ProviderCredentialModel> =
     ProviderCredentialModel;
 
+  private credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+
   constructor(
     model: ModelStatic<ProviderCredentialModel>,
-    blob: Attributes<ProviderCredentialModel>
+    blob: Attributes<ProviderCredentialModel>,
+    credentials: z.infer<typeof ApiKeyCredentialContentSchema>
   ) {
     super(ProviderCredentialModel, blob);
+    this.credentials = credentials;
   }
 
   get sId(): string {
@@ -46,6 +56,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     });
   }
 
+  // TODO (BYOK): Move out of resource
   private static get dustManagedLLMCredentials(): LLMCredentialsType {
     const env = (key: string) =>
       EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
@@ -68,11 +79,46 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     };
   }
 
+  private static async makeNewFromModel(
+    model: ProviderCredentialModel
+  ): Promise<ProviderCredentialResource> {
+    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const { providerId, id, credentialId } = model;
+    const credentialRes = await oauthApi.getCredentials({
+      credentialsId: credentialId,
+    });
+
+    if (credentialRes.isErr()) {
+      logger.error(
+        {
+          providerId,
+          credentialId,
+          error: credentialRes.error,
+          workspaceId: model.workspaceId,
+        },
+        `Failed to fetch credentials for provider credential with id ${id} from OAuth API : ${credentialRes.error.message}`
+      );
+      throw new Error(
+        `Failed to fetch credentials for provider credential with id ${id} from OAuth API: ${credentialRes.error.message}`
+      );
+    }
+
+    const credentials = ApiKeyCredentialContentSchema.parse(
+      credentialRes.value.credential.content
+    );
+    return new ProviderCredentialResource(
+      ProviderCredentialModel,
+      model.get(),
+      credentials
+    );
+  }
+
+  // TODO (BYOK): cache this method
   private static async baseFetch(
     auth: Authenticator
   ): Promise<ProviderCredentialResource[]> {
     const plan = auth.getNonNullablePlan();
-    assert(plan.isByok, "BYOK is not enabled on this workspace's plan.");
+    assert(plan.isByok, "BYOK must be enabled to fetch provider credentials.");
 
     const workspace = auth.getNonNullableWorkspace();
 
@@ -80,8 +126,85 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       where: { workspaceId: workspace.id },
     });
 
-    return models.map(
-      (m) => new ProviderCredentialResource(ProviderCredentialModel, m.get())
+    const resources = await concurrentExecutor(models, this.makeNewFromModel, {
+      concurrency: 8,
+    });
+
+    return resources;
+  }
+
+  static async makeNew(
+    auth: Authenticator,
+    {
+      providerId,
+      apiKey,
+    }: {
+      providerId: ByokModelProviderIdType;
+      apiKey: string;
+    }
+  ): Promise<ProviderCredentialResource | null> {
+    assert(auth.isAdmin(), "Only admins can create provider credentials.");
+    assert(
+      auth.getNonNullablePlan().isByok,
+      "BYOK must be enabled to create provider credentials."
+    );
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const isHealthy = await isCredentialHealthy({
+      provider: providerId,
+      credentials: { api_key: apiKey },
+    });
+
+    if (!isHealthy) {
+      logger.warn(
+        {
+          providerId,
+          workspaceId: workspace.sId,
+        },
+        `Provided credentials for provider ${providerId} are not healthy.`
+      );
+
+      return null;
+    }
+
+    const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+    const oauthRes = await oauthClient.postCredentials({
+      provider: providerId,
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      credentials: { api_key: apiKey },
+    });
+
+    if (oauthRes.isErr()) {
+      logger.error(
+        {
+          providerId,
+          error: oauthRes.error,
+          workspaceId: workspace.sId,
+        },
+        `Failed to post credentials to OAuth API : ${oauthRes.error.message}`
+      );
+      return null;
+    }
+
+    const model = await this.model.create({
+      workspaceId: workspace.id,
+      providerId,
+      credentialId: oauthRes.value.credential.credential_id,
+      isHealthy: true,
+      // TODO(BYOK): remove after obfuscation has been implemented
+      placeholder: "",
+      editedByUserId: user.id,
+    });
+
+    return new ProviderCredentialResource(
+      ProviderCredentialModel,
+      model.get(),
+      // TODO (BYOK): handle different credential content shapes for different providers
+      { api_key: apiKey }
     );
   }
 
@@ -91,6 +214,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return this.baseFetch(auth);
   }
 
+  // TODO (BYOK): move out of resource
   static async getCredentials(
     auth: Authenticator
   ): Promise<LLMCredentialsType> {
@@ -102,30 +226,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     const providerCredentials = await this.baseFetch(auth);
 
-    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-
-    const oauthCredentials = await concurrentExecutor(
-      providerCredentials,
-      async (cred) => {
-        const credentialRes = await oauthApi.getCredentials({
-          credentialsId: cred.credentialId,
-        });
-
-        if (credentialRes.isErr()) {
-          throw new Error(
-            `Failed to fetch OAuth credentials for provider ${cred.providerId}: ${credentialRes.error.message}`
-          );
-        }
-
-        return {
-          providerId: cred.providerId,
-          content: credentialRes.value.credential.content,
-        };
-      },
-      { concurrency: 8 }
+    return mapOauthCredentialsToLlmCredentials(
+      providerCredentials.map((cred) => ({
+        providerId: cred.providerId,
+        content: cred.credentials,
+      }))
     );
-
-    return mapOauthCredentialsToLlmCredentials(oauthCredentials);
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
@@ -154,6 +260,15 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   }
 
   toJSON(): ProviderCredentialType {
+    const timeDifference = Math.abs(
+      new Date().getTime() - new Date(this.updatedAt).getTime()
+    );
+    const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const apiKey =
+      differenceInMinutes > 5
+        ? redactString(this.credentials.api_key, 4)
+        : this.credentials.api_key;
+
     return {
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
@@ -163,45 +278,28 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       isHealthy: this.isHealthy,
       placeholder: this.placeholder,
       editedByUserId: this.editedByUserId,
+      credentials: { api_key: apiKey },
     };
   }
 }
 
+// TODO (BYOK): Move out of resource
 function mapOauthCredentialsToLlmCredentials(
   oauthCredentials: {
-    providerId: ModelProviderIdType;
-    content: ConnectionCredentials;
+    providerId: ByokModelProviderIdType;
+    content: { api_key: string };
   }[]
 ): LLMCredentialsType {
   const result: LLMCredentialsType = {};
 
   for (const { providerId, content } of oauthCredentials) {
-    if (providerId === "noop") {
-      continue;
-    }
-
     switch (providerId) {
       case "openai": {
-        const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
-        const parsedContent = schema.parse(content);
-
-        result.OPENAI_API_KEY = parsedContent.api_key;
-        result.OPENAI_BASE_URL = parsedContent.base_url;
-        result.OPENAI_USE_EU_ENDPOINT =
-          config.getRegion() === "europe-west1" ? "true" : "false";
+        result.OPENAI_API_KEY = content.api_key;
         break;
       }
-      case "anthropic":
-      case "mistral":
-      case "google_ai_studio":
-      case "deepseek":
-      case "fireworks":
-      case "xai":
-      case "togetherai": {
-        const schema = PROVIDER_CREDENTIAL_CONTENT_SCHEMAS[providerId];
-        const parsedContent = schema.parse(content);
-
-        result[PROVIDER_TO_CREDENTIAL_KEY[providerId]] = parsedContent.api_key;
+      case "anthropic": {
+        result[PROVIDER_TO_CREDENTIAL_KEY[providerId]] = content.api_key;
         break;
       }
       default:
@@ -210,4 +308,43 @@ function mapOauthCredentialsToLlmCredentials(
   }
 
   return result;
+}
+
+async function isCredentialHealthy({
+  provider,
+  credentials,
+}: ModelProviderPostCredentialsBody): Promise<boolean> {
+  switch (provider) {
+    case "anthropic": {
+      const client = new Anthropic({
+        apiKey: credentials.api_key,
+      });
+      try {
+        await client.models.list();
+      } catch (_error) {
+        return false;
+      }
+
+      return true;
+    }
+    case "openai": {
+      const client = new OpenAI({
+        apiKey: credentials.api_key,
+        defaultHeaders: {
+          "Content-Type": "application/json; charset=utf-8",
+          Accept: "application/json; charset=utf-8",
+        },
+      });
+
+      try {
+        await client.models.list();
+      } catch (_error) {
+        return false;
+      }
+
+      return true;
+    }
+    default:
+      assertNever(provider);
+  }
 }
