@@ -19,15 +19,15 @@ export function useConversationSandboxFiles({
   const sandboxFilesFetcher: Fetcher<GetConversationSandboxFilesResponseBody> =
     fetcher;
 
-  const disabled = options?.disabled;
-
   const { data, error, mutate } = useSWRWithDefaults(
-    conversationId && !disabled
+    conversationId
       ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files`
       : null,
     sandboxFilesFetcher,
     options
   );
+
+  const disabled = options?.disabled;
 
   return {
     sandboxFiles: data?.files ?? emptyArray<SandboxFileEntry>(),

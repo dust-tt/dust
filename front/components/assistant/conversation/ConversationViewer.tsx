@@ -22,6 +22,7 @@ import {
   useConversationParticipants,
   useConversations,
 } from "@app/hooks/conversations";
+import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -131,6 +132,12 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
+
+  const { mutateConversationAttachments } = useConversationAttachments({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
 
   const {
     conversation,
@@ -456,6 +463,7 @@ export const ConversationViewer = ({
 
               if (userMessage.contentFragments.length > 0) {
                 window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+                void mutateConversationAttachments();
               }
             }
             break;
@@ -538,6 +546,7 @@ export const ConversationViewer = ({
             );
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
+            void mutateConversationAttachments();
             break;
           case "butler_thinking":
             setIsButlerThinking(true);
@@ -566,6 +575,7 @@ export const ConversationViewer = ({
       conversationId,
       debouncedMarkAsRead,
       mutateConversation,
+      mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
