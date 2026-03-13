@@ -1,8 +1,8 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
+  getDayTimestamps,
   getIndexedColor,
-  getTimeRangeBounds,
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
@@ -69,12 +69,12 @@ function getSkillSelectorLabel(selectedSkills: string[]): string {
 
 interface SkillUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: SkillUsageDisplayMode;
-  skillsForChart: string[];
+  skillsWithData: string[];
 }
 
 function SkillUsageTooltip({
   displayMode,
-  skillsForChart,
+  skillsWithData,
   active,
   payload,
 }: SkillUsageTooltipProps) {
@@ -95,14 +95,14 @@ function SkillUsageTooltip({
   const title = point.date ?? formatShortDate(point.timestamp);
   const label = displayMode === "users" ? "users" : "executions";
 
-  const values = skillsForChart.map((skill) => point.values[skill] ?? 0);
-  const rows = skillsForChart.map((skill, idx) => ({
+  const values = skillsWithData.map((skill) => point.values[skill] ?? 0);
+  const rows = skillsWithData.map((skill, idx) => ({
     label: skill,
     value: values[idx].toLocaleString(),
-    colorClassName: getIndexedColor(skill, skillsForChart),
+    colorClassName: getIndexedColor(skill, skillsWithData),
   }));
 
-  if (skillsForChart.length > 1) {
+  if (skillsWithData.length > 1) {
     const total = values.reduce((sum, v) => sum + v, 0);
     rows.push({
       label: `Total ${label}`,
@@ -141,37 +141,35 @@ export function WorkspaceSkillUsageChart({
     }
   }, [availableSkills, selectedSkills.length]);
 
-  const skillsToFetch = selectedSkills;
-
   const skill1Usage = useWorkspaceSkillUsage({
     workspaceId,
     days: period,
-    skillName: skillsToFetch[0],
-    disabled: !workspaceId || !skillsToFetch[0],
+    skillName: selectedSkills[0],
+    disabled: !workspaceId || !selectedSkills[0],
   });
   const skill2Usage = useWorkspaceSkillUsage({
     workspaceId,
     days: period,
-    skillName: skillsToFetch[1],
-    disabled: !workspaceId || !skillsToFetch[1],
+    skillName: selectedSkills[1],
+    disabled: !workspaceId || !selectedSkills[1],
   });
   const skill3Usage = useWorkspaceSkillUsage({
     workspaceId,
     days: period,
-    skillName: skillsToFetch[2],
-    disabled: !workspaceId || !skillsToFetch[2],
+    skillName: selectedSkills[2],
+    disabled: !workspaceId || !selectedSkills[2],
   });
   const skill4Usage = useWorkspaceSkillUsage({
     workspaceId,
     days: period,
-    skillName: skillsToFetch[3],
-    disabled: !workspaceId || !skillsToFetch[3],
+    skillName: selectedSkills[3],
+    disabled: !workspaceId || !selectedSkills[3],
   });
   const skill5Usage = useWorkspaceSkillUsage({
     workspaceId,
     days: period,
-    skillName: skillsToFetch[4],
-    disabled: !workspaceId || !skillsToFetch[4],
+    skillName: selectedSkills[4],
+    disabled: !workspaceId || !selectedSkills[4],
   });
 
   const skillUsages = useMemo(
@@ -197,10 +195,8 @@ export function WorkspaceSkillUsageChart({
     isSkillsLoading || (skillsWithData.length === 0 && !allSkillsSettled);
 
   const hasError = skillUsages.some(
-    (s, i) => skillsToFetch[i] && s.isSkillUsageError
+    (s, i) => selectedSkills[i] && s.isSkillUsageError
   );
-
-  const skillsForChart = skillsWithData;
 
   const data = useMemo((): SkillUsageChartPoint[] => {
     if (skillsWithData.length === 0) {
@@ -210,17 +206,11 @@ export function WorkspaceSkillUsageChart({
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const [startTimeMs, endTimeMs] = getTimeRangeBounds(
-      period,
-      browserTimezone
-    );
-    const dayMs = 24 * 60 * 60 * 1000;
-    const numDays = Math.floor((endTimeMs - startTimeMs) / dayMs) + 1;
+    const dayTimestamps = getDayTimestamps(period, browserTimezone);
 
     const points: SkillUsageChartPoint[] = [];
 
-    for (let i = 0; i < numDays; i++) {
-      const timestamp = startTimeMs + i * dayMs;
+    for (const timestamp of dayTimestamps) {
       const values: Record<string, number> = {};
 
       skillsWithData.forEach((skill) => {
@@ -251,10 +241,10 @@ export function WorkspaceSkillUsageChart({
     }
   };
 
-  const legendItems: LegendItem[] = skillsForChart.map((skill) => ({
+  const legendItems: LegendItem[] = skillsWithData.map((skill) => ({
     key: skill,
     label: skill,
-    colorClassName: getIndexedColor(skill, skillsForChart),
+    colorClassName: getIndexedColor(skill, skillsWithData),
   }));
 
   const skillSelector = (
@@ -363,7 +353,7 @@ export function WorkspaceSkillUsageChart({
             <SkillUsageTooltip
               {...props}
               displayMode={displayMode}
-              skillsForChart={skillsForChart}
+              skillsWithData={skillsWithData}
             />
           )}
           cursor={false}
@@ -375,14 +365,14 @@ export function WorkspaceSkillUsageChart({
             boxShadow: "none",
           }}
         />
-        {skillsForChart.map((skill) => (
+        {skillsWithData.map((skill) => (
           <Line
             key={skill}
             type={period === 7 || period === 14 ? "linear" : "monotone"}
             strokeWidth={2}
             dataKey={(point: SkillUsageChartPoint) => point.values[skill] ?? 0}
             name={skill}
-            className={getIndexedColor(skill, skillsForChart)}
+            className={getIndexedColor(skill, skillsWithData)}
             stroke="currentColor"
             dot={false}
           />

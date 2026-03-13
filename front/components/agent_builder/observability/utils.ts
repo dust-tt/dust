@@ -137,11 +137,11 @@ export function findVersionMarkerForDate(
   return null;
 }
 
-const truncateToMidnightUTC = (timestamp: number): number => {
+function truncateToMidnightUTC(timestamp: number): number {
   const date = new Date(timestamp);
   date.setUTCHours(0, 0, 0, 0);
   return date.getTime();
-};
+}
 
 // Filters a generic time-series of points with a `timestamp` number to the
 // selected version window determined by version markers. If no selection or
@@ -185,13 +185,20 @@ export function filterTimeSeriesByVersionWindow<
   });
 }
 
-export function getTimeRangeBounds(
+// Generates an array of midnight timestamps for each day in the range,
+// stepping via moment to respect DST transitions.
+export function getDayTimestamps(
   periodDays: number,
   timezone: string
-): [number, number] {
-  const now = moment.tz(timezone).startOf("day");
-  const start = now.clone().subtract(periodDays, "days");
-  return [start.valueOf(), now.valueOf()];
+): number[] {
+  const startOfTomorrow = moment.tz(timezone).add(1, "day").startOf("day");
+  const cursor = startOfTomorrow.clone().subtract(periodDays, "days");
+  const timestamps: number[] = [];
+  while (cursor.isBefore(startOfTomorrow)) {
+    timestamps.push(cursor.valueOf());
+    cursor.add(1, "day");
+  }
+  return timestamps;
 }
 
 // Pads a time-series with zero-value points at the selected time-range bounds
@@ -212,22 +219,14 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
     }));
   }
 
-  const [startTime, endTime] = getTimeRangeBounds(periodDays, tz);
-
   const byTimestamp = new Map<number, T>(pts.map((p) => [p.timestamp, p]));
+  const dayTimestamps = getDayTimestamps(periodDays, tz);
 
-  const dayMs = 24 * 60 * 60 * 1000;
-  const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
-
-  const out = [];
-  for (let i = 0; i < numDays; i++) {
-    const timestamp = startTime + i * dayMs;
+  return dayTimestamps.map((timestamp) => {
     const point = byTimestamp.get(timestamp) ?? zeroFactory(timestamp);
-    const formattedPoint = {
+    return {
       ...point,
       date: formatShortDate(point.timestamp),
     };
-    out.push(formattedPoint);
-  }
-  return out;
+  });
 }
