@@ -1,7 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  getErrorFromResponse,
+  useFetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
+  GetProviderCredentialsResponseBody,
   PostProviderCredentialBody,
   PostProviderCredentialResponseBody,
 } from "@app/pages/api/w/[wId]/provider_credentials";
@@ -9,6 +15,30 @@ import type { ByokModelProviderIdType } from "@app/types/assistant/models/types"
 import type { ProviderCredentialType } from "@app/types/provider_credential";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
+import type { Fetcher } from "swr";
+
+export function useProviderCredentials({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const providerCredentialsFetcher: Fetcher<GetProviderCredentialsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/provider_credentials`,
+    providerCredentialsFetcher
+  );
+
+  return {
+    providerCredentials:
+      data?.providerCredentials ?? emptyArray<ProviderCredentialType>(),
+    isProviderCredentialsLoading: !error && !data,
+    isProviderCredentialsError: !!error,
+    mutateProviderCredentials: mutate,
+  };
+}
 
 export function useCreateProviderCredential({
   owner,

@@ -18,6 +18,10 @@ export type PostProviderCredentialBody = z.infer<
   typeof PostProviderCredentialBodySchema
 >;
 
+export type GetProviderCredentialsResponseBody = {
+  providerCredentials: ProviderCredentialType[];
+};
+
 export type PostProviderCredentialResponseBody = {
   providerCredential: ProviderCredentialType;
 };
@@ -25,7 +29,9 @@ export type PostProviderCredentialResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<PostProviderCredentialResponseBody>
+    WithAPIErrorResponse<
+      GetProviderCredentialsResponseBody | PostProviderCredentialResponseBody
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -52,6 +58,15 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET": {
+      const providerCredentials =
+        await ProviderCredentialResource.listByWorkspace(auth);
+
+      return res.status(200).json({
+        providerCredentials: providerCredentials.map((c) => c.toJSON()),
+      });
+    }
+
     case "POST": {
       const bodyValidation = PostProviderCredentialBodySchema.safeParse(
         req.body
@@ -97,7 +112,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

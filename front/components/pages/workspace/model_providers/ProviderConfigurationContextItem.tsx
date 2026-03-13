@@ -11,11 +11,13 @@ interface ProviderConfigurationContextItemProps {
   owner: LightWorkspaceType;
   providerId: ByokModelProviderIdType;
   description: string;
+  isLoading: boolean;
 }
 export function ProviderConfigurationContextItem({
   owner,
   providerId,
   description,
+  isLoading,
 }: ProviderConfigurationContextItemProps) {
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
@@ -28,11 +30,13 @@ export function ProviderConfigurationContextItem({
         title={PRETTIFIED_PROVIDER_NAMES[providerId]}
         visual={<Icon visual={LogoComponent} size="lg" />}
         action={
-          <Button
-            label="Configure"
-            variant="outline"
-            onClick={() => setIsSheetOpen(true)}
-          />
+          !isLoading && (
+            <Button
+              label="Configure"
+              variant="outline"
+              onClick={() => setIsSheetOpen(true)}
+            />
+          )
         }
       >
         <ContextItem.Description>
