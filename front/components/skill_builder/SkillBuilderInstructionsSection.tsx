@@ -1,9 +1,16 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { ArrowGoBackIcon, BookOpenIcon, Button } from "@dust-tt/sparkle";
+import {
+  ArrowGoBackIcon,
+  BookOpenIcon,
+  Button,
+  ContentMessage,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
+
+const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 10_000;
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
@@ -54,6 +61,17 @@ export function SkillBuilderInstructionsSection() {
           )}
         </div>
       </div>
+      {(currentInstructions?.length ?? 0) >
+        LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD && (
+        <ContentMessage
+          variant="warning"
+          size="lg"
+          title="This skill is noticeably large"
+        >
+          Large skills consume a significant part of the context window on each
+          use. Consider keeping your guidelines concise.
+        </ContentMessage>
+      )}
       <SkillBuilderInstructionsEditor
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
       />
