@@ -262,7 +262,7 @@ export const getBucketInstance: (
   }
   return bucketInstances.get(bucketConfig);
 };
-z;
+
 export const getPrivateUploadBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getGcsPrivateUploadsBucket(), options);
 
