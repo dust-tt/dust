@@ -54,9 +54,7 @@ export async function importSkillsFromGitHub(
   const requestedNames = new Set(names);
   const selectedSkills = detectedSkills.filter(
     (skill) =>
-      requestedNames.has(skill.name) &&
-      skill.name &&
-      skill.instructions.trim()
+      requestedNames.has(skill.name) && skill.name && skill.instructions.trim()
   );
 
   const user = auth.getNonNullableUser();
@@ -67,10 +65,7 @@ export async function importSkillsFromGitHub(
   await concurrentExecutor(
     selectedSkills,
     async (skill) => {
-      const existing = await SkillResource.fetchActiveByName(
-        auth,
-        skill.name
-      );
+      const existing = await SkillResource.fetchActiveByName(auth, skill.name);
 
       if (existing && !isSkillFromGitHubRepo(existing, { repoUrl })) {
         errors.push({
@@ -80,11 +75,11 @@ export async function importSkillsFromGitHub(
         return;
       }
 
-      const fileAttachments = await fetchSkillFileAttachments(
-        auth,
-        skill,
-        { octokit, owner, repo }
-      );
+      const fileAttachments = await fetchSkillFileAttachments(auth, skill, {
+        octokit,
+        owner,
+        repo,
+      });
 
       let skillSId: string;
 
@@ -153,11 +148,9 @@ export async function importSkillsFromGitHub(
       }
 
       if (fileAttachments.length > 0) {
-        await FileResource.bulkSetUseCaseMetadata(
-          auth,
-          fileAttachments,
-          { skillId: skillSId }
-        );
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: skillSId,
+        });
       }
     },
     { concurrency: IMPORT_CONCURRENCY }
