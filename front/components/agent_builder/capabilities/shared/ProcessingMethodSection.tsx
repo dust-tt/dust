@@ -1,7 +1,4 @@
-import {
-  getKnowledgeLookupMethodLabel,
-  getKnowledgeLookupMethodOverride,
-} from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { getKnowledgeLookupMethodLabel } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
@@ -10,10 +7,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
@@ -222,10 +216,7 @@ export function ProcessingMethodSection() {
                   )}
                   icon={getAvatar(view.server)}
                   onClick={() => onChange(view)}
-                  description={
-                    getKnowledgeLookupMethodOverride(view.server.name)
-                      ?.description ?? getMcpServerViewDescription(view)
-                  }
+                  description={view.server.description}
                 />
               ))}
           </DropdownMenuContent>
@@ -233,10 +224,7 @@ export function ProcessingMethodSection() {
       </div>
 
       <span className="text-sm text-muted-foreground dark:text-muted-foreground">
-        {mcpServerView
-          ? (getKnowledgeLookupMethodOverride(mcpServerView.server.name)
-              ?.description ?? getMcpServerViewDescription(mcpServerView))
-          : null}
+        {mcpServerView?.server.description}
       </span>
 
       {warningContent && (

@@ -36,36 +36,13 @@ export interface CapabilityConfig {
   };
 }
 
-const KNOWLEDGE_LOOKUP_METHOD_OVERRIDES = {
-  [SEARCH_SERVER.serverInfo.name]: {
-    label: "Content search",
-    description: SEARCH_SERVER.serverInfo.description,
-  },
-  [QUERY_TABLES_V2_SERVER.serverInfo.name]: {
-    label: "Analytics (tables, spreadsheets...)",
-    description: QUERY_TABLES_V2_SERVER.serverInfo.description,
-  },
-  [INCLUDE_DATA_SERVER.serverInfo.name]: {
-    label: "Include all data",
-    description: INCLUDE_DATA_SERVER.serverInfo.description,
-  },
-  [EXTRACT_DATA_SERVER.serverInfo.name]: {
-    label: "Advanced processing",
-    description: EXTRACT_DATA_SERVER.serverInfo.description,
-  },
+const KNOWLEDGE_LOOKUP_METHOD_LABEL_OVERRIDES = {
+  [SEARCH_SERVER.serverInfo.name]: "Content search",
+  [QUERY_TABLES_V2_SERVER.serverInfo.name]:
+    "Analytics (tables, spreadsheets...)",
+  [INCLUDE_DATA_SERVER.serverInfo.name]: "Include all data",
+  [EXTRACT_DATA_SERVER.serverInfo.name]: "Advanced processing",
 } as const;
-
-export function getKnowledgeLookupMethodOverride(serverName?: string | null) {
-  if (!serverName) {
-    return null;
-  }
-
-  return (
-    KNOWLEDGE_LOOKUP_METHOD_OVERRIDES[
-      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_OVERRIDES
-    ] ?? null
-  );
-}
 
 export function getKnowledgeLookupMethodLabel(
   serverName?: string | null,
@@ -75,9 +52,12 @@ export function getKnowledgeLookupMethodLabel(
     return "";
   }
 
-  const override = getKnowledgeLookupMethodOverride(serverName);
+  const override =
+    KNOWLEDGE_LOOKUP_METHOD_LABEL_OVERRIDES[
+      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_LABEL_OVERRIDES
+    ];
   if (override) {
-    return override.label;
+    return override;
   }
 
   return fallbackLabel ?? asDisplayToolName(serverName);
