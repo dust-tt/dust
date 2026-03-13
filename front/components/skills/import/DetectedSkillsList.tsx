@@ -24,7 +24,7 @@ const STATUS_CHIP_LABEL: Record<
 
 interface DetectedSkillsListProps {
   detectedSkills: DetectedSkillSummary[];
-  selectedNames: Set<string>;
+  selectedNames: string[];
   toggleSkill: (name: string) => void;
   isDetecting: boolean;
   detectError: string | null;
@@ -63,7 +63,7 @@ export function DetectedSkillsList({
               visual={
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    checked={selectedNames.has(skill.name)}
+                    checked={selectedNames.includes(skill.name)}
                     disabled={!isImportableSkillStatus(skill.status)}
                     onCheckedChange={() => toggleSkill(skill.name)}
                   />

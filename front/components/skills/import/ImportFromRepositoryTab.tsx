@@ -30,20 +30,18 @@ export function ImportFromRepositoryTab({
 }: ImportFromRepositoryTabProps) {
   const { control } = useFormContext<ImportFormValues>();
   const { field } = useController({ name: "repoUrl", control });
+  const selectedSkillNames = useWatch({ control, name: "selectedSkillNames" });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
 
   // Pre-select all importable skills when detection completes.
   useEffect(() => {
-    const initial = new Set<string>();
-    for (const skill of detectedSkills) {
-      if (isImportableSkillStatus(skill.status)) {
-        initial.add(skill.name);
-      }
-    }
-    setSelectedNames(initial);
-  }, [detectedSkills, setSelectedNames]);
+    const initial = detectedSkills
+      .filter((skill) => isImportableSkillStatus(skill.status))
+      .map((skill) => skill.name);
+    setValue("selectedSkillNames", initial);
+  }, [detectedSkills, setValue]);
 
   // Sync detecting state to the parent. Expects a stable callback (e.g. setState).
   useEffect(() => {
@@ -85,7 +83,7 @@ export function ImportFromRepositoryTab({
       />
       <DetectedSkillsList
         detectedSkills={detectedSkills}
-        selectedNames={selectedNames}
+        selectedNames={selectedSkillNames}
         toggleSkill={toggleSkill}
         isDetecting={isDetecting}
         detectError={detectError}
