@@ -67,7 +67,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import type { LucideProps } from "lucide-react";
-import { Bot as LucideBot, Package, Package2, Shapes } from "lucide-react";
+import { Bot as LucideBot, CircleHelp, Package, Package2, Shapes } from "lucide-react";
 import type { ComponentType } from "react";
 import { createElement, forwardRef } from "react";
 
@@ -176,6 +176,7 @@ export const ChatBubbleBottomCenterTextIcon = withDefaults(ChatCircle);
 export const ContactsRobotIcon = withLucideDefaults(LucideBot);
 export const DocumentIcon = withDefaults(FilePlus);
 export const HeartIcon = withDefaults(ChatCircle);
+export const CircleHelpIcon = withLucideDefaults(CircleHelp);
 export const LightbulbIcon = withDefaults(Lightbulb);
 export const MagicIcon = withDefaults(MagicWand);
 export const MicIcon = withDefaults(Microphone);

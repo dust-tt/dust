@@ -3,7 +3,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   DocumentIcon,
-  HeartIcon,
+  CircleHelpIcon,
   LightbulbIcon,
 } from "@app/components/assistant/conversation/icons";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -120,7 +120,7 @@ export function HelpDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline-ghost" label="Help" icon={HeartIcon} isSelect />
+        <Button variant="outline-ghost" label="Help" icon={CircleHelpIcon} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         onCloseAutoFocus={(e) => {
