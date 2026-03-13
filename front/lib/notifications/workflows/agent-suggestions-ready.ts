@@ -9,6 +9,7 @@ import { AGENT_SUGGESTIONS_READY_TRIGGER_ID } from "@app/types/notification_pref
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { workflow } from "@novu/framework";
 import z from "zod";
 
@@ -27,14 +28,9 @@ export const agentSuggestionsReadyWorkflow = workflow(
   AGENT_SUGGESTIONS_READY_TRIGGER_ID,
   async ({ step, payload }) => {
     await step.inApp("send-in-app", async () => {
-      const countLabel =
-        payload.suggestionCount === 1
-          ? "1 suggestion"
-          : `${payload.suggestionCount} suggestions`;
-
       return {
         subject: `@${payload.agentName}`,
-        body: `New improvement suggestions are ready for review (${countLabel}).`,
+        body: `${payload.suggestionCount} new improvement suggestion${pluralize(payload.suggestionCount)} ready for review.`,
         primaryAction: {
           label: "Review",
           redirect: {
