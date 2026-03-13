@@ -4,6 +4,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+const DSBX_CLI_VERSION = "0.1.1";
+
 const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.1.0")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
@@ -63,8 +65,8 @@ SHELLEOF`)
     { name: "dsbx", description: "Dust CLI" },
     {
       installCmd:
-        "curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.0/dsbx-linux-x86_64 -o /tmp/dsbx && " +
-        "curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.0/checksums-sha256.txt -o /tmp/checksums-sha256.txt && " +
+        `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
+        `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
         "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
         "chmod +x /tmp/dsbx && " +
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
@@ -75,7 +77,7 @@ SHELLEOF`)
   .setWorkdir("/home/user")
   .register({
     imageName: "dust-base",
-    tag: "0.2.1",
+    tag: "0.2.2",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
