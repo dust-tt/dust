@@ -98,7 +98,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status, globalSpaceOnly } = req.query;
+      const { withRelations, status, globalSpaceOnly, isDefault } = req.query;
 
       const statusValidation = SkillStatusSchema.decode(status);
       if (isLeft(statusValidation)) {
@@ -115,6 +115,7 @@ async function handler(
       const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
+        isDefault: isDefault === "true" ? true : undefined,
       });
 
       if (withRelations === "true") {
