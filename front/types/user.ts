@@ -88,9 +88,6 @@ export type UserType = {
   email: string;
   firstName: string;
   lastName: string | null;
-  fullName: string;
-  image: string | null;
-  lastLoginAt: number | null;
 };
 
 export type UserTypeWithWorkspace = UserType & {
