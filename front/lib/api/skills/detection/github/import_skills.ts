@@ -81,7 +81,7 @@ export async function importSkillsFromGitHub(
         repo,
       });
 
-      let skillSId: string;
+      let skillId: string;
 
       if (existing) {
         const attachedKnowledge = await existing.getAttachedKnowledge(auth);
@@ -103,7 +103,7 @@ export async function importSkillsFromGitHub(
           },
         });
 
-        skillSId = existing.sId;
+        skillId = existing.sId;
         updated.push(existing);
       } else {
         let icon: string | null = null;
@@ -143,13 +143,13 @@ export async function importSkillsFromGitHub(
           { mcpServerViews: [], fileAttachments }
         );
 
-        skillSId = skillResource.sId;
+        skillId = skillResource.sId;
         imported.push(skillResource);
       }
 
       if (fileAttachments.length > 0) {
         await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: skillSId,
+          skillId,
         });
       }
     },
