@@ -1,19 +1,7 @@
-import {
-  type DetectedSkillStatus,
-  isImportableSkillStatus,
-  parseGitHubRepoUrl,
-} from "@app/lib/skill_detection";
-import {
-  useDetectSkillsFromRepo,
-  useImportSkills,
-} from "@app/lib/swr/skill_configurations";
+import { ImportFromRepositoryTab } from "@app/components/skills/ImportFromRepositoryTab";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Checkbox,
-  Chip,
-  ContentMessage,
-  ContextItem,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -21,82 +9,68 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InformationCircleIcon,
-  Input,
-  PuzzleIcon,
-  Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+
+type ImportTab = "repository";
+
+const IMPORT_TABS: readonly string[] = ["repository"] satisfies ImportTab[];
+
+function isImportTab(value: string): value is ImportTab {
+  return IMPORT_TABS.includes(value);
+}
+
+interface TabState {
+  selectedCount: number;
+  isDetecting: boolean;
+  isImporting: boolean;
+}
 
 interface ImportSkillsDialogProps {
   onClose: () => void;
   owner: LightWorkspaceType;
 }
 
-const STATUS_CHIP_LABEL: Record<
-  Exclude<DetectedSkillStatus, "ready">,
-  string
-> = {
-  name_conflict: "Skill name already in use",
-  skill_already_exists: "Override existing skill",
-  invalid: "Invalid skill format",
+const TAB_DESCRIPTION: Record<ImportTab, string> = {
+  repository: "Enter a GitHub repository URL to detect skills.",
 };
 
 export function ImportSkillsDialog({
   onClose,
   owner,
 }: ImportSkillsDialogProps) {
-  const [repoUrl, setRepoUrl] = useState("");
-  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<ImportTab>("repository");
+  const [tabState, setTabState] = useState<TabState>({
+    selectedCount: 0,
+    isDetecting: false,
+    isImporting: false,
+  });
+  const importHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
-  const { detectedSkills, isDetecting, detectError, triggerDetect } =
-    useDetectSkillsFromRepo({ owner });
-  const { importSkills, isImporting } = useImportSkills({ owner });
-
-  // Pre-select all importable skills when detection completes.
-  useEffect(() => {
-    const initial = new Set<string>();
-    for (const skill of detectedSkills) {
-      if (isImportableSkillStatus(skill.status)) {
-        initial.add(skill.name);
-      }
-    }
-    setSelectedNames(initial);
-  }, [detectedSkills]);
-
-  const handleImport = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      if (selectedNames.size === 0) {
-        return;
-      }
-
-      const result = await importSkills(repoUrl, [...selectedNames]);
-      if (result.successCount > 0) {
-        onClose();
-      }
+  const registerImportHandler = useCallback(
+    (handler: () => Promise<void>) => {
+      importHandlerRef.current = handler;
     },
-    [repoUrl, selectedNames, importSkills, onClose]
+    []
   );
 
-  const toggleSkill = useCallback((name: string) => {
-    setSelectedNames((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  }, []);
+  const handleImportClick = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      await importHandlerRef.current?.();
+    },
+    []
+  );
 
-  const selectedCount = selectedNames.size;
-  const hasDetectedSkills = detectedSkills.length > 0;
+  const { selectedCount, isDetecting, isImporting } = tabState;
 
-  const description = hasDetectedSkills
-    ? `${detectedSkills.length} skill${pluralize(detectedSkills.length)} detected. Select the ones to import.`
-    : "Enter a GitHub repository URL to detect skills.";
+  const description =
+    selectedCount > 0
+      ? `${selectedCount} skill${pluralize(selectedCount)} selected for import.`
+      : TAB_DESCRIPTION[activeTab];
 
   return (
     <Dialog
@@ -109,73 +83,29 @@ export function ImportSkillsDialog({
     >
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Import skills from GitHub</DialogTitle>
+          <DialogTitle>Import skills</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <Input
-            placeholder="https://github.com/owner/repo"
-            value={repoUrl}
-            onChange={(e) => {
-              const url = e.target.value;
-              setRepoUrl(url.trim());
-              const trimmed = url.trim();
-              if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
-                triggerDetect(trimmed);
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              if (isImportTab(value)) {
+                setActiveTab(value);
               }
             }}
-            name="repoUrl"
-            disabled={isImporting}
-          />
-          {detectError && (
-            <ContentMessage
-              title="Detection failed"
-              icon={InformationCircleIcon}
-              variant="rose"
-              size="lg"
-            >
-              {detectError}
-            </ContentMessage>
-          )}
-          {isDetecting && (
-            <div className="flex items-center justify-center py-4">
-              <Spinner size="md" />
-            </div>
-          )}
-          {hasDetectedSkills && (
-            <ContextItem.List>
-              {detectedSkills.map((skill) => (
-                <ContextItem
-                  key={skill.name}
-                  title={
-                    <span className="text-sm font-normal">{skill.name}</span>
-                  }
-                  visual={
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selectedNames.has(skill.name)}
-                        disabled={!isImportableSkillStatus(skill.status)}
-                        onCheckedChange={() => toggleSkill(skill.name)}
-                      />
-                      <ContextItem.Visual visual={PuzzleIcon} />
-                    </div>
-                  }
-                  action={
-                    skill.status !== "ready" ? (
-                      <Chip
-                        label={STATUS_CHIP_LABEL[skill.status]}
-                        size="xs"
-                        color={
-                          skill.status === "skill_already_exists"
-                            ? "info"
-                            : "warning"
-                        }
-                      />
-                    ) : undefined
-                  }
-                />
-              ))}
-            </ContextItem.List>
+          >
+            <TabsList>
+              <TabsTrigger value="repository" label="Repository" />
+            </TabsList>
+          </Tabs>
+          {activeTab === "repository" && (
+            <ImportFromRepositoryTab
+              owner={owner}
+              onStateChange={setTabState}
+              onImportSuccess={onClose}
+              registerImportHandler={registerImportHandler}
+            />
           )}
         </DialogContainer>
         <DialogFooter
@@ -188,7 +118,7 @@ export function ImportSkillsDialog({
             label: "Import",
             disabled: isImporting || selectedCount === 0,
             isLoading: isImporting,
-            onClick: handleImport,
+            onClick: handleImportClick,
           }}
         />
       </DialogContent>
