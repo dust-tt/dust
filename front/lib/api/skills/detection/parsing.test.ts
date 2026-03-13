@@ -133,8 +133,8 @@ describe("collectAttachments", () => {
     });
 
     expect(attachments).toEqual([
-      { path: "helper.py", sizeBytes: 500 },
-      { path: "data/config.json", sizeBytes: 200 },
+      { path: "skills/foo/helper.py", sizeBytes: 500 },
+      { path: "skills/foo/data/config.json", sizeBytes: 200 },
     ]);
   });
 

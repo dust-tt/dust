@@ -133,8 +133,7 @@ export function collectAttachments(
     if (entry.path === skillDir.skillMdPath) {
       continue;
     }
-    const relativePath = entry.path.slice(dirPrefix.length);
-    attachments.push({ path: relativePath, sizeBytes: entry.sizeBytes });
+    attachments.push({ path: entry.path, sizeBytes: entry.sizeBytes });
   }
 
   return attachments;

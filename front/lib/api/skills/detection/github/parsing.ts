@@ -1,41 +1,69 @@
 import type {
+  GitHubDetectedSkillAttachment,
+  GitHubFileEntry,
   GitHubSkillDirectory,
   GitHubTreeEntry,
 } from "@app/lib/api/skills/detection/github/types";
 import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
-import type { FileEntry } from "@app/lib/api/skills/detection/types";
+import type { SkillDirectory } from "@app/lib/api/skills/detection/types";
 
 /**
  * Scans a GitHub tree for directories containing skill.md or SKILL.md.
  * Enriches the shared SkillDirectory with the blob SHA for content fetching.
- * Also returns the computed fileEntries so callers don't need to rebuild them.
  */
 export function findGitHubSkillDirectories(tree: GitHubTreeEntry[]): {
   skillDirs: GitHubSkillDirectory[];
-  fileEntries: FileEntry[];
+  fileEntries: GitHubFileEntry[];
 } {
-  const shaByPath = new Map<string, string>();
-  const fileEntries: FileEntry[] = [];
+  const fileEntries: GitHubFileEntry[] = [];
   for (const entry of tree) {
     if (entry.type === "blob") {
-      shaByPath.set(entry.path, entry.sha);
       fileEntries.push({
         path: entry.path,
         isFile: true,
         sizeBytes: entry.size ?? 0,
+        sha: entry.sha,
       });
     }
   }
 
   const baseDirs = findSkillDirectories(fileEntries);
 
+  const entriesByPath = new Map(fileEntries.map((e) => [e.path, e]));
   const skillDirs: GitHubSkillDirectory[] = [];
   for (const dir of baseDirs) {
-    const sha = shaByPath.get(dir.skillMdPath);
-    if (sha) {
-      skillDirs.push({ ...dir, skillMdSha: sha });
+    const entry = entriesByPath.get(dir.skillMdPath);
+    if (entry) {
+      skillDirs.push({ ...dir, skillMdSha: entry.sha });
     }
   }
 
   return { skillDirs, fileEntries };
+}
+
+/**
+ * Collects attachment files for a skill directory, enriched with blob SHAs.
+ */
+export function collectGitHubAttachments(
+  fileEntries: GitHubFileEntry[],
+  skillDir: SkillDirectory
+): GitHubDetectedSkillAttachment[] {
+  const dirPrefix = skillDir.dirPath + "/";
+  const attachments: GitHubDetectedSkillAttachment[] = [];
+
+  for (const entry of fileEntries) {
+    if (!entry.path.startsWith(dirPrefix)) {
+      continue;
+    }
+    if (entry.path === skillDir.skillMdPath) {
+      continue;
+    }
+    attachments.push({
+      path: entry.path,
+      sizeBytes: entry.sizeBytes,
+      sha: entry.sha,
+    });
+  }
+
+  return attachments;
 }

@@ -1,4 +1,9 @@
-import type { SkillDirectory } from "@app/lib/api/skills/detection/types";
+import type {
+  DetectedSkill,
+  DetectedSkillAttachment,
+  FileEntry,
+  SkillDirectory,
+} from "@app/lib/api/skills/detection/types";
 import { z } from "zod";
 
 export type GitHubSkillDetectionError =
@@ -7,8 +12,20 @@ export type GitHubSkillDetectionError =
   | { type: "not_found"; message: string }
   | { type: "github_api_error"; message: string };
 
+export interface GitHubFileEntry extends FileEntry {
+  sha: string;
+}
+
 export interface GitHubSkillDirectory extends SkillDirectory {
   skillMdSha: string;
+}
+
+export interface GitHubDetectedSkillAttachment extends DetectedSkillAttachment {
+  sha: string;
+}
+
+export interface GitHubDetectedSkill extends DetectedSkill {
+  attachments: GitHubDetectedSkillAttachment[];
 }
 
 const GitHubTreeEntrySchema = z
