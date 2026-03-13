@@ -120,6 +120,39 @@ export function createSandboxTools(
 
       return new Ok([{ type: "text" as const, text: output }]);
     },
+    get_host: async ({ port }, { auth, agentLoopContext }) => {
+      const conversation = agentLoopContext?.runContext?.conversation;
+      if (!conversation) {
+        return new Err(new MCPError("No conversation context available."));
+      }
+
+      const ensureResult = await SandboxResource.ensureActive(
+        auth,
+        conversation
+      );
+      if (ensureResult.isErr()) {
+        return new Err(new MCPError(ensureResult.error.message));
+      }
+
+      const { sandbox } = ensureResult.value;
+
+      const hostResult = await sandbox.getHost(port);
+      if (hostResult.isErr()) {
+        return new Err(new MCPError(hostResult.error.message));
+      }
+
+      const { host, accessToken } = hostResult.value;
+      const url = `https://${host}`;
+
+      const parts = [`URL: ${url}`];
+      if (accessToken) {
+        parts.push(
+          `Authentication required: include header \`${accessToken.header}: ${accessToken.value}\` in all requests to this URL.`
+        );
+      }
+
+      return new Ok([{ type: "text" as const, text: parts.join("\n") }]);
+    },
     describe_environment: async ({ format }, { auth }) => {
       const sandboxImageResult = getSandboxImage(auth);
       if (sandboxImageResult.isErr()) {

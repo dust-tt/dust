@@ -42,6 +42,20 @@ export interface SandboxCreateConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Host Info
+// ---------------------------------------------------------------------------
+
+export interface SandboxHostInfo {
+  /** Public hostname (without protocol) for the sandbox port. */
+  host: string;
+  /** Credentials required to access the sandbox URL when public traffic is restricted. */
+  accessToken?: {
+    header: string;
+    value: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Execution
 // ---------------------------------------------------------------------------
 
@@ -107,6 +121,16 @@ export interface SandboxProvider {
     command: string,
     opts?: ExecOptions
   ): Promise<Result<ExecResult, Error>>;
+
+  /**
+   * Get the public hostname for a port exposed by the sandbox.
+   * The returned host can be used to reach the sandbox over HTTPS or WSS.
+   * When public traffic is restricted, includes an access token for authentication.
+   */
+  getHost(
+    providerId: string,
+    port: number
+  ): Promise<Result<SandboxHostInfo, Error>>;
 
   writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
 

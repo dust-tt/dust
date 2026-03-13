@@ -8,6 +8,7 @@ import type {
   FileEntry,
   SandboxCreateConfig,
   SandboxHandle,
+  SandboxHostInfo,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -220,6 +221,36 @@ export class E2BSandboxProvider implements SandboxProvider {
       }
       return new Err(normalizeError(err));
     }
+  }
+
+  async getHost(
+    providerId: string,
+    port: number
+  ): Promise<Result<SandboxHostInfo, Error>> {
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
+      return new Err(normalizeError(err));
+    }
+
+    return new Ok({
+      host: sandbox.getHost(port),
+      ...(sandbox.trafficAccessToken
+        ? {
+            accessToken: {
+              header: "e2b-traffic-access-token",
+              value: sandbox.trafficAccessToken,
+            },
+          }
+        : {}),
+    });
   }
 
   async writeFile(
