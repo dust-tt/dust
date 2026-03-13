@@ -184,6 +184,20 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return cached.map(this.fromCachedData);
   }
 
+  static async findByProvider(
+    auth: Authenticator,
+    providerId: ByokModelProviderIdType
+  ): Promise<ProviderCredentialResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+    const model = await this.model.findOne({
+      where: { workspaceId: workspace.id, providerId },
+    });
+    if (!model) {
+      return null;
+    }
+    return this.makeNewFromModel(model);
+  }
+
   static async makeNew(
     auth: Authenticator,
     {
@@ -257,6 +271,72 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       ProviderCredentialModel,
       model.get(),
       // TODO (BYOK): handle different credential content shapes for different providers
+      { api_key: apiKey }
+    );
+  }
+
+  async updateApiKey(
+    auth: Authenticator,
+    { apiKey }: { apiKey: string }
+  ): Promise<ProviderCredentialResource | null> {
+    assert(auth.isAdmin(), "Only admins can update provider credentials.");
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const isHealthy = await isCredentialHealthy({
+      provider: this.providerId,
+      credentials: { api_key: apiKey },
+    });
+
+    if (!isHealthy) {
+      logger.warn(
+        { providerId: this.providerId, workspaceId: workspace.sId },
+        `Provided credentials for provider ${this.providerId} are not healthy.`
+      );
+      return null;
+    }
+
+    const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const oauthRes = await oauthClient.postCredentials({
+      provider: this.providerId,
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      credentials: { api_key: apiKey },
+    });
+
+    if (oauthRes.isErr()) {
+      logger.error(
+        {
+          providerId: this.providerId,
+          error: oauthRes.error,
+          workspaceId: workspace.sId,
+        },
+        `Failed to post credentials to OAuth API : ${oauthRes.error.message}`
+      );
+      return null;
+    }
+
+    await this.model.update(
+      {
+        credentialId: oauthRes.value.credential.credential_id,
+        isHealthy: true,
+        editedByUserId: user.id,
+      },
+      { where: { id: this.id, workspaceId: workspace.id } }
+    );
+
+    const updatedModel = await this.model.findOne({
+      where: { id: this.id, workspaceId: workspace.id },
+    });
+
+    if (!updatedModel) {
+      throw new Error("Failed to re-fetch updated provider credential.");
+    }
+
+    return new ProviderCredentialResource(
+      ProviderCredentialModel,
+      updatedModel.get(),
       { api_key: apiKey }
     );
   }
