@@ -14,7 +14,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "Use this for running scripts, installing packages, or executing code. " +
       "The sandbox persists for the duration of the conversation. " +
       "To start long-running processes (e.g. servers, or long running commands), use background mode. " +
-      "Do NOT use shell backgrounding (& or nohup) — use the background parameter instead.",
+      "Do NOT use shell backgrounding (& or nohup).",
     schema: {
       command: z
         .string()
@@ -81,10 +81,7 @@ export const SANDBOX_SERVER = {
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
       "Use `execute` to run commands and scripts. " +
       "The sandbox persists for the conversation duration. " +
-      "Common tools like Python, Node.js, and standard Unix utilities are pre-installed. " +
-      "IMPORTANT: Do NOT use shell backgrounding operators (& or nohup). " +
-      "To run long-running processes (e.g. servers), use the `background` parameter of the `execute` tool. " +
-      "When starting a background process, redirect its output to a log file (e.g. `python server.py > /tmp/server.log 2>&1`) so you can read the logs later with `cat`.",
+      "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
