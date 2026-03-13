@@ -208,7 +208,7 @@ export const AshbyCandidateNoteSchema = z
         id: z.string(),
         firstName: z.string(),
         lastName: z.string(),
-        email: z.string(),
+        email: z.string().nullable(),
       })
       .optional()
       .nullable(),
@@ -554,11 +554,9 @@ export type AshbyJobPostingInfoResponse = z.infer<
 
 // Job posting update
 
-export const AshbyJobPostingWorkplaceTypeSchema = z.enum([
-  "OnSite",
-  "Hybrid",
-  "Remote",
-]);
+export const AshbyJobPostingWorkplaceTypeSchema = z
+  .enum(["OnSite", "Hybrid", "Remote"])
+  .nullable();
 
 export type AshbyJobPostingWorkplaceType = z.infer<
   typeof AshbyJobPostingWorkplaceTypeSchema
