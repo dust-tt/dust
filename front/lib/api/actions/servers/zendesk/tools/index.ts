@@ -20,7 +20,11 @@ import type {
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import { isSupportedFileContentType } from "@app/types/files";
+import {
+  ensureFileSize,
+  fileSizeToHumanReadable,
+  isSupportedFileContentType,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -149,6 +153,10 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
             },
             "[Zendesk] Failed to fetch attachment"
           );
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} ---\nFailed to download attachment.`,
+          });
           continue;
         }
         const { body, contentLength } = fetchResult.value;
@@ -180,6 +188,10 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
             },
             "[Zendesk] Failed to process attachment"
           );
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} ---\nFailed to process attachment.`,
+          });
           continue;
         }
 
