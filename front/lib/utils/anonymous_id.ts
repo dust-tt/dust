@@ -5,32 +5,20 @@ export const DUST_ANONYMOUS_ID_COOKIE = "_dust_aid";
 const ANONYMOUS_ID_MAX_AGE_SECONDS = 31536000; // 1 year
 
 /**
- * Derives the root domain from the current hostname so the cookie is shared
- * across subdomains (e.g. `dust.tt` and `app.dust.tt`).
- *
- * - `app.dust.tt`  → `.dust.tt`
- * - `dust.tt`      → `.dust.tt`
- * - `localhost`    → `localhost` (no domain attribute needed)
+ * Returns the cookie domain for cross-subdomain sharing.
+ * On production (any *.dust.tt host) returns `.dust.tt`;
+ * on localhost/dev returns null (no domain attribute needed).
  */
 function getRootCookieDomain(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const hostname = window.location.hostname;
-
-  // localhost / IP addresses: no domain attribute needed.
-  if (hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+  if (window.location.hostname === "localhost") {
     return null;
   }
 
-  const parts = hostname.split(".");
-  if (parts.length < 2) {
-    return null;
-  }
-
-  // Take the last two parts: "dust.tt" from "app.dust.tt" or "dust.tt".
-  return `.${parts.slice(-2).join(".")}`;
+  return ".dust.tt";
 }
 
 /**
