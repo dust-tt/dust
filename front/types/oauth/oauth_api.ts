@@ -236,6 +236,27 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async deleteCredentials({
+    credentialsId,
+  }: {
+    credentialsId: string;
+  }): Promise<OAuthAPIResponse<void>> {
+    const res = await this._fetchWithError(
+      `${this._url}/credentials/${credentialsId}`,
+      { method: "DELETE" }
+    );
+    if (res.isErr()) {
+      return res;
+    }
+    if (!res.value.response.ok) {
+      return new Err({
+        code: "delete_credentials_error",
+        message: `Failed to delete credentials: HTTP ${res.value.response.status}`,
+      });
+    }
+    return new Ok(undefined);
+  }
+
   private async _fetchWithError(
     url: string,
     init?: RequestInit
