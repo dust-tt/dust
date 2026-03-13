@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
@@ -98,15 +99,15 @@ export function ImportSkillsDialog({
             <TabsList>
               <TabsTrigger value="repository" label="Repository" />
             </TabsList>
+            <TabsContent value="repository">
+              <ImportFromRepositoryTab
+                owner={owner}
+                onStateChange={setTabState}
+                onImportSuccess={onClose}
+                registerImportHandler={registerImportHandler}
+              />
+            </TabsContent>
           </Tabs>
-          {activeTab === "repository" && (
-            <ImportFromRepositoryTab
-              owner={owner}
-              onStateChange={setTabState}
-              onImportSuccess={onClose}
-              registerImportHandler={registerImportHandler}
-            />
-          )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
