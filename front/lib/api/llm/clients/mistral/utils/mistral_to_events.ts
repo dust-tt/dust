@@ -415,13 +415,6 @@ function batchContentToText(content: string | Array<ContentChunk>): string {
     return content;
   }
   return content
-    .map((chunk) => {
-      switch (chunk.type) {
-        case "text":
-          return chunk.text;
-        default:
-          return "";
-      }
-    })
+    .map((chunk) => (chunk.type == "text" ? chunk.text : ""))
     .join("");
 }
