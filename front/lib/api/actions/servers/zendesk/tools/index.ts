@@ -141,6 +141,16 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           continue;
         }
 
+        if (!ensureFileSize(contentType, attachment.size)) {
+          contentBlocks.push({
+            type: "text" as const,
+            text:
+              `\n--- Attachment: ${attachment.file_name} ---\n` +
+              `File too large (${fileSizeToHumanReadable(attachment.size)}), skipped.`,
+          });
+          continue;
+        }
+
         const fetchResult = await client.fetchAttachment(
           attachment.content_url
         );
