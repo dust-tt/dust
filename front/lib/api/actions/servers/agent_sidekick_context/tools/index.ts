@@ -20,7 +20,6 @@ import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
@@ -31,7 +30,6 @@ import {
   formatTemplatesAsText,
   getTemplatesForSidekick,
 } from "@app/lib/api/assistant/sidekick_templates";
-import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -1806,105 +1804,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: formatTemplatesAsText([template]),
-      },
-    ]);
-  },
-
-  test_agent: async (
-    { prompt, agentConfigurationId: providedAgentId },
-    { auth, agentLoopContext }
-  ) => {
-    // Use the provided agent ID (from save_as_draft) or fall back to the
-    // target agent from context.
-    const agentConfigurationId =
-      providedAgentId ?? getAgentConfigurationIdFromContext(agentLoopContext);
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found. Cannot test agent without a target agent.",
-          { tracked: false }
-        )
-      );
-    }
-
-    // Fetch agent configuration to get its name and check status.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
-
-    if (!agentConfiguration) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    if (
-      agentConfiguration.status !== "active" &&
-      agentConfiguration.status !== "draft"
-    ) {
-      return new Err(
-        new MCPError(
-          "The agent must be saved as a draft before it can be tested. " +
-            "Call save_as_draft first to get a testable agent configuration ID.",
-          { tracked: false }
-        )
-      );
-    }
-
-    // Create a test conversation and run the target agent using internal
-    // functions directly (bypasses the public API access checks that block
-    // draft/hidden-scope agents when auth goes through system-key exchange).
-    const user = auth.user();
-    const conversation = await createConversation(auth, {
-      title: `Sidekick test: ${agentConfiguration.name}`,
-      visibility: "test",
-      spaceId: null,
-    });
-
-    const messageResult = await postUserMessageAndWaitForCompletion(auth, {
-      conversation,
-      content: prompt,
-      mentions: [{ configurationId: agentConfigurationId }],
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        username: user?.fullName() ?? "Sidekick Test",
-        fullName: user?.fullName() ?? "Sidekick Test",
-        email: user?.email ?? null,
-        profilePictureUrl: null,
-        origin: "api",
-      },
-      skipToolsValidation: true,
-    });
-
-    if (messageResult.isErr()) {
-      return new Err(
-        new MCPError(
-          `Agent test failed: ${messageResult.error.api_error.message}`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const { agentMessages } = messageResult.value;
-    const agentMessage = agentMessages[0];
-    const agentResponse = agentMessage?.content ?? "(empty response)";
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            agentName: agentConfiguration.name,
-            prompt,
-            response: agentResponse,
-          },
-          null,
-          2
-        ),
       },
     ]);
   },

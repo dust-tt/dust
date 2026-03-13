@@ -22,6 +22,7 @@ export interface UseSidekickMCPServerResult {
 
 interface UseSidekickMCPServerOptions {
   enabled: boolean;
+  targetAgentConfigurationId: string | null;
 }
 
 /**
@@ -30,6 +31,7 @@ interface UseSidekickMCPServerOptions {
  */
 export function useSidekickMCPServer({
   enabled,
+  targetAgentConfigurationId,
 }: UseSidekickMCPServerOptions): UseSidekickMCPServerResult {
   const { owner, user } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
@@ -51,6 +53,7 @@ export function useSidekickMCPServer({
   const ownerRef = useRef(owner);
   const userRef = useRef(user);
   const fetcherWithBodyRef = useRef(fetcherWithBody);
+  const targetAgentConfigurationIdRef = useRef(targetAgentConfigurationId);
 
   // Update refs in effect to avoid updating during render.
   useEffect(() => {
@@ -58,7 +61,14 @@ export function useSidekickMCPServer({
     ownerRef.current = owner;
     userRef.current = user;
     fetcherWithBodyRef.current = fetcherWithBody;
-  }, [suggestionsContext, owner, user, fetcherWithBody]);
+    targetAgentConfigurationIdRef.current = targetAgentConfigurationId;
+  }, [
+    suggestionsContext,
+    owner,
+    user,
+    fetcherWithBody,
+    targetAgentConfigurationId,
+  ]);
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.
@@ -105,6 +115,8 @@ export function useSidekickMCPServer({
           getOwner: () => ownerRef.current,
           getUser: () => userRef.current,
           getFetcherWithBody: () => fetcherWithBodyRef.current,
+          getTargetAgentConfigurationId: () =>
+            targetAgentConfigurationIdRef.current,
         });
 
         // Create the browser transport.

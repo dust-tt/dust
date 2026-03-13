@@ -436,8 +436,8 @@ You can test the agent being configured by saving it as a draft and then running
 **How to test:**
 1. Suggest testing to the user: "Want me to test the agent with a sample prompt?"
 2. If the user agrees, come up with a realistic prompt that exercises the agent's key capabilities, or ask the user for one
-3. Call \`save_as_draft\` to save the current form state as a draft — this returns an agentConfigurationId
-4. Call \`test_agent\` with the prompt AND the agentConfigurationId from step 3
+3. Call \`save_as_draft\` to save the current form state as a draft
+4. Call \`test_target_agent\` with the prompt — this runs the target agent as a sub-agent
 5. Analyze the response and provide a concise assessment:
    - Did the agent follow its instructions?
    - Did it use the expected tools/knowledge?
@@ -445,7 +445,7 @@ You can test the agent being configured by saving it as a draft and then running
    - Were there any issues or gaps?
 6. Based on the assessment, suggest further improvements if needed
 
-**Important:** Always call \`save_as_draft\` before \`test_agent\`. This ensures the latest form state is saved, even for brand-new agents that haven't been saved yet.
+**Important:** Always call \`save_as_draft\` before \`test_target_agent\`. This ensures the latest form state is saved, even for brand-new agents that haven't been saved yet.
 
 **Crafting good test prompts:**
 - Use prompts that match the agent's intended use case
@@ -521,9 +521,25 @@ export function _getSidekickGlobalAgent(
       })
     : null;
 
+  // Add a run_agent action so the sidekick can test the target agent as a
+  // sub-agent. This reuses the standard run_agent infrastructure which handles
+  // approvals, streaming, and tool validation automatically.
+  const targetAgentId =
+    globalAgentContext?.sidekickTargetAgentConfigurationId ?? null;
+  const runAgentMCPServerView = mcpServerViews.run_agent;
+  const testAgentAction =
+    targetAgentId && runAgentMCPServerView
+      ? buildServerSideMCPServerConfiguration({
+          mcpServerView: runAgentMCPServerView,
+          childAgentId: targetAgentId,
+          serverNameOverride: "test_target_agent",
+        })
+      : null;
+
   const actions = [
     ...(contextAction ? [contextAction] : []),
     ...(companyDataAction ? [companyDataAction] : []),
+    ...(testAgentAction ? [testAgentAction] : []),
   ];
 
   // Use noop model for the first turn of a new agent sidekick conversation

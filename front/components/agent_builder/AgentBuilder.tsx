@@ -601,6 +601,8 @@ function AgentBuilderContent({
 
   const { serverId: clientSideMCPServerId } = useSidekickMCPServer({
     enabled: true,
+    targetAgentConfigurationId:
+      agentConfiguration?.sId ?? pendingAgentId ?? null,
   });
 
   const clientSideMCPServerIds = useMemo(
