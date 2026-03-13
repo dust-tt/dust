@@ -44,7 +44,9 @@ export const agentSuggestionsReadyWorkflow = workflow(
             ),
           },
         },
-        data: {},
+        data: {
+          autoDelete: true,
+        },
       };
     });
   },
