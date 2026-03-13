@@ -1,8 +1,9 @@
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
- import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
+import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,6 +12,8 @@ import {
 } from "@dust-tt/sparkle";
 
 export function SkillBuilderSettingsSection() {
+  const { hasFeature } = useFeatureFlags();
+
   return (
     <div className="space-y-5">
       <h2 className="heading-lg text-foreground dark:text-foreground-night">
@@ -31,14 +34,16 @@ export function SkillBuilderSettingsSection() {
           <SkillEditorsSheet />
         </div>
       </div>
-      <Collapsible>
-        <CollapsibleTrigger label="Advanced" variant="secondary" />
-        <CollapsibleContent>
-          <div className="pt-3">
-            <SkillBuilderIsDefaultSection />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {hasFeature("discover_skills") && (
+        <Collapsible>
+          <CollapsibleTrigger label="Advanced" variant="secondary" />
+          <CollapsibleContent>
+            <div className="pt-3">
+              <SkillBuilderIsDefaultSection />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }
