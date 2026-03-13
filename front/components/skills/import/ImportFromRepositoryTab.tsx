@@ -61,7 +61,7 @@ export function ImportFromRepositoryTab({
   };
 
   return (
-    <>
+    <div className="pt-2">
       <Input
         name={field.name}
         ref={field.ref}
@@ -84,6 +84,6 @@ export function ImportFromRepositoryTab({
         isDetecting={isDetecting}
         detectError={detectError}
       />
-    </>
+    </div>
   );
 }

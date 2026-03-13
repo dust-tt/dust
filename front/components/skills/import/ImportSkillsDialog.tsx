@@ -1,5 +1,5 @@
-import { importFormSchema } from "@app/components/skills/import/formSchema";
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
+import { importFormSchema } from "@app/components/skills/import/formSchema";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
 import { useImportSkills } from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
