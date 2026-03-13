@@ -22,6 +22,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { Readable } from "stream";
 import type { z } from "zod";
 
 export class ZendeskApiError extends Error {
@@ -344,7 +345,9 @@ class ZendeskClient {
     return new Ok(result.value.tags);
   }
 
-  async downloadAttachment(contentUrl: string): Promise<Result<Buffer, Error>> {
+  async fetchAttachment(
+    contentUrl: string
+  ): Promise<Result<{ body: Readable; contentLength: number | null }, Error>> {
     const url = new URL(contentUrl);
     // Only send Zendesk credentials to our own subdomain to avoid leaking
     // the token to external hosts.
@@ -369,8 +372,19 @@ class ZendeskClient {
       );
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    return new Ok(Buffer.from(arrayBuffer));
+    if (!response.body) {
+      return new Err(
+        new ZendeskApiError("Attachment response body is null", {
+          isInvalidInput: false,
+        })
+      );
+    }
+
+    const contentLengthHeader = response.headers.get("content-length");
+    return new Ok({
+      body: Readable.fromWeb(response.body),
+      contentLength: contentLengthHeader ? parseInt(contentLengthHeader) : null,
+    });
   }
 
   async getUsersByIds(

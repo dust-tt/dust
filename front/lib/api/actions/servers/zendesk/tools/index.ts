@@ -2,10 +2,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  extractTextFromBuffer,
-  processAttachment,
-} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import {
   getUniqueCustomFieldIds,
   getZendeskClient,
   ZendeskApiError,
@@ -21,8 +17,12 @@ import type {
   ZendeskTicketComment,
   ZendeskUser,
 } from "@app/lib/api/actions/servers/zendesk/types";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import { isSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const ZENDESK_TAG_MAX_LENGTH = 255;
@@ -35,7 +35,7 @@ function isTrackedError(error: Error): boolean {
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
   get_ticket: async (
     { ticketId, includeMetrics, includeConversation, includeAttachments },
-    { authInfo }
+    { authInfo, auth }
   ) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
@@ -127,46 +127,76 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       );
 
       for (const attachment of allAttachments) {
-        const downloadResult = await client.downloadAttachment(
+        const contentType = attachment.content_type;
+
+        if (!isSupportedFileContentType(contentType)) {
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} ---\nUnsupported file type (${contentType}), skipped.`,
+          });
+          continue;
+        }
+
+        const fetchResult = await client.fetchAttachment(
           attachment.content_url
         );
-        if (downloadResult.isErr()) {
+        if (fetchResult.isErr()) {
           logger.error(
             {
               attachmentId: attachment.id,
               filename: attachment.file_name,
-              error: downloadResult.error.message,
+              error: fetchResult.error.message,
             },
-            "[Zendesk] Failed to download attachment"
+            "[Zendesk] Failed to fetch attachment"
           );
           continue;
         }
-        const buffer = downloadResult.value;
+        const { body, contentLength } = fetchResult.value;
 
-        const attachmentResult = await processAttachment({
-          mimeType: attachment.content_type,
-          filename: attachment.file_name,
-          extractText: async () =>
-            extractTextFromBuffer(buffer, attachment.content_type),
-          downloadContent: async () => new Ok(buffer),
+        const file = await FileResource.makeNew({
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.user()?.id ?? null,
+          contentType,
+          fileName: attachment.file_name,
+          fileSize: contentLength ?? attachment.size,
+          useCase: "conversation",
+          useCaseMetadata: {},
         });
 
-        if (attachmentResult.isOk()) {
-          contentBlocks.push({
-            type: "text" as const,
-            text: `\n--- Attachment: ${attachment.file_name} (${attachment.content_type}) ---`,
-          });
-          contentBlocks.push(...attachmentResult.value);
-        } else {
+        const processResult = await processAndStoreFile(auth, {
+          file,
+          content: {
+            type: "readable",
+            value: body,
+          },
+        });
+
+        if (processResult.isErr()) {
           logger.error(
             {
               attachmentId: attachment.id,
               filename: attachment.file_name,
-              error: attachmentResult.error.message,
+              error: processResult.error,
             },
             "[Zendesk] Failed to process attachment"
           );
+          continue;
         }
+
+        const storedFile = processResult.value;
+        const fileResource = {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+          fileId: storedFile.sId,
+          contentType,
+          title: attachment.file_name,
+          text: `Attachment: ${attachment.file_name}`,
+          snippet: storedFile.snippet,
+          uri: "",
+        };
+        contentBlocks.push({
+          type: "resource" as const,
+          resource: fileResource,
+        });
       }
     }
 
