@@ -102,29 +102,9 @@ class E2BTemplateBuilder {
 
   static fromSandboxImage(
     image: SandboxImage,
-    options?: { dockerRegistryFactory?: DockerRegistryFactory }
+    options: { dockerRegistryFactory: DockerRegistryFactory }
   ): E2BTemplateBuilder {
-    const baseImage = image.baseImage;
-    let builder: TemplateBuilder;
-
-    switch (baseImage.type) {
-      case "sandbox":
-        builder = E2BTemplate().fromTemplate(
-          formatSandboxImageId(baseImage.id)
-        );
-        break;
-      case "docker":
-        if (!options?.dockerRegistryFactory) {
-          throw new Error(
-            "dockerRegistryFactory is required for docker images"
-          );
-        }
-        builder = options.dockerRegistryFactory(baseImage.imageRef);
-        break;
-      default:
-        return assertNever(baseImage);
-    }
-
+    const builder = options.dockerRegistryFactory(image.baseImage.imageRef);
     const e2bBuilder = new E2BTemplateBuilder(builder);
 
     for (const op of image.operations) {
@@ -270,9 +250,15 @@ export async function buildSandboxImage(
     "Building E2B sandbox image"
   );
 
+  if (!buildConfig?.dockerRegistryFactory) {
+    return new Err(
+      new Error("dockerRegistryFactory is required to build sandbox images")
+    );
+  }
+
   try {
     const e2bBuilder = E2BTemplateBuilder.fromSandboxImage(image, {
-      dockerRegistryFactory: buildConfig?.dockerRegistryFactory,
+      dockerRegistryFactory: buildConfig.dockerRegistryFactory,
     });
 
     const result = await e2bBuilder.build(imageId, {
