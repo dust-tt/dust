@@ -1,3 +1,9 @@
+import {
+  Check,
+  MessagesSquare,
+  SquarePen,
+  X,
+} from "@app/components/assistant/conversation/icons";
 import type {
   ButlerSuggestionPublicType,
   CallAgentButlerSuggestion,
@@ -5,15 +11,7 @@ import type {
   RenameTitleButlerSuggestion,
 } from "@app/types/conversation_butler_suggestion";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import {
-  ActionFrameIcon,
-  Button,
-  ChatBubbleLeftRightIcon,
-  CheckIcon,
-  ContentMessage,
-  PencilSquareIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { ActionFrameIcon, Button, ContentMessage } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
@@ -42,7 +40,7 @@ export function ButlerSuggestionCard({
         <AgentInvocationSuggestionCard
           suggestion={suggestion}
           onAction={onAction}
-          icon={ChatBubbleLeftRightIcon}
+          icon={MessagesSquare}
           title={`Try asking @${suggestion.metadata.agentName}`}
           actionLabel="Ask"
         />
@@ -88,7 +86,7 @@ function RenameTitleSuggestionCard({
   return (
     <ContentMessage
       variant="highlight"
-      icon={PencilSquareIcon}
+      icon={SquarePen}
       title="Rename this conversation?"
       className="my-3 w-full max-w-full"
     >
@@ -104,7 +102,7 @@ function RenameTitleSuggestionCard({
             label="Rename"
             variant="highlight"
             size="xs"
-            icon={CheckIcon}
+            icon={Check}
             disabled={isSubmitting}
             onClick={() => handleAction("accepted")}
           />
@@ -112,7 +110,7 @@ function RenameTitleSuggestionCard({
             label="Dismiss"
             variant="outline"
             size="xs"
-            icon={XMarkIcon}
+            icon={X}
             disabled={isSubmitting}
             onClick={() => handleAction("dismissed")}
           />
@@ -175,7 +173,7 @@ function AgentInvocationSuggestionCard({
             label="Dismiss"
             variant="outline"
             size="xs"
-            icon={XMarkIcon}
+            icon={X}
             disabled={isSubmitting}
             onClick={() => handleAction("dismissed")}
           />

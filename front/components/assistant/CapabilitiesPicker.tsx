@@ -1,5 +1,6 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
+import { ToolsIcon } from "@app/components/assistant/conversation/icons";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import {
   getMcpServerViewDescription,
@@ -45,7 +46,6 @@ import {
   Icon,
   LoadingBlock,
   MoreIcon,
-  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
@@ -482,6 +482,7 @@ export function CapabilitiesPicker({
             size={buttonSize}
             tooltip="Capabilities"
             disabled={disabled || isLoading}
+            className="text-foreground"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent

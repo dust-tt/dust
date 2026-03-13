@@ -12,6 +12,16 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
+import {
+  Clipboard,
+  ClipboardCheck,
+  Info,
+  Link,
+  MoreHorizontal,
+  RotateCcw,
+  StopCircle,
+  Trash2,
+} from "@app/components/assistant/conversation/icons";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
@@ -76,24 +86,16 @@ import type {
 } from "@app/types/user";
 import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
-  ArrowPathIcon,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  InformationCircleIcon,
   InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  StopIcon,
   Tooltip,
-  TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -138,7 +140,7 @@ function PrunedContextChip() {
           label="Context limit reached"
           size="xs"
           color="white"
-          icon={InformationCircleIcon}
+          icon={Info}
         />
       }
     />
@@ -460,12 +462,12 @@ export function AgentMessage({
       <Button
         key="stop-msg-button"
         label="Stop agent"
-        variant="ghost-secondary"
+        variant="outline-ghost"
         size="xs"
         onClick={async () => {
           await cancelMessage([sId]);
         }}
-        icon={StopIcon}
+        icon={StopCircle}
         className="text-muted-foreground"
       />
     );
@@ -596,7 +598,7 @@ export function AgentMessage({
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
-        icon: LinkIcon,
+        icon: Link,
         onSelect: handleCopyMessageLink,
       },
     ];
@@ -604,7 +606,7 @@ export function AgentMessage({
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
-        icon: ArrowPathIcon,
+        icon: RotateCcw,
         onSelect: () => {
           void retryHandler({
             conversationId,
@@ -618,7 +620,7 @@ export function AgentMessage({
     if (canDeleteAgentMessage) {
       dropdownItems.push({
         label: "Delete message",
-        icon: TrashIcon,
+        icon: Trash2,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
         variant: "warning" as const,
@@ -629,18 +631,18 @@ export function AgentMessage({
       <ButtonGroup key="split-button-group">
         <Button
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="outline"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground"
         />
         <ButtonGroupDropdown
           trigger={
             <Button
-              variant="outline"
+              variant="outline-ghost"
               size="xs"
-              icon={MoreIcon}
+              icon={MoreHorizontal}
               className="text-muted-foreground"
             />
           }
@@ -655,10 +657,10 @@ export function AgentMessage({
         <Button
           key="copy-msg-button"
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground"
         />
       );
@@ -667,10 +669,10 @@ export function AgentMessage({
         <Button
           key="copy-msg-link-button"
           tooltip="Copy message link"
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={handleCopyMessageLink}
-          icon={LinkIcon}
+          icon={Link}
           className="text-muted-foreground"
         />
       );
@@ -681,7 +683,7 @@ export function AgentMessage({
         <Button
           key="retry-msg-button"
           tooltip="Retry"
-          variant="ghost-secondary"
+          variant="outline-ghost"
           size="xs"
           onClick={() => {
             void retryHandler({
@@ -689,7 +691,7 @@ export function AgentMessage({
               messageId: agentMessage.sId,
             });
           }}
-          icon={ArrowPathIcon}
+          icon={RotateCcw}
           className="text-muted-foreground"
           disabled={isRetryHandlerProcessing || shouldStream}
         />
@@ -1188,16 +1190,16 @@ function AgentMessageContent({
             <ButtonGroupDropdown
               trigger={
                 <Button
-                  variant="outline"
+                  variant="outline-ghost"
                   size="xs"
-                  icon={MoreIcon}
+                  icon={MoreHorizontal}
                   className="text-muted-foreground"
                 />
               }
               items={[
                 {
                   label: "Retry",
-                  icon: ArrowPathIcon,
+                  icon: RotateCcw,
                   onSelect: () => {
                     void retryHandler({
                       conversationId,

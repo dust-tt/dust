@@ -1,12 +1,8 @@
+import { Info, RotateCcw } from "@app/components/assistant/conversation/icons";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { isAgentErrorCategory } from "@app/types/assistant/agent";
-import {
-  ArrowPathIcon,
-  Button,
-  ContentMessage,
-  InformationCircleIcon,
-} from "@dust-tt/sparkle";
+import { Button, ContentMessage } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;
@@ -29,14 +25,14 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       title={`${error.metadata?.errorTitle || "Agent error"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
-      icon={InformationCircleIcon}
+      icon={Info}
     >
       <div className="whitespace-normal break-words">{error.message}</div>
       <div className="flex flex-col gap-2 pt-3 sm:flex-row">
         <Button
           variant="outline"
           size="xs"
-          icon={ArrowPathIcon}
+          icon={RotateCcw}
           label="Retry"
           onClick={retry}
           disabled={isRetrying}

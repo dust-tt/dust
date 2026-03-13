@@ -1,4 +1,5 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { Bot as RobotIcon } from "@app/components/assistant/conversation/icons";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
@@ -11,7 +12,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -66,6 +66,7 @@ export function AgentPicker({
             size={size}
             tooltip="Pick an agent"
             disabled={disabled || isLoading}
+            className="text-foreground"
           />
         )}
       </DropdownMenuTrigger>

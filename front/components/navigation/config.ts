@@ -1,3 +1,9 @@
+import {
+  BoltIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  PlanetIcon,
+} from "@app/components/assistant/conversation/icons";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -5,18 +11,14 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BarChartIcon,
-  BoltIcon,
   BracesIcon,
   BrainIcon,
   CardIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
   CommandLineIcon,
   CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
-  PlanetIcon,
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -329,7 +331,13 @@ export const subNavigationApp = ({
   app: AppType;
   current: SubNavigationAppId;
 }) => {
-  let nav = [
+  let nav: {
+    value: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    href: string;
+    current: boolean;
+  }[] = [
     {
       value: "specification",
       label: "Specification",

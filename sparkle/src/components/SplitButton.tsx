@@ -10,6 +10,7 @@ const flexSeparatorVariants: Record<ButtonVariantType, string> = {
   warning: "s-bg-background/50 dark:s-text-background-night/50",
   "warning-secondary": "s-bg-separator dark:s-bg-separator-night",
   outline: "s-bg-separator dark:s-bg-separator-night",
+  "outline-ghost": "s-bg-separator dark:s-bg-separator-night",
   ghost: "s-bg-separator dark:s-bg-separator-night",
   "ghost-secondary": "s-bg-separator dark:s-bg-separator-night",
 };

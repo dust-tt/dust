@@ -1,4 +1,5 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { Bot } from "@app/components/assistant/conversation/icons";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -19,7 +20,6 @@ import {
   Button,
   LoadingBlock,
   Page,
-  RobotIcon,
 } from "@dust-tt/sparkle";
 import {
   useCallback,
@@ -211,7 +211,7 @@ export function AgentSuggestion({
             <Button
               variant="outline"
               size="sm"
-              icon={RobotIcon}
+              icon={Bot}
               label="Pick an agent"
               isSelect
             />

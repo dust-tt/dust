@@ -1,3 +1,9 @@
+import {
+  AttachmentIcon,
+  ChevronRightIcon,
+  CloudArrowUpIcon,
+  MagnifyingGlassIcon,
+} from "@app/components/assistant/conversation/icons";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -30,10 +36,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AttachmentIcon,
   Button,
-  ChevronRightIcon,
-  CloudArrowUpIcon,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -48,7 +51,6 @@ import {
   DropdownMenuTrigger,
   Icon,
   Input,
-  MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -434,6 +436,7 @@ export const InputBarAttachmentsPicker = ({
             size={buttonSize}
             disabled={disabled || isLoading}
             onClick={() => setIsOpen(!isOpen)}
+            className="text-foreground"
           />
         </DropdownMenuTrigger>
       ) : type === "dropdown" && isExternallyControlled ? (

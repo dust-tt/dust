@@ -1,9 +1,9 @@
+import { SmilePlusIcon } from "@app/components/assistant/conversation/icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   Button,
   cn,
   EmojiPicker,
-  EmotionLaughIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -33,7 +33,7 @@ export function MessageEmojiPicker({
           tooltip="Add reaction"
           variant="outline"
           size="xmini"
-          icon={EmotionLaughIcon}
+          icon={SmilePlusIcon}
           isSelect
           className={cn("text-muted-foreground", className)}
         />

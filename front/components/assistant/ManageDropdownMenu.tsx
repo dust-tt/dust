@@ -1,3 +1,7 @@
+import {
+  ContactsRobotIcon,
+  RobotIcon,
+} from "@app/components/assistant/conversation/icons";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import {
@@ -7,12 +11,10 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ContactsRobotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -28,7 +30,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="primary"
+          variant="outline-ghost"
           label="Manage"
           icon={ContactsRobotIcon}
           size="sm"
