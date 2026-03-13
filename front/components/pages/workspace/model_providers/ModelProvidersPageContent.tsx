@@ -24,6 +24,7 @@ interface ModelProvidersPageContentProps {
   setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
   providersSelection: ProvidersSelection;
   isWorkspaceValidating: boolean;
+  onToggleProvider: (provider: ModelProviderIdType) => void;
 }
 
 export function ModelProvidersPageContent({
@@ -31,6 +32,7 @@ export function ModelProvidersPageContent({
   setProvidersSelection,
   providersSelection,
   isWorkspaceValidating,
+  onToggleProvider,
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
@@ -67,7 +69,7 @@ export function ModelProvidersPageContent({
           />
           <ProvidersToggleList
             providersSelection={providersSelection}
-            setProvidersSelection={setProvidersSelection}
+            onToggleProvider={onToggleProvider}
             isWorkspaceValidating={isWorkspaceValidating}
             modelsDescriptionByProvider={modelsDescriptionByProvider}
           />

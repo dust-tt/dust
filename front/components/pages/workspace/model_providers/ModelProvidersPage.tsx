@@ -6,9 +6,10 @@ import { BrainIcon, Page } from "@dust-tt/sparkle";
 
 export function ModelProvidersPage() {
   const owner = useWorkspace();
-  const { workspace, isWorkspaceValidating } = useWorkspaceDetails({ owner });
-  const { providersSelection, setProvidersSelection } =
-    useProvidersSelection(workspace);
+  const { workspace, isWorkspaceValidating, mutateWorkspace } =
+    useWorkspaceDetails({ owner });
+  const { providersSelection, setProvidersSelection, toggleProvider } =
+    useProvidersSelection(workspace, owner, mutateWorkspace);
 
   return (
     <Page.Vertical align="stretch" gap="xl">
@@ -24,6 +25,7 @@ export function ModelProvidersPage() {
             setProvidersSelection={setProvidersSelection}
             providersSelection={providersSelection}
             isWorkspaceValidating={isWorkspaceValidating}
+            onToggleProvider={toggleProvider}
           />
         )}
       </Page.Vertical>
