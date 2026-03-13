@@ -70,7 +70,7 @@ export function ProviderConfigurationContextItem({
           </span>
         </ContextItem.Description>
         {apiKey && (
-          <div className="font-mono text-lg mt-4 text-foreground dark:text-foreground-night">
+          <div className="font-mono text-lg mt-4 text-foreground dark:text-foreground-night truncate">
             {apiKey}
           </div>
         )}
