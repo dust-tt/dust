@@ -2,6 +2,7 @@ import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { isString } from "@app/types/shared/utils/general";
 
 export type SandboxFileEntry = {
   fileName: string;
@@ -35,24 +36,31 @@ export async function listSandboxFiles(
   });
 
   const mountPaths = filteredFiles.map((f) => f.name);
-  const mountPathToFileResource = await FileResource.fetchByMountFilePaths(
+  const fileResources = await FileResource.fetchByMountFilePaths(
     auth,
     mountPaths
   );
+  const fileResourceByMountPath = new Map<string, FileResource>();
+  for (const r of fileResources) {
+    if (r.mountFilePath) {
+      fileResourceByMountPath.set(r.mountFilePath, r);
+    }
+  }
 
   return filteredFiles.map((gcsFile) => {
     const fileName = gcsFile.name.split("/").pop() ?? gcsFile.name;
     const metadata = gcsFile.metadata;
-    const fileResource = mountPathToFileResource.get(gcsFile.name) ?? null;
+    const fileResource = fileResourceByMountPath.get(gcsFile.name) ?? null;
 
     return {
       fileName,
       path: gcsFile.name,
       sizeBytes: Number(metadata.size ?? 0),
-      contentType:
-        (metadata.contentType as string) ?? "application/octet-stream",
-      lastModifiedMs: metadata.updated
-        ? new Date(metadata.updated as string).getTime()
+      contentType: isString(metadata.contentType)
+        ? metadata.contentType
+        : "application/octet-stream",
+      lastModifiedMs: isString(metadata.updated)
+        ? new Date(metadata.updated).getTime()
         : 0,
       fileId: fileResource?.sId ?? null,
     };

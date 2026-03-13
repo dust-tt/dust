@@ -302,9 +302,9 @@ export class FileResource extends BaseResource<FileModel> {
   static async fetchByMountFilePaths(
     auth: Authenticator,
     mountFilePaths: string[]
-  ): Promise<Map<string, FileResource>> {
+  ): Promise<FileResource[]> {
     if (mountFilePaths.length === 0) {
-      return new Map();
+      return [];
     }
 
     const owner = auth.getNonNullableWorkspace();
@@ -315,15 +315,7 @@ export class FileResource extends BaseResource<FileModel> {
       },
     });
 
-    const result = new Map<string, FileResource>();
-    for (const f of files) {
-      const resource = new this(this.model, f.get());
-      if (resource.mountFilePath) {
-        result.set(resource.mountFilePath, resource);
-      }
-    }
-
-    return result;
+    return files.map((f) => new this(this.model, f.get()));
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
