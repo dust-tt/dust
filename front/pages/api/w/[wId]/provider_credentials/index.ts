@@ -85,10 +85,7 @@ async function handler(
 
       const providerCredential = await ProviderCredentialResource.makeNew(
         auth,
-        {
-          providerId,
-          apiKey,
-        }
+        { providerId, apiKey }
       );
 
       if (!providerCredential) {
@@ -107,13 +104,62 @@ async function handler(
       });
     }
 
+    case "PATCH": {
+      const bodyValidation = PostProviderCredentialBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `The request body is invalid: ${bodyValidation.error.message}.`,
+          },
+        });
+      }
+
+      const { providerId, apiKey } = bodyValidation.data;
+
+      const existing = await ProviderCredentialResource.findByProvider(
+        auth,
+        providerId
+      );
+
+      if (!existing) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "provider_not_found",
+            message: `No credential found for provider ${providerId}.`,
+          },
+        });
+      }
+
+      const providerCredential = await existing.updateApiKey(auth, { apiKey });
+
+      if (!providerCredential) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The provided credentials are invalid or could not be verified.",
+          },
+        });
+      }
+
+      return res.status(200).json({
+        providerCredential: providerCredential.toJSON(),
+      });
+    }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST is expected.",
+            "The method passed is not supported, GET, POST or PATCH is expected.",
         },
       });
   }
