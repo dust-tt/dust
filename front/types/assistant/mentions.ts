@@ -28,12 +28,16 @@ export type UserMention = {
 
 /**
  * Union type of all supported mention types.
+ *
+ * @swaggerschema Mention (swagger_schemas.ts), PrivateMention (swagger_private_schemas.ts)
  */
 export type MentionType = AgentMention | UserMention;
 
 /**
  * Rich mention type with full display metadata.
  * Used in UI components and the editor where we need display information.
+ *
+ * @swaggerschema RichMention (swagger_schemas.ts), PrivateMentionSuggestion (swagger_private_schemas.ts)
  */
 export type RichMention = RichAgentMention | RichUserMention;
 

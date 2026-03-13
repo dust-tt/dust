@@ -546,8 +546,23 @@ In particular, check and update the following files when modifying API schemas:
 - `pages/api/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
 - The `@swagger` annotation in the endpoint file itself
 
-Every endpoint must have either `@swagger` (with proper documentation) or `@ignoreswagger` 
+Every endpoint must have either `@swagger` (with proper documentation) or `@ignoreswagger`
 (for internal/undocumented endpoints). This is enforced by the `lint:swagger-annotations` check.
+
+TypeScript types that map to a swagger schema must carry a `@swaggerschema` annotation pointing
+to the corresponding schema name and file. When modifying a type with this annotation, always
+update the referenced swagger schema to match.
+
+Example:
+
+```
+/**
+ * @swaggerschema PrivateUser (swagger_private_schemas.ts)
+ */
+export type UserTypeWithWorkspaces = UserType & {
+  workspaces: WorkspaceType[];
+};
+```
 
 ## MCP
 

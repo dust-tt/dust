@@ -8,6 +8,9 @@ import type {
 import type { ModelId } from "./shared/model_id";
 import type { EditedByUser } from "./user";
 
+/**
+ * @swaggerschema DatasourceView (swagger_schemas.ts), PrivateDataSourceView (swagger_private_schemas.ts)
+ */
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
   createdAt: number;

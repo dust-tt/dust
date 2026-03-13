@@ -22,6 +22,9 @@ export type ConversationMessageReactions = {
   reactions: MessageReactionType[];
 }[];
 
+/**
+ * @swaggerschema PrivateReaction (swagger_private_schemas.ts)
+ */
 export type MessageReactionType = {
   emoji: string;
   users: {
@@ -105,6 +108,9 @@ export type UserMessageOrigin =
   // for internal use, for the butler in projects
   | "project_butler";
 
+/**
+ * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
+ */
 export type UserMessageContext = {
   username: string;
   fullName: string | null;
@@ -125,6 +131,9 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
+/**
+ * @swaggerschema PrivateRichMentionWithStatus (swagger_private_schemas.ts)
+ */
 export type RichMentionWithStatus =
   | (RichMention & {
       dismissed: boolean;
@@ -142,6 +151,9 @@ export type RichMentionWithStatus =
       status: "agent_restricted_by_space_usage";
     });
 
+/**
+ * @swaggerschema PrivateUserMessage (swagger_private_schemas.ts)
+ */
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -233,6 +245,9 @@ export type ParsedContentItem =
   | { kind: "reasoning"; content: string }
   | { kind: "action"; action: AgentMCPActionWithOutputType };
 
+/**
+ * @swaggerschema PrivateAgentMessage (swagger_private_schemas.ts)
+ */
 export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
   agentMessageId: ModelId;
@@ -250,6 +265,9 @@ export type AgentMessageTypeWithoutMentions = Omit<
   "richMentions"
 >;
 
+/**
+ * @swaggerschema PrivateLightAgentMessage (swagger_private_schemas.ts)
+ */
 export type LightAgentMessageType = BaseAgentMessageType & {
   configuration: {
     sId: string;
@@ -302,6 +320,8 @@ export type ConversationMetadata = Record<string, unknown>;
 
 /**
  * A lighter version of Conversation without the content (for menu display).
+ *
+ * @swaggerschema PrivateConversation (swagger_private_schemas.ts)
  */
 export type ConversationWithoutContentType = {
   id: ModelId;
@@ -325,6 +345,8 @@ export type ConversationWithoutContentType = {
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
  * messages).
+ *
+ * @swaggerschema Conversation (swagger_schemas.ts), PrivateFullConversation (swagger_private_schemas.ts)
  */
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;

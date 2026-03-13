@@ -66,6 +66,9 @@ export interface FileType {
   useCase: FileUseCase;
 }
 
+/**
+ * @swaggerschema PrivateFileWithUploadUrl (swagger_private_schemas.ts)
+ */
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
 
 export type FileTypeWithMetadata = FileType & {
