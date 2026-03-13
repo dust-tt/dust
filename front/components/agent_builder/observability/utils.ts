@@ -10,7 +10,6 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import { formatDateFromMillis } from "@app/lib/utils/timezone";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import moment from "moment-timezone";
 
@@ -188,12 +187,11 @@ export function filterTimeSeriesByVersionWindow<
 
 export function getTimeRangeBounds(
   periodDays: number,
-  timezone?: string
-): [string, string] {
-  const tz = timezone ?? "UTC";
-  const nowMs = Date.now();
-  const startMs = nowMs - periodDays * 24 * 60 * 60 * 1000;
-  return [formatDateFromMillis(startMs, tz), formatDateFromMillis(nowMs, tz)];
+  timezone: string
+): [number, number] {
+  const now = moment.tz(timezone).startOf("day");
+  const start = now.clone().subtract(periodDays, "days");
+  return [start.valueOf(), now.valueOf()];
 }
 
 // Pads a time-series with zero-value points at the selected time-range bounds
@@ -214,9 +212,7 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
     }));
   }
 
-  const [startDate, endDate] = getTimeRangeBounds(periodDays, tz);
-  const startTime = moment.tz(startDate, tz).valueOf();
-  const endTime = moment.tz(endDate, tz).valueOf();
+  const [startTime, endTime] = getTimeRangeBounds(periodDays, tz);
 
   const byTimestamp = new Map<number, T>(pts.map((p) => [p.timestamp, p]));
 

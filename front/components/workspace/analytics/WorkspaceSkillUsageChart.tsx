@@ -22,7 +22,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import moment from "moment-timezone";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -211,9 +210,10 @@ export function WorkspaceSkillUsageChart({
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const [startDate, endDate] = getTimeRangeBounds(period, browserTimezone);
-    const startTimeMs = moment.tz(startDate, browserTimezone).valueOf();
-    const endTimeMs = moment.tz(endDate, browserTimezone).valueOf();
+    const [startTimeMs, endTimeMs] = getTimeRangeBounds(
+      period,
+      browserTimezone
+    );
     const dayMs = 24 * 60 * 60 * 1000;
     const numDays = Math.floor((endTimeMs - startTimeMs) / dayMs) + 1;
 
