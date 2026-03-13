@@ -1,9 +1,3 @@
-import {
-  DocumentIcon,
-  MagicIcon,
-  PlusIcon,
-  PuzzleIcon,
-} from "@app/components/assistant/conversation/icons";
 import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -17,12 +11,16 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   Button,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
   FolderOpenIcon,
+  MagicIcon,
+  PlusIcon,
+  PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";

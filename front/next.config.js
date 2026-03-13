@@ -49,10 +49,7 @@ const config = {
       },
     ],
   },
-  transpilePackages: [
-    "@uiw/react-textarea-code-editor",
-    "@phosphor-icons/react",
-  ],
+  transpilePackages: ["@uiw/react-textarea-code-editor"],
   swcMinify: true,
   onDemandEntries: {
     // Keep dev-compiled pages around longer to avoid re-compiles on nav

@@ -1,7 +1,6 @@
-import { X } from "@app/components/assistant/conversation/icons";
 import { Image } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button } from "@dust-tt/sparkle";
+import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -50,7 +49,7 @@ export function AcademyBanner() {
             />
             <Button
               variant="outline"
-              icon={X}
+              icon={XMarkIcon}
               className="absolute right-1 top-1 opacity-80"
               onClick={onDismiss}
             />

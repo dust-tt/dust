@@ -1,12 +1,5 @@
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
-import {
-  Link,
-  MoreHorizontal,
-  SquarePen,
-  Trash2,
-  Zap,
-} from "@app/components/assistant/conversation/icons";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
@@ -34,6 +27,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  BoltIcon,
   Button,
   ConversationMessageAvatar,
   ConversationMessageContainer,
@@ -45,8 +39,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  LinkIcon,
+  MoreIcon,
+  PencilSquareIcon,
   Toolbar,
   Tooltip,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
@@ -393,7 +391,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={Zap} />}
+      trigger={<Icon size="xs" visual={BoltIcon} />}
     />
   );
 }
@@ -447,14 +445,14 @@ function ActionMenu({
   const actions = showActions
     ? [
         {
-          icon: Link,
+          icon: LinkIcon,
           label: "Copy message link",
           onClick: handleCopyMessageLink,
         },
         ...(canEdit
           ? [
               {
-                icon: SquarePen,
+                icon: PencilSquareIcon,
                 label: "Edit message",
                 onClick: handleEditMessage,
               },
@@ -463,7 +461,7 @@ function ActionMenu({
         ...(canDelete
           ? [
               {
-                icon: Trash2,
+                icon: TrashIcon,
                 label: "Delete message",
                 onClick: handleDeleteMessage,
               },
@@ -502,7 +500,7 @@ function ActionMenu({
         >
           <DropdownMenuTrigger asChild>
             <Button
-              icon={MoreHorizontal}
+              icon={MoreIcon}
               size="icon-xs"
               variant="outline"
               aria-label="Message actions"

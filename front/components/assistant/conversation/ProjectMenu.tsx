@@ -1,11 +1,4 @@
 import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
-import {
-  Contact,
-  EyeOff,
-  Link,
-  SquarePen,
-  X,
-} from "@app/components/assistant/conversation/icons";
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
@@ -24,6 +17,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -32,6 +26,10 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  EyeSlashIcon,
+  LinkIcon,
+  PencilSquareIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -244,12 +242,15 @@ export function ProjectMenu({
             <DropdownMenuItem
               label="Rename"
               onClick={() => setShowRenameDialog(true)}
-              icon={SquarePen}
+              icon={PencilSquareIcon}
             />
           )}
           {spaceInfo?.members && spaceInfo.members.length > 0 && (
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={Contact} label="Member list" />
+              <DropdownMenuSubTrigger
+                icon={ContactsUserIcon}
+                label="Member list"
+              />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   {spaceInfo.members.map((member) => (
@@ -276,14 +277,14 @@ export function ProjectMenu({
             <DropdownMenuItem
               label="Copy link"
               onClick={copyProjectLink}
-              icon={Link}
+              icon={LinkIcon}
             />
           )}
           {isProjectEditor && (
             <DropdownMenuItem
               label="Archive"
               onClick={archiveProject}
-              icon={EyeOff}
+              icon={EyeSlashIcon}
               variant="warning"
             />
           )}
@@ -291,7 +292,7 @@ export function ProjectMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={openLeaveDialog}
-              icon={X}
+              icon={XMarkIcon}
             />
           )}
         </DropdownMenuContent>

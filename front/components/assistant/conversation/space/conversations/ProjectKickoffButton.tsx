@@ -1,10 +1,9 @@
-import { Rocket } from "@app/components/assistant/conversation/icons";
 import { useProjectKickoff } from "@app/hooks/useProjectKickoff";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Button } from "@dust-tt/sparkle";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
 
 interface ProjectKickoffButtonProps {
   owner: WorkspaceType;
@@ -34,7 +33,7 @@ export function ProjectKickoffButton({
   return (
     <Button
       label="Kick-off project"
-      icon={Rocket}
+      icon={RocketIcon}
       variant="primary"
       onClick={handleKickoff}
       isLoading={isCreating}

@@ -1,11 +1,5 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import {
-  ArrowDown,
-  ArrowUp,
-  Info,
-  StopCircle,
-} from "@app/components/assistant/conversation/icons";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
   VirtuosoMessage,
@@ -26,10 +20,14 @@ import {
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   Button,
   ContentMessageAction,
   ContentMessageInline,
   IconButton,
+  InformationCircleIcon,
+  StopIcon,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -278,7 +276,7 @@ export const AgentInputBar = ({
                 <Button
                   variant="ghost"
                   label={getStopButtonLabel()}
-                  icon={StopCircle}
+                  icon={StopIcon}
                   onClick={handleStopGeneration}
                   disabled={isStopping}
                   size="xs"
@@ -291,14 +289,14 @@ export const AgentInputBar = ({
             {showMessageNavigation && (
               <>
                 <IconButton
-                  icon={ArrowUp}
+                  icon={ArrowUpIcon}
                   onClick={scrollToPreviousUserMessage}
                   disabled={!canScrollUp}
                   size="xs"
                   tooltip="Previous user message"
                 />
                 <IconButton
-                  icon={ArrowDown}
+                  icon={ArrowDownIcon}
                   onClick={scrollToNextUserMessage}
                   disabled={!canScrollDown}
                   size="xs"
@@ -311,7 +309,7 @@ export const AgentInputBar = ({
       </div>
       {blockedActions.length > 0 && (
         <ContentMessageInline
-          icon={Info}
+          icon={InformationCircleIcon}
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >

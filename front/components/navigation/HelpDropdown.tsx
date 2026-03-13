@@ -1,11 +1,3 @@
-import {
-  BookOpenIcon,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentIcon,
-  CircleHelpIcon,
-  LightbulbIcon,
-} from "@app/components/assistant/conversation/icons";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -18,12 +10,18 @@ import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
+  BookOpenIcon,
   Button,
+  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  HeartIcon,
+  LightbulbIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
@@ -120,7 +118,7 @@ export function HelpDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline-ghost" label="Help" icon={CircleHelpIcon} isSelect />
+        <Button variant="outline-ghost" label="Help" icon={HeartIcon} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         onCloseAutoFocus={(e) => {

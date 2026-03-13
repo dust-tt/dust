@@ -12,16 +12,6 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
-import {
-  Clipboard,
-  ClipboardCheck,
-  Info,
-  Link,
-  MoreHorizontal,
-  RotateCcw,
-  StopCircle,
-  Trash2,
-} from "@app/components/assistant/conversation/icons";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
@@ -86,16 +76,24 @@ import type {
 } from "@app/types/user";
 import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
+  ArrowPathIcon,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  InformationCircleIcon,
   InteractiveImageGrid,
+  LinkIcon,
+  MoreIcon,
+  StopIcon,
   Tooltip,
+  TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -140,7 +138,7 @@ function PrunedContextChip() {
           label="Context limit reached"
           size="xs"
           color="white"
-          icon={Info}
+          icon={InformationCircleIcon}
         />
       }
     />
@@ -467,7 +465,7 @@ export function AgentMessage({
         onClick={async () => {
           await cancelMessage([sId]);
         }}
-        icon={StopCircle}
+        icon={StopIcon}
         className="text-muted-foreground"
       />
     );
@@ -598,7 +596,7 @@ export function AgentMessage({
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
-        icon: Link,
+        icon: LinkIcon,
         onSelect: handleCopyMessageLink,
       },
     ];
@@ -606,7 +604,7 @@ export function AgentMessage({
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
-        icon: RotateCcw,
+        icon: ArrowPathIcon,
         onSelect: () => {
           void retryHandler({
             conversationId,
@@ -620,7 +618,7 @@ export function AgentMessage({
     if (canDeleteAgentMessage) {
       dropdownItems.push({
         label: "Delete message",
-        icon: Trash2,
+        icon: TrashIcon,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
         variant: "warning" as const,
@@ -634,7 +632,7 @@ export function AgentMessage({
           variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheck : Clipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
           className="text-muted-foreground"
         />
         <ButtonGroupDropdown
@@ -642,7 +640,7 @@ export function AgentMessage({
             <Button
               variant="outline-ghost"
               size="xs"
-              icon={MoreHorizontal}
+              icon={MoreIcon}
               className="text-muted-foreground"
             />
           }
@@ -660,7 +658,7 @@ export function AgentMessage({
           variant="outline-ghost"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheck : Clipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
           className="text-muted-foreground"
         />
       );
@@ -672,7 +670,7 @@ export function AgentMessage({
           variant="outline-ghost"
           size="xs"
           onClick={handleCopyMessageLink}
-          icon={Link}
+          icon={LinkIcon}
           className="text-muted-foreground"
         />
       );
@@ -691,7 +689,7 @@ export function AgentMessage({
               messageId: agentMessage.sId,
             });
           }}
-          icon={RotateCcw}
+          icon={ArrowPathIcon}
           className="text-muted-foreground"
           disabled={isRetryHandlerProcessing || shouldStream}
         />
@@ -1192,14 +1190,14 @@ function AgentMessageContent({
                 <Button
                   variant="outline-ghost"
                   size="xs"
-                  icon={MoreHorizontal}
+                  icon={MoreIcon}
                   className="text-muted-foreground"
                 />
               }
               items={[
                 {
                   label: "Retry",
-                  icon: RotateCcw,
+                  icon: ArrowPathIcon,
                   onSelect: () => {
                     void retryHandler({
                       conversationId,

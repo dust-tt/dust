@@ -1,3 +1,6 @@
+import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
+import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   BoldIcon,
   CodeBlockIcon,
@@ -7,11 +10,10 @@ import {
   ListCheckIcon,
   ListOrdered2Icon,
   QuoteTextIcon,
-} from "@app/components/assistant/conversation/icons";
-import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
-import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { ToolbarContent, ToolbarIcon, ToolbarLink } from "@dust-tt/sparkle";
+  ToolbarContent,
+  ToolbarIcon,
+  ToolbarLink,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 

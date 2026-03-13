@@ -1,14 +1,5 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
-import {
-  ArrowUpIcon,
-  AttachmentIcon,
-  CameraIcon,
-  GlobeAltIcon,
-  MicIcon,
-  PlusIcon,
-  TextIcon,
-} from "@app/components/assistant/conversation/icons";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import {
   getDisplayNameFromPastedFileId,
@@ -49,13 +40,19 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
+  ArrowUpIcon,
+  AttachmentIcon,
   Button,
+  CameraIcon,
   Chip,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  GlobeAltIcon,
+  PlusIcon,
+  TextIcon,
   Toolbar,
   VoicePicker,
 } from "@dust-tt/sparkle";
@@ -778,7 +775,7 @@ const InputBarContainer = ({
                     variant="ghost-secondary"
                     icon={TextIcon}
                     size={buttonSize}
-                    className="flex text-foreground sm:hidden"
+                    className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
                   {actions.includes("attachment") &&
@@ -856,8 +853,6 @@ const InputBarContainer = ({
                       disabled={disableInput}
                       size={buttonSize}
                       showStopLabel={!isMobile}
-                      micIcon={MicIcon}
-                      buttonProps={{ className: "text-foreground" }}
                     />
                   )}
                 {clientType === "extension" && (
@@ -873,7 +868,6 @@ const InputBarContainer = ({
                             icon={PlusIcon}
                             size={buttonSize}
                             disabled={disableInput}
-                            className="text-foreground"
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">

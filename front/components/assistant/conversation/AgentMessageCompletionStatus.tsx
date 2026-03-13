@@ -1,11 +1,10 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { ChevronRight } from "@app/components/assistant/conversation/icons";
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
-import { cn, Icon } from "@dust-tt/sparkle";
+import { ChevronRightIcon, cn, Icon } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -67,7 +66,7 @@ export const AgentMessageCompletionStatus = ({
         {hasCompletedTimestamp && <span> {timeString}</span>}
       </div>
 
-      <Icon visual={ChevronRight} size="xs" />
+      <Icon visual={ChevronRightIcon} size="xs" />
     </div>
   );
 };

@@ -1,4 +1,3 @@
-import { MessagesSquare } from "@app/components/assistant/conversation/icons";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -8,7 +7,12 @@ import type {
   RichMentionWithStatus,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ActionCardBlock, Avatar, Button } from "@dust-tt/sparkle";
+import {
+  ActionCardBlock,
+  Avatar,
+  Button,
+  ChatBubbleLeftRightIcon,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MentionValidationRequiredProps {
@@ -91,7 +95,7 @@ export function MentionValidationRequired({
     <div className="my-3">
       <ActionCardBlock
         title={title}
-        visual={<Avatar icon={MessagesSquare} size="sm" />}
+        visual={<Avatar icon={ChatBubbleLeftRightIcon} size="sm" />}
         description={description}
         actions={
           <div className="flex flex-wrap justify-end gap-2">

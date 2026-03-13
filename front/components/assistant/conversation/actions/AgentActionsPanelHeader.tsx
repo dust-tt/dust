@@ -1,6 +1,5 @@
-import { X } from "@app/components/assistant/conversation/icons";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, cn } from "@dust-tt/sparkle";
+import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface AgentActionsPanelHeaderProps {
@@ -38,7 +37,7 @@ export function AgentActionsPanelHeader({
               variant="ghost"
               size="sm"
               onClick={onClose}
-              icon={X}
+              icon={XMarkIcon}
               className="text-element-600 hover:text-element-900"
             />
           )}

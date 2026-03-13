@@ -1,4 +1,3 @@
-import { BoltIcon } from "@app/components/assistant/conversation/icons";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -49,6 +48,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,

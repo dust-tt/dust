@@ -1,9 +1,3 @@
-import {
-  BookOpen,
-  MessagesSquare,
-  Settings,
-  TestTube,
-} from "@app/components/assistant/conversation/icons";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
@@ -33,11 +27,15 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
+  BookOpenIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
   Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useRef, useState } from "react";
 
@@ -326,20 +324,24 @@ export function SpaceConversationsPage() {
                 <TabsTrigger
                   value="conversations"
                   label="Conversations"
-                  icon={MessagesSquare}
+                  icon={ChatBubbleLeftRightIcon}
                 />
                 <TabsTrigger
                   value="knowledge"
                   label="Knowledge"
-                  icon={BookOpen}
+                  icon={BookOpenIcon}
                 />
               </>
             )}
-            <TabsTrigger value="settings" icon={Settings} tooltip="Settings" />
+            <TabsTrigger
+              value="settings"
+              icon={Cog6ToothIcon}
+              tooltip="Settings"
+            />
             <TabsTrigger
               value="alpha"
               label="Alpha"
-              icon={TestTube}
+              icon={TestTubeIcon}
               variant="warning-secondary"
             />
           </TabsList>

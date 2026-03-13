@@ -1,8 +1,4 @@
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
-import {
-  Sparkles,
-  ThumbsUp,
-} from "@app/components/assistant/conversation/icons";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -15,7 +11,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  HandThumbUpIcon,
   Label,
+  MagicIcon,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -188,7 +186,7 @@ export function FeedbackSelector({
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("up")}
-          icon={ThumbsUp}
+          icon={HandThumbUpIcon}
           className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
         />
         <Button
@@ -196,7 +194,7 @@ export function FeedbackSelector({
           size="xs"
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("down")}
-          icon={Sparkles}
+          icon={MagicIcon}
           label={improveLabel}
           className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
         />
