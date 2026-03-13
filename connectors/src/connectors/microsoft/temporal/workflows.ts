@@ -44,10 +44,9 @@ const {
   reportInitialSyncProgress,
   syncSucceeded,
   syncStarted,
-} =
-  proxyActivities<typeof sync_status>({
-    startToCloseTimeout: "10 minutes",
-  });
+} = proxyActivities<typeof sync_status>({
+  startToCloseTimeout: "10 minutes",
+});
 
 export async function fullSyncWorkflow({
   connectorId,
@@ -196,6 +195,7 @@ export async function incrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
+  await clearInitialSyncProgress(connectorId);
   await syncStarted(connectorId);
   const nodeIdsToSync = await getRootNodesToSync(connectorId);
   const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
@@ -218,6 +218,7 @@ export async function incrementalSyncWorkflowV2({
 }) {
   const fullSyncRunning = await isMicrosoftFullSyncRunning(connectorId);
   if (!fullSyncRunning) {
+    await clearInitialSyncProgress(connectorId);
     await syncStarted(connectorId);
   }
 
