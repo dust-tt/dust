@@ -8,6 +8,7 @@ export { AspectRatio } from "./AspectRatio";
 export {
   AssistantCard,
   AssistantCardMore,
+  CompactAssistantCard,
   LargeAssistantCard,
 } from "./AssistantCard";
 export { AttachmentChip } from "./AttachmentChip";
