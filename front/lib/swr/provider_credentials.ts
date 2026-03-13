@@ -16,6 +16,7 @@ import type { ProviderCredentialType } from "@app/types/provider_credential";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function useProviderCredentials({
   owner,
@@ -46,6 +47,7 @@ export function useProviderCredentialActions({
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useSendNotification();
+  const { mutate } = useSWRConfig();
 
   const saveProviderCredential = useCallback(
     async ({
@@ -87,9 +89,11 @@ export function useProviderCredentialActions({
         description: "Your API key has been configured successfully.",
       });
 
+      await mutate(`/api/w/${owner.sId}/provider_credentials`);
+
       return data.providerCredential;
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, mutate]
   );
 
   return { saveProviderCredential };
