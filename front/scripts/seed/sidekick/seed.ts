@@ -1,21 +1,16 @@
-import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type {
   AgentAsset,
   ConversationAsset,
   DataSourceAsset,
   FeedbackAsset,
-  SeedContext,
   SuggestionAsset,
   TemplateAsset,
   UserAsset,
 } from "@app/scripts/seed/factories";
 import {
+  createSeedContext,
   seedAgentSuggestions,
   seedAgents,
   seedAnalytics,
@@ -27,9 +22,6 @@ import {
 } from "@app/scripts/seed/factories";
 import * as fs from "fs";
 import * as path from "path";
-
-// The workspace sId created by dust-hive seed
-const WORKSPACE_SID = "DevWkSpace";
 
 interface Assets {
   agents: AgentAsset[];
@@ -87,54 +79,14 @@ makeScript({}, async ({ execute }, logger) => {
     templates,
   } = loadAssets();
 
-  logger.info("Loading workspace...");
-  const workspace = await WorkspaceResource.fetchById(WORKSPACE_SID);
-  if (!workspace) {
-    throw new Error(
-      `Workspace ${WORKSPACE_SID} not found. Make sure dust-hive seed has run first.`
-    );
-  }
-
-  // Get the first admin user from the workspace
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace: renderLightWorkspaceType({ workspace }),
-    roles: ["admin"],
-  });
-  if (memberships.length === 0) {
-    throw new Error(
-      `No admin user found in workspace ${WORKSPACE_SID}. Make sure dust-hive seed has run first.`
-    );
-  }
-  const membershipUser = memberships[0].user;
-  if (!membershipUser) {
-    throw new Error("Membership has no associated user");
-  }
-
-  // Fetch the full UserResource
-  const user = await UserResource.fetchById(membershipUser.sId);
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  // Create authenticator with the user
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    WORKSPACE_SID
-  );
-
-  // Create seed context
-  const ctx: SeedContext = {
-    auth,
-    workspace: renderLightWorkspaceType({ workspace }),
-    user,
-    execute,
-    logger,
-  };
+  const ctx = await createSeedContext({ execute, logger });
 
   // Enable the agent_builder_copilot feature flag
   logger.info("Enabling agent_builder_copilot feature flag...");
   if (execute) {
-    await FeatureFlagResource.enableMany(workspace, ["agent_builder_copilot"]);
+    await FeatureFlagResource.enableMany(ctx.workspace, [
+      "agent_builder_copilot",
+    ]);
     logger.info("Feature flag enabled");
   }
 
