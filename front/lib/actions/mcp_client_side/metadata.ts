@@ -2,11 +2,11 @@ import { createClientToolsRecord } from "@app/lib/actions/mcp_internal_actions/t
 import { z } from "zod";
 
 export const CHROME_TOOLS_METADATA = createClientToolsRecord({
-  get_browser_page: {
+  attach_page_text: {
     description:
       "Extracts the title, URL, and text content of a browser tab. " +
       "Use this to read and understand what the user is viewing. " +
-      "For non-text pages (PDFs, images, etc.), use get_browser_page_view instead — it will attach the file directly to the conversation." +
+      "For non-text pages (PDFs, images, etc.), use take_screenshot_or_attach_file instead — it will attach the file directly to the conversation." +
       "Use list_browser_tabs to discover tab IDs.",
     schema: {
       tabId: z.number().describe("The tab ID to read."),
@@ -18,7 +18,7 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       done: "Page content retrieved",
     },
   },
-  get_browser_page_view: {
+  take_screenshot_or_attach_file: {
     description:
       "Captures or attaches the content of a browser tab. " +
       "For PDF pages, uploads the file and returns the full extracted text so you can read it. " +
@@ -39,7 +39,7 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     description:
       "Lists all open tabs in the current browser window with their tab ID, title, URL, and whether they are active. " +
       "Use this to discover which tabs the user has open. " +
-      "Tab IDs can be passed to get_browser_page or get_browser_page_view to read a specific tab.",
+      "Tab IDs can be passed to attach_page_text or take_screenshot_or_attach_file to read a specific tab.",
     schema: {},
     stake: "low",
     displayLabels: {
@@ -58,7 +58,7 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       done: "Current tab info retrieved",
     },
   },
-  activate_browser_tab: {
+  switch_to_browser_tab: {
     description:
       "Switches to the specified browser tab, making it the active tab. " +
       "Use list_browser_tabs to discover tab IDs.",

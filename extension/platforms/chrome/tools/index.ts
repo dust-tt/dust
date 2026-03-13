@@ -3,20 +3,20 @@ import {
   buildClientTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
-import type { CaptureService } from "@extension/shared/services/capture";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getCurrentTabInfoTool } from "./getCurrentTabInfo";
-import { getPageViewTool } from "./getPageViewTool";
-import { interactWithPageTool } from "./interactWithPageTool";
-import { listBrowserTabsTool } from "./listTabsTool";
+import { attachPageTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
 import {
-  activateBrowserTabTool,
   closeBrowserTabTool,
   moveBrowserTabTool,
   openBrowserTab,
   reloadBrowserTabTool,
-} from "./tabActionTools";
+  switchBrowserTabTool,
+} from "@extension/platforms/chrome/tools/tabActionTools";
+import { takeScreenshotOrAttachFileTool } from "@extension/platforms/chrome/tools/takeScreenshotOrAttachFileTool";
+import type { CaptureService } from "@extension/shared/services/capture";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getCurrentTabInfoTool } from "./getCurrentTabInfo";
+import { interactWithPageTool } from "./interactWithPageTool";
+import { listBrowserTabsTool } from "./listTabsTool";
 
 /**
  * Registers all Chrome MCP tools with the server
@@ -29,12 +29,17 @@ export function registerAllTools(
   workspaceId: string
 ): void {
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
-    get_browser_page: (params) => getPageTool({ ...params, captureService }),
-    get_browser_page_view: (params) =>
-      getPageViewTool({ ...params, captureService, workspaceId }),
+    attach_page_text: (params) =>
+      attachPageTextTool({ ...params, captureService }),
+    take_screenshot_or_attach_file: (params) =>
+      takeScreenshotOrAttachFileTool({
+        ...params,
+        captureService,
+        workspaceId,
+      }),
     list_browser_tabs: () => listBrowserTabsTool(),
     get_current_tab_info: () => getCurrentTabInfoTool(),
-    activate_browser_tab: (params) => activateBrowserTabTool(params),
+    switch_to_browser_tab: (params) => switchBrowserTabTool(params),
     close_browser_tab: (params) => closeBrowserTabTool(params),
     move_browser_tab: (params) => moveBrowserTabTool(params),
     open_browser_tab: (params) => openBrowserTab(params),

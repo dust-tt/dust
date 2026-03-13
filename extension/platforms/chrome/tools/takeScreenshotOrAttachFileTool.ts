@@ -100,10 +100,10 @@ async function uploadPdf(
 }
 
 /**
- * Registers the get-current-browser-page-view tool with the MCP server.
+ * Registers the take_screenshot_or_attach_file tool with the MCP server.
  * Captures a screenshot or attaches the file content of a browser tab.
  */
-export async function getPageViewTool({
+export async function takeScreenshotOrAttachFileTool({
   tabId,
   captureService,
   workspaceId,
