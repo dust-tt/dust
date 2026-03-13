@@ -547,7 +547,7 @@ export function AgentBrowser({
                 {uniqueTags.map((tag) => (
                   <Button
                     size="xs"
-                    variant={selectedTag === tag.sId ? "primary" : "outline"}
+                    variant={selectedTag === tag.sId ? "outline-ghost" : "ghost"}
                     key={tag.sId}
                     label={tag.name}
                     onClick={() => {
