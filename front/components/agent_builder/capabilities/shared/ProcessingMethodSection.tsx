@@ -1,6 +1,6 @@
 import {
-  getKnowledgeLookupMethodDescription,
   getKnowledgeLookupMethodLabel,
+  getKnowledgeLookupMethodOverride,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
@@ -222,10 +222,10 @@ export function ProcessingMethodSection() {
                   )}
                   icon={getAvatar(view.server)}
                   onClick={() => onChange(view)}
-                  description={getKnowledgeLookupMethodDescription(
-                    view.server.name,
-                    getMcpServerViewDescription(view)
-                  )}
+                  description={
+                    getKnowledgeLookupMethodOverride(view.server.name)
+                      ?.description ?? getMcpServerViewDescription(view)
+                  }
                 />
               ))}
           </DropdownMenuContent>
@@ -234,10 +234,8 @@ export function ProcessingMethodSection() {
 
       <span className="text-sm text-muted-foreground dark:text-muted-foreground">
         {mcpServerView
-          ? getKnowledgeLookupMethodDescription(
-              mcpServerView.server.name,
-              getMcpServerViewDescription(mcpServerView)
-            )
+          ? (getKnowledgeLookupMethodOverride(mcpServerView.server.name)
+              ?.description ?? getMcpServerViewDescription(mcpServerView))
           : null}
       </span>
 

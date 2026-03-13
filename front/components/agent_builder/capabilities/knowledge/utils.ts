@@ -55,6 +55,18 @@ const KNOWLEDGE_LOOKUP_METHOD_OVERRIDES = {
   },
 } as const;
 
+export function getKnowledgeLookupMethodOverride(serverName?: string | null) {
+  if (!serverName) {
+    return null;
+  }
+
+  return (
+    KNOWLEDGE_LOOKUP_METHOD_OVERRIDES[
+      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_OVERRIDES
+    ] ?? null
+  );
+}
+
 export function getKnowledgeLookupMethodLabel(
   serverName?: string | null,
   fallbackLabel?: string
@@ -63,34 +75,12 @@ export function getKnowledgeLookupMethodLabel(
     return "";
   }
 
-  const override =
-    KNOWLEDGE_LOOKUP_METHOD_OVERRIDES[
-      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_OVERRIDES
-    ];
+  const override = getKnowledgeLookupMethodOverride(serverName);
   if (override) {
     return override.label;
   }
 
   return fallbackLabel ?? asDisplayToolName(serverName);
-}
-
-export function getKnowledgeLookupMethodDescription(
-  serverName?: string | null,
-  fallbackDescription?: string
-) {
-  if (!serverName) {
-    return "";
-  }
-
-  const override =
-    KNOWLEDGE_LOOKUP_METHOD_OVERRIDES[
-      serverName as keyof typeof KNOWLEDGE_LOOKUP_METHOD_OVERRIDES
-    ];
-  if (override) {
-    return override.description;
-  }
-
-  return fallbackDescription ?? "";
 }
 
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
