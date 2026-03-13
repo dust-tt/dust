@@ -1,0 +1,23 @@
+front/lib/resources/provider_credential_resource.ts
+  7d75a3827d33c243 23,37-49,133-196,204,206,276-277,318-319,326,330,334-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "590445bc135de7bc674da854f16fd78de462a103",
+  "prompts": {
+    "7d75a3827d33c243": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bcc943a-6f56-43a6-80ef-39bf152bf320",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 12,
+      "accepted_lines": 90,
+      "overriden_lines": 0
+    }
+  }
+}
