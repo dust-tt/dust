@@ -1,6 +1,7 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
+  BackgroundExecResult,
   ExecOptions,
   ExecResult,
   FileEntry,
@@ -458,7 +459,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     auth: Authenticator,
     command: string,
     opts?: ExecOptions
-  ): Promise<Result<ExecResult, Error>> {
+  ): Promise<Result<ExecResult | BackgroundExecResult, Error>> {
     const provider = getSandboxProvider();
     if (!provider) {
       return new Err(new Error("Sandbox provider not configured."));

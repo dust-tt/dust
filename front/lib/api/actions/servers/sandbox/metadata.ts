@@ -7,12 +7,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
 export const SANDBOX_TOOLS_METADATA = createToolsRecord({
-  bash: {
+  execute: {
     description:
       "Execute a shell command in an isolated sandbox environment. " +
       "The sandbox is a Linux container with common tools pre-installed. " +
       "Use this for running scripts, installing packages, or executing code. " +
-      "The sandbox persists for the duration of the conversation.",
+      "The sandbox persists for the duration of the conversation. " +
+      "To start long-running processes (e.g. servers, or long running commands), use background mode. " +
+      "Do NOT use shell backgrounding (& or nohup) — use the background parameter instead.",
     schema: {
       command: z
         .string()
@@ -28,7 +30,15 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .max(120000)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
+          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000. Ignored when background is true."
+        ),
+      background: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, start the command in the background and return immediately with a process ID (pid). " +
+            "Output (stdout/stderr) of background commands is NOT accessible directly. " +
+            "You MUST redirect output to a file (e.g. `cmd > /tmp/out.log 2>&1`) to read it later."
         ),
     },
     stake: "never_ask",
@@ -69,9 +79,12 @@ export const SANDBOX_SERVER = {
     instructions:
       // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
-      "Use `bash` to run commands and scripts. " +
+      "Use `execute` to run commands and scripts. " +
       "The sandbox persists for the conversation duration. " +
-      "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
+      "Common tools like Python, Node.js, and standard Unix utilities are pre-installed. " +
+      "IMPORTANT: Do NOT use shell backgrounding operators (& or nohup). " +
+      "To run long-running processes (e.g. servers), use the `background` parameter of the `execute` tool. " +
+      "When starting a background process, redirect its output to a log file (e.g. `python server.py > /tmp/server.log 2>&1`) so you can read the logs later with `cat`.",
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.

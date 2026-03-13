@@ -19,11 +19,20 @@ import {
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
-import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import type {
+  BackgroundExecResult,
+  ExecResult,
+} from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+
+function isBackgroundExecResult(
+  result: ExecResult | BackgroundExecResult
+): result is BackgroundExecResult {
+  return "pid" in result && !("exitCode" in result);
+}
 
 const DEFAULT_WORKING_DIRECTORY = "/home/user";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
@@ -82,8 +91,8 @@ export function createSandboxTools(
   _agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
-    bash: async (
-      { command, workingDirectory, timeoutMs },
+    execute: async (
+      { command, workingDirectory, timeoutMs, background },
       { auth, agentLoopContext }
     ) => {
       const conversation = agentLoopContext?.runContext?.conversation;
@@ -140,6 +149,7 @@ export function createSandboxTools(
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
         timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
+        background: background ?? false,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
           DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
@@ -149,7 +159,18 @@ export function createSandboxTools(
         return new Err(new MCPError(execResult.error.message));
       }
 
-      const output = formatExecOutput(execResult.value);
+      const result = execResult.value;
+
+      if (isBackgroundExecResult(result)) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Process started in background (pid: ${result.pid})`,
+          },
+        ]);
+      }
+
+      const output = formatExecOutput(result);
 
       return new Ok([{ type: "text" as const, text: output }]);
     },

@@ -51,13 +51,19 @@ export interface ExecResult {
   stderr: string;
 }
 
+export interface BackgroundExecResult {
+  pid: number;
+}
+
 export interface ExecOptions {
   /** Working directory for command execution. */
   workingDirectory?: string;
-  /** Timeout in milliseconds. */
+  /** Timeout in milliseconds (ignored when background is true). */
   timeoutMs?: number;
   /** Additional environment variables for this execution only. */
   envVars?: Record<string, string>;
+  /** If true, start the command in the background and return immediately with a pid. */
+  background?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +112,7 @@ export interface SandboxProvider {
     providerId: string,
     command: string,
     opts?: ExecOptions
-  ): Promise<Result<ExecResult, Error>>;
+  ): Promise<Result<ExecResult | BackgroundExecResult, Error>>;
 
   writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
 
