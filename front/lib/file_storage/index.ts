@@ -1,7 +1,10 @@
 import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
@@ -9,6 +12,9 @@ import type formidable from "formidable";
 import fs from "fs";
 import isNumber from "lodash/isNumber";
 import { pipeline } from "stream/promises";
+
+const GCS_COPY_MAX_RETRIES = 3;
+const GCS_COPY_BASE_DELAY_MS = 500;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
@@ -204,6 +210,42 @@ export class FileStorage {
     }
   }
 
+  /**
+   * Copy a file within the same bucket with retry logic.
+   *
+   * The GCS SDK's built-in autoRetry is effectively disabled for copy operations and
+   * "socket hang up" errors aren't in the SDK's retryable error list anyway.
+   * Since copy is idempotent (same source, same destination), retrying is safe.
+   */
+  async copyFile(srcPath: string, destPath: string): Promise<void> {
+    for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
+      try {
+        await this.bucket.file(srcPath).copy(this.bucket.file(destPath));
+        return;
+      } catch (err) {
+        if (attempt === GCS_COPY_MAX_RETRIES) {
+          throw err;
+        }
+
+        const delayMs = GCS_COPY_BASE_DELAY_MS * attempt ** 2;
+
+        logger.warn(
+          {
+            error: normalizeError(err),
+            srcPath,
+            destPath,
+            attempt,
+            maxRetries: GCS_COPY_MAX_RETRIES,
+            delayMs,
+          },
+          "GCS copy failed, retrying."
+        );
+
+        await setTimeoutAsync(delayMs);
+      }
+    }
+  }
+
   async deleteByPrefix(prefix: string): Promise<void> {
     await this.bucket.deleteFiles({ prefix });
   }
@@ -220,7 +262,7 @@ export const getBucketInstance: (
   }
   return bucketInstances.get(bucketConfig);
 };
-
+z;
 export const getPrivateUploadBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getGcsPrivateUploadsBucket(), options);
 

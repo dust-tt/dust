@@ -895,13 +895,13 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
 
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
-    await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
+    await bucket.copyFile(srcOriginalPath, mountFilePath);
 
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
       const processedMountPath = makeProcessedMountFileName(mountFilePath);
-      await bucket.file(srcProcessedPath).copy(bucket.file(processedMountPath));
+      await bucket.copyFile(srcProcessedPath, processedMountPath);
     }
 
     await this.update({ mountFilePath });
