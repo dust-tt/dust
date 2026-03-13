@@ -2,7 +2,7 @@ import { ProviderCredentialResource } from "@app/lib/resources/provider_credenti
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
 import { Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetCredentials = vi.fn();
 
@@ -19,6 +19,12 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
 });
 
 describe("ProviderCredentialResource", () => {
+  beforeEach(() => {
+    mockGetCredentials.mockResolvedValue(
+      new Ok({ credential: { content: { api_key: "sk-test" } } })
+    );
+  });
+
   describe("listByWorkspace", () => {
     it("throws when plan does not have isByok enabled", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
@@ -166,12 +172,7 @@ describe("ProviderCredentialResource", () => {
         ({ credentialsId }: { credentialsId: string }) => {
           if (credentialsId === "cred-openai") {
             return new Ok({
-              credential: {
-                content: {
-                  api_key: "sk-openai-test",
-                  base_url: "https://custom.openai.com",
-                },
-              },
+              credential: { content: { api_key: "sk-openai-test" } },
             });
           }
           if (credentialsId === "cred-anthropic") {
@@ -188,9 +189,7 @@ describe("ProviderCredentialResource", () => {
 
       expect(result).toEqual({
         OPENAI_API_KEY: "sk-openai-test",
-        OPENAI_BASE_URL: "https://custom.openai.com",
         ANTHROPIC_API_KEY: "sk-anthropic-test",
-        OPENAI_USE_EU_ENDPOINT: "false",
       });
     });
 

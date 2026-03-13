@@ -85,7 +85,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     model: ProviderCredentialModel
   ): Promise<ProviderCredentialResource> {
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const { providerId, id, credentialId } = model;
+    const { providerId, credentialId } = model;
     const credentialRes = await oauthApi.getCredentials({
       credentialsId: credentialId,
     });
@@ -98,10 +98,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
           error: credentialRes.error,
           workspaceId: model.workspaceId,
         },
-        `Failed to fetch credentials for provider credential with id ${id} from OAuth API : ${credentialRes.error.message}`
+        `Failed to fetch OAuth credentials for provider ${providerId}`
       );
       throw new Error(
-        `Failed to fetch credentials for provider credential with id ${id} from OAuth API: ${credentialRes.error.message}`
+        `Failed to fetch OAuth credentials for provider ${providerId}`
       );
     }
 
@@ -289,7 +289,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 function mapOauthCredentialsToLlmCredentials(
   oauthCredentials: {
     providerId: ByokModelProviderIdType;
-    content: { api_key: string };
+    content: z.infer<typeof ApiKeyCredentialContentSchema>;
   }[]
 ): LLMCredentialsType {
   const result: LLMCredentialsType = {};

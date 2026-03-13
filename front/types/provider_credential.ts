@@ -35,11 +35,6 @@ export const ApiKeyCredentialContentSchema = z.object({
   api_key: z.string(),
 });
 
-export const OpenAICredentialContentSchema =
-  ApiKeyCredentialContentSchema.extend({
-    base_url: z.string().optional(),
-  });
-
 export const PROVIDER_TO_CREDENTIAL_KEY = {
   openai: "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
