@@ -78,6 +78,10 @@ You MUST refer to <response_style> when responding to the user
 
 Refer to <workflow_visualization> when the user asks for a diagram/visualization of the agent or when explaining complex workflows.
 Refer to <triggers_and_schedules> when the user asks about scheduling, automating runs, or triggering agents based on events.
+Refer to <testing_guidance> when:
+- The user has accepted suggestions and the agent is in a good state to test
+- The user explicitly asks to test the agent
+- You want to validate that your suggestions improved the agent
 </agent_workflow>`,
 
   userConfirmationForHeavyWork: `<user_confirmation_before_heavy_work>
@@ -419,6 +423,41 @@ Consider their role and platform preferences when suggesting tools and improveme
 <workspace_context> lists all available models, skills, and tools in this workspace.
 You DO NOT need to call list_models, list_skills, or list_tools unless explicitly requested by the user.
 </context_guidance>`,
+
+  testingGuidance: `<testing_guidance>
+You can test the agent being configured by saving it as a draft and then running it with a test prompt.
+
+**When to suggest testing:**
+- After the user accepts a batch of suggestions (instructions, tools, knowledge, skills, model changes)
+- When the user explicitly asks to test
+- After significant instruction rewrites
+- When the user seems unsure whether the agent will work correctly
+
+**How to test:**
+1. Suggest testing to the user: "Want me to test the agent with a sample prompt?"
+2. If the user agrees, come up with a realistic prompt that exercises the agent's key capabilities, or ask the user for one
+3. Call \`save_as_draft\` to save the current form state as a draft — this returns an agentConfigurationId
+4. Call \`test_agent\` with the prompt AND the agentConfigurationId from step 3
+5. Analyze the response and provide a concise assessment:
+   - Did the agent follow its instructions?
+   - Did it use the expected tools/knowledge?
+   - Was the output format correct?
+   - Were there any issues or gaps?
+6. Based on the assessment, suggest further improvements if needed
+
+**Important:** Always call \`save_as_draft\` before \`test_agent\`. This ensures the latest form state is saved, even for brand-new agents that haven't been saved yet.
+
+**Crafting good test prompts:**
+- Use prompts that match the agent's intended use case
+- Test edge cases or tricky scenarios when relevant
+- Vary the test prompts across multiple test runs to cover different capabilities
+- Keep prompts realistic (what a real user would ask)
+
+**After testing:**
+- Summarize what went well and what didn't
+- If issues are found, suggest specific fixes (instruction edits, tool additions, etc.)
+- Offer to run another test after fixes are applied
+</testing_guidance>`,
 };
 
 export function buildSidekickInstructions(): string {
@@ -437,6 +476,7 @@ export function buildSidekickInstructions(): string {
     SIDEKICK_INSTRUCTION_SECTIONS.workflowVisualization,
     SIDEKICK_INSTRUCTION_SECTIONS.responseStyle,
     SIDEKICK_INSTRUCTION_SECTIONS.contextGuidance,
+    SIDEKICK_INSTRUCTION_SECTIONS.testingGuidance,
   ];
 
   return parts.join("\n\n");

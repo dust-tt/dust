@@ -538,6 +538,32 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Inspect message",
     },
   },
+  test_agent: {
+    description:
+      "Test the agent being configured by running it as a sub-agent with a given prompt. " +
+      "Creates a new conversation, sends the prompt to the target agent, waits for the response, " +
+      "and returns the agent's output. Use this to validate agent behavior after configuration changes. " +
+      "IMPORTANT: You must call save_as_draft first and pass the returned agentConfigurationId here.",
+    schema: {
+      prompt: z
+        .string()
+        .describe(
+          "The user message to send to the agent. Should be a realistic prompt that exercises the agent's capabilities."
+        ),
+      agentConfigurationId: z
+        .string()
+        .optional()
+        .describe(
+          "The agent configuration ID (sId) to test. Get this by calling save_as_draft first. " +
+            "If not provided, falls back to the target agent from context (only works for active/draft agents)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Testing agent",
+      done: "Test agent",
+    },
+  },
 });
 
 export const AGENT_SIDEKICK_CONTEXT_SERVER = {

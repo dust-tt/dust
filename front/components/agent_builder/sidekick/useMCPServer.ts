@@ -2,7 +2,9 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/sidekick/tools/getAgentConfig";
+import { registerSaveDraftTool } from "@app/components/agent_builder/sidekick/tools/saveDraft";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import { useFetcher } from "@app/lib/swr/swr";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -29,8 +31,9 @@ interface UseSidekickMCPServerOptions {
 export function useSidekickMCPServer({
   enabled,
 }: UseSidekickMCPServerOptions): UseSidekickMCPServerResult {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
+  const { fetcherWithBody } = useFetcher();
   const suggestionsContext = useSidekickSuggestions();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
@@ -89,6 +92,13 @@ export function useSidekickMCPServer({
             ? () =>
                 suggestionsContextRef.current!.getCommittedInstructionsHtml()
             : undefined,
+        });
+
+        registerSaveDraftTool(mcpServer, {
+          getFormValues,
+          getOwner: () => owner,
+          getUser: () => user,
+          getFetcherWithBody: () => fetcherWithBody,
         });
 
         // Create the browser transport.
