@@ -17,6 +17,17 @@ interface AggregationContext {
   prompt: { systemPrompt: string; userMessage: string };
 }
 
+function toInstructionsSuggestions(
+  suggestions: AgentSuggestionResource[]
+): AgentInstructionsSuggestionType[] {
+  return suggestions
+    .map((s) => s.toJSON())
+    .filter(
+      (json): json is AgentInstructionsSuggestionType =>
+        json.kind === "instructions"
+    );
+}
+
 async function loadAggregationContext(
   auth: Authenticator,
   agentConfigurationId: string
@@ -44,26 +55,34 @@ async function loadAggregationContext(
     return null;
   }
 
-  const instructionsSuggestions = syntheticSuggestions
-    .map((s) => s.toJSON())
-    .filter(
-      (json): json is AgentInstructionsSuggestionType =>
-        json.kind === "instructions"
+  const existingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      {
+        sources: ["reinforcement", "sidekick"],
+        states: ["pending", "rejected"],
+      }
     );
+
+  const existingInstructions = toInstructionsSuggestions(existingSuggestions);
 
   const prompt = buildAggregationPrompt(
     agentConfig.name,
-    instructionsSuggestions
+    toInstructionsSuggestions(syntheticSuggestions),
+    {
+      pending: existingInstructions.filter((s) => s.state === "pending"),
+      rejected: existingInstructions.filter((s) => s.state === "rejected"),
+    }
   );
 
   return { agentConfig, syntheticSuggestions, prompt };
 }
 
-export function buildAggregationPrompt(
-  agentName: string,
+function formatSuggestions(
   suggestions: AgentInstructionsSuggestionType[]
-): { systemPrompt: string; userMessage: string } {
-  const suggestionsSection = suggestions
+): string {
+  return suggestions
     .map(
       (s, i) => `### Suggestion ${i + 1}
 kind: ${s.kind}
@@ -72,7 +91,16 @@ analysis: ${s.analysis ?? "N/A"}
 content: ${s.suggestion.content}`
     )
     .join("\n\n");
+}
 
+export function buildAggregationPrompt(
+  agentName: string,
+  syntheticSuggestions: AgentInstructionsSuggestionType[],
+  existingSuggestions: {
+    pending: AgentInstructionsSuggestionType[];
+    rejected: AgentInstructionsSuggestionType[];
+  }
+): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
 
 ## Your task
@@ -80,14 +108,33 @@ content: ${s.suggestion.content}`
 - Keep only the most impactful suggestions (max 5)
 - In the analysis, mention how many conversations support each suggestion
 - When calling the tool, make sure there is never more than one suggestion targeting the same block (including instructions-root)
+- Do NOT create suggestions that are too similar to existing pending suggestions (listed below) — they are already being reviewed
+- Do NOT create suggestions that are too similar to previously rejected suggestions (listed below) — they will get rejected again
+- It is perfectly fine to return an empty suggestions array if there is nothing new to say
 
 You MUST call the tool. If no suggestions survive aggregation, return an empty suggestions array.`;
 
-  const userMessage = `## Agent: ${agentName}
+  let userMessage = `## Agent: ${agentName}
 
 ## Synthetic suggestions from conversation analyses
 
-${suggestionsSection}`;
+${formatSuggestions(syntheticSuggestions)}`;
+
+  if (existingSuggestions.pending.length > 0) {
+    userMessage += `
+
+## Existing pending suggestions (do NOT duplicate these)
+
+${formatSuggestions(existingSuggestions.pending)}`;
+  }
+
+  if (existingSuggestions.rejected.length > 0) {
+    userMessage += `
+
+## Previously rejected suggestions (do NOT recreate similar ones)
+
+${formatSuggestions(existingSuggestions.rejected)}`;
+  }
 
   return { systemPrompt, userMessage };
 }
