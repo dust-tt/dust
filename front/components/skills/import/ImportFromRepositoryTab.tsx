@@ -7,14 +7,11 @@ import {
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Input } from "@dust-tt/sparkle";
-import type { Dispatch, SetStateAction } from "react";
 import { useEffect } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface ImportFromRepositoryTabProps {
   owner: LightWorkspaceType;
-  selectedNames: Set<string>;
-  setSelectedNames: Dispatch<SetStateAction<Set<string>>>;
   onDetectingChange: (isDetecting: boolean) => void;
   onDetectedCountChange: (count: number) => void;
   isImporting: boolean;
@@ -22,14 +19,13 @@ interface ImportFromRepositoryTabProps {
 
 export function ImportFromRepositoryTab({
   owner,
-  selectedNames,
-  setSelectedNames,
   onDetectingChange,
   onDetectedCountChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
   const { control } = useFormContext<ImportFormValues>();
-  const { field } = useController({ name: "repoUrl", control });
+  const { field: repoUrlField } = useController({ name: "repoUrl", control });
+  const { field: selectedField } = useController({ name: "selectedSkillNames", control });
   const selectedSkillNames = useWatch({ control, name: "selectedSkillNames" });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
@@ -37,11 +33,10 @@ export function ImportFromRepositoryTab({
 
   // Pre-select all importable skills when detection completes.
   useEffect(() => {
-    const initial = detectedSkills
+    selectedField.onChange(detectedSkills
       .filter((skill) => isImportableSkillStatus(skill.status))
-      .map((skill) => skill.name);
-    setValue("selectedSkillNames", initial);
-  }, [detectedSkills, setValue]);
+      .map((skill) => skill.name));
+  }, [detectedSkills, selectedField]);
 
   // Sync detecting state to the parent. Expects a stable callback (e.g. setState).
   useEffect(() => {
@@ -53,31 +48,27 @@ export function ImportFromRepositoryTab({
   }, [detectedSkills.length, onDetectedCountChange]);
 
   const toggleSkill = (name: string) => {
-    setSelectedNames((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
+    if (selectedSkillNames.includes(name)) {
+      selectedField.onChange(selectedSkillNames.filter((n) => n !== name));
+    } else {
+      selectedField.onChange([...selectedSkillNames, name]);
+    }
   };
 
   return (
     <div className="flex flex-col gap-3 pt-4">
       <Input
-        name={field.name}
-        ref={field.ref}
-        value={field.value}
+        name={repoUrlField.name}
+        ref={repoUrlField.ref}
+        value={repoUrlField.value}
         onChange={(e) => {
           const trimmed = e.target.value.trim();
-          field.onChange(trimmed);
+          repoUrlField.onChange(trimmed);
           if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
             triggerDetect(trimmed);
           }
         }}
-        onBlur={field.onBlur}
+        onBlur={repoUrlField.onBlur}
         placeholder="https://github.com/owner/repo"
         disabled={isImporting}
       />

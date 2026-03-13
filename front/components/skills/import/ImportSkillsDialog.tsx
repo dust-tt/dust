@@ -22,7 +22,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useController, useForm, useWatch } from "react-hook-form";
 
 const IMPORT_TABS: ImportType[] = ["repository"];
 
@@ -43,33 +43,35 @@ export function ImportSkillsDialog({
   onClose,
   owner,
 }: ImportSkillsDialogProps) {
-  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedCount, setDetectedCount] = useState(0);
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
-    defaultValues: { importType: "repository", repoUrl: "" },
+    defaultValues: { importType: "repository", repoUrl: "", selectedSkillNames: [] },
   });
 
-  const activeTab = form.watch("importType");
+  const { field: importTypeField } = useController({ control: form.control, name: "importType" });
+  const { field: selectedSkillNamesField } = useController({ control: form.control, name: "selectedSkillNames" });
+  const activeTab = useWatch({ control: form.control, name: "importType" });
+  const selectedSkillNames = useWatch({ control: form.control, name: "selectedSkillNames" });
 
   const { importSkills, isImporting } = useImportSkills({ owner });
 
   const onSubmit = useCallback(
     async (data: ImportFormValues) => {
-      if (selectedNames.size === 0) {
+      if (data.selectedSkillNames.length === 0) {
         return;
       }
-      const result = await importSkills(data.repoUrl, [...selectedNames]);
+      const result = await importSkills(data.repoUrl, data.selectedSkillNames);
       if (result.successCount > 0) {
         onClose();
       }
     },
-    [selectedNames, importSkills, onClose]
+    [importSkills, onClose]
   );
 
-  const selectedCount = selectedNames.size;
+  const selectedCount = selectedSkillNames.length;
 
   const description =
     detectedCount > 0
@@ -96,8 +98,8 @@ export function ImportSkillsDialog({
               value={activeTab}
               onValueChange={(value) => {
                 if (isImportTab(value)) {
-                  form.setValue("importType", value);
-                  setSelectedNames(new Set());
+                  importTypeField.onChange(value);
+                  selectedSkillNamesField.onChange([]);
                 }
               }}
             >
@@ -107,8 +109,6 @@ export function ImportSkillsDialog({
               <TabsContent value="repository">
                 <ImportFromRepositoryTab
                   owner={owner}
-                  selectedNames={selectedNames}
-                  setSelectedNames={setSelectedNames}
                   onDetectingChange={setIsDetecting}
                   onDetectedCountChange={setDetectedCount}
                   isImporting={isImporting}
