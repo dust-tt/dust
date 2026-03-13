@@ -2,7 +2,10 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildAgentAnalyticsBaseQuery,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -15,6 +18,7 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
+  timezone: timezoneSchema,
 });
 
 export type GetErrorRateResponse = {
@@ -67,8 +71,7 @@ async function handler(
         });
       }
 
-      const days = q.data.days;
-      const version = q.data.version;
+      const { days, version, timezone } = q.data;
 
       const owner = auth.getNonNullableWorkspace();
 
@@ -79,10 +82,12 @@ async function handler(
         version,
       });
 
-      const errorRateResult = await fetchMessageMetrics(baseQuery, "day", [
-        "failedMessages",
-        "errorRate",
-      ] as const);
+      const errorRateResult = await fetchMessageMetrics(
+        baseQuery,
+        "day",
+        ["failedMessages", "errorRate"] as const,
+        timezone
+      );
 
       if (errorRateResult.isErr()) {
         return apiError(req, res, {

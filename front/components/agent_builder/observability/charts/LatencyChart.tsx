@@ -14,6 +14,7 @@ import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import { useMemo } from "react";
 import {
@@ -116,7 +117,13 @@ export function LatencyChart({
 
   const data = useMemo(() => {
     if (mode === "timeRange") {
-      return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
+      return padSeriesToTimeRange(
+        rawData,
+        mode,
+        period,
+        zeroFactory,
+        BROWSER_TIMEZONE
+      );
     }
 
     return rawData.map((data) => ({
