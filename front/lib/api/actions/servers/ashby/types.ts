@@ -759,9 +759,7 @@ export const AshbyOfferListRequestSchema = z.object({
   applicationId: z.string().optional(),
 });
 
-export type AshbyOfferListRequest = z.infer<
-  typeof AshbyOfferListRequestSchema
->;
+export type AshbyOfferListRequest = z.infer<typeof AshbyOfferListRequestSchema>;
 
 export const AshbyOfferListResponseSchema = z.object({
   success: z.boolean(),
