@@ -11,6 +11,7 @@ export const NOTIFICATION_DELAY_OPTIONS = [
   "30_minutes",
   "1_hour",
   "daily",
+  "weekly",
 ] as const;
 
 export type NotificationPreferencesDelay =
@@ -39,10 +40,11 @@ export const NOTIFICATION_PREFERENCES_DELAYS: Record<
   "30_minutes": { amount: 30, unit: "minutes" },
   "1_hour": { amount: 1, unit: "hours" },
   daily: { cron: "0 6 * * *" }, // Every day at 6am
+  weekly: { cron: "0 6 * * 1" }, // Every Monday at 6am
 };
 
 export const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay =
-  isDevelopment() ? "5_minutes" : "1_hour";
+  isDevelopment() ? "5_minutes" : "weekly";
 
 export const isNotificationPreferencesDelay = (
   value: unknown
