@@ -19,20 +19,11 @@ import {
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
-import type {
-  BackgroundExecResult,
-  ExecResult,
-} from "@app/lib/api/sandbox/provider";
+import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
-
-function isBackgroundExecResult(
-  result: ExecResult | BackgroundExecResult
-): result is BackgroundExecResult {
-  return "pid" in result && !("exitCode" in result);
-}
 
 const DEFAULT_WORKING_DIRECTORY = "/home/user";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
@@ -146,31 +137,39 @@ export function createSandboxTools(
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
-      const execResult = await sandbox.exec(auth, command, {
+      const baseOpts = {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
-        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
-        background: background ?? false,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
           DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
         },
+      };
+
+      if (background) {
+        const execResult = await sandbox.exec(auth, command, {
+          ...baseOpts,
+          background: true,
+        });
+        if (execResult.isErr()) {
+          return new Err(new MCPError(execResult.error.message));
+        }
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Process started in background (pid: ${execResult.value.pid})`,
+          },
+        ]);
+      }
+
+      const execResult = await sandbox.exec(auth, command, {
+        ...baseOpts,
+        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
       });
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));
       }
 
-      const result = execResult.value;
-
-      if (isBackgroundExecResult(result)) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Process started in background (pid: ${result.pid})`,
-          },
-        ]);
-      }
-
-      const output = formatExecOutput(result);
+      const output = formatExecOutput(execResult.value);
 
       return new Ok([{ type: "text" as const, text: output }]);
     },

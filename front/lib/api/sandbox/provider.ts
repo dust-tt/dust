@@ -55,16 +55,24 @@ export interface BackgroundExecResult {
   pid: number;
 }
 
-export interface ExecOptions {
+interface BaseExecOptions {
   /** Working directory for command execution. */
   workingDirectory?: string;
-  /** Timeout in milliseconds (ignored when background is true). */
-  timeoutMs?: number;
   /** Additional environment variables for this execution only. */
   envVars?: Record<string, string>;
-  /** If true, start the command in the background and return immediately with a pid. */
-  background?: boolean;
 }
+
+export interface ForegroundExecOptions extends BaseExecOptions {
+  /** Timeout in milliseconds. */
+  timeoutMs?: number;
+  background?: false;
+}
+
+export interface BackgroundExecOptions extends BaseExecOptions {
+  background: true;
+}
+
+export type ExecOptions = ForegroundExecOptions | BackgroundExecOptions;
 
 // ---------------------------------------------------------------------------
 // Filesystem
@@ -108,6 +116,16 @@ export interface SandboxProvider {
   sleep(providerId: string): Promise<Result<void, Error>>;
   destroy(providerId: string): Promise<Result<void, Error>>;
 
+  exec(
+    providerId: string,
+    command: string,
+    opts: BackgroundExecOptions
+  ): Promise<Result<BackgroundExecResult, Error>>;
+  exec(
+    providerId: string,
+    command: string,
+    opts?: ForegroundExecOptions
+  ): Promise<Result<ExecResult, Error>>;
   exec(
     providerId: string,
     command: string,

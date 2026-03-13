@@ -1,10 +1,12 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
+  BackgroundExecOptions,
   BackgroundExecResult,
   ExecOptions,
   ExecResult,
   FileEntry,
+  ForegroundExecOptions,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -455,6 +457,16 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   /**
    * Execute a command in this sandbox.
    */
+  async exec(
+    auth: Authenticator,
+    command: string,
+    opts: BackgroundExecOptions
+  ): Promise<Result<BackgroundExecResult, Error>>;
+  async exec(
+    auth: Authenticator,
+    command: string,
+    opts?: ForegroundExecOptions
+  ): Promise<Result<ExecResult, Error>>;
   async exec(
     auth: Authenticator,
     command: string,

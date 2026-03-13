@@ -3,10 +3,12 @@ import {
   type NetworkPolicy,
 } from "@app/lib/api/sandbox/image/types";
 import type {
+  BackgroundExecOptions,
   BackgroundExecResult,
   ExecOptions,
   ExecResult,
   FileEntry,
+  ForegroundExecOptions,
   SandboxCreateConfig,
   SandboxHandle,
   SandboxProvider,
@@ -179,6 +181,16 @@ export class E2BSandboxProvider implements SandboxProvider {
     return new Ok(undefined);
   }
 
+  async exec(
+    providerId: string,
+    command: string,
+    opts: BackgroundExecOptions
+  ): Promise<Result<BackgroundExecResult, Error>>;
+  async exec(
+    providerId: string,
+    command: string,
+    opts?: ForegroundExecOptions
+  ): Promise<Result<ExecResult, Error>>;
   async exec(
     providerId: string,
     command: string,
