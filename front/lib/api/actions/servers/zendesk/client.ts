@@ -302,6 +302,7 @@ class ZendeskClient {
   ): Promise<Result<ZendeskTicketComment[], Error>> {
     const url = new URL(`tickets/${ticketId}/comments`);
     if (includeInlineImages) {
+      // https://developer.zendesk.com/api-reference/ticketing/tickets/ticket_comments/#parameters
       url.searchParams.append("include_inline_images", "");
     }
 
