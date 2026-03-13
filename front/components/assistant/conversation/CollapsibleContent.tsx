@@ -2,7 +2,7 @@ import { Button } from "@dust-tt/sparkle";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
-const COLLAPSED_HEIGHT_PX = 500;
+const COLLAPSED_HEIGHT_PX = 320;
 
 interface CollapsibleContentProps {
   children: React.ReactNode;
