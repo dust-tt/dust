@@ -150,7 +150,7 @@ export async function fetchToolUsageMetrics(
       result.value.aggregations?.by_date?.buckets
     );
 
-    return new Ok(dateBuckets.map((b) => filteredBucketToPoint(b)));
+    return new Ok(dateBuckets.map(filteredBucketToPoint));
   }
 
   const result = await searchAnalytics<never, ToolUsageAggs>(baseQuery, {
@@ -166,7 +166,7 @@ export async function fetchToolUsageMetrics(
     result.value.aggregations?.by_date?.buckets
   );
 
-  return new Ok(dateBuckets.map((b) => bucketToPoint(b)));
+  return new Ok(dateBuckets.map(bucketToPoint));
 }
 
 export async function fetchAvailableTools(
