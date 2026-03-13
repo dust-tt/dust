@@ -61,7 +61,7 @@ export function ImportFromRepositoryTab({
   };
 
   return (
-    <div className="pt-2">
+    <div className="pt-4">
       <Input
         name={field.name}
         ref={field.ref}
