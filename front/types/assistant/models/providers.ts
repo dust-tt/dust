@@ -1,4 +1,7 @@
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ByokModelProviderIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
 import type { WorkspaceType } from "../../user";
@@ -18,6 +21,11 @@ export const MODEL_PROVIDER_IDS = [
   "xai",
   "noop",
 ] as const;
+
+export const BYOK_MODEL_PROVIDER_IDS = [
+  "anthropic",
+  "openai",
+] as const satisfies ModelProviderIdType[];
 
 export function getProviderDisplayName(
   providerId: ModelProviderIdType
@@ -62,3 +70,8 @@ export function isProviderWhitelisted(
   const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   return whiteListedProviders.includes(providerId);
 }
+
+export const isByokProviderId = (
+  providerId: ModelProviderIdType
+): providerId is ByokModelProviderIdType =>
+  BYOK_MODEL_PROVIDER_IDS.includes(providerId as ByokModelProviderIdType);
