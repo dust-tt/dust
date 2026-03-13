@@ -40,9 +40,7 @@ export const agentSuggestionsReadyWorkflow = workflow(
             ),
           },
         },
-        data: {
-          autoDelete: true,
-        },
+        data: {},
       };
     });
   },
