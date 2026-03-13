@@ -1,6 +1,9 @@
+import { useCreateProviderCredential } from "@app/lib/swr/provider_credentials";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   ContextItem,
   Hoverable,
   Icon,
@@ -9,7 +12,6 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
@@ -51,6 +53,7 @@ function ProviderInfo({ providerId, logo }: ProviderInfoProps) {
 }
 
 interface KeyConfigurationSheetProps {
+  owner: LightWorkspaceType;
   providerId: ByokModelProviderIdType;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -58,15 +61,40 @@ interface KeyConfigurationSheetProps {
 }
 
 export function KeyConfigurationSheet({
+  owner,
   providerId,
   isOpen,
   onOpenChange,
   logo,
 }: KeyConfigurationSheetProps) {
   const [apiKey, setApiKey] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const { createProviderCredential } = useCreateProviderCredential({ owner });
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const result = await createProviderCredential({ providerId, apiKey });
+    setIsSaving(false);
+
+    if (result) {
+      setApiKey("");
+      onOpenChange(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (isSaving) {
+      return;
+    }
+    if (!open) {
+      setApiKey("");
+    }
+    onOpenChange(open);
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>
@@ -81,20 +109,25 @@ export function KeyConfigurationSheet({
               placeholder="Type an API Key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              disabled={isSaving}
             />
           </div>
         </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            onClick: () => onOpenChange(false),
-          }}
-          rightButtonProps={{
-            label: "Save",
-            onClick: () => {},
-          }}
-        />
+        <div className="flex flex-none flex-col gap-2">
+          <div className="flex items-center justify-between border-t border-border p-3 dark:border-border-night">
+            <Button
+              label="Cancel"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isSaving}
+            />
+            <Button
+              label="Save"
+              onClick={handleSave}
+              disabled={!apiKey.trim() || isSaving}
+            />
+          </div>
+        </div>
       </SheetContent>
     </Sheet>
   );

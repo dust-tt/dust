@@ -3,14 +3,17 @@ import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
+import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ContextItem, Icon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ProviderConfigurationContextItemProps {
+  owner: LightWorkspaceType;
   providerId: ByokModelProviderIdType;
   description: string;
 }
 export function ProviderConfigurationContextItem({
+  owner,
   providerId,
   description,
 }: ProviderConfigurationContextItemProps) {
@@ -39,6 +42,7 @@ export function ProviderConfigurationContextItem({
         </ContextItem.Description>
       </ContextItem>
       <KeyConfigurationSheet
+        owner={owner}
         providerId={providerId}
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
