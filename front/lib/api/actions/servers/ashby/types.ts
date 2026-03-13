@@ -251,6 +251,8 @@ export const AshbyApplicationInfoResponseSchema = z.object({
     .object({
       id: z.string(),
       status: AshbyApplicationStatusSchema,
+      jobId: z.string().optional(),
+      candidateId: z.string().optional(),
     })
     .passthrough(),
 });
@@ -624,3 +626,187 @@ export const AshbyJobPostingUpdateResponseSchema = z.object({
 export type AshbyJobPostingUpdateResponse = z.infer<
   typeof AshbyJobPostingUpdateResponseSchema
 >;
+
+// Candidate info (detailed)
+
+export const AshbyCandidateInfoRequestSchema = z.object({
+  id: z.string(),
+});
+
+export type AshbyCandidateInfoRequest = z.infer<
+  typeof AshbyCandidateInfoRequestSchema
+>;
+
+export const AshbyCandidateInfoSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    primaryEmailAddress: z
+      .object({
+        value: z.string(),
+        type: z.string(),
+        isPrimary: z.boolean(),
+      })
+      .optional(),
+    primaryPhoneNumber: z
+      .object({
+        value: z.string(),
+        type: z.string(),
+        isPrimary: z.boolean(),
+      })
+      .optional(),
+    emailAddresses: z
+      .array(
+        z.object({
+          value: z.string(),
+          type: z.string(),
+          isPrimary: z.boolean(),
+        })
+      )
+      .optional(),
+    phoneNumbers: z
+      .array(
+        z.object({
+          value: z.string(),
+          type: z.string(),
+          isPrimary: z.boolean(),
+        })
+      )
+      .optional(),
+    socialLinks: z
+      .array(
+        z.object({
+          type: z.string(),
+          value: z.string().optional(),
+          url: z.string().optional(),
+        })
+      )
+      .optional(),
+    location: z
+      .object({
+        city: z.string().optional().nullable(),
+        region: z.string().optional().nullable(),
+        country: z.string().optional().nullable(),
+      })
+      .passthrough()
+      .optional()
+      .nullable(),
+    customFields: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            title: z.string().optional(),
+            value: z.unknown().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    applicationIds: z.array(z.string()).optional(),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+export type AshbyCandidateInfo = z.infer<typeof AshbyCandidateInfoSchema>;
+
+export const AshbyCandidateInfoResponseSchema = z.object({
+  success: z.boolean(),
+  results: AshbyCandidateInfoSchema.optional(),
+});
+
+export type AshbyCandidateInfoResponse = z.infer<
+  typeof AshbyCandidateInfoResponseSchema
+>;
+
+// Offer list
+
+export const AshbyOfferFormFieldValueSchema = z
+  .object({
+    title: z.string().optional(),
+    value: z.unknown().optional(),
+  })
+  .passthrough();
+
+export type AshbyOfferFormFieldValue = z.infer<
+  typeof AshbyOfferFormFieldValueSchema
+>;
+
+export const AshbyOfferVersionSchema = z
+  .object({
+    id: z.string().optional(),
+    startDate: z.string().optional().nullable(),
+    formFieldValues: z.array(AshbyOfferFormFieldValueSchema).optional(),
+  })
+  .passthrough();
+
+export type AshbyOfferVersion = z.infer<typeof AshbyOfferVersionSchema>;
+
+export const AshbyOfferSchema = z
+  .object({
+    id: z.string(),
+    applicationId: z.string().optional(),
+    status: z.string().optional(),
+    decidedAt: z.string().optional().nullable(),
+    latestVersion: AshbyOfferVersionSchema.optional().nullable(),
+  })
+  .passthrough();
+
+export type AshbyOffer = z.infer<typeof AshbyOfferSchema>;
+
+export const AshbyOfferListRequestSchema = z.object({
+  applicationId: z.string().optional(),
+});
+
+export type AshbyOfferListRequest = z.infer<typeof AshbyOfferListRequestSchema>;
+
+export const AshbyOfferListResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.array(AshbyOfferSchema),
+  moreDataAvailable: z.boolean().optional(),
+  nextCursor: z.string().optional(),
+});
+
+export type AshbyOfferListResponse = z.infer<
+  typeof AshbyOfferListResponseSchema
+>;
+
+// Job info (detailed)
+
+export const AshbyJobInfoRequestSchema = z.object({
+  id: z.string(),
+});
+
+export type AshbyJobInfoRequest = z.infer<typeof AshbyJobInfoRequestSchema>;
+
+export const AshbyJobInfoSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    status: z.string(),
+    departmentName: z.string().optional().nullable(),
+    teamName: z.string().optional().nullable(),
+    locationName: z.string().optional().nullable(),
+    customFields: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            title: z.string().optional(),
+            value: z.unknown().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
+
+export type AshbyJobInfo = z.infer<typeof AshbyJobInfoSchema>;
+
+export const AshbyJobInfoResponseSchema = z.object({
+  success: z.boolean(),
+  results: AshbyJobInfoSchema.optional(),
+});
+
+export type AshbyJobInfoResponse = z.infer<typeof AshbyJobInfoResponseSchema>;
