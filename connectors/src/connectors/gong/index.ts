@@ -55,6 +55,8 @@ const PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
 
 const EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 
+const FIRST_SYNC_DELAY_MS = 15 * 60 * 1000;
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -145,7 +147,12 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       scheduleId: makeGongSyncScheduleId(connector),
       policies: SCHEDULE_POLICIES,
-      spec: SCHEDULE_SPEC,
+      spec: {
+        ...SCHEDULE_SPEC,
+        // Delay the first sync to give users time to configure settings
+        // (e.g. permission profile) before the initial sync starts.
+        startAt: new Date(Date.now() + FIRST_SYNC_DELAY_MS),
+      },
     });
   }
 

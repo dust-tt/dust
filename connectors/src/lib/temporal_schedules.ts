@@ -97,8 +97,12 @@ export async function createSchedule({
       },
     });
 
-    // Trigger the schedule to start the workflow immediately.
-    await scheduleHandle.trigger();
+    // Trigger the schedule to start the workflow immediately, unless a
+    // startAt delay was specified (in which case we let the schedule fire
+    // on its own after the delay).
+    if (!spec.startAt) {
+      await scheduleHandle.trigger();
+    }
   } catch (error) {
     logger.error(
       {
