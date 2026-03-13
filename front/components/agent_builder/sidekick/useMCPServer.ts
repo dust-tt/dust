@@ -46,13 +46,19 @@ export function useSidekickMCPServer({
   const mcpServerRef = useRef<McpServer | null>(null);
   const transportRef = useRef<BrowserMCPTransport | null>(null);
 
-  // Store context in a ref for use in callbacks.
+  // Store context in refs for use in callbacks, avoiding effect dependency issues.
   const suggestionsContextRef = useRef(suggestionsContext);
+  const ownerRef = useRef(owner);
+  const userRef = useRef(user);
+  const fetcherWithBodyRef = useRef(fetcherWithBody);
 
-  // Update ref in effect to avoid updating during render.
+  // Update refs in effect to avoid updating during render.
   useEffect(() => {
     suggestionsContextRef.current = suggestionsContext;
-  }, [suggestionsContext]);
+    ownerRef.current = owner;
+    userRef.current = user;
+    fetcherWithBodyRef.current = fetcherWithBody;
+  }, [suggestionsContext, owner, user, fetcherWithBody]);
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.
@@ -96,9 +102,9 @@ export function useSidekickMCPServer({
 
         registerSaveDraftTool(mcpServer, {
           getFormValues,
-          getOwner: () => owner,
-          getUser: () => user,
-          getFetcherWithBody: () => fetcherWithBody,
+          getOwner: () => ownerRef.current,
+          getUser: () => userRef.current,
+          getFetcherWithBody: () => fetcherWithBodyRef.current,
         });
 
         // Create the browser transport.
