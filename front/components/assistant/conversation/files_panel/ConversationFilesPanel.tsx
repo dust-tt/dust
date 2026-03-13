@@ -1,11 +1,20 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { FilesTab } from "@app/components/assistant/conversation/files_panel/FilesTab";
+import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
+import { SandboxTab } from "@app/components/assistant/conversation/files_panel/SandboxTab";
+import type {
+  ConversationAttachmentItem,
+  SandboxTreeNode,
+} from "@app/components/assistant/conversation/files_panel/types";
+import { conversationAttachmentToRow } from "@app/components/assistant/conversation/files_panel/utils";
 import {
   FilePreviewSheet,
   type MinimalFileForPreview,
 } from "@app/components/spaces/FilePreviewSheet";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
-import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
+import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -18,12 +27,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
-
-import { FilesTab } from "./FilesTab";
-import { SandboxStatusChip } from "./SandboxStatusChip";
-import { SandboxTab } from "./SandboxTab";
-import type { ConversationAttachmentItem } from "./types";
-import { buildSandboxTree, conversationAttachmentToRow } from "./utils";
 
 interface ConversationFilesPanelProps {
   conversation: ConversationWithoutContentType;
@@ -46,14 +49,21 @@ export function ConversationFilesPanel({
       owner,
     });
 
-  const { sandboxFiles, sandboxStatus, isSandboxFilesLoading } =
-    useConversationSandboxFiles({
-      conversationId: conversation.sId,
-      owner,
-    });
+  const { sandboxStatus } = useConversationSandboxStatus({
+    conversationId: conversation.sId,
+    owner,
+  });
 
-  const handleFileClick = useCallback(
-    (fileId: string, title: string, contentType: string) => {
+  const openFile = useCallback(
+    ({
+      fileId,
+      title,
+      contentType,
+    }: {
+      fileId: string;
+      title: string;
+      contentType: string;
+    }) => {
       if (isInteractiveContentType(contentType)) {
         openPanel({ type: "interactive_content", fileId });
       } else {
@@ -64,6 +74,28 @@ export function ConversationFilesPanel({
     [openPanel]
   );
 
+  const handleAttachmentClick = useCallback(
+    (item: ConversationAttachmentItem) => {
+      if (isFileAttachmentType(item)) {
+        openFile(item);
+      }
+    },
+    [openFile]
+  );
+
+  const handleSandboxFileClick = useCallback(
+    (node: SandboxTreeNode) => {
+      if (node.fileId) {
+        openFile({
+          fileId: node.fileId,
+          title: node.name,
+          contentType: node.contentType,
+        });
+      }
+    },
+    [openFile]
+  );
+
   const conversationContextFiles = useMemo(() => {
     const conversationFiles: ConversationAttachmentItem[] = [];
     for (const f of attachments) {
@@ -72,14 +104,9 @@ export function ConversationFilesPanel({
       }
     }
     return conversationFiles.map((a) =>
-      conversationAttachmentToRow(a, handleFileClick)
+      conversationAttachmentToRow(a, handleAttachmentClick)
     );
-  }, [attachments, handleFileClick]);
-
-  const sandboxTree = useMemo(
-    () => buildSandboxTree(sandboxFiles),
-    [sandboxFiles]
-  );
+  }, [attachments, handleAttachmentClick]);
 
   const hasSandbox = sandboxStatus !== null;
 
@@ -146,9 +173,9 @@ export function ConversationFilesPanel({
           </TabsContent>
           <TabsContent value="sandbox" className="flex-1 overflow-hidden">
             <SandboxTab
-              isLoading={isSandboxFilesLoading}
-              sandboxTree={sandboxTree}
-              onFileClick={handleFileClick}
+              conversationId={conversation.sId}
+              owner={owner}
+              onFileClick={handleSandboxFileClick}
             />
           </TabsContent>
         </Tabs>

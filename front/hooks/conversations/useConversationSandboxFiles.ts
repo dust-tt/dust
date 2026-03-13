@@ -31,7 +31,6 @@ export function useConversationSandboxFiles({
 
   return {
     sandboxFiles: data?.files ?? emptyArray<SandboxFileEntry>(),
-    sandboxStatus: data?.sandboxStatus ?? null,
     isSandboxFilesLoading: !disabled && !error && !data,
     isSandboxFilesError: error,
     mutateSandboxFiles: mutate,

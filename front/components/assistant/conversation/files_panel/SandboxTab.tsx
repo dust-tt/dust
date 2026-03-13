@@ -1,3 +1,6 @@
+import { buildSandboxTree } from "@app/components/assistant/conversation/files_panel/utils";
+import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   DocumentIcon,
   FolderIcon,
@@ -6,25 +9,35 @@ import {
   Spinner,
   Tree,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { SandboxTreeNode } from "./types";
 
 interface SandboxTabProps {
-  isLoading: boolean;
-  sandboxTree: SandboxTreeNode[];
-  onFileClick: (fileId: string, name: string, contentType: string) => void;
+  conversationId: string;
+  owner: LightWorkspaceType;
+  onFileClick: (node: SandboxTreeNode) => void;
 }
 
 export function SandboxTab({
-  isLoading,
-  sandboxTree,
+  conversationId,
+  owner,
   onFileClick,
 }: SandboxTabProps) {
+  const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
+    conversationId,
+    owner,
+  });
+
+  const sandboxTree = useMemo(
+    () => buildSandboxTree(sandboxFiles),
+    [sandboxFiles]
+  );
+
   const renderTreeNodes = useCallback(
     (nodes: SandboxTreeNode[]) => {
       return nodes.map((node) => {
-        if (node.isDirectory) {
+        if (node.children.length > 0) {
           return (
             <Tree.Item
               key={node.path}
@@ -46,11 +59,7 @@ export function SandboxTab({
             label={node.name}
             type="leaf"
             visual={icon}
-            onItemClick={
-              node.fileId
-                ? () => onFileClick(node.fileId!, node.name, node.contentType)
-                : undefined
-            }
+            onItemClick={node.fileId ? () => onFileClick(node) : undefined}
           />
         );
       });
@@ -60,7 +69,7 @@ export function SandboxTab({
 
   return (
     <ScrollArea className="flex-1 p-4">
-      {isLoading ? (
+      {isSandboxFilesLoading ? (
         <div className="flex w-full items-center justify-center p-8">
           <Spinner />
         </div>

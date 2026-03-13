@@ -14,7 +14,6 @@ export type ConversationAttachmentRow = {
 export type SandboxTreeNode = {
   name: string;
   path: string;
-  isDirectory: boolean;
   contentType: string;
   fileId: string | null;
   children: SandboxTreeNode[];

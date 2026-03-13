@@ -1,45 +1,11 @@
+import type { ConversationAttachmentRow } from "@app/components/assistant/conversation/files_panel/types";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { Card, CardGrid, Icon, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import type { ConversationAttachmentRow } from "./types";
-
 interface FilesTabProps {
   isLoading: boolean;
   rows: ConversationAttachmentRow[];
-}
-
-function FileCards({ rows }: { rows: ConversationAttachmentRow[] }) {
-  return (
-    <CardGrid>
-      {rows.map((row) => {
-        const FileIcon = getFileTypeIcon(row.contentType, row.title);
-        return (
-          <Card
-            key={row.fileId ?? row.title}
-            size="sm"
-            variant="primary"
-            onClick={row.onClick}
-          >
-            <div className="flex items-center gap-2">
-              <Icon visual={FileIcon} size="sm" className="shrink-0" />
-              <div className="min-w-0 truncate text-sm font-medium">
-                {row.title}
-              </div>
-            </div>
-          </Card>
-        );
-      })}
-    </CardGrid>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="heading-sm pb-2 text-foreground dark:text-foreground-night">
-      {children}
-    </div>
-  );
 }
 
 export function FilesTab({ isLoading, rows }: FilesTabProps) {
@@ -89,5 +55,38 @@ export function FilesTab({ isLoading, rows }: FilesTabProps) {
         )}
       </div>
     </ScrollArea>
+  );
+}
+
+function FileCards({ rows }: { rows: ConversationAttachmentRow[] }) {
+  return (
+    <CardGrid>
+      {rows.map((row) => {
+        const FileIcon = getFileTypeIcon(row.contentType, row.title);
+        return (
+          <Card
+            key={row.fileId ?? row.title}
+            size="sm"
+            variant="primary"
+            onClick={row.onClick}
+          >
+            <div className="flex items-center gap-2">
+              <Icon visual={FileIcon} size="sm" className="shrink-0" />
+              <div className="min-w-0 truncate text-sm font-medium">
+                {row.title}
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+    </CardGrid>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="heading-sm pb-2 text-foreground dark:text-foreground-night">
+      {children}
+    </div>
   );
 }

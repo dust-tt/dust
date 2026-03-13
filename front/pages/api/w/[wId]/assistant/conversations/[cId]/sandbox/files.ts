@@ -1,14 +1,11 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { SandboxFileEntry } from "@app/lib/api/sandbox/files";
 import {
-  listSandboxFilesFromGCS,
-  listSandboxFilesFromProvider,
+  listSandboxFiles,
+  type SandboxFileEntry,
 } from "@app/lib/api/sandbox/files";
 import type { Authenticator } from "@app/lib/auth";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -17,7 +14,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export type { SandboxFileEntry };
 
 export type GetConversationSandboxFilesResponseBody = {
-  sandboxStatus: SandboxStatus | null;
   files: SandboxFileEntry[];
 };
 
@@ -54,27 +50,9 @@ async function handler(
     return apiErrorForConversation(req, res, conversationRes.error);
   }
 
-  const sandbox = await SandboxResource.fetchByConversationId(auth, cId);
-  if (!sandbox) {
-    return res.status(200).json({ sandboxStatus: null, files: [] });
-  }
+  const files = await listSandboxFiles(auth, cId);
 
-  let files: SandboxFileEntry[];
-
-  switch (sandbox.status) {
-    case "running":
-    case "sleeping":
-      files = await listSandboxFilesFromProvider(sandbox);
-      break;
-    case "deleted":
-      files = await listSandboxFilesFromGCS(auth, cId);
-      break;
-  }
-
-  return res.status(200).json({
-    sandboxStatus: sandbox.status,
-    files,
-  });
+  return res.status(200).json({ files });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
