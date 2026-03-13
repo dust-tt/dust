@@ -91,7 +91,7 @@ export function createSandboxTools(
   _agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
-    execute: async (
+    bash: async (
       { command, workingDirectory, timeoutMs, background },
       { auth, agentLoopContext }
     ) => {

@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
 export const SANDBOX_TOOLS_METADATA = createToolsRecord({
-  execute: {
+  bash: {
     description:
       "Execute a shell command in an isolated sandbox environment. " +
       "The sandbox is a Linux container with common tools pre-installed. " +
@@ -79,7 +79,7 @@ export const SANDBOX_SERVER = {
     instructions:
       // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
-      "Use `execute` to run commands and scripts. " +
+      "Use `bash` to run commands and scripts. " +
       "The sandbox persists for the conversation duration. " +
       "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
   },
