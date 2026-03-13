@@ -19,10 +19,19 @@ export async function getCurrentTabInfoTool(): Promise<ToolHandlerResult> {
       return new Err(new MCPError("No active tab found."));
     }
 
+    const lines = [
+      `# Tab ID: ${currentTab.tabId}`,
+      `## Fields`,
+      `Title: ${currentTab.title}`,
+      `URL: ${currentTab.url}`,
+    ];
+
+    const resultText = lines.join("\n");
+
     return new Ok([
       {
         type: "text",
-        text: `[${currentTab.tabId}] ${currentTab.title} — ${currentTab.url}`,
+        text: resultText,
       },
     ]);
   } catch (error) {
