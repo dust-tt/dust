@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { DUST_ANONYMOUS_ID_COOKIE } from "@app/lib/utils/anonymous_id";
 import { useEffect, useRef } from "react";
@@ -34,12 +36,11 @@ export function useServerPageView() {
 
       if (typeof navigator.sendBeacon === "function") {
         navigator.sendBeacon(
-          "/api/t/pv",
+          `${config.getApiBaseUrl()}/api/t/pv`,
           new Blob([body], { type: "application/json" })
         );
       } else {
-        // eslint-disable-next-line no-restricted-globals
-        void fetch("/api/t/pv", {
+        void clientFetch("/api/t/pv", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body,
