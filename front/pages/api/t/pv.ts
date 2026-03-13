@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { DUST_COOKIES_ACCEPTED } from "@app/lib/cookies";
 import type { SessionWithUser } from "@app/lib/iam/provider";
