@@ -2,6 +2,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
@@ -19,12 +20,15 @@ type OpenPanelParams =
       type: "interactive_content";
       fileId: string;
       timestamp?: string;
+    }
+  | {
+      type: "files";
     };
 
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" || type === "interactive_content";
+  type === "actions" || type === "interactive_content" || type === "files";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -116,11 +120,20 @@ export function ConversationSidePanelProvider({
             : setData(params.fileId);
           break;
 
+        case FILES_SIDE_PANEL_TYPE:
+          // Toggle: if already open, close it.
+          if (currentPanel === FILES_SIDE_PANEL_TYPE) {
+            closePanel();
+            return;
+          }
+          setData("files");
+          break;
+
         default:
           assertNever(params);
       }
     },
-    [setCurrentPanel, setData, data, closePanel]
+    [setCurrentPanel, setData, data, closePanel, currentPanel]
   );
 
   // Initialize panel state from URL hash parameters

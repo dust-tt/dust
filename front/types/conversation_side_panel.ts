@@ -4,11 +4,13 @@ export const FULL_SCREEN_HASH_PARAM = "fullScreen";
 
 export const AGENT_ACTIONS_SIDE_PANEL_TYPE = "actions";
 export const INTERACTIVE_CONTENT_SIDE_PANEL_TYPE = "interactive_content";
+export const FILES_SIDE_PANEL_TYPE = "files";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SIDE_PANEL_TYPES = [
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  FILES_SIDE_PANEL_TYPE,
 ] as const;
 
 export type ConversationSidePanelType =

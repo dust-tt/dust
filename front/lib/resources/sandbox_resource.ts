@@ -3,6 +3,7 @@ import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
   ExecOptions,
   ExecResult,
+  FileEntry,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -22,6 +23,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -473,6 +475,33 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return result;
+  }
+
+  /**
+   * List files in a directory on this sandbox.
+   */
+  async listFiles(
+    path: string,
+    opts?: { recursive?: boolean }
+  ): Promise<Result<FileEntry[], Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    try {
+      const entries = await provider.listFiles(this.providerId, path, opts);
+      return new Ok(entries);
+    } catch (err) {
+      if (err instanceof SandboxNotFoundError) {
+        logger.error(
+          { sandbox: this.toLogJSON() },
+          "Sandbox not found at provider during listFiles — marking as deleted"
+        );
+        await this.updateStatus("deleted");
+      }
+      return new Err(normalizeError(err));
+    }
   }
 
   toLogJSON() {

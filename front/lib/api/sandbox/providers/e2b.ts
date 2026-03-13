@@ -235,10 +235,31 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async listFiles(
-    _providerId: string,
-    _path: string,
-    _opts?: { recursive?: boolean }
+    providerId: string,
+    path: string,
+    opts?: { recursive?: boolean }
   ): Promise<FileEntry[]> {
-    throw new Error("listFiles is not implemented yet.");
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        throw new SandboxNotFoundError(providerId);
+      }
+      throw normalizeError(err);
+    }
+
+    const entries = await sandbox.files.list(path, {
+      depth: opts?.recursive ? 10 : 1,
+    });
+
+    return entries.map((e) => ({
+      path: e.path,
+      size: e.size,
+      isDirectory: e.type === "dir",
+    }));
   }
 }
