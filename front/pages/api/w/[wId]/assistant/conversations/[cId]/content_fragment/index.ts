@@ -1,3 +1,70 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/content_fragment:
+ *   post:
+ *     summary: Create a content fragment
+ *     description: Post a new content fragment to an existing conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - content
+ *               - contentType
+ *               - context
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *                 description: MIME type of the content
+ *               url:
+ *                 type: string
+ *                 nullable: true
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     nullable: true
+ *               fileId:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Successfully created content fragment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contentFragment:
+ *                   $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ */
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

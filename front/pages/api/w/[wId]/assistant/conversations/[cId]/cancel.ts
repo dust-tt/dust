@@ -1,3 +1,56 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/cancel:
+ *   post:
+ *     summary: Cancel message generation
+ *     description: Cancels the generation of messages in a conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *               - messageIds
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [cancel]
+ *               messageIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

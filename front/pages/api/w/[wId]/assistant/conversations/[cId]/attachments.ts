@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

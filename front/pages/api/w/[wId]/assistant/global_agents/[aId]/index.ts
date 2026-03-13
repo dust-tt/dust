@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

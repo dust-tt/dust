@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

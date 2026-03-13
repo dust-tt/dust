@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";

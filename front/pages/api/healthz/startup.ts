@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { getStatsDClient } from "@app/lib/utils/statsd";

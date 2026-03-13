@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type {
   EmailAttachment,
   EmailTriggerError,

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";

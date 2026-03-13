@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

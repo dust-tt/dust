@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";

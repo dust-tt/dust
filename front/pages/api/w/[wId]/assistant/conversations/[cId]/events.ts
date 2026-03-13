@@ -1,3 +1,38 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/events:
+ *   get:
+ *     summary: Stream conversation events
+ *     description: Stream real-time conversation events using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.
+ *     tags:
+ *       - Private Events
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: |
+ *           SSE event stream. Each event is sent as `data: {json}\n\n`.
+ *           Events are discriminated by the `type` field.
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               $ref: '#/components/schemas/PrivateConversationEvent'
+ *       401:
+ *         description: Unauthorized
+ */
 // This endpoint is redirected (307) to /api/sse/w/[wId]/assistant/conversations/[cId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 

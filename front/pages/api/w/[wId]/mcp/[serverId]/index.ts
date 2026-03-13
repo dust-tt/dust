@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { CustomResourceIconType } from "@app/components/resources/resources_icons";
 import {
   getServerTypeAndIdFromSId,

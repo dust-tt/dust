@@ -1,3 +1,129 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations:
+ *   get:
+ *     summary: List conversations
+ *     description: Retrieve a paginated list of conversations for the authenticated user in the workspace.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved conversations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateConversation'
+ *                 hasMore:
+ *                   type: boolean
+ *                 lastValue:
+ *                   type: string
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a conversation
+ *     description: Create a new conversation, optionally with an initial user message and content fragments.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 nullable: true
+ *               visibility:
+ *                 type: string
+ *                 enum: [unlisted, deleted, test]
+ *               spaceId:
+ *                 type: string
+ *                 nullable: true
+ *               message:
+ *                 type: object
+ *                 properties:
+ *                   content:
+ *                     type: string
+ *                   mentions:
+ *                     type: array
+ *                     items:
+ *                       $ref: '#/components/schemas/PrivateMention'
+ *                   context:
+ *                     type: object
+ *                     properties:
+ *                       timezone:
+ *                         type: string
+ *                       profilePictureUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       origin:
+ *                         type: string
+ *                         nullable: true
+ *                       clientSideMCPServerIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       selectedMCPServerViewIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       selectedSkillIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *               contentFragments:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               metadata:
+ *                 type: object
+ *                 nullable: true
+ *               skipToolsValidation:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Successfully created conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversation:
+ *                   $ref: '#/components/schemas/PrivateFullConversation'
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *                 contentFragments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ */
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,

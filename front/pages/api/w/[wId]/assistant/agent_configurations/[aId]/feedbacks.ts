@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";

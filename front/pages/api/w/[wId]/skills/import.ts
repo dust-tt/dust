@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";

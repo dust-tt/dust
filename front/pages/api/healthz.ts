@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { NextApiRequest, NextApiResponse } from "next";
 

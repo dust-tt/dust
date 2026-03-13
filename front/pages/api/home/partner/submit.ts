@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { TrackingParamsSchema } from "@app/lib/api/hubspot/contactFormSchema";
 import { submitToHubSpotPartnerForm } from "@app/lib/api/hubspot/hubspot";
 import type {

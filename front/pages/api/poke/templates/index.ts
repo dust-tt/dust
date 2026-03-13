@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { config as regionConfig } from "@app/lib/api/regions/config";

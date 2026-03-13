@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";

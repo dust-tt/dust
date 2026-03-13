@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { fetchLLMTrace, isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import { Authenticator } from "@app/lib/auth";

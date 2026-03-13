@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { AppStatus } from "@app/lib/api/status";
 import {
   getDustStatusMemoized,

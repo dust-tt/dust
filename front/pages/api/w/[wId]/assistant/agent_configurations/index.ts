@@ -1,3 +1,120 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/agent_configurations:
+ *   get:
+ *     summary: List agent configurations
+ *     description: Returns all agent configurations in the workspace.
+ *     tags:
+ *       - Private Agents
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: view
+ *         required: false
+ *         description: Filter agents by view
+ *         schema:
+ *           type: string
+ *           enum: [all, list, favorites, published, admin_internal, global, workspace]
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Maximum number of results to return
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: withUsage
+ *         required: false
+ *         description: Include usage statistics
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: withAuthors
+ *         required: false
+ *         description: Include recent authors
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: withFeedbacks
+ *         required: false
+ *         description: Include feedback counts
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: withEditors
+ *         required: false
+ *         description: Include editors list
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: sort
+ *         required: false
+ *         description: Sort order
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agentConfigurations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateLightAgentConfiguration'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create an agent configuration
+ *     description: Creates a new agent configuration in the workspace.
+ *     tags:
+ *       - Private Agents
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - assistant
+ *             properties:
+ *               assistant:
+ *                 type: object
+ *                 description: Agent configuration to create
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agentConfiguration:
+ *                   $ref: '#/components/schemas/PrivateLightAgentConfiguration'
+ *       401:
+ *         description: Unauthorized
+ */
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,

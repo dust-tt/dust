@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

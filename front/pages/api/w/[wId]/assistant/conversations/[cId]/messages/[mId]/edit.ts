@@ -1,3 +1,61 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit:
+ *   post:
+ *     summary: Edit a message
+ *     description: Edit the content and mentions of an existing user message in a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - mentions
+ *             properties:
+ *               content:
+ *                 type: string
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PrivateMention'
+ *     responses:
+ *       200:
+ *         description: Successfully edited message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *       401:
+ *         description: Unauthorized
+ */
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

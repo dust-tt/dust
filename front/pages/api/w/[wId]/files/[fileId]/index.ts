@@ -1,3 +1,124 @@
+/**
+ * @swagger
+ * /api/w/{wId}/files/{fileId}:
+ *   get:
+ *     summary: Get or download a file
+ *     description: View or download a file. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         description: ID of the file
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: version
+ *         required: false
+ *         description: File version to retrieve
+ *         schema:
+ *           type: string
+ *           enum: [original, processed, public]
+ *       - in: query
+ *         name: action
+ *         required: false
+ *         description: Action to perform
+ *         schema:
+ *           type: string
+ *           enum: [view, download]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: File content or redirect to download URL
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       302:
+ *         description: Redirect to signed download URL
+ *       404:
+ *         description: File not found
+ *   post:
+ *     summary: Upload file content
+ *     description: Process and store the uploaded file content.
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         description: ID of the file
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: File processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 file:
+ *                   $ref: '#/components/schemas/PrivateFileWithUploadUrl'
+ *       403:
+ *         description: Permission denied
+ *       404:
+ *         description: File not found
+ *   delete:
+ *     summary: Delete a file
+ *     description: Delete a file from the workspace.
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         description: ID of the file
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       204:
+ *         description: File deleted
+ *       403:
+ *         description: Permission denied
+ *       404:
+ *         description: File not found
+ */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
