@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/constants";
 import {
   getConnectionForMCPServer,
+  getMCPServerAdminAuthenticationReason,
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
@@ -282,7 +283,8 @@ async function resolveRemoteServerOAuthToken(
           new MCPServerRequiresAdminAuthenticationError(
             mcpServerId,
             provider,
-            scope
+            scope,
+            "setup"
           )
         );
       }
@@ -299,7 +301,8 @@ async function resolveRemoteServerOAuthToken(
         new MCPServerRequiresAdminAuthenticationError(
           mcpServerId,
           provider,
-          scope
+          scope,
+          getMCPServerAdminAuthenticationReason(c.error)
         )
       );
     default:
@@ -446,7 +449,7 @@ export async function connectToMCPServer(
                     oAuthUseCase: params.oAuthUseCase,
                     error: c.error,
                   },
-                  "Internal server requires workspace authentication but no connection found"
+                  "Internal server workspace authentication failed"
                 );
 
                 const scope = serverInfo.authorization.scope;
@@ -468,7 +471,8 @@ export async function connectToMCPServer(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
                         serverInfo.authorization.provider,
-                        scope
+                        scope,
+                        "setup"
                       )
                     );
                   }
@@ -480,12 +484,13 @@ export async function connectToMCPServer(
                     )
                   );
                 } else if (params.oAuthUseCase === "platform_actions") {
-                  // Workspace connection required — admin must set up or reconnect.
+                  // Workspace connection required — distinguish missing setup from a broken token.
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
                       serverInfo.authorization.provider,
-                      scope
+                      scope,
+                      getMCPServerAdminAuthenticationReason(c.error)
                     )
                   );
                 } else {
@@ -568,7 +573,8 @@ export async function connectToMCPServer(
                 new MCPServerRequiresAdminAuthenticationError(
                   params.mcpServerId,
                   remoteMCPServer.authorization.provider,
-                  scope
+                  scope,
+                  "reconnect"
                 )
               );
             }
