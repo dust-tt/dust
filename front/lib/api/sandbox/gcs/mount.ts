@@ -200,6 +200,10 @@ function buildMountCommand({
     `--file-mode=666`,
     `--dir-mode=777`,
     `--kernel-list-cache-ttl-secs=60`,
+    // Disable HNS (Hierarchical Namespace) support. gcsfuse calls GetStorageLayout at mount time
+    // when HNS is enabled, which requires unrestricted `objects.list` on the bucket. Disabling it
+    // lets us condition `objects.list` via the objectListPrefix CAB attribute.
+    `--enable-hns=false`,
   ].join(" ");
 
   return `timeout 30 sudo gcsfuse ${flags} ${bucket} ${MOUNT_POINT} 2>&1`;

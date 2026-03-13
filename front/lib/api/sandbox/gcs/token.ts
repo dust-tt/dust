@@ -149,8 +149,9 @@ function getStorageMountRole(): string {
  *     which is bundled in every predefined role that includes buckets.get.
  *
  *  2. legacyBucketReader with objectListPrefix condition — grants objects.list restricted to our
- *     prefix. The objectListPrefix CAB attribute is only present on list requests. buckets.get
- *     falls through to rule 1 instead.
+ *     prefix via the objectListPrefix CAB attribute. gcsfuse must be started with
+ *     --enable-hns=false to avoid the GetStorageLayout call (which requires unrestricted
+ *     objects.list and would bypass this condition).
  *
  *  3. objectUser with resource.name condition — read/write scoped to prefix.
  */
