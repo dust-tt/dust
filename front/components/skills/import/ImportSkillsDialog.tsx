@@ -1,4 +1,7 @@
-import type { ImportFormValues } from "@app/components/skills/import/formSchema";
+import type {
+  ImportFormValues,
+  ImportType,
+} from "@app/components/skills/import/formSchema";
 import { importFormSchema } from "@app/components/skills/import/formSchema";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
 import { useImportSkills } from "@app/lib/swr/skill_configurations";
@@ -21,12 +24,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
-type ImportTab = "repository";
+const IMPORT_TABS: ImportType[] = ["repository"];
 
-const IMPORT_TABS: readonly string[] = ["repository"] satisfies ImportTab[];
-
-function isImportTab(value: string): value is ImportTab {
-  return IMPORT_TABS.includes(value);
+function isImportTab(value: string): value is ImportType {
+  return IMPORT_TABS.includes(value as ImportType);
 }
 
 interface ImportSkillsDialogProps {
@@ -34,7 +35,7 @@ interface ImportSkillsDialogProps {
   owner: LightWorkspaceType;
 }
 
-const TAB_DESCRIPTION: Record<ImportTab, string> = {
+const TAB_DESCRIPTION: Record<ImportType, string> = {
   repository: "Enter a GitHub repository URL to detect skills.",
 };
 
@@ -42,14 +43,15 @@ export function ImportSkillsDialog({
   onClose,
   owner,
 }: ImportSkillsDialogProps) {
-  const [activeTab, setActiveTab] = useState<ImportTab>("repository");
   const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
   const [isDetecting, setIsDetecting] = useState(false);
 
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
-    defaultValues: { repoUrl: "" },
+    defaultValues: { importType: "repository", repoUrl: "" },
   });
+
+  const activeTab = form.watch("importType");
 
   const { importSkills, isImporting } = useImportSkills({ owner });
 
@@ -93,7 +95,7 @@ export function ImportSkillsDialog({
               value={activeTab}
               onValueChange={(value) => {
                 if (isImportTab(value)) {
-                  setActiveTab(value);
+                  form.setValue("importType", value);
                   setSelectedNames(new Set());
                 }
               }}
