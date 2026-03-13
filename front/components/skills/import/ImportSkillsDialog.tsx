@@ -94,6 +94,7 @@ export function ImportSkillsDialog({
               onValueChange={(value) => {
                 if (isImportTab(value)) {
                   setActiveTab(value);
+                  setSelectedNames(new Set());
                 }
               }}
             >
