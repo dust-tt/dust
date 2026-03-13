@@ -8,7 +8,56 @@ import {
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
+
+interface AggregationContext {
+  agentConfig: LightAgentConfigurationType;
+  syntheticSuggestions: AgentSuggestionResource[];
+  prompt: { systemPrompt: string; userMessage: string };
+}
+
+async function loadAggregationContext(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<AggregationContext | null> {
+  const syntheticSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { sources: ["synthetic"], states: ["pending"] }
+    );
+
+  if (syntheticSuggestions.length === 0) {
+    return null;
+  }
+
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "light",
+  });
+  if (!agentConfig) {
+    logger.warn(
+      { agentConfigurationId },
+      "ReinforcedAgent: agent not found for aggregation"
+    );
+    return null;
+  }
+
+  const instructionsSuggestions = syntheticSuggestions
+    .map((s) => s.toJSON())
+    .filter(
+      (json): json is AgentInstructionsSuggestionType =>
+        json.kind === "instructions"
+    );
+
+  const prompt = buildAggregationPrompt(
+    agentConfig.name,
+    instructionsSuggestions
+  );
+
+  return { agentConfig, syntheticSuggestions, prompt };
+}
 
 export function buildAggregationPrompt(
   agentName: string,
@@ -51,41 +100,12 @@ export async function buildAggregationBatchMap(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<Map<string, LLMStreamParameters> | null> {
-  const syntheticSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      { sources: ["synthetic"], states: ["pending"] }
-    );
-
-  if (syntheticSuggestions.length === 0) {
+  const ctx = await loadAggregationContext(auth, agentConfigurationId);
+  if (!ctx) {
     return null;
   }
 
-  const [agentConfig] = await getAgentConfigurations(auth, {
-    agentIds: [agentConfigurationId],
-    variant: "light",
-  });
-  if (!agentConfig) {
-    logger.warn(
-      { agentConfigurationId },
-      "ReinforcedAgent: agent not found for aggregation batch"
-    );
-    return null;
-  }
-
-  const instructionsSuggestions = syntheticSuggestions
-    .map((s) => s.toJSON())
-    .filter(
-      (json): json is AgentInstructionsSuggestionType =>
-        json.kind === "instructions"
-    );
-
-  const prompt = buildAggregationPrompt(
-    agentConfig.name,
-    instructionsSuggestions
-  );
-  return new Map([["aggregation", buildReinforcedLLMParams(prompt)]]);
+  return new Map([["aggregation", buildReinforcedLLMParams(ctx.prompt)]]);
 }
 
 /**
@@ -96,40 +116,12 @@ export async function aggregateSyntheticSuggestions(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<void> {
-  const syntheticSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      { sources: ["synthetic"], states: ["pending"] }
-    );
-
-  if (syntheticSuggestions.length === 0) {
+  const ctx = await loadAggregationContext(auth, agentConfigurationId);
+  if (!ctx) {
     return;
   }
 
-  const [agentConfig] = await getAgentConfigurations(auth, {
-    agentIds: [agentConfigurationId],
-    variant: "light",
-  });
-  if (!agentConfig) {
-    logger.warn(
-      { agentConfigurationId },
-      "ReinforcedAgent: agent not found for aggregation"
-    );
-    return;
-  }
-
-  const instructionsSuggestions = syntheticSuggestions
-    .map((s) => s.toJSON())
-    .filter(
-      (json): json is AgentInstructionsSuggestionType =>
-        json.kind === "instructions"
-    );
-
-  const prompt = buildAggregationPrompt(
-    agentConfig.name,
-    instructionsSuggestions
-  );
+  const { agentConfig, syntheticSuggestions, prompt } = ctx;
 
   const createdCount = await runReinforcedAnalysis({
     auth,
