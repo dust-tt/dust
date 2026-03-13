@@ -1,0 +1,36 @@
+front/pages/api/w/[wId]/content-guard-config.ts
+  7c453455edfc6c89 3-4,17,21-22,24,46-51,54,58-59,61,108,111,113,118,121,123,159-163,167-171,177-180,182-185,187-203,209-218,236,242-243,268-271,277-285,291,294,306-312,318,323-324,330,336-337,339,342,379,381,393-395,399-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "f59061670ed064e6fa3dc0b759dedc2c56a66f29",
+  "prompts": {
+    "7c453455edfc6c89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a43aa4e8-e8c1-4f70-ba71-41517903ea59",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 107,
+      "overriden_lines": 0
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
