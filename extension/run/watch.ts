@@ -29,7 +29,7 @@ async function main() {
     const server = new WebpackDevServer(config.devServer, compiler);
     await server.start();
   } else {
-    compiler.watch({ ignored: /node_modules/ }, async (err, res) => {
+    compiler.watch({ ignored: ["**/node_modules"] }, async (err, res) => {
       if (err) {
         console.error(err);
       }
