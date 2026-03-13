@@ -1,6 +1,6 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
-  CheckboxWithText,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -33,12 +33,15 @@ export function SkillBuilderIsDefaultSection() {
 
   return (
     <>
-      <div className="flex items-center gap-1.5">
-        <CheckboxWithText
+      <div className="flex items-center gap-2">
+        <Checkbox
           checked={isDefault}
           onCheckedChange={handleCheckboxChange}
-          text="Allow agents to discover this skill"
+          size="sm"
         />
+        <span className="text-sm text-foreground dark:text-foreground-night">
+          Allow agents to discover this skill
+        </span>
         <Tooltip
           label="Agents with the Discover Skills tool will be able to find and enable this skill on their own."
           trigger={
@@ -57,7 +60,7 @@ export function SkillBuilderIsDefaultSection() {
         <DialogContent size="md" isAlertDialog>
           <DialogHeader hideButton>
             <DialogTitle>Allow agents to discover this skill?</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="pt-4">
               Agents with <span className="font-semibold">Discover Skills</span>{" "}
               will be able to find and enable this skill on their own.
             </DialogDescription>
