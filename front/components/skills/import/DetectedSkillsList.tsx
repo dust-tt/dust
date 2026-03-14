@@ -1,3 +1,4 @@
+import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   type DetectedSkillStatus,
@@ -12,6 +13,7 @@ import {
   PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useController, useFormContext } from "react-hook-form";
 
 const STATUS_CHIP_LABEL: Record<
   Exclude<DetectedSkillStatus, "ready">,
@@ -24,19 +26,29 @@ const STATUS_CHIP_LABEL: Record<
 
 interface DetectedSkillsListProps {
   detectedSkills: DetectedSkillSummary[];
-  selectedNames: string[];
-  toggleSkill: (name: string) => void;
   isDetecting: boolean;
   detectError: string | null;
 }
 
 export function DetectedSkillsList({
   detectedSkills,
-  selectedNames,
-  toggleSkill,
   isDetecting,
   detectError,
 }: DetectedSkillsListProps) {
+  const { control } = useFormContext<ImportFormValues>();
+  const { field: selectedField } = useController({
+    name: "selectedSkillNames",
+    control,
+  });
+
+  const toggleSkill = (name: string) => {
+    if (selectedField.value.includes(name)) {
+      selectedField.onChange(selectedField.value.filter((n) => n !== name));
+    } else {
+      selectedField.onChange([...selectedField.value, name]);
+    }
+  };
+
   return (
     <>
       {detectError && (
@@ -63,7 +75,7 @@ export function DetectedSkillsList({
               visual={
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    checked={selectedNames.includes(skill.name)}
+                    checked={selectedField.value.includes(skill.name)}
                     disabled={!isImportableSkillStatus(skill.status)}
                     onCheckedChange={() => toggleSkill(skill.name)}
                   />
