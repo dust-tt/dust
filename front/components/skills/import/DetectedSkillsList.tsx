@@ -10,6 +10,7 @@ import {
   ContentMessage,
   ContextItem,
   InformationCircleIcon,
+  Label,
   PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -71,10 +72,15 @@ export function DetectedSkillsList({
           {detectedSkills.map((skill) => (
             <ContextItem
               key={skill.name}
-              title={<span className="text-sm font-normal">{skill.name}</span>}
+              title={
+                <Label className="text-sm font-normal" htmlFor={skill.name}>
+                  {skill.name}
+                </Label>
+              }
               visual={
                 <div className="flex items-center gap-2">
                   <Checkbox
+                    id={skill.name}
                     checked={selectedField.value.includes(skill.name)}
                     disabled={!isImportableSkillStatus(skill.status)}
                     onCheckedChange={() => toggleSkill(skill.name)}
