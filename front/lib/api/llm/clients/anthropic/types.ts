@@ -10,7 +10,9 @@ import {
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
@@ -27,7 +29,9 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID,
   // Custom Anthropic models (generated at build time from GCS)
   ...CUSTOM_MODEL_IDS,
 ] as const;
@@ -69,10 +73,30 @@ const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
   [CLAUDE_OPUS_4_6_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
+  [CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+  },
   [CLAUDE_SONNET_4_6_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
+  [CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+  },
 };
+
+// Maps internal long-context model IDs to actual Anthropic API model IDs.
+const ANTHROPIC_MODEL_ID_REMAP: Partial<Record<string, string>> = {
+  [CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID]: CLAUDE_OPUS_4_6_MODEL_ID,
+  [CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID]: CLAUDE_SONNET_4_6_MODEL_ID,
+};
+
+/**
+ * Returns the Anthropic API model ID for a given internal model ID.
+ * Long-context variants are mapped back to their base model IDs.
+ */
+export function getAnthropicApiModelId(modelId: string): string {
+  return ANTHROPIC_MODEL_ID_REMAP[modelId] ?? modelId;
+}
 
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {

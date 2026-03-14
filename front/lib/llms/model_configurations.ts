@@ -1,9 +1,16 @@
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import {
+  CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
+} from "@app/types/assistant/models/anthropic";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,
   SupportedModel,
 } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 /**
  * Lazy-loaded cache for model configurations.
@@ -56,4 +63,31 @@ export function getModelConfigByModelId(
 ): ModelConfigurationType | undefined {
   const configs = getSupportedModelConfigs();
   return configs.find((m) => m.modelId === modelId);
+}
+
+const LONG_CONTEXT_MODEL_MAP: Record<string, string> = {
+  [CLAUDE_SONNET_4_6_MODEL_ID]: CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID,
+  [CLAUDE_OPUS_4_6_MODEL_ID]: CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID,
+};
+
+/**
+ * Resolve a model to its long-context variant when the workspace has the
+ * `long_context_claude_feature` flag enabled.
+ */
+export function resolveModelWithLongContext<
+  T extends SupportedModel | AgentModelConfigurationType,
+>(supportedModel: T, featureFlags: WhitelistableFeature[]): T {
+  if (!featureFlags.includes("long_context_claude_feature")) {
+    return supportedModel;
+  }
+
+  const longContextModelId = LONG_CONTEXT_MODEL_MAP[supportedModel.modelId];
+  if (!longContextModelId) {
+    return supportedModel;
+  }
+
+  return {
+    ...supportedModel,
+    modelId: longContextModelId,
+  };
 }

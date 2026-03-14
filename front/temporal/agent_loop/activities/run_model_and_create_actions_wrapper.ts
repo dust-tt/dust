@@ -1,5 +1,6 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
+import { resolveModelWithLongContext } from "@app/lib/llms/model_configurations";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
@@ -220,12 +221,28 @@ async function _runModelAndCreateActionsActivity({
 
   // Otherwise, run the model and create actions.
 
+  // Resolve model to long-context variant if the feature flag is enabled.
+  const resolvedModel = resolveModelWithLongContext(
+    runAgentData.agentConfiguration.model,
+    featureFlags
+  );
+  const resolvedRunAgentData =
+    resolvedModel !== runAgentData.agentConfiguration.model
+      ? {
+          ...runAgentData,
+          agentConfiguration: {
+            ...runAgentData.agentConfiguration,
+            model: resolvedModel,
+          },
+        }
+      : runAgentData;
+
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
   // 1. Run model.
   const modelResult = await runModel(auth, {
-    runAgentData,
+    runAgentData: resolvedRunAgentData,
     runIds,
     step,
     functionCallStepContentIds,
