@@ -23,19 +23,22 @@ export function ImportFromRepositoryTab({
   onDetectedCountChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
-  const { control } = useFormContext<ImportFormValues>();
+  const { control, setValue } = useFormContext<ImportFormValues>();
   const { field: repoUrlField } = useController({ name: "repoUrl", control });
-  const { field: selectedField } = useController({ name: "selectedSkillNames", control });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
 
   // Pre-select all importable skills when detection completes.
   useEffect(() => {
-    selectedField.onChange(detectedSkills
-      .filter((skill) => isImportableSkillStatus(skill.status))
-      .map((skill) => skill.name));
-  }, [detectedSkills, selectedField]);
+    // Using a setValue instead of have a controller to run this once at detection time.
+    setValue(
+      "selectedSkillNames",
+      detectedSkills
+        .filter((skill) => isImportableSkillStatus(skill.status))
+        .map((skill) => skill.name)
+    );
+  }, [detectedSkills, setValue]);
 
   // Sync detecting state to the parent. Expects a stable callback (e.g. setState).
   useEffect(() => {
