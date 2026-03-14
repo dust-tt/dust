@@ -10,23 +10,18 @@ delete colors.trueGray;
 delete colors.coolGray;
 delete colors.blueGray;
 
-const safeColorsArray = [
+// Colors used dynamically in Picker.tsx ColorSwatch (`s-${color}` where color = `bg-{name}-{shade}`)
+// Must match TAILWIND_COLOR_NAMES in front/types/assistant/avatar.ts
+const avatarColorNames = [
   "gray",
-  "green",
-  "rose",
-  "golden",
   "blue",
-  "primary",
-  "highlight",
-  "success",
-  "warning",
-  "info",
-  "emerald",
-  "lime",
-  "orange",
+  "violet",
   "pink",
   "red",
-  "violet",
+  "orange",
+  "golden",
+  "lime",
+  "emerald",
 ];
 
 // Get all color names from Tailwind's default palette, excluding special colors
@@ -201,39 +196,12 @@ Object.assign(colors, {
   sky: customColors.blue,
 });
 
-const safeColorlist = safeColorsArray.flatMap((color) => [
-  // Include 50 shade
-  `s-bg-${color}-50`,
-  // Whitelist all bg colors from shade 100 to 900
-  ...Array.from({ length: 9 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
-  // Include 950 shade
-  `s-bg-${color}-950`,
-  // Include muted shade
-  `s-bg-${color}-muted`,
-  // Add night mode variants
-  `dark:s-bg-${color}-50-night`,
-  ...Array.from(
-    { length: 9 },
-    (_, i) => `dark:s-bg-${color}-${(i + 1) * 100}-night`
-  ),
-  `dark:s-bg-${color}-950-night`,
-  `s-border-${color}-100`,
-  `s-border-${color}-200`,
-  `s-border-${color}-300`,
-  // Add night mode variants
-  `dark:s-border-${color}-100-night`,
-  `dark:s-border-${color}-200-night`,
-  `dark:s-border-${color}-300-night`,
-  `s-text-${color}-500`,
-  `s-text-${color}-800`,
-  `s-text-${color}-900`,
-  `s-text-${color}-950`,
-  // Add night mode variants
-  `dark:s-text-${color}-500-night`,
-  `dark:s-text-${color}-800-night`,
-  `dark:s-text-${color}-900-night`,
-  `dark:s-text-${color}-950-night`,
-]);
+// Shades must match TAILWIND_COLOR_SHADES in front/types/assistant/avatar.ts
+const avatarBgSafelist = avatarColorNames.flatMap((color) =>
+  [100, 200, 300, 400, 500, 600, 700, 800].map(
+    (shade) => `s-bg-${color}-${shade}`
+  )
+);
 
 module.exports = {
   future: {
@@ -1016,7 +984,7 @@ module.exports = {
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   safelist: [
-    ...safeColorlist,
+    ...avatarBgSafelist,
     "s-grid-rows-2",
     "s-grid-rows-3",
     "s-grid-rows-4",
