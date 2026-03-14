@@ -21,8 +21,13 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useState } from "react";
-import { FormProvider, useController, useForm, useWatch } from "react-hook-form";
+import { useCallback, useMemo, useState } from "react";
+import {
+  FormProvider,
+  useController,
+  useForm,
+  useWatch,
+} from "react-hook-form";
 
 const IMPORT_TABS: ImportType[] = ["repository"];
 
@@ -46,15 +51,32 @@ export function ImportSkillsDialog({
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedCount, setDetectedCount] = useState(0);
 
+  const defaultValues = useMemo<ImportFormValues>(() => {
+    return {
+      importType: "repository",
+      repoUrl: "",
+      selectedSkillNames: [],
+    };
+  }, []);
+
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
-    defaultValues: { importType: "repository", repoUrl: "", selectedSkillNames: [] },
+    defaultValues,
   });
 
-  const { field: importTypeField } = useController({ control: form.control, name: "importType" });
-  const { field: selectedSkillNamesField } = useController({ control: form.control, name: "selectedSkillNames" });
+  const { field: importTypeField } = useController({
+    control: form.control,
+    name: "importType",
+  });
+  const { field: selectedSkillNamesField } = useController({
+    control: form.control,
+    name: "selectedSkillNames",
+  });
   const activeTab = useWatch({ control: form.control, name: "importType" });
-  const selectedSkillNames = useWatch({ control: form.control, name: "selectedSkillNames" });
+  const selectedSkillNames = useWatch({
+    control: form.control,
+    name: "selectedSkillNames",
+  });
 
   const { importSkills, isImporting } = useImportSkills({ owner });
 
