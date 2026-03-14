@@ -2,9 +2,6 @@ import {
   Avatar,
   Button,
   Card,
-  ContextItem,
-  Icon,
-  MagicIcon,
   Page,
   SearchInput,
 } from "@dust-tt/sparkle";
@@ -640,18 +637,18 @@ export default function TemplateSelection({
                             onClick={() => {
                               onTemplateClick?.(template);
                             }}
-                            className="s-cursor-pointer s-flex s-flex-row s-items-start s-gap-3"
+                            className="s-cursor-pointer s-flex s-flex-col s-items-start s-gap-1"
                           >
                             <Avatar
                               emoji={template.emoji}
                               backgroundColor={template.backgroundColor}
                               size="sm"
                             />
-                            <div className="s-min-w-0 s-flex-1 s-space-y-1">
+                            <div className="s-min-w-0">
                               <div className="s-heading-base s-line-clamp-1 s-text-foreground dark:s-text-foreground-night">
                                 {template.handle}
                               </div>
-                              <p className="s-line-clamp-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                              <p className="s-line-clamp-3 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                                 {template.userFacingDescription}
                               </p>
                             </div>
