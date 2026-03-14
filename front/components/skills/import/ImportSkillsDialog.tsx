@@ -22,12 +22,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
-import {
-  FormProvider,
-  useController,
-  useForm,
-  useWatch,
-} from "react-hook-form";
+import { FormProvider, useController, useForm } from "react-hook-form";
 
 const IMPORT_TABS: ImportType[] = ["repository"];
 
@@ -72,17 +67,12 @@ export function ImportSkillsDialog({
     control: form.control,
     name: "selectedSkillNames",
   });
-  const activeTab = useWatch({ control: form.control, name: "importType" });
-  const selectedSkillNames = useWatch({
-    control: form.control,
-    name: "selectedSkillNames",
-  });
 
   const { importSkills, isImporting } = useImportSkills({ owner });
 
   const onSubmit = useCallback(
     async (data: ImportFormValues) => {
-      if (data.selectedSkillNames.length === 0) {
+      if (data.selectedSkillNamesField.value.length === 0) {
         return;
       }
       const result = await importSkills(data.repoUrl, data.selectedSkillNames);
@@ -93,12 +83,12 @@ export function ImportSkillsDialog({
     [importSkills, onClose]
   );
 
-  const selectedCount = selectedSkillNames.length;
+  const selectedCount = selectedSkillNamesField.value.length;
 
   const description =
     detectedCount > 0
       ? `${detectedCount} skill${pluralize(detectedCount)} detected. Select the ones to import.`
-      : TAB_DESCRIPTION[activeTab];
+      : TAB_DESCRIPTION[importTypeField.value];
 
   return (
     <Dialog
@@ -117,7 +107,7 @@ export function ImportSkillsDialog({
         <DialogContainer>
           <FormProvider {...form}>
             <Tabs
-              value={activeTab}
+              value={importTypeField.value}
               onValueChange={(value) => {
                 if (isImportTab(value)) {
                   importTypeField.onChange(value);

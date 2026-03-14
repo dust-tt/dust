@@ -8,7 +8,7 @@ import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Input } from "@dust-tt/sparkle";
 import { useEffect } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 interface ImportFromRepositoryTabProps {
   owner: LightWorkspaceType;
@@ -26,7 +26,6 @@ export function ImportFromRepositoryTab({
   const { control } = useFormContext<ImportFormValues>();
   const { field: repoUrlField } = useController({ name: "repoUrl", control });
   const { field: selectedField } = useController({ name: "selectedSkillNames", control });
-  const selectedSkillNames = useWatch({ control, name: "selectedSkillNames" });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
@@ -47,14 +46,6 @@ export function ImportFromRepositoryTab({
     onDetectedCountChange(detectedSkills.length);
   }, [detectedSkills.length, onDetectedCountChange]);
 
-  const toggleSkill = (name: string) => {
-    if (selectedSkillNames.includes(name)) {
-      selectedField.onChange(selectedSkillNames.filter((n) => n !== name));
-    } else {
-      selectedField.onChange([...selectedSkillNames, name]);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-3 pt-4">
       <Input
@@ -74,8 +65,6 @@ export function ImportFromRepositoryTab({
       />
       <DetectedSkillsList
         detectedSkills={detectedSkills}
-        selectedNames={selectedSkillNames}
-        toggleSkill={toggleSkill}
         isDetecting={isDetecting}
         detectError={detectError}
       />
