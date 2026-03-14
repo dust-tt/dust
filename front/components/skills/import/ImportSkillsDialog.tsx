@@ -72,7 +72,7 @@ export function ImportSkillsDialog({
 
   const onSubmit = useCallback(
     async (data: ImportFormValues) => {
-      if (data.selectedSkillNamesField.value.length === 0) {
+      if (data.selectedSkillNames.length === 0) {
         return;
       }
       const result = await importSkills(data.repoUrl, data.selectedSkillNames);
