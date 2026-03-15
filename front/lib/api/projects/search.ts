@@ -1,8 +1,8 @@
 import { default as config } from "@app/lib/api/config";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -65,7 +65,9 @@ export async function searchProjectConversations(
   }));
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+  const credentials = await getLlmCredentials(auth, {
+    requireEmbeddingApiKey: true,
+  });
   const searchResult = await coreAPI.bulkSearchDataSources(
     query,
     topK,

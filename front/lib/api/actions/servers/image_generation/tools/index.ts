@@ -16,8 +16,8 @@ import {
   validateGeminiImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
-import type { Authenticator } from "@app/lib/auth";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";

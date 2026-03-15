@@ -3,6 +3,7 @@
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import {
   getMembers,
@@ -19,7 +20,6 @@ import { executeWithLock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -563,7 +563,9 @@ export async function upsertDocument({
   }
 
   // Data source operations are performed with our credentials.
-  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+  const credentials = await getLlmCredentials(auth, {
+    requireEmbeddingApiKey: true,
+  });
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
@@ -611,7 +613,9 @@ export async function handleDataSourceSearch({
   >
 > {
   // Dust managed credentials: all data sources.
-  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+  const credentials = await getLlmCredentials(auth, {
+    requireEmbeddingApiKey: true,
+  });
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const data = await coreAPI.searchDataSource(
@@ -1077,7 +1081,9 @@ export async function createDataSourceWithoutProvider(
         });
       }
 
-      const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+      const credentials = await getLlmCredentials(auth, {
+        requireEmbeddingApiKey: true,
+      });
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),

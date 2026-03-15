@@ -1,7 +1,7 @@
 import { getLLM } from "@app/lib/api/llm";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/sidekick-evals/lib/config";
 import { getMockToolResponse } from "@app/tests/sidekick-evals/lib/mock-responses";
 import {

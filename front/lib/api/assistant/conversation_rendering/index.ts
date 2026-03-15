@@ -1,7 +1,7 @@
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
-import type { Authenticator } from "@app/lib/auth";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";

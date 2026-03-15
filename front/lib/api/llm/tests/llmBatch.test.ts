@@ -6,8 +6,8 @@ import { MODELS } from "@app/lib/api/llm/tests/models";
 import type { ResponseChecker } from "@app/lib/api/llm/tests/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -262,8 +262,7 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
         "$name",
         async ({ conversations }) => {
           const mockedAuth = createMockAuthenticator();
-          const credentials =
-            await getLlmCredentials(mockedAuth);
+          const credentials = await getLlmCredentials(mockedAuth);
           const llm = await getLLM(mockedAuth, {
             modelId: modelId as ModelIdType,
             bypassFeatureFlag: true,

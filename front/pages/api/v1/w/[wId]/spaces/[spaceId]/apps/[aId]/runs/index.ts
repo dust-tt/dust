@@ -2,11 +2,11 @@ import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/toke
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -286,8 +286,9 @@ async function handler(
 
       let credentials: CredentialsType | null = null;
       if (useDustCredentials) {
-        const llmCredentials =
-          await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+        const llmCredentials = await getLlmCredentials(auth, {
+          requireEmbeddingApiKey: true,
+        });
         // Dust managed credentials: system API key (packaged apps).
         credentials = {
           ...llmCredentials,

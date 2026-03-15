@@ -51,7 +51,10 @@ export async function getLlmCredentials(
   );
 
   if (requireEmbeddingApiKey) {
-    assert(credentials.OPENAI_EMBEDDING_API_KEY, "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured.");
+    assert(
+      credentials.OPENAI_EMBEDDING_API_KEY,
+      "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured."
+    );
   }
 
   return credentials;

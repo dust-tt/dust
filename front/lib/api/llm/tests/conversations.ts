@@ -10,11 +10,11 @@ import type {
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type {
   ModelConversationTypeMultiActions,

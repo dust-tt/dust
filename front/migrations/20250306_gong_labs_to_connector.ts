@@ -92,7 +92,9 @@ async function createDataSourceAndConnector({
     throw dustProject.error;
   }
 
-  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+  const credentials = await getLlmCredentials(auth, {
+    requireEmbeddingApiKey: true,
+  });
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
     config: {

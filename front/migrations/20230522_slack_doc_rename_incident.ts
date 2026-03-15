@@ -59,8 +59,9 @@ async function main() {
           throw new Error("Failed to create new Core project.");
         }
 
-        const credentials =
-          await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+        const credentials = await getLlmCredentials(auth, {
+          requireEmbeddingApiKey: true,
+        });
 
         const dustDataSource = await coreAPI.createDataSource({
           projectId: dustProject.value.project.project_id.toString(),

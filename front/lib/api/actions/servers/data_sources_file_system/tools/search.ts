@@ -18,9 +18,9 @@ import {
 } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
@@ -50,7 +50,9 @@ export async function search(
   }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+  const credentials = await getLlmCredentials(auth, {
+    requireEmbeddingApiKey: true,
+  });
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
   if (!agentLoopContext?.runContext) {

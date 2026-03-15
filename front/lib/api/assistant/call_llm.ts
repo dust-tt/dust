@@ -1,8 +1,8 @@
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import type { Authenticator } from "@app/lib/auth";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";

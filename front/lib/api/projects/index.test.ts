@@ -12,12 +12,12 @@ import {
   createDataSourceAndConnectorForProject,
   getProjectConversationsDatasourceName,
 } from "@app/lib/api/projects";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -210,8 +210,7 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(createDataSourceCall.config.qdrant_config?.cluster).toBe(
         DEFAULT_QDRANT_CLUSTER
       );
-      const expectedCredentials =
-        await getLlmCredentials(adminAuth);
+      const expectedCredentials = await getLlmCredentials(adminAuth);
       expect(createDataSourceCall.credentials).toEqual(expectedCredentials);
 
       // Verify project context folder was created

@@ -5,6 +5,7 @@ import {
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -18,7 +19,6 @@ import {
 } from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -376,7 +376,9 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+  const credentials = await getLlmCredentials(auth, {
+    requireEmbeddingApiKey: true,
+  });
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),

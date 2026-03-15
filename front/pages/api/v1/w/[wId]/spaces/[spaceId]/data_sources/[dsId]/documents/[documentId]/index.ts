@@ -1,12 +1,12 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -647,8 +647,9 @@ async function handler(
         });
       } else {
         // Data source operations are performed with our credentials.
-        const credentials =
-          await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
+        const credentials = await getLlmCredentials(auth, {
+          requireEmbeddingApiKey: true,
+        });
 
         // Create document with the Dust internal API.
         const upsertRes = await coreAPI.upsertDataSourceDocument({

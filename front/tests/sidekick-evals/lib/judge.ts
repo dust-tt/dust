@@ -1,6 +1,6 @@
 import { getLLM } from "@app/lib/api/llm";
-import type { Authenticator } from "@app/lib/auth";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { Authenticator } from "@app/lib/auth";
 import {
   getTestCaseUserMessageForDisplay,
   type JudgeResult,
