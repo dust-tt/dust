@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";

@@ -19,7 +19,215 @@
       "description": "Dust.tt API (europe-west1)"
     }
   ],
+  "tags": [
+    {
+      "name": "Agents",
+      "description": "Agent configurations"
+    },
+    {
+      "name": "Apps",
+      "description": "Dust apps"
+    },
+    {
+      "name": "Conversations",
+      "description": "Conversations"
+    },
+    {
+      "name": "DatasourceViews",
+      "description": "Data source views"
+    },
+    {
+      "name": "Datasources",
+      "description": "Data sources"
+    },
+    {
+      "name": "Feedbacks",
+      "description": "Message feedbacks"
+    },
+    {
+      "name": "MCP",
+      "description": "MCP servers"
+    },
+    {
+      "name": "Mentions",
+      "description": "Mentions"
+    },
+    {
+      "name": "Search",
+      "description": "Search"
+    },
+    {
+      "name": "Tools",
+      "description": "Tools"
+    },
+    {
+      "name": "Triggers",
+      "description": "Triggers"
+    },
+    {
+      "name": "Spaces",
+      "description": "Spaces"
+    },
+    {
+      "name": "Workspace",
+      "description": "Workspace"
+    },
+    {
+      "name": "Private User",
+      "description": "Private API - User"
+    },
+    {
+      "name": "Private Authentication",
+      "description": "Private API - Authentication (WorkOS)"
+    },
+    {
+      "name": "Private Agents",
+      "description": "Private API - Agent configurations"
+    },
+    {
+      "name": "Private Conversations",
+      "description": "Private API - Conversations"
+    },
+    {
+      "name": "Private Messages",
+      "description": "Private API - Messages"
+    },
+    {
+      "name": "Private Events",
+      "description": "Private API - SSE event streams"
+    },
+    {
+      "name": "Private Files",
+      "description": "Private API - File uploads"
+    },
+    {
+      "name": "Private Mentions",
+      "description": "Private API - Mention suggestions"
+    },
+    {
+      "name": "Private Spaces",
+      "description": "Private API - Spaces and data source views"
+    },
+    {
+      "name": "Private Extension",
+      "description": "Private API - Extension configuration"
+    },
+    {
+      "name": "Private Workspace",
+      "description": "Private API - Workspace settings"
+    }
+  ],
   "paths": {
+    "/api/user": {
+      "get": {
+        "summary": "Get current user",
+        "description": "Returns the authenticated user with their workspaces and subscriber hash.",
+        "tags": [
+          "Private User"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The authenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/PrivateUser"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update current user",
+        "description": "Update the authenticated user's profile (name, job type, favorite platforms, image).",
+        "tags": [
+          "Private User"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "firstName",
+                  "lastName"
+                ],
+                "properties": {
+                  "firstName": {
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "type": "string"
+                  },
+                  "jobType": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "favoritePlatforms": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "emailProvider": {
+                    "type": "string"
+                  },
+                  "workspaceId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
         "summary": "List agents",
@@ -101,6 +309,75 @@
           },
           "404": {
             "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/agent_configurations/{sId}/export/yaml": {
+      "get": {
+        "summary": "Export agent configuration as YAML",
+        "description": "Download the agent configuration identified by {sId} as a YAML file.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sId",
+            "required": true,
+            "description": "ID of the agent configuration",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The agent configuration as a downloadable YAML file",
+            "content": {
+              "text/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment with suggested filename",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid or missing parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Agent configuration not found."
           },
           "405": {
             "description": "Method not supported. Only GET is expected."
@@ -1491,6 +1768,11 @@
                     "type": "boolean",
                     "description": "Whether to wait for the agent to generate the initial message. If true the query will wait for the agent's answer. If false (default), the API will return a conversation ID directly and you will need to use streaming events to get the messages.",
                     "example": true
+                  },
+                  "spaceId": {
+                    "type": "string",
+                    "description": "The sId of the space (project) in which to create the conversation (optional). If not provided, the conversation is created outside projects",
+                    "example": "space_abc123"
                   }
                 }
               }
@@ -2338,6 +2620,14 @@
                   "conversationId": {
                     "type": "string",
                     "description": "Optional conversation ID for context"
+                  },
+                  "serverName": {
+                    "type": "string",
+                    "description": "Optional name of the MCP server (e.g., \"Notion\", \"GitHub\")"
+                  },
+                  "serverIcon": {
+                    "type": "string",
+                    "description": "Optional icon identifier for the MCP server"
                   }
                 }
               }
@@ -5002,10 +5292,5455 @@
           }
         }
       }
+    },
+    "/api/w/{wId}/assistant/agent_configurations": {
+      "get": {
+        "summary": "List agent configurations",
+        "description": "Returns all agent configurations in the workspace.",
+        "tags": [
+          "Private Agents"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "description": "Filter agents by view",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "list",
+                "favorites",
+                "published",
+                "admin_internal",
+                "global",
+                "workspace"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum number of results to return",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "withUsage",
+            "required": false,
+            "description": "Include usage statistics",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "withAuthors",
+            "required": false,
+            "description": "Include recent authors",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "withFeedbacks",
+            "required": false,
+            "description": "Include feedback counts",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "withEditors",
+            "required": false,
+            "description": "Include editors list",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "description": "Sort order",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfigurations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateLightAgentConfiguration"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an agent configuration",
+        "description": "Creates a new agent configuration in the workspace.",
+        "tags": [
+          "Private Agents"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "assistant"
+                ],
+                "properties": {
+                  "assistant": {
+                    "type": "object",
+                    "description": "Agent configuration to create"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfiguration": {
+                      "$ref": "#/components/schemas/PrivateLightAgentConfiguration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/cancel": {
+      "post": {
+        "summary": "Cancel message generation",
+        "description": "Cancels the generation of messages in a conversation.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "messageIds"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "cancel"
+                    ]
+                  },
+                  "messageIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/content_fragment": {
+      "post": {
+        "summary": "Create a content fragment",
+        "description": "Post a new content fragment to an existing conversation.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "content",
+                  "contentType",
+                  "context"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "description": "MIME type of the content"
+                  },
+                  "url": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "profilePictureUrl": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "fileId": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully created content fragment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "contentFragment": {
+                      "$ref": "#/components/schemas/PrivateContentFragment"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/events": {
+      "get": {
+        "summary": "Stream conversation events",
+        "description": "Stream real-time conversation events using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
+        "tags": [
+          "Private Events"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event stream. Each event is sent as `data: {json}\\n\\n`.\nEvents are discriminated by the `type` field.\n",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateConversationEvent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/feedbacks": {
+      "get": {
+        "summary": "Get conversation feedbacks",
+        "description": "Retrieve all feedbacks for a conversation submitted by the authenticated user.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved feedbacks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feedbacks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateFeedback"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}": {
+      "get": {
+        "summary": "Get a conversation",
+        "description": "Retrieve a specific conversation by its ID.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversation": {
+                      "$ref": "#/components/schemas/PrivateConversation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete or leave a conversation",
+        "description": "Delete a conversation or leave it if it is shared.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted or left conversation"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a conversation",
+        "description": "Update a conversation's title, mark it as read, or move it to a different space.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "title"
+                    ],
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "read"
+                    ],
+                    "properties": {
+                      "read": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "spaceId"
+                    ],
+                    "properties": {
+                      "spaceId": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
+      "post": {
+        "summary": "Edit a message",
+        "description": "Edit the content and mentions of an existing user message in a conversation.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content",
+                  "mentions"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  },
+                  "mentions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PrivateMention"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully edited message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "$ref": "#/components/schemas/PrivateUserMessage"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events": {
+      "get": {
+        "summary": "Stream message events",
+        "description": "Stream real-time events for a specific agent message using Server-Sent Events (SSE). Only available for agent messages. This endpoint is redirected to /api/sse/ for SSE traffic routing.",
+        "tags": [
+          "Private Events"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event stream. Each event is sent as `data: {json}\\n\\n`.\nEvents are discriminated by the `type` field. Each event payload also includes a `step` integer.\n",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateAgentMessageEvent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks": {
+      "post": {
+        "summary": "Submit message feedback",
+        "description": "Create or update feedback (thumbs up/down) for a specific agent message.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "thumbDirection"
+                ],
+                "properties": {
+                  "thumbDirection": {
+                    "type": "string",
+                    "enum": [
+                      "up",
+                      "down"
+                    ]
+                  },
+                  "feedbackContent": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "isConversationShared": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully submitted feedback",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete message feedback",
+        "description": "Remove the authenticated user's feedback for a specific agent message.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted feedback",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}": {
+      "get": {
+        "summary": "Get a message",
+        "description": "Retrieve a specific message by its ID within a conversation.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PrivateUserMessage"
+                        },
+                        {
+                          "$ref": "#/components/schemas/PrivateAgentMessage"
+                        },
+                        {
+                          "$ref": "#/components/schemas/PrivateContentFragment"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Message or conversation not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a message",
+        "description": "Soft-delete a user or agent message from a conversation.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Message or conversation not found"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/retry": {
+      "post": {
+        "summary": "Retry an agent message",
+        "description": "Retry generating an agent message response, optionally retrying only blocked actions.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retried message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "$ref": "#/components/schemas/PrivateAgentMessage"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages": {
+      "get": {
+        "summary": "List messages in a conversation",
+        "description": "Retrieve a paginated list of messages for a specific conversation.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/PrivateUserMessage"
+                          },
+                          {
+                            "$ref": "#/components/schemas/PrivateLightAgentMessage"
+                          },
+                          {
+                            "$ref": "#/components/schemas/PrivateContentFragment"
+                          }
+                        ]
+                      }
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "lastValue": {
+                      "type": "integer",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Post a message to a conversation",
+        "description": "Post a new user message to an existing conversation, triggering agent responses.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content",
+                  "context",
+                  "mentions"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  },
+                  "mentions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PrivateMention"
+                    }
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "timezone": {
+                        "type": "string"
+                      },
+                      "profilePictureUrl": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "origin": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "clientSideMCPServerIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "skipToolsValidation": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully posted message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "$ref": "#/components/schemas/PrivateUserMessage"
+                    },
+                    "contentFragments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateContentFragment"
+                      }
+                    },
+                    "agentMessages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateAgentMessage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/participants": {
+      "get": {
+        "summary": "Get conversation participants",
+        "description": "Returns the participants of a specific conversation.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "participants": {
+                      "type": "object",
+                      "properties": {
+                        "agents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "configurationId": {
+                                "type": "string"
+                              },
+                              "configurationName": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "users": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "username": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "pictureUrl": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a participant to a conversation",
+        "description": "Adds the authenticated user as a participant to a specific conversation.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully added participant"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations": {
+      "get": {
+        "summary": "List conversations",
+        "description": "Retrieve a paginated list of conversations for the authenticated user in the workspace.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved conversations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateConversation"
+                      }
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "lastValue": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a conversation",
+        "description": "Create a new conversation, optionally with an initial user message and content fragments.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "unlisted",
+                      "deleted",
+                      "test"
+                    ]
+                  },
+                  "spaceId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "message": {
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "type": "string"
+                      },
+                      "mentions": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/PrivateMention"
+                        }
+                      },
+                      "context": {
+                        "type": "object",
+                        "properties": {
+                          "timezone": {
+                            "type": "string"
+                          },
+                          "profilePictureUrl": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "origin": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "clientSideMCPServerIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "selectedMCPServerViewIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "selectedSkillIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "contentFragments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "skipToolsValidation": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully created conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversation": {
+                      "$ref": "#/components/schemas/PrivateFullConversation"
+                    },
+                    "message": {
+                      "$ref": "#/components/schemas/PrivateUserMessage"
+                    },
+                    "contentFragments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateContentFragment"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/mentions/suggestions": {
+      "get": {
+        "summary": "Get mention suggestions",
+        "description": "Returns mention suggestions for the workspace.",
+        "tags": [
+          "Private Mentions"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "description": "Search query to filter suggestions",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "select",
+            "required": false,
+            "description": "Filter by type (agents, users, or both)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "agents",
+                "users"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "description": "Whether to include only current mentions",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "spaceId",
+            "required": false,
+            "description": "Filter suggestions by space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateMentionSuggestion"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/extension/config": {
+      "get": {
+        "summary": "Get extension configuration",
+        "description": "Returns the extension configuration for the workspace, including blacklisted domains.",
+        "tags": [
+          "Private Extension"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Extension configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateExtensionConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/feature-flags": {
+      "get": {
+        "summary": "Get workspace feature flags",
+        "description": "Returns the list of enabled feature flags for the workspace.",
+        "tags": [
+          "Private Workspace"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of feature flags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateFeatureFlags"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/files/{fileId}": {
+      "get": {
+        "summary": "Get or download a file",
+        "description": "View or download a file. Use query parameters `version` (original, processed, public) and `action` (view, download).",
+        "tags": [
+          "Private Files"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fileId",
+            "required": true,
+            "description": "ID of the file",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "description": "File version to retrieve",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "original",
+                "processed",
+                "public"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "description": "Action to perform",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "view",
+                "download"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content or redirect to download URL",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect to signed download URL"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload file content",
+        "description": "Process and store the uploaded file content.",
+        "tags": [
+          "Private Files"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fileId",
+            "required": true,
+            "description": "ID of the file",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/components/schemas/PrivateFileWithUploadUrl"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a file",
+        "description": "Delete a file from the workspace.",
+        "tags": [
+          "Private Files"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fileId",
+            "required": true,
+            "description": "ID of the file",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "File deleted"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/files": {
+      "post": {
+        "summary": "Create a file upload",
+        "description": "Creates a file record and returns a pre-signed upload URL. The file content should then be uploaded to the returned URL.",
+        "tags": [
+          "Private Files"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "contentType",
+                  "fileName",
+                  "fileSize",
+                  "useCase"
+                ],
+                "properties": {
+                  "contentType": {
+                    "type": "string"
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "fileSize": {
+                    "type": "number"
+                  },
+                  "useCase": {
+                    "type": "string",
+                    "enum": [
+                      "conversation",
+                      "folders_document",
+                      "avatar",
+                      "upsert_document",
+                      "upsert_table",
+                      "project_context",
+                      "skill_attachment"
+                    ]
+                  },
+                  "useCaseMetadata": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File record created with upload URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/components/schemas/PrivateFileWithUploadUrl"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}": {
+      "get": {
+        "summary": "Get a data source view",
+        "description": "Returns the details of a specific data source view.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "dsvId",
+            "required": true,
+            "description": "ID of the data source view",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dataSourceView": {
+                      "$ref": "#/components/schemas/PrivateDataSourceView"
+                    },
+                    "connector": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Connector details if the data source is managed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a data source view",
+        "description": "Updates a specific data source view.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "dsvId",
+            "required": true,
+            "description": "ID of the data source view",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentsIn": {
+                    "type": "array",
+                    "nullable": true,
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dataSourceView": {
+                      "$ref": "#/components/schemas/PrivateDataSourceView"
+                    },
+                    "connector": {
+                      "type": "object",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a data source view",
+        "description": "Deletes a specific data source view.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "dsvId",
+            "required": true,
+            "description": "ID of the data source view",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "description": "Force deletion even if the view is in use",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successfully deleted data source view"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/spaces/{spaceId}/data_source_views": {
+      "get": {
+        "summary": "List data source views",
+        "description": "Returns all data source views in a specific space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Filter by data source view category",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "managed",
+                "folder",
+                "website",
+                "apps"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "withDetails",
+            "required": false,
+            "description": "Include usage and connector details (requires category)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeEditedBy",
+            "required": false,
+            "description": "Include editedByUser information",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dataSourceViews": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateDataSourceView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a data source view",
+        "description": "Creates a new data source view in a specific space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dataSourceId"
+                ],
+                "properties": {
+                  "dataSourceId": {
+                    "type": "string"
+                  },
+                  "parentsIn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully created data source view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dataSourceView": {
+                      "$ref": "#/components/schemas/PrivateDataSourceView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/spaces/{spaceId}": {
+      "get": {
+        "summary": "Get a space",
+        "description": "Returns the details of a specific space including categories, members, and permissions.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeAllMembers",
+            "required": false,
+            "description": "Include all members (including inactive)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PrivateSpace"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "categories": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "count": {
+                                    "type": "integer"
+                                  },
+                                  "usage": {
+                                    "type": "object",
+                                    "properties": {
+                                      "count": {
+                                        "type": "integer"
+                                      },
+                                      "agents": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "canWrite": {
+                              "type": "boolean"
+                            },
+                            "canRead": {
+                              "type": "boolean"
+                            },
+                            "isMember": {
+                              "type": "boolean"
+                            },
+                            "isEditor": {
+                              "type": "boolean"
+                            },
+                            "members": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "description": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "archivedAt": {
+                              "type": "integer",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a space",
+        "description": "Updates the properties of a specific space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "dataSourceId": {
+                          "type": "string"
+                        },
+                        "parentsIn": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "$ref": "#/components/schemas/PrivateSpace"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a space",
+        "description": "Deletes a specific space from the workspace.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "description": "Force deletion even if space is in use",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "$ref": "#/components/schemas/PrivateSpace"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/spaces": {
+      "get": {
+        "summary": "List spaces",
+        "description": "Returns all spaces in the workspace.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "description": "Filter by role (e.g. admin to list all workspace spaces)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Filter by space kind (e.g. system)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "spaces": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/PrivateSpace"
+                          },
+                          {
+                            "$ref": "#/components/schemas/PrivateProject"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a space",
+        "description": "Creates a new space in the workspace.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "isRestricted",
+                  "name",
+                  "spaceKind",
+                  "managementMode"
+                ],
+                "properties": {
+                  "isRestricted": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "spaceKind": {
+                    "type": "string",
+                    "enum": [
+                      "regular",
+                      "project"
+                    ]
+                  },
+                  "managementMode": {
+                    "type": "string",
+                    "enum": [
+                      "manual",
+                      "group"
+                    ]
+                  },
+                  "memberIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Required when managementMode is manual"
+                  },
+                  "groupIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Required when managementMode is group"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully created space",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "$ref": "#/components/schemas/PrivateSpace"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/workos/login": {
+      "get": {
+        "summary": "Initiate WorkOS login",
+        "description": "Redirects to WorkOS AuthKit for authentication. Supports PKCE flow for extensions.",
+        "tags": [
+          "Private Authentication"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "redirect_uri",
+            "required": false,
+            "description": "Custom redirect URI (used by extensions for PKCE flow)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code_challenge",
+            "required": false,
+            "description": "PKCE code challenge",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code_challenge_method",
+            "required": false,
+            "description": "PKCE code challenge method (S256)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Login page HTML"
+          },
+          "302": {
+            "description": "Redirect to WorkOS authorization URL"
+          },
+          "400": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/api/workos/authenticate": {
+      "post": {
+        "summary": "Exchange code or refresh token",
+        "description": "Exchanges an authorization code or refresh token for access tokens via WorkOS.",
+        "tags": [
+          "Private Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "grant_type": {
+                    "type": "string",
+                    "enum": [
+                      "refresh_token"
+                    ]
+                  },
+                  "refresh_token": {
+                    "type": "string"
+                  },
+                  "code_verifier": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication result with tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object"
+                    },
+                    "expiresIn": {
+                      "type": "integer",
+                      "description": "Token expiry in seconds"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/api/workos/revoke-session": {
+      "post": {
+        "summary": "Revoke a session",
+        "description": "Revokes a WorkOS session by session ID. Used by the Chrome extension for logout.",
+        "tags": [
+          "Private Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session revoked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid session_id"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "PrivateUser": {
+        "type": "object",
+        "description": "Authenticated user with their workspaces and subscriber hash.",
+        "required": [
+          "sId",
+          "id",
+          "createdAt",
+          "username",
+          "email",
+          "firstName",
+          "fullName",
+          "workspaces"
+        ],
+        "properties": {
+          "sId": {
+            "type": "string",
+            "description": "Unique string identifier for the user"
+          },
+          "id": {
+            "type": "integer",
+            "description": "Numeric model identifier"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix timestamp of user creation"
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "auth0",
+              "github",
+              "google",
+              "okta",
+              "samlp",
+              "waad"
+            ],
+            "description": "Authentication provider"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true,
+            "description": "URL of the user's profile image"
+          },
+          "lastLoginAt": {
+            "type": "integer",
+            "nullable": true
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateWorkspace"
+            }
+          },
+          "selectedWorkspace": {
+            "type": "string",
+            "description": "sId of the currently selected workspace"
+          },
+          "origin": {
+            "type": "string",
+            "description": "How the user joined (e.g. invitation, provisioned)"
+          },
+          "subscriberHash": {
+            "type": "string",
+            "nullable": true,
+            "description": "Hash used for Intercom identity verification"
+          }
+        }
+      },
+      "PrivateWorkspace": {
+        "type": "object",
+        "description": "Workspace as returned by the private API, includes SSO and provider settings.",
+        "required": [
+          "id",
+          "sId",
+          "name",
+          "role"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "builder",
+              "user",
+              "none"
+            ]
+          },
+          "segmentation": {
+            "type": "string",
+            "nullable": true
+          },
+          "whiteListedProviders": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed model provider IDs"
+          },
+          "defaultEmbeddingProvider": {
+            "type": "string",
+            "nullable": true
+          },
+          "ssoEnforced": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          }
+        }
+      },
+      "PrivateConversation": {
+        "type": "object",
+        "description": "Conversation without content, used in list responses.",
+        "required": [
+          "id",
+          "created",
+          "updated",
+          "sId",
+          "depth"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "created": {
+            "type": "integer",
+            "description": "Unix timestamp of creation"
+          },
+          "updated": {
+            "type": "integer",
+            "description": "Unix timestamp of last update"
+          },
+          "unread": {
+            "type": "boolean"
+          },
+          "lastReadMs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "actionRequired": {
+            "type": "boolean",
+            "description": "Whether the conversation requires user action"
+          },
+          "hasError": {
+            "type": "boolean"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "spaceId": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the space the conversation belongs to (for project conversations)"
+          },
+          "triggerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Conversation depth (for agent handover chains)"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "requestedSpaceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PrivateFullConversation": {
+        "type": "object",
+        "description": "Full conversation including content, owner, and visibility.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PrivateConversation"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "owner": {
+                "$ref": "#/components/schemas/PrivateWorkspace"
+              },
+              "visibility": {
+                "type": "string",
+                "enum": [
+                  "unlisted",
+                  "deleted",
+                  "test"
+                ]
+              },
+              "branchId": {
+                "type": "string",
+                "nullable": true
+              },
+              "content": {
+                "type": "array",
+                "description": "Array of message arrays (versions/retries)",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/PrivateUserMessage"
+                      },
+                      {
+                        "$ref": "#/components/schemas/PrivateAgentMessage"
+                      },
+                      {
+                        "$ref": "#/components/schemas/PrivateContentFragment"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PrivateUserMessage": {
+        "type": "object",
+        "description": "A user message in a conversation.",
+        "required": [
+          "type",
+          "sId",
+          "content",
+          "version",
+          "rank",
+          "created"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "user_message"
+            ]
+          },
+          "sId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "deleted"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "user": {
+            "type": "object",
+            "nullable": true,
+            "description": "The user who sent the message",
+            "properties": {
+              "sId": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "fullName": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateMention"
+            }
+          },
+          "richMentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateRichMentionWithStatus"
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/PrivateUserMessageContext"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateReaction"
+            }
+          }
+        }
+      },
+      "PrivateAgentMessage": {
+        "type": "object",
+        "description": "An agent message in a conversation.",
+        "required": [
+          "type",
+          "sId",
+          "version",
+          "rank",
+          "status",
+          "parentMessageId"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "agentMessageId": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message"
+            ]
+          },
+          "sId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "completedTs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "deleted"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "parentMessageId": {
+            "type": "string"
+          },
+          "parentAgentMessageId": {
+            "type": "string",
+            "nullable": true,
+            "description": "If handover, the agent message that summoned this agent"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "chainOfThought": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "nullable": true
+              }
+            }
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/PrivateLightAgentConfiguration"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "MCP actions executed by the agent"
+          },
+          "contents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "step": {
+                  "type": "integer"
+                },
+                "content": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "skipToolsValidation": {
+            "type": "boolean"
+          },
+          "richMentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateRichMentionWithStatus"
+            }
+          },
+          "completionDurationMs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateReaction"
+            }
+          }
+        }
+      },
+      "PrivateLightAgentMessage": {
+        "type": "object",
+        "description": "A lighter agent message used in paginated message list responses.",
+        "required": [
+          "type",
+          "sId",
+          "version",
+          "rank",
+          "status",
+          "parentMessageId",
+          "configuration"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message"
+            ]
+          },
+          "sId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "completedTs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "deleted"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "parentMessageId": {
+            "type": "string"
+          },
+          "parentAgentMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "chainOfThought": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "nullable": true
+              }
+            }
+          },
+          "configuration": {
+            "type": "object",
+            "description": "Minimal agent configuration info",
+            "properties": {
+              "sId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "pictureUrl": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "canRead": {
+                "type": "boolean"
+              }
+            }
+          },
+          "citations": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PrivateCitation"
+            }
+          },
+          "generatedFiles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fileId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "contentType": {
+                  "type": "string"
+                },
+                "publicUrl": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "richMentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateRichMentionWithStatus"
+            }
+          },
+          "completionDurationMs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateReaction"
+            }
+          }
+        }
+      },
+      "PrivateCitation": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          }
+        }
+      },
+      "PrivateContentFragment": {
+        "type": "object",
+        "description": "A content fragment (file or content node attachment) in a conversation.",
+        "required": [
+          "type",
+          "sId",
+          "title",
+          "contentType",
+          "contentFragmentType"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "content_fragment"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "deleted"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "MIME type of the content"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "nullable": true
+              },
+              "fullName": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "profilePictureUrl": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "contentFragmentId": {
+            "type": "string"
+          },
+          "contentFragmentVersion": {
+            "type": "string",
+            "enum": [
+              "superseded",
+              "latest"
+            ]
+          },
+          "contentFragmentType": {
+            "type": "string",
+            "enum": [
+              "file",
+              "content_node"
+            ],
+            "description": "Whether this is a file upload or a content node reference"
+          },
+          "expiredReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "data_source_deleted"
+            ]
+          },
+          "fileId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Present for file content fragments"
+          },
+          "snippet": {
+            "type": "string",
+            "nullable": true
+          },
+          "textUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "textBytes": {
+            "type": "integer",
+            "nullable": true
+          },
+          "nodeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Present for content node fragments"
+          },
+          "nodeDataSourceViewId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PrivateLightAgentConfiguration": {
+        "type": "object",
+        "description": "Agent configuration as returned by the private list endpoint.",
+        "required": [
+          "id",
+          "sId",
+          "version",
+          "name",
+          "description",
+          "pictureUrl",
+          "status",
+          "scope",
+          "model",
+          "maxStepsPerRun",
+          "tags"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "versionCreatedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "versionAuthorId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "pictureUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Agent status",
+            "enum": [
+              "active",
+              "archived",
+              "draft",
+              "pending",
+              "disabled_by_admin",
+              "disabled_missing_datasource",
+              "disabled_free_workspace"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "global",
+              "visible",
+              "hidden"
+            ]
+          },
+          "userFavorite": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "providerId": {
+                "type": "string"
+              },
+              "modelId": {
+                "type": "string"
+              },
+              "temperature": {
+                "type": "number"
+              },
+              "reasoningEffort": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "light",
+                  "medium",
+                  "high"
+                ]
+              }
+            }
+          },
+          "maxStepsPerRun": {
+            "type": "integer"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "requestedSpaceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "lastAuthors": {
+            "type": "array",
+            "description": "Optional, returned when withAuthors query param is set",
+            "items": {
+              "type": "string"
+            }
+          },
+          "editors": {
+            "type": "array",
+            "description": "Optional, returned when withEditors query param is set",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sId": {
+                  "type": "string"
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "usage": {
+            "type": "object",
+            "description": "Optional, returned when withUsage query param is set",
+            "properties": {
+              "messageCount": {
+                "type": "integer"
+              },
+              "conversationCount": {
+                "type": "integer"
+              },
+              "userCount": {
+                "type": "integer"
+              },
+              "timePeriodSec": {
+                "type": "integer"
+              }
+            }
+          },
+          "feedbacks": {
+            "type": "object",
+            "description": "Optional, returned when withFeedbacks query param is set",
+            "properties": {
+              "up": {
+                "type": "integer"
+              },
+              "down": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "PrivateFileWithUploadUrl": {
+        "type": "object",
+        "description": "File record with a pre-signed upload URL.",
+        "required": [
+          "sId",
+          "id",
+          "fileName",
+          "fileSize",
+          "contentType",
+          "status",
+          "useCase",
+          "uploadUrl"
+        ],
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "failed",
+              "ready"
+            ]
+          },
+          "useCase": {
+            "type": "string",
+            "enum": [
+              "conversation",
+              "avatar",
+              "tool_output",
+              "upsert_document",
+              "folders_document",
+              "upsert_table",
+              "project_context",
+              "skill_attachment"
+            ]
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "Pre-signed URL for uploading the file content"
+          },
+          "downloadUrl": {
+            "type": "string"
+          },
+          "publicUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "PrivateSpace": {
+        "type": "object",
+        "description": "A space in the workspace.",
+        "required": [
+          "sId",
+          "name",
+          "kind",
+          "groupIds",
+          "isRestricted",
+          "managementMode"
+        ],
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "global",
+              "system",
+              "conversations",
+              "regular",
+              "project"
+            ]
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isRestricted": {
+            "type": "boolean"
+          },
+          "managementMode": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "group"
+            ]
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateProject": {
+        "type": "object",
+        "description": "A project space with additional metadata.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PrivateSpace"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "isMember": {
+                "type": "boolean"
+              },
+              "archivedAt": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          }
+        ]
+      },
+      "PrivateDataSourceView": {
+        "type": "object",
+        "description": "A view on a data source within a space.",
+        "required": [
+          "sId",
+          "id",
+          "category",
+          "kind",
+          "spaceId",
+          "dataSource"
+        ],
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "folder",
+              "website",
+              "apps"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "default",
+              "custom"
+            ]
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "integer"
+          },
+          "parentsIn": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "List of parent IDs included in this view, null if the full data source is used"
+          },
+          "dataSource": {
+            "$ref": "#/components/schemas/PrivateDataSource"
+          },
+          "editedByUser": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "editedAt": {
+                "type": "integer",
+                "nullable": true
+              },
+              "fullName": {
+                "type": "string",
+                "nullable": true
+              },
+              "imageUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "userId": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
+      "PrivateDataSource": {
+        "type": "object",
+        "description": "A data source in the workspace.",
+        "required": [
+          "sId",
+          "id",
+          "name"
+        ],
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "assistantDefaultSelected": {
+            "type": "boolean"
+          },
+          "dustAPIProjectId": {
+            "type": "string"
+          },
+          "dustAPIDataSourceId": {
+            "type": "string"
+          },
+          "connectorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectorProvider": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PrivateMentionSuggestion": {
+        "type": "object",
+        "description": "A rich mention suggestion for agents or users.",
+        "required": [
+          "id",
+          "type",
+          "label",
+          "pictureUrl",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Agent sId or user sId"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "user"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "pictureUrl": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "Agent description or user email"
+          },
+          "userFavorite": {
+            "type": "boolean",
+            "description": "Whether the agent is a user favorite (agent mentions only)"
+          }
+        }
+      },
+      "PrivateFeatureFlags": {
+        "type": "object",
+        "description": "Workspace feature flags response.",
+        "required": [
+          "feature_flags"
+        ],
+        "properties": {
+          "feature_flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of enabled feature flag names for the workspace"
+          }
+        }
+      },
+      "PrivateExtensionConfig": {
+        "type": "object",
+        "description": "Extension configuration for the workspace.",
+        "required": [
+          "blacklistedDomains"
+        ],
+        "properties": {
+          "blacklistedDomains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Domains where the extension should not activate"
+          }
+        }
+      },
+      "PrivateFeedback": {
+        "type": "object",
+        "description": "User feedback on an agent message.",
+        "required": [
+          "id",
+          "sId",
+          "messageId",
+          "agentMessageId",
+          "userId",
+          "thumbDirection",
+          "agentConfigurationId",
+          "agentConfigurationVersion",
+          "isConversationShared",
+          "dismissed",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "agentMessageId": {
+            "type": "integer"
+          },
+          "userId": {
+            "type": "integer"
+          },
+          "thumbDirection": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional text feedback from the user"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "agentConfigurationId": {
+            "type": "string"
+          },
+          "agentConfigurationVersion": {
+            "type": "integer"
+          },
+          "isConversationShared": {
+            "type": "boolean"
+          },
+          "dismissed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PrivateMention": {
+        "type": "object",
+        "description": "A mention in a message (agent or user).",
+        "properties": {
+          "configurationId": {
+            "type": "string",
+            "description": "Agent configuration sId (for agent mentions)"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "user"
+            ],
+            "description": "Present only for user mentions"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User sId (for user mentions)"
+          }
+        }
+      },
+      "PrivateRichMentionWithStatus": {
+        "type": "object",
+        "description": "A rich mention with approval status, used in message responses.",
+        "required": [
+          "id",
+          "type",
+          "label",
+          "pictureUrl",
+          "description",
+          "dismissed",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "user"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "pictureUrl": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "userFavorite": {
+            "type": "boolean"
+          },
+          "dismissed": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_conversation_access",
+              "pending_project_membership",
+              "approved",
+              "rejected",
+              "user_restricted_by_conversation_access",
+              "agent_restricted_by_space_usage"
+            ]
+          }
+        }
+      },
+      "PrivateUserMessageContext": {
+        "type": "object",
+        "description": "Context metadata for a user message.",
+        "required": [
+          "username",
+          "timezone",
+          "origin"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "profilePictureUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "web",
+              "project_kickoff",
+              "extension",
+              "agent_sidekick",
+              "api",
+              "cli",
+              "cli_programmatic",
+              "email",
+              "excel",
+              "gsheet",
+              "make",
+              "n8n",
+              "powerpoint",
+              "raycast",
+              "slack",
+              "slack_workflow",
+              "teams",
+              "transcript",
+              "triggered_programmatic",
+              "triggered",
+              "zapier",
+              "zendesk",
+              "onboarding_conversation",
+              "project_butler"
+            ]
+          }
+        }
+      },
+      "PrivateReaction": {
+        "type": "object",
+        "description": "A reaction on a message.",
+        "required": [
+          "emoji",
+          "users"
+        ],
+        "properties": {
+          "emoji": {
+            "type": "string"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "username": {
+                  "type": "string"
+                },
+                "fullName": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "PrivateConversationEvent": {
+        "type": "object",
+        "description": "Server-Sent Event for conversation-level streaming. Discriminated on the `type` field.",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PrivateUserMessageNewEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentMessageNewEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentMessageDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateConversationTitleEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateButlerSuggestionCreatedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateButlerThinkingEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateButlerDoneEvent"
+          }
+        ]
+      },
+      "PrivateUserMessageNewEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "messageId",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "user_message_new"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/PrivateUserMessage"
+          }
+        }
+      },
+      "PrivateAgentMessageNewEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message_new"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/PrivateAgentMessage"
+          }
+        }
+      },
+      "PrivateAgentMessageDoneEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "configurationId",
+          "messageId",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message_done"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error"
+            ]
+          }
+        }
+      },
+      "PrivateConversationTitleEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "title"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "conversation_title"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PrivateButlerSuggestionCreatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "suggestion"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "butler_suggestion_created"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "suggestion": {
+            "type": "object",
+            "description": "Butler suggestion details"
+          }
+        }
+      },
+      "PrivateButlerThinkingEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "butler_thinking"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateButlerDoneEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "butler_done"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateAgentMessageEvent": {
+        "type": "object",
+        "description": "Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PrivateGenerationTokensEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentActionSuccessEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentMessageSuccessEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentGenerationCancelledEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateToolErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateToolParamsEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateToolApproveExecutionEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateToolNotificationEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateToolPersonalAuthRequiredEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateToolFileAuthRequiredEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateAgentContextPrunedEvent"
+          }
+        ]
+      },
+      "PrivateGenerationTokensEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "text",
+          "classification"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "generation_tokens"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "description": "The token(s) generated in this chunk"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "tokens",
+              "chain_of_thought",
+              "opening_delimiter",
+              "closing_delimiter"
+            ]
+          },
+          "delimiterClassification": {
+            "type": "string",
+            "description": "Present when classification is opening_delimiter or closing_delimiter"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateAgentActionSuccessEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "action"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_action_success"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "object",
+            "description": "The MCP action that completed successfully"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateAgentMessageSuccessEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "message",
+          "runIds"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message_success"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/PrivateAgentMessage"
+          },
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateAgentErrorEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "error"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_error"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateAgentGenerationCancelledEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_generation_cancelled"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolErrorEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "conversationId",
+          "error",
+          "isLastBlockingEventForStep"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_error"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "isLastBlockingEventForStep": {
+            "type": "boolean"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolParamsEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "action"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_params"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "object",
+            "description": "The MCP action with its parameters"
+          },
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolApproveExecutionEvent": {
+        "type": "object",
+        "description": "Sent when a tool requires user approval before execution.",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "messageId",
+          "actionId",
+          "configurationId",
+          "inputs"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_approve_execution"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "actionId": {
+            "type": "string"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "stake": {
+            "type": "string",
+            "description": "Risk level of the tool execution"
+          },
+          "isLastBlockingEventForStep": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolNotificationEvent": {
+        "type": "object",
+        "description": "Progress notification from a running tool.",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "conversationId",
+          "messageId",
+          "action",
+          "notification"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_notification"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "object",
+            "description": "The MCP action producing the notification"
+          },
+          "notification": {
+            "type": "object",
+            "description": "Progress notification content"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolPersonalAuthRequiredEvent": {
+        "type": "object",
+        "description": "Sent when a tool requires personal OAuth authentication.",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "messageId",
+          "actionId",
+          "configurationId",
+          "authError"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_personal_auth_required"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "actionId": {
+            "type": "string"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "authError": {
+            "type": "object",
+            "properties": {
+              "mcpServerId": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolFileAuthRequiredEvent": {
+        "type": "object",
+        "description": "Sent when a tool requires file access authorization (e.g., Google Drive).",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "messageId",
+          "actionId",
+          "configurationId",
+          "fileAuthError"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_file_auth_required"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "actionId": {
+            "type": "string"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "fileAuthError": {
+            "type": "object",
+            "properties": {
+              "fileId": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "connectionId": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateAgentContextPrunedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_context_pruned"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
       "Section": {
         "type": "object",
         "description": "A section of a document that can contain nested sections",
@@ -6181,6 +11916,5 @@
         "description": "Your DUST API key is a Bearer token."
       }
     }
-  },
-  "tags": []
+  }
 }

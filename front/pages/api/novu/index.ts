@@ -1,4 +1,6 @@
+/** @ignoreswagger */
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
+import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
 import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/project-added-as-member";
 import { projectNewConversationWorkflow } from "@app/lib/notifications/workflows/project-new-conversation";
@@ -13,6 +15,7 @@ export default serve({
   workflows: [
     conversationUnreadWorkflow,
     agentMessageFeedbackWorkflow,
+    agentSuggestionsReadyWorkflow,
     projectAddedAsMemberWorkflow,
     projectNewConversationWorkflow,
   ],

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import {
   buildInitialActions,

@@ -18,6 +18,7 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import {
   CartesianGrid,
   Line,
@@ -142,7 +143,8 @@ export function UsageMetricsChart({
     filteredData,
     mode,
     period,
-    zeroFactory
+    zeroFactory,
+    BROWSER_TIMEZONE
   );
 
   return (

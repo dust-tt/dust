@@ -14,12 +14,24 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tool Runtime & Profile
+// ---------------------------------------------------------------------------
+
+export const TOOL_RUNTIMES = ["system", "python", "node"] as const;
+export type ToolRuntime = (typeof TOOL_RUNTIMES)[number];
+
+export const TOOL_PROFILES = ["openai", "anthropic", "gemini"] as const;
+export type ToolProfile = (typeof TOOL_PROFILES)[number];
+
+// ---------------------------------------------------------------------------
 // Tool Entry
 // ---------------------------------------------------------------------------
 
 export interface ToolEntry {
   readonly name: string;
   readonly description: string;
+  readonly runtime: ToolRuntime;
+  readonly profile?: ToolProfile;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +80,7 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
   allowlist: [
     "storage.googleapis.com",
+    "dust.tt",
     "*.dust.tt",
     "pypi.org",
     "registry.npmjs.org",
@@ -83,11 +96,29 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
 // Tool Manifest
 // ---------------------------------------------------------------------------
 
+export interface ManifestToolEntry {
+  readonly name: string;
+  readonly description: string;
+}
+
 export interface ToolManifest {
   readonly version: "1.0";
   readonly generatedAt: string;
-  readonly tools: readonly ToolEntry[];
+  readonly tools: Readonly<
+    Partial<Record<ToolRuntime, readonly ManifestToolEntry[]>>
+  >;
 }
+
+// ---------------------------------------------------------------------------
+// Capabilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Declarative tags describing what a sandbox template supports.
+ * The Docker image must actually have the corresponding tooling installed. The capability tag tells
+ * orchestration it is safe to attempt the feature.
+ */
+export type SandboxCapability = "gcsfuse";
 
 // ---------------------------------------------------------------------------
 // Base Image

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";

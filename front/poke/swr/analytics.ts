@@ -8,16 +8,18 @@ export function usePokeWorkspaceUsageMetrics({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
   interval = "day",
+  timezone = "UTC",
   disabled,
 }: {
   workspaceId: string;
   days?: number;
   interval?: "day" | "week";
+  timezone?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
-  const key = `/api/poke/workspaces/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
+  const key = `/api/poke/workspaces/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}&timezone=${encodeURIComponent(timezone)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -35,15 +37,17 @@ export function usePokeWorkspaceUsageMetrics({
 export function usePokeWorkspaceActiveUsersMetrics({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
+  timezone = "UTC",
   disabled,
 }: {
   workspaceId: string;
   days?: number;
+  timezone?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
-  const key = `/api/poke/workspaces/${workspaceId}/analytics/active-users?days=${days}`;
+  const key = `/api/poke/workspaces/${workspaceId}/analytics/active-users?days=${days}&timezone=${encodeURIComponent(timezone)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

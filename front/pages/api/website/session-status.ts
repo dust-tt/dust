@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import type { NextApiRequest, NextApiResponse } from "next";

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";

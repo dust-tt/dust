@@ -3,7 +3,7 @@ import {
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image/tool_manifest";
-import type { ToolManifest } from "@app/lib/api/sandbox/image/types";
+import type { ToolEntry, ToolManifest } from "@app/lib/api/sandbox/image/types";
 import * as yaml from "js-yaml";
 import { describe, expect, test } from "vitest";
 
@@ -21,29 +21,45 @@ describe("createToolManifest()", () => {
     expect(() => new Date(manifest.generatedAt)).not.toThrow();
   });
 
-  test("includes all tools", () => {
-    const tools = [
-      { name: "curl", description: "HTTP client" },
-      { name: "pandas", description: "Data analysis" },
-      { name: "custom", description: "Custom tool" },
+  test("groups tools by runtime", () => {
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+      { name: "pandas", description: "Data analysis", runtime: "python" },
+      { name: "tsx", description: "TypeScript executor", runtime: "node" },
     ];
 
     const manifest = createToolManifest(tools);
 
-    expect(manifest.tools).toHaveLength(3);
-    expect(manifest.tools.map((t) => t.name)).toEqual([
-      "curl",
-      "pandas",
-      "custom",
+    expect(manifest.tools.system).toEqual([
+      { name: "curl", description: "HTTP client" },
     ]);
+    expect(manifest.tools.python).toEqual([
+      { name: "pandas", description: "Data analysis" },
+    ]);
+    expect(manifest.tools.node).toEqual([
+      { name: "tsx", description: "TypeScript executor" },
+    ]);
+  });
+
+  test("omits empty runtime categories", () => {
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+    ];
+
+    const manifest = createToolManifest(tools);
+
+    expect(manifest.tools.system).toBeDefined();
+    expect(manifest.tools.python).toBeUndefined();
+    expect(manifest.tools.node).toBeUndefined();
   });
 });
 
 describe("toolManifestToJSON()", () => {
   test("generates valid JSON string", () => {
-    const manifest = createToolManifest([
-      { name: "curl", description: "HTTP client" },
-    ]);
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+    ];
+    const manifest = createToolManifest(tools);
 
     const jsonString = toolManifestToJSON(manifest);
 
@@ -52,24 +68,26 @@ describe("toolManifestToJSON()", () => {
   });
 
   test("includes all manifest fields", () => {
-    const manifest = createToolManifest([
-      { name: "curl", description: "HTTP client" },
-    ]);
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+    ];
+    const manifest = createToolManifest(tools);
 
     const jsonString = toolManifestToJSON(manifest);
     const parsed = JSON.parse(jsonString);
 
     expect(parsed.version).toBe("1.0");
     expect(parsed.generatedAt).toBeDefined();
-    expect(parsed.tools).toHaveLength(1);
+    expect(parsed.tools.system).toHaveLength(1);
   });
 });
 
 describe("toolManifestToYAML()", () => {
   test("generates valid YAML string", () => {
-    const manifest = createToolManifest([
-      { name: "curl", description: "HTTP client" },
-    ]);
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+    ];
+    const manifest = createToolManifest(tools);
 
     const yamlString = toolManifestToYAML(manifest);
 
@@ -79,9 +97,9 @@ describe("toolManifestToYAML()", () => {
   });
 
   test("YAML can be parsed back and matches JSON manifest", () => {
-    const tools = [
-      { name: "curl", description: "HTTP client" },
-      { name: "pandas", description: "Data analysis" },
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+      { name: "pandas", description: "Data analysis", runtime: "python" },
     ];
     const manifest = createToolManifest(tools);
 

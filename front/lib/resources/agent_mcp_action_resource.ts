@@ -416,11 +416,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
         },
-        argumentsRequiringApproval: isLightServerSideMCPToolConfiguration(
-          action.toolConfiguration
-        )
-          ? action.toolConfiguration.argumentsRequiringApproval
-          : undefined,
+        argumentsRequiringApproval:
+          action.toolConfiguration.argumentsRequiringApproval,
       };
 
       if (action.status === "blocked_authentication_required") {

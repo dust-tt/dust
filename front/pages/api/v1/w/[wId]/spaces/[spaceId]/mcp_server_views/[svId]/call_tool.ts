@@ -12,6 +12,11 @@ import type { CallMCPToolResponseType } from "@dust-tt/client";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+/**
+ * @ignoreswagger
+ * internal endpoint
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<CallMCPToolResponseType>>,

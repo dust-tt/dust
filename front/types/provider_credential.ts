@@ -25,7 +25,7 @@ export type ProviderCredentialType = {
   createdAt: number;
   updatedAt: number;
   providerId: ByokModelProviderIdType;
-  credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+  credentials: ApiKeyCredentialsType;
   credentialId: string;
   isHealthy: boolean;
   placeholder: string;
@@ -35,6 +35,10 @@ export type ProviderCredentialType = {
 export const ApiKeyCredentialContentSchema = z.object({
   api_key: z.string(),
 });
+
+export type ApiKeyCredentialsType = z.infer<
+  typeof ApiKeyCredentialContentSchema
+>;
 
 export const PROVIDER_TO_CREDENTIAL_KEY = {
   openai: "OPENAI_API_KEY",

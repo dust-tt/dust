@@ -174,7 +174,8 @@ export function parseMetricsFromBucket<K extends readonly MetricName[]>(
 export async function fetchMessageMetrics<K extends readonly (keyof Metrics)[]>(
   baseQuery: estypes.QueryDslQueryContainer,
   interval: UsageMetricsInterval,
-  selectedMetrics?: K
+  selectedMetrics?: K,
+  timezone: string = "UTC"
 ): Promise<Result<(BaseMetricsPoint & Pick<Metrics, K[number]>)[], Error>> {
   const metrics = (selectedMetrics ??
     DEFAULT_SELECTED_METRICS) as readonly MetricName[];
@@ -187,6 +188,7 @@ export async function fetchMessageMetrics<K extends readonly (keyof Metrics)[]>(
       date_histogram: {
         field: "timestamp",
         calendar_interval: interval,
+        time_zone: timezone,
       },
       aggs: aggregates,
     },

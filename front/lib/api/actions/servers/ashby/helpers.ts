@@ -21,6 +21,47 @@ interface CandidateSearchParams {
   name?: string;
 }
 
+interface HiredApplicationInfo {
+  applicationId: string;
+  jobId: string | undefined;
+}
+
+export async function findHiredApplication(
+  client: AshbyClient,
+  candidate: AshbyCandidate
+): Promise<Result<HiredApplicationInfo, MCPError>> {
+  if (!candidate.applicationIds || candidate.applicationIds.length === 0) {
+    return new Err(
+      new MCPError(
+        `Candidate ${candidate.name} has no applications in the system.`,
+        { tracked: false }
+      )
+    );
+  }
+
+  for (const applicationId of candidate.applicationIds) {
+    const appInfoResult = await client.getApplicationInfo({ applicationId });
+    if (appInfoResult.isErr()) {
+      continue;
+    }
+
+    if (appInfoResult.value.results.status === "Hired") {
+      return new Ok({
+        applicationId,
+        jobId: appInfoResult.value.results.jobId,
+      });
+    }
+  }
+
+  return new Err(
+    new MCPError(
+      `No hired application found for candidate ${candidate.name}. ` +
+        "This tool only works for candidates who have been hired.",
+      { tracked: false }
+    )
+  );
+}
+
 export async function assertCandidateNotHired(
   client: AshbyClient,
   candidate: AshbyCandidate
@@ -101,18 +142,6 @@ export async function findUniqueCandidate(
   }
 
   return new Ok(candidates[0]);
-}
-
-export async function withAuth<T>(
-  { authInfo }: ToolHandlerExtra,
-  action: (token: string) => Promise<Result<T, MCPError>>
-): Promise<Result<T, MCPError>> {
-  const token = authInfo?.token;
-  if (!token) {
-    return new Err(new MCPError("No access token provided"));
-  }
-
-  return action(token);
 }
 
 function normalizeTitle(title: string): string {

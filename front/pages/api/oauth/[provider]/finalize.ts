@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { finalizeConnection } from "@app/lib/api/oauth";
 import type { WithAPIErrorResponse } from "@app/types/error";

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";

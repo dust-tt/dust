@@ -4,7 +4,7 @@ import type {
   TemplateTagCodeType,
   TemplateTagsType,
 } from "@app/types/assistant/templates";
-import { CardGrid, ContextItem, LargeAssistantCard } from "@dust-tt/sparkle";
+import { CardGrid, CompactAssistantCard, ContextItem } from "@dust-tt/sparkle";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
@@ -48,32 +48,21 @@ export function AgentTemplateGrid({
                 title={templateTagsMapping[tagName].label}
                 hasBorder={false}
               />
-              {hasSidekick ? (
-                <CardGrid>
-                  {templatesForTag.map((template) => (
-                    <LargeAssistantCard
-                      key={template.sId}
-                      title={template.handle}
-                      pictureUrl={template.pictureUrl}
-                      description={template.userFacingDescription ?? ""}
-                      onClick={() => onTemplateClick(template.sId)}
-                      variant="secondary"
-                    />
-                  ))}
-                </CardGrid>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {templatesForTag.map((template) => (
-                    <LargeAssistantCard
-                      key={template.sId}
-                      title={template.handle}
-                      pictureUrl={template.pictureUrl}
-                      description={template.userFacingDescription ?? ""}
-                      onClick={() => openTemplateModal(template.sId)}
-                    />
-                  ))}
-                </div>
-              )}
+              <CardGrid>
+                {templatesForTag.map((template) => (
+                  <CompactAssistantCard
+                    key={template.sId}
+                    title={template.handle}
+                    pictureUrl={template.pictureUrl}
+                    description={template.userFacingDescription ?? ""}
+                    onClick={() =>
+                      hasSidekick
+                        ? onTemplateClick(template.sId)
+                        : openTemplateModal(template.sId)
+                    }
+                  />
+                ))}
+              </CardGrid>
             </div>
           );
         })

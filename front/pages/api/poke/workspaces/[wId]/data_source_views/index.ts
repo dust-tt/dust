@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";

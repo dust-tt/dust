@@ -55,6 +55,8 @@ const PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
 
 const EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 
+const FIRST_SYNC_DELAY_MS = 15 * 60 * 1000;
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -109,6 +111,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
+    const result = await this.createGongSchedule(connector);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
     return new Ok(connector.id.toString());
   }
 
@@ -140,7 +147,12 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       scheduleId: makeGongSyncScheduleId(connector),
       policies: SCHEDULE_POLICIES,
-      spec: SCHEDULE_SPEC,
+      spec: {
+        ...SCHEDULE_SPEC,
+        // Delay the first sync to give users time to configure settings
+        // (e.g. permission profile) before the initial sync starts.
+        startAt: new Date(Date.now() + FIRST_SYNC_DELAY_MS),
+      },
     });
   }
 
@@ -412,48 +424,28 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
         await configuration.setPermissionProfileId(profileId);
 
-        const scheduleId = makeGongSyncScheduleId(connector);
-        const exists = await scheduleExists({ scheduleId });
+        logger.info(
+          {
+            connectorId: connector.id,
+            permissionProfileId: profileId,
+          },
+          "[Gong] Permission profile updated, stopping and resuming sync."
+        );
 
-        if (!exists) {
-          // First save after connector creation: create the schedule.
-          logger.info(
-            {
-              connectorId: connector.id,
-              permissionProfileId: profileId,
-            },
-            "[Gong] Permission profile saved, creating sync schedule."
+        const stopResult = await this.stop({
+          reason: "Permission profile updated",
+        });
+        if (stopResult.isErr()) {
+          return stopResult;
+        }
+
+        const resumeResult = await this.resume();
+        if (resumeResult.isErr()) {
+          logger.error(
+            { connectorId: connector.id, error: resumeResult.error },
+            "[Gong] Failed to resume schedule after permission profile update"
           );
-          const createResult =
-            await GongConnectorManager.createGongSchedule(connector);
-          if (createResult.isErr()) {
-            return new Err(createResult.error);
-          }
-        } else {
-          // Subsequent save: stop and resume to pick up the new profile.
-          logger.info(
-            {
-              connectorId: connector.id,
-              permissionProfileId: profileId,
-            },
-            "[Gong] Permission profile updated, stopping and resuming sync."
-          );
-
-          const stopResult = await this.stop({
-            reason: "Permission profile updated",
-          });
-          if (stopResult.isErr()) {
-            return stopResult;
-          }
-
-          const resumeResult = await this.resume();
-          if (resumeResult.isErr()) {
-            logger.error(
-              { connectorId: connector.id, error: resumeResult.error },
-              "[Gong] Failed to resume schedule after permission profile update"
-            );
-            return resumeResult;
-          }
+          return resumeResult;
         }
 
         return new Ok(undefined);

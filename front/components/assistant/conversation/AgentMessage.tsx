@@ -224,6 +224,8 @@ export function AgentMessage({
                 metadata: eventPayload.data.metadata,
                 stake: eventPayload.data.stake,
                 userId: eventPayload.data.userId,
+                argumentsRequiringApproval:
+                  eventPayload.data.argumentsRequiringApproval,
               },
             });
             break;

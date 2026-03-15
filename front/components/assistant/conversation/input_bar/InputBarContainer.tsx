@@ -700,9 +700,12 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
+        <BubbleMenu
+          editor={editor ?? undefined}
+          className={cn("flex", isMobile && "hidden")}
+        >
           {editor && (
-            <Toolbar className="hidden sm:inline-flex">
+            <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
               <ToolBarContent editor={editor} />
             </Toolbar>
           )}
@@ -787,10 +790,10 @@ const InputBarContainer = ({
               <Toolbar
                 variant="overlay"
                 className={cn(
-                  "sm:hidden",
                   isToolbarOpen
                     ? "pointer-events-auto w-full"
-                    : "pointer-events-none hidden w-[120px]"
+                    : "pointer-events-none hidden w-[120px]",
+                  !isMobile && "hidden"
                 )}
                 onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
@@ -812,7 +815,7 @@ const InputBarContainer = ({
                     variant="ghost-secondary"
                     icon={TextIcon}
                     size={buttonSize}
-                    className="flex sm:hidden"
+                    className={cn("flex", !isMobile && "hidden")}
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
                   {actions.includes("attachment") &&

@@ -8,6 +8,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
+import moment from "moment-timezone";
 
 export interface ActiveUsersMetricsPoint {
   timestamp: number;
@@ -72,7 +73,8 @@ function computeRollingActiveUsers(
  */
 export async function fetchActiveUsersMetrics(
   workspace: LightWorkspaceType,
-  days: number
+  days: number,
+  timezone: string = "UTC"
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
   // Extend the query range to include extra days for rolling window calculations
@@ -95,7 +97,7 @@ export async function fetchActiveUsersMetrics(
         date_histogram: {
           field: "timestamp",
           calendar_interval: "day",
-          time_zone: "UTC",
+          time_zone: timezone,
         },
         aggs: {
           users: {
@@ -132,8 +134,7 @@ export async function fetchActiveUsersMetrics(
   sortedTimestamps.sort((a, b) => a - b);
 
   // Determine the cutoff timestamp - we only return points for the requested range
-  const now = Date.now();
-  const startOfToday = new Date(now).setUTCHours(0, 0, 0, 0);
+  const startOfToday = moment.tz(timezone).startOf("day").valueOf();
   const cutoffTimestamp = startOfToday - (days - 1) * MS_PER_DAY;
 
   // Collect timestamps in the requested range for membership counting.

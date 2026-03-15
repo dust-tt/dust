@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   PRESTOP_GRACE_PERIOD_MS,
   PRESTOP_LB_PROPAGATION_MS,
