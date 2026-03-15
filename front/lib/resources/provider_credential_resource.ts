@@ -16,6 +16,7 @@ import {
 } from "@app/types/oauth/oauth_api";
 import {
   ApiKeyCredentialContentSchema,
+  type ApiKeyCredentialsType,
   type LLMCredentialsType,
   PROVIDER_TO_CREDENTIAL_KEY,
   type ProviderCredentialType,
@@ -30,21 +31,20 @@ import { redactString } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
-import type { z } from "zod";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 5;
 
 type CachedProviderCredential = {
-  id: number;
-  workspaceId: number;
+  id: ModelId;
+  workspaceId: ModelId;
   providerId: ByokModelProviderIdType;
   credentialId: string;
   isHealthy: boolean;
   placeholder: string;
-  editedByUserId: number | null;
+  editedByUserId: ModelId | null;
   createdAt: number;
   updatedAt: number;
-  credentials: { api_key: string };
+  credentials: ApiKeyCredentialsType;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -55,12 +55,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   static model: ModelStaticWorkspaceAware<ProviderCredentialModel> =
     ProviderCredentialModel;
 
-  private credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+  private credentials: ApiKeyCredentialsType;
 
   constructor(
     model: ModelStatic<ProviderCredentialModel>,
     blob: Attributes<ProviderCredentialModel>,
-    credentials: z.infer<typeof ApiKeyCredentialContentSchema>
+    credentials: ApiKeyCredentialsType
   ) {
     super(ProviderCredentialModel, blob);
     this.credentials = credentials;
@@ -369,7 +369,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 function mapOauthCredentialsToLlmCredentials(
   oauthCredentials: {
     providerId: ByokModelProviderIdType;
-    content: z.infer<typeof ApiKeyCredentialContentSchema>;
+    content: ApiKeyCredentialsType;
   }[]
 ): LLMCredentialsType {
   const result: LLMCredentialsType = {};

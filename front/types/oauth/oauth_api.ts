@@ -1,6 +1,5 @@
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import type { ApiKeyCredentialContentSchema } from "@app/types/provider_credential";
-import type { z } from "zod";
+import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
   ConnectionCredentials,
   CredentialsProvider,
@@ -48,7 +47,7 @@ type CrendentialsMetadata = {
 
 export type ModelProviderPostCredentialsBody = {
   provider: ByokModelProviderIdType;
-  credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+  credentials: ApiKeyCredentialsType;
 };
 
 export class OAuthAPI {
