@@ -229,9 +229,7 @@ export async function createInstructionSuggestions({
   });
 
   if (!agentConfiguration) {
-    return new Err(
-      `Agent configuration not found: ${agentConfigurationId}`
-    );
+    return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
   const createdSuggestions: {
@@ -320,9 +318,7 @@ export async function createToolsSuggestions({
   });
 
   if (!agentConfiguration) {
-    return new Err(
-      `Agent configuration not found: ${agentConfigurationId}`
-    );
+    return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
   const createdSuggestions: { sId: string; kind: string }[] = [];
@@ -398,9 +394,7 @@ export async function createSkillsSuggestions({
   });
 
   if (!agentConfiguration) {
-    return new Err(
-      `Agent configuration not found: ${agentConfigurationId}`
-    );
+    return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
   const createdSuggestions: { sId: string; kind: string }[] = [];
@@ -886,9 +880,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       });
 
       if (result.isErr()) {
-        return new Err(
-          new MCPError(result.error, { tracked: false })
-        );
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
 
       const directives = result.value.map(
@@ -980,9 +972,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       });
 
       if (result.isErr()) {
-        return new Err(
-          new MCPError(result.error, { tracked: false })
-        );
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
 
       const directives = result.value.map(
@@ -1178,9 +1168,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       });
 
       if (result.isErr()) {
-        return new Err(
-          new MCPError(result.error, { tracked: false })
-        );
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
 
       const directives = result.value.map(
