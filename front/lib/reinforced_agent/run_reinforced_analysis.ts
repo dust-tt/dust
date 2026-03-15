@@ -198,13 +198,20 @@ async function createSuggestionsFromToolCall({
         );
         return 0;
       }
-      const created = await createInstructionSuggestions({
+      const result = await createInstructionSuggestions({
         auth,
         agentConfigurationId: agentConfig.sId,
         suggestions: parsed.data.suggestions,
         source,
       });
-      return created.length;
+      if (result.isErr()) {
+        logger.warn(
+          { agentConfigurationId: agentConfig.sId, contextId, toolName },
+          `ReinforcedAgent: ${result.error}`
+        );
+        return 0;
+      }
+      return result.value.length;
     }
 
     case "suggest_tools": {
@@ -221,13 +228,20 @@ async function createSuggestionsFromToolCall({
         );
         return 0;
       }
-      const created = await createToolsSuggestions({
+      const result = await createToolsSuggestions({
         auth,
         agentConfigurationId: agentConfig.sId,
         suggestions: parsed.data.suggestions,
         source,
       });
-      return created.length;
+      if (result.isErr()) {
+        logger.warn(
+          { agentConfigurationId: agentConfig.sId, contextId, toolName },
+          `ReinforcedAgent: ${result.error}`
+        );
+        return 0;
+      }
+      return result.value.length;
     }
 
     case "suggest_skills": {
@@ -244,13 +258,20 @@ async function createSuggestionsFromToolCall({
         );
         return 0;
       }
-      const created = await createSkillsSuggestions({
+      const result = await createSkillsSuggestions({
         auth,
         agentConfigurationId: agentConfig.sId,
         suggestions: parsed.data.suggestions,
         source,
       });
-      return created.length;
+      if (result.isErr()) {
+        logger.warn(
+          { agentConfigurationId: agentConfig.sId, contextId, toolName },
+          `ReinforcedAgent: ${result.error}`
+        );
+        return 0;
+      }
+      return result.value.length;
     }
 
     default:

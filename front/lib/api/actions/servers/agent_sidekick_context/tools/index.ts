@@ -58,6 +58,7 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isJobType } from "@app/types/job_type";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -189,8 +190,6 @@ type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 /**
  * Shared logic for creating instruction suggestions. Used by both the
  * suggest_prompt_edits MCP handler and reinforced agent analysis.
- * Returns the created suggestions, or an empty array if limits are exceeded
- * or the agent configuration is not found.
  */
 export async function createInstructionSuggestions({
   auth,
@@ -202,7 +201,9 @@ export async function createInstructionSuggestions({
   agentConfigurationId: string;
   suggestions: InstructionSuggestionInput[];
   source: AgentSuggestionSource;
-}): Promise<{ sId: string; kind: string; targetBlockId: string }[]> {
+}): Promise<
+  Result<{ sId: string; kind: string; targetBlockId: string }[], string>
+> {
   // Check pending suggestion limit before proceeding.
   const pendingInstructions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -217,11 +218,7 @@ export async function createInstructionSuggestions({
     currentPendingCount: pendingInstructions.length,
   });
   if (!limitCheck.allowed) {
-    logger.warn(
-      { agentConfigurationId },
-      `createInstructionSuggestions: ${limitCheck.errorMessage}`
-    );
-    return [];
+    return new Err(limitCheck.errorMessage);
   }
 
   // Fetch the latest version of the agent configuration (full variant needed
@@ -232,11 +229,9 @@ export async function createInstructionSuggestions({
   });
 
   if (!agentConfiguration) {
-    logger.warn(
-      { agentConfigurationId },
-      "createInstructionSuggestions: agent configuration not found"
+    return new Err(
+      `Agent configuration not found: ${agentConfigurationId}`
     );
-    return [];
   }
 
   const createdSuggestions: {
@@ -272,7 +267,7 @@ export async function createInstructionSuggestions({
     createdSuggestions
   );
 
-  return createdSuggestions;
+  return new Ok(createdSuggestions);
 }
 
 type ToolsSuggestionInput = z.infer<typeof ToolsSuggestionSchema> & {
@@ -293,7 +288,7 @@ export async function createToolsSuggestions({
   agentConfigurationId: string;
   suggestions: ToolsSuggestionInput[];
   source: AgentSuggestionSource;
-}): Promise<{ sId: string; kind: string }[]> {
+}): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -316,11 +311,7 @@ export async function createToolsSuggestions({
     currentPendingCount: remainingPending.length,
   });
   if (!limitCheck.allowed) {
-    logger.warn(
-      { agentConfigurationId },
-      `createToolsSuggestions: ${limitCheck.errorMessage}`
-    );
-    return [];
+    return new Err(limitCheck.errorMessage);
   }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
@@ -329,11 +320,9 @@ export async function createToolsSuggestions({
   });
 
   if (!agentConfiguration) {
-    logger.warn(
-      { agentConfigurationId },
-      "createToolsSuggestions: agent configuration not found"
+    return new Err(
+      `Agent configuration not found: ${agentConfigurationId}`
     );
-    return [];
   }
 
   const createdSuggestions: { sId: string; kind: string }[] = [];
@@ -355,7 +344,7 @@ export async function createToolsSuggestions({
     createdSuggestions.push({ sId: created.sId, kind: created.kind });
   }
 
-  return createdSuggestions;
+  return new Ok(createdSuggestions);
 }
 
 type SkillsSuggestionInput = z.infer<typeof SkillsSuggestionSchema> & {
@@ -376,7 +365,7 @@ export async function createSkillsSuggestions({
   agentConfigurationId: string;
   suggestions: SkillsSuggestionInput[];
   source: AgentSuggestionSource;
-}): Promise<{ sId: string; kind: string }[]> {
+}): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Fetch pending suggestions and mark duplicates (same skillId) as outdated.
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -400,11 +389,7 @@ export async function createSkillsSuggestions({
     currentPendingCount: remainingPending.length,
   });
   if (!limitCheck.allowed) {
-    logger.warn(
-      { agentConfigurationId },
-      `createSkillsSuggestions: ${limitCheck.errorMessage}`
-    );
-    return [];
+    return new Err(limitCheck.errorMessage);
   }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
@@ -413,11 +398,9 @@ export async function createSkillsSuggestions({
   });
 
   if (!agentConfiguration) {
-    logger.warn(
-      { agentConfigurationId },
-      "createSkillsSuggestions: agent configuration not found"
+    return new Err(
+      `Agent configuration not found: ${agentConfigurationId}`
     );
-    return [];
   }
 
   const createdSuggestions: { sId: string; kind: string }[] = [];
@@ -438,7 +421,7 @@ export async function createSkillsSuggestions({
     createdSuggestions.push({ sId: created.sId, kind: created.kind });
   }
 
-  return createdSuggestions;
+  return new Ok(createdSuggestions);
 }
 
 import {
@@ -895,23 +878,20 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     try {
-      const createdSuggestions = await createInstructionSuggestions({
+      const result = await createInstructionSuggestions({
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
         source: "sidekick",
       });
 
-      if (createdSuggestions.length === 0) {
+      if (result.isErr()) {
         return new Err(
-          new MCPError(
-            "No suggestions were created. The pending limit may have been reached or the agent configuration was not found.",
-            { tracked: false }
-          )
+          new MCPError(result.error, { tracked: false })
         );
       }
 
-      const directives = createdSuggestions.map(
+      const directives = result.value.map(
         (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
       );
 
@@ -992,23 +972,20 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     try {
-      const createdSuggestions = await createToolsSuggestions({
+      const result = await createToolsSuggestions({
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
         source: "sidekick",
       });
 
-      if (createdSuggestions.length === 0) {
+      if (result.isErr()) {
         return new Err(
-          new MCPError(
-            "No suggestions were created. The pending limit may have been reached or the agent configuration was not found.",
-            { tracked: false }
-          )
+          new MCPError(result.error, { tracked: false })
         );
       }
 
-      const directives = createdSuggestions.map(
+      const directives = result.value.map(
         (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
       );
 
@@ -1193,23 +1170,20 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     try {
-      const createdSuggestions = await createSkillsSuggestions({
+      const result = await createSkillsSuggestions({
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
         source: "sidekick",
       });
 
-      if (createdSuggestions.length === 0) {
+      if (result.isErr()) {
         return new Err(
-          new MCPError(
-            "No suggestions were created. The pending limit may have been reached or the agent configuration was not found.",
-            { tracked: false }
-          )
+          new MCPError(result.error, { tracked: false })
         );
       }
 
-      const directives = createdSuggestions.map(
+      const directives = result.value.map(
         (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
       );
 
