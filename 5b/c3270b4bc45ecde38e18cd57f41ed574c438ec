@@ -1,0 +1,23 @@
+front/lib/api/provider_credentials.test.ts
+  3099a0d63f25da80 1-131,133-147,149-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "5bc3270b4bc45ecde38e18cd57f41ed574c438ec",
+  "prompts": {
+    "3099a0d63f25da80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bf62d6d-866b-4235-b2bc-069de0623c57",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 182,
+      "total_deletions": 95,
+      "accepted_lines": 180,
+      "overriden_lines": 0
+    }
+  }
+}
