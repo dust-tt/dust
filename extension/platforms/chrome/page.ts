@@ -33,7 +33,7 @@ declare global {
   }
 }
 (function () {
-  const CAPTURE_DELAY = 600;
+  const CAPTURE_DELAY_MS = 600;
   const MAX_PRIMARY_DIMENSION = 5000,
     MAX_SECONDARY_DIMENSION = 3000,
     MAX_AREA = MAX_PRIMARY_DIMENSION * MAX_SECONDARY_DIMENSION;
@@ -311,7 +311,7 @@ declare global {
             cleanUp();
           }
         });
-      }, CAPTURE_DELAY);
+      }, CAPTURE_DELAY_MS);
     })();
   }
 })();
