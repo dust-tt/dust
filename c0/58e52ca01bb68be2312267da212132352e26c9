@@ -1,0 +1,74 @@
+front/pages/api/w/[wId]/content-guard-config.ts
+  468295640c5d93a1 5,28,115
+  7c453455edfc6c89 2,6-7,13,32,38-44,46,52,55,68-70,122-137,188-195,201,212,307,337-349,352,354-365
+front/lib/resources/content_guard_config_resource.ts
+  468295640c5d93a1 3,7,22,36,217,226,249
+  7c453455edfc6c89 2,4,15,26,40,68,83,86,95-96,105-107,111-118,136,146,163,199,304,312-324,327-330
+front/components/assistant/conversation/ErrorMessage.tsx
+  7c453455edfc6c89 20-29,58
+  468295640c5d93a1 56
+front/lib/api/mcp/run_tool.ts
+  468295640c5d93a1 245,247,249-251,262
+  7c453455edfc6c89 22,166,169-170
+front/components/pages/workspace/ContentGuardSettingsPage.tsx
+  7c453455edfc6c89 1,4,30,52-66,362,370
+  468295640c5d93a1 2-3,79
+front/lib/api/content_guard/types.ts
+  7c453455edfc6c89 74,77-82,84-85,87,89-99,151-160,170,178,185,190-212
+  468295640c5d93a1 9,18-28,165
+front/lib/api/content_guard/test_connection.ts
+  468295640c5d93a1 6,19
+  7c453455edfc6c89 1-5,7-18,20-83
+front/lib/api/content_guard/tool_check.ts
+  7c453455edfc6c89 8,40,201,207,213,233-236,238-239,336-339,341-342
+  468295640c5d93a1 42-46,288,309,345
+front/lib/api/content_guard/clients/ai_guard.ts
+  468295640c5d93a1 4,6,9,16-27,40,107-114
+  7c453455edfc6c89 144-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "c058e52ca01bb68be2312267da212132352e26c9",
+  "prompts": {
+    "468295640c5d93a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6ed5e8c-8ede-43e9-80e0-fd1b230f0a2b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 1310,
+      "total_deletions": 94,
+      "accepted_lines": 1278,
+      "overriden_lines": 0
+    },
+    "7c453455edfc6c89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a43aa4e8-e8c1-4f70-ba71-41517903ea59",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 1148,
+      "total_deletions": 670,
+      "accepted_lines": 1040,
+      "overriden_lines": 0
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
