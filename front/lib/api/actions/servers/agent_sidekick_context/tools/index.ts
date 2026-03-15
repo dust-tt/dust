@@ -10,7 +10,10 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import {
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
+  type InstructionsSuggestionSchema,
+} from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -58,6 +61,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type {
+  AgentSuggestionSource,
   AgentSuggestionState,
   KnowledgeSuggestionType,
   SubAgentSuggestionType,
@@ -178,6 +182,97 @@ async function markDuplicateSuggestionsAsOutdated(
   return remaining;
 }
 
+type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
+
+/**
+ * Shared logic for creating instruction suggestions. Used by both the
+ * suggest_prompt_edits MCP handler and reinforced agent analysis.
+ * Returns the created suggestions, or an empty array if limits are exceeded
+ * or the agent configuration is not found.
+ */
+export async function createInstructionSuggestions({
+  auth,
+  agentConfigurationId,
+  suggestions,
+  source,
+}: {
+  auth: Authenticator;
+  agentConfigurationId: string;
+  suggestions: InstructionSuggestionInput[];
+  source: AgentSuggestionSource;
+}): Promise<{ sId: string; kind: string; targetBlockId: string }[]> {
+  // Check pending suggestion limit before proceeding.
+  const pendingInstructions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { states: ["pending"], kind: "instructions" }
+    );
+
+  const limitCheck = canAddPendingSuggestions({
+    kind: "instructions",
+    newPendingCount: suggestions.length,
+    currentPendingCount: pendingInstructions.length,
+  });
+  if (!limitCheck.allowed) {
+    logger.warn(
+      { agentConfigurationId },
+      `createInstructionSuggestions: ${limitCheck.errorMessage}`
+    );
+    return [];
+  }
+
+  // Fetch the latest version of the agent configuration (full variant needed
+  // for instructionsHtml used in conflict pruning).
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "full",
+  });
+
+  if (!agentConfiguration) {
+    logger.warn(
+      { agentConfigurationId },
+      "createInstructionSuggestions: agent configuration not found"
+    );
+    return [];
+  }
+
+  const createdSuggestions: {
+    sId: string;
+    kind: string;
+    targetBlockId: string;
+  }[] = [];
+
+  for (const suggestion of suggestions) {
+    const { analysis, ...suggestionData } = suggestion;
+    const created = await AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "instructions",
+        suggestion: suggestionData,
+        analysis: analysis ?? null,
+        state: "pending",
+        source,
+      }
+    );
+
+    createdSuggestions.push({
+      sId: created.sId,
+      kind: created.kind,
+      targetBlockId: suggestionData.targetBlockId,
+    });
+  }
+
+  await pruneConflictingInstructionSuggestions(
+    auth,
+    agentConfiguration,
+    createdSuggestions
+  );
+
+  return createdSuggestions;
+}
+
 import {
   formatAvailableModels,
   formatAvailableSkills,
@@ -188,6 +283,7 @@ import {
   listAvailableSkills,
   listAvailableTools,
 } from "@app/lib/api/assistant/workspace_capabilities";
+import type { z } from "zod";
 
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
@@ -630,85 +726,41 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Check pending suggestion limit before proceeding.
-    const pendingInstructions =
-      await AgentSuggestionResource.listByAgentConfigurationId(
+    try {
+      const createdSuggestions = await createInstructionSuggestions({
         auth,
         agentConfigurationId,
-        { states: ["pending"], kind: "instructions" }
-      );
+        suggestions: params.suggestions,
+        source: "sidekick",
+      });
 
-    const limitCheck = canAddPendingSuggestions({
-      kind: "instructions",
-      newPendingCount: params.suggestions.length,
-      currentPendingCount: pendingInstructions.length,
-    });
-    if (!limitCheck.allowed) {
-      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
-    }
-
-    // Fetch the latest version of the agent configuration (full variant needed
-    // for instructionsHtml used in conflict pruning).
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "full",
-    });
-
-    if (!agentConfiguration) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const createdSuggestions: { sId: string; targetBlockId: string }[] = [];
-    const directives: string[] = [];
-
-    for (const suggestion of params.suggestions) {
-      try {
-        const { analysis, ...suggestionData } = suggestion;
-        const created = await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "instructions",
-            suggestion: suggestionData,
-            analysis: analysis ?? null,
-            state: "pending",
-            source: "sidekick",
-          }
-        );
-
-        createdSuggestions.push({
-          sId: created.sId,
-          targetBlockId: suggestionData.targetBlockId,
-        });
-        directives.push(
-          `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
-        );
-      } catch (error) {
+      if (createdSuggestions.length === 0) {
         return new Err(
           new MCPError(
-            `Failed to create suggestion: ${normalizeError(error).message}`,
+            "No suggestions were created. The pending limit may have been reached or the agent configuration was not found.",
             { tracked: false }
           )
         );
       }
+
+      const directives = createdSuggestions.map(
+        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: directives.join("\n\n"),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
     }
-
-    await pruneConflictingInstructionSuggestions(
-      auth,
-      agentConfiguration,
-      createdSuggestions
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: directives.join("\n\n"),
-      },
-    ]);
   },
 
   suggest_tools: async (params, { auth, agentLoopContext }) => {

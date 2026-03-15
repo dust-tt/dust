@@ -1,75 +1,35 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { createInstructionSuggestions } from "@app/lib/api/actions/servers/agent_sidekick_context/tools";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
-const ReinforcedSuggestionSchema = z.object({
-  kind: z.string(),
-  content: z.string(),
-  targetBlockId: z.string(),
-  analysis: z.string(),
-});
+const TOOL_NAME =
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.name;
 
-const ReinforcedResponseSchema = z.object({
-  suggestions: z.array(ReinforcedSuggestionSchema),
-});
-
-const FUNCTION_NAME = "add_suggestions";
+const SuggestPromptEditsInputSchema = z.object(
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.schema
+);
 
 function buildSpecifications(): AgentActionSpecification[] {
   return [
     {
-      name: FUNCTION_NAME,
-      description: "Add structured suggestions that improve the agent.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          suggestions: {
-            type: "array",
-            description:
-              "A list of concrete, actionable suggestions to improve the agent.",
-            items: {
-              type: "object",
-              properties: {
-                kind: {
-                  type: "string",
-                  enum: ["instructions"],
-                  description: "The type of suggestion.",
-                },
-                content: {
-                  type: "string",
-                  description:
-                    "The full HTML content for the instructions block.",
-                },
-                targetBlockId: {
-                  type: "string",
-                  description:
-                    "The data-block-id of the block to modify. " +
-                    "Use 'instructions-root' for top-level instructions.",
-                },
-                analysis: {
-                  type: "string",
-                  description:
-                    "A short explanation of why this suggestion would improve the agent.",
-                },
-              },
-              required: ["kind", "content", "targetBlockId", "analysis"],
-            },
-          },
-        },
-        required: ["suggestions"],
-      },
+      name: TOOL_NAME,
+      description:
+        AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.description,
+      inputSchema: zodToJsonSchema(SuggestPromptEditsInputSchema) as JSONSchema,
     },
   ];
 }
@@ -101,7 +61,7 @@ export function buildReinforcedLLMParams({
     },
     prompt: systemPrompt,
     specifications: buildSpecifications(),
-    forceToolCall: FUNCTION_NAME,
+    forceToolCall: TOOL_NAME,
   };
 }
 
@@ -158,7 +118,7 @@ export async function processReinforcedEvents({
   }
 
   const toolCallEvent = events.find(
-    (e) => e.type === "tool_call" && e.content.name === FUNCTION_NAME
+    (e) => e.type === "tool_call" && e.content.name === TOOL_NAME
   );
   if (!toolCallEvent || toolCallEvent.type !== "tool_call") {
     logger.warn(
@@ -196,7 +156,7 @@ async function createSuggestionsFromToolCall({
   operationType: ReinforcedOperationType;
   contextId: string;
 }): Promise<number> {
-  const parsed = ReinforcedResponseSchema.safeParse(actionArguments);
+  const parsed = SuggestPromptEditsInputSchema.safeParse(actionArguments);
   if (!parsed.success) {
     logger.warn(
       {
@@ -211,28 +171,14 @@ async function createSuggestionsFromToolCall({
 
   const { suggestions } = parsed.data;
 
-  let createdCount = 0;
-  for (const suggestion of suggestions) {
-    if (suggestion.kind !== "instructions") {
-      continue;
-    }
+  const created = await createInstructionSuggestions({
+    auth,
+    agentConfigurationId: agentConfig.sId,
+    suggestions,
+    source,
+  });
 
-    await AgentSuggestionResource.createSuggestionForAgent(auth, agentConfig, {
-      kind: "instructions",
-      suggestion: {
-        content: suggestion.content,
-        targetBlockId:
-          suggestion.targetBlockId || INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-        type: "replace",
-      },
-      analysis: suggestion.analysis,
-      state: "pending",
-      source,
-    });
-    createdCount++;
-  }
-
-  return createdCount;
+  return created.length;
 }
 
 /**

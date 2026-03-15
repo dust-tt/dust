@@ -26,7 +26,7 @@ const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
 
 // Suggestion tool schemas
 
-const InstructionsSuggestionSchema = z.object({
+export const InstructionsSuggestionSchema = z.object({
   analysis: z
     .string()
     .optional()
