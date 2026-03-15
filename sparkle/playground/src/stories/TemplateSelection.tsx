@@ -1,10 +1,4 @@
-import {
-  Avatar,
-  Button,
-  Card,
-  Page,
-  SearchInput,
-} from "@dust-tt/sparkle";
+import { Avatar, Button, Card, Page, SearchInput } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 export type Template = {
