@@ -44,12 +44,12 @@ export const InstructionsSuggestionSchema = z.object({
     .describe("The type of modification to perform on the target block"),
 });
 
-const ToolsSuggestionSchema = z.object({
+export const ToolsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]).describe("The action to perform"),
   toolId: z.string().describe("The tool/server identifier"),
 });
 
-const SkillsSuggestionSchema = z.object({
+export const SkillsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]).describe("The action to perform"),
   skillId: z.string().describe("The skill identifier"),
 });

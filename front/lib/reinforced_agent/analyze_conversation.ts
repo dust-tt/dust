@@ -29,13 +29,12 @@ Analyze the conversation and identify areas where the agent's instructions could
 - Tone or style improvements based on user reactions and feedback
 - Specific instructions that could prevent repeated mistakes
 
-Only suggest changes to the instructions (kind: 'instructions'). Use targetBlockId 'instructions-root' for top-level instruction changes,
-and the actual block ID for nested instructions.
+You have three tools available:
+- suggest_prompt_edits: For instruction changes. Use targetBlockId 'instructions-root' for top-level instruction changes, and the actual block ID for nested instructions. The content must contain exactly what should go in the instructions block, with no explanation about why it should be there (that belongs in the analysis). It is in HTML format, so make sure to preserve any HTML tags from the original instructions.
+- suggest_tools: For suggesting tools to add or remove from the agent. Use the tool's sId as toolId.
+- suggest_skills: For suggesting skills to add or remove from the agent. Use the skill's sId as skillId.
 
-The content must contain exactly what should go in the instructions block, with no explanation about why it should be there (that belongs in the analysis).
-It is in HTML format, so make sure to preserve any HTML tags from the original instructions.
-
-You MUST call the tool. Always call it. If no improvements are needed, return an empty suggestions array.`;
+You MUST call at least one tool. If no improvements are needed, call suggest_prompt_edits with an empty suggestions array.`;
 
   const userMessage = `## Agent being analyzed
 Name: ${agentConfig.name}

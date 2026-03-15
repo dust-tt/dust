@@ -1,6 +1,10 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
-import { createInstructionSuggestions } from "@app/lib/api/actions/servers/agent_sidekick_context/tools";
+import {
+  createInstructionSuggestions,
+  createSkillsSuggestions,
+  createToolsSuggestions,
+} from "@app/lib/api/actions/servers/agent_sidekick_context/tools";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -16,22 +20,32 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const TOOL_NAME =
-  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.name;
+const SUPPORTED_TOOLS = [
+  "suggest_prompt_edits",
+  "suggest_tools",
+  "suggest_skills",
+] as const;
 
-const SuggestPromptEditsInputSchema = z.object(
-  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.schema
-);
+type SupportedToolName = (typeof SUPPORTED_TOOLS)[number];
+
+const TOOL_SCHEMAS: Record<SupportedToolName, z.ZodObject<z.ZodRawShape>> = {
+  suggest_prompt_edits: z.object(
+    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.schema
+  ),
+  suggest_tools: z.object(
+    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_tools.schema
+  ),
+  suggest_skills: z.object(
+    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_skills.schema
+  ),
+};
 
 function buildSpecifications(): AgentActionSpecification[] {
-  return [
-    {
-      name: TOOL_NAME,
-      description:
-        AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.description,
-      inputSchema: zodToJsonSchema(SuggestPromptEditsInputSchema) as JSONSchema,
-    },
-  ];
+  return SUPPORTED_TOOLS.map((toolName) => ({
+    name: AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[toolName].name,
+    description: AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[toolName].description,
+    inputSchema: zodToJsonSchema(TOOL_SCHEMAS[toolName]) as JSONSchema,
+  }));
 }
 
 type ReinforcedOperationType =
@@ -61,7 +75,6 @@ export function buildReinforcedLLMParams({
     },
     prompt: systemPrompt,
     specifications: buildSpecifications(),
-    forceToolCall: TOOL_NAME,
   };
 }
 
@@ -87,7 +100,8 @@ export async function getReinforcedLLM(
 
 /**
  * Parse tool calls from LLM events and create suggestion records.
- * Used to process batch results.
+ * Handles multiple tool calls across suggest_prompt_edits, suggest_tools,
+ * and suggest_skills.
  */
 export async function processReinforcedEvents({
   auth,
@@ -117,10 +131,11 @@ export async function processReinforcedEvents({
     return 0;
   }
 
-  const toolCallEvent = events.find(
-    (e) => e.type === "tool_call" && e.content.name === TOOL_NAME
+  const supportedToolNames = new Set<string>(SUPPORTED_TOOLS);
+  const toolCallEvents = events.filter(
+    (e) => e.type === "tool_call" && supportedToolNames.has(e.content.name)
   );
-  if (!toolCallEvent || toolCallEvent.type !== "tool_call") {
+  if (toolCallEvents.length === 0) {
     logger.warn(
       { contextId },
       `ReinforcedAgent: no tool call in batch result for ${operationType}`
@@ -128,22 +143,32 @@ export async function processReinforcedEvents({
     return 0;
   }
 
-  return createSuggestionsFromToolCall({
-    auth,
-    agentConfig,
-    actionArguments: toolCallEvent.content.arguments,
-    source,
-    operationType,
-    contextId,
-  });
+  let totalCreated = 0;
+  for (const event of toolCallEvents) {
+    if (event.type !== "tool_call") {
+      continue;
+    }
+    totalCreated += await createSuggestionsFromToolCall({
+      auth,
+      agentConfig,
+      toolName: event.content.name,
+      actionArguments: event.content.arguments,
+      source,
+      operationType,
+      contextId,
+    });
+  }
+
+  return totalCreated;
 }
 
 /**
- * Shared helper: parse action arguments and create suggestion records.
+ * Dispatch a tool call to the appropriate suggestion creation function.
  */
 async function createSuggestionsFromToolCall({
   auth,
   agentConfig,
+  toolName,
   actionArguments,
   source,
   operationType,
@@ -151,34 +176,90 @@ async function createSuggestionsFromToolCall({
 }: {
   auth: Authenticator;
   agentConfig: LightAgentConfigurationType;
+  toolName: string;
   actionArguments: Record<string, unknown>;
   source: AgentSuggestionSource;
   operationType: ReinforcedOperationType;
   contextId: string;
 }): Promise<number> {
-  const parsed = SuggestPromptEditsInputSchema.safeParse(actionArguments);
-  if (!parsed.success) {
-    logger.warn(
-      {
+  switch (toolName) {
+    case "suggest_prompt_edits": {
+      const parsed =
+        TOOL_SCHEMAS.suggest_prompt_edits.safeParse(actionArguments);
+      if (!parsed.success) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfig.sId,
+            contextId,
+            toolName,
+            error: parsed.error,
+          },
+          `ReinforcedAgent: invalid LLM response shape for ${operationType}`
+        );
+        return 0;
+      }
+      const created = await createInstructionSuggestions({
+        auth,
         agentConfigurationId: agentConfig.sId,
-        contextId,
-        error: parsed.error,
-      },
-      `ReinforcedAgent: invalid LLM response shape for ${operationType}`
-    );
-    return 0;
+        suggestions: parsed.data.suggestions,
+        source,
+      });
+      return created.length;
+    }
+
+    case "suggest_tools": {
+      const parsed = TOOL_SCHEMAS.suggest_tools.safeParse(actionArguments);
+      if (!parsed.success) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfig.sId,
+            contextId,
+            toolName,
+            error: parsed.error,
+          },
+          `ReinforcedAgent: invalid LLM response shape for ${operationType}`
+        );
+        return 0;
+      }
+      const created = await createToolsSuggestions({
+        auth,
+        agentConfigurationId: agentConfig.sId,
+        suggestions: parsed.data.suggestions,
+        source,
+      });
+      return created.length;
+    }
+
+    case "suggest_skills": {
+      const parsed = TOOL_SCHEMAS.suggest_skills.safeParse(actionArguments);
+      if (!parsed.success) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfig.sId,
+            contextId,
+            toolName,
+            error: parsed.error,
+          },
+          `ReinforcedAgent: invalid LLM response shape for ${operationType}`
+        );
+        return 0;
+      }
+      const created = await createSkillsSuggestions({
+        auth,
+        agentConfigurationId: agentConfig.sId,
+        suggestions: parsed.data.suggestions,
+        source,
+      });
+      return created.length;
+    }
+
+    default:
+      logger.warn(
+        { agentConfigurationId: agentConfig.sId, contextId, toolName },
+        `ReinforcedAgent: unexpected tool name for ${operationType}`
+      );
+      return 0;
   }
-
-  const { suggestions } = parsed.data;
-
-  const created = await createInstructionSuggestions({
-    auth,
-    agentConfigurationId: agentConfig.sId,
-    suggestions,
-    source,
-  });
-
-  return created.length;
 }
 
 /**
