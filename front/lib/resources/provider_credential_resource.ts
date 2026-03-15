@@ -15,14 +15,11 @@ import {
 } from "@app/types/oauth/oauth_api";
 import {
   ApiKeyCredentialContentSchema,
-  type LLMCredentialsType,
-  PROVIDER_TO_CREDENTIAL_KEY,
   type ProviderCredentialType,
 } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
@@ -40,7 +37,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   static model: ModelStaticWorkspaceAware<ProviderCredentialModel> =
     ProviderCredentialModel;
 
-  private credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
+  private _credentials: z.infer<typeof ApiKeyCredentialContentSchema>;
 
   constructor(
     model: ModelStatic<ProviderCredentialModel>,
@@ -48,7 +45,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     credentials: z.infer<typeof ApiKeyCredentialContentSchema>
   ) {
     super(ProviderCredentialModel, blob);
-    this.credentials = credentials;
+    this._credentials = credentials;
   }
 
   get sId(): string {
@@ -58,27 +55,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     });
   }
 
-  // TODO (BYOK): Move out of resource
-  private static get dustManagedLLMCredentials(): LLMCredentialsType {
-    const env = (key: string) =>
-      EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
-
-    return {
-      ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
-      AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
-      AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
-      MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
-      OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
-      OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
-      OPENAI_USE_EU_ENDPOINT:
-        config.getRegion() === "europe-west1" ? "true" : "false",
-      TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
-      GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
-      TOGETHERAI_API_KEY: env("DUST_MANAGED_TOGETHERAI_API_KEY"),
-      DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
-      FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
-      XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
-    };
+  get credentials(): z.infer<typeof ApiKeyCredentialContentSchema> {
+    return this._credentials;
   }
 
   private static async makeNewFromModel(
@@ -216,26 +194,6 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return this.baseFetch(auth);
   }
 
-  // TODO (BYOK): move out of resource
-  static async getCredentials(
-    auth: Authenticator
-  ): Promise<LLMCredentialsType> {
-    const plan = auth.getNonNullablePlan();
-
-    if (!plan.isByok) {
-      return this.dustManagedLLMCredentials;
-    }
-
-    const providerCredentials = await this.baseFetch(auth);
-
-    return mapOauthCredentialsToLlmCredentials(
-      providerCredentials.map((cred) => ({
-        providerId: cred.providerId,
-        content: cred.credentials,
-      }))
-    );
-  }
-
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -268,8 +226,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
     const apiKey =
       differenceInMinutes > API_KEY_REVEAL_WINDOW_MINUTES
-        ? redactString(this.credentials.api_key, 4)
-        : this.credentials.api_key;
+        ? redactString(this._credentials.api_key, 4)
+        : this._credentials.api_key;
 
     return {
       sId: this.sId,
@@ -283,34 +241,6 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       credentials: { api_key: apiKey },
     };
   }
-}
-
-// TODO (BYOK): Move out of resource
-function mapOauthCredentialsToLlmCredentials(
-  oauthCredentials: {
-    providerId: ByokModelProviderIdType;
-    content: z.infer<typeof ApiKeyCredentialContentSchema>;
-  }[]
-): LLMCredentialsType {
-  const result: LLMCredentialsType = {};
-
-  for (const { providerId, content } of oauthCredentials) {
-    switch (providerId) {
-      case "openai": {
-        result.OPENAI_API_KEY = content.api_key;
-        result.OPENAI_EMBEDDING_API_KEY = content.api_key;
-        break;
-      }
-      case "anthropic": {
-        result[PROVIDER_TO_CREDENTIAL_KEY[providerId]] = content.api_key;
-        break;
-      }
-      default:
-        assertNever(providerId);
-    }
-  }
-
-  return result;
 }
 
 async function isCredentialHealthy({

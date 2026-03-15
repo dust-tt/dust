@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -45,7 +45,7 @@ export async function processDataSourceDocuments({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
   const destRegionApiBaseUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(

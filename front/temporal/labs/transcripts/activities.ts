@@ -14,7 +14,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -508,7 +508,7 @@ export async function processTranscriptActivity(
     }
 
     const credentials =
-      await ProviderCredentialResource.getCredentials(workspaceAuth);
+      await getLlmCredentials(workspaceAuth, { requireEmbeddingApiKey: true });
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
     const upsertRes = await coreAPI.upsertDataSourceDocument({

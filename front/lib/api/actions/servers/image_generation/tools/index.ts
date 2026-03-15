@@ -17,7 +17,7 @@ import {
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
@@ -58,7 +58,7 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      const credentials = await ProviderCredentialResource.getCredentials(auth);
+      const credentials = await getLlmCredentials(auth);
       const gemini = new GoogleGenAI({
         apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
       });

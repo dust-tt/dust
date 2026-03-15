@@ -5,7 +5,7 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
@@ -119,7 +119,7 @@ export async function getReinforcedLLM(
   if (!model) {
     return null;
   }
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth);
   return getLLM(auth, { modelId: model.modelId, credentials });
 }
 

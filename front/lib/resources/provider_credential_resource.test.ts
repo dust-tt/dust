@@ -1,3 +1,4 @@
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
@@ -139,7 +140,7 @@ describe("ProviderCredentialResource", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       const result =
-        await ProviderCredentialResource.getCredentials(authenticator);
+        await getLlmCredentials(authenticator);
 
       expect(result).toEqual({
         ANTHROPIC_API_KEY: "",
@@ -185,7 +186,7 @@ describe("ProviderCredentialResource", () => {
       );
 
       const result =
-        await ProviderCredentialResource.getCredentials(authenticator);
+        await getLlmCredentials(authenticator);
 
       expect(result).toEqual({
         OPENAI_API_KEY: "sk-openai-test",
@@ -201,7 +202,7 @@ describe("ProviderCredentialResource", () => {
       });
 
       const result =
-        await ProviderCredentialResource.getCredentials(authenticator);
+        await getLlmCredentials(authenticator);
 
       expect(result).toEqual({});
     });
@@ -221,7 +222,7 @@ describe("ProviderCredentialResource", () => {
       });
 
       await expect(
-        ProviderCredentialResource.getCredentials(authenticator)
+        getLlmCredentials(authenticator)
       ).rejects.toThrow(
         "Failed to fetch OAuth credentials for provider openai"
       );

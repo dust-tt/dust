@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
@@ -57,7 +57,7 @@ export async function processDataSources({
 }: ProcessDataSourcesParams): Promise<Result<ProcessDataSourcesResult, Error>> {
   // Step 1: Retrieve documents from data sources
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
 
   const searchResults = await coreAPI.searchDataSources(
     "",

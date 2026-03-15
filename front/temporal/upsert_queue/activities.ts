@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -88,7 +88,7 @@ export async function upsertDocumentActivity(
   ];
 
   // Data source operations are performed with our credentials.
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 

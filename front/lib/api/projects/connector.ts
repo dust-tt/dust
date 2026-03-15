@@ -16,7 +16,7 @@ import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_
 import { executeWithLock } from "@app/lib/lock";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -132,7 +132,7 @@ export async function createDataSourceAndConnectorForProject(
 
         // Create Core API data source
         const credentials =
-          await ProviderCredentialResource.getCredentials(auth);
+          await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
 
         const dustDataSource = await coreAPI.createDataSource({
           projectId: coreProjectId,

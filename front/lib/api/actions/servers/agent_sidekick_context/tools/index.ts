@@ -31,7 +31,7 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -1198,7 +1198,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     );
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const credentials = await ProviderCredentialResource.getCredentials(auth);
+    const credentials = await getLlmCredentials(auth, { requireEmbeddingApiKey: true });
     const searchResults = await coreAPI.bulkSearchDataSources(
       query,
       topK,

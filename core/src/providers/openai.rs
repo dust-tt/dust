@@ -1204,17 +1204,8 @@ impl Embedder for OpenAIEmbedder {
         // Non-BYOK and Dust apps fall back to the CORE_DATA_SOURCES_OPENAI_API_KEY env var.
         if let Some(embedding_key) = credentials.get("OPENAI_EMBEDDING_API_KEY") {
             self.api_key = Some(embedding_key.clone());
-            self.host = Some(
-                credentials
-                    .get("OPENAI_BASE_URL")
-                    .map(|u| {
-                        u.trim_start_matches("https://")
-                            .trim_start_matches("http://")
-                            .trim_end_matches('/')
-                            .to_string()
-                    })
-                    .unwrap_or_else(|| "api.openai.com".to_string()),
-            );
+            // TODO(BYOK): add support openai EU host
+            self.host = Some("api.openai.com".to_string());
         } else {
             let raw_key = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
                 anyhow!(
