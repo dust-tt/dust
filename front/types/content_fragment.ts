@@ -101,6 +101,9 @@ export type FileContentFragmentType = BaseContentFragmentType & {
       }
   );
 
+/**
+ * @swaggerschema ContentFragment (swagger_schemas.ts), PrivateContentFragment (swagger_private_schemas.ts)
+ */
 export type ContentFragmentType =
   | FileContentFragmentType
   | ContentNodeContentFragmentType;
