@@ -8,6 +8,7 @@ import "@app/styles/components.css";
 import { datadogLogs } from "@datadog/browser-logs";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
+import Script from "next/script";
 
 // Important: avoid destructuring process.env on the client.
 // Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
@@ -136,6 +137,12 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
           {getLayout(<Component {...pageProps} />, pageProps)}
         </SparkleContext.Provider>
       </PostHogTracker>
+      {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL === "https://dust.tt" && (
+        <Script
+          src="https://static.claydar.com/init.v1.js?id=clmYho8v0U"
+          strategy="afterInteractive"
+        />
+      )}
     </FetcherProvider>
   );
 }
