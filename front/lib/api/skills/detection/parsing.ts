@@ -1,3 +1,4 @@
+import { getSkillAttachmentContentType } from "@app/lib/api/files/use_cases/skill_attachment";
 import type {
   DetectedSkillAttachment,
   FileEntry,
@@ -133,7 +134,14 @@ export function collectAttachments(
     if (entry.path === skillDir.skillMdPath) {
       continue;
     }
-    attachments.push({ path: entry.path, sizeBytes: entry.sizeBytes });
+    const contentType = getSkillAttachmentContentType(entry);
+    if (contentType) {
+      attachments.push({
+        path: entry.path,
+        sizeBytes: entry.sizeBytes,
+        contentType,
+      });
+    }
   }
 
   return attachments;

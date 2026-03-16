@@ -4,7 +4,10 @@ import type {
   GitHubSkillDirectory,
   GitHubTreeEntry,
 } from "@app/lib/api/skills/detection/github/types";
-import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
+import {
+  collectAttachments,
+  findSkillDirectories,
+} from "@app/lib/api/skills/detection/parsing";
 import type { SkillDirectory } from "@app/lib/api/skills/detection/types";
 
 /**
@@ -48,22 +51,13 @@ export function collectGitHubAttachments(
   fileEntries: GitHubFileEntry[],
   skillDir: SkillDirectory
 ): GitHubDetectedSkillAttachment[] {
-  const dirPrefix = skillDir.dirPath + "/";
-  const attachments: GitHubDetectedSkillAttachment[] = [];
+  const entriesByPath = new Map(fileEntries.map((e) => [e.path, e]));
 
-  for (const entry of fileEntries) {
-    if (!entry.path.startsWith(dirPrefix)) {
-      continue;
+  return collectAttachments(fileEntries, skillDir).flatMap((attachment) => {
+    const entry = entriesByPath.get(attachment.path);
+    if (!entry) {
+      return [];
     }
-    if (entry.path === skillDir.skillMdPath) {
-      continue;
-    }
-    attachments.push({
-      path: entry.path,
-      sizeBytes: entry.sizeBytes,
-      sha: entry.sha,
-    });
-  }
-
-  return attachments;
+    return [{ ...attachment, sha: entry.sha }];
+  });
 }

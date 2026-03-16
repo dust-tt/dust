@@ -1,17 +1,25 @@
+import { uploadBase64DataToFileStorage } from "@app/lib/api/files/upload";
 import {
   detectSkillsFromGitHubRepo,
+  fetchBlobContent,
   initGitHubRepoClient,
   isSkillFromGitHubRepo,
 } from "@app/lib/api/skills/detection/github/detect_skills";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
-import type { GitHubSkillDetectionError } from "@app/lib/api/skills/detection/github/types";
+import type {
+  GitHubDetectedSkill,
+  GitHubDetectedSkillAttachment,
+  GitHubSkillDetectionError,
+} from "@app/lib/api/skills/detection/github/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import type { Octokit } from "@octokit/core";
 
 const IMPORT_CONCURRENCY = 4;
 
@@ -73,6 +81,13 @@ export async function importSkillsFromGitHub(
         return;
       }
 
+      const fileAttachments = await fetchSkillFileAttachments(auth, {
+        octokit,
+        owner,
+        repo,
+        skill,
+      });
+
       if (existing) {
         const attachedKnowledge = await existing.getAttachedKnowledge(auth);
 
@@ -85,6 +100,7 @@ export async function importSkillsFromGitHub(
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
+          fileAttachments,
           source: "github",
           sourceMetadata: {
             repoUrl,
@@ -128,7 +144,7 @@ export async function importSkillsFromGitHub(
             },
             isDefault: false,
           },
-          { mcpServerViews: [] }
+          { mcpServerViews: [], fileAttachments }
         );
 
         imported.push(skillResource);
@@ -138,4 +154,93 @@ export async function importSkillsFromGitHub(
   );
 
   return new Ok({ imported, updated, errors });
+}
+
+async function fetchSkillFileAttachments(
+  auth: Authenticator,
+  {
+    octokit,
+    owner,
+    repo,
+    skill,
+  }: {
+    octokit: InstanceType<typeof Octokit>;
+    owner: string;
+    repo: string;
+    skill: GitHubDetectedSkill;
+  }
+): Promise<FileResource[]> {
+  const uploadableAttachments = skill.attachments.filter((a) => {
+    if (!a.contentType) {
+      logger.info(
+        { path: a.path, skillName: skill.name },
+        "Skipping unsupported attachment during GitHub skill import."
+      );
+      return false;
+    }
+    return true;
+  });
+
+  if (uploadableAttachments.length === 0) {
+    return [];
+  }
+
+  const results = await concurrentExecutor(
+    uploadableAttachments,
+    (attachment) =>
+      uploadAttachment(auth, { octokit, owner, repo, attachment }),
+    { concurrency: IMPORT_CONCURRENCY }
+  );
+
+  return results.filter((r): r is FileResource => r !== null);
+}
+
+async function uploadAttachment(
+  auth: Authenticator,
+  {
+    octokit,
+    owner,
+    repo,
+    attachment,
+  }: {
+    octokit: InstanceType<typeof Octokit>;
+    owner: string;
+    repo: string;
+    attachment: GitHubDetectedSkillAttachment;
+  }
+): Promise<FileResource | null> {
+  if (!attachment.contentType) {
+    return null;
+  }
+
+  const blobResult = await fetchBlobContent(octokit, {
+    owner,
+    repo,
+    fileSha: attachment.sha,
+  });
+  if (blobResult.isErr()) {
+    logger.error(
+      { error: blobResult.error, path: attachment.path, owner, repo },
+      "Failed to fetch attachment blob from GitHub."
+    );
+    return null;
+  }
+
+  const fileName = attachment.path.split("/").pop() ?? attachment.path;
+
+  const uploadResult = await uploadBase64DataToFileStorage(auth, {
+    base64: blobResult.value,
+    contentType: attachment.contentType,
+    fileName,
+    useCase: "skill_attachment",
+  });
+  if (uploadResult.isErr()) {
+    logger.error(
+      { error: uploadResult.error, path: attachment.path },
+      "Failed to upload attachment to file storage."
+    );
+    return null;
+  }
+
+  return uploadResult.value;
 }
