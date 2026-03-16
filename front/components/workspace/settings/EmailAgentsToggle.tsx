@@ -1,5 +1,5 @@
 import { useEmailAgentsToggle } from "@app/hooks/useEmailAgentsToggle";
-import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/email_trigger";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionMailAiIcon,

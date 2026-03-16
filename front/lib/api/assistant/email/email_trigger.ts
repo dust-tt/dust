@@ -6,6 +6,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import config from "@app/lib/api/config";
 import { sendEmail, sendEmailToRecipients } from "@app/lib/api/email";
 import { generateValidationToken } from "@app/lib/api/email/validation_token";
@@ -27,7 +28,6 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
-import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
@@ -186,9 +186,7 @@ export async function deleteEmailReplyContext(
   await redis.del(key);
 }
 
-export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
-  ? "dev.dust.help"
-  : "dust.team";
+export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 
 export type EmailAttachment = {
   filepath: string; // Temp file path from formidable
