@@ -29,7 +29,6 @@ export const CATEGORY_CONFIG: {
   { value: "document", label: "Documents" },
   { value: "pdf", label: "PDFs" },
   { value: "table", label: "Tables" },
-  { value: "code", label: "Code" },
   { value: "image", label: "Images" },
   { value: "audio", label: "Audio" },
   { value: "knowledge", label: "Knowledge" },
@@ -61,7 +60,6 @@ export function getFilePanelCategory(
     case "delimited":
       return "table";
     case "code":
-      return "code";
     case "viewer":
     case "markdown":
     case "text":
@@ -80,7 +78,8 @@ export function conversationAttachmentToRow(
   const category = getFilePanelCategory(item);
 
   if (isFileAttachmentType(item)) {
-    const { title, contentType, fileId, source, isInProjectContext } = item;
+    const { title, contentType, fileId, source, isInProjectContext, creator } =
+      item;
     return {
       title,
       contentType,
@@ -88,10 +87,12 @@ export function conversationAttachmentToRow(
       source,
       category,
       isInProjectContext,
+      creator,
+      date: item.updatedAt ?? item.createdAt ?? null,
       onClick: () => onFileClick(item),
     };
   } else if (isContentNodeAttachmentType(item)) {
-    const { title, contentType, sourceUrl, isInProjectContext } = item;
+    const { title, contentType, sourceUrl, isInProjectContext, creator } = item;
     return {
       title,
       contentType,
@@ -99,6 +100,8 @@ export function conversationAttachmentToRow(
       source: null,
       category,
       isInProjectContext,
+      creator,
+      date: null,
       onClick: sourceUrl
         ? () => window.open(sourceUrl, "_blank", "noopener,noreferrer")
         : undefined,

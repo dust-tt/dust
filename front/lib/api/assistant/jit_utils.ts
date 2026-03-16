@@ -47,6 +47,11 @@ export async function listAttachments(
       }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
+      const agentCreator = {
+        type: "agent" as const,
+        name: m.configuration.name,
+        pictureUrl: m.configuration.pictureUrl,
+      };
 
       for (const f of generatedFiles) {
         attachments.set(
@@ -60,6 +65,7 @@ export async function listAttachments(
             title: f.title,
             snippet: f.snippet,
             isInProjectContext: f.isInProjectContext ?? false,
+            creator: agentCreator,
           })
         );
       }
