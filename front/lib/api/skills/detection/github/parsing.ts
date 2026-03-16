@@ -23,7 +23,6 @@ export function findGitHubSkillDirectories(tree: GitHubTreeEntry[]): {
     if (entry.type === "blob") {
       fileEntries.push({
         path: entry.path,
-        isFile: true,
         sizeBytes: entry.size ?? 0,
         sha: entry.sha,
       });

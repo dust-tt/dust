@@ -25,6 +25,5 @@ export interface SkillDirectory {
  */
 export interface FileEntry {
   path: string;
-  isFile: boolean;
   sizeBytes: number;
 }

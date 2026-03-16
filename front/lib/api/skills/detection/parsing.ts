@@ -89,10 +89,6 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   const seenDirs = new Set<string>();
 
   for (const entry of entries) {
-    if (!entry.isFile) {
-      continue;
-    }
-
     const filename = entry.path.split("/").pop() ?? "";
     if (filename.toLowerCase() !== SKILL_MD_FILENAME) {
       continue;
@@ -125,9 +121,6 @@ export function collectAttachments(
   const attachments: DetectedSkillAttachment[] = [];
 
   for (const entry of entries) {
-    if (!entry.isFile) {
-      continue;
-    }
     if (!entry.path.startsWith(dirPrefix)) {
       continue;
     }

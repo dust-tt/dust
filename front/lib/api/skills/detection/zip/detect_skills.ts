@@ -111,7 +111,7 @@ export function detectSkillsFromZip({
 
   const fileEntries = entries
     .filter((e) => !e.isDirectory)
-    .map((e) => ({ path: e.path, isFile: true, sizeBytes: e.sizeBytes }));
+    .map((e) => ({ path: e.path, sizeBytes: e.sizeBytes }));
 
   const skillDirs = findSkillDirectories(fileEntries);
   if (skillDirs.length === 0) {
