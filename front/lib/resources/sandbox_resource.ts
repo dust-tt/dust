@@ -1,5 +1,9 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
+import {
+  recordLifecycleOperation,
+  recordStateDuration,
+} from "@app/lib/api/sandbox/instrumentation";
 import type {
   ExecOptions,
   ExecResult,
@@ -18,6 +22,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -75,14 +80,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ) {
+    const now = new Date();
     const sandbox = await this.model.create(
       {
         ...blob,
         workspaceId: auth.getNonNullableWorkspace().id,
-        lastActivityAt: new Date(),
+        lastActivityAt: now,
+        statusChangedAt: now,
       },
       { transaction }
     );
+
+    recordLifecycleOperation("create", {
+      workspaceSId: auth.getNonNullableWorkspace().sId,
+    });
 
     return new this(this.model, sandbox.get());
   }
@@ -183,13 +194,30 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   async updateStatus(
-    status: SandboxStatus,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<[affectedCount: number]> {
-    if (this.status === status) {
-      return [0];
+    newStatus: SandboxStatus,
+    opts?: {
+      ctx?: { workspaceSId: string };
+      transaction?: Transaction;
     }
-    return this.update({ status }, transaction);
+  ): Promise<void> {
+    const previousStatus = this.status;
+
+    if (previousStatus === newStatus) {
+      return;
+    }
+
+    if (opts?.ctx && this.statusChangedAt) {
+      const durationMs = Date.now() - this.statusChangedAt.getTime();
+      recordStateDuration(previousStatus, durationMs, opts.ctx);
+    }
+
+    await this.update(
+      {
+        status: newStatus,
+        statusChangedAt: new Date(),
+      },
+      opts?.transaction
+    );
   }
 
   async updateLastActivityAt({
@@ -373,8 +401,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           assertNever(status);
       }
 
-      await existing.updateStatus("running");
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      await existing.updateStatus("running", { ctx });
       await existing.updateLastActivityAt();
+
+      if (wokeFromSleep) {
+        recordLifecycleOperation("wake", ctx);
+      } else if (freshlyCreated) {
+        recordLifecycleOperation("create", ctx);
+      }
 
       return new Ok({ sandbox: existing, freshlyCreated, wokeFromSleep });
     });
@@ -397,6 +432,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
+      const [workspace] = await WorkspaceResource.fetchByModelIds([
+        sandbox.workspaceId,
+      ]);
+      const ctx = { workspaceSId: workspace?.sId ?? "unknown" };
+
       const result = await provider.sleep(sandbox.providerId);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
@@ -404,13 +444,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during sleep — marking deleted."
           );
-          await sandbox.updateStatus("deleted");
+          await sandbox.updateStatus("deleted", { ctx });
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("sleeping");
+      await sandbox.updateStatus("sleeping", { ctx });
+      recordLifecycleOperation("sleep", ctx);
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox put to sleep.");
       return new Ok(undefined);
     });
@@ -434,6 +475,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
+      const [workspace] = await WorkspaceResource.fetchByModelIds([
+        sandbox.workspaceId,
+      ]);
+      const ctx = { workspaceSId: workspace?.sId ?? "unknown" };
+
       const result = await provider.destroy(sandbox.providerId);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
@@ -441,13 +487,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during destroy — marking deleted."
           );
-          await sandbox.updateStatus("deleted");
+          await sandbox.updateStatus("deleted", { ctx });
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("deleted");
+      await sandbox.updateStatus("deleted", { ctx });
+      recordLifecycleOperation("destroy", ctx);
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox destroyed.");
       return new Ok(undefined);
     });
