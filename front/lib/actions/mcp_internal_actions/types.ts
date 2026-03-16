@@ -121,7 +121,10 @@ export const WebbrowseInputSchema = z.object({
   format: z
     .enum(["markdown", "html"])
     .optional()
-    .describe("Format to return content: 'markdown' (default) or 'html'."),
+    .describe(
+      "Format to return content: 'markdown' (default) or 'html'. " +
+        "Markdown is the default choice and should be used unless there's a specific reason for using HTML."
+    ),
   screenshotMode: z
     .enum(["none", "viewport", "fullPage"])
     .optional()
