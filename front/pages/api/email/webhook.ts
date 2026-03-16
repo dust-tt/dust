@@ -271,10 +271,18 @@ async function handler(
         workspace.sId
       );
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
+      const featureFlagWorkspace = auth.getNonNullableWorkspace();
+      const featureFlags = await getFeatureFlags(featureFlagWorkspace);
       if (!featureFlags.includes("email_agents")) {
+        await replyToError(email, {
+          type: "invalid_email_error",
+          message:
+            "Email interactions with agents are not enabled for your workspace.",
+        });
+        return;
+      }
+
+      if (workspace.metadata?.allowEmailAgents !== true) {
         await replyToError(email, {
           type: "invalid_email_error",
           message:

@@ -65,13 +65,19 @@ async function isEmailAgentsEnabled(
     );
     return false;
   }
-  const featureFlags = await getFeatureFlags(
-    authResult.value.getNonNullableWorkspace()
-  );
+  const workspace = authResult.value.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(workspace);
   if (!featureFlags.includes("email_agents")) {
     logger.info(
       { workspaceId: authType.workspaceId },
       "[email] email_agents feature flag not enabled, skipping reply"
+    );
+    return false;
+  }
+  if (workspace.metadata?.allowEmailAgents !== true) {
+    logger.info(
+      { workspaceId: authType.workspaceId },
+      "[email] allowEmailAgents not enabled in workspace metadata, skipping reply"
     );
     return false;
   }
