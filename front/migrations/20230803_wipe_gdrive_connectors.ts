@@ -3,7 +3,7 @@ import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
@@ -49,7 +49,7 @@ async function main() {
       dataSourceId: d.dustAPIDataSourceId,
     });
     console.log(`creating data source ${d.name} in core`);
-    const credentials = await ProviderCredentialResource.getCredentials(auth);
+    const credentials = await getLlmCredentials(auth);
     await coreAPI.createDataSource({
       projectId: d.dustAPIProjectId,
       config: {

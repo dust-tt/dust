@@ -1,7 +1,7 @@
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -79,7 +79,9 @@ export async function renderConversationForModel(
     agentConfiguration,
   });
 
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
 
   // Tokenize messages and prompt/tools in parallel to reduce latency
   const [messagesWithTokensRes, promptToolsRes] = await Promise.all([

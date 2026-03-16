@@ -1,6 +1,6 @@
 import { getLLM } from "@app/lib/api/llm";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import {
   getTestCaseUserMessageForDisplay,
   type JudgeResult,
@@ -104,7 +104,9 @@ export async function evaluateWithJudge(
   const scores: number[] = [];
   let lastReasoning = "";
 
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const llm = await getLLM(auth, {
     credentials,
     modelId: "gpt-5-mini",

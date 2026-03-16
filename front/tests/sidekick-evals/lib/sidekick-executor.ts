@@ -1,7 +1,7 @@
 import { getLLM } from "@app/lib/api/llm";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/sidekick-evals/lib/config";
 import { getMockToolResponse } from "@app/tests/sidekick-evals/lib/mock-responses";
 import {
@@ -24,7 +24,9 @@ export async function executeSidekick(
   testCase: TestCase,
   agentState: MockAgentState
 ): Promise<SidekickExecutionResult> {
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const llm = await getLLM(auth, {
     credentials,
     modelId: config.model.modelId,

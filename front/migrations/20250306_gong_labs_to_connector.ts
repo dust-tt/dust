@@ -13,7 +13,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
@@ -92,7 +92,7 @@ async function createDataSourceAndConnector({
     throw dustProject.error;
   }
 
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth);
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
     config: {
