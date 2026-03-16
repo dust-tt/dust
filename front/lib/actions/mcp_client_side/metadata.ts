@@ -138,6 +138,7 @@ Important rules:
 - Use get_elements when you need to see what elements are available.
 - Use click_element for controls like buttons or links.
 - Use type_text for entering text into inputs. Or removing text with the replace option.
+- Do NOT use this tool on pages from services like Notion, Gmail, Google Docs, or Google Calendar without first checking for a dedicated MCP tool via toolsets__list. If one exists, use it instead.
 
 type_text automatically focuses the element before typing.
 delete_text automatically focuses the element before deleting the text.
