@@ -6,6 +6,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useConversation } from "@app/hooks/conversations/useConversation";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getProjectRoute } from "@app/lib/utils/router";
@@ -14,7 +15,6 @@ import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
 import { ConversationContainer } from "../components/conversation/ConversationContainer";
 
 export const MainPage = () => {
@@ -24,20 +24,7 @@ export const MainPage = () => {
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 
-  // Parse conversation ID from catch-all path
-  const params = useParams();
-  const conversationId = useMemo(() => {
-    if (!params["*"]) {
-      return null;
-    }
-    const match = params["*"].match(/conversation\/([^/]+)/);
-    const isNewConversation = match && match[1] === "new";
-    const isSpaceConversation = match && match[1] === "space";
-    if (isNewConversation || isSpaceConversation) {
-      return null;
-    }
-    return match ? match[1] : null;
-  }, [params]);
+  const conversationId = useActiveConversationId();
 
   const { conversation, isConversationLoading, conversationError } =
     useConversation({
