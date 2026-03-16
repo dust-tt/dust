@@ -80,7 +80,7 @@ function SidekickContent({
     () => ({
       isSubmitting: false,
       resetConversation,
-      actionsToShow: ["attachment"] satisfies InputBarAction[],
+      actionsToShow: ["attachment", "voice"] satisfies InputBarAction[],
       clientSideMCPServerIds,
       skipToolsValidation: true,
     }),
