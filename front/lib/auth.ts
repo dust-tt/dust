@@ -1448,7 +1448,7 @@ export function getFeatureFlags(
       if (err) {
         reject(err);
       } else {
-        resolve(result!);
+        resolve(result ?? []);
       }
     });
   });

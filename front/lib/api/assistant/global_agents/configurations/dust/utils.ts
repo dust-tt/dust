@@ -38,7 +38,7 @@ export const isDeepDiveDisabledByAdmin = (
       if (err) {
         reject(err);
       } else {
-        resolve(result!);
+        resolve(result ?? false);
       }
     });
   });
