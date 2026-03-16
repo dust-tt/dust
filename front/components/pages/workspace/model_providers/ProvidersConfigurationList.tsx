@@ -34,6 +34,7 @@ export function ProvidersConfigurationList({
           description={description}
           isLoading={isProviderCredentialsLoading}
           apiKey={credentialsByProvider[providerId]?.credentials.api_key}
+          isHealthy={credentialsByProvider[providerId]?.isHealthy}
         />
       ))}
     </ContextItem.List>

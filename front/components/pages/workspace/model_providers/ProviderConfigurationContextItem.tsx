@@ -5,7 +5,13 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, ContextItem, Icon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  ContextItem,
+  Icon,
+  InformationCircleIcon,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ConfigureButtonProps {
@@ -51,6 +57,7 @@ interface ProviderConfigurationContextItemProps {
   description: string;
   isLoading: boolean;
   apiKey: string | undefined;
+  isHealthy: boolean | undefined;
 }
 export function ProviderConfigurationContextItem({
   owner,
@@ -58,6 +65,7 @@ export function ProviderConfigurationContextItem({
   description,
   isLoading,
   apiKey,
+  isHealthy,
 }: ProviderConfigurationContextItemProps) {
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
@@ -84,6 +92,19 @@ export function ProviderConfigurationContextItem({
             {description}
           </span>
         </ContextItem.Description>
+
+        {apiKey && isHealthy === false && (
+          <ContentMessage
+            variant="warning"
+            icon={InformationCircleIcon}
+            title="Invalid API key"
+            size="lg"
+            className="mt-4"
+          >
+            This key is no longer valid. Update it to restore affected agents.
+          </ContentMessage>
+        )}
+
         {apiKey && (
           <div className="font-mono text-lg mt-4 text-foreground dark:text-foreground-night truncate">
             {apiKey}
