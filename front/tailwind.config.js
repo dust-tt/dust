@@ -1010,5 +1010,13 @@ module.exports = {
       pattern:
         /^bg-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800)$/,
     },
+    // MainNavigation grid rows are constructed dynamically.
+    "grid-rows-2",
+    "grid-rows-3",
+    "grid-rows-4",
+    "grid-rows-5",
+    "grid-rows-6",
+    "grid-rows-7",
+    "grid-rows-8",
   ],
 };
