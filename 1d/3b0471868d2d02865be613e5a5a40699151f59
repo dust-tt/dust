@@ -1,0 +1,23 @@
+front/components/poke/subscriptions/EnterpriseUpgradeDialog.tsx
+  4b1fe756e28ff82e 33,49,144,173-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "1d3b0471868d2d02865be613e5a5a40699151f59",
+  "prompts": {
+    "4b1fe756e28ff82e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1704450a-f8a1-45e8-bc28-6148698a3288",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 2,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
