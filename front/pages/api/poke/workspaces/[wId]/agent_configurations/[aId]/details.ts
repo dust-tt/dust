@@ -90,14 +90,14 @@ async function handler(
           s.toJSON(auth)
         );
       } else {
-        const allSkills = await SkillResource.listByAgentConfigurations(
+        const skillsByAgent = await SkillResource.listByAgentConfigurations(
           auth,
           agentConfigurations
         );
         for (const config of agentConfigurations) {
           skillsByVersion[config.version] = [];
         }
-        for (const { agentConfiguration, skill } of allSkills) {
+        for (const { agentConfiguration, skill } of skillsByAgent) {
           skillsByVersion[agentConfiguration.version].push(skill.toJSON(auth));
         }
       }
