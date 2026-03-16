@@ -28,7 +28,7 @@ type DustWindow = {
   __dustElementIdCounter: number;
 };
 
-const HAS_FORM_THRESHOLD = 10;
+const HAS_FORM_THRESHOLD = 5;
 
 export async function checkHasForm(
   tab: chrome.tabs.Tab | undefined
