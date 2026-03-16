@@ -10,20 +10,6 @@ delete colors.trueGray;
 delete colors.coolGray;
 delete colors.blueGray;
 
-// Colors used dynamically in Picker.tsx ColorSwatch (`s-${color}` where color = `bg-{name}-{shade}`)
-// Must match TAILWIND_COLOR_NAMES in front/types/assistant/avatar.ts
-const avatarColorNames = [
-  "gray",
-  "blue",
-  "violet",
-  "pink",
-  "red",
-  "orange",
-  "golden",
-  "lime",
-  "emerald",
-];
-
 // Get all color names from Tailwind's default palette, excluding special colors
 const colorNames = Object.keys(colors).filter(
   (color) =>
@@ -195,13 +181,6 @@ Object.assign(colors, {
   amber: customColors.golden,
   sky: customColors.blue,
 });
-
-// Shades must match TAILWIND_COLOR_SHADES in front/types/assistant/avatar.ts
-const avatarBgSafelist = avatarColorNames.flatMap((color) =>
-  [100, 200, 300, 400, 500, 600, 700, 800].map(
-    (shade) => `s-bg-${color}-${shade}`
-  )
-);
 
 module.exports = {
   future: {
@@ -984,7 +963,11 @@ module.exports = {
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   safelist: [
-    ...avatarBgSafelist,
+    // Avatar bg classes are constructed dynamically.
+    {
+      pattern:
+        /^s-bg-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800)$/,
+    },
     "s-grid-rows-2",
     "s-grid-rows-3",
     "s-grid-rows-4",
