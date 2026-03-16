@@ -12,6 +12,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -1484,13 +1485,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async getMessageById(
     auth: Authenticator,
-    messageId: string
+    messageId: string,
+    version?: number
+  ): Promise<Result<MessageModel, Error>> {
+    return ConversationResource.getMessageByIdInConversation(
+      auth,
+      this.toJSON(),
+      messageId,
+      version
+    );
+  }
+
+  static async getMessageByIdInConversation(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType,
+    messageId: string,
+    version?: number
   ): Promise<Result<MessageModel, Error>> {
     const message = await MessageModel.findOne({
       where: {
-        conversationId: this.id,
+        conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: messageId,
+        ...(version ? { version } : {}),
       },
       include: [
         {
@@ -1508,6 +1525,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (!message) {
       return new Err(new Error("Message not found"));
+    }
+
+    if (message.branchSId) {
+      const branch = await ConversationBranchResource.fetchById(
+        auth,
+        message.branchSId
+      );
+      if (!branch || !branch.canRead(auth)) {
+        return new Err(new Error("Message not found"));
+      }
     }
 
     return new Ok(message);

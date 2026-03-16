@@ -23,7 +23,9 @@ export async function handleMentionsActivity(
 
   const conversationRes = await getConversation(
     auth,
-    agentLoopArgs.conversationId
+    agentLoopArgs.conversationId,
+    false,
+    agentLoopArgs.conversationBranchId
   );
 
   if (conversationRes.isErr()) {

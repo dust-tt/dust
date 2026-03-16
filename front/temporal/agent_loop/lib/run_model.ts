@@ -29,10 +29,7 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import {
-  fetchMessageInConversation,
-  getCompletionDuration,
-} from "@app/lib/api/assistant/messages";
+import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
   createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
@@ -53,6 +50,7 @@ import {
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -653,13 +651,26 @@ export async function runModel(
   // It is possible that temporal requested activity cancellation but the
   // activity has not yet received the signal. In that case, the agent message
   // row would have status to cancelled (done via finalizeCancellationActivity).
-  const message = await fetchMessageInConversation(
+  const messageRes = await ConversationResource.getMessageByIdInConversation(
     auth,
     conversation,
     agentMessage.sId,
     agentMessage.version
   );
-  if (message?.agentMessage?.status === "cancelled") {
+
+  if (messageRes.isErr()) {
+    logger.info("Agent message not found, stopping");
+    return null;
+  }
+
+  const messageRow = messageRes.value;
+
+  if (!messageRow.agentMessage) {
+    logger.info("Agent message not found, stopping");
+    return null;
+  }
+
+  if (messageRow.agentMessage.status === "cancelled") {
     logger.info("Agent message cancelled, stopping");
     return null;
   }

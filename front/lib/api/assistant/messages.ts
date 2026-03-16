@@ -7,7 +7,6 @@ import {
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import {
-  AgentMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -26,7 +25,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
-  ConversationWithoutContentType,
   LegacyLightMessageType,
   LightAgentMessageType,
   LightMessageType,
@@ -786,33 +784,5 @@ export async function fetchConversationMessages<V extends MessageVariant>(
       : V extends "light"
         ? LightMessageType[]
         : never,
-  });
-}
-
-export async function fetchMessageInConversation(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  messageId: string,
-  version?: number
-) {
-  return MessageModel.findOne({
-    where: {
-      conversationId: conversation.id,
-      sId: messageId,
-      workspaceId: auth.getNonNullableWorkspace()?.id,
-      ...(version ? { version } : {}),
-    },
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: false,
-      },
-    ],
   });
 }

@@ -90,10 +90,7 @@ import {
   softDeleteUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  batchRenderMessages,
-  fetchMessageInConversation,
-} from "@app/lib/api/assistant/messages";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -157,13 +154,9 @@ async function handler(
       }
 
       // Verify the message exists.
-      const message = await fetchMessageInConversation(
-        auth,
-        conversation.toJSON(),
-        mId
-      );
+      const messageRes = await conversation.getMessageById(auth, mId);
 
-      if (!message) {
+      if (messageRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -176,7 +169,7 @@ async function handler(
       const renderedMessages = await batchRenderMessages(
         auth,
         conversation,
-        [message],
+        [messageRes.value],
         "full"
       );
 
