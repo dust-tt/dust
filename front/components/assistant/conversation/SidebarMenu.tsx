@@ -15,7 +15,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,

@@ -1,4 +1,4 @@
-import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";

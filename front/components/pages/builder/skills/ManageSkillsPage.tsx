@@ -1,6 +1,6 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
