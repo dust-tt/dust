@@ -140,7 +140,17 @@ export function ManageSkillsPage() {
     return {
       active: sortedActiveSkills,
       editable_by_me: sortedActiveSkills.filter((s) => s.canWrite),
-      default: sortedActiveSkills.filter((s) => !s.relations.editors),
+       default: sortedActiveSkills
+        .filter((s) => s.isDefault)
+        .sort((a, b) => {
+          // Display first the skills that have no editor (Dust-managed ones).
+          const aNoEditors = a.relations.editors === null;
+          const bNoEditors = b.relations.editors === null;
+          if (aNoEditors !== bNoEditors) {
+            return aNoEditors ? -1 : 1;
+          }
+          return a.name.localeCompare(b.name);
+        }),
       archived: sortedArchivedSkills,
       search: activeSkills
         .filter((s) =>
