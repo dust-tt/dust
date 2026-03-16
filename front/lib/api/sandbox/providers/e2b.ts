@@ -225,7 +225,7 @@ export class E2BSandboxProvider implements SandboxProvider {
   async writeFile(
     providerId: string,
     path: string,
-    data: ReadableStream
+    data: ArrayBuffer
   ): Promise<Result<void, Error>> {
     let sandbox: Sandbox;
     try {

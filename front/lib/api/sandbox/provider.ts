@@ -111,7 +111,7 @@ export interface SandboxProvider {
   writeFile(
     providerId: string,
     path: string,
-    data: ReadableStream
+    data: ArrayBuffer
   ): Promise<Result<void, Error>>;
 
   readFile(providerId: string, path: string): Promise<Buffer>;
