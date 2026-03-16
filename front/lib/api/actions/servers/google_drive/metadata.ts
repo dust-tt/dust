@@ -531,6 +531,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("A custom message to include in the notification email."),
+      canShare: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has sharing access to this file, as returned by search_files or get_file_content in the capabilities.canShare field. You MUST pass this value if available."
+        ),
     },
     stake: "low",
     displayLabels: {
