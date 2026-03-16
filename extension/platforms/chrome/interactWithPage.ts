@@ -9,6 +9,8 @@ type ElementSnapshot = {
   role: string;
   name: string;
   inputType: string | null;
+  value?: string;
+  checked?: boolean;
   coords: { x: number; y: number };
 };
 
@@ -18,6 +20,8 @@ type DustWindow = {
     CONTENT: string[];
     getElementName: (el: HTMLElement) => string;
     highlightElement: (el: HTMLElement) => void;
+    getElementCheckedStatus: (el: HTMLElement) => boolean | null;
+    getElementValue: (el: HTMLElement) => string | null;
   };
   __dustElementMap: Record<string, WeakRef<HTMLElement>>;
   __dustElementSnapshots: Record<string, ElementSnapshot>;
@@ -75,7 +79,13 @@ export async function getPageElements(
     args: [tab.id],
     func: (tabId: number) => {
       const w = window as unknown as DustWindow;
-      const { selector, CONTENT, getElementName } = w.__dustUtils;
+      const {
+        selector,
+        CONTENT,
+        getElementName,
+        getElementCheckedStatus,
+        getElementValue,
+      } = w.__dustUtils;
 
       // Initialize maps only if they don't exist yet — preserve existing IDs
       if (!w.__dustElementMap) {
@@ -120,6 +130,8 @@ export async function getPageElements(
         }
 
         const tag = el.tagName.toLowerCase();
+        const checked = getElementCheckedStatus(el);
+        const value = getElementValue(el);
 
         // Reuse existing ID if this DOM node was already tracked
         const existingId = domNodeToId.get(el);
@@ -143,6 +155,8 @@ export async function getPageElements(
           role: el.getAttribute("role") ?? tag,
           name: getElementName(el),
           inputType: el.getAttribute("type"),
+          ...(checked !== null ? { checked } : {}),
+          ...(value !== null ? { value } : {}),
           coords: {
             x: Math.round(rect.x + rect.width / 2 + window.scrollX),
             y: Math.round(rect.y + rect.height / 2 + window.scrollY),
@@ -513,7 +527,13 @@ export async function getPageElementsDiff(
         return JSON.stringify({ added: [], edited: [], deleted: [] });
       }
 
-      const { selector, CONTENT, getElementName } = w.__dustUtils;
+      const {
+        selector,
+        CONTENT,
+        getElementName,
+        getElementCheckedStatus,
+        getElementValue,
+      } = w.__dustUtils;
       const {
         __dustElementMap: elementMap,
         __dustElementSnapshots: snapshots,
@@ -552,12 +572,17 @@ export async function getPageElementsDiff(
         }
 
         const tag = el.tagName.toLowerCase();
+        const checked = getElementCheckedStatus(el);
+        const value = getElementValue(el);
+
         const current: Omit<ElementSnapshot, "elementId"> = {
           tag,
           type: CONTENT.includes(tag) ? "content" : "interactive",
           role: el.getAttribute("role") ?? tag,
           name: getElementName(el),
           inputType: el.getAttribute("type"),
+          ...(checked !== null ? { checked } : {}),
+          ...(value !== null ? { value } : {}),
           coords: {
             x: Math.round(rect.x + rect.width / 2 + window.scrollX),
             y: Math.round(rect.y + rect.height / 2 + window.scrollY),
@@ -572,7 +597,9 @@ export async function getPageElementsDiff(
           const changed =
             prev.role !== current.role ||
             prev.name !== current.name ||
-            prev.inputType !== current.inputType;
+            prev.inputType !== current.inputType ||
+            prev.checked !== current.checked ||
+            prev.value !== current.value;
 
           if (changed) {
             const editedElement: ElementSnapshot = {
