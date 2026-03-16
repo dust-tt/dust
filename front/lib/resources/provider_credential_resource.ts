@@ -387,7 +387,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
         },
       });
 
-      if (affectedCount !== null) {
+      if (affectedCount !== 0) {
         const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         await oauthClient.deleteCredentials({
           credentialsId: this.credentialId,
