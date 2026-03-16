@@ -1487,10 +1487,19 @@ export async function prodAPICredentialsForOwner(
 // Use memoizer's callback-based API so the LRU cache stores the resolved value, not a Promise.
 // memoizer.sync with an async load caches the Promise itself, which retains Node async context and
 // causes memory growth.
-const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
+
+type FeatureFlagEntry = {
+  name: WhitelistableFeature;
+  groupIds: ModelId[] | null;
+};
+
+const _getFeatureFlags = memoizer<LightWorkspaceType, FeatureFlagEntry[]>({
   load: (workspace, callback) => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      callback(null, [...WHITELISTABLE_FEATURES]);
+      callback(
+        null,
+        WHITELISTABLE_FEATURES.map((name) => ({ name, groupIds: null }))
+      );
       return;
     }
 
@@ -1498,7 +1507,7 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
       .then((flags) =>
         callback(
           null,
-          flags.map((flag) => flag.name)
+          flags.map((flag) => ({ name: flag.name, groupIds: flag.groupIds }))
         )
       )
       .catch((err: Error) => callback(err));
@@ -1510,11 +1519,9 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
   ttl: 3000,
 });
 
-export function getFeatureFlags(
-  auth: Authenticator
-): Promise<WhitelistableFeature[]> {
-  const workspace = auth.getNonNullableWorkspace();
-
+function getWorkspaceFeatureFlags(
+  workspace: LightWorkspaceType
+): Promise<FeatureFlagEntry[]> {
   return new Promise((resolve, reject) => {
     _getFeatureFlags(workspace, (err, result) => {
       if (err) {
@@ -1524,6 +1531,22 @@ export function getFeatureFlags(
       }
     });
   });
+}
+
+export async function getFeatureFlags(
+  auth: Authenticator
+): Promise<WhitelistableFeature[]> {
+  const workspace = auth.getNonNullableWorkspace();
+  const flags = await getWorkspaceFeatureFlags(workspace);
+  const userGroupIds = new Set(auth.groupModelIds());
+
+  return flags
+    .filter(
+      (flag) =>
+        flag.groupIds === null ||
+        flag.groupIds.some((gId) => userGroupIds.has(gId))
+    )
+    .map((flag) => flag.name);
 }
 
 export async function hasFeatureFlag(
