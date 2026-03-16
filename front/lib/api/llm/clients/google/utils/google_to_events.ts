@@ -21,6 +21,25 @@ type StateContainer = {
   thinkingSignature?: string;
 };
 
+export async function responseToLLMEvents({
+  response,
+  metadata,
+}: {
+  response: GenerateContentResponse;
+  metadata: LLMClientMetadata;
+}): Promise<LLMEvent[]> {
+  const events: LLMEvent[] = [];
+  for await (const event of streamLLMEvents({
+    generateContentResponses: (async function* () {
+      yield response;
+    })(),
+    metadata,
+  })) {
+    events.push(event);
+  }
+  return events;
+}
+
 export async function* streamLLMEvents({
   generateContentResponses,
   metadata,
