@@ -236,6 +236,18 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       done: "Retrieve Google worksheet",
     },
   },
+  list_file_permissions: {
+    description:
+      "List all permissions (sharing settings) on a Google Drive file, showing who has access and their roles.",
+    schema: {
+      fileId: z.string().describe("The ID of the Google Drive file."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing file permissions",
+      done: "List file permissions",
+    },
+  },
   list_comments: {
     description:
       "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
@@ -538,10 +550,61 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
           "Whether the user has sharing access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canShare field."
         ),
     },
-    stake: "low",
+    stake: "medium",
     displayLabels: {
       running: "Sharing Google Drive file",
       done: "Share Google Drive file",
+    },
+  },
+  update_file_permission: {
+    description:
+      "Update the role of an existing permission on a Google Drive file. Use list_file_permissions to find the permissionId first. To grant new access, use share_file instead.",
+    schema: {
+      fileId: z.string().describe("The ID of the Google Drive file."),
+      permissionId: z
+        .string()
+        .describe(
+          "The ID of the permission to update. Use list_file_permissions to find this."
+        ),
+      role: z
+        .enum(["writer", "commenter", "reader"])
+        .describe("The new access level to set."),
+      canShare: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has sharing access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canShare field."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating file permission",
+      done: "Update file permission",
+    },
+  },
+  unshare_file: {
+    description:
+      "Remove access to a Google Drive file for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
+    schema: {
+      fileId: z
+        .string()
+        .describe("The ID of the Google Drive file to remove access from."),
+      permissionId: z
+        .string()
+        .describe(
+          "The ID of the permission to remove. Use list_file_permissions to find this."
+        ),
+      canShare: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has sharing access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canShare field."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Removing file access",
+      done: "Remove file access",
     },
   },
 });
@@ -560,7 +623,7 @@ export function getGoogleDriveServerMetadata(): ServerMetadata {
       name: "google_drive",
       version: "1.0.0",
       description:
-        "Search, read, create, clone, edit and comment on files in Google Drive (Docs, Sheets, Presentations).",
+        "Search, read, create, clone, edit, comment on, and manage permissions for files in Google Drive (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions"],

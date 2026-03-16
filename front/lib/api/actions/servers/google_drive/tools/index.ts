@@ -637,6 +637,39 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleDriveAccessError(err);
     }
   },
+
+  list_file_permissions: async ({ fileId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.permissions.list({
+        fileId,
+        supportsAllDrives: true,
+        fields: "permissions(id,type,role,emailAddress,domain,displayName)",
+      });
+
+      const permissions = (res.data.permissions ?? []).map((p) => ({
+        permissionId: p.id,
+        type: p.type,
+        role: p.role,
+        ...(p.emailAddress && { emailAddress: p.emailAddress }),
+        ...(p.displayName && { displayName: p.displayName }),
+        ...(p.domain && { domain: p.domain }),
+      }));
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify({ fileId, permissions }, null, 2),
+        },
+      ]);
+    } catch (err) {
+      return handleDriveAccessError(err);
+    }
+  },
 };
 
 const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
@@ -1131,6 +1164,93 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
             sharedWith,
             role,
             permissionId: res.data.id,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  update_file_permission: async (
+    { fileId, permissionId, role, canShare },
+    { authInfo, agentLoopContext }
+  ) => {
+    const shareError = await ensureShareAccess(canShare, fileId, authInfo);
+    if (shareError) {
+      return shareError;
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      await drive.permissions.update({
+        fileId,
+        permissionId,
+        supportsAllDrives: true,
+        requestBody: { role },
+      });
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            permissionId,
+            newRole: role,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  unshare_file: async (
+    { fileId, permissionId, canShare },
+    { authInfo, agentLoopContext }
+  ) => {
+    const shareError = await ensureShareAccess(canShare, fileId, authInfo);
+    if (shareError) {
+      return shareError;
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      await drive.permissions.delete({
+        fileId,
+        permissionId,
+        supportsAllDrives: true,
+      });
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            permissionId,
+            removed: true,
           },
           null,
           2
