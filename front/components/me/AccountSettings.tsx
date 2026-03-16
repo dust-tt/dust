@@ -3,6 +3,7 @@ import { NotificationPreferences } from "@app/components/me/NotificationPreferen
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { usePatchUser, useUser } from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types/user";
@@ -27,7 +28,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -48,6 +49,19 @@ type AccountSettingsType = z.infer<typeof AccountSettingsSchema>;
 export function AccountSettings({ owner }: AccountSettingsProps) {
   const { user, isUserLoading } = useUser();
   const { theme: currentTheme, setTheme } = useTheme();
+  const isMac = useIsMac();
+  const modEnterLabel = useMemo(
+    () => (isMac ? "Cmd + Enter (⌘ + ↵)" : "Ctrl + Enter"),
+    [isMac]
+  );
+  const modEnterMenuLabel = useMemo(
+    () => (isMac ? "Cmd + Enter" : "Ctrl + Enter"),
+    [isMac]
+  );
+  const modEnterShortcut = useMemo(
+    () => (isMac ? "⌘ + ↵" : "Ctrl + ↵"),
+    [isMac]
+  );
 
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";
@@ -326,7 +340,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                     label={
                       submitKeyField.value === "enter"
                         ? "Enter (↵)"
-                        : "Cmd + Enter (⌘ + ↵)"
+                        : modEnterLabel
                     }
                     isSelect
                     className="w-fit"
@@ -344,8 +358,10 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   <DropdownMenuItem
                     onClick={() => submitKeyField.onChange("cmd+enter")}
                   >
-                    Cmd + Enter
-                    <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+                    {modEnterMenuLabel}
+                    <DropdownMenuShortcut>
+                      {modEnterShortcut}
+                    </DropdownMenuShortcut>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenuPortal>
