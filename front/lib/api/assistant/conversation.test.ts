@@ -162,6 +162,40 @@ describe("retryAgentMessage", () => {
     }
   });
 
+  it("should pass non-null conversation branchId when retrying in a branch", async () => {
+    const branchId = "branch-test-id";
+
+    const userMessage = conversation.content
+      .flat()
+      .filter(isUserMessageType)
+      .find((m) => m.sId === agentMessage.parentMessageId);
+
+    expect(userMessage).toBeDefined();
+
+    const branchedConversation: ConversationType = {
+      ...conversation,
+      branchId,
+    };
+
+    const result = await retryAgentMessage(auth, {
+      conversation: branchedConversation,
+      message: agentMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+    if (result.isOk()) {
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledWith({
+        auth,
+        agentLoopArgs: expect.objectContaining({
+          conversationBranchId: branchId,
+        }),
+        startStep: 0,
+      });
+    }
+  });
+
   it("should call publishAgentMessagesEvents with correct arguments", async () => {
     const result = await retryAgentMessage(auth, {
       conversation,
