@@ -1414,24 +1414,51 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-export const getFeatureFlags = memoizer.sync({
-  load: async (
-    workspace: LightWorkspaceType
-  ): Promise<WhitelistableFeature[]> => {
+// Use memoizer's callback-based API so the LRU cache stores the resolved value, not a Promise.
+// memoizer.sync with an async load caches the Promise itself, which retains Node async context and
+// causes memory growth.
+const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
+  load: (workspace, callback) => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      return [...WHITELISTABLE_FEATURES];
-    } else {
-      const flags = await FeatureFlagResource.listForWorkspace(workspace);
-      return flags.map((flag) => flag.name);
+      callback(null, [...WHITELISTABLE_FEATURES]);
+      return;
     }
+
+    FeatureFlagResource.listForWorkspace(workspace)
+      .then((flags) =>
+        callback(
+          null,
+          flags.map((flag) => flag.name)
+        )
+      )
+      .catch((err: Error) => callback(err));
   },
 
-  hash: function (workspace: LightWorkspaceType) {
-    return `feature_flags_${workspace.id}`;
-  },
+  hash: (workspace: LightWorkspaceType) => `feature_flags_${workspace.id}`,
 
-  itemMaxAge: () => 3000,
+  max: 100,
+  ttl: 3000,
 });
+
+export function getFeatureFlags(
+  workspace: LightWorkspaceType
+): Promise<WhitelistableFeature[]> {
+  return new Promise((resolve, reject) => {
+    _getFeatureFlags(workspace, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result ?? []);
+      }
+    });
+  });
+}
+
+export function invalidateFeatureFlagsCache(
+  workspace: LightWorkspaceType
+): void {
+  _getFeatureFlags.del(workspace);
+}
 
 export async function isRestrictedFromAgentCreation(
   owner: LightWorkspaceType
