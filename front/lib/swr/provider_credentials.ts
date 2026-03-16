@@ -27,7 +27,7 @@ export function useProviderCredentials({
   const providerCredentialsFetcher: Fetcher<GetProviderCredentialsResponseBody> =
     fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     `/api/w/${owner.sId}/provider_credentials`,
     providerCredentialsFetcher
   );
@@ -35,7 +35,7 @@ export function useProviderCredentials({
   return {
     providerCredentials:
       data?.providerCredentials ?? emptyArray<ProviderCredentialType>(),
-    isProviderCredentialsLoading: !error && !data,
+    isProviderCredentialsLoading: isLoading,
     isProviderCredentialsError: !!error,
     mutateProviderCredentials: mutate,
   };
