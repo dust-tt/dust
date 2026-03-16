@@ -319,7 +319,8 @@ export async function createToolsSuggestions({
   );
   if (missingToolIds.length > 0) {
     return new Err(
-      `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}.`
+      `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
+        `Check <workspace_context> for valid tool IDs.`
     );
   }
 
@@ -436,7 +437,8 @@ export async function createSkillsSuggestions({
   );
   if (missingSkillIds.length > 0) {
     return new Err(
-      `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}.`
+      `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
+        `Check <workspace_context> for valid skill IDs.`
     );
   }
 
