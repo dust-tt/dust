@@ -446,7 +446,17 @@ export function buildSidekickInstructions(): string {
   return parts.join("\n\n");
 }
 
-const SIDEKICK_NEW_AGENT_STATIC_RESPONSE = "What should this agent do?";
+const SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
+  "Need a hand?\nTell me what you're building and I can help you write the instructions and get it set up.",
+  "Want help setting this up?\nDescribe what your agent should do and I'll help you draft the instructions.",
+  "Not sure where to start?\nTell me what you want your agent to do—I'll help you write the instructions and configure it.",
+];
+
+function getSidekickNewAgentStaticResponse(): string {
+  return SIDEKICK_NEW_AGENT_STATIC_RESPONSES[
+    Math.floor(Math.random() * SIDEKICK_NEW_AGENT_STATIC_RESPONSES.length)
+  ]!;
+}
 
 export function _getSidekickGlobalAgent(
   auth: Authenticator,
@@ -500,7 +510,7 @@ export function _getSidekickGlobalAgent(
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
         ...(isNewAgentFromScratchFirstTurn && {
-          metaData: { staticResponse: SIDEKICK_NEW_AGENT_STATIC_RESPONSE },
+          metaData: { staticResponse: getSidekickNewAgentStaticResponse() },
         }),
       }
     : dummyModelConfiguration;
