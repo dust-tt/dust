@@ -161,7 +161,7 @@
     "jwks-rsa": "^3.1.0",
     "libphonenumber-js": "^1.12.33",
     "lodash": "^4.17.21",
-    "lru-memoizer": "^2.2.0",
+    "lru-memoizer": "^3.0.0",
     "lucide-react": "^0.363.0",
     "luxon": "^3.4.4",
     "marked": "^14.1.3",
