@@ -32,6 +32,7 @@ import { useInboxNotifications } from "@app/hooks/useInboxNotifications";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useNotificationClickHandler } from "@app/hooks/useNotificationClickHandler";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -431,10 +432,11 @@ export function AgentSidebarMenu({
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  const {
-    notifications: inboxNotifications,
-    markAsRead: markNotificationAsRead,
-  } = useInboxNotifications();
+  const { notifications: inboxNotifications, markAsRead } =
+    useInboxNotifications();
+
+  const { handleNotificationClick, loadingNotificationId } =
+    useNotificationClickHandler({ owner, markAsRead });
 
   const {
     conversations,
@@ -753,7 +755,8 @@ export function AgentSidebarMenu({
         loadMore={loadMore}
         isLoadingMore={isLoadingMore}
         inboxNotifications={inboxNotifications}
-        onNotificationClick={markNotificationAsRead}
+        onNotificationClick={handleNotificationClick}
+        loadingNotificationId={loadingNotificationId}
       />
     );
   }, [
@@ -775,7 +778,8 @@ export function AgentSidebarMenu({
     loadMore,
     isLoadingMore,
     inboxNotifications,
-    markNotificationAsRead,
+    handleNotificationClick,
+    loadingNotificationId,
   ]);
 
   return (
@@ -1099,13 +1103,15 @@ const ConversationListContainer = ({
 interface InboxSectionProps
   extends Omit<InboxConversationListProps, "dateLabel"> {
   inboxNotifications: InboxNotification[];
-  onNotificationClick: (notificationId: string) => Promise<void>;
+  onNotificationClick: (notification: InboxNotification) => Promise<void>;
+  loadingNotificationId: string | null;
 }
 
 function InboxSection({
   inboxConversations,
   inboxNotifications,
   onNotificationClick,
+  loadingNotificationId,
   isMultiSelect,
   isMarkingAllAsRead,
   titleFilter,
@@ -1147,8 +1153,10 @@ function InboxSection({
           status="unread"
           icon={RobotIcon}
           label={notification.subject ?? "New notification"}
-          href={notification.primaryAction?.redirect?.url}
-          onClick={() => void onNotificationClick(notification.id)}
+          onClick={() => void onNotificationClick(notification)}
+          className={cn(
+            loadingNotificationId === notification.id && "opacity-50"
+          )}
         />
       ))}
       {inboxConversations.map((conversation) => (
@@ -1348,7 +1356,8 @@ interface NavigationListWithInboxProps {
   loadMore: () => void;
   isLoadingMore: boolean;
   inboxNotifications: InboxNotification[];
-  onNotificationClick: (notificationId: string) => Promise<void>;
+  onNotificationClick: (notification: InboxNotification) => Promise<void>;
+  loadingNotificationId: string | null;
 }
 
 function NavigationListWithInbox({
@@ -1371,6 +1380,7 @@ function NavigationListWithInbox({
   isLoadingMore,
   inboxNotifications,
   onNotificationClick,
+  loadingNotificationId,
 }: NavigationListWithInboxProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { readConversations, inboxConversations } = useMemo(() => {
@@ -1429,6 +1439,7 @@ function NavigationListWithInbox({
           inboxConversations={inboxConversations}
           inboxNotifications={inboxNotifications}
           onNotificationClick={onNotificationClick}
+          loadingNotificationId={loadingNotificationId}
           isMultiSelect={isMultiSelect}
           isMarkingAllAsRead={isMarkingAllAsRead}
           titleFilter={titleFilter}

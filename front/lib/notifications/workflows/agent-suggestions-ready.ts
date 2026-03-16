@@ -40,7 +40,10 @@ export const agentSuggestionsReadyWorkflow = workflow(
             ),
           },
         },
-        data: {},
+        data: {
+          agentConfigurationId: payload.agentConfigurationId,
+          agentName: payload.agentName,
+        },
       };
     });
   },
