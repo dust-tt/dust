@@ -7,14 +7,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
+import { isString } from "@app/types/shared/utils/general";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
 
 function formatSuggestionsAsText(
   suggestions: AgentSuggestionType[],
@@ -80,8 +76,8 @@ export function useNotificationClickHandler({
         const suggestions: AgentSuggestionType[] = [];
 
         if (suggestionsResponse.ok) {
-          const body =
-            (await suggestionsResponse.json()) as GetSuggestionsResponseBody;
+          const body: { suggestions: AgentSuggestionType[] } =
+            await suggestionsResponse.json();
           suggestions.push(...body.suggestions);
         }
 
