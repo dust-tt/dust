@@ -204,6 +204,16 @@ export async function createInstructionSuggestions({
 }): Promise<
   Result<{ sId: string; kind: string; targetBlockId: string }[], string>
 > {
+  // Reject batches where multiple suggestions target the same block.
+  const targetBlockIds = suggestions.map((s) => s.targetBlockId);
+  const uniqueTargetBlockIds = new Set(targetBlockIds);
+  if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
+    return new Err(
+      "Multiple suggestions target the same block ID. Use a single suggestion per block." +
+        `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
+    );
+  }
+
   // Check pending suggestion limit before proceeding.
   const pendingInstructions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -287,6 +297,52 @@ export async function createToolsSuggestions({
   suggestions: ToolsSuggestionInput[];
   source: AgentSuggestionSource;
 }): Promise<Result<{ sId: string; kind: string }[], string>> {
+  // Reject batches where multiple suggestions target the same tool.
+  const suggestionToolIds = suggestions.map((s) => s.toolId);
+  const uniqueToolIds = new Set(suggestionToolIds);
+  if (uniqueToolIds.size !== suggestionToolIds.length) {
+    const duplicates = [
+      ...new Set(
+        suggestionToolIds.filter(
+          (id, i) => suggestionToolIds.indexOf(id) !== i
+        )
+      ),
+    ];
+    return new Err(
+      `Multiple suggestions target the same tool ID: ${duplicates.join(", ")}. Use a single suggestion per tool.`
+    );
+  }
+
+  // Validate that all tool IDs exist and are accessible.
+  const tools = await MCPServerViewResource.fetchByIds(
+    auth,
+    suggestionToolIds
+  );
+  const foundToolIds = new Set(tools.map((t) => t.sId));
+  const missingToolIds = suggestionToolIds.filter(
+    (id) => !foundToolIds.has(id)
+  );
+  if (missingToolIds.length > 0) {
+    return new Err(
+      `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}.`
+    );
+  }
+
+  // Reject knowledge tools — they should be suggested via suggest_knowledge.
+  const knowledgeTools = tools.filter((t) => {
+    const json = t.toJSON();
+    return json !== null && isToolWithKnowledge(json);
+  });
+  if (knowledgeTools.length > 0) {
+    const knowledgeToolNames = knowledgeTools
+      .map((t) => `${t.sId} (${t.toJSON()?.server.name ?? "unknown"})`)
+      .join(", ");
+    return new Err(
+      `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
+        `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`
+    );
+  }
+
   // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -295,12 +351,11 @@ export async function createToolsSuggestions({
       { states: ["pending"], kind: "tools" }
     );
 
-  const toolIds = new Set(suggestions.map((s) => s.toolId));
-
   const remainingPending = await markDuplicateSuggestionsAsOutdated(
     auth,
     pendingSuggestions,
-    (s) => isToolsSuggestion(s.suggestion) && toolIds.has(s.suggestion.toolId)
+    (s) =>
+      isToolsSuggestion(s.suggestion) && uniqueToolIds.has(s.suggestion.toolId)
   );
 
   const limitCheck = canAddPendingSuggestions({
@@ -362,6 +417,34 @@ export async function createSkillsSuggestions({
   suggestions: SkillsSuggestionInput[];
   source: AgentSuggestionSource;
 }): Promise<Result<{ sId: string; kind: string }[], string>> {
+  // Reject batches where multiple suggestions target the same skill.
+  const suggestionSkillIds = suggestions.map((s) => s.skillId);
+  const uniqueSkillIds = new Set(suggestionSkillIds);
+  if (uniqueSkillIds.size !== suggestionSkillIds.length) {
+    const duplicates = [
+      ...new Set(
+        suggestionSkillIds.filter(
+          (id, i) => suggestionSkillIds.indexOf(id) !== i
+        )
+      ),
+    ];
+    return new Err(
+      `Multiple suggestions target the same skill ID: ${duplicates.join(", ")}. Use a single suggestion per skill.`
+    );
+  }
+
+  // Validate that all skill IDs exist and are accessible.
+  const skills = await SkillResource.fetchByIds(auth, suggestionSkillIds);
+  const foundSkillIds = new Set(skills.map((s) => s.sId));
+  const missingSkillIds = suggestionSkillIds.filter(
+    (id) => !foundSkillIds.has(id)
+  );
+  if (missingSkillIds.length > 0) {
+    return new Err(
+      `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}.`
+    );
+  }
+
   // Fetch pending suggestions and mark duplicates (same skillId) as outdated.
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -370,13 +453,12 @@ export async function createSkillsSuggestions({
       { states: ["pending"], kind: "skills" }
     );
 
-  const skillIds = new Set(suggestions.map((s) => s.skillId));
-
   const remainingPending = await markDuplicateSuggestionsAsOutdated(
     auth,
     pendingSuggestions,
     (s) =>
-      isSkillsSuggestion(s.suggestion) && skillIds.has(s.suggestion.skillId)
+      isSkillsSuggestion(s.suggestion) &&
+      uniqueSkillIds.has(s.suggestion.skillId)
   );
 
   const limitCheck = canAddPendingSuggestions({
@@ -858,19 +940,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Reject batches where multiple suggestions target the same block.
-    const targetBlockIds = params.suggestions.map((s) => s.targetBlockId);
-    const uniqueTargetBlockIds = new Set(targetBlockIds);
-    if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
-      return new Err(
-        new MCPError(
-          "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-            `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`,
-          { tracked: false }
-        )
-      );
-    }
-
     try {
       const result = await createInstructionSuggestions({
         auth,
@@ -911,53 +980,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
-    }
-
-    // Reject batches where multiple suggestions target the same tool.
-    const toolIds = params.suggestions.map((s) => s.toolId);
-    const uniqueToolIds = new Set(toolIds);
-    if (uniqueToolIds.size !== toolIds.length) {
-      const duplicates = [
-        ...new Set(toolIds.filter((id, i) => toolIds.indexOf(id) !== i)),
-      ];
-      return new Err(
-        new MCPError(
-          `Multiple suggestions target the same tool ID: ${duplicates.join(", ")}. Use a single suggestion per tool.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Validate that all tool IDs exist and are accessible.
-    const tools = await MCPServerViewResource.fetchByIds(auth, toolIds);
-    const foundToolIds = new Set(tools.map((t) => t.sId));
-    const missingToolIds = toolIds.filter((id) => !foundToolIds.has(id));
-    if (missingToolIds.length > 0) {
-      return new Err(
-        new MCPError(
-          `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
-            `Check <workspace_context> for valid tool IDs.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Reject knowledge tools — they should be suggested via suggest_knowledge.
-    const knowledgeTools = tools.filter((t) => {
-      const json = t.toJSON();
-      return json !== null && isToolWithKnowledge(json);
-    });
-    if (knowledgeTools.length > 0) {
-      const knowledgeToolNames = knowledgeTools
-        .map((t) => `${t.sId} (${t.toJSON()?.server.name ?? "unknown"})`)
-        .join(", ");
-      return new Err(
-        new MCPError(
-          `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
-            `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`,
           { tracked: false }
         )
       );
@@ -1125,35 +1147,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
-    }
-
-    // Reject batches where multiple suggestions target the same skill.
-    const skillIds = params.suggestions.map((s) => s.skillId);
-    const uniqueSkillIds = new Set(skillIds);
-    if (uniqueSkillIds.size !== skillIds.length) {
-      const duplicates = [
-        ...new Set(skillIds.filter((id, i) => skillIds.indexOf(id) !== i)),
-      ];
-      return new Err(
-        new MCPError(
-          `Multiple suggestions target the same skill ID: ${duplicates.join(", ")}. Use a single suggestion per skill.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Validate that all skill IDs exist and are accessible.
-    const skills = await SkillResource.fetchByIds(auth, skillIds);
-    const foundSkillIds = new Set(skills.map((s) => s.sId));
-    const missingSkillIds = skillIds.filter((id) => !foundSkillIds.has(id));
-    if (missingSkillIds.length > 0) {
-      return new Err(
-        new MCPError(
-          `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
-            `Check <workspace_context> for valid skill IDs.`,
           { tracked: false }
         )
       );
