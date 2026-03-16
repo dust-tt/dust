@@ -151,7 +151,7 @@ export function GlobalAgentFeedbacksPage() {
       <div className="py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground-night">
-            Global Agent Feedbacks
+            Global Agent Feedback
           </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
             User feedback on global agents across all workspaces.
