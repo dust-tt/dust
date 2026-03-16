@@ -54,6 +54,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -70,6 +71,7 @@ import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -606,6 +608,16 @@ export async function runModel(
         const errorDustRunId = llm?.getTraceId();
         const currentAttempt = Context.current().info.attempt;
         const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
+
+        if (
+          type === "authentication_error" &&
+          auth.getNonNullablePlan().isByok &&
+          isByokProviderId(model.providerId)
+        ) {
+          await ProviderCredentialResource.markAsUnhealthy(auth, {
+            providerId: model.providerId,
+          });
+        }
 
         if (!isRetryable || isLastAttempt) {
           // Non-retryable errors or last retry attempt: surface error to user.

@@ -30,6 +30,7 @@ import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 2;
+const PROVIDER_CREDENTIALS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 type CachedProviderCredential = {
   id: ModelId;
@@ -143,7 +144,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   private static baseFetchCached = cacheWithRedis(
     ProviderCredentialResource._baseFetchUncached,
     ProviderCredentialResource.providerCredentialCacheKeyResolver,
-    { cacheNullValues: false }
+    { cacheNullValues: false, ttlMs: PROVIDER_CREDENTIALS_CACHE_TTL_MS }
   );
 
   private static invalidateProviderCredentialCache = invalidateCacheWithRedis(
@@ -369,6 +370,40 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     await this.invalidateProviderCredentialCache(workspace.id);
   }
 
+  static async markAsUnhealthy(
+    auth: Authenticator,
+    { providerId }: { providerId: ByokModelProviderIdType }
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    assert(
+      auth.getNonNullablePlan().isByok,
+      "BYOK must be enabled to mark provider credentials as unhealthy."
+    );
+
+    const credential = await this.fetchByProvider(auth, providerId);
+    if (!credential) {
+      return;
+    }
+
+    const isAuthError = await hasCredentialAuthError({
+      provider: providerId,
+      credentials: credential.credentials,
+    });
+
+    if (!isAuthError) {
+      return;
+    }
+
+    const [affectedCount] = await ProviderCredentialModel.update(
+      { isHealthy: false },
+      { where: { workspaceId: workspace.id, providerId, isHealthy: true } }
+    );
+
+    if (affectedCount > 0) {
+      await this.invalidateProviderCredentialCache(workspace.id);
+    }
+  }
+
   async delete(
     auth: Authenticator
   ): Promise<Result<number | undefined, Error>> {
@@ -461,6 +496,42 @@ async function isCredentialHealthy({
       }
 
       return true;
+    }
+    default:
+      assertNever(provider);
+  }
+}
+
+// Returns true only if the credential fails with a 401 authentication error,
+// which confirms the key is invalid (not just a transient network/rate-limit issue).
+async function hasCredentialAuthError({
+  provider,
+  credentials,
+}: ModelProviderPostCredentialsBody): Promise<boolean> {
+  switch (provider) {
+    case "anthropic": {
+      const client = new Anthropic({ apiKey: credentials.api_key });
+      try {
+        await client.models.list();
+        return false;
+      } catch (error) {
+        return error instanceof Anthropic.AuthenticationError;
+      }
+    }
+    case "openai": {
+      const client = new OpenAI({
+        apiKey: credentials.api_key,
+        defaultHeaders: {
+          "Content-Type": "application/json; charset=utf-8",
+          Accept: "application/json; charset=utf-8",
+        },
+      });
+      try {
+        await client.models.list();
+        return false;
+      } catch (error) {
+        return error instanceof OpenAI.AuthenticationError;
+      }
     }
     default:
       assertNever(provider);

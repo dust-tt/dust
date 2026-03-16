@@ -3,9 +3,16 @@ import { RemoveKeyDialog } from "@app/components/pages/workspace/model_providers
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, ContextItem, Icon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  ContextItem,
+  Icon,
+  InformationCircleIcon,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ConfigureButtonProps {
@@ -50,19 +57,22 @@ interface ProviderConfigurationContextItemProps {
   providerId: ByokModelProviderIdType;
   description: string;
   isLoading: boolean;
-  apiKey: string | undefined;
+  providerCredential: ProviderCredentialType | undefined;
 }
 export function ProviderConfigurationContextItem({
   owner,
   providerId,
   description,
   isLoading,
-  apiKey,
+  providerCredential,
 }: ProviderConfigurationContextItemProps) {
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveKeyDialogOpen, setIsRemoveKeyDialogOpen] = useState(false);
+
+  const apiKey = providerCredential?.credentials.api_key;
+  const isHealthy = providerCredential?.isHealthy;
 
   return (
     <>
@@ -84,6 +94,19 @@ export function ProviderConfigurationContextItem({
             {description}
           </span>
         </ContextItem.Description>
+
+        {apiKey && isHealthy === false && (
+          <ContentMessage
+            variant="warning"
+            icon={InformationCircleIcon}
+            title="Invalid API key"
+            size="lg"
+            className="mt-4"
+          >
+            This key is no longer valid. Update it to restore affected agents.
+          </ContentMessage>
+        )}
+
         {apiKey && (
           <div className="font-mono text-lg mt-4 text-foreground dark:text-foreground-night truncate">
             {apiKey}
