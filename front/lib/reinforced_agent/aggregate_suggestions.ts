@@ -69,24 +69,43 @@ async function loadAggregationContext(
     return null;
   }
 
-  const existingSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
+  const REJECTED_SUGGESTIONS_MAX_COUNT = 20;
+  const REJECTED_SUGGESTIONS_MAX_AGE_MONTHS = 3;
+
+  const [pendingSuggestions, rejectedSuggestions] = await Promise.all([
+    AgentSuggestionResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId,
       {
         sources: ["reinforcement", "sidekick"],
-        states: ["pending", "rejected"],
+        states: ["pending"],
       }
-    );
+    ),
+    AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      {
+        sources: ["reinforcement", "sidekick"],
+        states: ["rejected"],
+        limit: REJECTED_SUGGESTIONS_MAX_COUNT,
+      }
+    ),
+  ]);
 
-  const existingReinforced = toReinforcedSuggestions(existingSuggestions);
+  const rejectedCutoff = new Date();
+  rejectedCutoff.setMonth(
+    rejectedCutoff.getMonth() - REJECTED_SUGGESTIONS_MAX_AGE_MONTHS
+  );
+  const recentRejectedSuggestions = rejectedSuggestions.filter(
+    (s) => s.createdAt >= rejectedCutoff
+  );
 
   const prompt = buildAggregationPrompt(
     agentConfig.name,
     toReinforcedSuggestions(syntheticSuggestions),
     {
-      pending: existingReinforced.filter((s) => s.state === "pending"),
-      rejected: existingReinforced.filter((s) => s.state === "rejected"),
+      pending: toReinforcedSuggestions(pendingSuggestions),
+      rejected: toReinforcedSuggestions(recentRejectedSuggestions),
     }
   );
 
