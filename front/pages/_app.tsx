@@ -138,7 +138,7 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
           {getLayout(<Component {...pageProps} />, pageProps)}
         </SparkleContext.Provider>
       </PostHogTracker>
-      {DUST_CLIENT_FACING_URL === "https://dust.tt" && (
+      {DUST_CLIENT_FACING_URL !== "https://app.dust.tt" && (
         <Script
           src="https://static.claydar.com/init.v1.js?id=clmYho8v0U"
           strategy="afterInteractive"
