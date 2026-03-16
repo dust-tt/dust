@@ -1430,6 +1430,7 @@ export const getFeatureFlags = memoizer.sync({
     return `feature_flags_${workspace.id}`;
   },
 
+  max: 128,
   itemMaxAge: () => 3000,
 });
 

@@ -20,5 +20,6 @@ export const isDeepDiveDisabledByAdmin = memoizer.sync({
     return `deep_dive_disabled_by_admin_${auth.getNonNullableWorkspace().id}`;
   },
 
+  max: 128,
   itemMaxAge: () => 3000,
 });
