@@ -25,6 +25,42 @@ import { Octokit } from "@octokit/core";
 
 const FETCH_CONCURRENCY = 4;
 
+function classifyGitHubAPIError(
+  error: Error,
+  { owner, repo, context }: { owner: string; repo: string; context: string }
+): Err<GitHubSkillDetectionError> {
+  if (error.message.includes("Not Found")) {
+    return new Err({
+      type: "not_found",
+      message: `Repository "${owner}/${repo}" not found.`,
+    });
+  }
+
+  if (
+    error.message.includes("Bad credentials") ||
+    error.message.includes("401")
+  ) {
+    return new Err({
+      type: "auth_error",
+      message: `Authentication failed for repository "${owner}/${repo}".`,
+    });
+  }
+
+  if (error.message.includes("rate limit")) {
+    return new Err({
+      type: "github_api_error",
+      message: "GitHub API rate limit exceeded. Please try again later.",
+    });
+  }
+
+  logger.error({ error: error.message, owner, repo }, context);
+
+  return new Err({
+    type: "github_api_error",
+    message: context,
+  });
+}
+
 async function fetchRepoTree(
   octokit: InstanceType<typeof Octokit>,
   {
@@ -43,25 +79,10 @@ async function fetchRepoTree(
     );
     rawData = response.data;
   } catch (err) {
-    const error = normalizeError(err);
-    if (error.message.includes("Not Found")) {
-      return new Err({
-        type: "not_found",
-        message: `Repository "${owner}/${repo}" not found.`,
-      });
-    }
-    if (
-      error.message.includes("Bad credentials") ||
-      error.message.includes("401")
-    ) {
-      return new Err({
-        type: "auth_error",
-        message: `Authentication failed for repository "${owner}/${repo}".`,
-      });
-    }
-    return new Err({
-      type: "github_api_error",
-      message: `Failed to fetch repository tree: ${error.message}`,
+    return classifyGitHubAPIError(normalizeError(err), {
+      owner,
+      repo,
+      context: "Failed to fetch repository tree",
     });
   }
 
@@ -106,9 +127,10 @@ export async function fetchBlobContent(
     );
     rawData = response.data;
   } catch (err) {
-    return new Err({
-      type: "github_api_error",
-      message: `Failed to fetch blob: ${normalizeError(err).message}`,
+    return classifyGitHubAPIError(normalizeError(err), {
+      owner,
+      repo,
+      context: "Failed to fetch file content",
     });
   }
 
