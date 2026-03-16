@@ -79,7 +79,6 @@ async function handler(
       );
       const authors = await getAuthors(agentConfigurations);
 
-
       // `SkillResource.listByAgentConfigurations` only works for custom agents, as global agents are not versioned.
       const skillsByVersion: Record<number, SkillType[]> = {};
       if (isGlobalAgentId(aId)) {
@@ -87,8 +86,8 @@ async function handler(
           auth,
           latestAgentConfiguration
         );
-        skillsByVersion[latestAgentConfiguration.version] = allSkills.map(
-          (s) => s.toJSON(auth)
+        skillsByVersion[latestAgentConfiguration.version] = allSkills.map((s) =>
+          s.toJSON(auth)
         );
       } else {
         const allSkills = await SkillResource.listByAgentConfigurations(
@@ -102,7 +101,6 @@ async function handler(
           skillsByVersion[agentConfiguration.version].push(skill.toJSON(auth));
         }
       }
-
 
       return res.status(200).json({
         agentConfigurations,
