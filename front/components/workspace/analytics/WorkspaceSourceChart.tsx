@@ -6,12 +6,9 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceContextOrigin } from "@app/lib/swr/workspaces";
-import { Button } from "@dust-tt/sparkle";
-import { DownloadIcon } from "lucide-react";
-import { useState } from "react";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface WorkspaceSourceChartProps {
@@ -23,11 +20,6 @@ export function WorkspaceSourceChart({
   workspaceId,
   period,
 }: WorkspaceSourceChartProps) {
-  const { hasFeature } = useFeatureFlags();
-  const showExport = hasFeature("analytics_csv_export");
-
-  const [isDownloading, setIsDownloading] = useState(false);
-
   const { contextOrigin, isContextOriginLoading, isContextOriginError } =
     useWorkspaceContextOrigin({
       workspaceId,
@@ -44,41 +36,14 @@ export function WorkspaceSourceChart({
     colorClassName: getSourceColor(d.origin),
   }));
 
-  const canDownload =
-    !isContextOriginLoading && !isContextOriginError && data.length > 0;
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/source-export?days=${period}`,
+    filename: `dust_sources_last_${period}_days.csv`,
+    disabled:
+      isContextOriginLoading || isContextOriginError || data.length === 0,
+  });
 
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-      const response = await clientFetch(
-        `/api/w/${workspaceId}/analytics/source-export?days=${period}`
-      );
-      if (!response.ok) {
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dust_sources_last_${period}_days.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const controls = showExport ? (
-    <Button
-      icon={DownloadIcon}
-      variant="outline"
-      size="xs"
-      tooltip="Download CSV"
-      onClick={handleDownload}
-      disabled={!canDownload || isDownloading}
-      isLoading={isDownloading}
-    />
-  ) : undefined;
+  const controls = <CsvDownloadButton {...csvDownload} />;
 
   return (
     <ChartContainer

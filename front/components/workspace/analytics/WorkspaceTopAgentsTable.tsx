@@ -1,19 +1,13 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { LinkWrapper } from "@app/lib/platform";
 import { useWorkspaceTopAgents } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import {
-  Button,
-  DataTable,
-  ScrollableDataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { DataTable, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { DownloadIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface TopAgentRowData {
   agentId: string;
@@ -103,32 +97,6 @@ export function WorkspaceTopAgentsTable({
       disabled: !workspaceId,
     });
 
-  const { hasFeature } = useFeatureFlags();
-  const showExport = hasFeature("analytics_csv_export");
-
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = useCallback(async () => {
-    setIsDownloading(true);
-    try {
-      const response = await clientFetch(
-        `/api/w/${workspaceId}/analytics/agents-export?days=${period}`
-      );
-      if (!response.ok) {
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dust_agents_last_${period}_days.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [workspaceId, period]);
-
   const columns = useMemo(() => makeColumns(workspaceId), [workspaceId]);
 
   const rows = useMemo<TopAgentRowData[]>(() => {
@@ -141,8 +109,11 @@ export function WorkspaceTopAgentsTable({
     }));
   }, [topAgents]);
 
-  const canDownload =
-    !isTopAgentsLoading && !isTopAgentsError && rows.length > 0;
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/agents-export?days=${period}`,
+    filename: `dust_agents_last_${period}_days.csv`,
+    disabled: isTopAgentsLoading || isTopAgentsError || rows.length === 0,
+  });
 
   function renderTableContent() {
     if (isTopAgentsLoading) {
@@ -186,17 +157,7 @@ export function WorkspaceTopAgentsTable({
             Top 100 agents with the most messages over the last {period} days.
           </p>
         </div>
-        {showExport && (
-          <Button
-            icon={DownloadIcon}
-            variant="outline"
-            size="xs"
-            tooltip="Download CSV"
-            onClick={handleDownload}
-            disabled={!canDownload || isDownloading}
-            isLoading={isDownloading}
-          />
-        )}
+        <CsvDownloadButton {...csvDownload} />
       </div>
       {renderTableContent()}
     </div>
