@@ -5,6 +5,7 @@ import type {
   SkillDirectory,
 } from "@app/lib/api/skills/detection/types";
 import * as yaml from "js-yaml";
+import path from "path";
 import { z } from "zod";
 
 const SKILL_MD_FILENAME = "skill.md";
@@ -89,8 +90,7 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   const seenDirs = new Set<string>();
 
   for (const entry of entries) {
-    const filename = entry.path.split("/").pop() ?? "";
-    if (filename.toLowerCase() !== SKILL_MD_FILENAME) {
+    if (path.basename(entry.path).toLowerCase() !== SKILL_MD_FILENAME) {
       continue;
     }
 

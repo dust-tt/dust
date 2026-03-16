@@ -124,8 +124,16 @@ describe("collectAttachments", () => {
     });
 
     expect(attachments).toEqual([
-      { path: "skills/foo/helper.py", sizeBytes: 500 },
-      { path: "skills/foo/data/config.json", sizeBytes: 200 },
+      {
+        path: "skills/foo/helper.py",
+        sizeBytes: 500,
+        contentType: "text/x-python",
+      },
+      {
+        path: "skills/foo/data/config.json",
+        sizeBytes: 200,
+        contentType: "application/json",
+      },
     ]);
   });
 
