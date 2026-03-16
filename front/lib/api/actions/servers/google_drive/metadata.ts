@@ -490,6 +490,54 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Update Google presentation",
     },
   },
+  share_file: {
+    description:
+      "Share a Google Drive file with a specific person by email, or with everyone in a Google Workspace domain.",
+    schema: {
+      fileId: z.string().describe("The ID of the Google Drive file to share."),
+      type: z
+        .enum(["user", "group", "domain"])
+        .describe(
+          "'user' to share with a specific person, 'group' to share with a Google Group, 'domain' to share with an entire Google Workspace domain."
+        ),
+      role: z
+        .enum(["writer", "commenter", "reader"])
+        .describe("The access level to grant."),
+      emailAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the person or Google Group to share with. Required when type is 'user' or 'group'."
+        ),
+      domain: z
+        .string()
+        .optional()
+        .describe(
+          'The Google Workspace domain to share with (e.g. "dust.tt"). Required when type is "domain".'
+        ),
+      allowFileDiscovery: z
+        .boolean()
+        .optional()
+        .describe(
+          "Only applies when type is 'domain'. If true, the file appears in search results for domain members. If false (default), the file is only accessible via direct link."
+        ),
+      sendNotificationEmail: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to send a notification email. Only applies when type is 'user' or 'group'. Defaults to true."
+        ),
+      emailMessage: z
+        .string()
+        .optional()
+        .describe("A custom message to include in the notification email."),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Sharing Google Drive file",
+      done: "Share Google Drive file",
+    },
+  },
 });
 
 const ALL_TOOLS_METADATA = {

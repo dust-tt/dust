@@ -16,6 +16,7 @@ import {
   getDriveClient,
   getSheetsClient,
   getSlidesClient,
+  setFilePermission,
 } from "@app/lib/api/actions/servers/google_drive/helpers";
 import {
   GOOGLE_DRIVE_TOOLS_METADATA,
@@ -999,6 +1000,114 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         }
       );
     }
+  },
+
+  share_file: async (
+    {
+      fileId,
+      type,
+      role,
+      emailAddress,
+      domain,
+      allowFileDiscovery,
+      sendNotificationEmail,
+      emailMessage,
+    },
+    { authInfo, agentLoopContext }
+  ) => {
+    if (["user", "group"].includes(type) && !emailAddress) {
+      return new Err(
+        new MCPError(
+          "emailAddress is required when type is 'user' or 'group'.",
+          { tracked: false }
+        )
+      );
+    }
+    if (type === "domain" && !domain) {
+      return new Err(
+        new MCPError('domain is required when type is "domain".', {
+          tracked: false,
+        })
+      );
+    }
+    if (type !== "domain" && allowFileDiscovery !== undefined) {
+      return new Err(
+        new MCPError("allowFileDiscovery only applies when type is 'domain'.", {
+          tracked: false,
+        })
+      );
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    // Pre-check sharing capability before attempting to modify permissions.
+    let fileMeta: { name?: string; mimeType?: string } | undefined;
+    try {
+      const fileMetadata = await drive.files.get({
+        fileId,
+        supportsAllDrives: true,
+        fields: "capabilities(canShare),name,mimeType",
+      });
+      fileMeta = {
+        name: fileMetadata.data.name ?? undefined,
+        mimeType: fileMetadata.data.mimeType ?? undefined,
+      };
+      if (fileMetadata.data.capabilities?.canShare === false) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "You don't have permission to change sharing settings on this file. Only the file owner can modify access. You could ask the file owner to grant you sharing privileges, or ask them to share the file directly.",
+          },
+        ]);
+      }
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    let permission;
+    try {
+      permission = await setFilePermission(drive, fileId, {
+        type,
+        role,
+        emailAddress,
+        domain,
+        allowFileDiscovery,
+        sendNotificationEmail,
+        emailMessage,
+      });
+    } catch (err) {
+      return handleFileAccessError(
+        err,
+        fileId,
+        { authInfo, agentLoopContext },
+        fileMeta
+      );
+    }
+
+    const sharedWith =
+      type === "domain" ? `everyone in ${domain}` : emailAddress;
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            sharedWith,
+            role,
+            permissionId: permission.id,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
   },
 };
 
