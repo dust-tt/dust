@@ -1,4 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
@@ -72,25 +73,27 @@ async function loadAggregationContext(
   const REJECTED_SUGGESTIONS_MAX_COUNT = 20;
   const REJECTED_SUGGESTIONS_MAX_AGE_MONTHS = 3;
 
-  const [pendingSuggestions, rejectedSuggestions] = await Promise.all([
-    AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      {
-        sources: ["reinforcement", "sidekick"],
-        states: ["pending"],
-      }
-    ),
-    AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      {
-        sources: ["reinforcement", "sidekick"],
-        states: ["rejected"],
-        limit: REJECTED_SUGGESTIONS_MAX_COUNT,
-      }
-    ),
-  ]);
+  const [pendingSuggestions, rejectedSuggestions, toolsAndSkillsContext] =
+    await Promise.all([
+      AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        {
+          sources: ["reinforcement", "sidekick"],
+          states: ["pending"],
+        }
+      ),
+      AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        {
+          sources: ["reinforcement", "sidekick"],
+          states: ["rejected"],
+          limit: REJECTED_SUGGESTIONS_MAX_COUNT,
+        }
+      ),
+      buildToolsAndSkillsContext(auth),
+    ]);
 
   const rejectedCutoff = new Date();
   rejectedCutoff.setMonth(
@@ -106,7 +109,8 @@ async function loadAggregationContext(
     {
       pending: toReinforcedSuggestions(pendingSuggestions),
       rejected: toReinforcedSuggestions(recentRejectedSuggestions),
-    }
+    },
+    toolsAndSkillsContext
   );
 
   return { agentConfig, syntheticSuggestions, prompt };
@@ -144,7 +148,8 @@ export function buildAggregationPrompt(
   existingSuggestions: {
     pending: ReinforcedSuggestionType[];
     rejected: ReinforcedSuggestionType[];
-  }
+  },
+  toolsAndSkillsContext: string
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
 
@@ -165,6 +170,8 @@ You have three tools available:
 You MUST call at least one tool. If no suggestions survive aggregation, call suggest_prompt_edits with an empty suggestions array.`;
 
   let userMessage = `## Agent: ${agentName}
+
+${toolsAndSkillsContext}
 
 ## Synthetic suggestions from conversation analyses
 
