@@ -240,9 +240,8 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     const inlinedResponses = batch.dest?.inlinedResponses ?? [];
     const batchResult: BatchResult = new Map();
 
-    for (let i = 0; i < inlinedResponses.length; i++) {
+    for (const [i, inlinedResponse] of inlinedResponses.entries()) {
       const customId = customIds[i] ?? String(i);
-      const inlinedResponse = inlinedResponses[i];
 
       if (inlinedResponse.error || !inlinedResponse.response) {
         const errorMessage =
