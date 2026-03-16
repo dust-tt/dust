@@ -23,6 +23,10 @@ export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
   "claude-opus-4-5-20251101" as const;
 export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
+export const CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID =
+  "claude-sonnet-4-6-long-context" as const;
+export const CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID =
+  "claude-opus-4-6-long-context" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
@@ -253,6 +257,19 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   ],
   disablePrefill: true,
 };
+export const CLAUDE_OPUS_4_6_LONG_CONTEXT_DEFAULT_MODEL_CONFIG: ModelConfigurationType =
+  {
+    ...CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    modelId: CLAUDE_OPUS_4_6_LONG_CONTEXT_MODEL_ID,
+    displayName: "Claude Opus 4.6 (1M)",
+    contextSize: 1_000_000,
+    description:
+      "Anthropic's Claude Opus 4.6 model with 1M context window for processing very large documents and codebases.",
+    shortDescription: "Anthropic's latest flagship model (1M context).",
+    availableIfOneOf: {
+      featureFlag: "long_context_claude_feature",
+    },
+  };
 export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_SONNET_4_6_MODEL_ID,
@@ -288,6 +305,19 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   ],
   disablePrefill: true,
 };
+export const CLAUDE_SONNET_4_6_LONG_CONTEXT_DEFAULT_MODEL_CONFIG: ModelConfigurationType =
+  {
+    ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    modelId: CLAUDE_SONNET_4_6_LONG_CONTEXT_MODEL_ID,
+    displayName: "Claude Sonnet 4.6 (1M)",
+    contextSize: 1_000_000,
+    description:
+      "Anthropic's Claude Sonnet 4.6 model with 1M context window for processing very large documents and codebases.",
+    shortDescription: "Anthropic's latest balanced model (1M context).",
+    availableIfOneOf: {
+      featureFlag: "long_context_claude_feature",
+    },
+  };
 
 /**
  * Deprecated

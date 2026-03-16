@@ -50,6 +50,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4.5 Opus model in the agent builder",
     stage: "on_demand",
   },
+  long_context_claude_feature: {
+    description:
+      "Access to Claude Sonnet 4.6 and Opus 4.6 with 1M context window",
+    stage: "on_demand",
+  },
   confluence_tool: {
     description: "Confluence MCP tool",
     stage: "on_demand",

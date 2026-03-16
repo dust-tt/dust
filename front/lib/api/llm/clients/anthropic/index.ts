@@ -8,6 +8,7 @@ import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/m
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_PROVIDER_ID,
+  getAnthropicApiModelId,
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import {
@@ -135,7 +136,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     });
 
     return {
-      model: this.modelId,
+      model: getAnthropicApiModelId(this.modelId),
       ...thinkingConfig,
       system,
       messages,
