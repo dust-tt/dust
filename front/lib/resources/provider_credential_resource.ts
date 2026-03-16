@@ -346,6 +346,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       credentialsId: oldCredentialId,
     });
 
+    await ProviderCredentialResource.invalidateProviderCredentialCache(
+      workspace.id
+    );
+
     return this;
   }
 
