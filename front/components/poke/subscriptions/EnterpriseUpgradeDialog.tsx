@@ -30,7 +30,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
@@ -46,6 +46,7 @@ export default function EnterpriseUpgradeDialog({
   subscription,
   programmaticUsageConfig,
 }: EnterpriseUpgradeDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -139,7 +140,10 @@ export default function EnterpriseUpgradeDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🏢 Upgrade to Enterprise" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:max-w-[600px]">
+      <DialogContent
+        ref={dialogRef}
+        className="bg-primary-50 dark:bg-primary-50-night sm:max-w-[600px]"
+      >
         <DialogHeader>
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>
@@ -166,6 +170,9 @@ export default function EnterpriseUpgradeDialog({
                       control={form.control}
                       name="planCode"
                       title="Enterprise Plan"
+                      mountPortalContainer={
+                        dialogRef.current ?? undefined
+                      }
                       options={plans
                         .filter((plan) => isEntreprisePlanPrefix(plan.code))
                         .map((plan) => ({
