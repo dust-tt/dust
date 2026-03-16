@@ -1116,7 +1116,7 @@ Recommendation: Ship the core experience (grouping + preferences + in-app panel)
         { emoji: "🚀", count: 3, reactedByLocutor: false },
         { emoji: "💪", count: 2, reactedByLocutor: false },
       ],
-    }
+    },
   ];
 
   return {
