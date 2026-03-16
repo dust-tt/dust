@@ -82,7 +82,7 @@ function PokeNavbar({
           <Button
             href="/poke/global-agent-feedbacks"
             variant="ghost"
-            label="Agent Feedbacks"
+            label="Agent Feedback"
           />
         </div>
       </div>
