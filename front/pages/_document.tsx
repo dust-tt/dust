@@ -139,6 +139,10 @@ class MyDocument extends Document {
               })();
             `}
           </Script>
+          <Script
+            src="https://static.claydar.com/init.v1.js?id=clmYho8v0U"
+            strategy="afterInteractive"
+          />
         </body>
       </Html>
     );
