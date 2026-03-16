@@ -3,6 +3,7 @@ import { RemoveKeyDialog } from "@app/components/pages/workspace/model_providers
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -56,21 +57,22 @@ interface ProviderConfigurationContextItemProps {
   providerId: ByokModelProviderIdType;
   description: string;
   isLoading: boolean;
-  apiKey: string | undefined;
-  isHealthy: boolean | undefined;
+  providerCredential: ProviderCredentialType | undefined;
 }
 export function ProviderConfigurationContextItem({
   owner,
   providerId,
   description,
   isLoading,
-  apiKey,
-  isHealthy,
+  providerCredential,
 }: ProviderConfigurationContextItemProps) {
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveKeyDialogOpen, setIsRemoveKeyDialogOpen] = useState(false);
+
+  const apiKey = providerCredential?.credentials.api_key;
+  const isHealthy = providerCredential?.isHealthy;
 
   return (
     <>
