@@ -1,5 +1,5 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
-import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
+import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";

@@ -1,4 +1,4 @@
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -601,7 +601,7 @@ export const SpaceResourcesList = ({
 
   return (
     <>
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={assistantSId}

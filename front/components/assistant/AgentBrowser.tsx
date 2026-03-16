@@ -1,6 +1,6 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
 import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -503,7 +503,7 @@ export function AgentBrowser({
         </div>
       )}
 
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={displayedAssistantId}

@@ -1,5 +1,5 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
@@ -227,7 +227,7 @@ export function ManageSkillsPage() {
         user={user}
         owner={owner}
       />
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={agentId}
