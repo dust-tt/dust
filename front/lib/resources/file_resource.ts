@@ -714,7 +714,6 @@ export class FileResource extends BaseResource<FileModel> {
       .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
         resumable: false,
-        gzip: true,
         contentType: overrideContentType ?? this.contentType,
       });
   }
