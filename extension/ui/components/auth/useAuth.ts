@@ -29,14 +29,21 @@ export const useAuthHook = () => {
 
   // Set default fetch init for the extension (overrides RegionContext's credentials: "include").
   // Must be declared before any fetch effects so it's active when they run.
+  // The resolver calls getAccessToken() on every request so expired tokens are
+  // transparently refreshed before each fetch / EventSource connection.
   useEffect(() => {
     if (tokens?.accessToken) {
-      setDefaultInitResolver(() => ({
-        credentials: "omit",
-        headers: { Authorization: `Bearer ${tokens.accessToken}` },
-      }));
+      setDefaultInitResolver(async (): Promise<RequestInit> => {
+        const accessToken = await platform.auth.getAccessToken();
+        return {
+          credentials: "omit",
+          headers: accessToken
+            ? { Authorization: `Bearer ${accessToken}` }
+            : {},
+        };
+      });
     } else {
-      setDefaultInitResolver(() => ({
+      setDefaultInitResolver(async () => ({
         credentials: "omit",
       }));
     }
@@ -44,7 +51,7 @@ export const useAuthHook = () => {
     return () => {
       setDefaultInitResolver(null);
     };
-  }, [tokens?.accessToken]);
+  }, [tokens?.accessToken, platform.auth]);
 
   const isAuthenticated = useMemo(
     () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
@@ -250,9 +257,10 @@ export const useAuthHook = () => {
       setTokens(newTokens);
       setRegionInfo(newRegionInfo, { keepInStorage: true });
       setAuthError(null);
+      scheduleRefresh(newTokens.expiresAt);
       // isLoading stays true — the user fetch effect will clear it.
     },
-    [forcedConnection]
+    [forcedConnection, scheduleRefresh]
   );
 
   const handleSelectOrganization = useCallback(

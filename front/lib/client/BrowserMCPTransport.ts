@@ -193,7 +193,7 @@ export class BrowserMCPTransport implements Transport {
       params.set("lastEventId", this.lastEventId);
     }
 
-    this.eventSource = clientEventSource(
+    this.eventSource = await clientEventSource(
       `/api/sse/w/${this.workspaceId}/mcp/requests?${params.toString()}`,
       // The MCP SSE connection is idle most of the time (waiting for requests
       // from Dust). Disable the polyfill's heartbeat timeout so it doesn't

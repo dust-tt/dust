@@ -226,7 +226,7 @@ export const sendRefreshTokenMessage = (
         if (
           !response.accessToken ||
           !response.refreshToken ||
-          !response.expiresIn
+          !response.expirationDate
         ) {
           return reject(new Error("Invalid response received."));
         }
