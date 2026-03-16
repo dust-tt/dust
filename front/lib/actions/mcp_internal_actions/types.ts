@@ -111,7 +111,11 @@ export function isWebsearchInputType(
 }
 
 export const WebbrowseInputSchema = z.object({
-  urls: z.string().array().describe("List of urls to browse"),
+  urls: z
+    .string()
+    .array()
+    .max(MAX_BROWSE_URLS)
+    .describe(`List of urls to browse (max: ${MAX_BROWSE_URLS})`),
   format: z
     .enum(["markdown", "html"])
     .optional()
