@@ -1,5 +1,6 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
+import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
   finalizeInvoice,
@@ -177,6 +178,7 @@ export async function createEnterpriseCreditPurchase({
   startDate,
   expirationDate,
   boughtByUserId,
+  customerFacingInfo,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
@@ -185,6 +187,7 @@ export async function createEnterpriseCreditPurchase({
   startDate?: Date;
   expirationDate?: Date;
   boughtByUserId?: number;
+  customerFacingInfo?: CustomerFacingInvoiceInfo;
 }): Promise<
   Result<{ credit: CreditResource; invoiceOrLineItemId: string }, Error>
 > {
@@ -222,6 +225,7 @@ export async function createEnterpriseCreditPurchase({
     stripeSubscriptionId,
     amountMicroUsd,
     couponId,
+    customerFacingInfo,
     collectionMethod: "send_invoice",
     daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
   });
