@@ -1,8 +1,12 @@
 import { z } from "zod";
 
-const IMPORT_TYPES = ["repository"] as const;
+export const IMPORT_TYPES = ["repository"] as const;
 
 export type ImportType = (typeof IMPORT_TYPES)[number];
+
+export function isImportType(value: string): value is ImportType {
+  return IMPORT_TYPES.includes(value as ImportType);
+}
 
 export const importFormSchema = z.object({
   importType: z.enum(IMPORT_TYPES),

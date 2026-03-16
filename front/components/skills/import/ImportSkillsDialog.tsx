@@ -2,7 +2,10 @@ import type {
   ImportFormValues,
   ImportType,
 } from "@app/components/skills/import/formSchema";
-import { importFormSchema } from "@app/components/skills/import/formSchema";
+import {
+  importFormSchema,
+  isImportType,
+} from "@app/components/skills/import/formSchema";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
 import { useImportSkills } from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -23,12 +26,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
-
-const IMPORT_TABS: ImportType[] = ["repository"];
-
-function isImportTab(value: string): value is ImportType {
-  return IMPORT_TABS.includes(value as ImportType);
-}
 
 interface ImportSkillsDialogProps {
   onClose: () => void;
@@ -109,7 +106,7 @@ export function ImportSkillsDialog({
             <Tabs
               value={importTypeField.value}
               onValueChange={(value) => {
-                if (isImportTab(value)) {
+                if (isImportType(value)) {
                   importTypeField.onChange(value);
                   selectedSkillNamesField.onChange([]);
                   setDetectedCount(0);
