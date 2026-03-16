@@ -299,22 +299,6 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
-    const deleteRes = await oauthClient.deleteCredentials({
-      credentialsId: this.credentialId,
-    });
-
-    if (deleteRes.isErr()) {
-      logger.error(
-        {
-          providerId: this.providerId,
-          error: deleteRes.error,
-          workspaceId: workspace.sId,
-        },
-        `Failed to delete old credentials from OAuth API: ${deleteRes.error.message}`
-      );
-      return null;
-    }
-
     const oauthRes = await oauthClient.postCredentials({
       provider: this.providerId,
       workspaceId: workspace.sId,
@@ -348,8 +332,16 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     });
 
     if (!updatedModel) {
+      await oauthClient.deleteCredentials({
+        credentialsId: oauthRes.value.credential.credential_id,
+      });
+
       throw new Error("Failed to re-fetch updated provider credential.");
     }
+
+    await oauthClient.deleteCredentials({
+      credentialsId: this.credentialId,
+    });
 
     return new ProviderCredentialResource(
       ProviderCredentialModel,
