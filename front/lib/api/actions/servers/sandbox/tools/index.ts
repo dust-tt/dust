@@ -20,6 +20,7 @@ import {
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
 import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
+import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -138,14 +139,15 @@ export function createSandboxTools(
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
+      const metricsCtx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const startMs = performance.now();
+
       const providerId = agentConfiguration.model.providerId;
-      // Convert timeoutMs to seconds for shell wrapper
       const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
       const wrappedCommand = wrapCommand(command, providerId, {
         timeoutSec,
       });
 
-      // No timeout at E2B level - shell wrapper handles it
       const execResult = await sandbox.exec(auth, wrappedCommand, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
         envVars: {
@@ -153,6 +155,15 @@ export function createSandboxTools(
           DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
         },
       });
+
+      const durationMs = performance.now() - startMs;
+      recordToolDuration(
+        "bash",
+        durationMs,
+        metricsCtx,
+        execResult.isOk() ? "success" : "error"
+      );
+
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));
       }

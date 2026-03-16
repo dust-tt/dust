@@ -228,7 +228,7 @@ describe("destroyConversation", () => {
     if (!conversation) {
       throw new Error("Conversation should exist");
     }
-    
+
     const userMessageDestroySpy = vi.spyOn(UserMessageModel, "destroy");
     const agentMessageDestroySpy = vi.spyOn(AgentMessageModel, "destroy");
 
