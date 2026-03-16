@@ -1,4 +1,3 @@
-import streamConsumers from "stream/consumers";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
@@ -29,6 +28,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
+import streamConsumers from "stream/consumers";
 
 interface EnsureSandboxResult {
   freshlyCreated: boolean;
