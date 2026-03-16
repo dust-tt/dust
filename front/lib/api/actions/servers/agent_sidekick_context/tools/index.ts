@@ -303,9 +303,7 @@ export async function createToolsSuggestions({
   if (uniqueToolIds.size !== suggestionToolIds.length) {
     const duplicates = [
       ...new Set(
-        suggestionToolIds.filter(
-          (id, i) => suggestionToolIds.indexOf(id) !== i
-        )
+        suggestionToolIds.filter((id, i) => suggestionToolIds.indexOf(id) !== i)
       ),
     ];
     return new Err(
@@ -314,10 +312,7 @@ export async function createToolsSuggestions({
   }
 
   // Validate that all tool IDs exist and are accessible.
-  const tools = await MCPServerViewResource.fetchByIds(
-    auth,
-    suggestionToolIds
-  );
+  const tools = await MCPServerViewResource.fetchByIds(auth, suggestionToolIds);
   const foundToolIds = new Set(tools.map((t) => t.sId));
   const missingToolIds = suggestionToolIds.filter(
     (id) => !foundToolIds.has(id)
