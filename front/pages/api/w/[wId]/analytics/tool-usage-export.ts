@@ -1,9 +1,8 @@
-/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import {
-  fetchAvailableSkills,
-  fetchSkillUsageMetrics,
-} from "@app/lib/api/assistant/observability/skill_usage";
+  fetchAvailableTools,
+  fetchToolUsageMetrics,
+} from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,9 +16,9 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
-interface SkillUsageExportRow {
+interface ToolUsageExportRow {
   date: string;
-  skillName: string;
+  toolName: string;
   executions: number;
   uniqueUsers: number;
 }
@@ -59,31 +58,31 @@ async function handler(
         days: q.data.days,
       });
 
-      const skillsResult = await fetchAvailableSkills(baseQuery);
-      if (skillsResult.isErr()) {
+      const toolsResult = await fetchAvailableTools(baseQuery);
+      if (toolsResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve available skills: ${skillsResult.error.message}`,
+            message: `Failed to retrieve available tools: ${toolsResult.error.message}`,
           },
         });
       }
 
-      const skills = skillsResult.value;
-      const rows: SkillUsageExportRow[] = [];
+      const tools = toolsResult.value;
+      const rows: ToolUsageExportRow[] = [];
 
-      for (const skill of skills) {
-        const usageResult = await fetchSkillUsageMetrics(
+      for (const tool of tools) {
+        const usageResult = await fetchToolUsageMetrics(
           baseQuery,
-          skill.skillName
+          tool.serverName
         );
         if (usageResult.isErr()) {
           return apiError(req, res, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Failed to retrieve skill usage for ${skill.skillName}: ${usageResult.error.message}`,
+              message: `Failed to retrieve tool usage for ${tool.serverName}: ${usageResult.error.message}`,
             },
           });
         }
@@ -91,7 +90,7 @@ async function handler(
         for (const point of usageResult.value) {
           rows.push({
             date: point.date,
-            skillName: skill.skillName,
+            toolName: tool.serverName,
             executions: point.executionCount,
             uniqueUsers: point.uniqueUsers,
           });
@@ -103,12 +102,12 @@ async function handler(
         if (dateCompare !== 0) {
           return dateCompare;
         }
-        return a.skillName.localeCompare(b.skillName);
+        return a.toolName.localeCompare(b.toolName);
       });
 
-      const headers: (keyof SkillUsageExportRow)[] = [
+      const headers: (keyof ToolUsageExportRow)[] = [
         "date",
-        "skillName",
+        "toolName",
         "executions",
         "uniqueUsers",
       ];
@@ -118,7 +117,7 @@ async function handler(
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="dust_skill_usage_last_${q.data.days}_days.csv"`
+        `attachment; filename="dust_tool_usage_last_${q.data.days}_days.csv"`
       );
       return res.status(200).send(csv);
     }
