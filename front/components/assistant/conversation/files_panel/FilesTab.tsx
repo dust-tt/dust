@@ -5,6 +5,7 @@ import type {
 import { CATEGORY_CONFIG } from "@app/components/assistant/conversation/files_panel/utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
+  Avatar,
   Card,
   CardGrid,
   Icon,
@@ -13,6 +14,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import moment from "moment";
 import { useMemo } from "react";
 
 interface FilesTabProps {
@@ -82,32 +84,65 @@ function FileCards({ rows }: { rows: ConversationAttachmentRow[] }) {
             variant="primary"
             onClick={row.onClick}
           >
-            <div className="flex items-center gap-2">
-              <Icon visual={FileIcon} size="sm" className="shrink-0" />
-              <div className="min-w-0 flex-1 truncate text-sm font-medium">
-                {row.title}
+            <div className="flex w-full flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Icon visual={FileIcon} size="sm" className="shrink-0" />
+                <div className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {row.title}
+                </div>
               </div>
-              {row.isInProjectContext && (
-                <Tooltip
-                  tooltipTriggerAsChild
-                  label="Saved to Project"
-                  trigger={
-                    <span className="inline-flex shrink-0">
-                      <Icon
-                        visual={SpaceClosedIcon}
-                        size="xs"
-                        className="text-muted-foreground dark:text-muted-foreground-night"
-                      />
-                    </span>
-                  }
-                />
-              )}
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {row.date ? `${moment(row.date).fromNow()}.` : null}
+                </div>
+                <div className="flex items-center gap-1">
+                  {row.isInProjectContext && (
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label="Saved to Project"
+                      trigger={
+                        <span className="inline-flex">
+                          <Icon
+                            visual={SpaceClosedIcon}
+                            size="xs"
+                            className="text-muted-foreground dark:text-muted-foreground-night"
+                          />
+                        </span>
+                      }
+                    />
+                  )}
+                  <CreatorAvatar row={row} />
+                </div>
+              </div>
             </div>
           </Card>
         );
       })}
     </CardGrid>
   );
+}
+
+function CreatorAvatar({ row }: { row: ConversationAttachmentRow }) {
+  if (row.creator) {
+    return (
+      <Tooltip
+        tooltipTriggerAsChild
+        label={row.creator.name}
+        trigger={
+          <span className="inline-flex">
+            <Avatar
+              size="xs"
+              visual={row.creator.pictureUrl || undefined}
+              name={row.creator.name}
+              isRounded={row.creator.type === "user"}
+            />
+          </span>
+        }
+      />
+    );
+  }
+
+  return null;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
