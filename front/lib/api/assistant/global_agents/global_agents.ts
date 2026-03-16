@@ -1078,12 +1078,6 @@ export async function getGlobalAgents(
         sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
     );
   }
-  if (!flags.includes("agent_builder_copilot")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK
-    );
-  }
-
   const sidekickContext =
     variant === "full"
       ? await buildSidekickContext(auth, agentsIdsToFetch)

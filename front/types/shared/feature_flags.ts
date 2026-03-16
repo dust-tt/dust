@@ -30,18 +30,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
-  agent_builder_copilot: {
-    description: "Enable Sidekick in Agent Builder (admins only by default)",
-    stage: "dust_only",
-  },
-  agent_builder_copilot_builders: {
-    description: "Allow workspace builders to use Sidekick in Agent Builder",
-    stage: "dust_only",
-  },
-  agent_builder_shrink_wrap: {
-    description: "Enable 'Turn into agent' button on agent messages",
-    stage: "dust_only",
-  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",

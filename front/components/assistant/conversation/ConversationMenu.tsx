@@ -145,16 +145,16 @@ export function ConversationMenu({
   openDetailsInNewTab,
 }: ConversationMenuProps) {
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
+  const { hasFeature, featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
 
   const router = useAppRouter();
 
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
   const canTurnIntoAgent =
-    hasFeature("agent_builder_shrink_wrap") &&
-    !!conversation &&
-    !!user &&
-    isBuilder(owner);
+    !!conversation && !!user && !isRestrictedFromAgentCreation;
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");

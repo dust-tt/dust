@@ -1,6 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import {
   BLUR_EVENT_NAME,
   INSTRUCTIONS_DEBOUNCE_MS,
@@ -144,8 +143,6 @@ function SidekickSuggestionsProviderContent({
     []
   );
 
-  const hasSidekick = useIsAgentBuilderSidekickEnabled();
-
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
     [skills]
@@ -184,7 +181,7 @@ function SidekickSuggestionsProviderContent({
     mutateSuggestions: mutatePending,
   } = useAgentSuggestions({
     agentConfigurationId,
-    disabled: !hasSidekick,
+    disabled: false,
     state: ["pending"],
     workspaceId: owner.sId,
   });
@@ -195,7 +192,7 @@ function SidekickSuggestionsProviderContent({
     mutateSuggestions: mutateOutdated,
   } = useAgentSuggestions({
     agentConfigurationId,
-    disabled: !hasSidekick,
+    disabled: false,
     state: ["outdated"],
     limit: 50,
     workspaceId: owner.sId,

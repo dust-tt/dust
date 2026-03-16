@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -25,8 +24,6 @@ async function setupTest(
       method,
     });
 
-  await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
-
   // Create a test agent for the user
   const agent = await AgentConfigurationFactory.createTestAgent(authenticator);
 
@@ -36,35 +33,11 @@ async function setupTest(
 }
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", () => {
-  it("returns 403 when agent_builder_copilot feature flag is not enabled", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        role: "builder",
-        method: "PATCH",
-      });
-
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-
-    req.query = { wId: workspace.sId, aId: agent.sId };
-    req.body = {
-      suggestionIds: ["test-id"],
-      state: "approved",
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe("app_auth_error");
-  });
-
   it("returns 404 for non-existent agent", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       role: "builder",
       method: "PATCH",
     });
-
-    await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
 
     req.query = { wId: workspace.sId, aId: "non-existent-agent" };
     req.body = {
