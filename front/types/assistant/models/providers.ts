@@ -4,8 +4,6 @@ import type {
 } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
-import type { WorkspaceType } from "../../user";
-
 /**
  * PROVIDER IDS
  */
@@ -59,18 +57,6 @@ export const isModelProviderId = (
   MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
 export const ModelProviderIdCodec =
   ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
-export function isProviderWhitelisted(
-  owner: WorkspaceType,
-  providerId: ModelProviderIdType
-) {
-  // noop never sees user data, so we always treat it as whitelisted
-  if (providerId === "noop") {
-    return true;
-  }
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
-  return whiteListedProviders.includes(providerId);
-}
-
 export const isByokProviderId = (
   providerId: ModelProviderIdType
 ): providerId is ByokModelProviderIdType =>

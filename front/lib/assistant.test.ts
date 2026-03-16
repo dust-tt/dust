@@ -1,7 +1,9 @@
 import {
+  filterCustomAvailableAndWhitelistedModels,
+  getWhitelistedProviders,
   isModelCustomAvailable,
-  isModelCustomAvailableAndWhitelisted,
 } from "@app/lib/assistant";
+import { Authenticator } from "@app/lib/auth";
 import {
   DUST_COMPANY_PLAN_CODE,
   FREE_NO_PLAN_CODE,
@@ -10,24 +12,22 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-// Helper to create a mock model configuration
 function createMockModel(
   overrides: Partial<ModelConfigurationType>
 ): ModelConfigurationType {
-  const baseModel = SUPPORTED_MODEL_CONFIGS[0]; // Use a real model as base
+  const baseModel = SUPPORTED_MODEL_CONFIGS[0];
   return {
     ...baseModel,
     ...overrides,
   };
 }
 
-// Helper to create a mock plan
+// createMockPlan is only used by isModelCustomAvailable tests (pure sync, no factory available).
 function createMockPlan(code: string): PlanType {
   return {
     code,
@@ -76,15 +76,32 @@ function createMockPlan(code: string): PlanType {
   };
 }
 
+describe("getWhitelistedProviders", () => {
+  it("returns all providers including noop when whiteListedProviders is null", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const providers = await getWhitelistedProviders(auth);
+    expect(providers).toEqual(new Set(MODEL_PROVIDER_IDS));
+  });
+
+  it("returns only whitelisted providers plus noop", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["anthropic"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const providers = await getWhitelistedProviders(auth);
+    expect(providers).toEqual(new Set(["anthropic", "noop"]));
+  });
+});
+
 describe("isModelCustomAvailable", () => {
   it("should return true for a basic model without restrictions", () => {
-    const model = createMockModel({
-      largeModel: false,
-    });
-    const featureFlags: WhitelistableFeature[] = [];
+    const model = createMockModel({ largeModel: false });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(true);
   });
 
   it("should return true when featureFlag is enabled", () => {
@@ -92,10 +109,11 @@ describe("isModelCustomAvailable", () => {
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, ["deepseek_feature"], plan)).toBe(
+      true
+    );
   });
 
   it("should return false when featureFlag is not enabled", () => {
@@ -103,10 +121,9 @@ describe("isModelCustomAvailable", () => {
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(false);
   });
 
   it("should return true when customAssistantFeatureFlag is enabled", () => {
@@ -114,10 +131,11 @@ describe("isModelCustomAvailable", () => {
       customAvailableIf: { featureFlag: "openai_o1_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = ["openai_o1_feature"];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, ["openai_o1_feature"], plan)).toBe(
+      true
+    );
   });
 
   it("should return false when customAssistantFeatureFlag is not enabled", () => {
@@ -125,30 +143,23 @@ describe("isModelCustomAvailable", () => {
       customAvailableIf: { featureFlag: "openai_o1_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(false);
   });
 
   it("should return true for large model with upgraded plan", () => {
-    const model = createMockModel({
-      largeModel: true,
-    });
-    const featureFlags: WhitelistableFeature[] = [];
+    const model = createMockModel({ largeModel: true });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(true);
   });
 
   it("should return true for large model with free upgraded plan", () => {
-    const model = createMockModel({
-      largeModel: true,
-    });
-    const featureFlags: WhitelistableFeature[] = [];
+    const model = createMockModel({ largeModel: true });
     const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(true);
   });
 
   it("should return false for large model without upgraded plan", () => {
@@ -156,10 +167,9 @@ describe("isModelCustomAvailable", () => {
       largeModel: true,
       availableIfOneOf: { enterprise: true },
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(FREE_NO_PLAN_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(false);
   });
 
   it("should return false for large model with null plan", () => {
@@ -167,10 +177,8 @@ describe("isModelCustomAvailable", () => {
       largeModel: true,
       availableIfOneOf: { enterprise: true },
     });
-    const featureFlags: WhitelistableFeature[] = [];
-    const plan = null;
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, [], null)).toBe(false);
   });
 
   it("should return false when both featureFlag and customAssistantFeatureFlag are required but only one is enabled", () => {
@@ -179,10 +187,11 @@ describe("isModelCustomAvailable", () => {
       customAvailableIf: { featureFlag: "openai_o1_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, ["deepseek_feature"], plan)).toBe(
+      false
+    );
   });
 
   it("should return true when both featureFlag and customAssistantFeatureFlag are required and both are enabled", () => {
@@ -191,13 +200,15 @@ describe("isModelCustomAvailable", () => {
       customAvailableIf: { featureFlag: "openai_o1_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [
-      "deepseek_feature",
-      "openai_o1_feature",
-    ];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(
+      isModelCustomAvailable(
+        model,
+        ["deepseek_feature", "openai_o1_feature"],
+        plan
+      )
+    ).toBe(true);
   });
 
   it("should return false when large model requires upgraded plan but featureFlag is missing", () => {
@@ -205,22 +216,19 @@ describe("isModelCustomAvailable", () => {
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: true,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(false);
   });
 
-  // enterprise availability tests
   it("should return true when enterprise is set and plan is an enterprise plan", () => {
     const model = createMockModel({
       availableIfOneOf: { enterprise: true },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(true);
   });
 
   it("should return true when enterprise is set and plan has ENT_ prefix", () => {
@@ -228,32 +236,31 @@ describe("isModelCustomAvailable", () => {
       availableIfOneOf: { enterprise: true },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan("ENT_CUSTOM_PLAN");
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(true);
   });
 
-  it("should return true when both enterprise and featureFlag are set, with enterprise plan (no featureFlag needed)", () => {
+  it("should return true when both enterprise and featureFlag are set, with enterprise plan", () => {
     const model = createMockModel({
       availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(true);
   });
 
-  it("should return true when both enterprise and featureFlag are set, with featureFlag enabled (no enterprise plan needed)", () => {
+  it("should return true when both enterprise and featureFlag are set, with featureFlag enabled", () => {
     const model = createMockModel({
       availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+    expect(isModelCustomAvailable(model, ["deepseek_feature"], plan)).toBe(
+      true
+    );
   });
 
   it("should return false when both enterprise and featureFlag are set but neither condition is met", () => {
@@ -261,248 +268,113 @@ describe("isModelCustomAvailable", () => {
       availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
-    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+    expect(isModelCustomAvailable(model, [], plan)).toBe(false);
   });
 });
 
-describe("isModelCustomAvailableAndWhitelisted", () => {
-  let workspace: WorkspaceType;
-  const upgradedPlan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-  const nonUpgradedPlan = createMockPlan(FREE_NO_PLAN_CODE);
+describe("filterCustomAvailableAndWhitelistedModels", () => {
+  it("should include model when available and provider is whitelisted", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const model = createMockModel({ providerId: "openai", largeModel: false });
 
-  beforeEach(async () => {
-    workspace = await WorkspaceFactory.basic();
+    const result = await filterCustomAvailableAndWhitelistedModels(
+      [model],
+      [],
+      auth
+    );
+    expect(result).toContain(model);
   });
 
-  it("should return true when model is available and provider is whitelisted", async () => {
-    const model = createMockModel({
-      providerId: "openai",
-      largeModel: false,
+  it("should exclude model when provider is not whitelisted", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["openai", "anthropic"],
     });
-    const featureFlags: WhitelistableFeature[] = [];
-
-    // WorkspaceFactory.basic() creates a workspace with PRO_PLAN_SEAT_29_CODE which should have all providers whitelisted by default
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(true);
-  });
-
-  it("should return false when model is available but provider is not whitelisted", async () => {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
       providerId: "deepseek",
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
 
-    // Create a workspace with restricted providers
-    const restrictedWorkspace: WorkspaceType = {
-      ...workspace,
-      whiteListedProviders: ["openai", "anthropic"], // deepseek is not whitelisted
-    };
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        restrictedWorkspace
-      )
-    ).toBe(false);
+    const result = await filterCustomAvailableAndWhitelistedModels(
+      [model],
+      [],
+      auth
+    );
+    expect(result).toHaveLength(0);
   });
 
-  it("should return false when model is not available even if provider is whitelisted", async () => {
+  it("should exclude model when not available even if provider is whitelisted", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
       providerId: "openai",
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = []; // featureFlag not enabled
 
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(false);
+    const result = await filterCustomAvailableAndWhitelistedModels(
+      [model],
+      [],
+      auth
+    );
+    expect(result).toHaveLength(0);
   });
 
-  it("should return false when large model is not available due to plan", async () => {
-    const model = createMockModel({
-      providerId: "openai",
-      largeModel: true,
-      availableIfOneOf: { enterprise: true },
-    });
-    const featureFlags: WhitelistableFeature[] = [];
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        nonUpgradedPlan,
-        workspace
-      )
-    ).toBe(false);
-  });
-
-  it("should return false when model requires featureFlag that is not enabled", async () => {
+  it("should include model when required featureFlag is enabled", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
       providerId: "openai",
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = []; // featureFlag not enabled
 
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(false);
+    const result = await filterCustomAvailableAndWhitelistedModels(
+      [model],
+      ["deepseek_feature"],
+      auth
+    );
+    expect(result).toContain(model);
   });
 
-  it("should return true when model requires featureFlag that is enabled and provider is whitelisted", async () => {
-    const model = createMockModel({
+  it("should filter correctly across multiple models", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["openai"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const openaiModel = createMockModel({
       providerId: "openai",
-      availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(true);
-  });
-
-  it("should return true for large model with upgraded plan and whitelisted provider", async () => {
-    const model = createMockModel({
-      providerId: "anthropic",
-      largeModel: true,
-    });
-    const featureFlags: WhitelistableFeature[] = [];
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(true);
-  });
-
-  it("should return false when provider is not whitelisted even if model is available", async () => {
-    const model = createMockModel({
+    const xaiModel = createMockModel({
       providerId: "xai",
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
 
-    // Create a workspace with only openai whitelisted
-    const restrictedWorkspace: WorkspaceType = {
-      ...workspace,
-      whiteListedProviders: ["openai"],
-    };
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        restrictedWorkspace
-      )
-    ).toBe(false);
+    const result = await filterCustomAvailableAndWhitelistedModels(
+      [openaiModel, xaiModel],
+      [],
+      auth
+    );
+    expect(result).toEqual([openaiModel]);
   });
 
-  it("should return true when workspace has all providers whitelisted (default)", async () => {
-    const model = createMockModel({
-      providerId: "mistral",
-      largeModel: false,
-    });
-    const featureFlags: WhitelistableFeature[] = [];
-
-    // WorkspaceFactory.basic() should have all providers whitelisted by default
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(true);
-  });
-
-  it("should return true when whiteListedProviders is null (defaults to all providers)", async () => {
+  it("should include all providers when whiteListedProviders is null", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
       providerId: "togetherai",
       largeModel: false,
     });
-    const featureFlags: WhitelistableFeature[] = [];
 
-    const workspaceWithNullProviders: WorkspaceType = {
-      ...workspace,
-      whiteListedProviders: null,
-    };
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspaceWithNullProviders
-      )
-    ).toBe(true);
-  });
-
-  it("should return false when model requires customAssistantFeatureFlag that is not enabled", async () => {
-    const model = createMockModel({
-      providerId: "openai",
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const featureFlags: WhitelistableFeature[] = []; // customAssistantFeatureFlag not enabled
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(false);
-  });
-
-  it("should return true when model requires customAssistantFeatureFlag that is enabled and provider is whitelisted", async () => {
-    const model = createMockModel({
-      providerId: "openai",
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const featureFlags: WhitelistableFeature[] = ["openai_o1_feature"];
-
-    expect(
-      isModelCustomAvailableAndWhitelisted(
-        model,
-        featureFlags,
-        upgradedPlan,
-        workspace
-      )
-    ).toBe(true);
+    const result = await filterCustomAvailableAndWhitelistedModels(
+      [model],
+      [],
+      auth
+    );
+    expect(result).toContain(model);
   });
 });
