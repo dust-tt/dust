@@ -379,7 +379,9 @@ const useCustomEditor = ({
               !event.ctrlKey &&
               !event.metaKey &&
               !event.altKey) ||
-            (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
+            (isCmdEnterForSubmission &&
+              event.key === "Enter" &&
+              (event.metaKey || event.ctrlKey));
 
           if (isSubmissionKey) {
             const mentionPluginState = mentionPluginKey.getState(view.state);
