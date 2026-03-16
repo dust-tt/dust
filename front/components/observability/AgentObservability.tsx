@@ -1,5 +1,6 @@
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { isNavigationLocked } from "@app/lib/navigation-lock";
 import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
@@ -10,62 +11,78 @@ import {
   CardGrid,
   ContentMessage,
   LoadingBlock,
+  SafeSuspense,
   Spinner,
   safeLazy,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { Suspense } from "react";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 
-const DatasourceRetrievalTreemapChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
-  ).then((mod) => ({
-    default: mod.DatasourceRetrievalTreemapChart,
-  }))
+const canReload = () => !isNavigationLocked();
+
+const DatasourceRetrievalTreemapChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
+    ).then((mod) => ({
+      default: mod.DatasourceRetrievalTreemapChart,
+    })),
+  { canReload }
 );
-const LatencyChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/LatencyChart"
-  ).then((mod) => ({
-    default: mod.LatencyChart,
-  }))
+const LatencyChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/LatencyChart"
+    ).then((mod) => ({
+      default: mod.LatencyChart,
+    })),
+  { canReload }
 );
-const SourceChart = safeLazy(() =>
-  import("@app/components/agent_builder/observability/charts/SourceChart").then(
-    (mod) => ({
+const SourceChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/SourceChart"
+    ).then((mod) => ({
       default: mod.SourceChart,
-    })
-  )
+    })),
+  { canReload }
 );
-const SkillUsageChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/SkillUsageChart"
-  ).then((mod) => ({
-    default: mod.SkillUsageChart,
-  }))
+const SkillUsageChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/SkillUsageChart"
+    ).then((mod) => ({
+      default: mod.SkillUsageChart,
+    })),
+  { canReload }
 );
-const ToolUsageChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/ToolUsageChart"
-  ).then((mod) => ({
-    default: mod.ToolUsageChart,
-  }))
+const ToolUsageChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/ToolUsageChart"
+    ).then((mod) => ({
+      default: mod.ToolUsageChart,
+    })),
+  { canReload }
 );
-const ToolExecutionTimeChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/ToolExecutionTimeChart"
-  ).then((mod) => ({
-    default: mod.ToolExecutionTimeChart,
-  }))
+const ToolExecutionTimeChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/ToolExecutionTimeChart"
+    ).then((mod) => ({
+      default: mod.ToolExecutionTimeChart,
+    })),
+  { canReload }
 );
-const UsageMetricsChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/UsageMetricsChart"
-  ).then((mod) => ({
-    default: mod.UsageMetricsChart,
-  }))
+const UsageMetricsChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/UsageMetricsChart"
+    ).then((mod) => ({
+      default: mod.UsageMetricsChart,
+    })),
+  { canReload }
 );
 
 function ChartFallback() {
@@ -204,55 +221,55 @@ export function AgentObservability({
       </TabContentChildSectionLayout>
 
       <TabContentChildSectionLayout title="Details">
-        <Suspense fallback={<ChartFallback />}>
+        <SafeSuspense fallback={<ChartFallback />}>
           <UsageMetricsChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
-        <Suspense fallback={<ChartFallback />}>
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
           <SourceChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
-        <Suspense fallback={<ChartFallback />}>
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
           <LatencyChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
-        <Suspense fallback={<ChartFallback />}>
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
           <DatasourceRetrievalTreemapChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
-        <Suspense fallback={<ChartFallback />}>
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
           <ToolUsageChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
-        <Suspense fallback={<ChartFallback />}>
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
           <SkillUsageChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
-        <Suspense fallback={<ChartFallback />}>
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
           <ToolExecutionTimeChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}
           />
-        </Suspense>
+        </SafeSuspense>
       </TabContentChildSectionLayout>
     </div>
   );

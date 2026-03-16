@@ -1,7 +1,8 @@
-import { safeLazy } from "@dust-tt/sparkle";
+import { isNavigationLocked } from "@app/lib/navigation-lock";
+import { SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 import type { TextareaCodeEditorProps } from "@uiw/react-textarea-code-editor";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { Suspense } from "react";
+import React from "react";
 
 function CodeEditorFallback() {
   return (
@@ -9,16 +10,18 @@ function CodeEditorFallback() {
   );
 }
 
-const CodeEditor = safeLazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
+const CodeEditor = safeLazy(
+  () =>
+    import("@uiw/react-textarea-code-editor").then((mod) => ({
+      default: mod.default,
+    })),
+  { canReload: () => !isNavigationLocked() }
 );
 
 export function SuspensedCodeEditor(props: TextareaCodeEditorProps) {
   return (
-    <Suspense fallback={<CodeEditorFallback />}>
+    <SafeSuspense fallback={<CodeEditorFallback />}>
       <CodeEditor {...props} />
-    </Suspense>
+    </SafeSuspense>
   );
 }
