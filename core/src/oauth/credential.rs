@@ -34,6 +34,9 @@ pub enum CredentialProvider {
     Databricks,
     UkgReady,
     Vanta,
+    // BYOK model providers
+    Openai,
+    Anthropic,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -259,6 +262,12 @@ impl Credential {
             }
             CredentialProvider::Vanta => {
                 vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Openai => {
+                vec!["api_key"]
+            }
+            CredentialProvider::Anthropic => {
+                vec!["api_key"]
             }
         };
 

@@ -58,6 +58,7 @@ export function ModelProvidersPageContent({
     <div className="flex flex-col gap-8">
       {plan.isByok ? (
         <ProvidersConfigurationList
+          owner={workspace}
           modelsDescriptionByProvider={modelsDescriptionByProvider}
         />
       ) : (

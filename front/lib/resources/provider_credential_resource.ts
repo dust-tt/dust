@@ -29,7 +29,7 @@ import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
 
-const API_KEY_REVEAL_WINDOW_MINUTES = 5;
+const API_KEY_REVEAL_WINDOW_MINUTES = 2;
 
 type CachedProviderCredential = {
   id: ModelId;
@@ -184,6 +184,26 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return cached.map(this.fromCachedData);
   }
 
+  static async fetchByProvider(
+    auth: Authenticator,
+    providerId: ByokModelProviderIdType
+  ): Promise<ProviderCredentialResource | null> {
+    const plan = auth.getNonNullablePlan();
+    assert(
+      plan.isByok,
+      "BYOK must be enabled to fetch a provider's credentials."
+    );
+
+    const workspace = auth.getNonNullableWorkspace();
+    const model = await this.model.findOne({
+      where: { workspaceId: workspace.id, providerId },
+    });
+    if (!model) {
+      return null;
+    }
+    return this.makeNewFromModel(model);
+  }
+
   static async makeNew(
     auth: Authenticator,
     {
@@ -261,6 +281,74 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     );
   }
 
+  async updateApiKey(
+    auth: Authenticator,
+    { apiKey }: { apiKey: string }
+  ): Promise<ProviderCredentialResource | null> {
+    assert(auth.isAdmin(), "Only admins can update provider credentials.");
+    const plan = auth.getNonNullablePlan();
+    assert(plan.isByok, "BYOK must be enabled to update provider credentials.");
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const isHealthy = await isCredentialHealthy({
+      provider: this.providerId,
+      credentials: { api_key: apiKey },
+    });
+
+    if (!isHealthy) {
+      logger.warn(
+        { providerId: this.providerId, workspaceId: workspace.sId },
+        `Provided credentials for provider ${this.providerId} are not healthy.`
+      );
+      return null;
+    }
+
+    const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+    const oauthRes = await oauthClient.postCredentials({
+      provider: this.providerId,
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      credentials: { api_key: apiKey },
+    });
+
+    if (oauthRes.isErr()) {
+      logger.error(
+        {
+          providerId: this.providerId,
+          error: oauthRes.error,
+          workspaceId: workspace.sId,
+        },
+        `Failed to post credentials to OAuth API : ${oauthRes.error.message}`
+      );
+      return null;
+    }
+
+    const oldCredentialId = this.credentialId;
+
+    const [affectedCount] = await this.update({
+      credentialId: oauthRes.value.credential.credential_id,
+      isHealthy: true,
+      editedByUserId: user.id,
+    });
+
+    if (affectedCount === 0) {
+      await oauthClient.deleteCredentials({
+        credentialsId: oauthRes.value.credential.credential_id,
+      });
+
+      throw new Error("Failed to update provider credential.");
+    }
+
+    await oauthClient.deleteCredentials({
+      credentialsId: oldCredentialId,
+    });
+
+    return this;
+  }
+
   static async listByWorkspace(
     auth: Authenticator
   ): Promise<ProviderCredentialResource[]> {
@@ -306,7 +394,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
     const apiKey =
       differenceInMinutes > API_KEY_REVEAL_WINDOW_MINUTES
-        ? redactString(this._credentials.api_key, 4)
+        ? redactString(this._credentials.api_key.slice(-20), 4)
         : this._credentials.api_key;
 
     return {

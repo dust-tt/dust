@@ -236,6 +236,27 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async deleteCredentials({
+    credentialsId,
+  }: {
+    credentialsId: string;
+  }): Promise<OAuthAPIResponse<void>> {
+    const res = await this._fetchWithError(
+      `${this._url}/credentials/${credentialsId}`,
+      { method: "DELETE" }
+    );
+    if (res.isErr()) {
+      return res;
+    }
+    if (!res.value.response.ok) {
+      return new Err({
+        code: "delete_credentials_error",
+        message: `Failed to delete credentials: HTTP ${res.value.response.status}`,
+      });
+    }
+    return new Ok(undefined);
+  }
+
   private async _fetchWithError(
     url: string,
     init?: RequestInit
@@ -343,7 +364,7 @@ export class OAuthAPI {
       }
     } else {
       const err = json?.error;
-      const res = json?.response;
+      const jsonResponse = json?.response;
 
       if (err && isOAuthAPIError(err)) {
         this._logger.error(
@@ -357,8 +378,8 @@ export class OAuthAPI {
           "OAuthAPI error"
         );
         return new Err(err);
-      } else if (res) {
-        return new Ok(res);
+      } else if (jsonResponse) {
+        return new Ok(jsonResponse);
       } else {
         const err: OAuthAPIError = {
           code: "unexpected_response_format",

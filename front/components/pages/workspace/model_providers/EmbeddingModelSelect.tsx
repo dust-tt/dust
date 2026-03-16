@@ -32,7 +32,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
       <div className="flex items-center justify-between">
         <div className="font-semibold">Embedding Provider:</div>
         <DropdownMenu>
-          <DropdownMenuTrigger disabled>
+          <DropdownMenuTrigger asChild disabled>
             <Button
               disabled
               tooltip="Please contact us if you are willing to change this setting."

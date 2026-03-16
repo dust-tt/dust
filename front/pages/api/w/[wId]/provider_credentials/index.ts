@@ -18,6 +18,10 @@ export type PostProviderCredentialBody = z.infer<
   typeof PostProviderCredentialBodySchema
 >;
 
+export type GetProviderCredentialsResponseBody = {
+  providerCredentials: ProviderCredentialType[];
+};
+
 export type PostProviderCredentialResponseBody = {
   providerCredential: ProviderCredentialType;
 };
@@ -25,7 +29,9 @@ export type PostProviderCredentialResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<PostProviderCredentialResponseBody>
+    WithAPIErrorResponse<
+      GetProviderCredentialsResponseBody | PostProviderCredentialResponseBody
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -52,6 +58,15 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET": {
+      const providerCredentials =
+        await ProviderCredentialResource.listByWorkspace(auth);
+
+      return res.status(200).json({
+        providerCredentials: providerCredentials.map((c) => c.toJSON()),
+      });
+    }
+
     case "POST": {
       const bodyValidation = PostProviderCredentialBodySchema.safeParse(
         req.body
@@ -70,10 +85,7 @@ async function handler(
 
       const providerCredential = await ProviderCredentialResource.makeNew(
         auth,
-        {
-          providerId,
-          apiKey,
-        }
+        { providerId, apiKey }
       );
 
       if (!providerCredential) {
@@ -92,12 +104,62 @@ async function handler(
       });
     }
 
+    case "PATCH": {
+      const bodyValidation = PostProviderCredentialBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `The request body is invalid: ${bodyValidation.error.message}.`,
+          },
+        });
+      }
+
+      const { providerId, apiKey } = bodyValidation.data;
+
+      const existing = await ProviderCredentialResource.fetchByProvider(
+        auth,
+        providerId
+      );
+
+      if (!existing) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "provider_not_found",
+            message: `No credential found for provider ${providerId}.`,
+          },
+        });
+      }
+
+      const providerCredential = await existing.updateApiKey(auth, { apiKey });
+
+      if (!providerCredential) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The provided credentials are invalid or could not be verified.",
+          },
+        });
+      }
+
+      return res.status(200).json({
+        providerCredential: providerCredential.toJSON(),
+      });
+    }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET, POST or PATCH is expected.",
         },
       });
   }
