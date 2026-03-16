@@ -1,7 +1,18 @@
-import type { GitHubSkillDetectionError } from "@app/lib/api/skills/detection/github/types";
+import type {
+  GitHubSkillDetectionError,
+  GitHubTreeEntry,
+} from "@app/lib/api/skills/detection/github/types";
+import {
+  GitHubBlobResponseSchema,
+  GitHubTreeResponseSchema,
+} from "@app/lib/api/skills/detection/github/types";
+import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import logger from "@app/logger/logger";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Octokit } from "@octokit/core";
+import type { OctokitResponse } from "@octokit/types";
 
 async function callGitHubAPI<T>(
   fn: () => Promise<OctokitResponse<T>>,
