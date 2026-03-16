@@ -140,7 +140,7 @@ export function ManageSkillsPage() {
     return {
       active: sortedActiveSkills,
       editable_by_me: sortedActiveSkills.filter((s) => s.canWrite),
-       default: sortedActiveSkills
+      default: sortedActiveSkills
         .filter((s) => s.isDefault)
         .sort((a, b) => {
           // Display first the skills that have no editor (Dust-managed ones).
