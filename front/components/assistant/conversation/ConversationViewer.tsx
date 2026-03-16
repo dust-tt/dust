@@ -31,6 +31,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
@@ -42,18 +43,8 @@ import {
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import type {
-  AgentGenerationCancelledEvent,
-  AgentMessageDoneEvent,
-} from "@app/types/assistant/agent";
-import type {
-  AgentMessageNewEvent,
-  ButlerDoneEvent,
-  ButlerSuggestionCreatedEvent,
-  ButlerThinkingEvent,
-  ConversationTitleEvent,
   ConversationWithoutContentType,
   LightMessageType,
-  UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
 import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -234,7 +225,6 @@ export const ConversationViewer = ({
     messages,
     setSize,
     size,
-    mutateMessages,
   } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
@@ -440,15 +430,7 @@ export const ConversationViewer = ({
     (eventStr: string) => {
       const eventPayload: {
         eventId: string;
-        data:
-          | UserMessageNewEvent
-          | AgentMessageNewEvent
-          | AgentMessageDoneEvent
-          | AgentGenerationCancelledEvent
-          | ConversationTitleEvent
-          | ButlerSuggestionCreatedEvent
-          | ButlerThinkingEvent
-          | ButlerDoneEvent;
+        data: ConversationEvents;
       } = JSON.parse(eventStr);
       const event = eventPayload.data;
 
@@ -543,10 +525,6 @@ export const ConversationViewer = ({
             }
             break;
 
-          case "agent_generation_cancelled":
-            void mutateMessages();
-            break;
-
           case "conversation_title":
             void debouncedMarkAsRead(conversationId);
             void mutateConversation(
@@ -623,7 +601,6 @@ export const ConversationViewer = ({
       mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
-      mutateMessages,
       user.sId,
     ]
   );

@@ -1524,7 +1524,7 @@ const ConversationEventTypeSchema = z.object({
   data: z.union([
     UserMessageNewEventSchema,
     AgentMessageNewEventSchema,
-    AgentGenerationCancelledEventSchema,
+    AgentMessageDoneEventSchema,
     ConversationTitleEventSchema,
   ]),
 });

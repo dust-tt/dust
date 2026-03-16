@@ -1,5 +1,6 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,11 +15,6 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
 } from "@app/types/assistant/agent";
-import type {
-  AgentMessageNewEvent,
-  ButlerSuggestionCreatedEvent,
-  UserMessageNewEvent,
-} from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 export async function* getConversationEvents({
@@ -32,11 +28,7 @@ export async function* getConversationEvents({
 }): AsyncGenerator<
   {
     eventId: string;
-    data:
-      | UserMessageNewEvent
-      | AgentMessageNewEvent
-      | AgentGenerationCancelledEvent
-      | ButlerSuggestionCreatedEvent;
+    data: ConversationEvents;
   },
   void
 > {
