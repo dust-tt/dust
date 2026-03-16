@@ -1,6 +1,6 @@
 import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -374,7 +374,7 @@ export const AdminActionsList = ({
 
   return (
     <>
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={assistantSId}

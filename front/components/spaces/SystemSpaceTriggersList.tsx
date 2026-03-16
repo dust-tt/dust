@@ -1,4 +1,4 @@
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AdminTriggersList } from "@app/components/triggers/AdminTriggersList";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
@@ -47,7 +47,7 @@ export const SystemSpaceTriggersList = ({
 
   return (
     <>
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={agentSId}

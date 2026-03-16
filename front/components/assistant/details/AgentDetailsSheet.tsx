@@ -68,19 +68,19 @@ export const SCOPE_INFO: Record<
   },
 } as const;
 
-type AgentDetailsProps = {
+type AgentDetailsSheetProps = {
   owner: WorkspaceType;
   onClose: () => void;
   agentId: string | null;
   user: UserType;
 };
 
-export function AgentDetails({
+export function AgentDetailsSheet({
   agentId,
   onClose,
   owner,
   user,
-}: AgentDetailsProps) {
+}: AgentDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<
     "info" | "insights" | "editors" | "agent_memory" | "triggers"
   >("info");
