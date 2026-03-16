@@ -149,6 +149,7 @@ export function ManageSkillsPage() {
           if (aNoEditors !== bNoEditors) {
             return aNoEditors ? -1 : 1;
           }
+          // Fallback to a name sort.
           return a.name.localeCompare(b.name);
         }),
       archived: sortedArchivedSkills,
