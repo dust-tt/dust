@@ -13,6 +13,7 @@ import type {
 } from "@app/pages/api/w/[wId]/provider_credentials";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ProviderCredentialType } from "@app/types/provider_credential";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -59,17 +60,27 @@ export function useProviderCredentialActions({
       apiKey: string;
       isNew?: boolean;
     }): Promise<ProviderCredentialType | null> => {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/provider_credentials`,
-        {
-          method: isNew ? "POST" : "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            providerId,
-            apiKey,
-          } satisfies PostProviderCredentialBody),
-        }
-      );
+      let response: Response;
+      try {
+        response = await clientFetch(
+          `/api/w/${owner.sId}/provider_credentials`,
+          {
+            method: isNew ? "POST" : "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              providerId,
+              apiKey,
+            } satisfies PostProviderCredentialBody),
+          }
+        );
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to save API key",
+          description: normalizeError(e).message,
+        });
+        return null;
+      }
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
