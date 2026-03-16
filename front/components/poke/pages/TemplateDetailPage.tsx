@@ -1,6 +1,5 @@
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   PokeForm,
   PokeFormControl,
@@ -9,13 +8,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -45,7 +37,9 @@ import {
   DialogTitle,
   DialogTrigger,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   EmojiPicker,
   Input,
@@ -55,11 +49,11 @@ import {
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
+import { ChevronDownIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useFieldArray, useForm } from "react-hook-form";
-import { MultiSelect } from "react-multi-select-component";
 
 function InputField({
   control,
@@ -359,33 +353,41 @@ function SelectField({
     <PokeFormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeSelect
-              value={field.value as string}
-              onValueChange={field.onChange}
-            >
-              <PokeFormControl>
-                <PokeSelectTrigger>
-                  <PokeSelectValue placeholder={title ?? name} />
-                </PokeSelectTrigger>
-              </PokeFormControl>
-              <PokeSelectContent>
-                <div className="bg-muted-background dark:bg-muted-background-night">
+      render={({ field }) => {
+        const selectedOption = options.find((o) => o.value === field.value);
+        const displayLabel =
+          selectedOption?.display ?? selectedOption?.value ?? title ?? name;
+
+        return (
+          <PokeFormItem>
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+            <PokeFormControl>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    label={displayLabel}
+                    icon={ChevronDownIcon}
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
                   {options.map((option) => (
-                    <PokeSelectItem key={option.value} value={option.value}>
-                      {option.display ?? option.value}
-                    </PokeSelectItem>
+                    <DropdownMenuItem
+                      key={option.value}
+                      label={option.display ?? option.value}
+                      onClick={() => field.onChange(option.value)}
+                    />
                   ))}
-                </div>
-              </PokeSelectContent>
-            </PokeSelect>
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </PokeFormControl>
+            <PokeFormMessage />
+          </PokeFormItem>
+        );
+      }}
     />
   );
 }
@@ -600,59 +602,56 @@ export function TemplateDetailPage() {
             <PokeFormField
               control={form.control}
               name="tags"
-              render={({ field }) => (
-                <PokeFormItem>
-                  <PokeFormLabel>Tags</PokeFormLabel>
-                  <PokeFormControl>
-                    <MultiSelect
-                      options={tagOptions}
-                      value={field.value.map((tag: TemplateTagCodeType) => ({
-                        label: TEMPLATES_TAGS_CONFIG[tag].label,
-                        value: tag,
-                      }))}
-                      onChange={(tags: { label: string; value: string }[]) => {
-                        field.onChange(tags.map((tag) => tag.value));
-                      }}
-                      labelledBy="Select"
-                      hasSelectAll={false}
-                      className={cn(
-                        "dark:bg-primary-50-night dark:text-white",
-                        "[&_.dropdown-content]:dark:bg-primary-50-night [&_.dropdown-content]:dark:text-white",
-                        "[&_.dropdown-heading]:dark:bg-primary-50-night [&_.dropdown-heading]:dark:text-white",
-                        "[&_.select-item]:hover:bg-primary-100 [&_.select-item]:dark:hover:bg-primary-100-night",
-                        "[&_.select-panel]:dark:bg-primary-50-night [&_.select-panel]:dark:text-white"
-                      )}
-                      ItemRenderer={({
-                        checked,
-                        option,
-                        onClick,
-                        disabled,
-                      }: {
-                        checked: boolean;
-                        option: { label: string; value: string };
-                        onClick: () => void;
-                        disabled: boolean;
-                      }) => (
-                        <div
-                          className={`item-renderer ${
-                            disabled ? "opacity-50" : ""
-                          } cursor-pointer px-4 py-2`}
-                          onClick={onClick}
-                        >
-                          <Input
-                            type="checkbox"
-                            onChange={() => {}}
-                            checked={checked}
-                            className="mr-2 accent-primary dark:accent-primary-night"
+              render={({ field }) => {
+                const selectedTags: TemplateTagCodeType[] = field.value;
+                const displayLabel =
+                  selectedTags.length > 0
+                    ? selectedTags
+                        .map((t) => TEMPLATES_TAGS_CONFIG[t].label)
+                        .join(", ")
+                    : "Select tags";
+
+                return (
+                  <PokeFormItem>
+                    <PokeFormLabel>Tags</PokeFormLabel>
+                    <PokeFormControl>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            label={displayLabel}
+                            icon={ChevronDownIcon}
+                            isSelect
                           />
-                          <span>{option.label}</span>
-                        </div>
-                      )}
-                    />
-                  </PokeFormControl>
-                  <PokeFormMessage />
-                </PokeFormItem>
-              )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {tagOptions.map((option) => {
+                            const isChecked = selectedTags.includes(
+                              option.value
+                            );
+                            return (
+                              <DropdownMenuCheckboxItem
+                                key={option.value}
+                                label={option.label}
+                                checked={isChecked}
+                                onCheckedChange={() => {
+                                  const next = isChecked
+                                    ? selectedTags.filter(
+                                        (t) => t !== option.value
+                                      )
+                                    : [...selectedTags, option.value];
+                                  field.onChange(next);
+                                }}
+                              />
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </PokeFormControl>
+                    <PokeFormMessage />
+                  </PokeFormItem>
+                );
+              }}
             />
           </div>
           <div className="grid grid-cols-3 gap-4">
