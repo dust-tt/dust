@@ -1,6 +1,8 @@
 export const DUST_AVATAR_URL =
   "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
+// If you update these colors or shades, also update the safelist pattern
+// in front & sparkle tailwind.config.js to keep avatar backgrounds in the CSS output.
 const TAILWIND_COLOR_NAMES = [
   "gray",
   "blue",
@@ -23,12 +25,7 @@ const TAILWIND_COLOR_SHADES = [
   "800",
 ];
 
-export const generateTailwindBackgroundColors = (): string[] => {
-  const tailwindColors: string[] = [];
-  TAILWIND_COLOR_NAMES.forEach((color) => {
-    TAILWIND_COLOR_SHADES.forEach((shade) => {
-      tailwindColors.push(`bg-${color}-${shade}`);
-    });
-  });
-  return tailwindColors;
-};
+export const TAILWIND_BACKGROUND_COLORS: string[] =
+  TAILWIND_COLOR_NAMES.flatMap((color) =>
+    TAILWIND_COLOR_SHADES.map((shade) => `bg-${color}-${shade}`)
+  );

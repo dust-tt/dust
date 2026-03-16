@@ -14,7 +14,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
-import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
+import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type {
   CreateTemplateFormType,
@@ -687,7 +687,7 @@ export function TemplateDetailPage() {
               picker={(handleSelect) => (
                 <ColorPicker
                   selectedColor={form.getValues("backgroundColor")}
-                  colors={generateTailwindBackgroundColors()}
+                  colors={TAILWIND_BACKGROUND_COLORS}
                   onColorSelect={(color) => {
                     handleSelect(color);
                   }}

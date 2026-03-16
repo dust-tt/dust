@@ -10,33 +10,6 @@ delete colors.trueGray;
 delete colors.coolGray;
 delete colors.blueGray;
 
-const safeColorsArray = [
-  "gray",
-  "green",
-  "rose",
-  "golden",
-  "blue",
-  "primary",
-  "highlight",
-  "success",
-  "warning",
-  "info",
-  "indigo", //To be cleaned after transition
-  "lime",
-  "orange",
-  "pink",
-  "red",
-  "sky",
-  "teal",
-  "amber",
-  "cyan",
-  "fuchsia",
-  "violet",
-  "yellow",
-  "action",
-  "slate",
-];
-
 // Custom color definitions
 const customColors = {
   gray: {
@@ -201,34 +174,6 @@ Object.assign(colors, {
   amber: customColors.golden,
   sky: customColors.blue,
 });
-
-const safeColorlist = safeColorsArray.flatMap((color) => [
-  // Include 50 shade
-  `bg-${color}-50`,
-  // Whitelist all bg colors from shade 100 to 900
-  ...Array.from({ length: 9 }, (_, i) => `bg-${color}-${(i + 1) * 100}`),
-  `bg-${color}-950`,
-  `dark:bg-${color}-50-night`,
-  ...Array.from(
-    { length: 9 },
-    (_, i) => `dark:bg-${color}-${(i + 1) * 100}-night`
-  ),
-  `dark:bg-${color}-950-night`,
-  `border-${color}-100`,
-  `border-${color}-200`,
-  `border-${color}-300`,
-  `dark:border-${color}-100-night`,
-  `dark:border-${color}-200-night`,
-  `dark:border-${color}-300-night`,
-  `text-${color}-500`,
-  `text-${color}-800`,
-  `text-${color}-900`,
-  `text-${color}-950`,
-  `dark:text-${color}-500-night`,
-  `dark:text-${color}-800-night`,
-  `dark:text-${color}-900-night`,
-  `dark:text-${color}-950-night`,
-]);
 
 // Get all color names from Tailwind's default palette, excluding special colors
 const colorNames = Object.keys(colors).filter(
@@ -1060,47 +1005,10 @@ module.exports = {
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
   safelist: [
+    // Avatar bg classes are constructed dynamically.
     {
-      pattern: /^bg-/,
+      pattern:
+        /^bg-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800)$/,
     },
-    {
-      pattern: /^text-/,
-    },
-    {
-      pattern: /^grid-rows-/,
-    },
-    {
-      pattern: /^cursor-/,
-    },
-    // Add copy classes to safelist
-    "copy-xs",
-    "copy-sm",
-    "copy-base",
-    "copy-lg",
-    "copy-xl",
-    // Add heading classes to safelist
-    "heading-base",
-    "heading-lg",
-    "heading-xl",
-    "heading-2xl",
-    "heading-3xl",
-    "heading-4xl",
-    "heading-5xl",
-    "heading-6xl",
-    "heading-7xl",
-    "heading-8xl",
-    "heading-9xl",
-    // Add mono heading classes to safelist
-    "heading-mono-lg",
-    "heading-mono-xl",
-    "heading-mono-2xl",
-    "heading-mono-3xl",
-    "heading-mono-4xl",
-    "heading-mono-5xl",
-    "heading-mono-6xl",
-    "heading-mono-7xl",
-    "heading-mono-8xl",
-    "heading-mono-9xl",
-    ...safeColorlist,
   ],
 };
