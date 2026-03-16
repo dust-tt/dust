@@ -8,6 +8,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -3269,6 +3270,187 @@ describe("Space Handling", () => {
         expect(message.workspaceId).toBe(auth.getNonNullableWorkspace().id);
         expect(message.createdAt).toBeDefined();
         expect(message.rank).toBeDefined();
+      }
+    });
+  });
+
+  describe("getMessageByIdInConversation", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let ownerAuth: Authenticator;
+    let otherAuth: Authenticator;
+    let conversation: ConversationWithoutContentType;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const ownerUser = await UserFactory.basic();
+      const otherUser = await UserFactory.basic();
+
+      ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        ownerUser.sId,
+        workspace.sId
+      );
+      otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const agents = await setupTestAgents(workspace, ownerUser);
+
+      conversation = await ConversationFactory.create(ownerAuth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(1)],
+      });
+    });
+
+    afterEach(async () => {
+      await destroyConversation(ownerAuth, {
+        conversationId: conversation.sId,
+      });
+    });
+
+    it("retrieves a message within the given conversation", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        ownerAuth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const [messageRecord] = await MessageModel.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: workspace.id,
+        },
+        limit: 1,
+      });
+      assert(messageRecord, "No message found");
+
+      const result = await ConversationResource.getMessageByIdInConversation(
+        ownerAuth,
+        conversation,
+        messageRecord.sId
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.id).toBe(messageRecord.id);
+        expect(result.value.conversationId).toBe(conversationResource.id);
+      }
+    });
+
+    it("returns error when message belongs to a different conversation", async () => {
+      const otherConversation = await ConversationModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        title: "Other conversation",
+        requestedSpaceIds: [],
+      });
+
+      const otherUserMessage = await UserMessageModel.create({
+        userId: ownerAuth.getNonNullableUser().id,
+        workspaceId: workspace.id,
+        content: "Other conversation message",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+
+      const otherMessage = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: otherConversation.id,
+        parentId: null,
+        userMessageId: otherUserMessage.id,
+        agentMessageId: null,
+        workspaceId: workspace.id,
+      });
+
+      const result = await ConversationResource.getMessageByIdInConversation(
+        ownerAuth,
+        conversation,
+        otherMessage.sId
+      );
+
+      expect(result.isOk()).toBe(false);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Message not found");
+      }
+    });
+
+    it("enforces branch read permissions based on auth", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        ownerAuth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const ownerUser = ownerAuth.getNonNullableUser();
+
+      const [mainMessage] = await MessageModel.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: workspace.id,
+        },
+        limit: 1,
+      });
+      assert(mainMessage, "No main message found");
+
+      const branch = await ConversationBranchModel.create({
+        state: "open",
+        previousMessageId: mainMessage.id,
+        conversationId: conversationResource.id,
+        userId: ownerUser.id,
+        workspaceId: workspace.id,
+      });
+
+      const branchUserMessageRow = await UserMessageModel.create({
+        userId: ownerUser.id,
+        workspaceId: workspace.id,
+        content: "Branch message",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+
+      const branchSId = ConversationBranchResource.modelIdToSId({
+        id: branch.id,
+        workspaceId: workspace.id,
+      });
+
+      const branchMessage = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 1,
+        conversationId: conversationResource.id,
+        parentId: mainMessage.id,
+        userMessageId: branchUserMessageRow.id,
+        workspaceId: workspace.id,
+        branchId: branch.id,
+        branchSId,
+      });
+
+      const okResult = await ConversationResource.getMessageByIdInConversation(
+        ownerAuth,
+        conversation,
+        branchMessage.sId
+      );
+      expect(okResult.isOk()).toBe(true);
+
+      const forbiddenResult =
+        await ConversationResource.getMessageByIdInConversation(
+          otherAuth,
+          conversation,
+          branchMessage.sId
+        );
+      expect(forbiddenResult.isOk()).toBe(false);
+      if (forbiddenResult.isErr()) {
+        expect(forbiddenResult.error.message).toBe("Message not found");
       }
     });
   });
