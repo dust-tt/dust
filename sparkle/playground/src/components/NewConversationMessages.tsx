@@ -1006,6 +1006,7 @@ interface NewConversationPendingValidationBlockProps
   agentCitations?: React.ReactElement[];
   onAccept: () => void;
   onCancel: () => void;
+  hideActions?: boolean;
 }
 
 export const NewConversationPendingValidationBlock = React.forwardRef<
@@ -1022,6 +1023,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
       agentCitations,
       onAccept,
       onCancel,
+      hideActions = false,
       className,
       ...props
     },
@@ -1071,24 +1073,26 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
             </NewConversationAgentMessage>
           </messageGroupTypeContext.Provider>
         </div>
-        <div className="s-flex s-items-center s-gap-2 s-p-2 s-pl-3 s-rounded-b-2xl s-border-t-2 s-border-border s-border-highlight-100 s-bg-highlight-50">
-          <span className="s-flex-1 s-text-sm s-text-foreground dark:s-text-muted-foreground-night">
-            This agent has access to sensitive data. Do you want to post this
-            message in this shared conversation?
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            label="Cancel"
-            onClick={onCancel}
-          />
-          <Button
-            size="sm"
-            variant="highlight"
-            label="Accept"
-            onClick={onAccept}
-          />
-        </div>
+        {!hideActions && (
+          <div className="s-flex s-items-center s-gap-2 s-p-2 s-pl-3 s-rounded-b-2xl s-border-t-2 s-border-border s-border-highlight-100 s-bg-highlight-50">
+            <span className="s-flex-1 s-text-sm s-text-foreground dark:s-text-muted-foreground-night">
+              This agent has access to sensitive data. Do you want to post this
+              message in this shared conversation?
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              label="Cancel"
+              onClick={onCancel}
+            />
+            <Button
+              size="sm"
+              variant="highlight"
+              label="Accept"
+              onClick={onAccept}
+            />
+          </div>
+        )}
       </div>
     );
   }
