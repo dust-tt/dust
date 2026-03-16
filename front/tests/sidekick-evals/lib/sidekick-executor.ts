@@ -24,7 +24,9 @@ export async function executeSidekick(
   testCase: TestCase,
   agentState: MockAgentState
 ): Promise<SidekickExecutionResult> {
-  const credentials = await getLlmCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const llm = await getLLM(auth, {
     credentials,
     modelId: config.model.modelId,

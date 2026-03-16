@@ -104,7 +104,9 @@ export async function evaluateWithJudge(
   const scores: number[] = [];
   let lastReasoning = "";
 
-  const credentials = await getLlmCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const llm = await getLLM(auth, {
     credentials,
     modelId: "gpt-5-mini",

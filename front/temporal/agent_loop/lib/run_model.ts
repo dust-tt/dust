@@ -493,7 +493,9 @@ export async function runModel(
     workspaceId: conversation.owner.sId,
   };
 
-  const credentials = await getLlmCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
 
   const llm = await getLLM(auth, {
     credentials,

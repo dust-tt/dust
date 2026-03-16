@@ -12,9 +12,25 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
+/**
+ * Returns LLM credentials for the workspace.
+ *
+ * - Non-BYOK workspaces: returns Dust-managed keys from environment variables.
+ * - BYOK workspaces: resolves customer-provided keys from OAuth credentials.
+ *
+ * `OPENAI_EMBEDDING_API_KEY` is set separately from `OPENAI_API_KEY` so Dust apps
+ * don't accidentally use the customer's LLM key for embeddings.
+ *
+ * By default, BYOK workspaces must have `OPENAI_EMBEDDING_API_KEY` configured
+ * (used by search, upsert, data source creation).
+ * Pass `skipEmbeddingApiKeyRequirement: true` for call sites that only need LLM
+ * keys (agent loop, token counting, image generation, etc.).
+ */
 export async function getLlmCredentials(
   auth: Authenticator,
-  { requireEmbeddingApiKey }: { requireEmbeddingApiKey?: boolean } = {}
+  { skipEmbeddingApiKeyRequirement } = {
+    skipEmbeddingApiKeyRequirement: false,
+  }
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
@@ -50,7 +66,7 @@ export async function getLlmCredentials(
     }))
   );
 
-  if (requireEmbeddingApiKey) {
+  if (!skipEmbeddingApiKeyRequirement) {
     assert(
       credentials.OPENAI_EMBEDDING_API_KEY,
       "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured."

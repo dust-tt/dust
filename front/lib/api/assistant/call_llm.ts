@@ -50,7 +50,9 @@ export async function runMultiActionsAgent(
   input: LLMStreamParameters,
   options: LLMOptions = {}
 ): Promise<Result<LLMOutput, Error>> {
-  const credentials = await getLlmCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
 
   const llm = await getLLM(auth, {
     credentials,

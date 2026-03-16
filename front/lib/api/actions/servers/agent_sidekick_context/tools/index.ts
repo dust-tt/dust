@@ -1198,9 +1198,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     );
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const credentials = await getLlmCredentials(auth, {
-      requireEmbeddingApiKey: true,
-    });
+    const credentials = await getLlmCredentials(auth);
     const searchResults = await coreAPI.bulkSearchDataSources(
       query,
       topK,

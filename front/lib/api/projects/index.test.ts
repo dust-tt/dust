@@ -210,7 +210,9 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(createDataSourceCall.config.qdrant_config?.cluster).toBe(
         DEFAULT_QDRANT_CLUSTER
       );
-      const expectedCredentials = await getLlmCredentials(adminAuth);
+      const expectedCredentials = await getLlmCredentials(adminAuth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       expect(createDataSourceCall.credentials).toEqual(expectedCredentials);
 
       // Verify project context folder was created

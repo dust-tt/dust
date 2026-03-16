@@ -262,7 +262,9 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
         "$name",
         async ({ conversations }) => {
           const mockedAuth = createMockAuthenticator();
-          const credentials = await getLlmCredentials(mockedAuth);
+          const credentials = await getLlmCredentials(mockedAuth, {
+            skipEmbeddingApiKeyRequirement: true,
+          });
           const llm = await getLLM(mockedAuth, {
             modelId: modelId as ModelIdType,
             bypassFeatureFlag: true,

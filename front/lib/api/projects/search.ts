@@ -65,9 +65,7 @@ export async function searchProjectConversations(
   }));
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
   const searchResult = await coreAPI.bulkSearchDataSources(
     query,
     topK,

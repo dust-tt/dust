@@ -562,10 +562,7 @@ export async function upsertDocument({
     );
   }
 
-  // Data source operations are performed with our credentials.
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
@@ -613,9 +610,7 @@ export async function handleDataSourceSearch({
   >
 > {
   // Dust managed credentials: all data sources.
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const data = await coreAPI.searchDataSource(
@@ -1081,9 +1076,7 @@ export async function createDataSourceWithoutProvider(
         });
       }
 
-      const credentials = await getLlmCredentials(auth, {
-        requireEmbeddingApiKey: true,
-      });
+      const credentials = await getLlmCredentials(auth);
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),

@@ -511,7 +511,9 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const renderedConvo = convoRes.value;
       const messages = renderedConvo.modelConversation.messages;
 
-      const credentials = await getLlmCredentials(auth);
+      const credentials = await getLlmCredentials(auth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       const tokenCountRes = await tokenCountForTexts(
         getTextRepresentationFromMessages(messages),
         model,

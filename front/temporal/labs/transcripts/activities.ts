@@ -507,9 +507,7 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const credentials = await getLlmCredentials(workspaceAuth, {
-      requireEmbeddingApiKey: true,
-    });
+    const credentials = await getLlmCredentials(workspaceAuth);
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
     const upsertRes = await coreAPI.upsertDataSourceDocument({

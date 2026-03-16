@@ -49,9 +49,7 @@ async function main() {
       dataSourceId: d.dustAPIDataSourceId,
     });
     console.log(`creating data source ${d.name} in core`);
-    const credentials = await getLlmCredentials(auth, {
-      requireEmbeddingApiKey: true,
-    });
+    const credentials = await getLlmCredentials(auth);
     await coreAPI.createDataSource({
       projectId: d.dustAPIProjectId,
       config: {

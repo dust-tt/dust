@@ -87,10 +87,7 @@ export async function upsertDocumentActivity(
     `workspace_id:${upsertQueueItem.workspaceId}`,
   ];
 
-  // Data source operations are performed with our credentials.
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 

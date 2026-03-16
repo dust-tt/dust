@@ -57,9 +57,7 @@ export async function processDataSources({
 }: ProcessDataSourcesParams): Promise<Result<ProcessDataSourcesResult, Error>> {
   // Step 1: Retrieve documents from data sources
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
 
   const searchResults = await coreAPI.searchDataSources(
     "",

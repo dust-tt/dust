@@ -335,7 +335,9 @@ export const runConversation = async (
   config: TestConfig
 ): Promise<void> => {
   const mockAuth = createMockAuthenticator();
-  const credentials = await getLlmCredentials(mockAuth);
+  const credentials = await getLlmCredentials(mockAuth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const llm = await getLLM(mockAuth, {
     credentials,
     modelId: config.modelId,

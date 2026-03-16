@@ -79,7 +79,9 @@ export async function renderConversationForModel(
     agentConfiguration,
   });
 
-  const credentials = await getLlmCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
 
   // Tokenize messages and prompt/tools in parallel to reduce latency
   const [messagesWithTokensRes, promptToolsRes] = await Promise.all([

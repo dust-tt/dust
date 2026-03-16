@@ -45,9 +45,7 @@ export async function processDataSourceDocuments({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
   const destRegionApiBaseUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(

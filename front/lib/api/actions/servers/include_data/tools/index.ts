@@ -66,9 +66,7 @@ export function createIncludeDataTools(
     >
   > {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const credentials = await getLlmCredentials(auth, {
-      requireEmbeddingApiKey: true,
-    });
+    const credentials = await getLlmCredentials(auth);
 
     if (!agentLoopContext?.runContext) {
       throw new Error(

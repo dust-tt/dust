@@ -58,7 +58,9 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      const credentials = await getLlmCredentials(auth);
+      const credentials = await getLlmCredentials(auth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       const gemini = new GoogleGenAI({
         apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
       });

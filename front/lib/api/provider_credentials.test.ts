@@ -28,7 +28,9 @@ describe("getLlmCredentials", () => {
   it("returns Dust-managed LLM credentials for non-BYOK workspaces", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const result = await getLlmCredentials(authenticator);
+    const result = await getLlmCredentials(authenticator, {
+      skipEmbeddingApiKeyRequirement: true,
+    });
 
     expect(result).toEqual({
       ANTHROPIC_API_KEY: "",
@@ -73,7 +75,9 @@ describe("getLlmCredentials", () => {
       }
     );
 
-    const result = await getLlmCredentials(authenticator);
+    const result = await getLlmCredentials(authenticator, {
+      skipEmbeddingApiKeyRequirement: true,
+    });
 
     expect(result).toEqual({
       OPENAI_API_KEY: "sk-openai-test",
@@ -88,18 +92,18 @@ describe("getLlmCredentials", () => {
       isByok: true,
     });
 
-    const result = await getLlmCredentials(authenticator);
+    const result = await getLlmCredentials(authenticator, {
+      skipEmbeddingApiKeyRequirement: true,
+    });
 
     expect(result).toEqual({});
   });
 
-  describe("requireEmbeddingApiKey", () => {
+  describe("skipEmbeddingApiKeyRequirement", () => {
     it("does not throw for non-BYOK workspaces even without embedding key", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const result = await getLlmCredentials(authenticator, {
-        requireEmbeddingApiKey: true,
-      });
+      const result = await getLlmCredentials(authenticator);
 
       expect(result.OPENAI_EMBEDDING_API_KEY).toBeUndefined();
     });
@@ -113,9 +117,7 @@ describe("getLlmCredentials", () => {
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
-      const result = await getLlmCredentials(authenticator, {
-        requireEmbeddingApiKey: true,
-      });
+      const result = await getLlmCredentials(authenticator);
 
       expect(result.OPENAI_EMBEDDING_API_KEY).toBe("sk-test");
     });
@@ -126,9 +128,7 @@ describe("getLlmCredentials", () => {
         isByok: true,
       });
 
-      await expect(
-        getLlmCredentials(authenticator, { requireEmbeddingApiKey: true })
-      ).rejects.toThrow(
+      await expect(getLlmCredentials(authenticator)).rejects.toThrow(
         "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured."
       );
     });
@@ -142,20 +142,20 @@ describe("getLlmCredentials", () => {
 
       await ProviderCredentialFactory.basic(workspace, "anthropic");
 
-      await expect(
-        getLlmCredentials(authenticator, { requireEmbeddingApiKey: true })
-      ).rejects.toThrow(
+      await expect(getLlmCredentials(authenticator)).rejects.toThrow(
         "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured."
       );
     });
 
-    it("does not throw for BYOK workspace without the flag", async () => {
+    it("does not throw for BYOK workspace when skipping embedding key requirement", async () => {
       const { authenticator } = await createResourceTest({
         role: "admin",
         isByok: true,
       });
 
-      const result = await getLlmCredentials(authenticator);
+      const result = await getLlmCredentials(authenticator, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
 
       expect(result).toEqual({});
     });
@@ -175,8 +175,10 @@ describe("getLlmCredentials", () => {
       error: { message: "OAuth service unavailable" },
     });
 
-    await expect(getLlmCredentials(authenticator)).rejects.toThrow(
-      "Failed to fetch OAuth credentials for provider openai"
-    );
+    await expect(
+      getLlmCredentials(authenticator, {
+        skipEmbeddingApiKeyRequirement: true,
+      })
+    ).rejects.toThrow("Failed to fetch OAuth credentials for provider openai");
   });
 });

@@ -119,7 +119,9 @@ export async function getReinforcedLLM(
   if (!model) {
     return null;
   }
-  const credentials = await getLlmCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   return getLLM(auth, { modelId: model.modelId, credentials });
 }
 

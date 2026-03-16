@@ -39,9 +39,7 @@ export async function createDataSourceProject({
     throw new Error("Failed to create internal project for the data source.");
   }
 
-  const credentials = await getLlmCredentials(auth, {
-    requireEmbeddingApiKey: true,
-  });
+  const credentials = await getLlmCredentials(auth);
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),

@@ -646,10 +646,7 @@ async function handler(
           },
         });
       } else {
-        // Data source operations are performed with our credentials.
-        const credentials = await getLlmCredentials(auth, {
-          requireEmbeddingApiKey: true,
-        });
+        const credentials = await getLlmCredentials(auth);
 
         // Create document with the Dust internal API.
         const upsertRes = await coreAPI.upsertDataSourceDocument({

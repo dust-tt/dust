@@ -315,7 +315,9 @@ async function handler(
       // Compute approximate prompt and tools token counts.
       let promptTokenCountApprox = 0;
       let toolsTokenCountApprox = 0;
-      const credentials = await getLlmCredentials(auth);
+      const credentials = await getLlmCredentials(auth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       const tokenCountsRes = await tokenCountForTexts(
         [prompt, tools],
         model,

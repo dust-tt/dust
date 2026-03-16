@@ -286,9 +286,7 @@ async function handler(
 
       let credentials: CredentialsType | null = null;
       if (useDustCredentials) {
-        const llmCredentials = await getLlmCredentials(auth, {
-          requireEmbeddingApiKey: true,
-        });
+        const llmCredentials = await getLlmCredentials(auth);
         // Dust managed credentials: system API key (packaged apps).
         credentials = {
           ...llmCredentials,

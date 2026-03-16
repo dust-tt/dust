@@ -131,9 +131,7 @@ export async function createDataSourceAndConnectorForProject(
         coreProjectId = dustProject.value.project.project_id.toString();
 
         // Create Core API data source
-        const credentials = await getLlmCredentials(auth, {
-          requireEmbeddingApiKey: true,
-        });
+        const credentials = await getLlmCredentials(auth);
 
         const dustDataSource = await coreAPI.createDataSource({
           projectId: coreProjectId,
