@@ -63,6 +63,7 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
     OAuthAPI: vi.fn().mockImplementation(function () {
       return {
         getCredentials: mockGetCredentials,
+        deleteCredentials: vi.fn().mockResolvedValue(new Ok(undefined)),
       };
     }),
   };
