@@ -8,6 +8,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -78,17 +79,27 @@ async function handler(
       );
       const authors = await getAuthors(agentConfigurations);
 
-      const allSkills = await SkillResource.listByAgentConfigurations(
-        auth,
-        agentConfigurations
-      );
-
+      // `SkillResource.listByAgentConfigurations` only works for custom agents, as global agents are not versioned.
       const skillsByVersion: Record<number, SkillType[]> = {};
-      for (const config of agentConfigurations) {
-        skillsByVersion[config.version] = [];
-      }
-      for (const { agentConfiguration, skill } of allSkills) {
-        skillsByVersion[agentConfiguration.version].push(skill.toJSON(auth));
+      if (isGlobalAgentId(aId)) {
+        const allSkills = await SkillResource.listByAgentConfiguration(
+          auth,
+          latestAgentConfiguration
+        );
+        skillsByVersion[latestAgentConfiguration.version] = allSkills.map((s) =>
+          s.toJSON(auth)
+        );
+      } else {
+        const skillsByAgent = await SkillResource.listByAgentConfigurations(
+          auth,
+          agentConfigurations
+        );
+        for (const config of agentConfigurations) {
+          skillsByVersion[config.version] = [];
+        }
+        for (const { agentConfiguration, skill } of skillsByAgent) {
+          skillsByVersion[agentConfiguration.version].push(skill.toJSON(auth));
+        }
       }
 
       return res.status(200).json({
