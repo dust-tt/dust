@@ -4,6 +4,7 @@ import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeTaskCardBlocks,
   makeToolAuthenticationBlock,
   makeToolValidationBlock,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
@@ -47,12 +48,22 @@ const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
 const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
 
+const TASK_CARD_FALLBACK_DELAY_MS = 30_000;
+const TASK_CARD_FALLBACK_DELETE_DELAY_MS = 3_000;
+
+// run_agent displayLabels are null due to dynamic tool name (ie. "run_dust-task")
+// not matching the placeholder key "run_agent" in the metadata lookup.
+// Hardcode a fallback until that's fixed.
 function getActionRunningLabel(action: AgentActionPublicType): string {
-  return action.displayLabels?.running ?? TOOL_RUNNING_LABEL;
+  if (action.displayLabels?.running) {
+    return action.displayLabels.running;
+  }
+  if (action.internalMCPServerName === "run_agent") {
+    return "Deep diving"; // most common case is deep-dive/go-deep
+  }
+  return TOOL_RUNNING_LABEL;
 }
 
-// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
-// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
 const getThrottleDelay = (textLength: number): number => {
   if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
     return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
@@ -207,7 +218,66 @@ async function streamAgentAnswerToSlack(
 
   const { streamHandler } = conversationData;
 
-  // Old path: lodash throttle for chat.update.
+  let taskCardMessageTs: string | undefined;
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  const upsertTaskCardMessage = async (taskTitle: string) => {
+    if (taskCardMessageTs) {
+      await slackClient.chat.update({
+        ...makeTaskCardBlocks({
+          taskTitle,
+          conversationUrl,
+          assistantName,
+          workspaceId: connector.workspaceId,
+        }),
+        channel: slackChannelId,
+        ts: taskCardMessageTs,
+      });
+    } else {
+      const res = await slackClient.chat.postMessage({
+        ...makeTaskCardBlocks({
+          taskTitle,
+          conversationUrl,
+          assistantName,
+          workspaceId: connector.workspaceId,
+        }),
+        channel: slackChannelId,
+        thread_ts: slackMessageTs,
+      });
+      taskCardMessageTs = res.ts;
+    }
+  };
+
+  // Brief delay to avoid flicker when tool → tokens is fast.
+  const deleteTaskCardMessage = async () => {
+    if (!taskCardMessageTs) {
+      return;
+    }
+
+    const ts = taskCardMessageTs;
+    taskCardMessageTs = undefined;
+    setTimeout(() => {
+      void slackClient.chat.delete({ channel: slackChannelId, ts });
+    }, TASK_CARD_FALLBACK_DELETE_DELAY_MS);
+  };
+
+  let fallbackTimer: NodeJS.Timeout | undefined;
+  if (streamHandler) {
+    fallbackTimer = setTimeout(() => {
+      fallbackTimer = undefined;
+      void upsertTaskCardMessage("Thinking deeper…");
+    }, TASK_CARD_FALLBACK_DELAY_MS);
+  }
+  const clearFallbackTimer = () => {
+    if (fallbackTimer) {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = undefined;
+    }
+  };
+
   let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
   let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
@@ -218,16 +288,15 @@ async function streamAgentAnswerToSlack(
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        if (streamHandler) {
-          await streamHandler.startTask(getActionRunningLabel(event.action));
-        } else {
+        const thinkingAction = getActionRunningLabel(event.action);
+        if (!streamHandler) {
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
               isThinking: true,
               assistantName,
               agentConfigurations,
               text: answer,
-              thinkingAction: getActionRunningLabel(event.action),
+              thinkingAction,
             },
             ...conversationData,
             canBeIgnored: true,
@@ -236,8 +305,15 @@ async function streamAgentAnswerToSlack(
               eventType: event.type,
             },
           });
+          break;
         }
 
+        if (streamHandler.isStreaming) {
+          await streamHandler.startTask(thinkingAction);
+        } else {
+          clearFallbackTimer();
+          await upsertTaskCardMessage(thinkingAction);
+        }
         break;
       }
 
@@ -391,6 +467,10 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (streamHandler && answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
+          // First tokens: clean up the pre-stream task card (if any) and
+          // the fallback timer before opening the stream.
+          clearFallbackTimer();
+          await deleteTaskCardMessage();
           await streamHandler.appendText(event.text);
           break;
         }
@@ -403,6 +483,7 @@ async function streamAgentAnswerToSlack(
             actions
           );
           const slackContent = safelyPrepareAnswer(formattedContent);
+          // If the answer cannot be prepared safely, skip processing these tokens.
           if (slackContent) {
             await postSlackMessageUpdate({
               messageUpdate: {
@@ -469,6 +550,9 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_message_success": {
+        clearFallbackTimer();
+        await deleteTaskCardMessage();
+
         const finalAnswer = event.message.content ?? "";
         const actions = event.message.actions;
         const messageId = event.message.sId; // Get the message ID
@@ -655,7 +739,8 @@ async function streamAgentAnswerToSlack(
     }
   }
 
-  // Clean up stream if the event stream ended without a terminal event.
+  // Clean up if the event stream ended without a terminal event.
+  clearFallbackTimer();
   if (streamHandler && !streamHandler.isStopped) {
     await streamHandler.stop();
   }
