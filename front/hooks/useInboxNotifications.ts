@@ -13,6 +13,7 @@ export interface InboxNotification {
   };
   tags?: string[];
   createdAt: string;
+  data?: Record<string, unknown>;
 }
 
 const ADMIN_TAG = "admin";
