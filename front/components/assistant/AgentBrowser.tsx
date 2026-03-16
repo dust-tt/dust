@@ -9,6 +9,7 @@ import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentB
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   compareForFuzzySort,
@@ -104,6 +105,9 @@ export const AgentGrid = ({
     y: number;
   } | null>(null);
 
+  const clientType = useClientType();
+  const isMobile = useIsMobile();
+
   // Handle "infinite" scroll
   // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
   // We use an intersection observer to detect when the bottom of the list is visible and load more items.
@@ -143,6 +147,9 @@ export const AgentGrid = ({
     0,
     (itemsPage + 1) * ITEMS_PER_PAGE
   );
+
+  const isMobileOrExtension = clientType === "extension" || isMobile;
+
   return (
     <>
       <CardGrid>
@@ -163,13 +170,16 @@ export const AgentGrid = ({
                 setContextMenuAgent(agent);
                 setContextMenuPosition({ x: e.clientX, y: e.clientY });
               }}
+              iconSize={isMobileOrExtension ? "sm" : "md"}
               action={
-                <AssistantCardMore
-                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    handleMoreClick(agent.sId);
-                  }}
-                />
+                isMobileOrExtension ? undefined : (
+                  <AssistantCardMore
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                      e.stopPropagation();
+                      handleMoreClick(agent.sId);
+                    }}
+                  />
+                )
               }
             />
           );
@@ -219,6 +229,8 @@ export function AgentBrowser({
   const [sortType, setSortType] = useState<
     "popularity" | "alphabetical" | "updated"
   >("popularity");
+
+  const isMobile = useIsMobile();
 
   const { featureFlags } = useFeatureFlags();
 
@@ -381,111 +393,115 @@ export function AgentBrowser({
     }
   }, [sortType]);
 
+  const isMobileOrExtension = clientType === "extension" || isMobile;
+
   return (
     <>
       {/* Search bar */}
-      <div
-        id="search-container"
-        className="mb-2 flex w-full flex-row items-center justify-center gap-2 align-middle"
-      >
-        <SearchDropdownMenu
-          searchInputValue={assistantSearch}
-          setSearchInputValue={setAssistantSearch}
+      {!isMobileOrExtension && (
+        <div
+          id="search-container"
+          className="mb-2 flex w-full flex-row items-center justify-center gap-2 align-middle"
         >
-          {filteredTags.length > 0 || filteredAgents.length > 0 ? (
-            <>
-              {filteredTags.length > 0 && <DropdownMenuLabel label="Tags" />}
-              {filteredTags.map((tag) => (
-                <DropdownMenuItem
-                  key={tag.sId}
-                  onClick={() => {
-                    setSelectedTab("all");
-                    setAssistantSearch("");
-                    setSelectedTag(tag.sId);
-                    setTimeout(() => {
-                      const element = document.getElementById(
-                        `anchor-${tag.sId}`
-                      );
-                      if (element) {
-                        element.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                          inline: "nearest",
-                        });
-                      }
-                    }, 300); // Need to wait for the dropdown to close before scrolling
-                  }}
-                >
-                  <Chip label={tag.name} color="golden" size="xs" />
-                </DropdownMenuItem>
-              ))}
-              {filteredAgents.length > 0 && (
-                <DropdownMenuLabel label="Agents" />
-              )}
-              {filteredAgents.map((agent) => (
-                <DropdownMenuItem
-                  key={agent.sId}
-                  onClick={() => {
-                    handleAgentClick(agent);
-                    setAssistantSearch("");
-                  }}
-                  truncateText
-                  label={agent.name}
-                  description={agent.description}
-                  icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
-                  endComponent={
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      icon={MoreIcon}
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                        e.stopPropagation();
-                        setQueryParam(router, "agentDetails", agent.sId);
-                      }}
-                    />
-                  }
-                />
-              ))}
-            </>
-          ) : isLoading ? (
-            <div className="flex justify-center py-8">
-              <Spinner size="md" />
+          <SearchDropdownMenu
+            searchInputValue={assistantSearch}
+            setSearchInputValue={setAssistantSearch}
+          >
+            {filteredTags.length > 0 || filteredAgents.length > 0 ? (
+              <>
+                {filteredTags.length > 0 && <DropdownMenuLabel label="Tags" />}
+                {filteredTags.map((tag) => (
+                  <DropdownMenuItem
+                    key={tag.sId}
+                    onClick={() => {
+                      setSelectedTab("all");
+                      setAssistantSearch("");
+                      setSelectedTag(tag.sId);
+                      setTimeout(() => {
+                        const element = document.getElementById(
+                          `anchor-${tag.sId}`
+                        );
+                        if (element) {
+                          element.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                            inline: "nearest",
+                          });
+                        }
+                      }, 300); // Need to wait for the dropdown to close before scrolling
+                    }}
+                  >
+                    <Chip label={tag.name} color="golden" size="xs" />
+                  </DropdownMenuItem>
+                ))}
+                {filteredAgents.length > 0 && (
+                  <DropdownMenuLabel label="Agents" />
+                )}
+                {filteredAgents.map((agent) => (
+                  <DropdownMenuItem
+                    key={agent.sId}
+                    onClick={() => {
+                      handleAgentClick(agent);
+                      setAssistantSearch("");
+                    }}
+                    truncateText
+                    label={agent.name}
+                    description={agent.description}
+                    icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
+                    endComponent={
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon={MoreIcon}
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                          e.stopPropagation();
+                          setQueryParam(router, "agentDetails", agent.sId);
+                        }}
+                      />
+                    }
+                  />
+                ))}
+              </>
+            ) : isLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner size="md" />
+              </div>
+            ) : (
+              <div className="p-2 text-sm text-gray-500">No results found</div>
+            )}
+          </SearchDropdownMenu>
+
+          {clientType === "web" && (
+            <div className="hidden sm:block">
+              <div className="flex gap-2">
+                {!isRestrictedFromAgentCreation && (
+                  <div ref={createAgentButtonRef}>
+                    <CreateDropdown owner={owner} dataGtmLocation="homepage" />
+                  </div>
+                )}
+
+                {isBuilder(owner) ? (
+                  <ManageDropdownMenu owner={owner} />
+                ) : (
+                  <Button
+                    href={getAgentBuilderRoute(owner.sId, "manage")}
+                    variant="primary"
+                    icon={ContactsRobotIcon}
+                    label="Manage agents"
+                    data-gtm-label="assistantManagementButton"
+                    data-gtm-location="homepage"
+                    size="sm"
+                    onClick={withTracking(
+                      TRACKING_AREAS.BUILDER,
+                      "manage_agents"
+                    )}
+                  />
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="p-2 text-sm text-gray-500">No results found</div>
           )}
-        </SearchDropdownMenu>
-
-        {clientType === "web" && (
-          <div className="hidden sm:block">
-            <div className="flex gap-2">
-              {!isRestrictedFromAgentCreation && (
-                <div ref={createAgentButtonRef}>
-                  <CreateDropdown owner={owner} dataGtmLocation="homepage" />
-                </div>
-              )}
-
-              {isBuilder(owner) ? (
-                <ManageDropdownMenu owner={owner} />
-              ) : (
-                <Button
-                  href={getAgentBuilderRoute(owner.sId, "manage")}
-                  variant="primary"
-                  icon={ContactsRobotIcon}
-                  label="Manage agents"
-                  data-gtm-label="assistantManagementButton"
-                  data-gtm-location="homepage"
-                  size="sm"
-                  onClick={withTracking(
-                    TRACKING_AREAS.BUILDER,
-                    "manage_agents"
-                  )}
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <AgentDetails
         owner={owner}
@@ -495,69 +511,156 @@ export function AgentBrowser({
       />
 
       {/* Agent tabs */}
-      <div className="w-full">
-        <ScrollArea aria-orientation="horizontal">
-          <Tabs value={viewTab} onValueChange={setSelectedTab}>
-            <TabsList>
+      {isMobileOrExtension ? (
+        <div className="w-full flex flex-row gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                variant="outline"
+                label={
+                  viewTab
+                    ? AGENTS_TABS.find((tab) => tab.id === viewTab)?.label
+                    : "Select view"
+                }
+                size="sm"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
               {AGENTS_TABS.map((tab) => (
-                <TabsTrigger
-                  disabled={agentsByTab[tab.id].length === 0}
+                <DropdownMenuItem
                   key={tab.id}
-                  value={tab.id}
+                  disabled={agentsByTab[tab.id].length === 0}
+                  onClick={() => setSelectedTab(tab.id)}
                   label={tab.label}
                 />
               ))}
-              <div className="ml-auto"></div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    isSelect
-                    variant="outline"
-                    label={sortTypeLabel}
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    label="By popularity"
-                    onClick={() => setSortType("popularity")}
-                  />
-                  <DropdownMenuItem
-                    label="Alphabetical"
-                    onClick={() => setSortType("alphabetical")}
-                  />
-                  <DropdownMenuItem
-                    label="Recently updated"
-                    onClick={() => setSortType("updated")}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TabsList>
-          </Tabs>
-          <ScrollBar orientation="horizontal" className="hidden" />
-        </ScrollArea>
-      </div>
-
-      {viewTab === "all" ? (
-        <>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            {noTagsDefined ? null : (
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <SearchDropdownMenu
+            searchInputValue={assistantSearch}
+            setSearchInputValue={setAssistantSearch}
+          >
+            {filteredTags.length > 0 || filteredAgents.length > 0 ? (
               <>
-                {uniqueTags.map((tag) => (
-                  <Button
-                    size="xs"
-                    variant={selectedTag === tag.sId ? "primary" : "outline"}
+                {filteredTags.length > 0 && <DropdownMenuLabel label="Tags" />}
+                {filteredTags.map((tag) => (
+                  <DropdownMenuItem
                     key={tag.sId}
-                    label={tag.name}
                     onClick={() => {
+                      setSelectedTab("all");
+                      setAssistantSearch("");
                       setSelectedTag(tag.sId);
+                      setTimeout(() => {
+                        const element = document.getElementById(
+                          `anchor-${tag.sId}`
+                        );
+                        if (element) {
+                          element.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                            inline: "nearest",
+                          });
+                        }
+                      }, 300); // Need to wait for the dropdown to close before scrolling
                     }}
+                  >
+                    <Chip label={tag.name} color="golden" size="xs" />
+                  </DropdownMenuItem>
+                ))}
+                {filteredAgents.length > 0 && (
+                  <DropdownMenuLabel label="Agents" />
+                )}
+                {filteredAgents.map((agent) => (
+                  <DropdownMenuItem
+                    key={agent.sId}
+                    onClick={() => {
+                      handleAgentClick(agent);
+                      setAssistantSearch("");
+                    }}
+                    truncateText
+                    label={agent.name}
+                    description={agent.description}
+                    icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
                   />
                 ))}
               </>
+            ) : isLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner size="md" />
+              </div>
+            ) : (
+              <div className="p-2 text-sm text-gray-500">No results found</div>
             )}
-          </div>
+          </SearchDropdownMenu>
+        </div>
+      ) : (
+        <div className="w-full">
+          <ScrollArea aria-orientation="horizontal">
+            <Tabs value={viewTab} onValueChange={setSelectedTab}>
+              <TabsList>
+                {AGENTS_TABS.map((tab) => (
+                  <TabsTrigger
+                    disabled={agentsByTab[tab.id].length === 0}
+                    key={tab.id}
+                    value={tab.id}
+                    label={tab.label}
+                  />
+                ))}
+                <div className="ml-auto"></div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      isSelect
+                      variant="outline"
+                      label={sortTypeLabel}
+                      size="sm"
+                    />
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      label="By popularity"
+                      onClick={() => setSortType("popularity")}
+                    />
+                    <DropdownMenuItem
+                      label="Alphabetical"
+                      onClick={() => setSortType("alphabetical")}
+                    />
+                    <DropdownMenuItem
+                      label="Recently updated"
+                      onClick={() => setSortType("updated")}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TabsList>
+            </Tabs>
+            <ScrollBar orientation="horizontal" className="hidden" />
+          </ScrollArea>
+        </div>
+      )}
+
+      {viewTab === "all" ? (
+        <>
+          {!isMobileOrExtension && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              {noTagsDefined ? null : (
+                <>
+                  {uniqueTags.map((tag) => (
+                    <Button
+                      size="xs"
+                      variant={selectedTag === tag.sId ? "primary" : "outline"}
+                      key={tag.sId}
+                      label={tag.name}
+                      onClick={() => {
+                        setSelectedTag(tag.sId);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-4">
             {uniqueTags
@@ -571,7 +674,9 @@ export function AgentBrowser({
               .map((tag) => (
                 <React.Fragment key={tag.sId}>
                   <a id={`anchor-${tag.sId}`} />
-                  <span className="heading-base">{tag.name}</span>
+                  {!isMobileOrExtension && (
+                    <span className="heading-base">{tag.name}</span>
+                  )}
                   <AgentGrid
                     agentConfigurations={agentsByTab.all.filter((a) => {
                       return (

@@ -13,6 +13,8 @@ import type {
   GetActiveTabBackgroundResponse,
   GetPageElementsMessage,
   GetPageElementsResponse,
+  GetSessionInfoMessage,
+  GetSessionInfoResponse,
   InputBarStatusMessage,
   TabActionMessage,
   TabActionResponse,
@@ -28,6 +30,7 @@ import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
 import {
+  checkHasForm,
   clickPageElement,
   getPageElements,
   getPageElementsDiff,
@@ -292,7 +295,8 @@ chrome.runtime.onMessage.addListener(
       | GetPageElementsMessage
       | ClickPageElementMessage
       | TypeTextMessage
-      | DeleteTextMessage,
+      | DeleteTextMessage
+      | GetSessionInfoMessage,
     sender,
     sendResponse: (
       response:
@@ -306,6 +310,7 @@ chrome.runtime.onMessage.addListener(
         | ClickPageElementResponse
         | TypeTextResponse
         | DeleteTextResponse
+        | GetSessionInfoResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -906,6 +911,32 @@ chrome.runtime.onMessage.addListener(
           await platform.storage.delete("pendingAction");
         })();
         return false;
+
+      case "GET_SESSION_INFO":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const activeTab = tabs.find((t) => t.active);
+
+          try {
+            const hasForm = await checkHasForm(activeTab);
+            if (hasForm.isErr()) {
+              sendResponse({
+                tabsCount: tabs.length,
+                currentTabHasForm: false,
+              });
+              return;
+            }
+            sendResponse({
+              tabsCount: tabs.length,
+              currentTabHasForm: hasForm.value,
+            });
+          } catch {
+            sendResponse({
+              tabsCount: tabs.length,
+              currentTabHasForm: false,
+            });
+          }
+        });
+        return true;
 
       default:
         log(`Unknown message: ${JSON.stringify(message, null, 2)}.`);

@@ -7,7 +7,10 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Button, MenuIcon } from "@dust-tt/sparkle";
-import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
+import {
+  type AttachSelectionMessage,
+  sendGetSessionInfoMessage,
+} from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import { useContext, useEffect, useMemo, useState } from "react";
@@ -57,6 +60,14 @@ export const ConversationContainer = ({
     fileUploaderService.resetUpload();
   }
 
+  const [suggestion, setSuggestion] = useState<
+    | {
+        title: string;
+        description: string;
+      }
+    | undefined
+  >(undefined);
+
   useEffect(() => {
     void platform.messaging?.sendMessage({
       type: "INPUT_BAR_STATUS",
@@ -80,6 +91,28 @@ export const ConversationContainer = ({
     };
   }, [platform.messaging, fileUploaderService.uploadContentTab]);
 
+  useEffect(() => {
+    void sendGetSessionInfoMessage()
+      .then((response) => {
+        if (response.currentTabHasForm) {
+          setSuggestion({
+            title: "Dust can help you fill out forms",
+            description: "Ask an agent to get started",
+          });
+          return;
+        }
+        if (response.tabsCount > 2) {
+          setSuggestion({
+            title: "Dust can work across all your open tabs",
+            description: "Ask an agent to get started",
+          });
+        }
+      })
+      .catch(() => {
+        // Ignore errors, this is just an optional suggestion.
+      });
+  }, []);
+
   return (
     <InputBarContextProvider
       captureActions={captureActions}
@@ -92,6 +125,7 @@ export const ConversationContainer = ({
           subscription={subscription}
           conversationId={conversationId}
           clientSideMCPServerIds={clientSideMCPServerIds}
+          suggestion={suggestion}
         />
       </div>
       {conversation && currentPanel && (
