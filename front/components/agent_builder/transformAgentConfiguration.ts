@@ -75,6 +75,8 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
+// TODO(BYOK): For BYOK workspaces, this should also check healthy provider credentials.
+// Needs a new endpoint + SWR hook to fetch BYOK-aware whitelisted providers.
 function isProviderWhitelistedSync(
   owner: WorkspaceType,
   providerId: ModelProviderIdType
