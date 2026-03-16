@@ -9,7 +9,22 @@ import {
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  AgentInstructionsSuggestionType,
+  AgentSkillsSuggestionType,
+  AgentToolsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
+
+type ReinforcedSuggestionType =
+  | AgentInstructionsSuggestionType
+  | AgentToolsSuggestionType
+  | AgentSkillsSuggestionType;
+
+const REINFORCED_SUGGESTION_KINDS = new Set([
+  "instructions",
+  "tools",
+  "skills",
+]);
 
 interface AggregationContext {
   agentConfig: LightAgentConfigurationType;
@@ -17,14 +32,13 @@ interface AggregationContext {
   prompt: { systemPrompt: string; userMessage: string };
 }
 
-function toInstructionsSuggestions(
+function toReinforcedSuggestions(
   suggestions: AgentSuggestionResource[]
-): AgentInstructionsSuggestionType[] {
+): ReinforcedSuggestionType[] {
   return suggestions
     .map((s) => s.toJSON())
-    .filter(
-      (json): json is AgentInstructionsSuggestionType =>
-        json.kind === "instructions"
+    .filter((json): json is ReinforcedSuggestionType =>
+      REINFORCED_SUGGESTION_KINDS.has(json.kind)
     );
 }
 
@@ -65,40 +79,52 @@ async function loadAggregationContext(
       }
     );
 
-  const existingInstructions = toInstructionsSuggestions(existingSuggestions);
+  const existingReinforced = toReinforcedSuggestions(existingSuggestions);
 
   const prompt = buildAggregationPrompt(
     agentConfig.name,
-    toInstructionsSuggestions(syntheticSuggestions),
+    toReinforcedSuggestions(syntheticSuggestions),
     {
-      pending: existingInstructions.filter((s) => s.state === "pending"),
-      rejected: existingInstructions.filter((s) => s.state === "rejected"),
+      pending: existingReinforced.filter((s) => s.state === "pending"),
+      rejected: existingReinforced.filter((s) => s.state === "rejected"),
     }
   );
 
   return { agentConfig, syntheticSuggestions, prompt };
 }
 
-function formatSuggestions(
-  suggestions: AgentInstructionsSuggestionType[]
-): string {
-  return suggestions
-    .map(
-      (s, i) => `### Suggestion ${i + 1}
-kind: ${s.kind}
+function formatSuggestion(s: ReinforcedSuggestionType): string {
+  switch (s.kind) {
+    case "instructions":
+      return `kind: instructions
 targetBlockId: ${s.suggestion.targetBlockId}
 analysis: ${s.analysis ?? "N/A"}
-content: ${s.suggestion.content}`
-    )
+content: ${s.suggestion.content}`;
+    case "tools":
+      return `kind: tools
+action: ${s.suggestion.action}
+toolId: ${s.suggestion.toolId}
+analysis: ${s.analysis ?? "N/A"}`;
+    case "skills":
+      return `kind: skills
+action: ${s.suggestion.action}
+skillId: ${s.suggestion.skillId}
+analysis: ${s.analysis ?? "N/A"}`;
+  }
+}
+
+function formatSuggestions(suggestions: ReinforcedSuggestionType[]): string {
+  return suggestions
+    .map((s, i) => `### Suggestion ${i + 1}\n${formatSuggestion(s)}`)
     .join("\n\n");
 }
 
 export function buildAggregationPrompt(
   agentName: string,
-  syntheticSuggestions: AgentInstructionsSuggestionType[],
+  syntheticSuggestions: ReinforcedSuggestionType[],
   existingSuggestions: {
-    pending: AgentInstructionsSuggestionType[];
-    rejected: AgentInstructionsSuggestionType[];
+    pending: ReinforcedSuggestionType[];
+    rejected: ReinforcedSuggestionType[];
   }
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
@@ -107,12 +133,17 @@ export function buildAggregationPrompt(
 - Merge suggestions that address the same issue, or that target the same block
 - Keep only the most impactful suggestions (max 5)
 - In the analysis, mention how many conversations support each suggestion
-- When calling the tool, make sure there is never more than one suggestion targeting the same block (including instructions-root)
+- When calling suggest_prompt_edits, make sure there is never more than one suggestion targeting the same block (including instructions-root)
 - Do NOT create suggestions that are too similar to existing pending suggestions (listed below) — they are already being reviewed
 - Do NOT create suggestions that are too similar to previously rejected suggestions (listed below) — they will get rejected again
-- It is perfectly fine to return an empty suggestions array if there is nothing new to say
+- It is perfectly fine to return empty suggestions arrays if there is nothing new to say
 
-You MUST call the tool. If no suggestions survive aggregation, return an empty suggestions array.`;
+You have three tools available:
+- suggest_prompt_edits: For instruction changes.
+- suggest_tools: For suggesting tools to add or remove.
+- suggest_skills: For suggesting skills to add or remove.
+
+You MUST call at least one tool. If no suggestions survive aggregation, call suggest_prompt_edits with an empty suggestions array.`;
 
   let userMessage = `## Agent: ${agentName}
 
