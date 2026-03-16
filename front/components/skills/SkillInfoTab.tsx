@@ -194,7 +194,7 @@ export function SkillInfoTab({
                 return (
                   <Tooltip
                     key={s.sId}
-                    label={s.userFacingDescription || s.name}
+                    label={s.userFacingDescription}
                     trigger={
                       <div className="flex flex-row items-center gap-2">
                         <SkillAvatar size="xs" />
