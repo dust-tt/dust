@@ -1,0 +1,87 @@
+front/lib/api/projects/search.ts
+  af00346db6c2bc2e 68
+front/lib/api/data_sources.ts
+  af00346db6c2bc2e 565
+front/lib/api/actions/servers/include_data/tools/index.ts
+  af00346db6c2bc2e 69
+front/migrations/20230522_slack_doc_rename_incident.ts
+  af00346db6c2bc2e 62
+front/lib/api/projects/index.test.ts
+  af00346db6c2bc2e 213-215
+front/temporal/upsert_queue/activities.ts
+  af00346db6c2bc2e 90
+front/lib/api/actions/servers/data_sources_file_system/tools/search.ts
+  af00346db6c2bc2e 53
+front/admin/cli.ts
+  af00346db6c2bc2e 514-516
+front/temporal/relocation/activities/destination_region/core/documents.ts
+  af00346db6c2bc2e 48
+front/tests/sidekick-evals/lib/sidekick-executor.ts
+  af00346db6c2bc2e 27-29
+front/lib/api/assistant/call_llm.ts
+  af00346db6c2bc2e 53-55
+front/lib/api/llm/tests/llmBatch.test.ts
+  af00346db6c2bc2e 265-267
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/index.ts
+  af00346db6c2bc2e 289
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]/index.ts
+  af00346db6c2bc2e 649
+front/temporal/agent_loop/lib/run_model.ts
+  af00346db6c2bc2e 496-498
+front/temporal/relocation/activities/destination_region/core/data_sources.ts
+  af00346db6c2bc2e 42
+front/pages/api/w/[wId]/spaces/[spaceId]/data_sources/index.ts
+  af00346db6c2bc2e 380
+front/migrations/20250306_gong_labs_to_connector.ts
+  af00346db6c2bc2e 95
+front/lib/api/provider_credentials.test.ts
+  af00346db6c2bc2e 31-33,78-80,95-97,102,150,179-181
+front/lib/reinforced_agent/run_reinforced_analysis.ts
+  af00346db6c2bc2e 122-124
+front/lib/api/assistant/conversation_rendering/index.ts
+  af00346db6c2bc2e 82-84
+front/lib/api/actions/servers/agent_sidekick_context/tools/index.ts
+  af00346db6c2bc2e 1201
+front/tests/sidekick-evals/lib/judge.ts
+  af00346db6c2bc2e 107-109
+front/lib/api/llm/tests/conversations.ts
+  af00346db6c2bc2e 338-340
+front/lib/api/assistant/process_data_sources.ts
+  af00346db6c2bc2e 60
+front/migrations/20230803_wipe_gdrive_connectors.ts
+  af00346db6c2bc2e 52
+front/lib/api/actions/servers/image_generation/tools/index.ts
+  af00346db6c2bc2e 61-63
+front/temporal/labs/transcripts/activities.ts
+  af00346db6c2bc2e 510
+front/lib/api/provider_credentials.ts
+  af00346db6c2bc2e 15-20,23,27-28
+front/lib/api/actions/servers/web_search_browse/tools/index.ts
+  af00346db6c2bc2e 111-113
+front/lib/api/actions/servers/search/tools/index.ts
+  af00346db6c2bc2e 54
+front/pages/api/poke/workspaces/[wId]/conversations/[cId]/render.ts
+  af00346db6c2bc2e 318-320
+front/lib/api/projects/connector.ts
+  af00346db6c2bc2e 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "8e05cd861174b60de08495ae0949ae59e3c3edb0",
+  "prompts": {
+    "af00346db6c2bc2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28ac2e55-cc21-4b09-8dc2-cf358397f29c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 88,
+      "accepted_lines": 80,
+      "overriden_lines": 5
+    }
+  }
+}
