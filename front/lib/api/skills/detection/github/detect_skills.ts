@@ -22,43 +22,51 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Octokit } from "@octokit/core";
+import type {OctokitResponse} from "@octokit/types/dist-types/OctokitResponse";
 
 const FETCH_CONCURRENCY = 4;
 
-function classifyGitHubAPIError(
-  error: Error,
+async function callGitHubAPI<T>(
+  fn: () => Promise<OctokitResponse<T>>,
   { owner, repo, context }: { owner: string; repo: string; context: string }
-): Err<GitHubSkillDetectionError> {
-  if (error.message.includes("Not Found")) {
-    return new Err({
-      type: "not_found",
-      message: `Repository "${owner}/${repo}" not found.`,
-    });
-  }
+): Promise<Result<T, GitHubSkillDetectionError>> {
+  try {
+    const response = await fn();
+    return new Ok(response.data);
+  } catch (err) {
+    const error = normalizeError(err);
 
-  if (
-    error.message.includes("Bad credentials") ||
-    error.message.includes("401")
-  ) {
-    return new Err({
-      type: "auth_error",
-      message: `Authentication failed for repository "${owner}/${repo}".`,
-    });
-  }
+    if (error.message.includes("Not Found")) {
+      return new Err({
+        type: "not_found",
+        message: `Repository "${owner}/${repo}" not found.`,
+      });
+    }
 
-  if (error.message.includes("rate limit")) {
+    if (
+      error.message.includes("Bad credentials") ||
+      error.message.includes("401")
+    ) {
+      return new Err({
+        type: "auth_error",
+        message: `Authentication failed for repository "${owner}/${repo}".`,
+      });
+    }
+
+    if (error.message.includes("rate limit")) {
+      return new Err({
+        type: "github_api_error",
+        message: "GitHub API rate limit exceeded. Please try again later.",
+      });
+    }
+
+    logger.error({ error: error.message, owner, repo }, context);
+
     return new Err({
       type: "github_api_error",
-      message: "GitHub API rate limit exceeded. Please try again later.",
+      message: context,
     });
   }
-
-  logger.error({ error: error.message, owner, repo }, context);
-
-  return new Err({
-    type: "github_api_error",
-    message: context,
-  });
 }
 
 async function fetchRepoTree(
@@ -71,22 +79,18 @@ async function fetchRepoTree(
     repo: string;
   }
 ): Promise<Result<GitHubTreeEntry[], GitHubSkillDetectionError>> {
-  let rawData: unknown;
-  try {
-    const response = await octokit.request(
-      "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
-      { owner, repo, tree_sha: "HEAD", recursive: "1" }
-    );
-    rawData = response.data;
-  } catch (err) {
-    return classifyGitHubAPIError(normalizeError(err), {
-      owner,
-      repo,
-      context: "Failed to fetch repository tree",
-    });
+  const result = await callGitHubAPI(
+    async () => octokit.request(
+        "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
+        { owner, repo, tree_sha: "HEAD", recursive: "1" }
+      ),
+    { owner, repo, context: "Failed to fetch repository tree" }
+  );
+  if (result.isErr()) {
+    return result;
   }
 
-  const parsed = GitHubTreeResponseSchema.safeParse(rawData);
+  const parsed = GitHubTreeResponseSchema.safeParse(result.value);
   if (!parsed.success) {
     return new Err({
       type: "github_api_error",
@@ -119,22 +123,18 @@ export async function fetchBlobContent(
     fileSha: string;
   }
 ): Promise<Result<string, GitHubSkillDetectionError>> {
-  let rawData: unknown;
-  try {
-    const response = await octokit.request(
-      "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
-      { owner, repo, file_sha: fileSha }
-    );
-    rawData = response.data;
-  } catch (err) {
-    return classifyGitHubAPIError(normalizeError(err), {
-      owner,
-      repo,
-      context: "Failed to fetch file content",
-    });
+  const result = await callGitHubAPI(
+    async () => octokit.request(
+        "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
+        { owner, repo, file_sha: fileSha }
+      ),
+    { owner, repo, context: "Failed to fetch file content" }
+  );
+  if (result.isErr()) {
+    return result;
   }
 
-  const parsed = GitHubBlobResponseSchema.safeParse(rawData);
+  const parsed = GitHubBlobResponseSchema.safeParse(result.value);
   if (!parsed.success) {
     return new Err({
       type: "github_api_error",
