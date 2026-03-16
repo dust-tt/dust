@@ -1,3 +1,4 @@
+import { ImportFromFilesTab } from "@app/components/skills/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/ImportFromRepositoryTab";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,9 +17,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useRef, useState } from "react";
 
-type ImportTab = "repository";
+type ImportTab = "repository" | "files";
 
-const IMPORT_TABS: readonly string[] = ["repository"] satisfies ImportTab[];
+const IMPORT_TABS: readonly string[] = [
+  "repository",
+  "files",
+] satisfies ImportTab[];
 
 function isImportTab(value: string): value is ImportTab {
   return IMPORT_TABS.includes(value);
@@ -37,6 +41,7 @@ interface ImportSkillsDialogProps {
 
 const TAB_DESCRIPTION: Record<ImportTab, string> = {
   repository: "Enter a GitHub repository URL to detect skills.",
+  files: "Upload .md, .zip or .skill files to import skills.",
 };
 
 export function ImportSkillsDialog({
@@ -98,9 +103,18 @@ export function ImportSkillsDialog({
           >
             <TabsList>
               <TabsTrigger value="repository" label="Repository" />
+              <TabsTrigger value="files" label="Files" />
             </TabsList>
             <TabsContent value="repository">
               <ImportFromRepositoryTab
+                owner={owner}
+                onStateChange={setTabState}
+                onImportSuccess={onClose}
+                registerImportHandler={registerImportHandler}
+              />
+            </TabsContent>
+            <TabsContent value="files">
+              <ImportFromFilesTab
                 owner={owner}
                 onStateChange={setTabState}
                 onImportSuccess={onClose}
