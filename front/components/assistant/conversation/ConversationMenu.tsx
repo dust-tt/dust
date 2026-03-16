@@ -415,11 +415,11 @@ export function ConversationMenu({
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
-              label="Shrinkwrap"
+              label="Convert to agent"
               icon={SidekickIcon}
               onClick={async () => {
                 const confirmed = await confirm({
-                  title: "Shrinkwrap",
+                  title: "Shrink-wrap",
                   message:
                     "This will open the agent builder and launch Sidekick on this conversation so you can turn it into an agent.",
                   validateLabel: "Continue",

@@ -299,6 +299,25 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  static async fetchByMountFilePaths(
+    auth: Authenticator,
+    mountFilePaths: string[]
+  ): Promise<FileResource[]> {
+    if (mountFilePaths.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        mountFilePath: { [Op.in]: mountFilePaths },
+      },
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
@@ -714,7 +733,6 @@ export class FileResource extends BaseResource<FileModel> {
       .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
         resumable: false,
-        gzip: true,
         contentType: overrideContentType ?? this.contentType,
       });
   }
@@ -895,13 +913,13 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
 
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
-    await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
+    await bucket.copyFile(srcOriginalPath, mountFilePath);
 
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
       const processedMountPath = makeProcessedMountFileName(mountFilePath);
-      await bucket.file(srcProcessedPath).copy(bucket.file(processedMountPath));
+      await bucket.copyFile(srcProcessedPath, processedMountPath);
     }
 
     await this.update({ mountFilePath });

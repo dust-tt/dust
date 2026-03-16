@@ -1,3 +1,4 @@
+import { useClientType } from "@app/lib/context/clientType";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 
 interface UserHandleProps {
@@ -9,6 +10,7 @@ interface UserHandleProps {
 
 export function UserHandle({ user }: UserHandleProps) {
   const router = useAppRouter();
+  const clientType = useClientType();
 
   const href = {
     pathname: router.pathname,
@@ -17,6 +19,10 @@ export function UserHandle({ user }: UserHandleProps) {
 
   if (!user.name) {
     return <span>Unknown User</span>;
+  }
+
+  if (clientType === "extension") {
+    return <span>{user.name}</span>;
   }
 
   return (

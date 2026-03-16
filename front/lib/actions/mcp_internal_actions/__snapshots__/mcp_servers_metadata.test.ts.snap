@@ -46,6 +46,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_candidate_note": "high",
     "create_referral": "high",
     "get_candidate_notes": "never_ask",
+    "get_hire_data": "never_ask",
     "get_interview_feedback": "never_ask",
     "get_referral_form": "never_ask",
     "get_report_data": "never_ask",
@@ -478,6 +479,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "slack": {
     "archive_channel": "high",
     "create_channel": "high",
+    "get_channel_canvases": "never_ask",
     "invite_to_channel": "high",
     "list_messages": "never_ask",
     "list_user_groups": "never_ask",

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";

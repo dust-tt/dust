@@ -31,8 +31,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
-const statsDClient = getStatsDClient();
-
 /**
  * Runs a tool with streaming for the given MCP action configuration.
  *
@@ -117,7 +115,7 @@ export async function* runToolWithStreaming(
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
   // as content.
   if (toolCallResult.isError) {
-    statsDClient.increment("mcp_actions_error.count", 1, tags);
+    getStatsDClient().increment("mcp_actions_error.count", 1, tags);
 
     const endDate = performance.now();
     yield await handleMCPActionError(auth, {
@@ -155,7 +153,7 @@ export async function* runToolWithStreaming(
     }
     return;
   } else {
-    statsDClient.increment("mcp_actions_success.count", 1, tags);
+    getStatsDClient().increment("mcp_actions_success.count", 1, tags);
 
     const endDate = performance.now();
     await action.markAsSucceeded({ executionDurationMs: endDate - startDate });

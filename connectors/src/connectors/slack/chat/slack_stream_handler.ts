@@ -11,9 +11,14 @@ const ACTIVE_TASK_ID = "active-task-id";
 export class SlackStreamHandler {
   private streamer: ChatStreamer | undefined;
   private hasTask = false;
+  private stopped = false;
   private channelId: string | undefined;
   private threadTs: string | undefined;
   messageTs: string | undefined;
+
+  get isStopped(): boolean {
+    return this.stopped;
+  }
 
   constructor(
     private readonly slackClient: WebClient,
@@ -52,6 +57,7 @@ export class SlackStreamHandler {
       channel_id: this.channelId,
       thread_ts: this.threadTs,
       status,
+      loading_messages: ["Thinking..."],
     });
   }
 
@@ -61,7 +67,7 @@ export class SlackStreamHandler {
     const res = await throttleWithRedis(
       RATE_LIMITS["chat.appendStream"],
       `${this.connectorId}-chat-appendStream`,
-      { canBeIgnored: true },
+      { canBeIgnored: false },
       () => this.streamer?.append(payload) ?? Promise.resolve(undefined),
       {}
     );
@@ -103,6 +109,7 @@ export class SlackStreamHandler {
 
   async stop() {
     this.hasTask = false;
+    this.stopped = true;
     await this.streamer?.stop();
   }
 }

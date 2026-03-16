@@ -24,8 +24,6 @@ import type {
 } from "@app/types/assistant/models/types";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
-const statsDClient = getStatsDClient();
-
 const LLM_TRACE_PREFIX = "llm_trace_";
 
 export type LLMTraceId = `${typeof LLM_TRACE_PREFIX}${string}`;
@@ -198,15 +196,19 @@ export class LLMTraceBuffer {
 
     const { cacheCreationTokens, cachedTokens, inputTokens } = tokenUsage;
     if (cachedTokens) {
-      statsDClient.distribution("llm_cache.tokens_read", cachedTokens, tags);
-      statsDClient.distribution(
+      getStatsDClient().distribution(
+        "llm_cache.tokens_read",
+        cachedTokens,
+        tags
+      );
+      getStatsDClient().distribution(
         "llm_cache.token_hit_ratio",
         cachedTokens / inputTokens,
         tags
       );
     }
     if (cacheCreationTokens) {
-      statsDClient.distribution(
+      getStatsDClient().distribution(
         "llm_cache.tokens_written",
         cacheCreationTokens,
         tags

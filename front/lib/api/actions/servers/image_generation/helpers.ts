@@ -153,8 +153,7 @@ export async function checkImageGenerationRateLimit(
   });
 
   if (remaining <= 0) {
-    const statsDClient = getStatsDClient();
-    statsDClient.increment("tools.image_generation.rate_limit_hit", 1, [
+    getStatsDClient().increment("tools.image_generation.rate_limit_hit", 1, [
       "provider:gemini",
     ]);
 
@@ -219,21 +218,18 @@ export function validateGeminiImageResponse(
   return new Ok(imageParts);
 }
 
-export function trackGeminiTokenUsage(
-  response: {
-    usageMetadata?: {
-      promptTokenCount?: number;
-      candidatesTokenCount?: number;
-    };
-  },
-  statsDClient: ReturnType<typeof getStatsDClient>
-): void {
-  statsDClient.increment(
+export function trackGeminiTokenUsage(response: {
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+  };
+}): void {
+  getStatsDClient().increment(
     "tools.image_generation.usage.input_tokens",
     response.usageMetadata?.promptTokenCount ?? 0,
     ["provider:gemini"]
   );
-  statsDClient.increment(
+  getStatsDClient().increment(
     "tools.image_generation.usage.output_tokens",
     response.usageMetadata?.candidatesTokenCount ?? 0,
     ["provider:gemini"]
@@ -278,7 +274,6 @@ async function processSingleImageFile(
   }
 ): Promise<Ok<Part> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
-  const statsDClient = getStatsDClient();
   const fileResource = await FileResource.fetchById(auth, imageFileId);
   if (!fileResource) {
     return new Err(
@@ -309,7 +304,7 @@ async function processSingleImageFile(
       "generate_image: File size exceeds maximum allowed size"
     );
 
-    statsDClient.increment(
+    getStatsDClient().increment(
       "tools.image_generation.file_size_limit_exceeded",
       1,
       ["provider:gemini"]

@@ -1,17 +1,14 @@
-import {
-  ALL_PROVIDERS_SELECTED,
-  type ProvidersSelection,
-} from "@app/types/provider_selection";
+import type { ProvidersSelection } from "@app/types/provider_selection";
 import { SliderToggle } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface AllProvidersToggleProps {
-  setProvidersSelection: (states: ProvidersSelection) => void;
+  onSelectAll: () => void;
   providersSelection: ProvidersSelection;
 }
 
 export function AllProvidersToggle({
-  setProvidersSelection,
+  onSelectAll,
   providersSelection,
 }: AllProvidersToggleProps) {
   const selected = useMemo(
@@ -29,9 +26,7 @@ export function AllProvidersToggle({
           size="xs"
           selected={selected}
           disabled={selected}
-          onClick={() => {
-            setProvidersSelection(ALL_PROVIDERS_SELECTED);
-          }}
+          onClick={onSelectAll}
         />
       </div>
     </div>

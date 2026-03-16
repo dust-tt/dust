@@ -1,14 +1,25 @@
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   AuthBackgroundMessage,
   AuthBackgroundResponseError,
   AuthBackgroundResponseSuccess,
   CaptureMesssage,
   CaptureResponse,
+  ClickPageElementMessage,
+  ClickPageElementResponse,
+  DeleteTextMessage,
+  DeleteTextResponse,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
+  GetPageElementsMessage,
+  GetPageElementsResponse,
+  GetSessionInfoMessage,
+  GetSessionInfoResponse,
   InputBarStatusMessage,
   TabActionMessage,
   TabActionResponse,
+  TypeTextMessage,
+  TypeTextResponse,
 } from "@extension/platforms/chrome/messages";
 import type { PendingUpdate } from "@extension/platforms/chrome/services/platform";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
@@ -18,6 +29,13 @@ import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
+import {
+  checkHasForm,
+  clickPageElement,
+  getPageElements,
+  getPageElementsDiff,
+  typeText,
+} from "./interactWithPage";
 
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
@@ -273,7 +291,12 @@ chrome.runtime.onMessage.addListener(
       | GetActiveTabBackgroundMessage
       | CaptureMesssage
       | InputBarStatusMessage
-      | TabActionMessage,
+      | TabActionMessage
+      | GetPageElementsMessage
+      | ClickPageElementMessage
+      | TypeTextMessage
+      | DeleteTextMessage
+      | GetSessionInfoMessage,
     sender,
     sendResponse: (
       response:
@@ -283,6 +306,11 @@ chrome.runtime.onMessage.addListener(
         | CaptureResponse
         | GetActiveTabBackgroundResponse
         | TabActionResponse
+        | GetPageElementsResponse
+        | ClickPageElementResponse
+        | TypeTextResponse
+        | DeleteTextResponse
+        | GetSessionInfoResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -613,6 +641,26 @@ chrome.runtime.onMessage.addListener(
         })();
         return true;
 
+      case "GET_CURRENT_TAB_INFO":
+        void (async () => {
+          const tabs = await chrome.tabs.query({
+            active: true,
+            currentWindow: true,
+          });
+          sendResponse({
+            success: true,
+            tabs: tabs
+              .filter((t) => t.id !== undefined && t.url)
+              .map((t) => ({
+                tabId: t.id!,
+                title: t.title || "",
+                url: t.url || "",
+                active: t.active,
+              })),
+          });
+        })();
+        return true;
+
       case "ACTIVATE_TAB":
         void (async () => {
           try {
@@ -683,6 +731,174 @@ chrome.runtime.onMessage.addListener(
         })();
         return true;
 
+      case "GET_ELEMENTS":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await getPageElements(tab);
+
+            if (result.isErr()) {
+              log("Error reading page elements:", result.error);
+              sendResponse({
+                elements: "",
+                error: result.error.message,
+              });
+              return;
+            }
+
+            sendResponse({
+              elements: result.value,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error reading page elements:", normalizedError.message);
+            sendResponse({
+              elements: "",
+              error: normalizedError.message ?? "Failed to read page elements.",
+            });
+          }
+        });
+        return true;
+
+      case "CLICK_ELEMENT":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await clickPageElement(tab, message.elementId);
+
+            if (result.isErr()) {
+              log("Error clicking page element:", result.error);
+              sendResponse({
+                success: false,
+                error: result.error.message,
+              });
+              return;
+            }
+
+            const elementsDiff = await getPageElementsDiff(tab);
+
+            if (elementsDiff.isErr()) {
+              log(
+                "Error getting page elements diff after click:",
+                elementsDiff.error
+              );
+              sendResponse({
+                success: false,
+                error: `Element clicked successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+              });
+              return;
+            }
+
+            sendResponse({
+              success: true,
+              elementsDiff: elementsDiff.value,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error clicking page element:", normalizedError.message);
+            sendResponse({
+              success: false,
+              error: normalizedError.message ?? "Failed to click page element.",
+            });
+          }
+        });
+        return true;
+
+      case "TYPE_TEXT":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await typeText(
+              tab,
+              message.elementId,
+              message.text,
+              message.variant
+            );
+
+            if (result.isErr()) {
+              log("Error typing text in element:", result.error);
+              sendResponse({
+                success: false,
+                error: result.error.message,
+              });
+              return;
+            }
+
+            const elementsDiff = await getPageElementsDiff(tab);
+
+            if (elementsDiff.isErr()) {
+              log(
+                "Error getting page elements diff after typing text:",
+                elementsDiff.error
+              );
+              sendResponse({
+                success: false,
+                error: `Text typed successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+              });
+              return;
+            }
+
+            sendResponse({
+              success: true,
+              elementsDiff: elementsDiff.value,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error typing text in element:", normalizedError.message);
+            sendResponse({
+              success: false,
+              error:
+                normalizedError.message ?? "Failed to type text in element.",
+            });
+          }
+        });
+        return true;
+
+      case "DELETE_TEXT":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const tab = tabs.find((t) => t.id === message.tabId);
+          try {
+            const result = await typeText(tab, message.elementId, "", "delete");
+
+            if (result.isErr()) {
+              log("Error deleting text in element:", result.error);
+              sendResponse({
+                success: false,
+                error: result.error.message,
+              });
+              return;
+            }
+
+            const elementsDiff = await getPageElementsDiff(tab);
+
+            if (elementsDiff.isErr()) {
+              log(
+                "Error getting page elements diff after deleting text:",
+                elementsDiff.error
+              );
+              sendResponse({
+                success: false,
+                error: `Text deleted successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+              });
+              return;
+            }
+
+            sendResponse({
+              success: true,
+              elementsDiff: elementsDiff.value,
+            });
+          } catch (error) {
+            const normalizedError = normalizeError(error);
+            log("Error deleting text in element:", normalizedError.message);
+            sendResponse({
+              success: false,
+              error:
+                normalizedError.message ?? "Failed to delete text in element.",
+            });
+          }
+        });
+        return true;
+
       case "INPUT_BAR_STATUS":
         void (async () => {
           if (message.available) {
@@ -695,6 +911,32 @@ chrome.runtime.onMessage.addListener(
           await platform.storage.delete("pendingAction");
         })();
         return false;
+
+      case "GET_SESSION_INFO":
+        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+          const activeTab = tabs.find((t) => t.active);
+
+          try {
+            const hasForm = await checkHasForm(activeTab);
+            if (hasForm.isErr()) {
+              sendResponse({
+                tabsCount: tabs.length,
+                currentTabHasForm: false,
+              });
+              return;
+            }
+            sendResponse({
+              tabsCount: tabs.length,
+              currentTabHasForm: hasForm.value,
+            });
+          } catch {
+            sendResponse({
+              tabsCount: tabs.length,
+              currentTabHasForm: false,
+            });
+          }
+        });
+        return true;
 
       default:
         log(`Unknown message: ${JSON.stringify(message, null, 2)}.`);

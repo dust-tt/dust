@@ -14,8 +14,6 @@ import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
-const statsDClient = getStatsDClient();
-
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,
   dataSourceId: t.string,
@@ -168,7 +166,7 @@ async function enqueueUpsert({
       return launchRes;
     }
 
-    statsDClient.increment("upsert_queue.enqueue.count", 1, []);
+    getStatsDClient().increment("upsert_queue.enqueue.count", 1, []);
 
     return new Ok(upsertQueueId);
   } catch (e) {

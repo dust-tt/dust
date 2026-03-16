@@ -16,8 +16,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type Stripe from "stripe";
 
-const statsDClient = getStatsDClient();
-
 type CreatePAYGCreditError = {
   error_type: "already_exists" | "invalid_discount" | "unknown";
   error_message: string;
@@ -47,7 +45,7 @@ function handlePAYGCreditCreationError({
         { workspaceId, error: error_message, panic: true },
         `[Credit PAYG] Failed to create PAYG credit for this period. Potentially blocking customer's automations`
       );
-      statsDClient.increment("credits.top_up.error", 1, [
+      getStatsDClient().increment("credits.top_up.error", 1, [
         `workspace_id:${workspaceId}`,
         "type:payg",
         "customer:enterprise",
@@ -157,7 +155,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     },
     "[Credit PAYG] Allocated new PAYG credit for billing cycle"
   );
-  statsDClient.increment("credits.top_up.success", 1, [
+  getStatsDClient().increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:payg",
     "customer:enterprise",
@@ -189,7 +187,7 @@ export async function startOrResumeEnterprisePAYG({
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (!config) {
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:payg",
       "customer:enterprise",
@@ -205,7 +203,7 @@ export async function startOrResumeEnterprisePAYG({
     paygCapMicroUsd,
   });
   if (updateResult.isErr()) {
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:payg",
       "customer:enterprise",
@@ -257,7 +255,7 @@ export async function startOrResumeEnterprisePAYG({
       );
     }
   }
-  statsDClient.increment("credits.top_up.success", 1, [
+  getStatsDClient().increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:payg",
     "customer:enterprise",

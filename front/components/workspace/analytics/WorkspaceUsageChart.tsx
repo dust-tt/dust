@@ -11,6 +11,7 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  BROWSER_TIMEZONE,
   useWorkspaceActiveUsersMetrics,
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
@@ -285,14 +286,16 @@ export function WorkspaceUsageChart({
     usageMetrics,
     "timeRange",
     period,
-    zeroFactory
+    zeroFactory,
+    BROWSER_TIMEZONE
   );
 
   const activeUsersData = padSeriesToTimeRange<ActiveUsersMetricsDatum>(
     activeUsersMetrics,
     "timeRange",
     period,
-    activeUsersZeroFactory
+    activeUsersZeroFactory,
+    BROWSER_TIMEZONE
   ).map((point) => ({
     ...point,
     dau: toPercentage(point.dau, point.memberCount),

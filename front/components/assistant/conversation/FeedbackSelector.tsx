@@ -1,4 +1,5 @@
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -50,7 +51,7 @@ const OTHER_ANSWER = "Other (add details below)";
 
 const FEEDBACK_PREDEFINED_ANSWERS = [
   "Factually incorrect",
-  "Didn’t fully follow instructions",
+  "Didn’t follow instructions",
   "Don’t like the tone",
   "Wrong data sources",
   "Took too long",
@@ -63,7 +64,10 @@ const feedbackBaseSchema = z.object({
   isConversationShared: z.boolean().default(true),
 });
 
-function makeFeedbackSchema(thumbDirection: ThumbReaction) {
+function makeFeedbackSchema(
+  thumbDirection: ThumbReaction,
+  showPredefinedAnswers: boolean
+) {
   if (thumbDirection === "up") {
     return feedbackBaseSchema;
   }
@@ -73,13 +77,17 @@ function makeFeedbackSchema(thumbDirection: ThumbReaction) {
   return feedbackBaseSchema.refine(
     (data) => {
       const hasAnswer =
-        data.selectedAnswer.length > 0 && data.selectedAnswer !== OTHER_ANSWER;
+        showPredefinedAnswers &&
+        data.selectedAnswer.length > 0 &&
+        data.selectedAnswer !== OTHER_ANSWER;
       const hasContent = data.feedbackContent.trim().length > 0;
 
       return hasAnswer || hasContent;
     },
     {
-      message: "Please select a reason or describe the issue.",
+      message: showPredefinedAnswers
+        ? "Please select a reason or describe the issue."
+        : "Please describe the issue.",
       path: ["feedbackContent"],
     }
   );
@@ -96,12 +104,23 @@ export function FeedbackSelector({
   agentName,
   isGlobalAgent,
 }: FeedbackSelectorProps) {
+  const isSidekick = agentConfigurationId === GLOBAL_AGENTS_SID.SIDEKICK;
+  // Predefined answers are not so relevant in the context of sidekick.
+  const showPredefinedAnswers = !isSidekick;
+
+  // "Improve this agent" would be confusing in the context of sidekick so we show "Improve @sidekick" instead
+  const improveLabel = isSidekick
+    ? `Improve @${agentName}`
+    : "Improve this agent";
+
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [thumbDirection, setThumbDirection] =
     React.useState<ThumbReaction>("up");
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(thumbDirection)),
+    resolver: zodResolver(
+      makeFeedbackSchema(thumbDirection, showPredefinedAnswers)
+    ),
     defaultValues: feedbackBaseSchema.parse({}),
   });
 
@@ -176,7 +195,7 @@ export function FeedbackSelector({
           disabled={isSubmittingThumb}
           onClick={() => handleThumbClick("down")}
           icon={MagicIcon}
-          label="Improve this agent"
+          label={improveLabel}
           className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
         />
       </ButtonGroup>
@@ -204,11 +223,11 @@ export function FeedbackSelector({
                 <div>
                   <Label htmlFor="feedback-content" className="mb-2 block">
                     {thumbDirection === "down"
-                      ? "What should the agent do differently?"
+                      ? "What was the issue?"
                       : "Glad you liked it! Tell us more?"}
                   </Label>
 
-                  {thumbDirection === "down" && (
+                  {thumbDirection === "down" && showPredefinedAnswers && (
                     <div className="mb-3 flex flex-wrap gap-2">
                       {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
                         <Button

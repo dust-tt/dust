@@ -1,10 +1,15 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getLLM } from "@app/lib/api/llm";
+import type { LLM } from "@app/lib/api/llm/llm";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
@@ -74,77 +79,124 @@ type ReinforcedOperationType =
   | "reinforced_agent_aggregate_suggestions";
 
 /**
- * Shared helper for both analyze and aggregate phases of reinforced agents.
- * Calls the LLM with the given prompt, parses suggestions, and creates them.
- * Returns the number of suggestions created.
+ * Build LLMStreamParameters for a reinforced analysis prompt.
+ * Used to create batch entries or for direct streaming.
  */
-export async function runReinforcedAnalysis({
+export function buildReinforcedLLMParams({
+  systemPrompt,
+  userMessage,
+}: {
+  systemPrompt: string;
+  userMessage: string;
+}): LLMStreamParameters {
+  return {
+    conversation: {
+      messages: [
+        {
+          role: "user",
+          name: "user",
+          content: [{ type: "text", text: userMessage }],
+        },
+      ],
+    },
+    prompt: systemPrompt,
+    specifications: buildSpecifications(),
+    forceToolCall: FUNCTION_NAME,
+  };
+}
+
+/**
+ * Get the LLM instance configured for reinforced agent analysis.
+ */
+export async function getReinforcedLLM(
+  auth: Authenticator
+): Promise<LLM | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+  const model = getSmallWhitelistedModel(owner);
+  if (!model) {
+    return null;
+  }
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
+  return getLLM(auth, { modelId: model.modelId, credentials });
+}
+
+/**
+ * Parse tool calls from LLM events and create suggestion records.
+ * Used to process batch results.
+ */
+export async function processReinforcedEvents({
   auth,
   agentConfig,
-  prompt,
+  events,
   source,
   operationType,
   contextId,
 }: {
   auth: Authenticator;
   agentConfig: LightAgentConfigurationType;
-  prompt: string;
+  events: LLMEvent[];
   source: AgentSuggestionSource;
   operationType: ReinforcedOperationType;
   contextId: string;
 }): Promise<number> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = getSmallWhitelistedModel(owner);
-  if (!model) {
-    logger.warn(
-      { workspaceId: owner.sId },
-      `ReinforcedAgent: no whitelisted model available for ${operationType}`
-    );
-    return 0;
-  }
-
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: FUNCTION_NAME,
-      useCache: false,
-    },
-    {
-      conversation: { messages: [] },
-      prompt,
-      specifications: buildSpecifications(),
-      forceToolCall: FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType,
-        conversationId: contextId,
-        workspaceId: owner.sId,
-      },
-    }
-  );
-
-  if (res.isErr()) {
+  const errorEvents = events.filter((e) => e.type === "error");
+  if (errorEvents.length > 0) {
     logger.error(
-      { contextId, error: res.error },
-      `ReinforcedAgent: LLM call failed for ${operationType}`
+      {
+        contextId,
+        errorCount: errorEvents.length,
+        errors: errorEvents.map((e) => normalizeError(e)),
+      },
+      `ReinforcedAgent: batch LLM errors for ${operationType}`
     );
     return 0;
   }
 
-  const action = res.value.actions?.[0];
-  if (!action?.arguments) {
+  const toolCallEvent = events.find(
+    (e) => e.type === "tool_call" && e.content.name === FUNCTION_NAME
+  );
+  if (!toolCallEvent || toolCallEvent.type !== "tool_call") {
     logger.warn(
       { contextId },
-      `ReinforcedAgent: no tool call in LLM response for ${operationType}`
+      `ReinforcedAgent: no tool call in batch result for ${operationType}`
     );
     return 0;
   }
 
-  const parsed = ReinforcedResponseSchema.safeParse(action.arguments);
+  return createSuggestionsFromToolCall({
+    auth,
+    agentConfig,
+    actionArguments: toolCallEvent.content.arguments,
+    source,
+    operationType,
+    contextId,
+  });
+}
+
+/**
+ * Shared helper: parse action arguments and create suggestion records.
+ */
+async function createSuggestionsFromToolCall({
+  auth,
+  agentConfig,
+  actionArguments,
+  source,
+  operationType,
+  contextId,
+}: {
+  auth: Authenticator;
+  agentConfig: LightAgentConfigurationType;
+  actionArguments: Record<string, unknown>;
+  source: AgentSuggestionSource;
+  operationType: ReinforcedOperationType;
+  contextId: string;
+}): Promise<number> {
+  const parsed = ReinforcedResponseSchema.safeParse(actionArguments);
   if (!parsed.success) {
     logger.warn(
       {
@@ -181,4 +233,48 @@ export async function runReinforcedAnalysis({
   }
 
   return createdCount;
+}
+
+/**
+ * Shared helper for both analyze and aggregate phases of reinforced agents.
+ * Calls the LLM with the given prompt, parses suggestions, and creates them.
+ * Returns the number of suggestions created.
+ */
+export async function runReinforcedAnalysis({
+  auth,
+  agentConfig,
+  prompt,
+  source,
+  operationType,
+  contextId,
+}: {
+  auth: Authenticator;
+  agentConfig: LightAgentConfigurationType;
+  prompt: { systemPrompt: string; userMessage: string };
+  source: AgentSuggestionSource;
+  operationType: ReinforcedOperationType;
+  contextId: string;
+}): Promise<number> {
+  const llm = await getReinforcedLLM(auth);
+  if (!llm) {
+    logger.error(
+      { contextId },
+      `ReinforcedAgent: no whitelisted model available for ${operationType}`
+    );
+    return 0;
+  }
+
+  const events: LLMEvent[] = [];
+  for await (const event of llm.stream(buildReinforcedLLMParams(prompt))) {
+    events.push(event);
+  }
+
+  return processReinforcedEvents({
+    auth,
+    agentConfig,
+    events,
+    source,
+    operationType,
+    contextId,
+  });
 }

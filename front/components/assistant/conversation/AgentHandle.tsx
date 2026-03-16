@@ -1,3 +1,4 @@
+import { useClientType } from "@app/lib/context/clientType";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { cn } from "@dust-tt/sparkle";
 
@@ -16,6 +17,7 @@ export function AgentHandle({
   isDisabled = false,
 }: AgentHandleProps) {
   const router = useAppRouter();
+  const clientType = useClientType();
 
   const href = {
     pathname: router.pathname,
@@ -23,7 +25,7 @@ export function AgentHandle({
     hash: router.asPath.split("#")[1] || undefined,
   };
 
-  if (!canMention) {
+  if (!canMention || clientType === "extension") {
     return <span>{agent.name}</span>;
   }
 

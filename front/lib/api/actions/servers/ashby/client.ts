@@ -4,14 +4,18 @@ import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
   AshbyCandidateCreateNoteRequest,
+  AshbyCandidateInfoRequest,
   AshbyCandidateListNotesRequest,
   AshbyCandidateNote,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
   AshbyJob,
+  AshbyJobInfoRequest,
   AshbyJobPostingInfoRequest,
   AshbyJobPostingListRequest,
   AshbyJobPostingUpdateRequest,
+  AshbyOffer,
+  AshbyOfferListRequest,
   AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
   AshbyUserSearchRequest,
@@ -20,12 +24,15 @@ import {
   AshbyApplicationFeedbackListResponseSchema,
   AshbyApplicationInfoResponseSchema,
   AshbyCandidateCreateNoteResponseSchema,
+  AshbyCandidateInfoResponseSchema,
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
+  AshbyJobInfoResponseSchema,
   AshbyJobListResponseSchema,
   AshbyJobPostingInfoResponseSchema,
   AshbyJobPostingListResponseSchema,
   AshbyJobPostingUpdateResponseSchema,
+  AshbyOfferListResponseSchema,
   AshbyReferralCreateResponseSchema,
   AshbyReferralFormInfoResponseSchema,
   AshbyReportSynchronousResponseSchema,
@@ -221,6 +228,33 @@ export class AshbyClient {
       request,
       AshbyJobPostingUpdateResponseSchema
     );
+  }
+
+  async getCandidateInfo(request: AshbyCandidateInfoRequest) {
+    return this.postRequest(
+      "candidate.info",
+      request,
+      AshbyCandidateInfoResponseSchema
+    );
+  }
+
+  async listOffers(
+    request: AshbyOfferListRequest
+  ): Promise<Result<AshbyOffer[], Error>> {
+    const response = await this.postRequest(
+      "offer.list",
+      request,
+      AshbyOfferListResponseSchema
+    );
+    if (response.isErr()) {
+      return response;
+    }
+
+    return new Ok(response.value.results);
+  }
+
+  async getJobInfo(request: AshbyJobInfoRequest) {
+    return this.postRequest("job.info", request, AshbyJobInfoResponseSchema);
   }
 
   async listJobs(): Promise<Result<AshbyJob[], Error>> {

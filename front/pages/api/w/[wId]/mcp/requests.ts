@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

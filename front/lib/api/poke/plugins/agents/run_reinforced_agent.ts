@@ -9,9 +9,16 @@ export const runReinforcedAgentPlugin = createPlugin({
     description:
       "Analyze recent conversations for this agent and suggest improvements to its configuration",
     resourceTypes: ["agents"],
-    args: {},
+    args: {
+      useBatchMode: {
+        type: "boolean",
+        label: "Use batch mode",
+        description:
+          "Process conversations via batch LLM API (slower but cheaper). Uncheck to use streaming (faster but more expensive).",
+      },
+    },
   },
-  execute: async (auth, resource) => {
+  execute: async (auth, resource, args) => {
     if (!resource) {
       return new Err(new Error("Agent configuration not found"));
     }
@@ -21,6 +28,7 @@ export const runReinforcedAgentPlugin = createPlugin({
     const result = await startReinforcedAgentForAgentWorkflow({
       workspaceId: workspace.sId,
       agentConfigurationId: resource.sId,
+      useBatchMode: args.useBatchMode,
     });
 
     if (result.isErr()) {

@@ -7,7 +7,6 @@ import {
   extractArgRequiringApprovalValues,
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -120,10 +119,7 @@ export async function validateAction(
             id: action.agentMessageId,
           },
         });
-        if (
-          agentMessage &&
-          isLightServerSideMCPToolConfiguration(action.toolConfiguration)
-        ) {
+        if (agentMessage) {
           const argumentsRequiringApproval =
             action.toolConfiguration.argumentsRequiringApproval ?? [];
           const argsAndValues = extractArgRequiringApprovalValues(

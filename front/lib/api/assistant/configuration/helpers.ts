@@ -177,6 +177,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         })
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
+      reinforcement: agent.reinforcement,
       canRead: isAuthor || isMember || agent.scope === "visible",
       canEdit: isAuthor || isMember,
     };

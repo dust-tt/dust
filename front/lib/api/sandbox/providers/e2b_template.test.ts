@@ -12,11 +12,11 @@ import { buildSandboxImage } from "./e2b_template";
 function createTestImage(): SandboxImage {
   return SandboxImage.fromDocker("test-image:v1")
     .registerTool(
-      { name: "tool-a", description: "Test tool A" },
+      { name: "tool-a", description: "Test tool A", runtime: "system" },
       { installCmd: "apt-get install -y tool-a" }
     )
     .registerTool(
-      { name: "tool-b", description: "Test tool B" },
+      { name: "tool-b", description: "Test tool B", runtime: "python" },
       { installCmd: "pip install tool-b" }
     )
     .withResources({ vcpu: 2, memoryMb: 1024 })

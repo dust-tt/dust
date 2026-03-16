@@ -23,7 +23,7 @@ export function FeedbackSelectorPopoverContent({
     return (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Dust will use this to improve default agents.
+          Your feedback goes to the Dust team.
         </Page.P>
       </div>
     );

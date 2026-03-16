@@ -351,6 +351,21 @@ export type ZendeskTicketFieldsResponse = z.infer<
   typeof ZendeskTicketFieldsResponseSchema
 >;
 
+// Attachment schemas
+export const ZendeskAttachmentSchema = z
+  .object({
+    id: z.number(),
+    file_name: z.string(),
+    content_url: z.string(),
+    content_type: z.string(),
+    size: z.number(),
+    inline: z.boolean().optional(),
+    deleted: z.boolean().optional(),
+  })
+  .passthrough();
+
+export type ZendeskAttachment = z.infer<typeof ZendeskAttachmentSchema>;
+
 // Ticket comment schemas
 export const ZendeskTicketCommentSchema = z
   .object({
@@ -359,6 +374,7 @@ export const ZendeskTicketCommentSchema = z
     author_id: z.number(),
     created_at: z.string(),
     plain_body: z.string().optional(),
+    attachments: z.array(ZendeskAttachmentSchema).optional(),
   })
   .passthrough();
 

@@ -16,6 +16,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -892,7 +893,7 @@ export function useAgentUsageMetrics({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetUsageMetricsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/usage-metrics?days=${days}&interval=${interval}`;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/usage-metrics?days=${days}&interval=${interval}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -955,7 +956,7 @@ export function useAgentLatency({
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}${versionParam}`;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}${versionParam}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -986,7 +987,7 @@ export function useAgentErrorRate({
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetErrorRateResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}`;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

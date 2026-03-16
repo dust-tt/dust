@@ -1,3 +1,5 @@
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import * as t from "io-ts";
@@ -777,10 +779,23 @@ export function isModjoCredentials(
   return "api_key" in credentials;
 }
 
-export type OauthAPIPostCredentialsResponse = {
+export type ModelProviderPostCredentialsBody = {
+  provider: ByokModelProviderIdType;
+  credentials: ApiKeyCredentialsType;
+};
+
+export type OauthAPIPostConnectionCredentialsResponse = {
   credential: {
     credential_id: string;
     provider: CredentialsProvider;
+    created: number;
+  };
+};
+
+export type OauthAPIPostModelProviderCredentialsResponse = {
+  credential: {
+    credential_id: string;
+    provider: ByokModelProviderIdType;
     created: number;
   };
 };

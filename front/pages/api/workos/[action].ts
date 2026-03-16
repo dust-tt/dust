@@ -1,3 +1,111 @@
+/**
+ * @swagger
+ * /api/workos/login:
+ *   get:
+ *     summary: Initiate WorkOS login
+ *     description: Redirects to WorkOS AuthKit for authentication. Supports PKCE flow for extensions.
+ *     tags:
+ *       - Private Authentication
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: redirect_uri
+ *         required: false
+ *         description: Custom redirect URI (used by extensions for PKCE flow)
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: code_challenge
+ *         required: false
+ *         description: PKCE code challenge
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: code_challenge_method
+ *         required: false
+ *         description: PKCE code challenge method (S256)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Login page HTML
+ *       302:
+ *         description: Redirect to WorkOS authorization URL
+ *       400:
+ *         description: Bad request
+ * /api/workos/authenticate:
+ *   post:
+ *     summary: Exchange code or refresh token
+ *     description: Exchanges an authorization code or refresh token for access tokens via WorkOS.
+ *     tags:
+ *       - Private Authentication
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *               grant_type:
+ *                 type: string
+ *                 enum: [refresh_token]
+ *               refresh_token:
+ *                 type: string
+ *               code_verifier:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Authentication result with tokens
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                 refreshToken:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                 expiresIn:
+ *                   type: integer
+ *                   description: Token expiry in seconds
+ *       400:
+ *         description: Invalid request
+ * /api/workos/revoke-session:
+ *   post:
+ *     summary: Revoke a session
+ *     description: Revokes a WorkOS session by session ID. Used by the Chrome extension for logout.
+ *     tags:
+ *       - Private Authentication
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session_id
+ *             properties:
+ *               session_id:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Session revoked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid session_id
+ */
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
@@ -22,8 +130,6 @@ import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { GenericServerException, OauthException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const statsDClient = getStatsDClient();
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined
@@ -137,7 +243,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     res.redirect(authorizationUrl);
   } catch (error) {
     logger.error({ error }, "Error during WorkOS login");
-    statsDClient.increment("login.error", 1);
+    getStatsDClient().increment("login.error", 1);
     res.redirect("/login-error?type=workos-login");
   }
 }
@@ -461,7 +567,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     redirectTo(res, appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
-    statsDClient.increment("login.callback.error", 1);
+    getStatsDClient().increment("login.callback.error", 1);
     redirectTo(res, `/login-error?type=workos-callback`);
   }
 }

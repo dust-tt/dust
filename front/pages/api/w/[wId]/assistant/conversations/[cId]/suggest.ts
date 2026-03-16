@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessage } from "@app/lib/api/assistant/conversation";

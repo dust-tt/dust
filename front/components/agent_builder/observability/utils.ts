@@ -11,6 +11,7 @@ import type { SourceChartDatum } from "@app/components/agent_builder/observabili
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import moment from "moment-timezone";
 
 export type VersionMarker = { version: string; timestamp: number };
 
@@ -136,11 +137,11 @@ export function findVersionMarkerForDate(
   return null;
 }
 
-const truncateToMidnightUTC = (timestamp: number): number => {
+function truncateToMidnightUTC(timestamp: number): number {
   const date = new Date(timestamp);
   date.setUTCHours(0, 0, 0, 0);
   return date.getTime();
-};
+}
 
 // Filters a generic time-series of points with a `timestamp` number to the
 // selected version window determined by version markers. If no selection or
@@ -184,20 +185,20 @@ export function filterTimeSeriesByVersionWindow<
   });
 }
 
-export function formatUTCDateString(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-export function getTimeRangeBounds(periodDays: number): [string, string] {
-  const endUTC = Date.now();
-  const startUTC = endUTC - periodDays * 24 * 60 * 60 * 1000;
-  return [
-    formatUTCDateString(new Date(startUTC)),
-    formatUTCDateString(new Date(endUTC)),
-  ];
+// Generates an array of midnight timestamps for each day in the range,
+// stepping via moment to respect DST transitions.
+export function getDayTimestamps(
+  periodDays: number,
+  timezone: string
+): number[] {
+  const startOfTomorrow = moment.tz(timezone).add(1, "day").startOf("day");
+  const cursor = startOfTomorrow.clone().subtract(periodDays, "days");
+  const timestamps: number[] = [];
+  while (cursor.isBefore(startOfTomorrow)) {
+    timestamps.push(cursor.valueOf());
+    cursor.add(1, "day");
+  }
+  return timestamps;
 }
 
 // Pads a time-series with zero-value points at the selected time-range bounds
@@ -206,8 +207,10 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
   points: T[] | undefined,
   mode: ObservabilityMode,
   periodDays: number,
-  zeroFactory: (timestamp: number) => T
+  zeroFactory: (timestamp: number) => T,
+  timezone?: string
 ) {
+  const tz = timezone ?? "UTC";
   const pts = points ?? [];
   if (mode !== "timeRange") {
     return pts.map((pt) => ({
@@ -216,24 +219,14 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
     }));
   }
 
-  const [startDate, endDate] = getTimeRangeBounds(periodDays);
-  const startTime = new Date(startDate + "T00:00:00Z").getTime();
-  const endTime = new Date(endDate + "T00:00:00Z").getTime();
-
   const byTimestamp = new Map<number, T>(pts.map((p) => [p.timestamp, p]));
+  const dayTimestamps = getDayTimestamps(periodDays, tz);
 
-  const dayMs = 24 * 60 * 60 * 1000;
-  const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
-
-  const out = [];
-  for (let i = 0; i < numDays; i++) {
-    const timestamp = startTime + i * dayMs;
+  return dayTimestamps.map((timestamp) => {
     const point = byTimestamp.get(timestamp) ?? zeroFactory(timestamp);
-    const formattedPoint = {
+    return {
       ...point,
       date: formatShortDate(point.timestamp),
     };
-    out.push(formattedPoint);
-  }
-  return out;
+  });
 }

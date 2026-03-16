@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
@@ -119,6 +120,7 @@ async function handler(
           templateId: agentConfiguration.templateId,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           tags: agentConfiguration.tags,
+          reinforcement: agentConfiguration.reinforcement,
           canRead: agentConfiguration.canRead,
           canEdit: agentConfiguration.canEdit,
           editors: [],

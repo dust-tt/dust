@@ -510,12 +510,17 @@ describe("analyzeConversation", () => {
       messageId: lastMessage.sId,
     });
 
-    // Verify the prompt passed to renderConversationForModel contains the history.
-    expect(mockRenderConversation).toHaveBeenCalledOnce();
-    const promptArg = mockRenderConversation.mock.calls[0][1].prompt;
-    expect(promptArg).toContain("DISMISSED");
-    expect(promptArg).toContain("Better Title");
-    expect(promptArg).toContain("Do NOT re-suggest titles that were DISMISSED");
+    // Verify that at least one of the prompts passed to renderConversationForModel
+    // contains the dismissed suggestion history (from the rename evaluator).
+    const allPrompts = mockRenderConversation.mock.calls.map(
+      (call) => call[1].prompt
+    );
+    const renamePrompt = allPrompts.find((p) => p.includes("DISMISSED"));
+    expect(renamePrompt).toBeDefined();
+    expect(renamePrompt).toContain("Better Title");
+    expect(renamePrompt).toContain(
+      "Do NOT re-suggest titles that were DISMISSED"
+    );
   });
 
   describe("rename_title throttling", () => {

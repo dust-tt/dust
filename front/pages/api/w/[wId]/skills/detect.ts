@@ -1,6 +1,8 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   detectSkillsFromGitHubRepo,
+  initGitHubRepoClient,
   isSkillFromGitHubRepo,
 } from "@app/lib/api/skills/detection/github/detect_skills";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
@@ -62,10 +64,18 @@ async function handler(
       }
 
       const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
-      const result = await detectSkillsFromGitHubRepo({
-        repoUrl,
-        accessToken,
-      });
+      const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
+      if (clientResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: clientResult.error.message,
+          },
+        });
+      }
+
+      const result = await detectSkillsFromGitHubRepo(clientResult.value);
 
       if (result.isErr()) {
         const { error } = result;

@@ -18,7 +18,7 @@ import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/we
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -108,7 +108,9 @@ async function handleWebbrowser(
   if (!agentLoopContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const { toolConfiguration } = agentLoopContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&

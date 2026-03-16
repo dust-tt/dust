@@ -16,8 +16,8 @@ import {
   validateGeminiImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
@@ -43,8 +43,7 @@ export function createImageGenerationTools(
         "Generating image..."
       );
 
-      const statsDClient = getStatsDClient();
-      statsDClient.increment("tools.image_generation.generated", 1, [
+      getStatsDClient().increment("tools.image_generation.generated", 1, [
         `aspect_ratio:${aspectRatio}`,
         `image_count:${referenceImages?.length ?? 0}`,
         `quality:${quality}`,
@@ -59,7 +58,9 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      const credentials = await ProviderCredentialResource.getCredentials(auth);
+      const credentials = await getLlmCredentials(auth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       const gemini = new GoogleGenAI({
         apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
       });
@@ -171,7 +172,7 @@ export function createImageGenerationTools(
 
       const imageParts = validationResult.value;
 
-      trackGeminiTokenUsage(response, statsDClient);
+      trackGeminiTokenUsage(response);
 
       if (response.usageMetadata) {
         const { inputTokens, outputTokens, totalTokens, costDetails } =

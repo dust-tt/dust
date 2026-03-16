@@ -31,7 +31,7 @@ export class FrontMcpService extends McpService {
    * Create an MCP server for a workspace
    * This is the core implementation that creates the workspace-scoped server
    */
-  createServerForWorkspace(): McpServer | null {
+  private createServerForWorkspace(): McpServer | null {
     try {
       const server = new McpServer(
         {
@@ -52,7 +52,6 @@ export class FrontMcpService extends McpService {
       // Register all tools with the server.
       registerAllTools(server, this.frontContext);
 
-      this.server = server;
       return server;
     } catch (error) {
       console.error("Error creating MCP server:", error);
@@ -76,7 +75,6 @@ export class FrontMcpService extends McpService {
     try {
       // If we already have a transport for this workspace, reuse it.
       if (this.transport) {
-        console.log("Transport already exists, reusing");
         return;
       }
 
@@ -93,7 +91,8 @@ export class FrontMcpService extends McpService {
       // Connect the server to the transport.
       await server.connect(transport);
 
-      // Store the transport for future reuse.
+      // Store the server and transport for future reuse.
+      this.server = server;
       this.transport = transport;
     } catch (error) {
       console.error("Failed to connect MCP server:", error);
@@ -110,38 +109,24 @@ export class FrontMcpService extends McpService {
     onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }> {
     try {
-      // Reuse existing server if we have one
-      if (this.server) {
-        // Connect if not already connected
-        await this.connectServer(this.server, owner, onServerIdReceived);
-        return {
-          server: this.server,
-          serverId: this.serverId,
-        };
+      // Reuse existing server if we have one.
+      if (this.server && this.transport) {
+        return { server: this.server, serverId: this.serverId };
       }
 
-      // Create a new server if we don't have one
+      // Create a new server if we don't have one.
       const server = this.createServerForWorkspace();
       if (!server) {
-        return {
-          server: null,
-          serverId: undefined,
-        };
+        return { server: null, serverId: undefined };
       }
 
-      // Connect the server
+      // Connect the server.
       await this.connectServer(server, owner, onServerIdReceived);
 
-      return {
-        server: server,
-        serverId: this.serverId,
-      };
+      return { server: this.server, serverId: this.serverId };
     } catch (error) {
       console.error("Error getting or creating MCP server:", error);
-      return {
-        server: null,
-        serverId: undefined,
-      };
+      return { server: null, serverId: undefined };
     }
   }
 
@@ -157,10 +142,12 @@ export class FrontMcpService extends McpService {
    * Disconnect and clean up the current server connection
    */
   async disconnect(): Promise<void> {
-    if (this.transport) {
-      await this.transport.close();
-      this.transport = null;
+    const transport = this.transport;
+    this.transport = null;
+    this.server = null;
+    this.serverId = undefined;
+    if (transport) {
+      await transport.close();
     }
-    // Note: We keep the serverId for potential reconnection.
   }
 }

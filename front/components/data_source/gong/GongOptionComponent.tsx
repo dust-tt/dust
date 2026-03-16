@@ -223,9 +223,9 @@ function PermissionProfileSelector({
     >
       <ContextItem.Description>
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          Filter calls by participant group. Only calls where at least one
-          participant is assigned to the selected profile will be synced.
-          Changing the filter only affects future syncs.
+          Filter calls by Gong permission profile. Only calls involving users
+          listed in the selected profile's "Specific Teams" section will be
+          synced. Changing the filter only affects future syncs.
         </div>
       </ContextItem.Description>
     </ContextItem>

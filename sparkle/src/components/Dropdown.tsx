@@ -707,22 +707,27 @@ const DropdownMenuSearchbar = React.forwardRef<
 
 DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
 
-export interface DropdownMenuFilterOption {
+export interface DropdownMenuFilterOption<T extends string = string> {
   label: string;
-  value: string;
+  value: T;
 }
 
-interface DropdownMenuFiltersProps {
-  filters: DropdownMenuFilterOption[];
-  selectedValues: string[];
-  onSelectFilter: (value: string) => void;
+interface DropdownMenuFiltersProps<T extends string> {
+  filters: DropdownMenuFilterOption<T>[];
+  selectedValues: T[];
+  onSelectFilter: (value: T) => void;
   className?: string;
 }
 
-const DropdownMenuFilters = React.forwardRef<
-  HTMLDivElement,
-  DropdownMenuFiltersProps
->(({ filters, selectedValues = [], onSelectFilter, className }, ref) => {
+const DropdownMenuFiltersInner = <T extends string>(
+  {
+    filters,
+    selectedValues = [] as T[],
+    onSelectFilter,
+    className,
+  }: DropdownMenuFiltersProps<T>,
+  ref: React.ForwardedRef<HTMLDivElement>
+) => {
   const multiSelectionValues = Array.isArray(selectedValues)
     ? selectedValues
     : [];
@@ -747,7 +752,14 @@ const DropdownMenuFilters = React.forwardRef<
       })}
     </div>
   );
-});
+};
+
+const DropdownMenuFilters = React.forwardRef(DropdownMenuFiltersInner) as {
+  <T extends string>(
+    props: DropdownMenuFiltersProps<T> & React.RefAttributes<HTMLDivElement>
+  ): React.ReactElement | null;
+  displayName?: string;
+};
 
 DropdownMenuFilters.displayName = "DropdownMenuFilters";
 

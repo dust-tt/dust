@@ -65,14 +65,16 @@ export async function stopReinforcedAgentWorkflow({
 
 export async function startReinforcedAgentWorkspaceWorkflow({
   workspaceId,
+  useBatchMode,
 }: {
   workspaceId: string;
+  useBatchMode: boolean;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = `reinforced-agent-workspace-${workspaceId}-manual-${Date.now()}`;
 
   await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
-    args: [{ workspaceId }],
+    args: [{ workspaceId, useBatchMode }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });
@@ -87,15 +89,17 @@ export async function startReinforcedAgentWorkspaceWorkflow({
 export async function startReinforcedAgentForAgentWorkflow({
   workspaceId,
   agentConfigurationId,
+  useBatchMode,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  useBatchMode: boolean;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = `reinforced-agent-${workspaceId}-${agentConfigurationId}-manual-${Date.now()}`;
 
   await client.workflow.start(reinforcedAgentForAgentWorkflow, {
-    args: [{ workspaceId, agentConfigurationId }],
+    args: [{ workspaceId, agentConfigurationId, useBatchMode }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

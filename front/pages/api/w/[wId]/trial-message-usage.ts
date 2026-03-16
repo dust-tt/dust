@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

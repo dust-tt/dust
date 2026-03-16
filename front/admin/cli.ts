@@ -7,6 +7,7 @@ import {
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -16,7 +17,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -511,7 +511,9 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const renderedConvo = convoRes.value;
       const messages = renderedConvo.modelConversation.messages;
 
-      const credentials = await ProviderCredentialResource.getCredentials(auth);
+      const credentials = await getLlmCredentials(auth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       const tokenCountRes = await tokenCountForTexts(
         getTextRepresentationFromMessages(messages),
         model,

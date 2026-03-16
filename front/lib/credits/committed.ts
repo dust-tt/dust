@@ -21,8 +21,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import type Stripe from "stripe";
 
-const statsDClient = getStatsDClient();
-
 export async function startCreditFromProOneOffInvoice({
   auth,
   invoice,
@@ -55,7 +53,7 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Invalid credit amount in invoice metadata"
     );
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:pro",
@@ -76,7 +74,7 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Credit not found for invoice"
     );
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:pro",
@@ -96,14 +94,14 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Error starting credit"
     );
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:pro",
     ]);
     return new Err(startResult.error);
   }
-  statsDClient.increment("credits.top_up.success", 1, [
+  getStatsDClient().increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:committed",
     "customer:pro",
@@ -279,7 +277,7 @@ export async function createEnterpriseCreditPurchase({
       },
       "[Credit Purchase] Failed to start credit after creation"
     );
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:enterprise",
@@ -287,7 +285,7 @@ export async function createEnterpriseCreditPurchase({
     return new Err(startResult.error);
   }
 
-  statsDClient.increment("credits.top_up.success", 1, [
+  getStatsDClient().increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:committed",
     "customer:enterprise",

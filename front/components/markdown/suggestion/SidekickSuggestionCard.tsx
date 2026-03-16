@@ -15,6 +15,8 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
@@ -444,19 +446,95 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
     void rejectSuggestion(agentSuggestion);
   };
 
+  const isReasoningOnlyChange =
+    relations.model?.modelId === modelSettingsField.value?.modelId;
+
+  const effort =
+    suggestion.reasoningEffort ?? relations.model?.defaultReasoningEffort;
+  const formattedReasoning = effort
+    ? effort.charAt(0).toUpperCase() + effort.slice(1)
+    : "Default";
+
   return (
     <ActionCardBlock
-      title={`Change model to: ${modelName}`}
+      title={
+        isReasoningOnlyChange
+          ? `Change model reasoning to: ${formattedReasoning}`
+          : `Change model to: ${modelName}`
+      }
+      acceptedTitle={`Model changed to ${modelName} with ${formattedReasoning} reasoning`}
+      rejectedTitle={`${modelName} model with ${formattedReasoning} reasoning suggestion rejected`}
       description={analysis ?? undefined}
       state={cardState}
       applyLabel="Accept"
-      acceptedTitle={`Model changed to ${modelName}`}
-      rejectedTitle={`${modelName} model suggestion rejected`}
       actionsPosition="header"
       onClickAccept={() => handleAccept(agentSuggestion)}
       onClickReject={() => handleReject(agentSuggestion)}
     />
   );
+}
+
+const KNOWLEDGE_METHOD_ACTION_VERB: Record<string, string> = {
+  search: "Search",
+  query_tables: "Query",
+};
+
+function buildNewKnowledgeAction(
+  serverView: MCPServerViewType,
+  method: string,
+  dataSourceView: DataSourceViewType,
+  displayName: string,
+  description: string | null,
+  currentActions: AgentBuilderFormData["actions"]
+): ReturnType<typeof getDefaultMCPAction> {
+  const newAction = getDefaultMCPAction(serverView);
+  if (method === "query_tables") {
+    newAction.name = generateUniqueActionName({
+      baseName: nameToStorageFormat(`query ${displayName}`),
+      existingActions: currentActions,
+    });
+    newAction.description = description ?? `Query tables in ${displayName}`;
+    const tableConfig = defaultSelectionConfiguration(dataSourceView);
+    newAction.configuration.tablesConfigurations = {
+      [dataSourceView.sId]: { ...tableConfig, isSelectAll: true },
+    };
+    return newAction;
+  }
+  const actionVerb = KNOWLEDGE_METHOD_ACTION_VERB[method] ?? "Search";
+  newAction.name = generateUniqueActionName({
+    baseName: nameToStorageFormat(`${actionVerb.toLowerCase()} ${displayName}`),
+    existingActions: currentActions,
+  });
+  newAction.description = description ?? `${actionVerb} ${displayName}`;
+  newAction.configuration.dataSourceConfigurations = {
+    [dataSourceView.sId]: {
+      dataSourceView,
+      selectedResources: [],
+      excludedResources: [],
+      isSelectAll: true,
+      tagsFilter: null,
+    },
+  };
+  return newAction;
+}
+
+function actionIncludesDataSourceView(
+  action: AgentBuilderFormData["actions"][number],
+  dataSourceViewSId: string,
+  isQueryTables: boolean
+): boolean {
+  const config = isQueryTables
+    ? action.configuration.tablesConfigurations
+    : action.configuration.dataSourceConfigurations;
+  return config != null && dataSourceViewSId in config;
+}
+
+function removeFirstWhere<T>(arr: T[], predicate: (item: T) => boolean): T[] {
+  const i = arr.findIndex(predicate);
+  if (i === -1) {
+    return arr;
+  }
+  return [...arr.slice(0, i), ...arr.slice(i + 1)];
 }
 
 interface KnowledgeSuggestionCardProps {
@@ -472,45 +550,42 @@ function KnowledgeSuggestionCard({
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
-  const dataSourceView = relations.dataSourceView;
+  const { dataSourceView, serverView } = relations;
+  const method = suggestion.method ?? "search";
+  const isQueryTables = method === "query_tables";
   const displayName = getDisplayNameForDataSource(dataSourceView.dataSource);
 
   const handleAccept = async (
     agentSuggestion: AgentKnowledgeSuggestionWithRelationsType
   ) => {
+    if (!serverView) {
+      return;
+    }
     const success = await acceptSuggestion(agentSuggestion);
     if (!success) {
       return;
     }
-
     const currentActions = getValues("actions");
-    if (isAddition) {
-      const newAction = getDefaultMCPAction(relations.searchServerView);
-      newAction.name = generateUniqueActionName({
-        baseName: nameToStorageFormat(`search ${displayName}`),
-        existingActions: currentActions,
-      });
-      newAction.description = suggestion.description ?? `Search ${displayName}`;
-      newAction.configuration.dataSourceConfigurations = {
-        [dataSourceView.sId]: {
-          dataSourceView: dataSourceView,
-          selectedResources: [],
-          excludedResources: [],
-          isSelectAll: true,
-          tagsFilter: null,
-        },
-      };
-
-      setValue("actions", [...currentActions, newAction], {
-        shouldDirty: true,
-      });
-    } else {
-      const filteredActions = currentActions.filter((action) => {
-        const dsConfigs = action.configuration.dataSourceConfigurations;
-        return !dsConfigs || !(dataSourceView.sId in dsConfigs);
-      });
-      setValue("actions", filteredActions, { shouldDirty: true });
-    }
+    const nextActions = isAddition
+      ? [
+          ...currentActions,
+          buildNewKnowledgeAction(
+            serverView,
+            method,
+            dataSourceView,
+            displayName,
+            suggestion.description ?? null,
+            currentActions
+          ),
+        ]
+      : removeFirstWhere(currentActions, (action) =>
+          actionIncludesDataSourceView(
+            action,
+            dataSourceView.sId,
+            isQueryTables
+          )
+        );
+    setValue("actions", nextActions, { shouldDirty: true });
   };
 
   const handleReject = (

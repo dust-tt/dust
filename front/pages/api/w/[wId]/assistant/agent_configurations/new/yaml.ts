@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

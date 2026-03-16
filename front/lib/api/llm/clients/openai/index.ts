@@ -26,6 +26,7 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import { APIError, OpenAI, toFile } from "openai";
@@ -189,6 +190,10 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
       case "expired":
       case "cancelling":
       case "cancelled":
+        logger.warn(
+          { batchId, status: batch.status, provider: "openai" },
+          "LLM Batch has been aborted"
+        );
         return "aborted";
       default:
         assertNever(batch.status);
@@ -215,9 +220,9 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
 
       const parsed = openAIBatchOutputLineSchema.safeParse(JSON.parse(trimmed));
       if (!parsed.success) {
-        throw new Error(
-          `Failed to parse OpenAI batch output line: ${parsed.error.message}`
-        );
+        const message = `Failed to parse OpenAI batch output line: ${parsed.error.message}`;
+        logger.warn({ batchId, provider: "openai" }, message);
+        throw new Error(message);
       }
 
       const { custom_id, response, error } = parsed.data;

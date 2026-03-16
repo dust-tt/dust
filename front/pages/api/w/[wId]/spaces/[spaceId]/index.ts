@@ -1,3 +1,174 @@
+/**
+ * @swagger
+ * /api/w/{wId}/spaces/{spaceId}:
+ *   get:
+ *     summary: Get a space
+ *     description: Returns the details of a specific space including categories, members, and permissions.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeAllMembers
+ *         required: false
+ *         description: Include all members (including inactive)
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/PrivateSpace'
+ *                     - type: object
+ *                       properties:
+ *                         categories:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: object
+ *                             properties:
+ *                               count:
+ *                                 type: integer
+ *                               usage:
+ *                                 type: object
+ *                                 properties:
+ *                                   count:
+ *                                     type: integer
+ *                                   agents:
+ *                                     type: array
+ *                                     items:
+ *                                       type: object
+ *                         canWrite:
+ *                           type: boolean
+ *                         canRead:
+ *                           type: boolean
+ *                         isMember:
+ *                           type: boolean
+ *                         isEditor:
+ *                           type: boolean
+ *                         members:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         description:
+ *                           type: string
+ *                           nullable: true
+ *                         archivedAt:
+ *                           type: integer
+ *                           nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Update a space
+ *     description: Updates the properties of a specific space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               content:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     dataSourceId:
+ *                       type: string
+ *                     parentsIn:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete a space
+ *     description: Deletes a specific space from the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: force
+ *         required: false
+ *         description: Force deletion even if space is in use
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ */
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

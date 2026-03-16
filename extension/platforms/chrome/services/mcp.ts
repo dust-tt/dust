@@ -23,7 +23,7 @@ export class ChromeMcpService extends McpService {
     this.captureService = captureService;
   }
 
-  createServerForWorkspace(workspaceId: string): McpServer | null {
+  private createServerForWorkspace(workspaceId: string): McpServer | null {
     try {
       const server = new McpServer(
         {
@@ -43,7 +43,6 @@ export class ChromeMcpService extends McpService {
 
       registerAllTools(server, this.captureService, workspaceId);
 
-      this.server = server;
       return server;
     } catch (error) {
       console.error("Error creating MCP server:", error);
@@ -76,6 +75,7 @@ export class ChromeMcpService extends McpService {
 
       await server.connect(transport);
 
+      this.server = server;
       this.transport = transport;
     } catch (error) {
       console.error("Failed to connect MCP server:", error);
@@ -88,8 +88,7 @@ export class ChromeMcpService extends McpService {
     onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }> {
     try {
-      if (this.server) {
-        await this.connectServer(this.server, owner, onServerIdReceived);
+      if (this.server && this.transport) {
         return { server: this.server, serverId: this.serverId };
       }
 
@@ -99,7 +98,7 @@ export class ChromeMcpService extends McpService {
       }
 
       await this.connectServer(server, owner, onServerIdReceived);
-      return { server, serverId: this.serverId };
+      return { server: this.server, serverId: this.serverId };
     } catch (error) {
       console.error("Error getting or creating MCP server:", error);
       return { server: null, serverId: undefined };
@@ -111,9 +110,12 @@ export class ChromeMcpService extends McpService {
   }
 
   async disconnect(): Promise<void> {
-    if (this.transport) {
-      await this.transport.close();
-      this.transport = null;
+    const transport = this.transport;
+    this.transport = null;
+    this.server = null;
+    this.serverId = undefined;
+    if (transport) {
+      await transport.close();
     }
   }
 }

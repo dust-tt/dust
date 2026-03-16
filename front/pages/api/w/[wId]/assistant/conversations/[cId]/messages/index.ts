@@ -1,3 +1,123 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages:
+ *   get:
+ *     summary: List messages in a conversation
+ *     description: Retrieve a paginated list of messages for a specific conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     oneOf:
+ *                       - $ref: '#/components/schemas/PrivateUserMessage'
+ *                       - $ref: '#/components/schemas/PrivateLightAgentMessage'
+ *                       - $ref: '#/components/schemas/PrivateContentFragment'
+ *                 hasMore:
+ *                   type: boolean
+ *                 lastValue:
+ *                   type: integer
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Post a message to a conversation
+ *     description: Post a new user message to an existing conversation, triggering agent responses.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - context
+ *               - mentions
+ *             properties:
+ *               content:
+ *                 type: string
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PrivateMention'
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   timezone:
+ *                     type: string
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     nullable: true
+ *                   origin:
+ *                     type: string
+ *                     nullable: true
+ *                   clientSideMCPServerIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *               skipToolsValidation:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Successfully posted message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *                 contentFragments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateContentFragment'
+ *                 agentMessages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateAgentMessage'
+ *       401:
+ *         description: Unauthorized
+ */
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
@@ -26,8 +146,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const statsDClient = getStatsDClient();
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
@@ -114,7 +232,7 @@ async function handler(
 
       const messageLatency = performance.now() - messageStartTime;
 
-      statsDClient.distribution(
+      getStatsDClient().distribution(
         "assistant.messages.fetch.latency",
         messageLatency
       );
@@ -122,7 +240,10 @@ async function handler(
         JSON.stringify(messagesRes.value),
         "utf8"
       );
-      statsDClient.distribution("assistant.messages.fetch.raw_size", rawSize);
+      getStatsDClient().distribution(
+        "assistant.messages.fetch.raw_size",
+        rawSize
+      );
 
       res.status(200).json(messagesRes.value);
       break;

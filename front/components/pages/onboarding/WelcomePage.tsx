@@ -94,11 +94,7 @@ function UserProfileStep({
   }, [formData.jobType]);
 
   return (
-    <OnboardingLayout
-      owner={owner}
-      headerTitle="Joining Dust"
-      headerRightActions={<Button label="Next" size="sm" onClick={onNext} />}
-    >
+    <OnboardingLayout owner={owner}>
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello ${formData.firstName || "there"}!`}
@@ -213,19 +209,7 @@ function FavoritePlatformsStep({
   isSubmitting,
 }: FavoritePlatformsStepProps) {
   return (
-    <OnboardingLayout
-      owner={owner}
-      headerTitle="Joining Dust"
-      headerRightActions={
-        <Button
-          label="Next"
-          disabled={isSubmitting}
-          isLoading={isSubmitting}
-          size="sm"
-          onClick={onSubmit}
-        />
-      }
-    >
+    <OnboardingLayout owner={owner}>
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header title="What are your favorite platforms?" />
         <p className="text-muted-foreground dark:text-muted-foreground-night">

@@ -45,6 +45,7 @@ export type TabInfo = {
 
 export type TabActionMessage =
   | { type: "LIST_TABS" }
+  | { type: "GET_CURRENT_TAB_INFO" }
   | { type: "ACTIVATE_TAB"; tabId: number }
   | { type: "CLOSE_TAB"; tabId: number }
   | { type: "OPEN_TAB"; url: string }
@@ -83,6 +84,58 @@ export type RouteChangeMesssage = {
 
 export type CaptureFullPageMessage = {
   type: "PAGE_CAPTURE_FULL_PAGE";
+};
+
+export type GetPageElementsMessage = {
+  type: "GET_ELEMENTS";
+  tabId: number;
+};
+export type GetPageElementsResponse = { elements: string; error?: string };
+
+export type ClickPageElementMessage = {
+  type: "CLICK_ELEMENT";
+  tabId: number;
+  elementId: string;
+};
+export type ClickPageElementResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
+
+export type TypeTextMessage = {
+  type: "TYPE_TEXT";
+  tabId: number;
+  elementId: string;
+  text: string;
+  variant: "replace" | "append";
+};
+
+export type TypeTextResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
+
+export type DeleteTextMessage = {
+  type: "DELETE_TEXT";
+  tabId: number;
+  elementId: string;
+};
+
+export type DeleteTextResponse = {
+  success: boolean;
+  elementsDiff?: string;
+  error?: string;
+};
+
+export type GetSessionInfoMessage = {
+  type: "GET_SESSION_INFO";
+};
+
+export type GetSessionInfoResponse = {
+  tabsCount: number;
+  currentTabHasForm: boolean;
 };
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
@@ -215,9 +268,95 @@ export const sendListTabsMessage = () => {
   });
 };
 
+export const sendGetCurrentTabInfoMessage = () => {
+  return sendMessage<TabActionMessage, TabActionResponse>({
+    type: "GET_CURRENT_TAB_INFO",
+  });
+};
+
 export const sendTabActionMessage = (message: TabActionMessage) => {
   return sendMessage<TabActionMessage, TabActionResponse>(message);
 };
+
+export function sendInteractWithPageMessage(input: {
+  action: "get_elements";
+  tabId: number;
+}): Promise<GetPageElementsResponse>;
+
+export function sendInteractWithPageMessage(input: {
+  action: "click_element";
+  tabId: number;
+  elementId: string;
+}): Promise<ClickPageElementResponse>;
+
+export function sendInteractWithPageMessage(input: {
+  action: "type_text";
+  tabId: number;
+  elementId: string;
+  text: string;
+  variant: "replace" | "append";
+}): Promise<TypeTextResponse>;
+
+export function sendInteractWithPageMessage(input: {
+  action: "delete_text";
+  tabId: number;
+  elementId: string;
+}): Promise<DeleteTextResponse>;
+
+export function sendInteractWithPageMessage(
+  input:
+    | { action: "get_elements"; tabId: number }
+    | {
+        action: "click_element";
+        tabId: number;
+        elementId: string;
+      }
+    | {
+        action: "type_text";
+        tabId: number;
+        elementId: string;
+        text: string;
+        variant: "replace" | "append";
+      }
+    | {
+        action: "delete_text";
+        tabId: number;
+        elementId: string;
+      }
+): Promise<
+  | GetPageElementsResponse
+  | ClickPageElementResponse
+  | TypeTextResponse
+  | DeleteTextResponse
+> {
+  switch (input.action) {
+    case "get_elements":
+      return sendMessage<GetPageElementsMessage, GetPageElementsResponse>({
+        type: "GET_ELEMENTS",
+        tabId: input.tabId,
+      });
+    case "click_element":
+      return sendMessage<ClickPageElementMessage, ClickPageElementResponse>({
+        type: "CLICK_ELEMENT",
+        elementId: input.elementId,
+        tabId: input.tabId,
+      });
+    case "type_text":
+      return sendMessage<TypeTextMessage, TypeTextResponse>({
+        type: "TYPE_TEXT",
+        tabId: input.tabId,
+        elementId: input.elementId,
+        text: input.text,
+        variant: input.variant,
+      });
+    case "delete_text":
+      return sendMessage<DeleteTextMessage, DeleteTextResponse>({
+        type: "DELETE_TEXT",
+        tabId: input.tabId,
+        elementId: input.elementId,
+      });
+  }
+}
 
 // Messages from background script to content script
 
@@ -229,3 +368,10 @@ export const sendAttachSelection = (
     ...opts,
   });
 };
+
+export const sendGetSessionInfoMessage =
+  (): Promise<GetSessionInfoResponse> => {
+    return sendMessage<GetSessionInfoMessage, GetSessionInfoResponse>({
+      type: "GET_SESSION_INFO",
+    });
+  };

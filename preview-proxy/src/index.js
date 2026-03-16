@@ -16,7 +16,7 @@ export default {
 
     if (separatorIndex === -1) {
       return new Response(
-        "Expected format: <branch>--<app|poke|app-worker|poke-worker>.preview.dust.tt",
+        "Expected format: <branch>--<app|poke>.preview.dust.tt",
         { status: 400 }
       );
     }
@@ -24,7 +24,7 @@ export default {
     const branch = prefix.slice(0, separatorIndex);
     const target = prefix.slice(separatorIndex + 2);
 
-    // Check if targeting Workers (suffix "-worker") or Pages (default)
+    // Check if targeting Workers (suffix "-worker") - legacy migration, removing.
     const isWorker = target.endsWith("-worker");
     const project = isWorker ? target.slice(0, -"-worker".length) : target;
     const projectName = PROJECTS[project];
@@ -36,12 +36,7 @@ export default {
     }
 
     const upstreamUrl = new URL(url);
-    if (isWorker) {
-      // Workers version preview alias: branch-app-dust-tt.dust-account.workers.dev
-      upstreamUrl.hostname = `${branch}-${projectName}.${WORKERS_SUBDOMAIN}`;
-    } else {
-      upstreamUrl.hostname = `${branch}.${projectName}.pages.dev`;
-    }
+    upstreamUrl.hostname = `${branch}-${projectName}.${WORKERS_SUBDOMAIN}`;
 
     const headers = new Headers(request.headers);
     headers.set("Host", upstreamUrl.hostname);

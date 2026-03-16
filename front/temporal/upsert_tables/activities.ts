@@ -11,8 +11,6 @@ import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
-const statsDClient = getStatsDClient();
-
 export async function upsertTableActivity(
   upsertQueueId: string,
   enqueueTimestamp: number
@@ -109,8 +107,12 @@ export async function upsertTableActivity(
       },
       "[UpsertQueue] Failed table upsert"
     );
-    statsDClient.increment("upsert_queue_table_error.count", 1, statsDTags);
-    statsDClient.distribution(
+    getStatsDClient().increment(
+      "upsert_queue_table_error.count",
+      1,
+      statsDTags
+    );
+    getStatsDClient().distribution(
       "upsert_queue_upsert_table_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
@@ -134,13 +136,17 @@ export async function upsertTableActivity(
     },
     "[UpsertQueue] Successful table upsert"
   );
-  statsDClient.increment("upsert_queue_table_success.count", 1, statsDTags);
-  statsDClient.distribution(
+  getStatsDClient().increment(
+    "upsert_queue_table_success.count",
+    1,
+    statsDTags
+  );
+  getStatsDClient().distribution(
     "upsert_queue_upsert_table_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
-  statsDClient.distribution(
+  getStatsDClient().distribution(
     "upsert_queue_table.duration.distribution",
     Date.now() - enqueueTimestamp,
     []

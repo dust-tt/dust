@@ -8,6 +8,10 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import {
+  DUST_ANONYMOUS_ID_COOKIE,
+  getOrCreateAnonymousId,
+} from "@app/lib/utils/anonymous_id";
 import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
 import posthog from "posthog-js";
@@ -165,6 +169,21 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
           }
         }
 
+        // Inject the persistent anonymous device ID from the _dust_aid cookie
+        // so pre-signup events can be stitched to identified users later.
+        const aidCookie = document.cookie
+          .split("; ")
+          .find((c) => c.startsWith(`${DUST_ANONYMOUS_ID_COOKIE}=`));
+        if (aidCookie) {
+          event.properties["dust_anonymous_id"] = aidCookie.split("=")[1];
+        }
+
+        // Inject referrer and user-agent as non-PII event properties.
+        if (document.referrer) {
+          event.properties["$referrer"] = document.referrer;
+        }
+        event.properties["user_agent"] = navigator.userAgent;
+
         return event;
       },
       session_recording: {
@@ -194,6 +213,14 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       disable_session_recording: false,
     });
     posthog.startSessionRecording();
+
+    // Register the anonymous device ID as a super property so it persists
+    // across events after persistence upgrade.
+    const anonymousId = getOrCreateAnonymousId();
+    if (anonymousId) {
+      posthog.register({ dust_anonymous_id: anonymousId });
+    }
+
     hasUpgradedPersistence.current = true;
   }, [hasAcceptedCookies]);
 
@@ -212,6 +239,20 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     if (lastIdentifiedUserId.current !== user.sId) {
       posthog.identify(user.sId);
       lastIdentifiedUserId.current = user.sId;
+
+      // Set first-touch attribution as $set_once person properties so the
+      // earliest UTM/click-ID values are permanently recorded on the profile.
+      const storedParams = getStoredUTMParams();
+      const firstTouchProps: Record<string, string> = {};
+      for (const param of MARKETING_PARAMS) {
+        const value = storedParams[param];
+        if (value) {
+          firstTouchProps[`first_${param}`] = value;
+        }
+      }
+      if (Object.keys(firstTouchProps).length > 0) {
+        posthog.setPersonProperties({}, firstTouchProps);
+      }
     }
   }, [hasAcceptedCookies, user]);
 

@@ -1199,31 +1199,31 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        // For the Embedder, we deliberately don't rely on passed credentials, to avoid using
-        // user creds in Dust app scenarios (unlike in LLM scenarios, where we want to use them).
-        // We only use it as a fallback for local development.
-        let raw_openai_key_env = match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-            Ok(v) => v,
-            Err(_) => match credentials.get("OPENAI_API_KEY") {
-                Some(api_key) => api_key.clone(),
-                None => {
-                    return Err(anyhow!(
-                        "CORE_DATA_SOURCES_OPENAI_API_KEY or OPENAI_API_KEY must be set."
-                    ));
-                }
-            },
-        };
+        // BYOK workspaces pass OPENAI_EMBEDDING_API_KEY in credentials (separate from
+        // OPENAI_API_KEY to avoid Dust apps accidentally using their LLM key for embedding).
+        // Non-BYOK and Dust apps fall back to the CORE_DATA_SOURCES_OPENAI_API_KEY env var.
+        if let Some(embedding_key) = credentials.get("OPENAI_EMBEDDING_API_KEY") {
+            self.api_key = Some(embedding_key.clone());
+            // TODO(BYOK): add support openai EU host
+            self.host = Some("api.openai.com".to_string());
+        } else {
+            let raw_key = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
+                anyhow!(
+                    "OPENAI_EMBEDDING_API_KEY credential or CORE_DATA_SOURCES_OPENAI_API_KEY env var must be set."
+                )
+            })?;
 
-        // The env variable can take two forms:
-        // - just the API key (e.g. sk-xxxx)
-        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
-        let (key_part, host_part) = match raw_openai_key_env.split_once(';') {
-            Some((k, h)) => (k.trim(), h.trim()),
-            None => (raw_openai_key_env.trim(), "api.openai.com"),
-        };
+            // The env variable can take two forms:
+            // - just the API key (e.g. sk-xxxx)
+            // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
+            let (key_part, host_part) = match raw_key.split_once(';') {
+                Some((k, h)) => (k.trim(), h.trim()),
+                None => (raw_key.trim(), "api.openai.com"),
+            };
 
-        self.api_key = Some(key_part.to_string());
-        self.host = Some(host_part.to_string());
+            self.api_key = Some(key_part.to_string());
+            self.host = Some(host_part.to_string());
+        }
 
         // Check host validity to protect against SSRF
         if !self.host.as_ref().unwrap().ends_with(".openai.com") {

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import inspector from "node:inspector/promises";
 import config from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";

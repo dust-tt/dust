@@ -42,6 +42,9 @@ import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
+import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
+import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -56,6 +59,7 @@ import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
+  isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
@@ -188,6 +192,22 @@ export function AgentMessage({
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
     useBlockedActionsContext();
 
+  const { mutateConversationAttachments } = useConversationAttachments({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
+  const { mutateSandboxStatus } = useConversationSandboxStatus({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
+  const { mutateSandboxFiles } = useConversationSandboxFiles({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
+
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
@@ -223,6 +243,8 @@ export function AgentMessage({
                 metadata: eventPayload.data.metadata,
                 stake: eventPayload.data.stake,
                 userId: eventPayload.data.userId,
+                argumentsRequiringApproval:
+                  eventPayload.data.argumentsRequiringApproval,
               },
             });
             break;
@@ -291,6 +313,11 @@ export function AgentMessage({
             const action = eventPayload.data.action;
             if (action.generatedFiles.length > 0) {
               window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+              void mutateConversationAttachments();
+            }
+            if (action.internalMCPServerName === "sandbox") {
+              void mutateSandboxStatus();
+              void mutateSandboxFiles();
             }
             break;
           }
@@ -310,6 +337,9 @@ export function AgentMessage({
         sId,
         removeAllBlockedActionsForMessage,
         conversationId,
+        mutateConversationAttachments,
+        mutateSandboxStatus,
+        mutateSandboxFiles,
       ]
     ),
     streamId: `message-${sId}`,
@@ -548,7 +578,10 @@ export function AgentMessage({
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
-    agentMessage.configuration.status !== "draft";
+    agentMessage.configuration.status !== "draft" &&
+    (!isGlobalAgent ||
+      (isGlobalAgentId(agentMessage.configuration.sId) &&
+        isGlobalAgentWithFeedback(agentMessage.configuration.sId)));
 
   const retryMessage = useRetryMessage({ owner });
 
@@ -573,7 +606,7 @@ export function AgentMessage({
     [retryMessage]
   );
 
-  // Add feedback buttons first (thumbs up/down)
+  // Add feedback buttons first
   if (shouldShowFeedback) {
     messageButtons.push(
       <FeedbackSelector

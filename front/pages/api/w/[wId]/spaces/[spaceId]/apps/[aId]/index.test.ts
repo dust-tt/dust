@@ -48,6 +48,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/apps/[aId]", () => {
       workspaceId: workspace.id,
       authorId: user.id,
       templateId: null,
+      reinforcement: "auto",
       requestedSpaceIds: [],
       maxStepsPerRun: 8,
     });

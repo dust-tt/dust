@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -6,8 +7,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const DEPENDENCY_CHECK_TIMEOUT_MS = 2000;
-
-const statsDClient = getStatsDClient();
 
 type DependencyName = "redis" | "database";
 
@@ -62,7 +61,10 @@ export default async function handler(
 
   const results = await Promise.all([
     checkDependency("redis", () => getRedisHybridManager().ping()),
-    checkDependency("database", () => frontSequelize.authenticate()),
+    checkDependency("database", () =>
+      // biome-ignore lint/plugin: health check needs direct DB ping
+      frontSequelize.query("SELECT 1")
+    ),
   ]);
 
   const failed = results.filter((r) => !r.ok);
@@ -74,7 +76,7 @@ export default async function handler(
       "Startup probe succeeded - dependencies connected"
     );
 
-    statsDClient.distribution("healthz.startup.duration_ms", durationMs, [
+    getStatsDClient().distribution("healthz.startup.duration_ms", durationMs, [
       "status:success",
     ]);
 
@@ -87,7 +89,7 @@ export default async function handler(
       `Startup probe failed - ${failed.map((r) => r.name).join(", ")} not ready`
     );
 
-    statsDClient.distribution("healthz.startup.duration_ms", durationMs, [
+    getStatsDClient().distribution("healthz.startup.duration_ms", durationMs, [
       "status:failure",
     ]);
 

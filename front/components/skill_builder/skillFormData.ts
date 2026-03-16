@@ -20,6 +20,7 @@ export function transformSkillTypeToFormData(
     fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
     extendedSkillId: skill.extendedSkillId,
+    isDefault: skill.isDefault,
   };
 }
 
@@ -43,5 +44,6 @@ export function getDefaultSkillFormData({
     fileAttachments: [],
     icon: null,
     extendedSkillId,
+    isDefault: false,
   };
 }

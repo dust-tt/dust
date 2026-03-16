@@ -39,10 +39,14 @@ const {
   heartbeatTimeout: "5 minutes",
 });
 
-const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
-  proxyActivities<typeof sync_status>({
-    startToCloseTimeout: "10 minutes",
-  });
+const {
+  clearInitialSyncProgress,
+  reportInitialSyncProgress,
+  syncSucceeded,
+  syncStarted,
+} = proxyActivities<typeof sync_status>({
+  startToCloseTimeout: "10 minutes",
+});
 
 export async function fullSyncWorkflow({
   connectorId,
@@ -87,6 +91,7 @@ export async function fullSyncWorkflow({
 
   if (startSyncTs === undefined) {
     startSyncTs = new Date().getTime();
+    await clearInitialSyncProgress(connectorId);
   }
 
   // Temp to clean up the running workflows state
@@ -164,9 +169,16 @@ export async function fullSyncWorkflow({
     });
   }
 
+  const hasPendingNodeUpdates =
+    nodeIdsToSync.length > 0 || nodeIdsToDelete.length > 0;
+
   await syncSucceeded(connectorId);
 
-  if (nodeIdsToSync.length > 0 || nodeIdsToDelete.length > 0) {
+  if (!hasPendingNodeUpdates) {
+    await clearInitialSyncProgress(connectorId);
+  }
+
+  if (hasPendingNodeUpdates) {
     await continueAsNew<typeof fullSyncWorkflow>({
       connectorId,
       nodeIdsToSync,
@@ -183,6 +195,7 @@ export async function incrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
+  await clearInitialSyncProgress(connectorId);
   await syncStarted(connectorId);
   const nodeIdsToSync = await getRootNodesToSync(connectorId);
   const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
@@ -205,6 +218,7 @@ export async function incrementalSyncWorkflowV2({
 }) {
   const fullSyncRunning = await isMicrosoftFullSyncRunning(connectorId);
   if (!fullSyncRunning) {
+    await clearInitialSyncProgress(connectorId);
     await syncStarted(connectorId);
   }
 

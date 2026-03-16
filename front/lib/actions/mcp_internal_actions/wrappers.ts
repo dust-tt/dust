@@ -19,8 +19,6 @@ import type {
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const statsDClient = getStatsDClient();
-
 export function registerTool(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType | undefined,
@@ -156,7 +154,7 @@ function withToolLogging<T>(
     ];
 
     if (enableAlerting) {
-      statsDClient.increment("use_tools.count", 1, tags);
+      getStatsDClient().increment("use_tools.count", 1, tags);
     }
     const startTime = performance.now();
 
@@ -167,7 +165,7 @@ function withToolLogging<T>(
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
       if (enableAlerting && result.error.tracked) {
-        statsDClient.increment("use_tools_error.count", 1, [
+        getStatsDClient().increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
         ]);
@@ -196,7 +194,7 @@ function withToolLogging<T>(
     }
 
     if (enableAlerting) {
-      statsDClient.distribution(
+      getStatsDClient().distribution(
         "run_tool.duration.distribution",
         elapsed,
         tags

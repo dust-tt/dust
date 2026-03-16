@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -62,6 +63,7 @@ const PatchSkillRequestBodySchema = t.intersection([
   // TODO(2026-03-02): make mandatory once always sent by the client.
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
+    isDefault: t.boolean,
   }),
 ]);
 
@@ -318,6 +320,7 @@ async function handler(
         fileAttachments: files,
         icon: body.icon,
         instructions: body.instructions,
+        isDefault: body.isDefault,
         mcpServerViews,
         name,
         requestedSpaceIds,

@@ -1,10 +1,14 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type {
   MessageMetricsPoint,
   UsageMetricsInterval,
 } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildAgentAnalyticsBaseQuery,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -16,6 +20,7 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   interval: z.enum(["day", "week"]).optional().default("day"),
+  timezone: timezoneSchema,
 });
 
 export type GetWorkspaceUsageMetricsResponse = {
@@ -43,10 +48,15 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { days: queryDays, interval: queryInterval } = req.query;
+      const {
+        days: queryDays,
+        interval: queryInterval,
+        timezone: queryTimezone,
+      } = req.query;
       const q = QuerySchema.safeParse({
         days: queryDays,
         interval: queryInterval,
+        timezone: queryTimezone,
       });
       if (!q.success) {
         return apiError(req, res, {
@@ -58,7 +68,7 @@ async function handler(
         });
       }
 
-      const { days, interval } = q.data;
+      const { days, interval, timezone } = q.data;
       const owner = auth.getNonNullableWorkspace();
 
       const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -69,7 +79,8 @@ async function handler(
       const usageMetricsResult = await fetchMessageMetrics(
         baseQuery,
         interval,
-        ["conversations", "activeUsers"] as const
+        ["conversations", "activeUsers"] as const,
+        timezone
       );
 
       if (usageMetricsResult.isErr()) {

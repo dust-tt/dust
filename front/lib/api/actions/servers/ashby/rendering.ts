@@ -2,10 +2,13 @@
 import { JOB_FIELD_PATH } from "@app/lib/api/actions/servers/ashby/helpers";
 import type {
   AshbyCandidate,
+  AshbyCandidateInfo,
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyJob,
+  AshbyJobInfo,
   AshbyJobPosting,
+  AshbyOffer,
   AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
@@ -273,6 +276,155 @@ export function renderReferralForm(
           lines.push("  - Options:");
           for (const opt of selectableValues) {
             lines.push(`    - \`${opt.value}\`: ${opt.label}`);
+          }
+        }
+      }
+
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  if (typeof value === "object") {
+    // Handle currency objects like { currencyCode: "USD", value: 100000 }
+    const obj = value as Record<string, unknown>;
+    if ("currencyCode" in obj && "value" in obj) {
+      return `${obj.value} ${obj.currencyCode}`;
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+export function renderHireData({
+  candidateInfo,
+  offers,
+  jobInfo,
+  applicationId,
+}: {
+  candidateInfo: AshbyCandidateInfo;
+  offers: AshbyOffer[];
+  jobInfo: AshbyJobInfo | null;
+  applicationId: string;
+}): string {
+  const lines: string[] = ["# Hire Data Summary", ""];
+
+  // Candidate Information
+  lines.push("## Candidate Information");
+  lines.push("");
+
+  if (candidateInfo.firstName) {
+    lines.push(`**First Name:** ${candidateInfo.firstName}`);
+  }
+  if (candidateInfo.lastName) {
+    lines.push(`**Last Name:** ${candidateInfo.lastName}`);
+  }
+
+  if (candidateInfo.primaryEmailAddress) {
+    lines.push(`**Email:** ${candidateInfo.primaryEmailAddress.value}`);
+  }
+  if (candidateInfo.primaryPhoneNumber) {
+    lines.push(`**Phone:** ${candidateInfo.primaryPhoneNumber.value}`);
+  }
+
+  if (candidateInfo.location?.country) {
+    lines.push(`**Country:** ${candidateInfo.location.country}`);
+  }
+  if (candidateInfo.location?.region) {
+    lines.push(`**Region:** ${candidateInfo.location.region}`);
+  }
+  if (candidateInfo.location?.city) {
+    lines.push(`**City:** ${candidateInfo.location.city}`);
+  }
+
+  if (candidateInfo.customFields && candidateInfo.customFields.length > 0) {
+    lines.push("");
+    lines.push("### Candidate Custom Fields");
+    for (const field of candidateInfo.customFields) {
+      const title = field.title ?? field.id ?? "Unknown";
+      lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
+    }
+  }
+
+  lines.push("");
+
+  // Job Information
+  lines.push("## Job Information");
+  lines.push("");
+
+  if (jobInfo) {
+    lines.push(`**Job Title:** ${jobInfo.title}`);
+    lines.push(`**Job ID:** ${jobInfo.id}`);
+    lines.push(`**Job Status:** ${jobInfo.status}`);
+    if (jobInfo.departmentName) {
+      lines.push(`**Department:** ${jobInfo.departmentName}`);
+    }
+    if (jobInfo.teamName) {
+      lines.push(`**Team:** ${jobInfo.teamName}`);
+    }
+    if (jobInfo.locationName) {
+      lines.push(`**Job Location:** ${jobInfo.locationName}`);
+    }
+
+    if (jobInfo.customFields && jobInfo.customFields.length > 0) {
+      lines.push("");
+      lines.push("### Job Custom Fields");
+      for (const field of jobInfo.customFields) {
+        const title = field.title ?? field.id ?? "Unknown";
+        lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
+      }
+    }
+  } else {
+    lines.push("*Job information not available.*");
+  }
+
+  lines.push("");
+
+  // Application Information
+  lines.push("## Application");
+  lines.push("");
+  lines.push(`**Application ID:** ${applicationId}`);
+  lines.push(`**Status:** Hired`);
+  lines.push("");
+
+  // Offer Information
+  lines.push("## Offer Details");
+  lines.push("");
+
+  if (offers.length === 0) {
+    lines.push("*No offers found for this application.*");
+  } else {
+    for (const offer of offers) {
+      lines.push(`**Offer ID:** ${offer.id}`);
+      if (offer.status) {
+        lines.push(`**Offer Status:** ${offer.status}`);
+      }
+      if (offer.decidedAt) {
+        lines.push(`**Decided At:** ${offer.decidedAt}`);
+      }
+
+      const version = offer.latestVersion;
+      if (version) {
+        if (version.startDate) {
+          lines.push(`**Start Date:** ${version.startDate}`);
+        }
+
+        if (version.formFieldValues && version.formFieldValues.length > 0) {
+          lines.push("");
+          lines.push("### Offer Form Fields");
+          lines.push(
+            "*Includes both standard and custom fields from the offer form.*"
+          );
+          lines.push("");
+          for (const field of version.formFieldValues) {
+            const title = field.title ?? "Unknown Field";
+            lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
           }
         }
       }

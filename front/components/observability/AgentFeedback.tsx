@@ -1,22 +1,25 @@
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
+  SafeSuspense,
   safeLazy,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { Suspense } from "react";
 
-const FeedbackDistributionChart = safeLazy(() =>
-  import(
-    "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
-  ).then((mod) => ({
-    default: mod.FeedbackDistributionChart,
-  }))
+const FeedbackDistributionChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
+    ).then((mod) => ({
+      default: mod.FeedbackDistributionChart,
+    })),
+  { canReload: () => !isNavigationLocked() }
 );
 
 function ChartFallback() {
@@ -76,13 +79,13 @@ export function AgentFeedback({
       </TabContentChildSectionLayout>
 
       <TabContentChildSectionLayout title="Charts">
-        <Suspense fallback={<ChartFallback />}>
+        <SafeSuspense fallback={<ChartFallback />}>
           <FeedbackDistributionChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={allowReactions}
           />
-        </Suspense>
+        </SafeSuspense>
       </TabContentChildSectionLayout>
 
       {allowReactions && (

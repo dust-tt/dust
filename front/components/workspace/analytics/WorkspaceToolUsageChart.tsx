@@ -1,12 +1,14 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
+  getDayTimestamps,
   getIndexedColor,
-  getTimeRangeBounds,
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useWorkspaceTools,
   useWorkspaceToolUsage,
@@ -23,6 +25,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { DownloadIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -56,12 +59,12 @@ function getToolSelectorLabel(selectedTools: string[]): string {
 
 interface ToolUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: ToolUsageDisplayMode;
-  toolsForChart: string[];
+  toolsWithData: string[];
 }
 
 function ToolUsageTooltip({
   displayMode,
-  toolsForChart,
+  toolsWithData,
   active,
   payload,
 }: ToolUsageTooltipProps) {
@@ -78,14 +81,14 @@ function ToolUsageTooltip({
   const title = point.date ?? formatShortDate(point.timestamp);
   const label = displayMode === "users" ? "users" : "executions";
 
-  const values = toolsForChart.map((tool) => point.values[tool] ?? 0);
-  const rows = toolsForChart.map((tool, idx) => ({
+  const values = toolsWithData.map((tool) => point.values[tool] ?? 0);
+  const rows = toolsWithData.map((tool, idx) => ({
     label: asDisplayToolName(tool),
     value: values[idx].toLocaleString(),
-    colorClassName: getIndexedColor(tool, toolsForChart),
+    colorClassName: getIndexedColor(tool, toolsWithData),
   }));
 
-  if (toolsForChart.length > 1) {
+  if (toolsWithData.length > 1) {
     const total = values.reduce((sum, v) => sum + v, 0);
     rows.push({
       label: `Total ${label}`,
@@ -106,6 +109,10 @@ export function WorkspaceToolUsageChart({
   workspaceId,
   period,
 }: WorkspaceToolUsageChartProps) {
+  const { hasFeature } = useFeatureFlags();
+  const showExport = hasFeature("analytics_csv_export");
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const [displayMode, setDisplayMode] =
     useState<ToolUsageDisplayMode>("executions");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
@@ -124,37 +131,35 @@ export function WorkspaceToolUsageChart({
     }
   }, [availableTools, selectedTools.length]);
 
-  const toolsToFetch = selectedTools;
-
   const tool1Usage = useWorkspaceToolUsage({
     workspaceId,
     days: period,
-    serverName: toolsToFetch[0],
-    disabled: !workspaceId || !toolsToFetch[0],
+    serverName: selectedTools[0],
+    disabled: !workspaceId || !selectedTools[0],
   });
   const tool2Usage = useWorkspaceToolUsage({
     workspaceId,
     days: period,
-    serverName: toolsToFetch[1],
-    disabled: !workspaceId || !toolsToFetch[1],
+    serverName: selectedTools[1],
+    disabled: !workspaceId || !selectedTools[1],
   });
   const tool3Usage = useWorkspaceToolUsage({
     workspaceId,
     days: period,
-    serverName: toolsToFetch[2],
-    disabled: !workspaceId || !toolsToFetch[2],
+    serverName: selectedTools[2],
+    disabled: !workspaceId || !selectedTools[2],
   });
   const tool4Usage = useWorkspaceToolUsage({
     workspaceId,
     days: period,
-    serverName: toolsToFetch[3],
-    disabled: !workspaceId || !toolsToFetch[3],
+    serverName: selectedTools[3],
+    disabled: !workspaceId || !selectedTools[3],
   });
   const tool5Usage = useWorkspaceToolUsage({
     workspaceId,
     days: period,
-    serverName: toolsToFetch[4],
-    disabled: !workspaceId || !toolsToFetch[4],
+    serverName: selectedTools[4],
+    disabled: !workspaceId || !selectedTools[4],
   });
 
   const toolUsages = useMemo(
@@ -175,10 +180,8 @@ export function WorkspaceToolUsageChart({
   const isLoading = isToolsLoading || toolsWithData.length === 0;
 
   const hasError = toolUsages.some(
-    (t, i) => toolsToFetch[i] && t.isToolUsageError
+    (t, i) => selectedTools[i] && t.isToolUsageError
   );
-
-  const toolsForChart = toolsWithData;
 
   const data = useMemo((): ToolUsageChartPoint[] => {
     if (toolsWithData.length === 0) {
@@ -187,16 +190,12 @@ export function WorkspaceToolUsageChart({
 
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
-    const [startDate, endDate] = getTimeRangeBounds(period);
-    const startTime = new Date(startDate + "T00:00:00Z").getTime();
-    const endTime = new Date(endDate + "T00:00:00Z").getTime();
-    const dayMs = 24 * 60 * 60 * 1000;
-    const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const dayTimestamps = getDayTimestamps(period, browserTimezone);
 
     const points: ToolUsageChartPoint[] = [];
 
-    for (let i = 0; i < numDays; i++) {
-      const timestamp = startTime + i * dayMs;
+    for (const timestamp of dayTimestamps) {
       const values: Record<string, number> = {};
 
       toolsWithData.forEach((tool) => {
@@ -227,10 +226,10 @@ export function WorkspaceToolUsageChart({
     }
   };
 
-  const legendItems: LegendItem[] = toolsForChart.map((tool) => ({
+  const legendItems: LegendItem[] = toolsWithData.map((tool) => ({
     key: tool,
     label: asDisplayToolName(tool),
-    colorClassName: getIndexedColor(tool, toolsForChart),
+    colorClassName: getIndexedColor(tool, toolsWithData),
   }));
 
   const toolSelector = (
@@ -271,6 +270,41 @@ export function WorkspaceToolUsageChart({
     </DropdownMenu>
   );
 
+  const canDownload = !isToolsLoading && !hasError && data.length > 0;
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const response = await clientFetch(
+        `/api/w/${workspaceId}/analytics/tool-usage-export?days=${period}`
+      );
+      if (!response.ok) {
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dust_tool_usage_last_${period}_days.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const downloadButton = showExport ? (
+    <Button
+      icon={DownloadIcon}
+      variant="outline"
+      size="xs"
+      tooltip="Download CSV"
+      onClick={handleDownload}
+      disabled={!canDownload || isDownloading}
+      isLoading={isDownloading}
+    />
+  ) : undefined;
+
   const modeSelector = (
     <ButtonsSwitchList defaultValue={displayMode} size="xs">
       <ButtonsSwitch
@@ -301,6 +335,7 @@ export function WorkspaceToolUsageChart({
         <div className="flex items-center gap-2">
           {toolSelector}
           {modeSelector}
+          {downloadButton}
         </div>
       }
     >
@@ -336,7 +371,7 @@ export function WorkspaceToolUsageChart({
             <ToolUsageTooltip
               {...props}
               displayMode={displayMode}
-              toolsForChart={toolsForChart}
+              toolsWithData={toolsWithData}
             />
           )}
           cursor={false}
@@ -348,14 +383,14 @@ export function WorkspaceToolUsageChart({
             boxShadow: "none",
           }}
         />
-        {toolsForChart.map((tool) => (
+        {toolsWithData.map((tool) => (
           <Line
             key={tool}
             type={period === 7 || period === 14 ? "linear" : "monotone"}
             strokeWidth={2}
             dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
             name={asDisplayToolName(tool)}
-            className={getIndexedColor(tool, toolsForChart)}
+            className={getIndexedColor(tool, toolsWithData)}
             stroke="currentColor"
             dot={false}
           />

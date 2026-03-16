@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -48,7 +49,10 @@ async function handler(
 
   const { value: conversation } = conversationRes;
 
-  const attachments = await listAttachments(auth, { conversation });
+  const attachments = await listAttachments(auth, {
+    conversation,
+    includeProjectContextFiles: false,
+  });
 
   return res.status(200).json({
     attachments,

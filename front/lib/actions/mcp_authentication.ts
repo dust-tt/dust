@@ -9,6 +9,8 @@ import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+export type MCPServerAdminAuthenticationReason = "setup" | "reconnect";
+
 // Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
 export async function getConnectionForMCPServer(
@@ -128,15 +130,24 @@ export class MCPServerRequiresAdminAuthenticationError extends Error {
   mcpServerId: string;
   provider: OAuthProvider;
   scope?: string;
+  reason: MCPServerAdminAuthenticationReason;
 
-  constructor(mcpServerId: string, provider: OAuthProvider, scope?: string) {
+  constructor(
+    mcpServerId: string,
+    provider: OAuthProvider,
+    scope?: string,
+    reason: MCPServerAdminAuthenticationReason = "setup"
+  ) {
     super(
-      `MCP server ${mcpServerId} requires your admin(s) to setup or reconnect the workspace connection on Dust.`
+      reason === "setup"
+        ? `MCP server ${mcpServerId} requires your admin(s) to set up the workspace connection on Dust.`
+        : `MCP server ${mcpServerId} requires your admin(s) to reconnect the workspace connection on Dust.`
     );
     this.name = MCPServerRequiresAdminAuthenticationErrorName;
     this.mcpServerId = mcpServerId;
     this.provider = provider;
     this.scope = scope;
+    this.reason = reason;
   }
 
   static is(
@@ -148,4 +159,10 @@ export class MCPServerRequiresAdminAuthenticationError extends Error {
       "mcpServerId" in error
     );
   }
+}
+
+export function getMCPServerAdminAuthenticationReason(
+  error: DustError<"mcp_access_token_error" | "connection_not_found">
+): MCPServerAdminAuthenticationReason {
+  return error.code === "connection_not_found" ? "setup" : "reconnect";
 }

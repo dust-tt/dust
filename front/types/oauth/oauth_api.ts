@@ -1,10 +1,13 @@
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
   ConnectionCredentials,
   CredentialsProvider,
   OAuthConnectionType,
   OAuthProvider,
   OauthAPIGetCredentialsResponse,
-  OauthAPIPostCredentialsResponse,
+  OauthAPIPostConnectionCredentialsResponse,
+  OauthAPIPostModelProviderCredentialsResponse,
 } from "../oauth/lib";
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";
@@ -36,6 +39,16 @@ export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
 }
 
 export type OAuthAPIResponse<T> = Result<T, OAuthAPIError>;
+
+type CrendentialsMetadata = {
+  userId: string;
+  workspaceId: string;
+};
+
+export type ModelProviderPostCredentialsBody = {
+  provider: ByokModelProviderIdType;
+  credentials: ApiKeyCredentialsType;
+};
 
 export class OAuthAPI {
   _logger: LoggerInterface;
@@ -168,12 +181,33 @@ export class OAuthAPI {
     userId,
     workspaceId,
     credentials,
-  }: {
+  }: CrendentialsMetadata & {
     provider: CredentialsProvider;
-    userId: string;
-    workspaceId: string;
     credentials: ConnectionCredentials;
-  }): Promise<OAuthAPIResponse<OauthAPIPostCredentialsResponse>> {
+  }): Promise<OAuthAPIResponse<OauthAPIPostConnectionCredentialsResponse>>;
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
+  }: CrendentialsMetadata & ModelProviderPostCredentialsBody): Promise<
+    OAuthAPIResponse<OauthAPIPostModelProviderCredentialsResponse>
+  >;
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
+  }: CrendentialsMetadata &
+    (
+      | { provider: CredentialsProvider; credentials: ConnectionCredentials }
+      | ModelProviderPostCredentialsBody
+    )): Promise<
+    OAuthAPIResponse<
+      | OauthAPIPostConnectionCredentialsResponse
+      | OauthAPIPostModelProviderCredentialsResponse
+    >
+  > {
     const response = await this._fetchWithError(`${this._url}/credentials`, {
       method: "POST",
       headers: {
@@ -200,6 +234,27 @@ export class OAuthAPI {
       `${this._url}/credentials/${credentialsId}`
     );
     return this._resultFromResponse(response);
+  }
+
+  async deleteCredentials({
+    credentialsId,
+  }: {
+    credentialsId: string;
+  }): Promise<OAuthAPIResponse<void>> {
+    const res = await this._fetchWithError(
+      `${this._url}/credentials/${credentialsId}`,
+      { method: "DELETE" }
+    );
+    if (res.isErr()) {
+      return res;
+    }
+    if (!res.value.response.ok) {
+      return new Err({
+        code: "delete_credentials_error",
+        message: `Failed to delete credentials: HTTP ${res.value.response.status}`,
+      });
+    }
+    return new Ok(undefined);
   }
 
   private async _fetchWithError(
@@ -309,7 +364,7 @@ export class OAuthAPI {
       }
     } else {
       const err = json?.error;
-      const res = json?.response;
+      const jsonResponse = json?.response;
 
       if (err && isOAuthAPIError(err)) {
         this._logger.error(
@@ -323,8 +378,8 @@ export class OAuthAPI {
           "OAuthAPI error"
         );
         return new Err(err);
-      } else if (res) {
-        return new Ok(res);
+      } else if (jsonResponse) {
+        return new Ok(jsonResponse);
       } else {
         const err: OAuthAPIError = {
           code: "unexpected_response_format",

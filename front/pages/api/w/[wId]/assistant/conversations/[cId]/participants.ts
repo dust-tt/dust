@@ -1,3 +1,87 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/participants:
+ *   get:
+ *     summary: Get conversation participants
+ *     description: Returns the participants of a specific conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 participants:
+ *                   type: object
+ *                   properties:
+ *                     agents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           configurationId:
+ *                             type: string
+ *                           configurationName:
+ *                             type: string
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           username:
+ *                             type: string
+ *                           fullName:
+ *                             type: string
+ *                             nullable: true
+ *                           pictureUrl:
+ *                             type: string
+ *                             nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Add a participant to a conversation
+ *     description: Adds the authenticated user as a participant to a specific conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Successfully added participant
+ *       401:
+ *         description: Unauthorized
+ */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

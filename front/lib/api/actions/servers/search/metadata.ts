@@ -62,7 +62,8 @@ export const SEARCH_SERVER = {
   serverInfo: {
     name: SEARCH_SERVER_NAME,
     version: "1.0.0",
-    description: "Search content to find the most relevant information.",
+    description:
+      "Search content whose meaning best matches your message (not suited for analytics).",
     icon: "ActionMagnifyingGlassIcon",
     authorization: null,
     documentationUrl: null,

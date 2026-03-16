@@ -1,10 +1,11 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  getClientSideToolDisplayLabels,
   getInternalMCPServerNameFromSId,
   getInternalMCPServerToolDisplayLabels,
+  type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -16,7 +17,10 @@ import {
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isLightClientSideMCPToolConfiguration,
+  isLightServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -412,11 +416,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
         },
-        argumentsRequiringApproval: isLightServerSideMCPToolConfiguration(
-          action.toolConfiguration
-        )
-          ? action.toolConfiguration.argumentsRequiringApproval
-          : undefined,
+        argumentsRequiringApproval:
+          action.toolConfiguration.argumentsRequiringApproval,
       };
 
       if (action.status === "blocked_authentication_required") {
@@ -720,14 +721,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           }),
         ]);
 
-        const statsDClient = getStatsDClient();
-
-        statsDClient.increment(
+        getStatsDClient().increment(
           "mcp_output_items.fetch.count",
           gcsItems.length,
           ["storage:gcs"]
         );
-        statsDClient.increment(
+        getStatsDClient().increment(
           "mcp_output_items.fetch.count",
           legacyItems.length,
           ["storage:legacy"]
@@ -743,7 +742,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               gcsPath: item.contentGcsPath!,
             }))
           );
-          statsDClient.distribution(
+          getStatsDClient().distribution(
             "mcp_output_items.gcs_hydrate.duration_ms",
             Date.now() - gcsStartMs
           );
@@ -756,7 +755,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               }
             }
           } else {
-            statsDClient.increment(
+            getStatsDClient().increment(
               "mcp_output_items.gcs_fallback_db.count",
               gcsItems.length
             );
@@ -959,10 +958,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
           toolName
         ] ?? null)
-      : getDefaultRemoteDisplayLabels(
-          this.toolConfiguration.mcpServerName,
-          toolName
-        );
+      : isLightClientSideMCPToolConfiguration(this.toolConfiguration) &&
+          this.metadata.mcpServerId
+        ? getClientSideToolDisplayLabels(this.metadata.mcpServerId, toolName)
+        : getDefaultRemoteDisplayLabels(
+            this.toolConfiguration.mcpServerName,
+            toolName
+          );
 
     return {
       id: this.id,

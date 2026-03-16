@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

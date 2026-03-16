@@ -13,6 +13,9 @@ export const SPACE_KINDS = [
 export type SpaceKind = (typeof SPACE_KINDS)[number];
 
 export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
+/**
+ * @swaggerschema Space (swagger_schemas.ts), PrivateSpace (swagger_private_schemas.ts)
+ */
 export type SpaceType = {
   createdAt: number;
   groupIds: string[];
@@ -24,6 +27,9 @@ export type SpaceType = {
   updatedAt: number;
 };
 
+/**
+ * @swaggerschema PrivateProject (swagger_private_schemas.ts)
+ */
 export type ProjectType = SpaceType & {
   description: string | null;
   isMember: boolean;

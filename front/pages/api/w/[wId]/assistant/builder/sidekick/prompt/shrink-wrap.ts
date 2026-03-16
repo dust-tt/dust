@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";

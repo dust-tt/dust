@@ -31,6 +31,7 @@ AssistantCardMore.displayName = "AssistantCardMore";
 
 interface AssistantCardProps extends BaseAssistantCardProps {
   action?: React.ReactNode;
+  iconSize?: "sm" | "md";
 }
 
 export const AssistantCard = React.forwardRef<
@@ -49,6 +50,7 @@ export const AssistantCard = React.forwardRef<
       subtitle,
       action,
       variant = "primary",
+      iconSize = "md",
     },
     ref
   ) => {
@@ -63,7 +65,7 @@ export const AssistantCard = React.forwardRef<
         variant={variant}
       >
         <div className="s-flex s-gap-3">
-          <Avatar visual={pictureUrl} size="md" />
+          <Avatar visual={pictureUrl} size={iconSize} />
           <div
             className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
           >
@@ -134,3 +136,51 @@ export const LargeAssistantCard = React.forwardRef<
   );
 });
 LargeAssistantCard.displayName = "LargeAssistantCard";
+
+interface CompactAssistantCardProps extends BaseAssistantCardProps {}
+
+export const CompactAssistantCard = React.forwardRef<
+  HTMLDivElement,
+  CompactAssistantCardProps
+>(
+  (
+    {
+      className,
+      onClick,
+      title,
+      description,
+      pictureUrl,
+      variant = "secondary",
+    },
+    ref
+  ) => {
+    return (
+      <Card
+        ref={ref}
+        size="md"
+        className={cn(
+          "s-cursor-pointer s-flex s-flex-col s-items-start s-gap-1",
+          className
+        )}
+        onClick={onClick}
+        variant={variant}
+      >
+        <Avatar visual={pictureUrl} size="sm" />
+        <div className="s-min-w-0">
+          <h3 className="s-heading-base s-line-clamp-1 s-text-foreground dark:s-text-foreground-night">
+            {title}
+          </h3>
+          <p
+            className={cn(
+              "s-line-clamp-3 s-text-sm",
+              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+            )}
+          >
+            {description}
+          </p>
+        </div>
+      </Card>
+    );
+  }
+);
+CompactAssistantCard.displayName = "CompactAssistantCard";

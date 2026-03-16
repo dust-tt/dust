@@ -6,11 +6,12 @@ import type { TokenizerConfig } from "../../tokenizer";
 import type { AgentReasoningEffort } from "../agent";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
-import type { MODEL_PROVIDER_IDS } from "./providers";
+import type { BYOK_MODEL_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "./providers";
 import type { REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
+export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 
 export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
 export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];

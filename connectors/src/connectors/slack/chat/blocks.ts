@@ -407,7 +407,7 @@ export function makeToolAuthenticationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent \`@${agentName}\` requires personal authentication for \`${serverName}\``,
+        text: `Agent \`${agentName}\` requires personal authentication for \`${serverName}\``,
       },
     },
     {

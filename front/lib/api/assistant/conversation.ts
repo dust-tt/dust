@@ -58,7 +58,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import {
   generateRandomModelSId,
@@ -70,6 +70,7 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import {
@@ -791,11 +792,13 @@ export async function postUserMessage(
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-    // Mark the conversation as read for the current user.
-    await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation,
-      transaction: t,
-    });
+    if (!doNotAssociateUser) {
+      // Mark the conversation as read for the current user.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        transaction: t,
+      });
+    }
 
     return {
       userMessage,
@@ -1885,7 +1888,7 @@ async function checkProgrammaticUsageRateLimit(
       "Pre-emptive rate limit triggered for programmatic usage."
     );
 
-    statsDClient.increment(
+    getStatsDClient().increment(
       "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
       1,
       { workspace_id: owner.sId }
@@ -1928,7 +1931,7 @@ async function checkProgrammaticUsageRateLimit(
           "Pre-emptive rate limit triggered for key cap."
         );
 
-        statsDClient.increment(
+        getStatsDClient().increment(
           "assistant.rate_limiter.key_cap.credit_based_limit_triggered",
           1,
           { workspace_id: owner.sId }

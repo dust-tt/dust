@@ -1,3 +1,74 @@
+/**
+ * @swagger
+ * /api/user:
+ *   get:
+ *     summary: Get current user
+ *     description: Returns the authenticated user with their workspaces and subscriber hash.
+ *     tags:
+ *       - Private User
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The authenticated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/PrivateUser'
+ *       404:
+ *         description: User not found
+ *   patch:
+ *     summary: Update current user
+ *     description: Update the authenticated user's profile (name, job type, favorite platforms, image).
+ *     tags:
+ *       - Private User
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               jobType:
+ *                 type: string
+ *               imageUrl:
+ *                 type: string
+ *                 nullable: true
+ *               favoritePlatforms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               emailProvider:
+ *                 type: string
+ *               workspaceId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid request body
+ *       404:
+ *         description: User not found
+ */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";

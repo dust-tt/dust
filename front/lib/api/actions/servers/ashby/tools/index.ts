@@ -6,6 +6,7 @@ import { getAshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import {
   assertCandidateNotHired,
   diagnoseFieldSubmissions,
+  findHiredApplication,
   findUniqueCandidate,
   resolveAshbyUser,
   resolveFieldSubmissions,
@@ -18,6 +19,7 @@ import {
 import {
   renderCandidateList,
   renderCandidateNotes,
+  renderHireData,
   renderInterviewFeedbackRecap,
   renderJobPostingList,
   renderReferralForm,
@@ -43,7 +45,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -99,7 +101,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_report_data: async ({ reportUrl }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -151,7 +153,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_interview_feedback: async ({ email, name }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -238,7 +240,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_candidate_notes: async ({ email, name }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -300,7 +302,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   create_candidate_note: async ({ email, name, noteContent }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -354,7 +356,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   [GET_REFERRAL_FORM_TOOL_NAME]: async (_, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -394,6 +396,89 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         text: renderReferralForm(formResult.value.results, {
           jobs: jobsResult.value,
         }),
+      },
+    ]);
+  },
+
+  get_hire_data: async ({ email, name }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const candidateResult = await findUniqueCandidate(client, { email, name });
+    if (candidateResult.isErr()) {
+      return new Err(candidateResult.error);
+    }
+
+    const candidate = candidateResult.value;
+
+    // Find the hired application.
+    const hiredAppResult = await findHiredApplication(client, candidate);
+    if (hiredAppResult.isErr()) {
+      return hiredAppResult;
+    }
+
+    const { applicationId, jobId } = hiredAppResult.value;
+
+    // Fetch detailed candidate info.
+    const candidateInfoResult = await client.getCandidateInfo({
+      id: candidate.id,
+    });
+    if (candidateInfoResult.isErr() || !candidateInfoResult.value.results) {
+      return new Err(
+        new MCPError(
+          "Failed to retrieve candidate info: " +
+            (candidateInfoResult.isErr()
+              ? candidateInfoResult.error.message
+              : "no result")
+        )
+      );
+    }
+
+    const candidateInfo = candidateInfoResult.value.results;
+
+    // Fetch offers for the hired application.
+    const offersResult = await client.listOffers({ applicationId });
+    if (offersResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list offers: ${offersResult.error.message}`, {
+          cause: offersResult.error,
+        })
+      );
+    }
+    const offers = offersResult.value;
+
+    // Fetch job info if we have a jobId.
+    let jobInfo = null;
+    if (jobId) {
+      const jobInfoResult = await client.getJobInfo({ id: jobId });
+      if (jobInfoResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to get job info: ${jobInfoResult.error.message}`,
+            {
+              cause: jobInfoResult.error,
+            }
+          )
+        );
+      }
+      jobInfo = jobInfoResult.value.results ?? null;
+    }
+
+    const text = renderHireData({
+      candidateInfo,
+      offers,
+      jobInfo,
+      applicationId,
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text,
       },
     ]);
   },
@@ -546,7 +631,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   [CREATE_REFERRAL_TOOL_NAME]: async ({ fieldSubmissions }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }

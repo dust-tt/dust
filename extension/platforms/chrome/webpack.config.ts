@@ -41,6 +41,11 @@ export const getConfig = async ({
   shouldBuild: "none" | "prod" | "analyze";
 }): Promise<Configuration> => {
   const isDevelopment = env === "development";
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
+  );
+  const version = packageJson.version;
+
   if (!isDevelopment && !process.env.DATADOG_CLIENT_TOKEN) {
     throw new Error(
       "❌ DATADOG_CLIENT_TOKEN=[Chrome extension logs collection token] must be set when building for production or release.\n" +
@@ -53,7 +58,13 @@ export const getConfig = async ({
   const baseManifest = JSON.parse(await readFileAsync(baseManifestPath));
   const envManifest = JSON.parse(await readFileAsync(envManifestPath));
   const mergedManifest = { ...baseManifest, ...envManifest };
-  const version = mergedManifest.version;
+  const manifestVersion = mergedManifest.version;
+
+  if (manifestVersion !== version) {
+    throw new Error(
+      `❌ Manifest version (${manifestVersion}) does not match package version (${version})`
+    );
+  }
 
   const buildDirPath = resolvePath("./build");
 
@@ -153,18 +164,19 @@ export const getConfig = async ({
         color: "#3B82F6",
       }),
       new webpack.EnvironmentPlugin({
-        VERSION: version,
-        COMMIT_HASH: getCommitHash(),
+        BUILD_DATE: process.env.COMMIT_HASH || Math.floor(Date.now() / 1000),
+        COMMIT_HASH: process.env.COMMIT_HASH || getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
-        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
-          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        DUST_EXTENSION_VERSION: `chrome-${version}`,
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
           process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
-        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
           process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
-        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
         VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new webpack.ProvidePlugin({
@@ -215,7 +227,7 @@ export const getConfig = async ({
       packageDirPath
         ? new ZipPlugin({
             path: packageDirPath,
-            filename: `Dust_Extension.${env}.v${version}.zip`,
+            filename: `Dust_Extension_Chrome.${env}.v${version}.zip`,
           })
         : null,
       isDevelopment

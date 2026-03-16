@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -12,8 +12,6 @@ import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-
-const statsDClient = getStatsDClient();
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -89,8 +87,7 @@ export async function upsertDocumentActivity(
     `workspace_id:${upsertQueueItem.workspaceId}`,
   ];
 
-  // Data source operations are performed with our credentials.
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth);
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -127,8 +124,12 @@ export async function upsertDocumentActivity(
       },
       "[UpsertQueue] Failed document upsert"
     );
-    statsDClient.increment("upsert_queue_document_error.count", 1, statsDTags);
-    statsDClient.distribution(
+    getStatsDClient().increment(
+      "upsert_queue_document_error.count",
+      1,
+      statsDTags
+    );
+    getStatsDClient().distribution(
       "upsert_queue_upsert_document_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
@@ -150,13 +151,17 @@ export async function upsertDocumentActivity(
     },
     "[UpsertQueue] Successful document upsert"
   );
-  statsDClient.increment("upsert_queue_document_success.count", 1, statsDTags);
-  statsDClient.distribution(
+  getStatsDClient().increment(
+    "upsert_queue_document_success.count",
+    1,
+    statsDTags
+  );
+  getStatsDClient().distribution(
     "upsert_queue_upsert_document_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
-  statsDClient.distribution(
+  getStatsDClient().distribution(
     "upsert_queue_document.duration.distribution",
     Date.now() - enqueueTimestamp,
     []

@@ -10,7 +10,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, " +
       "description, status, priority, assignee, and other metadata. Optionally include ticket metrics " +
       "such as resolution times, wait times, and reply counts. Optionally include the full conversation " +
-      "with all comments.",
+      "with all comments. Optionally download and include file attachments from comments.",
     schema: {
       ticketId: z
         .number()
@@ -28,6 +28,12 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
+        ),
+      includeAttachments: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to download and include the content of file attachments from ticket comments."
         ),
     },
     stake: "never_ask",

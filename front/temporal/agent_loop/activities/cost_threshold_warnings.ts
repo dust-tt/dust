@@ -12,8 +12,6 @@ import logger from "@app/logger/logger";
 
 import { Op } from "sequelize";
 
-const statsDClient = getStatsDClient();
-
 const COST_WARNING_THRESHOLDS_USD = [10, 50, 100] as const;
 const COST_THRESHOLD_CROSSED_METRIC = "agent_loop.cost_threshold_crossed";
 const MICRO_USD_PER_USD = 1_000_000;
@@ -94,7 +92,7 @@ export async function checkCostAndSubagentsThresholds({
         "Agent loop cost threshold crossed"
       );
 
-      statsDClient.increment(COST_THRESHOLD_CROSSED_METRIC, 1, [
+      getStatsDClient().increment(COST_THRESHOLD_CROSSED_METRIC, 1, [
         `threshold_usd:${thresholdUsd}`,
         `workspace_id:${workspace.sId}`,
       ]);

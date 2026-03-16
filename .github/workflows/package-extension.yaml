@@ -1,0 +1,69 @@
+name: Package Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Package target to build"
+        type: choice
+        options:
+          - chrome:production
+          - chrome:release
+          - front:production
+        required: true
+  workflow_call:
+    inputs:
+      target:
+        description: "Package target to build"
+        type: string
+        required: true
+
+concurrency:
+  group: package-extension-${{ inputs.target }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+          build-sdks: "true"
+          build-sparkle: "true"
+
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build Extension
+        working-directory: extension
+        env:
+          NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+          DATADOG_SERVICE: extension
+          COMMIT_HASH: ${{ steps.short_sha.outputs.short_sha }}
+        run: |
+          set -a
+          source ../.github/configs/us-central1/.env.prod
+          export BUILD_DATE=$(date +%s)
+          set +a
+          npm run package:${{ inputs.target }}
+
+      - name: Resolve artifact name
+        id: artifact
+        working-directory: extension/packages
+        run: echo "name=$(basename *.zip .zip)-${{ steps.short_sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: extension/platforms/${{ contains(inputs.target, 'chrome') && 'chrome' || 'front' }}/build/

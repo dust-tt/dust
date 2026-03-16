@@ -5,6 +5,7 @@ import {
   AssistantCard,
   AssistantCardMore,
   CardGrid,
+  CompactAssistantCard,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,6 +35,33 @@ const ddMenu = (
 
 export const AssistantCardExample = () => (
   <div className="s-flex s-flex-col s-gap-4">
+    <h2>Compact</h2>
+    <CardGrid>
+      <CompactAssistantCard
+        title={"analyst"}
+        description={
+          "Self-service analytics agent for SQL queries, spreadsheets, data warehouses, and visualizations."
+        }
+        pictureUrl={"https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"}
+        onClick={() => console.log("clicked")}
+      />
+      <CompactAssistantCard
+        title={"codingBuddy"}
+        description={
+          "Assistant for code beginners. Get help writing code and getting started."
+        }
+        pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"}
+        onClick={() => console.log("clicked")}
+      />
+      <CompactAssistantCard
+        title={"supportExpert"}
+        description={
+          "Find solutions from best-in-class tickets and internal procedures."
+        }
+        pictureUrl={"https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"}
+        onClick={() => console.log("clicked")}
+      />
+    </CardGrid>
     <h2>List</h2>
     <div className="s-grid s-grid-cols-2 s-gap-4">
       <LargeAssistantCard

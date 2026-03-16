@@ -1,50 +1,26 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
+import {
+  buildReinforcedLLMParams,
+  runReinforcedAnalysis,
+} from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
-function buildAggregationPrompt(
-  agentName: string,
-  suggestions: AgentInstructionsSuggestionType[]
-): string {
-  const suggestionsSection = suggestions
-    .map(
-      (s, i) => `### Suggestion ${i + 1}
-kind: ${s.kind}
-targetBlockId: ${s.suggestion.targetBlockId}
-analysis: ${s.analysis ?? "N/A"}
-content: ${s.suggestion.content}`
-    )
-    .join("\n\n");
-
-  return `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
-
-## Agent: ${agentName}
-
-## Synthetic suggestions from conversation analyses
-
-${suggestionsSection}
-
-## Your task
-- Merge suggestions that address the same issue, or that target the same block
-- Keep only the most impactful suggestions (max 5)
-- In the analysis, mention how many conversations support each suggestion
-- When calling the tool, make sure there is never more than one suggestion targeting the same block (including instructions-root)
-
-You MUST call the tool. If no suggestions survive aggregation, return an empty suggestions array.`;
+interface AggregationContext {
+  agentConfig: LightAgentConfigurationType;
+  syntheticSuggestions: AgentSuggestionResource[];
+  prompt: { systemPrompt: string; userMessage: string };
 }
 
-/**
- * Aggregate synthetic suggestions for an agent into pending suggestions.
- * Marks processed synthetic suggestions as approved.
- */
-export async function aggregateSyntheticSuggestions(
+async function loadAggregationContext(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<void> {
-  // Fetch all synthetic suggestions for this agent.
+): Promise<AggregationContext | null> {
   const syntheticSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
       auth,
@@ -53,10 +29,9 @@ export async function aggregateSyntheticSuggestions(
     );
 
   if (syntheticSuggestions.length === 0) {
-    return;
+    return null;
   }
 
-  // Fetch agent configuration for context.
   const [agentConfig] = await getAgentConfigurations(auth, {
     agentIds: [agentConfigurationId],
     variant: "light",
@@ -66,10 +41,9 @@ export async function aggregateSyntheticSuggestions(
       { agentConfigurationId },
       "ReinforcedAgent: agent not found for aggregation"
     );
-    return;
+    return null;
   }
 
-  // Filter to instructions suggestions using the discriminated union.
   const instructionsSuggestions = syntheticSuggestions
     .map((s) => s.toJSON())
     .filter(
@@ -82,6 +56,73 @@ export async function aggregateSyntheticSuggestions(
     instructionsSuggestions
   );
 
+  return { agentConfig, syntheticSuggestions, prompt };
+}
+
+export function buildAggregationPrompt(
+  agentName: string,
+  suggestions: AgentInstructionsSuggestionType[]
+): { systemPrompt: string; userMessage: string } {
+  const suggestionsSection = suggestions
+    .map(
+      (s, i) => `### Suggestion ${i + 1}
+kind: ${s.kind}
+targetBlockId: ${s.suggestion.targetBlockId}
+analysis: ${s.analysis ?? "N/A"}
+content: ${s.suggestion.content}`
+    )
+    .join("\n\n");
+
+  const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
+
+## Your task
+- Merge suggestions that address the same issue, or that target the same block
+- Keep only the most impactful suggestions (max 5)
+- In the analysis, mention how many conversations support each suggestion
+- When calling the tool, make sure there is never more than one suggestion targeting the same block (including instructions-root)
+
+You MUST call the tool. If no suggestions survive aggregation, return an empty suggestions array.`;
+
+  const userMessage = `## Agent: ${agentName}
+
+## Synthetic suggestions from conversation analyses
+
+${suggestionsSection}`;
+
+  return { systemPrompt, userMessage };
+}
+
+/**
+ * Build the batch map for aggregation.
+ * Returns null if there are no pending synthetic suggestions or the agent is not found.
+ */
+export async function buildAggregationBatchMap(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<Map<string, LLMStreamParameters> | null> {
+  const ctx = await loadAggregationContext(auth, agentConfigurationId);
+  if (!ctx) {
+    return null;
+  }
+
+  return new Map([["aggregation", buildReinforcedLLMParams(ctx.prompt)]]);
+}
+
+/**
+ * Aggregate synthetic suggestions for an agent into pending suggestions.
+ * Marks processed synthetic suggestions as approved.
+ */
+export async function aggregateSyntheticSuggestions(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const ctx = await loadAggregationContext(auth, agentConfigurationId);
+  if (!ctx) {
+    return;
+  }
+
+  const { agentConfig, syntheticSuggestions, prompt } = ctx;
+
   const createdCount = await runReinforcedAnalysis({
     auth,
     agentConfig,
@@ -91,7 +132,13 @@ export async function aggregateSyntheticSuggestions(
     contextId: "n/a",
   });
 
-  // Mark all synthetic suggestions as approved (consumed by aggregation).
+  if (createdCount > 0) {
+    notifyAgentSuggestionsReady(auth, {
+      agentConfiguration: agentConfig,
+      suggestionCount: createdCount,
+    });
+  }
+
   await AgentSuggestionResource.bulkUpdateState(
     auth,
     syntheticSuggestions,

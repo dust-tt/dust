@@ -27,7 +27,9 @@ export const RATE_LIMITS = {
     windowInMs: 60 * 1000,
   },
   "chat.appendStream": {
-    limit: 100,
+    // Higher limit to enhance streaming UX, the numbers given by slack are 180 rpm/1000 burst at the time of writing
+    // We also use SDK's chatStream which has a buffer mechanism to reduce the number of calls.
+    limit: 160,
     windowInMs: 60 * 1000,
   },
 } satisfies Record<string, RateLimit>;

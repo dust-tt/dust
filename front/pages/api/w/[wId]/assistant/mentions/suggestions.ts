@@ -1,3 +1,61 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/mentions/suggestions:
+ *   get:
+ *     summary: Get mention suggestions
+ *     description: Returns mention suggestions for the workspace.
+ *     tags:
+ *       - Private Mentions
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: query
+ *         required: false
+ *         description: Search query to filter suggestions
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: select
+ *         required: false
+ *         description: Filter by type (agents, users, or both)
+ *         schema:
+ *           type: string
+ *           enum: [agents, users]
+ *       - in: query
+ *         name: current
+ *         required: false
+ *         description: Whether to include only current mentions
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *       - in: query
+ *         name: spaceId
+ *         required: false
+ *         description: Filter suggestions by space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 suggestions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateMentionSuggestion'
+ *       401:
+ *         description: Unauthorized
+ */
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

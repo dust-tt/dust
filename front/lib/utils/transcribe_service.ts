@@ -56,6 +56,7 @@ export async function transcribeFile(
     return new Ok(response.text);
   } catch (err) {
     const e = normalizeError(err);
+
     logger.error({ err: e }, `Failed to transcribe file`);
     return new Err(e);
   }

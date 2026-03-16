@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   GENERIC_ERROR_MESSAGE,
   generateCronRule,

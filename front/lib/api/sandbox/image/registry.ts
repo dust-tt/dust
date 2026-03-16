@@ -4,6 +4,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+const DSBX_CLI_VERSION = "0.1.1";
+
 const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.1.0")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
@@ -24,58 +26,87 @@ SHELLEOF`)
   .runCmd("sudo touch /files/conversation/.mount-pending")
   .registerTool(
     [
-      { name: "git", description: "Version control system" },
-      { name: "jq", description: "JSON processor" },
-      { name: "pandoc", description: "Document converter" },
-      { name: "imagemagick", description: "Image manipulation" },
-      { name: "ffmpeg", description: "Media processing" },
-      { name: "lsb-release", description: "Linux distribution info" },
+      { name: "git", description: "Version control system", runtime: "system" },
+      { name: "jq", description: "JSON processor", runtime: "system" },
+      { name: "pandoc", description: "Document converter", runtime: "system" },
+      {
+        name: "imagemagick",
+        description: "Image manipulation",
+        runtime: "system",
+      },
+      { name: "ffmpeg", description: "Media processing", runtime: "system" },
+      {
+        name: "lsb-release",
+        description: "Linux distribution info",
+        runtime: "system",
+      },
     ],
     {
       installCmd:
         "sudo apt-get update && sudo apt-get install -y jq pandoc imagemagick ffmpeg lsb-release",
     }
   )
-  .registerTool({ name: "python", description: "Python interpreter" })
+  .registerTool({
+    name: "python",
+    description: "Python interpreter",
+    runtime: "python",
+  })
   .registerTool(
     [
-      { name: "pandas", description: "Data analysis library" },
-      { name: "numpy", description: "Numerical computing" },
-      { name: "matplotlib", description: "Plotting library" },
-      { name: "requests", description: "HTTP library" },
-      { name: "openpyxl", description: "Excel file support" },
-      { name: "pdfplumber", description: "PDF extraction" },
+      {
+        name: "pandas",
+        description: "Data analysis library",
+        runtime: "python",
+      },
+      { name: "numpy", description: "Numerical computing", runtime: "python" },
+      {
+        name: "matplotlib",
+        description: "Plotting library",
+        runtime: "python",
+      },
+      { name: "requests", description: "HTTP library", runtime: "python" },
+      {
+        name: "openpyxl",
+        description: "Excel file support",
+        runtime: "python",
+      },
+      { name: "pdfplumber", description: "PDF extraction", runtime: "python" },
     ],
     {
       installCmd:
         "uv pip install --python /opt/venv pandas numpy matplotlib requests openpyxl pdfplumber",
     }
   )
-  .registerTool({ name: "bun", description: "JavaScript runtime" })
   .registerTool(
     [
-      { name: "typescript", description: "TypeScript compiler" },
-      { name: "tsx", description: "TypeScript executor" },
+      {
+        name: "typescript",
+        description: "TypeScript compiler",
+        runtime: "node",
+      },
+      { name: "tsx", description: "TypeScript executor", runtime: "node" },
     ],
     { installCmd: "npm install -g typescript tsx" }
   )
   .registerTool(
-    { name: "dsbx", description: "Dust CLI" },
+    { name: "dsbx", description: "Dust CLI", runtime: "system" },
     {
       installCmd:
-        "curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.0/dsbx-linux-x86_64 -o /tmp/dsbx && " +
-        "curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.0/checksums-sha256.txt -o /tmp/checksums-sha256.txt && " +
+        `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
+        `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
         "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
         "chmod +x /tmp/dsbx && " +
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
   )
+  .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")
+  .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.2.1",
+    tag: "0.2.2",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];

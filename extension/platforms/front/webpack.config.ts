@@ -1,10 +1,12 @@
 import type { Environment } from "@extension/config/env";
 import { execSync } from "child_process";
 import Dotenv from "dotenv-webpack";
+import fs from "fs";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import webpack from "webpack";
+import ZipPlugin from "zip-webpack-plugin";
 
 // Get git commit hash
 const getCommitHash = () => {
@@ -18,6 +20,15 @@ const getCommitHash = () => {
 
 export const getConfig = ({ env }: { env: Environment }) => {
   const isDevelopment = env === "development";
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
+  );
+  const version = packageJson.version;
+
+  const packageDirPath = path.resolve(
+    path.resolve(__dirname),
+    "../../packages"
+  );
 
   return {
     mode: isDevelopment ? "development" : "production",
@@ -100,17 +111,19 @@ export const getConfig = ({ env }: { env: Environment }) => {
       }),
 
       new webpack.EnvironmentPlugin({
-        COMMIT_HASH: getCommitHash(),
+        BUILD_DATE: process.env.COMMIT_HASH || Math.floor(Date.now() / 1000),
+        COMMIT_HASH: process.env.COMMIT_HASH || getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
-        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
-          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        DUST_EXTENSION_VERSION: `front-${version}`,
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
           process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
-        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
           process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
-        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
         VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new Dotenv({
@@ -118,6 +131,12 @@ export const getConfig = ({ env }: { env: Environment }) => {
           ? path.resolve(__dirname, "../../.env.development")
           : path.resolve(__dirname, "../../.env.production"),
       }),
+      packageDirPath
+        ? new ZipPlugin({
+            path: packageDirPath,
+            filename: `Dust_Extension_Front.${env}.v${version}.zip`,
+          })
+        : null,
     ].filter(Boolean),
     devServer: {
       port: 3012,

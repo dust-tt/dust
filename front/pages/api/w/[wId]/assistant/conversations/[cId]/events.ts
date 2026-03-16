@@ -1,3 +1,38 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/events:
+ *   get:
+ *     summary: Stream conversation events
+ *     description: Stream real-time conversation events using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.
+ *     tags:
+ *       - Private Events
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: |
+ *           SSE event stream. Each event is sent as `data: {json}\n\n`.
+ *           Events are discriminated by the `type` field.
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               $ref: '#/components/schemas/PrivateConversationEvent'
+ *       401:
+ *         description: Unauthorized
+ */
 // This endpoint is redirected (307) to /api/sse/w/[wId]/assistant/conversations/[cId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
@@ -12,8 +47,6 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const statsDClient = getStatsDClient();
 
 async function handler(
   req: NextApiRequest,
@@ -85,7 +118,7 @@ async function handler(
         const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
         if (!writeSuccessful) {
           backpressureCount++;
-          statsDClient.increment("streaming.backpressure.count", 1, [
+          getStatsDClient().increment("streaming.backpressure.count", 1, [
             "endpoint_type:internal",
             "endpoint:conversation_events",
           ]);
@@ -101,7 +134,7 @@ async function handler(
       const doneWriteSuccessful = res.write("data: done\n\n");
       if (!doneWriteSuccessful) {
         backpressureCount++;
-        statsDClient.increment("streaming.backpressure.count", 1, [
+        getStatsDClient().increment("streaming.backpressure.count", 1, [
           "endpoint_type:internal",
           "endpoint:conversation_events",
         ]);

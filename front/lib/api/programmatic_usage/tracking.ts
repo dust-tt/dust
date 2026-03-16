@@ -23,8 +23,6 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const statsDClient = getStatsDClient();
-
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
 export function isProgrammaticUsage(
@@ -169,11 +167,11 @@ export async function decreaseProgrammaticCredits(
       }
 
       // Emit both metrics for backwards compatibility with existing dashboards.
-      statsDClient.increment("credits.consumption.blocked", 1, [
+      getStatsDClient().increment("credits.consumption.blocked", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
-      statsDClient.increment("credits.consumption.excess", 1, [
+      getStatsDClient().increment("credits.consumption.excess", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
@@ -206,7 +204,7 @@ export async function decreaseProgrammaticCredits(
         },
         "[Programmatic Usage Tracking] Error consuming credit."
       );
-      statsDClient.increment("credits.consumption.error", 1, [
+      getStatsDClient().increment("credits.consumption.error", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
@@ -225,7 +223,7 @@ export async function decreaseProgrammaticCredits(
     );
   }
 
-  statsDClient.increment("credits.consumption.success", 1, [
+  getStatsDClient().increment("credits.consumption.success", 1, [
     `workspace_id:${workspace.sId}`,
     `origin:${userMessageOrigin}`,
   ]);
@@ -335,7 +333,7 @@ export async function trackProgrammaticCost(
     );
     if (totalConsumedMicroUsd >= thresholdMicroUsd) {
       const workspace = auth.getNonNullableWorkspace();
-      statsDClient.increment("credits.consumption.alert", 1, [
+      getStatsDClient().increment("credits.consumption.alert", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);

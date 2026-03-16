@@ -16,8 +16,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type Stripe from "stripe";
 
-const statsDClient = getStatsDClient();
-
 const BRACKET_1_USERS = 10;
 const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5
 const BRACKET_2_USERS = 40; // 11-50
@@ -290,7 +288,7 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
       },
       "[Free Credits] Error starting credit"
     );
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspaceSId}`,
       "type:free",
       `customer:${isEnterprise ? "enterprise" : "pro"}`,
@@ -298,7 +296,7 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
     return new Err(startResult.error);
   }
 
-  statsDClient.increment("credits.top_up.success", 1, [
+  getStatsDClient().increment("credits.top_up.success", 1, [
     `workspace_id:${workspaceSId}`,
     "type:free",
     `customer:${isEnterprise ? "enterprise" : "pro"}`,
@@ -449,7 +447,7 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
       },
       "[Free Credits Yearly] Error starting credit"
     );
-    statsDClient.increment("credits.top_up.error", 1, [
+    getStatsDClient().increment("credits.top_up.error", 1, [
       `workspace_id:${workspaceSId}`,
       "type:free_yearly",
       `customer:${isEnterprise ? "enterprise" : "pro"}`,
@@ -457,7 +455,7 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
     return new Err(startResult.error);
   }
 
-  statsDClient.increment("credits.top_up.success", 1, [
+  getStatsDClient().increment("credits.top_up.success", 1, [
     `workspace_id:${workspaceSId}`,
     "type:free_yearly",
     `customer:${isEnterprise ? "enterprise" : "pro"}`,

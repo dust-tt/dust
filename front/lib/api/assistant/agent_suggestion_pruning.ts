@@ -353,10 +353,6 @@ export async function pruneConflictingInstructionSuggestions(
     return;
   }
 
-  if (!agentConfiguration.instructionsHtml) {
-    return;
-  }
-
   const allPending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
     agentConfiguration.sId,
@@ -392,12 +388,13 @@ export async function pruneConflictingInstructionSuggestions(
       return;
     }
 
-    // Collect all descendants of this block (child blocks that would be replaced)
-    const descendants = getDescendantBlockIds(
-      agentConfiguration.instructionsHtml,
-      targetBlockId
-    );
-    descendants.forEach((id) => allDescendantBlockIds.add(id));
+    if (agentConfiguration.instructionsHtml) {
+      const descendants = getDescendantBlockIds(
+        agentConfiguration.instructionsHtml,
+        targetBlockId
+      );
+      descendants.forEach((id) => allDescendantBlockIds.add(id));
+    }
   }
 
   const toMarkOutdated: InstructionsSuggestionResource[] = [];

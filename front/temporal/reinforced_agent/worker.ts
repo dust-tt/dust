@@ -31,7 +31,7 @@ export async function runReinforcedAgentWorker() {
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
-    maxConcurrentActivityTaskExecutions: 4,
+    maxConcurrentActivityTaskExecutions: 8,
     connection,
     namespace,
     interceptors: {

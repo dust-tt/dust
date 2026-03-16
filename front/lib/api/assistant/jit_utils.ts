@@ -23,7 +23,13 @@ import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export async function listAttachments(
   auth: Authenticator,
-  { conversation }: { conversation: ConversationType }
+  {
+    conversation,
+    includeProjectContextFiles = true,
+  }: {
+    conversation: ConversationType;
+    includeProjectContextFiles?: boolean;
+  }
 ): Promise<ConversationAttachmentType[]> {
   // Using a map to avoid duplicated, order matters, project files should override directly attached files as they could have be moved from conversation to project.
   const attachments: Map<string, ConversationAttachmentType> = new Map();
@@ -60,7 +66,7 @@ export async function listAttachments(
     }
   }
 
-  if (isProjectConversation(conversation)) {
+  if (isProjectConversation(conversation) && includeProjectContextFiles) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
       logger.warn(

@@ -32,8 +32,6 @@ import type {
 } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-const statsDClient = getStatsDClient();
-
 type RunResourceWithApp = RunResource & { app: AppModel };
 
 export type FetchRunOptions<T extends boolean> = {
@@ -293,31 +291,31 @@ export class RunResource extends BaseResource<RunModel> {
         `workspace_id:${auth.getNonNullableWorkspace().sId}`,
       ];
 
-      statsDClient.increment(
+      getStatsDClient().increment(
         "run_usage.prompt_tokens",
         usage.promptTokens,
         tags
       );
-      statsDClient.increment(
+      getStatsDClient().increment(
         "run_usage.completion_tokens",
         usage.completionTokens,
         tags
       );
-      statsDClient.increment(
+      getStatsDClient().increment(
         "run_usage.cost_micro_usd",
         usage.costMicroUsd,
         tags
       );
 
       if (usage.cachedTokens) {
-        statsDClient.increment(
+        getStatsDClient().increment(
           "run_usage.cached_tokens",
           usage.cachedTokens,
           tags
         );
       }
       if (usage.cacheCreationTokens) {
-        statsDClient.increment(
+        getStatsDClient().increment(
           "run_usage.cache_creation_tokens",
           usage.cacheCreationTokens,
           tags

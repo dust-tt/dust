@@ -28,6 +28,7 @@ const ALL_TRAFFIC = "0.0.0.0/0";
 interface E2BNetworkOpts {
   allowOut?: string[];
   denyOut?: string[];
+  allowPublicTraffic?: boolean;
 }
 
 function toE2BNetworkOpts(policy: NetworkPolicy): E2BNetworkOpts {
@@ -95,9 +96,10 @@ export class E2BSandboxProvider implements SandboxProvider {
         envs: hasEnvVars ? envVars : undefined,
         timeoutMs: SANDBOX_LIFETIME_MS,
         requestTimeoutMs: REQUEST_TIMEOUT_MS,
-        ...(config.network
-          ? { network: toE2BNetworkOpts(config.network) }
-          : {}),
+        network: {
+          ...(config.network ? toE2BNetworkOpts(config.network) : {}),
+          allowPublicTraffic: false,
+        },
       });
     } catch (err) {
       return new Err(normalizeError(err));
@@ -233,10 +235,31 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async listFiles(
-    _providerId: string,
-    _path: string,
-    _opts?: { recursive?: boolean }
+    providerId: string,
+    path: string,
+    opts?: { recursive?: boolean }
   ): Promise<FileEntry[]> {
-    throw new Error("listFiles is not implemented yet.");
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        throw new SandboxNotFoundError(providerId);
+      }
+      throw normalizeError(err);
+    }
+
+    const entries = await sandbox.files.list(path, {
+      depth: opts?.recursive ? 10 : 1,
+    });
+
+    return entries.map((e) => ({
+      path: e.path,
+      size: e.size,
+      isDirectory: e.type === "dir",
+    }));
   }
 }

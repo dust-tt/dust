@@ -25,6 +25,7 @@ export async function butlerWorkflow({
   let needsAnalysis = true;
   let complete = false;
   let latestMessageId: string | null = null;
+  let passIndex = 0;
 
   setHandler(butlerRefreshSignal, (messageId: string) => {
     needsAnalysis = true;
@@ -52,16 +53,19 @@ export async function butlerWorkflow({
         conversationId,
         authType,
         messageId,
+        passIndex,
       });
+      passIndex++;
     }
   }
 
-  // Final analysis after completion signal.
+  // Final analysis after completion signal: run all evaluators (passIndex = -1).
   if (latestMessageId) {
     await analyzeConversationActivity({
       conversationId,
       authType,
       messageId: latestMessageId,
+      passIndex: -1,
     });
   }
 }

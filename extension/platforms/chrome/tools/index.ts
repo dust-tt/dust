@@ -1,9 +1,22 @@
-import { registerGetCurrentPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
-import { registerGetPageViewTool } from "@extension/platforms/chrome/tools/getPageViewTool";
-import { registerListTabsTool } from "@extension/platforms/chrome/tools/listTabsTool";
-import { registerTabActionTools } from "@extension/platforms/chrome/tools/tabActionTools";
+import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
+import {
+  buildClientTools,
+  type ClientToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { attachPageTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
+import {
+  closeBrowserTabTool,
+  moveBrowserTabTool,
+  openBrowserTab,
+  reloadBrowserTabTool,
+  switchBrowserTabTool,
+} from "@extension/platforms/chrome/tools/tabActionTools";
+import { takeScreenshotOrAttachFileTool } from "@extension/platforms/chrome/tools/takeScreenshotOrAttachFileTool";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getCurrentTabInfoTool } from "./getCurrentTabInfo";
+import { interactWithPageTool } from "./interactWithPageTool";
+import { listBrowserTabsTool } from "./listTabsTool";
 
 /**
  * Registers all Chrome MCP tools with the server
@@ -15,8 +28,40 @@ export function registerAllTools(
   captureService: CaptureService | null,
   workspaceId: string
 ): void {
-  registerListTabsTool(server);
-  registerTabActionTools(server);
-  registerGetCurrentPageTool(server, captureService);
-  registerGetPageViewTool(server, captureService, workspaceId);
+  const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
+    attach_page_text: (params) =>
+      attachPageTextTool({ ...params, captureService }),
+    take_screenshot_or_attach_file: (params) =>
+      takeScreenshotOrAttachFileTool({
+        ...params,
+        captureService,
+        workspaceId,
+      }),
+    list_browser_tabs: () => listBrowserTabsTool(),
+    get_current_tab_info: () => getCurrentTabInfoTool(),
+    switch_to_browser_tab: (params) => switchBrowserTabTool(params),
+    close_browser_tab: (params) => closeBrowserTabTool(params),
+    move_browser_tab: (params) => moveBrowserTabTool(params),
+    open_browser_tab: (params) => openBrowserTab(params),
+    reload_browser_tab: (params) => reloadBrowserTabTool(params),
+    interact_with_page: (params) => interactWithPageTool(params),
+  };
+
+  const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
+
+  for (const tool of tools) {
+    server.tool(tool.name, tool.description, tool.schema, async (params) => {
+      const result = await tool.handler(params);
+      if (result.isErr()) {
+        return {
+          isError: true,
+          content: [{ type: "text" as const, text: result.error.message }],
+        };
+      }
+      return {
+        isError: false,
+        content: result.value,
+      };
+    });
+  }
 }

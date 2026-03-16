@@ -1722,6 +1722,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments,
       icon,
       instructions,
+      isDefault,
       mcpServerViews,
       name,
       requestedSpaceIds,
@@ -1735,6 +1736,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
+      isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
@@ -1767,6 +1769,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
+          ...(isDefault !== undefined ? { isDefault } : {}),
         },
         transaction
       );
@@ -2368,6 +2371,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable,
+      isDefault: this.isDefault,
       extendedSkillId: this.extendedSkillId,
     };
   }

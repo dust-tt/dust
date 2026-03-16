@@ -11,6 +11,7 @@ import { DataSourceSearchPage } from "@dust-tt/front/components/poke/pages/DataS
 import { DataSourceViewPage } from "@dust-tt/front/components/poke/pages/DataSourceViewPage";
 import { EmailTemplatesPage } from "@dust-tt/front/components/poke/pages/EmailTemplatesPage";
 import { FramePage } from "@dust-tt/front/components/poke/pages/FramePage";
+import { GlobalAgentFeedbacksPage } from "@dust-tt/front/components/poke/pages/GlobalAgentFeedbacksPage";
 import { GroupPage } from "@dust-tt/front/components/poke/pages/GroupPage";
 import { KillPage } from "@dust-tt/front/components/poke/pages/KillPage";
 import { LLMTracePage } from "@dust-tt/front/components/poke/pages/LLMTracePage";
@@ -72,6 +73,10 @@ export const routes: RouteObject[] = [
           { path: "pokefy", element: <PokefyPage /> },
           { path: "production-checks", element: <ProductionChecksPage /> },
           { path: "email-templates", element: <EmailTemplatesPage /> },
+          {
+            path: "global-agent-feedbacks",
+            element: <GlobalAgentFeedbacksPage />,
+          },
           { path: "templates", element: <TemplatesListPage /> },
           { path: "templates/:tId", element: <TemplateDetailPage /> },
           { path: "plugins", element: <PluginsPage /> },

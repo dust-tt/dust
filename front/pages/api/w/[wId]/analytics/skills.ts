@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { AvailableSkill } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";

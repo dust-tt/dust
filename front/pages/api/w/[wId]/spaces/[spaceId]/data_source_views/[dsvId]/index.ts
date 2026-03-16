@@ -1,3 +1,140 @@
+/**
+ * @swagger
+ * /api/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}:
+ *   get:
+ *     summary: Get a data source view
+ *     description: Returns the details of a specific data source view.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: dsvId
+ *         required: true
+ *         description: ID of the data source view
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dataSourceView:
+ *                   $ref: '#/components/schemas/PrivateDataSourceView'
+ *                 connector:
+ *                   type: object
+ *                   nullable: true
+ *                   description: Connector details if the data source is managed
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Update a data source view
+ *     description: Updates a specific data source view.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: dsvId
+ *         required: true
+ *         description: ID of the data source view
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parentsIn:
+ *                 type: array
+ *                 nullable: true
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dataSourceView:
+ *                   $ref: '#/components/schemas/PrivateDataSourceView'
+ *                 connector:
+ *                   type: object
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete a data source view
+ *     description: Deletes a specific data source view.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: dsvId
+ *         required: true
+ *         description: ID of the data source view
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: force
+ *         required: false
+ *         description: Force deletion even if the view is in use
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       204:
+ *         description: Successfully deleted data source view
+ *       401:
+ *         description: Unauthorized
+ */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
