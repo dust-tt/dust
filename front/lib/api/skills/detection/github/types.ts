@@ -12,21 +12,21 @@ export type GitHubSkillDetectionError =
   | { type: "not_found"; message: string }
   | { type: "github_api_error"; message: string };
 
-export interface GitHubFileEntry extends FileEntry {
+export type GitHubFileEntry = FileEntry & {
   sha: string;
-}
+};
 
-export interface GitHubSkillDirectory extends SkillDirectory {
+export type GitHubSkillDirectory = SkillDirectory & {
   skillMdSha: string;
-}
+};
 
-export interface GitHubDetectedSkillAttachment extends DetectedSkillAttachment {
+export type GitHubDetectedSkillAttachment = DetectedSkillAttachment & {
   sha: string;
-}
+};
 
-export interface GitHubDetectedSkill extends DetectedSkill {
+export type GitHubDetectedSkill = DetectedSkill & {
   attachments: GitHubDetectedSkillAttachment[];
-}
+};
 
 const GitHubTreeEntrySchema = z
   .object({
