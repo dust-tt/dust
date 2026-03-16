@@ -175,7 +175,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit w-full max-w-3xl flex-col justify-end gap-8 py-4 sm:min-h-[20vh]"
+            className="flex h-fit w-full max-w-3xl flex-col justify-end gap-8 py-4 md:min-h-[20vh]"
             ref={startConversationRef}
           >
             <Page.Header title={greeting} />
@@ -198,7 +198,7 @@ export function ConversationContainerVirtuoso({
 
           {suggestion && (
             <div className="w-full max-w-3xl mt-1">
-              <Card variant="highlight" size="lg" containerClassName="w-full">
+              <Card variant="highlight" size="md" containerClassName="w-full">
                 <div className="flex w-full flex-col gap-2 text-sm">
                   <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
                     <LightbulbIcon className="text-highlight-600 h-5 w-5" />
