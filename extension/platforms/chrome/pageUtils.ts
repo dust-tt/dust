@@ -184,7 +184,66 @@ export async function ensureDustPageUtils(
         }, 100);
       };
 
-      w.__dustUtils = { selector, CONTENT, getElementName, highlightElement };
+      const getElementCheckedStatus = (el: HTMLElement): boolean | null => {
+        if (!el) {
+          return null;
+        }
+
+        // Native checkbox / radio
+        if (
+          el instanceof HTMLInputElement &&
+          (el.type === "checkbox" || el.type === "radio")
+        ) {
+          return el.checked;
+        }
+
+        // ARIA-based custom checkboxes, switches, menu items
+        const ariaChecked = el.getAttribute("aria-checked");
+        if (ariaChecked !== null) {
+          return ariaChecked === "true";
+        }
+
+        return null;
+      };
+
+      const getElementValue = (el: HTMLElement): string | null => {
+        if (!el) {
+          return null;
+        }
+
+        // Select — return the human-readable label of the selected option
+        if (el instanceof HTMLSelectElement) {
+          return el.options[el.selectedIndex]?.text?.trim() || null;
+        }
+
+        // Input — exclude types where value is not meaningful as text
+        if (el instanceof HTMLInputElement) {
+          if (
+            el.type === "checkbox" ||
+            el.type === "radio" ||
+            el.type === "password"
+          ) {
+            return null;
+          }
+          return el.value?.trim() || null;
+        }
+
+        // Textarea
+        if (el instanceof HTMLTextAreaElement) {
+          return el.value?.trim() || null;
+        }
+
+        return null;
+      };
+
+      w.__dustUtils = {
+        selector,
+        CONTENT,
+        getElementName,
+        highlightElement,
+        getElementCheckedStatus,
+        getElementValue,
+      };
     },
   });
 
