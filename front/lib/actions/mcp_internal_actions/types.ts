@@ -2,6 +2,8 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
+export const MAX_BROWSE_URLS = 16;
+
 export const SearchInputSchema = z.object({
   query: z
     .string()
