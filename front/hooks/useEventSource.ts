@@ -47,7 +47,7 @@ const stableEventSourceManager = {
    * @param uniqueId A unique identifier for this EventSource instance
    * @returns The newly created EventSource instance
    */
-  create(url: string, uniqueId: string) {
+  async create(url: string, uniqueId: string) {
     const urlWithCommitHash = new URL(url, document.baseURI);
     urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
 
@@ -57,7 +57,7 @@ const stableEventSourceManager = {
       urlWithCommitHash.search +
       urlWithCommitHash.hash;
 
-    const newSource = clientEventSource(pathWithQueryAndHash, {
+    const newSource = await clientEventSource(pathWithQueryAndHash, {
       heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
     });
     this.sources.set(uniqueId, newSource);
@@ -108,7 +108,7 @@ export function useEventSource(
   const sourceManager = stableEventSourceManager;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     const url = buildURL(lastEvent.current);
     if (!url) {
       // If the url is empty, it means streaming is done.
@@ -121,7 +121,7 @@ export function useEventSource(
     let source = sourceManager.get(uniqueId);
     // If the source is closed or doesn't exist, create a new one.
     if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
-      source = sourceManager.create(url, uniqueId);
+      source = await sourceManager.create(url, uniqueId);
     }
 
     source.onopen = () => {

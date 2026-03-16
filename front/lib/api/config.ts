@@ -17,13 +17,16 @@ export function getBaseUrl(): string {
 }
 
 // Pluggable default RequestInit resolver (e.g. credentials/headers per context).
-let defaultInitResolver: (() => RequestInit) | null = null;
+// The resolver may be async (e.g. to call getAccessToken() which refreshes expired tokens).
+let defaultInitResolver: (() => Promise<RequestInit>) | null = null;
 
-export function setDefaultInitResolver(fn: (() => RequestInit) | null): void {
+export function setDefaultInitResolver(
+  fn: (() => Promise<RequestInit>) | null
+): void {
   defaultInitResolver = fn;
 }
 
-export function getDefaultInit(): RequestInit | null {
+export function getDefaultInit(): Promise<RequestInit> | null {
   return defaultInitResolver?.() ?? null;
 }
 

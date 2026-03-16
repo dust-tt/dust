@@ -38,7 +38,6 @@ import {
 } from "./interactWithPage";
 
 const log = console.error;
-const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
 function isGoogleChrome(): boolean {
   const brands =
@@ -1170,7 +1169,7 @@ const refreshToken = async (
           success: true,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken || refreshToken,
-          expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          expirationDate: data.expirationDate,
           authentication_method: data.authenticationMethod,
         });
       });
@@ -1222,7 +1221,7 @@ const exchangeCodeForTokens = async (
       success: true,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
-      expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      expirationDate: data.expirationDate,
       authentication_method: data.authenticationMethod,
     };
   } catch (error) {
