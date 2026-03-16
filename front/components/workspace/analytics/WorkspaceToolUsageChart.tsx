@@ -7,6 +7,8 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useWorkspaceTools,
   useWorkspaceToolUsage,
@@ -23,6 +25,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { DownloadIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -106,6 +109,10 @@ export function WorkspaceToolUsageChart({
   workspaceId,
   period,
 }: WorkspaceToolUsageChartProps) {
+  const { hasFeature } = useFeatureFlags();
+  const showExport = hasFeature("analytics_csv_export");
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const [displayMode, setDisplayMode] =
     useState<ToolUsageDisplayMode>("executions");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
@@ -263,6 +270,41 @@ export function WorkspaceToolUsageChart({
     </DropdownMenu>
   );
 
+  const canDownload = !isToolsLoading && !hasError && data.length > 0;
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const response = await clientFetch(
+        `/api/w/${workspaceId}/analytics/tool-usage-export?days=${period}`
+      );
+      if (!response.ok) {
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dust_tool_usage_last_${period}_days.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const downloadButton = showExport ? (
+    <Button
+      icon={DownloadIcon}
+      variant="outline"
+      size="xs"
+      tooltip="Download CSV"
+      onClick={handleDownload}
+      disabled={!canDownload || isDownloading}
+      isLoading={isDownloading}
+    />
+  ) : undefined;
+
   const modeSelector = (
     <ButtonsSwitchList defaultValue={displayMode} size="xs">
       <ButtonsSwitch
@@ -293,6 +335,7 @@ export function WorkspaceToolUsageChart({
         <div className="flex items-center gap-2">
           {toolSelector}
           {modeSelector}
+          {downloadButton}
         </div>
       }
     >
