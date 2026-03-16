@@ -24,7 +24,7 @@ export const sandboxSkill = {
   version: 1,
   icon: "CommandLineIcon",
   isRestricted: async (auth: Authenticator) => {
-    const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const flags = await getFeatureFlags(auth);
 
     return !flags.includes("sandbox_tools");
   },

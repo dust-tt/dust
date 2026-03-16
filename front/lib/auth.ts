@@ -1441,8 +1441,10 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
 });
 
 export function getFeatureFlags(
-  workspace: LightWorkspaceType
+  auth: Authenticator
 ): Promise<WhitelistableFeature[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
   return new Promise((resolve, reject) => {
     _getFeatureFlags(workspace, (err, result) => {
       if (err) {
@@ -1458,25 +1460,18 @@ export async function hasFeatureFlag(
   auth: Authenticator,
   flag: WhitelistableFeature
 ): Promise<boolean> {
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const flags = await getFeatureFlags(auth);
   return flags.includes(flag);
 }
 
 export function invalidateFeatureFlagsCache(
-  workspace: LightWorkspaceType
+  authOrWorkspace: Authenticator | LightWorkspaceType
 ): void {
+  const workspace =
+    authOrWorkspace instanceof Authenticator
+      ? authOrWorkspace.getNonNullableWorkspace()
+      : authOrWorkspace;
   _getFeatureFlags.del(workspace);
-}
-
-export async function isRestrictedFromAgentCreation(
-  owner: LightWorkspaceType
-): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(owner);
-
-  return (
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner)
-  );
 }
 
 export function getApiKeyNameFromHeaders(headers: {

@@ -566,7 +566,7 @@ export async function postUserMessage(
     });
   }
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   const isPartOfProject = isProjectConversation(conversation);
 
   if (isPartOfProject) {
@@ -1225,7 +1225,7 @@ export async function editUserMessage(
     agentMessages
   );
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (
     featureFlags.includes("conversation_butler") &&
     isProjectConversation(conversation)
@@ -1309,8 +1309,6 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
-  const owner = auth.getNonNullableWorkspace();
-
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1507,7 +1505,7 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (
     featureFlags.includes("conversation_butler") &&
     isProjectConversation(conversation)
@@ -1667,7 +1665,7 @@ export async function postNewContentFragment(
     message: messageRow,
   });
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (
     featureFlags.includes("conversation_butler") &&
     isProjectConversation(conversation)

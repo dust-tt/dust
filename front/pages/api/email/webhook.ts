@@ -271,8 +271,7 @@ async function handler(
         workspace.sId
       );
 
-      const featureFlagWorkspace = auth.getNonNullableWorkspace();
-      const featureFlags = await getFeatureFlags(featureFlagWorkspace);
+      const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("email_agents")) {
         await replyToError(email, {
           type: "invalid_email_error",

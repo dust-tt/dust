@@ -13,7 +13,7 @@ import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -347,7 +347,7 @@ export async function userAndWorkspaceFromEmail({
       type: "user_not_found",
       message:
         `Failed to match a valid Dust user for email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
+        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
     });
   }
   const workspaceModels = await WorkspaceModel.findAll({
@@ -378,7 +378,11 @@ export async function userAndWorkspaceFromEmail({
   const eligibleWorkspaceModels: typeof workspaceModels = [];
   for (const w of workspaceModels) {
     const lightWorkspace = renderLightWorkspaceType({ workspace: w });
-    const flags = await getFeatureFlags(lightWorkspace);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      lightWorkspace.sId
+    );
+    const flags = await getFeatureFlags(auth);
     if (
       flags.includes("email_agents") &&
       lightWorkspace.metadata?.allowEmailAgents === true

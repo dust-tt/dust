@@ -282,7 +282,7 @@ async function handler(
       }
 
       // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(owner);
+      const keyWorkspaceFlags = await getFeatureFlags(auth);
 
       let credentials: CredentialsType | null = null;
       if (useDustCredentials) {
@@ -315,7 +315,7 @@ async function handler(
       }
 
       // Fetch the feature flags of the app's workspace.
-      const flags = await getFeatureFlags(owner);
+      const flags = await getFeatureFlags(auth);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
       logger.info(

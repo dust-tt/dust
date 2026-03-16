@@ -115,7 +115,7 @@ const isSlackNotificationsFeatureEnabled = async (
     subscriberId,
     workspaceId
   );
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
 
   return featureFlags.includes("conversations_slack_notifications");
 };

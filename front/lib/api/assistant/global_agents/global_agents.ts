@@ -1062,7 +1062,7 @@ export async function getGlobalAgents(
       // We only want to fetch sidekick global agents if explicitly requested.
       .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK);
 
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

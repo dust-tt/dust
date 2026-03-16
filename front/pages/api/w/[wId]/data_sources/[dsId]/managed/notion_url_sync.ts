@@ -38,7 +38,7 @@ async function handler(
   // endpoint protected by feature flag
   if (
     !dataSource ||
-    !(await getFeatureFlags(owner)).includes("advanced_notion_management")
+    !(await getFeatureFlags(auth)).includes("advanced_notion_management")
   ) {
     return apiError(req, res, {
       status_code: 404,

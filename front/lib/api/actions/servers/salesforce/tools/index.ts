@@ -202,8 +202,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
     },
 
     update_object: async ({ objectName, records, allOrNone }, extra) => {
-      const owner = auth.getNonNullableWorkspace();
-      const featureFlags = await getFeatureFlags(owner);
+      const featureFlags = await getFeatureFlags(auth);
 
       if (!featureFlags.includes("salesforce_tool_write")) {
         return new Err(

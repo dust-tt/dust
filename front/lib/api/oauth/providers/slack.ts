@@ -166,7 +166,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     }
 
     // Check if the feature flag is enabled
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("self_created_slack_app_connector_rollout")) {
       return undefined;
     }
@@ -201,9 +201,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       } = extraConfig;
       return restConfig;
     } else if (useCase === "platform_actions") {
-      const feature_flags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
+      const feature_flags = await getFeatureFlags(auth);
       const config = { ...extraConfig };
       if (feature_flags.includes("slack_bot_mcp")) {
         config.slack_bot_mcp_feature_flag = "true";

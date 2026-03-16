@@ -285,9 +285,7 @@ async function handler(
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
       if (fileAttachments) {
-        const featureFlags = await getFeatureFlags(
-          auth.getNonNullableWorkspace()
-        );
+        const featureFlags = await getFeatureFlags(auth);
         if (
           !featureFlags.includes("sandbox_tools") &&
           fileAttachments.length > 0
