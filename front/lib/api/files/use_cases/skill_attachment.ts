@@ -1,6 +1,6 @@
 import type { FileEntry } from "@app/lib/api/skills/detection/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
-import { FILE_FORMATS, isSupportedFileContentType } from "@app/types/files";
+import { FILE_FORMATS } from "@app/types/files";
 import path from "path";
 
 const SKILL_ATTACHMENT_CONTENT_TYPES = [
@@ -79,14 +79,9 @@ export function getSkillAttachmentContentType(
   if (!ext) {
     return null;
   }
-  for (const [key, format] of Object.entries(FILE_FORMATS)) {
-    if (
-      format.exts.some((e) => e === ext) &&
-      // Type guards to validate the type of key (lost because of the Object.entries).
-      isSupportedFileContentType(key) &&
-      isSupportedForSkillAttachment(key)
-    ) {
-      return key;
+  for (const contentType of SKILL_ATTACHMENT_CONTENT_TYPES) {
+    if (FILE_FORMATS[contentType].exts.some((e) => ext === e)) {
+      return contentType;
     }
   }
   return null;
