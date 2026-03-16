@@ -69,26 +69,14 @@ export function useSaveProviderCredential({
       apiKey: string;
       isNew?: boolean;
     }): Promise<ProviderCredentialType | null> => {
+      setIsSaving(true);
       try {
-        setIsSaving(true);
-        let response: Response;
-        try {
-          const url = providerCredentialApiUrl(owner.sId, providerId);
-
-          response = await clientFetch(url, {
-            method: isNew ? "POST" : "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ apiKey } satisfies ProviderCredentialBody),
-          });
-        } catch (e) {
-          const message = normalizeError(e).message;
-          sendNotification({
-            type: "error",
-            title: "Failed to save API key",
-            description: message,
-          });
-          return null;
-        }
+        const url = providerCredentialApiUrl(owner.sId, providerId);
+        const response = await clientFetch(url, {
+          method: isNew ? "POST" : "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apiKey } satisfies ProviderCredentialBody),
+        });
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
@@ -111,6 +99,14 @@ export function useSaveProviderCredential({
         await mutate(baseProviderCredentialsApiUrl(owner.sId));
 
         return data.providerCredential;
+      } catch (e) {
+        const message = normalizeError(e).message;
+        sendNotification({
+          type: "error",
+          title: "Failed to save API key",
+          description: message,
+        });
+        return null;
       } finally {
         setIsSaving(false);
       }
@@ -136,23 +132,12 @@ export function useDeleteProviderCredential({
     }: {
       providerId: ByokModelProviderIdType;
     }): Promise<boolean> => {
+      setIsDeleting(true);
       try {
-        setIsDeleting(true);
-        let response: Response;
-        try {
-          response = await clientFetch(
-            providerCredentialApiUrl(owner.sId, providerId),
-            { method: "DELETE" }
-          );
-        } catch (e) {
-          const message = normalizeError(e).message;
-          sendNotification({
-            type: "error",
-            title: "Failed to remove API key",
-            description: message,
-          });
-          return false;
-        }
+        const response = await clientFetch(
+          providerCredentialApiUrl(owner.sId, providerId),
+          { method: "DELETE" }
+        );
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
@@ -173,6 +158,14 @@ export function useDeleteProviderCredential({
         await mutate(baseProviderCredentialsApiUrl(owner.sId));
 
         return true;
+      } catch (e) {
+        const message = normalizeError(e).message;
+        sendNotification({
+          type: "error",
+          title: "Failed to remove API key",
+          description: message,
+        });
+        return false;
       } finally {
         setIsDeleting(false);
       }
