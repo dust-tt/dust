@@ -81,10 +81,17 @@ export async function importSkillsFromGitHub(
         return;
       }
 
+      const skillDirPath = path.dirname(skill.skillMdPath);
       const uploadResults = await concurrentExecutor(
         skill.attachments,
         (attachment) =>
-          uploadAttachment(auth, { octokit, owner, repo, attachment }),
+          uploadAttachment(auth, {
+            octokit,
+            owner,
+            repo,
+            attachment,
+            skillDirPath,
+          }),
         { concurrency: IMPORT_CONCURRENCY }
       );
 
@@ -167,11 +174,13 @@ async function uploadAttachment(
     owner,
     repo,
     attachment,
+    skillDirPath,
   }: {
     octokit: InstanceType<typeof Octokit>;
     owner: string;
     repo: string;
     attachment: GitHubDetectedSkillAttachment;
+    skillDirPath: string;
   }
 ): Promise<FileResource | null> {
   const blobResult = await fetchBlobContent(octokit, {
@@ -187,7 +196,7 @@ async function uploadAttachment(
     return null;
   }
 
-  const fileName = path.basename(attachment.path);
+  const fileName = path.relative(skillDirPath, attachment.path);
 
   const uploadResult = await uploadBase64DataToFileStorage(auth, {
     base64: blobResult.value,
