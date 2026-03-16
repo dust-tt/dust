@@ -188,6 +188,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     auth: Authenticator,
     providerId: ByokModelProviderIdType
   ): Promise<ProviderCredentialResource | null> {
+    const plan = auth.getNonNullablePlan();
+    assert(
+      plan.isByok,
+      "BYOK must be enabled to fetch a provider's credentials."
+    );
+
     const workspace = auth.getNonNullableWorkspace();
     const model = await this.model.findOne({
       where: { workspaceId: workspace.id, providerId },
@@ -280,6 +286,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     { apiKey }: { apiKey: string }
   ): Promise<ProviderCredentialResource | null> {
     assert(auth.isAdmin(), "Only admins can update provider credentials.");
+    const plan = auth.getNonNullablePlan();
+    assert(plan.isByok, "BYOK must be enabled to update provider credentials.");
 
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
