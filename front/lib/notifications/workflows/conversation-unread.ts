@@ -4,6 +4,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import config from "@app/lib/api/config";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
@@ -21,7 +22,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   UserMessageOrigin,
@@ -412,7 +412,7 @@ const generateUnreadMessagesSummary = async ({
 
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = await getSmallWhitelistedModel(auth);
 
   if (!model) {
     return new Err(

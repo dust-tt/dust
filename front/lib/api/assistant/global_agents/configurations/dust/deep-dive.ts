@@ -27,10 +27,8 @@ import type {
   AgentReasoningEffort,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -39,10 +37,8 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -327,7 +323,7 @@ These instructions are NOT your own instructions, but you may use them to unders
 `;
 
 function getModelConfig(
-  owner: WorkspaceType,
+  prefetchedModels: PrefetchedWhitelistedModels,
   prefer: "anthropic" | "openai",
   reasoning: boolean = true
 ): {
@@ -372,14 +368,20 @@ function getModelConfig(
             : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
-  if (isProviderWhitelisted(owner, preferredModel.model.providerId)) {
+  if (
+    prefetchedModels.whitelistedProviders.has(preferredModel.model.providerId)
+  ) {
     return {
       modelConfiguration: preferredModel.model,
       reasoningEffort: preferredModel.reasoningEffort,
     };
   }
 
-  if (isProviderWhitelisted(owner, secondPreferredModel.model.providerId)) {
+  if (
+    prefetchedModels.whitelistedProviders.has(
+      secondPreferredModel.model.providerId
+    )
+  ) {
     return {
       modelConfiguration: secondPreferredModel.model,
       reasoningEffort: secondPreferredModel.reasoningEffort,
@@ -387,7 +389,7 @@ function getModelConfig(
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfiguration = getLargeWhitelistedModel(owner);
+  const modelConfiguration = prefetchedModels.large;
   if (!modelConfiguration) {
     return null;
   }
@@ -398,40 +400,42 @@ function getModelConfig(
 }
 
 export function getFastModelConfig(
-  owner: WorkspaceType
+  prefetchedModels: PrefetchedWhitelistedModels
 ): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "anthropic")) {
+  if (prefetchedModels.whitelistedProviders.has("anthropic")) {
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+  if (prefetchedModels.whitelistedProviders.has("google_ai_studio")) {
     return GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfig = getModelConfig(owner, "anthropic", false);
+  const modelConfig = getModelConfig(prefetchedModels, "anthropic", false);
   if (!modelConfig) {
     return null;
   }
   return modelConfig.modelConfiguration;
 }
 
-function getMaxReasoningModelConfig(owner: WorkspaceType): {
+function getMaxReasoningModelConfig(
+  prefetchedModels: PrefetchedWhitelistedModels
+): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
-  if (isProviderWhitelisted(owner, "openai")) {
+  if (prefetchedModels.whitelistedProviders.has("openai")) {
     return {
       modelConfiguration: GPT_5_4_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  if (isProviderWhitelisted(owner, "anthropic")) {
+  if (prefetchedModels.whitelistedProviders.has("anthropic")) {
     return {
       modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  return getModelConfig(owner, "anthropic");
+  return getModelConfig(prefetchedModels, "anthropic");
 }
 
 export function _getDeepDiveGlobalAgent(
@@ -440,19 +444,21 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
-  const owner = auth.getNonNullableWorkspace();
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getModelConfig(owner, "anthropic");
+  const modelConfig = getModelConfig(prefetchedModels, "anthropic");
 
   const enterpriseModelConfig =
-    shouldUseOpus(auth) && isProviderWhitelisted(owner, "anthropic")
+    shouldUseOpus(auth) &&
+    prefetchedModels.whitelistedProviders.has("anthropic")
       ? {
           modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
@@ -599,14 +605,14 @@ export function _getDustTaskGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
   const name = "dust-task";
   const description = `Focused research sub-agent. Same data/web tools as ${DEEP_DIVE_NAME}, without Interactive Content or spawning sub-agents.`;
 
@@ -638,7 +644,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getModelConfig(owner, "anthropic", false);
+  const modelConfig = getModelConfig(prefetchedModels, "anthropic", false);
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
@@ -713,10 +719,14 @@ export function _getDustTaskGlobalAgent(
 
 export function _getPlanningAgent(
   auth: Authenticator,
-  { settings }: { settings: GlobalAgentSettingsModel | null }
+  {
+    settings,
+    prefetchedModels,
+  }: {
+    settings: GlobalAgentSettingsModel | null;
+    prefetchedModels: PrefetchedWhitelistedModels;
+  }
 ): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
   const name = "dust-planning";
   const description = "A agent that plans research tasks.";
 
@@ -748,7 +758,7 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getMaxReasoningModelConfig(owner);
+  const modelConfig = getMaxReasoningModelConfig(prefetchedModels);
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,

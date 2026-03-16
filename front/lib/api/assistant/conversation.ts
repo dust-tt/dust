@@ -37,7 +37,7 @@ import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types"
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import { isModelAvailable } from "@app/lib/assistant";
+import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -108,7 +108,6 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -638,7 +637,11 @@ export async function postUserMessage(
       });
     }
 
-    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
+    const isProviderEnabled = await isProviderWhitelisted(
+      auth,
+      agentConfig.model.providerId
+    );
+    if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
       return new Err({
         status_code: 400,
@@ -1015,7 +1018,11 @@ export async function editUserMessage(
       });
     }
 
-    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
+    const isProviderEnabled = await isProviderWhitelisted(
+      auth,
+      agentConfig.model.providerId
+    );
+    if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
       return new Err({
         status_code: 400,

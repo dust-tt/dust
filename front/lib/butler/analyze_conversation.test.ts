@@ -2,13 +2,13 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import { analyzeConversation } from "@app/lib/butler/analyze_conversation";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,7 +27,7 @@ vi.mock("@app/lib/api/assistant/streaming/events", () => ({
 }));
 
 // Mock model selection to avoid plan/whitelist dependency.
-vi.mock("@app/types/assistant/assistant", async (importOriginal) => {
+vi.mock("@app/lib/assistant", async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...(mod as object),
