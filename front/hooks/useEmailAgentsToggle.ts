@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
@@ -31,13 +32,11 @@ export function useEmailAgentsToggle({ owner }: UseEmailAgentsToggleProps) {
         throw new Error("Failed to update Email agents setting");
       }
       setIsEnabled(!isEnabled);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to update Email agents setting",
-        description: "Could not update the Email agents setting.",
+        description: normalizeError(error).message,
       });
     }
     setIsChanging(false);
