@@ -6,8 +6,12 @@ import {
   importFormSchema,
   isImportType,
 } from "@app/components/skills/import/formSchema";
+import { ImportFromFilesTab } from "@app/components/skills/import/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
-import { useImportSkills } from "@app/lib/swr/skill_configurations";
+import {
+  useImportSkills,
+  useImportSkillsFromFiles,
+} from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -24,7 +28,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 
 interface ImportSkillsDialogProps {
@@ -34,6 +38,7 @@ interface ImportSkillsDialogProps {
 
 const TAB_DESCRIPTION: Record<ImportType, string> = {
   repository: "Enter a GitHub repository URL to detect skills.",
+  files: "Upload .md, .zip or .skill files to import skills.",
 };
 
 export function ImportSkillsDialog({
@@ -65,19 +70,47 @@ export function ImportSkillsDialog({
     name: "selectedSkillNames",
   });
 
-  const { importSkills, isImporting } = useImportSkills({ owner });
+  const uploadedFilesRef = useRef<File[]>([]);
+
+  const { importSkills, isImporting: isImportingFromRepo } = useImportSkills({
+    owner,
+  });
+  const { importSkillsFromFiles, isImporting: isImportingFromFiles } =
+    useImportSkillsFromFiles({ owner });
+
+  const isImporting = isImportingFromRepo || isImportingFromFiles;
 
   const onSubmit = useCallback(
     async (data: ImportFormValues) => {
       if (data.selectedSkillNames.length === 0) {
         return;
       }
-      const result = await importSkills(data.repoUrl, data.selectedSkillNames);
-      if (result.successCount > 0) {
+
+      let successCount = 0;
+      switch (data.importType) {
+        case "repository": {
+          const result = await importSkills(
+            data.repoUrl,
+            data.selectedSkillNames
+          );
+          successCount = result.successCount;
+          break;
+        }
+        case "files": {
+          const result = await importSkillsFromFiles(
+            uploadedFilesRef.current,
+            data.selectedSkillNames
+          );
+          successCount = result.successCount;
+          break;
+        }
+      }
+
+      if (successCount > 0) {
         onClose();
       }
     },
-    [importSkills, onClose]
+    [importSkills, importSkillsFromFiles, onClose]
   );
 
   const selectedCount = selectedSkillNamesField.value.length;
@@ -115,12 +148,24 @@ export function ImportSkillsDialog({
             >
               <TabsList>
                 <TabsTrigger value="repository" label="Repository" />
+                <TabsTrigger value="files" label="Files" />
               </TabsList>
               <TabsContent value="repository">
                 <ImportFromRepositoryTab
                   owner={owner}
                   onDetectingChange={setIsDetecting}
                   onDetectedCountChange={setDetectedCount}
+                  isImporting={isImporting}
+                />
+              </TabsContent>
+              <TabsContent value="files">
+                <ImportFromFilesTab
+                  owner={owner}
+                  onDetectingChange={setIsDetecting}
+                  onDetectedCountChange={setDetectedCount}
+                  onFilesChange={(files) => {
+                    uploadedFilesRef.current = files;
+                  }}
                   isImporting={isImporting}
                 />
               </TabsContent>
