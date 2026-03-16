@@ -609,7 +609,6 @@ export async function handleDataSourceSearch({
     Omit<DustError, "code"> & { code: "data_source_error" }
   >
 > {
-  // Dust managed credentials: all data sources.
   const credentials = await getLlmCredentials(auth);
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
