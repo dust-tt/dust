@@ -318,36 +318,27 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       return null;
     }
 
-    await this.model.update(
-      {
-        credentialId: oauthRes.value.credential.credential_id,
-        isHealthy: true,
-        editedByUserId: user.id,
-      },
-      { where: { id: this.id, workspaceId: workspace.id } }
-    );
+    const oldCredentialId = this.credentialId;
 
-    const updatedModel = await this.model.findOne({
-      where: { id: this.id, workspaceId: workspace.id },
+    const [affectedCount] = await this.update({
+      credentialId: oauthRes.value.credential.credential_id,
+      isHealthy: true,
+      editedByUserId: user.id,
     });
 
-    if (!updatedModel) {
+    if (affectedCount === 0) {
       await oauthClient.deleteCredentials({
         credentialsId: oauthRes.value.credential.credential_id,
       });
 
-      throw new Error("Failed to re-fetch updated provider credential.");
+      throw new Error("Failed to update provider credential.");
     }
 
     await oauthClient.deleteCredentials({
-      credentialsId: this.credentialId,
+      credentialsId: oldCredentialId,
     });
 
-    return new ProviderCredentialResource(
-      ProviderCredentialModel,
-      updatedModel.get(),
-      { api_key: apiKey }
-    );
+    return this;
   }
 
   static async listByWorkspace(
