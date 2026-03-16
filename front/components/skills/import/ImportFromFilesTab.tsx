@@ -1,5 +1,5 @@
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
-import type { ImportFormValues } from "@app/components/skills/import/formSchema";
+import type { FilesImportFormValues } from "@app/components/skills/import/formSchema";
 import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import { useDetectSkillsFromFiles } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -33,7 +33,7 @@ export function ImportFromFilesTab({
   onFilesChange,
   isImporting,
 }: ImportFromFilesTabProps) {
-  const { setValue } = useFormContext<ImportFormValues>();
+  const { setValue } = useFormContext<FilesImportFormValues>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =

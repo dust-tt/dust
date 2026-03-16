@@ -1,5 +1,5 @@
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
-import type { ImportFormValues } from "@app/components/skills/import/formSchema";
+import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import {
   isImportableSkillStatus,
   parseGitHubRepoUrl,
@@ -23,7 +23,7 @@ export function ImportFromRepositoryTab({
   onDetectedCountChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
-  const { control, setValue } = useFormContext<ImportFormValues>();
+  const { control, setValue } = useFormContext<RepositoryImportFormValues>();
   const { field: repoUrlField } = useController({ name: "repoUrl", control });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
