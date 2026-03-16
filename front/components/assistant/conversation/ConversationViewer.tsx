@@ -23,8 +23,6 @@ import {
   useConversations,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
-import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
-import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -136,16 +134,6 @@ export const ConversationViewer = ({
   const sendNotification = useSendNotification();
 
   const { mutateConversationAttachments } = useConversationAttachments({
-    conversationId,
-    owner,
-    options: { disabled: true },
-  });
-  const { mutateSandboxStatus } = useConversationSandboxStatus({
-    conversationId,
-    owner,
-    options: { disabled: true },
-  });
-  const { mutateSandboxFiles } = useConversationSandboxFiles({
     conversationId,
     owner,
     options: { disabled: true },
@@ -559,8 +547,6 @@ export const ConversationViewer = ({
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
             void mutateConversationAttachments();
-            void mutateSandboxStatus();
-            void mutateSandboxFiles();
             break;
           case "butler_thinking":
             setIsButlerThinking(true);
@@ -593,8 +579,6 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      mutateSandboxFiles,
-      mutateSandboxStatus,
       user.sId,
     ]
   );
