@@ -372,6 +372,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   async delete(
     auth: Authenticator
   ): Promise<Result<number | undefined, Error>> {
+    assert(auth.isAdmin(), "Only admins can delete provider credentials.");
+    assert(
+      auth.getNonNullablePlan().isByok,
+      "BYOK must be enabled to delete provider credentials."
+    );
+
     try {
       const workspace = auth.getNonNullableWorkspace();
       const affectedCount = await this.model.destroy({
@@ -381,9 +387,16 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
         },
       });
 
-      await ProviderCredentialResource.invalidateProviderCredentialCache(
-        workspace.id
-      );
+      if (affectedCount !== 0) {
+        const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        await oauthClient.deleteCredentials({
+          credentialsId: this.credentialId,
+        });
+
+        await ProviderCredentialResource.invalidateProviderCredentialCache(
+          workspace.id
+        );
+      }
 
       return new Ok(affectedCount);
     } catch (error) {
