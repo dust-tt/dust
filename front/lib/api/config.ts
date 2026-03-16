@@ -77,9 +77,6 @@ const config = {
       config.getApiBaseUrl()
     );
   },
-  getDustApiAudience: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
-  },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
