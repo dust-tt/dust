@@ -26,11 +26,11 @@ export function useEmailAgentsToggle({ owner }: UseEmailAgentsToggleProps) {
           allowEmailAgents: !isEnabled,
         }),
       });
-      setIsEnabled(!isEnabled);
 
       if (!res.ok) {
         throw new Error("Failed to update Email agents setting");
       }
+      setIsEnabled(!isEnabled);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
