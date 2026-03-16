@@ -105,7 +105,6 @@ describe("findSkillDirectories", () => {
     const dirs = findSkillDirectories(entries);
     expect(dirs).toHaveLength(1);
   });
-
 });
 
 describe("collectAttachments", () => {
