@@ -1,9 +1,11 @@
+import { getSkillAttachmentContentType } from "@app/lib/api/files/use_cases/skill_attachment";
 import type {
   DetectedSkillAttachment,
   FileEntry,
   SkillDirectory,
 } from "@app/lib/api/skills/detection/types";
 import * as yaml from "js-yaml";
+import path from "path";
 import { z } from "zod";
 
 const SKILL_MD_FILENAME = "skill.md";
@@ -88,12 +90,7 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   const seenDirs = new Set<string>();
 
   for (const entry of entries) {
-    if (!entry.isFile) {
-      continue;
-    }
-
-    const filename = entry.path.split("/").pop() ?? "";
-    if (filename.toLowerCase() !== SKILL_MD_FILENAME) {
+    if (path.basename(entry.path).toLowerCase() !== SKILL_MD_FILENAME) {
       continue;
     }
 
@@ -124,17 +121,20 @@ export function collectAttachments(
   const attachments: DetectedSkillAttachment[] = [];
 
   for (const entry of entries) {
-    if (!entry.isFile) {
-      continue;
-    }
     if (!entry.path.startsWith(dirPrefix)) {
       continue;
     }
     if (entry.path === skillDir.skillMdPath) {
       continue;
     }
-    const relativePath = entry.path.slice(dirPrefix.length);
-    attachments.push({ path: relativePath, sizeBytes: entry.sizeBytes });
+    const contentType = getSkillAttachmentContentType(entry);
+    if (contentType) {
+      attachments.push({
+        path: entry.path,
+        sizeBytes: entry.sizeBytes,
+        contentType,
+      });
+    }
   }
 
   return attachments;

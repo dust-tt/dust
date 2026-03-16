@@ -1,5 +1,10 @@
-import { findGitHubSkillDirectories } from "@app/lib/api/skills/detection/github/parsing";
+import {
+  collectGitHubAttachments,
+  findGitHubSkillDirectories,
+} from "@app/lib/api/skills/detection/github/parsing";
 import type {
+  GitHubDetectedSkill,
+  GitHubFileEntry,
   GitHubSkillDetectionError,
   GitHubSkillDirectory,
   GitHubTreeEntry,
@@ -8,14 +13,7 @@ import {
   GitHubBlobResponseSchema,
   GitHubTreeResponseSchema,
 } from "@app/lib/api/skills/detection/github/types";
-import {
-  collectAttachments,
-  parseSkillMarkdown,
-} from "@app/lib/api/skills/detection/parsing";
-import type {
-  DetectedSkill,
-  FileEntry,
-} from "@app/lib/api/skills/detection/types";
+import { parseSkillMarkdown } from "@app/lib/api/skills/detection/parsing";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -86,9 +84,9 @@ async function fetchRepoTree(
 }
 
 /**
- * Fetches a blob's content from GitHub and returns it as a UTF-8 string.
+ * Fetches a blob's raw base64 content from GitHub.
  */
-async function fetchBlobContent(
+export async function fetchBlobContent(
   octokit: InstanceType<typeof Octokit>,
   {
     owner,
@@ -122,7 +120,7 @@ async function fetchBlobContent(
     });
   }
 
-  return new Ok(Buffer.from(parsed.data.content, "base64").toString("utf-8"));
+  return new Ok(parsed.data.content);
 }
 
 /**
@@ -160,7 +158,7 @@ export async function detectSkillsFromGitHubRepo({
   octokit: InstanceType<typeof Octokit>;
   owner: string;
   repo: string;
-}): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
+}): Promise<Result<GitHubDetectedSkill[], GitHubSkillDetectionError>> {
   const treeResult = await fetchRepoTree(octokit, { owner, repo });
   if (treeResult.isErr()) {
     return treeResult;
@@ -172,21 +170,27 @@ export async function detectSkillsFromGitHubRepo({
     return new Ok([]);
   }
 
-  const skills = await concurrentExecutor(
+  const results = await concurrentExecutor(
     skillDirs,
     async (skillDir) =>
-      buildDetectedSkill({ octokit, owner, repo, skillDir, fileEntries }),
+      buildDetectedSkill({
+        octokit,
+        owner,
+        repo,
+        skillDir,
+        fileEntries,
+      }),
     { concurrency: FETCH_CONCURRENCY }
   );
 
-  const detectedSkills: DetectedSkill[] = [];
-  for (const result of skills) {
+  const skills: GitHubDetectedSkill[] = [];
+  for (const result of results) {
     if (result.isOk()) {
-      detectedSkills.push(result.value);
+      skills.push(result.value);
     }
   }
 
-  return new Ok(detectedSkills.filter((s) => s.name.length > 0));
+  return new Ok(skills.filter((s) => s.name.length > 0));
 }
 
 async function buildDetectedSkill({
@@ -200,8 +204,8 @@ async function buildDetectedSkill({
   owner: string;
   repo: string;
   skillDir: GitHubSkillDirectory;
-  fileEntries: FileEntry[];
-}): Promise<Result<DetectedSkill, GitHubSkillDetectionError>> {
+  fileEntries: GitHubFileEntry[];
+}): Promise<Result<GitHubDetectedSkill, GitHubSkillDetectionError>> {
   const blobResult = await fetchBlobContent(octokit, {
     owner,
     repo,
@@ -219,14 +223,16 @@ async function buildDetectedSkill({
     );
     return blobResult;
   }
-  const parsed = parseSkillMarkdown(blobResult.value);
+  const parsed = parseSkillMarkdown(
+    Buffer.from(blobResult.value, "base64").toString("utf-8")
+  );
 
   return new Ok({
     name: parsed.name,
     skillMdPath: skillDir.skillMdPath,
     description: parsed.description,
     instructions: parsed.instructions,
-    attachments: collectAttachments(fileEntries, skillDir),
+    attachments: collectGitHubAttachments(fileEntries, skillDir),
   });
 }
 
