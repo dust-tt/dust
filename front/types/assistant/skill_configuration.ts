@@ -35,6 +35,7 @@ export type SkillType = {
   }[];
   canWrite: boolean;
   isExtendable: boolean;
+  isDefault: boolean;
   extendedSkillId: string | null;
 };
 

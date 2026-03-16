@@ -36,6 +36,7 @@ export const skillBuilderFormSchema = z.object({
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
   extendedSkillId: z.string().nullable(),
+  isDefault: z.boolean(),
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
 });
