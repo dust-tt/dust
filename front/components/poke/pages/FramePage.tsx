@@ -1,4 +1,4 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeFileDetails } from "@app/poke/swr/frame_details";
@@ -16,7 +16,7 @@ import {
 
 export function FramePage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - File`);
+  useDocumentTitle(`Poke - ${owner.name} - File`);
 
   const sId = useRequiredPathParam("sId");
   const { file, content, isFileLoading, isFileError } = usePokeFileDetails({

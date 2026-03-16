@@ -1,4 +1,4 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
@@ -34,7 +34,7 @@ const killSwitchMap: Record<
 };
 
 export function KillPage() {
-  useSetPokePageTitle("Kill Switches");
+  useDocumentTitle("Poke - Kill Switches");
 
   const { killSwitches, isKillSwitchesLoading } = usePokeKillSwitches();
   const [loading, setLoading] = useState(false);

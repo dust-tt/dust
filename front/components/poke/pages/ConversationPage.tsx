@@ -1,4 +1,4 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -307,7 +307,7 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
 
 export function ConversationPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Conversation`);
+  useDocumentTitle(`Poke - ${owner.name} - Conversation`);
 
   const conversationId = useRequiredPathParam("cId");
   const {

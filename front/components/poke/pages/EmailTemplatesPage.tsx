@@ -1,4 +1,3 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeForm,
   PokeFormControl,
@@ -6,6 +5,7 @@ import {
   PokeFormItem,
   PokeFormLabel,
 } from "@app/components/poke/shadcn/ui/form";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import {
   ConversationsUnreadEmailTemplatePropsSchema,
   renderEmail as renderConversationsUnreadEmail,
@@ -337,7 +337,7 @@ function SchemaFormField({
 }
 
 export function EmailTemplatesPage() {
-  useSetPokePageTitle("Email Templates");
+  useDocumentTitle("Poke - Email Templates");
 
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<string>("default");

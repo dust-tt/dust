@@ -6,34 +6,11 @@ import type {
   AuthContextValue,
 } from "@app/lib/auth/AuthContext";
 import { AuthContext, AuthContextNoWorkspace } from "@app/lib/auth/AuthContext";
-import { Head } from "@app/lib/platform";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import type React from "react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export interface PokeLayoutProps {
   currentRegion: RegionType;
-}
-
-interface PokePageTitleContextValue {
-  title: string;
-  setTitle: (title: string) => void;
-}
-
-const PokePageTitleContext = createContext<PokePageTitleContextValue>({
-  title: "Poke",
-  setTitle: () => {},
-});
-
-export function usePokePageTitle() {
-  return useContext(PokePageTitleContext).title;
-}
-
-export function useSetPokePageTitle(title: string) {
-  const setTitle = useContext(PokePageTitleContext).setTitle;
-  useEffect(() => {
-    setTitle(title);
-  }, [setTitle, title]);
 }
 
 // Layout for workspace-scoped poke pages (uses AuthContext).
@@ -44,23 +21,10 @@ export default function PokeLayout({
   children: React.ReactNode;
   authContext: AuthContextValue;
 }) {
-  const [title, setTitle] = useState("Poke");
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const titleContextValue = useMemo(
-    () => ({ title, setTitle }),
-    [title, setTitle]
-  );
-
   return (
     <AuthContext.Provider value={authContext}>
       <ThemeProvider>
-        <PokePageTitleContext.Provider value={titleContextValue}>
-          <Head>
-            <title>{"Poke - " + title}</title>
-          </Head>
-          <PokeLayoutContent>{children}</PokeLayoutContent>
-        </PokePageTitleContext.Provider>
+        <PokeLayoutContent>{children}</PokeLayoutContent>
       </ThemeProvider>
     </AuthContext.Provider>
   );
@@ -74,23 +38,10 @@ export function PokeLayoutNoWorkspace({
   children: React.ReactNode;
   authContext: AuthContextNoWorkspaceValue;
 }) {
-  const [title, setTitle] = useState("Poke");
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const titleContextValue = useMemo(
-    () => ({ title, setTitle }),
-    [title, setTitle]
-  );
-
   return (
     <AuthContextNoWorkspace.Provider value={authContext}>
       <ThemeProvider>
-        <PokePageTitleContext.Provider value={titleContextValue}>
-          <Head>
-            <title>{"Poke - " + title}</title>
-          </Head>
-          <PokeLayoutContent showRegionPicker>{children}</PokeLayoutContent>
-        </PokePageTitleContext.Provider>
+        <PokeLayoutContent showRegionPicker>{children}</PokeLayoutContent>
       </ThemeProvider>
     </AuthContextNoWorkspace.Provider>
   );
@@ -106,15 +57,10 @@ const PokeLayoutContent = ({
   showRegionPicker = false,
 }: PokeLayoutContentProps) => {
   const { regionData } = usePokeRegion();
-  const title = usePokePageTitle();
   const regionUrls = regionData?.regionUrls;
   return (
     <div className="min-h-dvh bg-muted-background dark:bg-muted-background-night dark:text-white">
-      <PokeNavbar
-        regionUrls={regionUrls}
-        showRegionPicker={showRegionPicker}
-        title={title}
-      />
+      <PokeNavbar regionUrls={regionUrls} showRegionPicker={showRegionPicker} />
       <div className="flex flex-col p-6">{children}</div>
     </div>
   );

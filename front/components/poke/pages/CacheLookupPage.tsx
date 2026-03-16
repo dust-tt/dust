@@ -1,5 +1,5 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import type {
   RedisCacheResult,
   RedisInstance,
@@ -412,7 +412,7 @@ function RawKeyForm({ onSubmit }: RawKeyFormProps) {
 }
 
 export function CacheLookupPage() {
-  useSetPokePageTitle("Cache Lookup");
+  useDocumentTitle("Poke - Cache Lookup");
 
   const [query, setQuery] = useState<LookupQuery | null>(null);
 

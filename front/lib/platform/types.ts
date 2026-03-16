@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 /**
  * Router event types
  */
@@ -64,34 +62,4 @@ export interface AppRouter {
   query: Record<string, string | string[] | undefined>;
   isReady: boolean;
   events: RouterEvents;
-}
-
-/**
- * Props for the Head component abstraction
- */
-export interface HeadProps {
-  children: ReactNode;
-}
-
-/**
- * Props for the Script component abstraction
- */
-export interface ScriptProps {
-  id?: string;
-  src?: string;
-  strategy?: "beforeInteractive" | "afterInteractive" | "lazyOnload";
-  children?: string;
-}
-
-export interface ImageProps
-  extends Omit<
-    React.ImgHTMLAttributes<HTMLImageElement>,
-    "width" | "height" | "src" | "alt"
-  > {
-  width?: number | `${number}` | undefined;
-  height?: number | `${number}` | undefined;
-  src: string;
-  alt: string;
-  priority?: boolean | undefined;
-  sizes?: string;
 }
