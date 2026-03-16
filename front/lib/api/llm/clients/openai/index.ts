@@ -200,7 +200,9 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     }
   }
 
-  protected override async internalGetBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const batch = await this.client.batches.retrieve(batchId);
 
     if (!batch.output_file_id) {

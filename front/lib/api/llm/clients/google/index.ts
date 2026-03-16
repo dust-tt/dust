@@ -234,7 +234,9 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     }
   }
 
-  protected override async internalGetBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const { batchName, customIds } = GoogleLLM.decodeBatchId(batchId);
     const batch = await this.client.batches.get({ name: batchName });
     const inlinedResponses = batch.dest?.inlinedResponses ?? [];

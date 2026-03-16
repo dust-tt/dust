@@ -171,7 +171,9 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
     }
   }
 
-  protected override async internalGetBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const job = await this.client.batch.jobs.get({ jobId: batchId });
 
     if (!job.outputFile) {

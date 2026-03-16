@@ -443,7 +443,9 @@ export abstract class LLM<TPayload = unknown> {
   /**
    * Override this method to implement provider-specific batch result retrieval.
    */
-  protected async internalGetBatchResult(_batchId: string): Promise<BatchResult> {
+  protected async internalGetBatchResult(
+    _batchId: string
+  ): Promise<BatchResult> {
     throw new Error(
       `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
     );
@@ -452,9 +454,7 @@ export abstract class LLM<TPayload = unknown> {
   /**
    * Traces batch results by creating one Langfuse generation per batch entry.
    */
-  private async traceBatchResults(
-    results: BatchResult
-  ): Promise<BatchResult> {
+  private async traceBatchResults(results: BatchResult): Promise<BatchResult> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
 
     for (const [customId, events] of results) {

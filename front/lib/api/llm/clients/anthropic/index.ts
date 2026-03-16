@@ -218,7 +218,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     return batch.processing_status === "ended" ? "ready" : "computing";
   }
 
-  protected override async internalGetBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const results = await this.client.messages.batches.results(batchId);
     const batchResult: BatchResult = new Map();
 

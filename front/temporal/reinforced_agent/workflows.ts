@@ -4,6 +4,7 @@ import {
   OpenTelemetryInternalsInterceptor,
   OpenTelemetryOutboundInterceptor,
 } from "@temporalio/interceptors-opentelemetry/lib/workflow";
+import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import {
   ApplicationFailure,
   ParentClosePolicy,
@@ -12,7 +13,6 @@ import {
   sleep,
   startChild,
 } from "@temporalio/workflow";
-import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import { concurrentExecutor } from "../utils";
 
 import { runSignal } from "./signals";
