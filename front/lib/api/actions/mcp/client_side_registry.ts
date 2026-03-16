@@ -245,6 +245,28 @@ export async function updateMCPServerHeartbeat(
 }
 
 /**
+ * Remove a client-side MCP server registration from Redis immediately.
+ * Returns true if the key was present and deleted, false if it was already gone.
+ */
+export async function deregisterMCPServer(
+  auth: Authenticator,
+  { serverId }: { serverId: string }
+): Promise<boolean> {
+  if (!serverId) {
+    return false;
+  }
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const userModelId = auth.getNonNullableUser().id.toString();
+  const key = getMCPServerRegistryKey({ workspaceId, userId: userModelId, serverId });
+
+  const deleted = await runOnRedis(
+    { origin: "mcp_client_side_request" },
+    async (redis) => redis.del(key)
+  );
+  return deleted === 1;
+}
+
+/**
  * Validate that a server ID belongs to the current user in the given workspace.
  * Uses a single EXPIRE to atomically check existence and refresh the TTL.
  */

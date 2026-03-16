@@ -57,7 +57,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { McpError, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
@@ -663,13 +663,20 @@ export async function connectToMCPServer(
           timeout: CLIENT_SIDE_CONNECT_TIMEOUT_MS,
         });
       } catch (e: unknown) {
-        logger.error(
+        const isTimeout = e instanceof McpError && e.code === -32001;
+
+        logger[isTimeout ? "warn" : "error"](
           {
             connectionType,
             workspaceId: auth.getNonNullableWorkspace().sId,
+            mcpServerId: params.mcpServerId,
+            isTimeout,
+            errorCode: e instanceof McpError ? e.code : undefined,
             error: e,
           },
-          "Error establishing connection to client side MCP server"
+          isTimeout
+            ? "Client-side MCP server timed out (browser likely disconnected)"
+            : "Error establishing connection to client-side MCP server"
         );
 
         return new Err(
