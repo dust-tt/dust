@@ -30,6 +30,7 @@ import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 2;
+const PROVIDER_CREDENTIALS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 type CachedProviderCredential = {
   id: ModelId;
@@ -143,7 +144,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   private static baseFetchCached = cacheWithRedis(
     ProviderCredentialResource._baseFetchUncached,
     ProviderCredentialResource.providerCredentialCacheKeyResolver,
-    { cacheNullValues: false }
+    { cacheNullValues: false, ttlMs: PROVIDER_CREDENTIALS_CACHE_TTL_MS }
   );
 
   private static invalidateProviderCredentialCache = invalidateCacheWithRedis(
