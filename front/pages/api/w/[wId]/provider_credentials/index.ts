@@ -120,7 +120,7 @@ async function handler(
 
       const { providerId, apiKey } = bodyValidation.data;
 
-      const existing = await ProviderCredentialResource.findByProvider(
+      const existing = await ProviderCredentialResource.fetchByProvider(
         auth,
         providerId
       );

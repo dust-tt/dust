@@ -184,7 +184,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return cached.map(this.fromCachedData);
   }
 
-  static async findByProvider(
+  static async fetchByProvider(
     auth: Authenticator,
     providerId: ByokModelProviderIdType
   ): Promise<ProviderCredentialResource | null> {
