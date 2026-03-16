@@ -66,14 +66,10 @@ const SKILL_ATTACHMENT_CONTENT_TYPES = [
 export type SkillAttachmentContentType =
   (typeof SKILL_ATTACHMENT_CONTENT_TYPES)[number];
 
-const SUPPORTED_CONTENT_TYPES = new Set<SkillAttachmentContentType>(
-  SKILL_ATTACHMENT_CONTENT_TYPES
-);
-
 export function isSupportedForSkillAttachment(
   contentType: AllSupportedFileContentType
 ): contentType is SkillAttachmentContentType {
-  return SUPPORTED_CONTENT_TYPES.has(contentType as SkillAttachmentContentType);
+  return SKILL_ATTACHMENT_CONTENT_TYPES.some((ct) => ct === contentType);
 }
 
 export function getSkillAttachmentContentType(
