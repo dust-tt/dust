@@ -1,7 +1,7 @@
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
+} from "@app/components/resources/resources_icon_names";
 import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
@@ -33,6 +33,8 @@ export type WebhookEvent = {
   sample: Record<string, unknown> | null;
 };
 
+// Data-only preset type, excluding React components.
+// Use this type for server-side / temporal worker code that does not need UI.
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   name: string;
   description: string;
@@ -58,12 +60,16 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   // Likely implements OAuth flow to manage webhooks on behalf of users.
   webhookService: RemoteWebhookService<P>;
 
-  // React components to render the webhook details and creation form.
-  components: {
-    detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
-    createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
-    oauthExtraConfigInput?: React.ComponentType<ConnectorOauthExtraConfigProps>;
-  };
-
   featureFlag?: WhitelistableFeature;
 };
+
+// Full preset type including React components for UI rendering.
+export type PresetWebhookUi<P extends WebhookProvider = WebhookProvider> =
+  PresetWebhook<P> & {
+    // React components to render the webhook details and creation form.
+    components: {
+      detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
+      createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
+      oauthExtraConfigInput?: React.ComponentType<ConnectorOauthExtraConfigProps>;
+    };
+  };

@@ -1,7 +1,7 @@
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
+} from "@app/components/resources/resources_icon_names";
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
@@ -29,6 +29,8 @@ export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 
 export const ENABLE_SKILL_TOOL_NAME = "enable_skill";
+
+export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";

@@ -5,6 +5,7 @@ import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS_UI } from "@app/types/triggers/webhooks_ui";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -45,7 +46,8 @@ export function CreateWebhookSourceWithProviderForm({
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(false);
 
   const preset = WEBHOOK_PRESETS[provider];
-  const OAuthExtraConfigInput = preset.components.oauthExtraConfigInput;
+  const presetUI = WEBHOOK_PRESETS_UI[provider];
+  const OAuthExtraConfigInput = presetUI.components.oauthExtraConfigInput;
 
   const handleConnectToProvider = async () => {
     if (!owner) {
@@ -136,7 +138,7 @@ export function CreateWebhookSourceWithProviderForm({
       {connection &&
         (() => {
           const CreateFormComponent =
-            WEBHOOK_PRESETS[provider].components.createFormComponent;
+            WEBHOOK_PRESETS_UI[provider].components.createFormComponent;
           return (
             <CreateFormComponent
               owner={owner}

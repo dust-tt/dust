@@ -1,4 +1,3 @@
-import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
@@ -41,15 +40,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   get pictureUrl() {
     const [id, unified] = this.emoji ? this.emoji.split("/") : [];
+    const backgroundColor = this.backgroundColor as `bg-${string}`;
 
-    return makeUrlForEmojiAndBackground(
-      {
-        id,
-        unified,
-        native: "",
-      },
-      this.backgroundColor as `bg-${string}`
-    );
+    return `https://dust.tt/static/emojis/${backgroundColor}/${id}/${unified}`;
   }
 
   get sId(): string {

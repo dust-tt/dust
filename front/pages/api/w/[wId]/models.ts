@@ -2,7 +2,7 @@
 import {
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
-} from "@app/components/providers/types";
+} from "@app/components/providers/model_configs";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isModelCustomAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
