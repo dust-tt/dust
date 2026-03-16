@@ -107,7 +107,11 @@ export function ConversationFilesPanel({
   const hasSandbox = sandboxStatus !== null;
 
   const filesContent = (
-    <FilesTab isLoading={isConversationAttachmentsLoading} rows={fileRows} />
+    <FilesTab
+      isLoading={isConversationAttachmentsLoading}
+      owner={owner}
+      rows={fileRows}
+    />
   );
 
   if (!hasSandbox) {

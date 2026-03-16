@@ -26,10 +26,10 @@ export const CATEGORY_CONFIG: {
 }[] = [
   { value: "frame", label: "Frames" },
   { value: "slideshow", label: "Slideshows" },
+  { value: "image", label: "Images" },
   { value: "document", label: "Documents" },
   { value: "pdf", label: "PDFs" },
   { value: "table", label: "Tables" },
-  { value: "image", label: "Images" },
   { value: "audio", label: "Audio" },
   { value: "knowledge", label: "Knowledge" },
   { value: "other", label: "Other" },
