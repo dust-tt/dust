@@ -153,6 +153,7 @@ describe("retryAgentMessage", () => {
           userMessageId: userMessage!.sId,
           userMessageVersion: userMessage!.version,
           userMessageOrigin: userMessage!.context.origin,
+          conversationBranchId: conversation.branchId,
         },
         startStep: 0,
       });

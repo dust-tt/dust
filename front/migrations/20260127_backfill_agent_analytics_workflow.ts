@@ -243,6 +243,7 @@ async function backfillAgentAnalyticsWorkflow(
               userMessageId: userMessageRow.sId,
               userMessageVersion: userMessageRow.version,
               userMessageOrigin: userUserMessageRow.userContextOrigin,
+              conversationBranchId: agentMessageRow.branchSId,
             };
 
             const result = await launchStoreAgentAnalyticsWorkflow({
