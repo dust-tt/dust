@@ -112,6 +112,7 @@ export function ImportSkillsDialog({
                 if (isImportTab(value)) {
                   importTypeField.onChange(value);
                   selectedSkillNamesField.onChange([]);
+                  setDetectedCount(0);
                 }
               }}
             >
