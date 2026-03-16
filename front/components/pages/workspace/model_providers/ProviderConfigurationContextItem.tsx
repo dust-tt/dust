@@ -1,4 +1,5 @@
 import { KeyConfigurationSheet } from "@app/components/pages/workspace/model_providers/KeyConfigurationSheet";
+import { RemoveKeyDialog } from "@app/components/pages/workspace/model_providers/RemoveKeyDialog";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
@@ -11,24 +12,36 @@ interface ConfigureButtonProps {
   isLoading: boolean;
   apiKey: string | undefined;
   openConfigurationSheet: () => void;
+  openRemoveKeyDialog: () => void;
 }
 
 function ProviderConfigurationActions({
   isLoading,
   apiKey,
   openConfigurationSheet,
+  openRemoveKeyDialog,
 }: ConfigureButtonProps) {
-  const configureLabel = apiKey ? "Edit" : "Configure";
   if (isLoading) {
     return null;
   }
 
+  const configureLabel = apiKey ? "Edit" : "Configure";
+
   return (
-    <Button
-      label={configureLabel}
-      variant="outline"
-      onClick={openConfigurationSheet}
-    />
+    <div className="flex items-center gap-2">
+      <Button
+        label={configureLabel}
+        variant="outline"
+        onClick={openConfigurationSheet}
+      />
+      {apiKey && (
+        <Button
+          label="Remove"
+          variant="warning"
+          onClick={openRemoveKeyDialog}
+        />
+      )}
+    </div>
   );
 }
 
@@ -49,6 +62,7 @@ export function ProviderConfigurationContextItem({
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isRemoveKeyDialogOpen, setIsRemoveKeyDialogOpen] = useState(false);
 
   return (
     <>
@@ -61,6 +75,7 @@ export function ProviderConfigurationContextItem({
             isLoading={isLoading}
             apiKey={apiKey}
             openConfigurationSheet={() => setIsSheetOpen(true)}
+            openRemoveKeyDialog={() => setIsRemoveKeyDialogOpen(true)}
           />
         }
       >
@@ -83,6 +98,12 @@ export function ProviderConfigurationContextItem({
         onOpenChange={setIsSheetOpen}
         logo={LogoComponent}
         apiKey={apiKey}
+      />
+      <RemoveKeyDialog
+        owner={owner}
+        providerId={providerId}
+        open={isRemoveKeyDialogOpen}
+        onOpenChange={setIsRemoveKeyDialogOpen}
       />
     </>
   );
