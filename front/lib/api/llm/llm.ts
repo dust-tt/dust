@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -16,7 +17,6 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
