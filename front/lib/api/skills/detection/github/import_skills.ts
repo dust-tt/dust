@@ -19,6 +19,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Octokit } from "@octokit/core";
+import path from "path";
 
 const IMPORT_CONCURRENCY = 4;
 
@@ -186,7 +187,7 @@ async function uploadAttachment(
     return null;
   }
 
-  const fileName = attachment.path.split("/").pop() ?? attachment.path;
+  const fileName = path.basename(attachment.path);
 
   const uploadResult = await uploadBase64DataToFileStorage(auth, {
     base64: blobResult.value,
