@@ -43,14 +43,15 @@ export function SkillInfoTab({
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const { hasFeature } = useFeatureFlags();
 
-  const isDiscoverSkills = skill.sId === "discover_skills";
+  const showDiscoverableSkills =
+    skill.sId === "discover_skills" && hasFeature("discover_skills");
 
   const { skills: discoverableSkills, isSkillsLoading: isDiscoverableLoading } =
     useSkills({
       owner,
       status: "active",
       isDefault: true,
-      disabled: !isDiscoverSkills,
+      disabled: !showDiscoverableSkills,
     });
 
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
@@ -93,7 +94,7 @@ export function SkillInfoTab({
     knowledgeItems.length > 0 ||
     (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
     sortedMCPServerViews.length > 0 ||
-    isDiscoverSkills ||
+    showDiscoverableSkills ||
     shouldLoadSpaces;
 
   return (
@@ -177,7 +178,7 @@ export function SkillInfoTab({
         </div>
       )}
 
-      {isDiscoverSkills && (
+      {showDiscoverableSkills && (
         <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Discoverable Skills
