@@ -1023,8 +1023,7 @@ async function answerMessage(
       }
       streamRecipientUserId = botUserIdRes.value;
     }
-    streamHandler = new SlackStreamHandler(slackClient, connector.id);
-    streamHandler.start({
+    streamHandler = new SlackStreamHandler(slackClient, connector.id, {
       slackChannel,
       slackMessageTs,
       slackThreadTs,
@@ -1033,7 +1032,7 @@ async function answerMessage(
     });
     await streamHandler.setThinking(
       mention.agentName === "dust"
-        ? `is thinking...`
+        ? "is thinking..."
         : `(${mention.agentName}) is thinking...`
     );
   } else {
