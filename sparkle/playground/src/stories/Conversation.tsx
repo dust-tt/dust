@@ -4,6 +4,8 @@ import { ConversationView } from "../components/ConversationView";
 import {
   type Conversation,
   type ConversationItem,
+  type ConversationMessage,
+  type ConversationPendingValidation,
   mockAgents,
   mockUsers,
 } from "../data";
@@ -1136,6 +1138,53 @@ Recommendation: Ship the core experience (grouping + preferences + in-app panel)
       action: "typing",
       avatar: { visual: user3.portrait, isRounded: true },
     },
+
+    // Pending validation block (locutor + agent + Accept/Cancel)
+    {
+      kind: "pendingValidation",
+      id: "pending-validation-notification-redesign",
+      userMessage: {
+        kind: "message",
+        id: "pending-user-notification",
+        content:
+          "@StrategyPlanner Can you summarize the rollout plan for the sprint review? I want to make sure we have the key points ready.",
+        timestamp: new Date(now.getTime()),
+        ownerId: locutor.id,
+        ownerType: "user",
+        type: "user",
+        group: {
+          id: "g-pending-locutor",
+          type: "locutor",
+          timestamp: "11:35",
+        },
+      } as ConversationMessage,
+      agentMessage: {
+        kind: "message",
+        id: "pending-agent-notification",
+        markdown: `**Rollout summary**
+
+- **Phase 1 (today)**: Deploy behind \`notifications_v2\` feature flag, enable for the team (10 users) for smoke testing.
+- **Phase 2 (Monday)**: 5% canary rollout with monitoring for error rates, WebSocket stability, and grouping latency.
+- **Phase 3 (Wednesday)**: Full rollout if canary metrics are green. Announce via in-app banner + changelog.
+
+**Kill switch**: Disable flag → instant revert to legacy notifications.`,
+        timestamp: new Date(now.getTime() + 30 * 1000),
+        ownerId: designAgent.id,
+        ownerType: "agent",
+        type: "agent",
+        group: {
+          id: "g-pending-strategy",
+          type: "agent",
+          name: designAgent.name,
+          timestamp: "11:35",
+          completionStatus: "Completed in 12 sec",
+          avatar: {
+            emoji: designAgent.emoji,
+            backgroundColor: designAgent.backgroundColor,
+          },
+        },
+      } as ConversationMessage,
+    } as ConversationPendingValidation,
   ];
 
   return {
