@@ -16,6 +16,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -123,7 +124,12 @@ export abstract class LLM<TPayload = unknown> {
     const { conversation, prompt, specifications } = streamParameters;
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
-    const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
+    const buffer = new LLMTraceBuffer(
+      this.traceId,
+      workspaceId,
+      this.context,
+      this.modelId
+    );
 
     this.generation = startObservation(
       "llm-completion",
@@ -167,15 +173,20 @@ export abstract class LLM<TPayload = unknown> {
 
     const startTime = Date.now();
 
-    buffer.setInput({
-      conversation,
-      modelId: this.modelId,
-      prompt,
-      reasoningEffort: this.reasoningEffort,
-      responseFormat: this.responseFormat,
-      specifications,
-      temperature: this.temperature,
-    });
+    // Only store the full input in the GCS trace buffer when Langfuse is not available.
+    // When Langfuse is enabled, input is already captured via the generation span,
+    // avoiding a redundant copy of the conversation in memory.
+    if (!config.isLangfuseEnabled()) {
+      buffer.setInput({
+        conversation,
+        modelId: this.modelId,
+        prompt,
+        reasoningEffort: this.reasoningEffort,
+        responseFormat: this.responseFormat,
+        specifications,
+        temperature: this.temperature,
+      });
+    }
 
     // Track LLM interaction metric
     const metricTags = [
@@ -247,6 +258,7 @@ export abstract class LLM<TPayload = unknown> {
         }
 
         const durationMs = Date.now() - startTime;
+
         buffer
           .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
           .catch(() => {});

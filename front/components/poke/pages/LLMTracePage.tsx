@@ -115,7 +115,7 @@ export function LLMTracePage() {
         <div className="flex flex-wrap gap-2">
           <Chip
             color="blue"
-            label={`Model: ${trace.input.modelId}`}
+            label={`Model: ${trace.input?.modelId ?? trace.metadata.modelId}`}
             size="sm"
           />
           <Chip
@@ -175,12 +175,14 @@ export function LLMTracePage() {
           </div>
         )}
 
-        <Tabs defaultValue="input">
+        <Tabs defaultValue={trace.input ? "input" : "output"}>
           <TabsList>
-            <TabsTrigger
-              value="input"
-              label={`Input (${trace.input.conversation.messages.length} messages)`}
-            />
+            {trace.input && (
+              <TabsTrigger
+                value="input"
+                label={`Input (${trace.input.conversation.messages.length} messages)`}
+              />
+            )}
             <TabsTrigger
               value="output"
               label={`Output (${toolCallCount ? `${toolCallCount} tool call${pluralize(toolCallCount)}` : "Generation"})`}
@@ -188,9 +190,11 @@ export function LLMTracePage() {
             <TabsTrigger value="raw" label="Raw JSON" />
           </TabsList>
 
-          <TabsContent value="input">
-            <InputTab input={trace.input} />
-          </TabsContent>
+          {trace.input && (
+            <TabsContent value="input">
+              <InputTab input={trace.input} />
+            </TabsContent>
+          )}
 
           <TabsContent value="output">
             <OutputTab output={trace.output} />
