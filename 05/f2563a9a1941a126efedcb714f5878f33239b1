@@ -1,0 +1,83 @@
+front/lib/assistant.ts
+  494892e4cad863a5 1,7,9-24,27,30-37,48-53,56-68,70-72,76,79,84,86,96-98,107-111,114-118,121-123,125,127-128,130-131,133-134,136-137,139-143,146,151-152,154-155,157-158,160-162,216-217,219-221,224-226,228
+front/components/agent_builder/transformAgentConfiguration.ts
+  494892e4cad863a5 11-30,78-132,146-147,152
+front/lib/butler/analyze_conversation.test.ts
+  494892e4cad863a5 30
+front/components/pages/workspace/developers/ProvidersPage.tsx
+  494892e4cad863a5 38-39
+front/lib/api/skills/existing_skill_checker.ts
+  494892e4cad863a5 111
+front/lib/reinforced_agent/run_reinforced_analysis.ts
+  494892e4cad863a5 118
+front/tests/utils/ProviderCredentialFactory.ts
+  494892e4cad863a5 8-9,15
+front/lib/api/assistant/suggestions/index.ts
+  494892e4cad863a5 18-19,21,28,40
+front/types/assistant/assistant.ts
+  494892e4cad863a5 7,11-14
+front/lib/api/assistant/global_agents/global_agents.ts
+  494892e4cad863a5 86,88,529,1042,1051
+front/lib/api/assistant/agent_suggestion.ts
+  494892e4cad863a5 3-6,88,96-97
+front/lib/api/assistant/voice_agent_finder.ts
+  494892e4cad863a5 3,130
+front/lib/api/projects/butler.ts
+  494892e4cad863a5 115
+front/lib/actions/mcp_internal_actions/utils/web_summarization.ts
+  494892e4cad863a5 5-6,9-11,39,79,98-111
+front/lib/assistant.test.ts
+  494892e4cad863a5 2-3,6,13,16,18-19,22-41,53,102-156,162,172,184,194,206,213,220,230,239,250,266,279,289,299,302,309,312,319,331,335-338,341-346,349-351,353,359-364,367-369,376-381,384-386,393-398,401-406,410,415-420,423-425,431-436
+front/lib/api/assistant/global_agents/configurations/helper.ts
+  494892e4cad863a5 17
+front/lib/api/assistant/conversation/title.ts
+  494892e4cad863a5 6-8,167,246-251,254,257,261
+front/lib/api/assistant/workspace_capabilities.ts
+  494892e4cad863a5 8,46,48-49
+front/lib/api/assistant/tag_manager.ts
+  494892e4cad863a5 3,121
+front/lib/notifications/workflows/conversation-unread.ts
+  494892e4cad863a5 415
+front/tests/utils/WorkspaceFactory.ts
+  494892e4cad863a5 12,17-20,22-23,26-27,33-34,41-43
+front/lib/api/assistant/global_agents/configurations/retired_managed.ts
+  494892e4cad863a5 17
+front/hooks/useProvidersSelection.ts
+  494892e4cad863a5 22-23
+front/pages/api/w/[wId]/assistant/builder/process/generate_schema.ts
+  494892e4cad863a5 7,42-43
+front/lib/api/assistant/template_suggestion.ts
+  494892e4cad863a5 71
+front/lib/api/skills/description_suggestion.ts
+  494892e4cad863a5 3,74
+front/pages/api/w/[wId]/models.ts
+  494892e4cad863a5 7,33,36-41
+front/lib/api/skills/icon_suggestion.ts
+  494892e4cad863a5 4,112
+front/pages/api/v1/w/[wId]/assistant/generic_agents.ts
+  494892e4cad863a5 180
+front/lib/api/assistant/configuration/triggers/webhook_filter.ts
+  494892e4cad863a5 3,289
+front/lib/api/assistant/conversation.ts
+  494892e4cad863a5 39,629-630,632-633,1003-1004,1006-1007
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "05f2563a9a1941a126efedcb714f5878f33239b1",
+  "prompts": {
+    "494892e4cad863a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1b189c-ed53-4cb0-a90e-1a5408b5e59c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 1342,
+      "total_deletions": 1015,
+      "accepted_lines": 636,
+      "overriden_lines": 92
+    }
+  }
+}
