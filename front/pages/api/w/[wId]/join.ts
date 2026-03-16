@@ -76,7 +76,9 @@ async function handler(
   }
 
   const workspaceResource = await WorkspaceResource.fetchById(wId);
-  if (!workspaceResource) {
+  const maintenance = workspaceResource?.metadata?.maintenance;
+
+  if (!workspaceResource || maintenance === "relocation-done") {
     // If workspace not found locally, lookup in other region.
     const redirect = await getWorkspaceRegionRedirect(wId);
 
