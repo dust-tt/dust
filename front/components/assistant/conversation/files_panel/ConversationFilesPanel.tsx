@@ -96,25 +96,18 @@ export function ConversationFilesPanel({
     [openFile]
   );
 
-  const conversationContextFiles = useMemo(() => {
-    const conversationFiles: ConversationAttachmentItem[] = [];
-    for (const f of attachments) {
-      if (!f.isInProjectContext) {
-        conversationFiles.push(f);
-      }
-    }
-    return conversationFiles.map((a) =>
-      conversationAttachmentToRow(a, handleAttachmentClick)
-    );
-  }, [attachments, handleAttachmentClick]);
+  const fileRows = useMemo(
+    () =>
+      attachments.map((a) =>
+        conversationAttachmentToRow(a, handleAttachmentClick)
+      ),
+    [attachments, handleAttachmentClick]
+  );
 
   const hasSandbox = sandboxStatus !== null;
 
   const filesContent = (
-    <FilesTab
-      isLoading={isConversationAttachmentsLoading}
-      rows={conversationContextFiles}
-    />
+    <FilesTab isLoading={isConversationAttachmentsLoading} rows={fileRows} />
   );
 
   if (!hasSandbox) {

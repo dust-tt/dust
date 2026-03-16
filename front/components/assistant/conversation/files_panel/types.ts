@@ -3,11 +3,25 @@ import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[w
 export type ConversationAttachmentItem =
   GetConversationAttachmentsResponseBody["attachments"][number];
 
+export type FilePanelCategory =
+  | "frame"
+  | "slideshow"
+  | "document"
+  | "pdf"
+  | "table"
+  | "code"
+  | "image"
+  | "audio"
+  | "knowledge"
+  | "other";
+
 export type ConversationAttachmentRow = {
   title: string;
   contentType: string;
   fileId: string | null;
   source: "agent" | "user" | null;
+  category: FilePanelCategory;
+  isInProjectContext: boolean;
   onClick?: () => void;
 };
 

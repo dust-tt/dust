@@ -1,15 +1,112 @@
+import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { SandboxFileEntry } from "@app/lib/api/sandbox/files";
+import {
+  frameSlideshowContentType,
+  isInteractiveContentType,
+} from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type {
   ConversationAttachmentItem,
   ConversationAttachmentRow,
+  FilePanelCategory,
   SandboxTreeNode,
 } from "./types";
+
+/**
+ * Category display configuration, ordered by priority.
+ */
+export const CATEGORY_CONFIG: {
+  value: FilePanelCategory;
+  label: string;
+}[] = [
+  { value: "frame", label: "Frames" },
+  { value: "slideshow", label: "Slideshows" },
+  { value: "document", label: "Documents" },
+  { value: "pdf", label: "PDFs" },
+  { value: "table", label: "Tables" },
+  { value: "code", label: "Code" },
+  { value: "image", label: "Images" },
+  { value: "audio", label: "Audio" },
+  { value: "knowledge", label: "Knowledge" },
+  { value: "other", label: "Other" },
+];
+
+export function getFilePanelCategory(
+  item: ConversationAttachmentItem
+): FilePanelCategory {
+  if (isContentNodeAttachmentType(item)) {
+    return "knowledge";
+  }
+
+  if (isInteractiveContentType(item.contentType)) {
+    return item.contentType === frameSlideshowContentType
+      ? "slideshow"
+      : "frame";
+  }
+
+  const previewConfig = getFilePreviewConfig(item.contentType);
+
+  switch (previewConfig.category) {
+    case "pdf":
+      return "pdf";
+    case "image":
+      return "image";
+    case "audio":
+      return "audio";
+    case "delimited":
+      return "table";
+    case "code":
+      return "code";
+    case "viewer":
+    case "markdown":
+    case "text":
+      return "document";
+    case "frame":
+      return "frame";
+    default:
+      return "other";
+  }
+}
+
+export function conversationAttachmentToRow(
+  item: ConversationAttachmentItem,
+  onFileClick: (item: ConversationAttachmentItem) => void
+): ConversationAttachmentRow {
+  const category = getFilePanelCategory(item);
+
+  if (isFileAttachmentType(item)) {
+    const { title, contentType, fileId, source, isInProjectContext } = item;
+    return {
+      title,
+      contentType,
+      fileId,
+      source,
+      category,
+      isInProjectContext,
+      onClick: () => onFileClick(item),
+    };
+  } else if (isContentNodeAttachmentType(item)) {
+    const { title, contentType, sourceUrl, isInProjectContext } = item;
+    return {
+      title,
+      contentType,
+      fileId: null,
+      source: null,
+      category,
+      isInProjectContext,
+      onClick: sourceUrl
+        ? () => window.open(sourceUrl, "_blank", "noopener,noreferrer")
+        : undefined,
+    };
+  } else {
+    assertNever(item);
+  }
+}
 
 /**
  * Build a tree from flat GCS file entries by inferring directories from paths.
@@ -89,33 +186,4 @@ export function buildSandboxTree(
   }
 
   return root;
-}
-
-export function conversationAttachmentToRow(
-  item: ConversationAttachmentItem,
-  onFileClick: (item: ConversationAttachmentItem) => void
-): ConversationAttachmentRow {
-  if (isFileAttachmentType(item)) {
-    const { title, contentType, fileId, source } = item;
-    return {
-      title,
-      contentType,
-      fileId,
-      source,
-      onClick: () => onFileClick(item),
-    };
-  } else if (isContentNodeAttachmentType(item)) {
-    const { title, contentType, sourceUrl } = item;
-    return {
-      title,
-      contentType,
-      fileId: null,
-      source: null,
-      onClick: sourceUrl
-        ? () => window.open(sourceUrl, "_blank", "noopener,noreferrer")
-        : undefined,
-    };
-  } else {
-    assertNever(item);
-  }
 }
