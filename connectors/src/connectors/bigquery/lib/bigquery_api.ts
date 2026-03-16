@@ -297,65 +297,62 @@ export const fetchTree = async ({
   fetchTablesDescription: boolean;
   logger: Logger;
 }): Promise<Result<RemoteDBTree, Error>> => {
-  const databases = await fetchDatabases({ credentials });
+  const databases = await fetchDatabases({ credentials, logger });
 
-  const tree = {
-    databases: await concurrentExecutor(
-      databases,
-      async (db) => {
-        const schemasRes = await fetchDatasets({
-          credentials,
-          database: db,
-          logger,
+  // Process projects and schemas sequentially so that only one dataset's
+  // worth of BigQuery SDK responses lives in memory at a time.
+  // With multi-project support, concurrent fetching across all projects
+  // can accumulate thousands of getMetadata responses and OOM the worker.
+  const treeDBs: RemoteDBTree["databases"] = [];
+
+  for (const db of databases) {
+    const schemasRes = await fetchDatasets({
+      credentials,
+      database: db,
+      logger,
+    });
+    if (schemasRes.isErr()) {
+      throw schemasRes.error;
+    }
+
+    const schemas: RemoteDBTree["databases"][number]["schemas"] = [];
+
+    for (const schema of schemasRes.value) {
+      const tablesRes = await fetchTables({
+        credentials,
+        dataset: schema,
+        fetchTablesDescription,
+        logger,
+      });
+      if (tablesRes.isErr()) {
+        throw tablesRes.error;
+      }
+      const tables = tablesRes.value;
+
+      // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
+      if (tables.length > MAX_TABLES_PER_SCHEMA) {
+        logger.warn(
+          `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
+        );
+        schemas.push({
+          name:
+            schema.name +
+            ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
+          database_name: db.name,
+          tables: [],
         });
-        if (schemasRes.isErr()) {
-          throw schemasRes.error;
-        }
-        const schemas = schemasRes.value;
-        return {
-          ...db,
-          schemas: await concurrentExecutor(
-            schemas,
-            async (schema) => {
-              const tablesRes = await fetchTables({
-                credentials,
-                dataset: schema,
-                fetchTablesDescription,
-                logger,
-              });
-              if (tablesRes.isErr()) {
-                throw tablesRes.error;
-              }
-              const tables = tablesRes.value;
+      } else {
+        schemas.push({
+          ...schema,
+          tables,
+        });
+      }
+    }
 
-              // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
-              if (tables.length > MAX_TABLES_PER_SCHEMA) {
-                logger.warn(
-                  `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
-                );
-                return {
-                  name:
-                    schema.name +
-                    ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
-                  database_name: db.name,
-                  tables: [],
-                };
-              }
+    treeDBs.push({ ...db, schemas });
+  }
 
-              return {
-                ...schema,
-                tables,
-              };
-            },
-            { concurrency: 2 }
-          ),
-        };
-      },
-      { concurrency: 2 }
-    ),
-  };
-
-  return new Ok(tree);
+  return new Ok({ databases: treeDBs });
 };
 
 // BigQuery is read-only as we force the readonly scope when creating the client.
