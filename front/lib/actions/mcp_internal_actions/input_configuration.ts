@@ -14,6 +14,7 @@ import type {
   MCPServerViewType,
 } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationValueType } from "@app/lib/models/agent/actions/mcp";
+import assert from "@app/lib/utils/assert";
 import {
   areSchemasEqual,
   ensurePathExists,
@@ -29,7 +30,6 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
 import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Type as JSONSchemaType,
