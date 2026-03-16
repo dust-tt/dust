@@ -22,6 +22,9 @@ import {
   useConversationParticipants,
   useConversations,
 } from "@app/hooks/conversations";
+import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
+import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -131,6 +134,22 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
+
+  const { mutateConversationAttachments } = useConversationAttachments({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
+  const { mutateSandboxStatus } = useConversationSandboxStatus({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
+  const { mutateSandboxFiles } = useConversationSandboxFiles({
+    conversationId,
+    owner,
+    options: { disabled: true },
+  });
 
   const {
     conversation,
@@ -456,6 +475,7 @@ export const ConversationViewer = ({
 
               if (userMessage.contentFragments.length > 0) {
                 window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
+                void mutateConversationAttachments();
               }
             }
             break;
@@ -538,6 +558,9 @@ export const ConversationViewer = ({
             );
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
+            void mutateConversationAttachments();
+            void mutateSandboxStatus();
+            void mutateSandboxFiles();
             break;
           case "butler_thinking":
             setIsButlerThinking(true);
@@ -566,9 +589,12 @@ export const ConversationViewer = ({
       conversationId,
       debouncedMarkAsRead,
       mutateConversation,
+      mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      mutateSandboxFiles,
+      mutateSandboxStatus,
       user.sId,
     ]
   );
