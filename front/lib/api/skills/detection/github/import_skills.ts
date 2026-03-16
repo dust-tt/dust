@@ -7,7 +7,6 @@ import {
 } from "@app/lib/api/skills/detection/github/detect_skills";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
 import type {
-  GitHubDetectedSkill,
   GitHubDetectedSkillAttachment,
   GitHubSkillDetectionError,
 } from "@app/lib/api/skills/detection/github/types";
@@ -81,12 +80,16 @@ export async function importSkillsFromGitHub(
         return;
       }
 
-      const fileAttachments = await fetchSkillFileAttachments(auth, {
-        octokit,
-        owner,
-        repo,
-        skill,
-      });
+      const uploadResults = await concurrentExecutor(
+        skill.attachments,
+        (attachment) =>
+          uploadAttachment(auth, { octokit, owner, repo, attachment }),
+        { concurrency: IMPORT_CONCURRENCY }
+      );
+
+      const fileAttachments = uploadResults.filter(
+        (r): r is FileResource => r !== null
+      );
 
       if (existing) {
         const attachedKnowledge = await existing.getAttachedKnowledge(auth);
@@ -156,45 +159,6 @@ export async function importSkillsFromGitHub(
   return new Ok({ imported, updated, errors });
 }
 
-async function fetchSkillFileAttachments(
-  auth: Authenticator,
-  {
-    octokit,
-    owner,
-    repo,
-    skill,
-  }: {
-    octokit: InstanceType<typeof Octokit>;
-    owner: string;
-    repo: string;
-    skill: GitHubDetectedSkill;
-  }
-): Promise<FileResource[]> {
-  const uploadableAttachments = skill.attachments.filter((a) => {
-    if (!a.contentType) {
-      logger.info(
-        { path: a.path, skillName: skill.name },
-        "Skipping unsupported attachment during GitHub skill import."
-      );
-      return false;
-    }
-    return true;
-  });
-
-  if (uploadableAttachments.length === 0) {
-    return [];
-  }
-
-  const results = await concurrentExecutor(
-    uploadableAttachments,
-    (attachment) =>
-      uploadAttachment(auth, { octokit, owner, repo, attachment }),
-    { concurrency: IMPORT_CONCURRENCY }
-  );
-
-  return results.filter((r): r is FileResource => r !== null);
-}
-
 async function uploadAttachment(
   auth: Authenticator,
   {
@@ -209,10 +173,6 @@ async function uploadAttachment(
     attachment: GitHubDetectedSkillAttachment;
   }
 ): Promise<FileResource | null> {
-  if (!attachment.contentType) {
-    return null;
-  }
-
   const blobResult = await fetchBlobContent(octokit, {
     owner,
     repo,
