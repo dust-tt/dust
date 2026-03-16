@@ -1,4 +1,5 @@
 import { useEmailAgentsToggle } from "@app/hooks/useEmailAgentsToggle";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/email_trigger";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionMailAiIcon,
@@ -23,7 +24,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
         <div className="flex flex-row items-center gap-2">
           <span>
             Allow workspace members to email agents at{" "}
-            <code>AGENT_NAME@dust.team</code>
+            <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
           </span>
           <a
             href="https://dust-tt.notion.site/Email-Agents-32028599d94181209594fbf1402b720d"
