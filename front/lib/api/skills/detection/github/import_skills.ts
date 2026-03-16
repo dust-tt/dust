@@ -23,11 +23,11 @@ import path from "path";
 
 const IMPORT_CONCURRENCY = 4;
 
-export interface ImportSkillsResult {
+type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
   errors: { name: string; message: string }[];
-}
+};
 
 /**
  * Imports skills from a GitHub repository. Detects skills, fetches their
