@@ -12,7 +12,7 @@ import type {
 } from "@app/lib/api/skills/detection/github/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -119,6 +119,10 @@ export async function importSkillsFromGitHub(
           },
         });
 
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: existing.sId,
+        });
+
         updated.push(existing);
       } else {
         let icon: string | null = null;
@@ -157,6 +161,10 @@ export async function importSkillsFromGitHub(
           },
           { mcpServerViews: [], fileAttachments }
         );
+
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: skillResource.sId,
+        });
 
         imported.push(skillResource);
       }
