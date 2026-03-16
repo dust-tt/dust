@@ -11,7 +11,7 @@ import type { AppProps } from "next/app";
 import Script from "next/script";
 
 // Important: avoid destructuring process.env on the client.
-// Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
+const DUST_CLIENT_FACING_URL = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
 // but destructuring `process.env` does not get inlined.
 const DUST_CLIENT_FACING_URL = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
 const NODE_ENV = process.env.NODE_ENV;
