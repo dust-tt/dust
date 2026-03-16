@@ -1,6 +1,9 @@
+import type { SkillAttachmentContentType } from "@app/lib/api/files/use_cases/skill_attachment";
+
 export interface DetectedSkillAttachment {
   path: string;
   sizeBytes: number;
+  contentType: SkillAttachmentContentType;
 }
 
 export interface DetectedSkill {
