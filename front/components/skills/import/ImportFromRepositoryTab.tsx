@@ -29,9 +29,10 @@ export function ImportFromRepositoryTab({
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
 
-  // Pre-select all importable skills when detection completes.
+  // Pre-select all importable skills when detection completes. detectedSkills come
+  // from an async SWR hook (useDetectSkillsFromRepo), so the values don't exist at
+  // form initialization time and can't be provided as defaultValues.
   useEffect(() => {
-    // Using a setValue instead of have a controller to run this once at detection time.
     setValue(
       "selectedSkillNames",
       detectedSkills

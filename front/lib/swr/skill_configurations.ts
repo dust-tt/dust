@@ -102,11 +102,13 @@ export function useSkills({
   disabled,
   status,
   globalSpaceOnly,
+  isDefault,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
+  isDefault?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
@@ -117,6 +119,9 @@ export function useSkills({
   }
   if (globalSpaceOnly) {
     queryParams.set("globalSpaceOnly", "true");
+  }
+  if (isDefault) {
+    queryParams.set("isDefault", "true");
   }
   const queryString = queryParams.toString();
 
