@@ -238,9 +238,15 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
   list_file_permissions: {
     description:
-      "List all permissions (sharing settings) on a Google Drive file, showing who has access and their roles.",
+      "List all permissions (sharing settings) on a Google Drive file, showing who has access and their roles. Requires sharing access to the file.",
     schema: {
       fileId: z.string().describe("The ID of the Google Drive file."),
+      canShare: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has sharing access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canShare field."
+        ),
     },
     stake: "never_ask",
     displayLabels: {

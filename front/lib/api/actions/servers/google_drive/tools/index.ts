@@ -638,7 +638,12 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  list_file_permissions: async ({ fileId }, { authInfo }) => {
+  list_file_permissions: async ({ fileId, canShare }, { authInfo }) => {
+    const shareError = await ensureShareAccess(canShare, fileId, authInfo);
+    if (shareError) {
+      return shareError;
+    }
+
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
