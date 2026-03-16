@@ -138,7 +138,7 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
    * Sends a batch of conversations to be processed asynchronously.
    * OpenAi requires to upload a JSONL file with the conversations to run.
    */
-  override async sendBatchProcessing(
+  protected override async internalSendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     const lines = Array.from(conversations.entries()).map(
@@ -200,7 +200,7 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     }
   }
 
-  override async getBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(batchId: string): Promise<BatchResult> {
     const batch = await this.client.batches.retrieve(batchId);
 
     if (!batch.output_file_id) {

@@ -347,13 +347,75 @@ export abstract class LLM<TPayload = unknown> {
    * Submit a batch of conversations for asynchronous processing.
    * Returns a string that can be used to poll status and retrieve results.
    * Each entry in the map is keyed by a conversation identifier (custom_id).
+   * Inputs are automatically traced when a tracing context is set.
    */
   async sendBatchProcessing(
+    conversations: Map<string, LLMStreamParameters>
+  ): Promise<string> {
+    const batchId = await this.internalSendBatchProcessing(conversations);
+    if (this.context) {
+      this.traceBatchInputs(conversations);
+    }
+    return batchId;
+  }
+
+  /**
+   * Override this method to implement provider-specific batch submission.
+   */
+  protected async internalSendBatchProcessing(
     _conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     throw new Error(
       `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
     );
+  }
+
+  /**
+   * Traces batch inputs by creating one Langfuse generation per conversation entry.
+   */
+  private traceBatchInputs(
+    conversations: Map<string, LLMStreamParameters>
+  ): void {
+    const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
+
+    for (const [customId, params] of conversations) {
+      const payload = this.buildStreamRequestPayload(params);
+
+      const generation = startObservation(
+        "llm-batch-input",
+        {
+          input: payload,
+          model: this.modelId,
+          modelParameters: {
+            reasoningEffort: this.reasoningEffort ?? "",
+            responseFormat: this.responseFormat ?? "",
+            temperature: this.temperature ?? "",
+          },
+          metadata: {
+            batchCustomId: customId,
+          },
+        },
+        { asType: "generation" }
+      );
+
+      generation.updateTrace({
+        metadata: {
+          batchCustomId: customId,
+          ...(this.authenticator.user()?.sId && {
+            actualUserId: this.authenticator.user()!.sId,
+          }),
+          authMethod: this.authenticator.authMethod() ?? "unknown",
+          ...pickBy(
+            this.context!,
+            (value, key) =>
+              value !== undefined && !["userId", "workspaceId"].includes(key)
+          ),
+        },
+        userId: workspaceId,
+      });
+
+      generation.end();
+    }
   }
 
   /**
@@ -368,11 +430,136 @@ export abstract class LLM<TPayload = unknown> {
   /**
    * Retrieve the results of a completed batch.
    * Only call this when getBatchStatus returns "ready".
+   * Results are automatically traced when a tracing context is set.
    */
-  async getBatchResult(_batchId: string): Promise<BatchResult> {
+  async getBatchResult(batchId: string): Promise<BatchResult> {
+    const results = await this.internalGetBatchResult(batchId);
+    if (!this.context) {
+      return results;
+    }
+    return this.traceBatchResults(results);
+  }
+
+  /**
+   * Override this method to implement provider-specific batch result retrieval.
+   */
+  protected async internalGetBatchResult(_batchId: string): Promise<BatchResult> {
     throw new Error(
       `Batch processing is not supported for ${this.metadata.clientId}/${this.metadata.modelId}`
     );
+  }
+
+  /**
+   * Traces batch results by creating one Langfuse generation per batch entry.
+   */
+  private async traceBatchResults(
+    results: BatchResult
+  ): Promise<BatchResult> {
+    const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
+
+    for (const [customId, events] of results) {
+      const traceId = createLLMTraceId(randomUUID());
+      const buffer = new LLMTraceBuffer(traceId, workspaceId, this.context!);
+
+      const generation = startObservation(
+        "llm-batch-completion",
+        {
+          input: { batchCustomId: customId },
+          model: this.modelId,
+          modelParameters: {
+            reasoningEffort: this.reasoningEffort ?? "",
+            responseFormat: this.responseFormat ?? "",
+            temperature: this.temperature ?? "",
+          },
+        },
+        { asType: "generation" }
+      );
+
+      generation.updateTrace({
+        metadata: {
+          dustTraceId: traceId,
+          batchCustomId: customId,
+          ...(this.authenticator.user()?.sId && {
+            actualUserId: this.authenticator.user()!.sId,
+          }),
+          ...(this.authenticator.key() && {
+            apiKeyId: this.authenticator.key()!.id,
+          }),
+          authMethod: this.authenticator.authMethod() ?? "unknown",
+          ...pickBy(
+            this.context!,
+            (value, key) =>
+              value !== undefined && !["userId", "workspaceId"].includes(key)
+          ),
+        },
+        userId: workspaceId,
+      });
+
+      const metricTags = [
+        `model_id:${this.modelId}`,
+        `client_id:${this.metadata.clientId}`,
+        `operation_type:${this.context!.operationType}`,
+      ];
+
+      let hasError = false;
+      for (const event of events) {
+        buffer.addEvent(event);
+
+        if (event.type === "error") {
+          hasError = true;
+          getStatsDClient().increment("llm_error.count", 1, metricTags);
+          generation.updateTrace({
+            tags: ["isError:true", `errorType:${event.content.type}`],
+          });
+        }
+      }
+
+      if (!hasError) {
+        getStatsDClient().increment("llm_success.count", 1, metricTags);
+      }
+      getStatsDClient().increment("llm_interaction.count", 1, metricTags);
+
+      const { tokenUsage, ...rest } = buffer.currentOutput;
+
+      generation.update({ output: { ...rest } });
+
+      if (this.getTraceOutput) {
+        const traceOutput = this.getTraceOutput(rest);
+        if (traceOutput) {
+          generation.updateTrace({ output: traceOutput });
+        }
+      } else {
+        generation.updateTrace({ output: { ...rest } });
+      }
+
+      if (tokenUsage) {
+        generation.update({
+          usageDetails: {
+            input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
+            output: tokenUsage.outputTokens,
+            total: tokenUsage.totalTokens,
+            cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
+            cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
+            reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
+          },
+        });
+      }
+
+      if (buffer.error) {
+        generation.update({
+          level: "ERROR",
+          statusMessage: buffer.error.message,
+          metadata: {
+            errorType: buffer.error.type,
+            errorMessage: buffer.error.message,
+          },
+        });
+      }
+
+      generation.end();
+    }
+
+    return results;
   }
 
   /**

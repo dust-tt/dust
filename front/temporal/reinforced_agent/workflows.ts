@@ -1,5 +1,10 @@
 import type * as activities from "@app/temporal/reinforced_agent/activities";
 import {
+  OpenTelemetryInboundInterceptor,
+  OpenTelemetryInternalsInterceptor,
+  OpenTelemetryOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/workflow";
+import {
   ApplicationFailure,
   ParentClosePolicy,
   proxyActivities,
@@ -7,8 +12,17 @@ import {
   sleep,
   startChild,
 } from "@temporalio/workflow";
+import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import { concurrentExecutor } from "../utils";
+
 import { runSignal } from "./signals";
+
+// Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
+export const interceptors: WorkflowInterceptorsFactory = () => ({
+  inbound: [new OpenTelemetryInboundInterceptor()],
+  outbound: [new OpenTelemetryOutboundInterceptor()],
+  internals: [new OpenTelemetryInternalsInterceptor()],
+});
 
 const { getFlaggedWorkspacesActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",

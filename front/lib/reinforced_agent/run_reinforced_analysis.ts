@@ -109,7 +109,8 @@ export function buildReinforcedLLMParams({
  * Get the LLM instance configured for reinforced agent analysis.
  */
 export async function getReinforcedLLM(
-  auth: Authenticator
+  auth: Authenticator,
+  operationType: ReinforcedOperationType
 ): Promise<LLM | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -122,7 +123,15 @@ export async function getReinforcedLLM(
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  return getLLM(auth, { modelId: model.modelId, credentials });
+  return getLLM(auth, {
+    modelId: "mistral-large-latest",
+    credentials,
+    context: {
+      operationType,
+      workspaceId: owner.sId,
+      userId: auth.user()?.sId,
+    },
+  });
 }
 
 /**
@@ -255,7 +264,7 @@ export async function runReinforcedAnalysis({
   operationType: ReinforcedOperationType;
   contextId: string;
 }): Promise<number> {
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(auth, operationType);
   if (!llm) {
     logger.error(
       { contextId },
