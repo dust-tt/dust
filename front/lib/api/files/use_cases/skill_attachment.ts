@@ -1,6 +1,9 @@
+import type { FileEntry } from "@app/lib/api/skills/detection/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { FILE_FORMATS, isSupportedFileContentType } from "@app/types/files";
+import path from "path";
 
-const SUPPORTED_CONTENT_TYPES: Set<AllSupportedFileContentType> = new Set([
+const SKILL_ATTACHMENT_CONTENT_TYPES = [
   // Images (used as-is, no resize for skill attachments).
   "image/jpeg",
   "image/png",
@@ -58,10 +61,37 @@ const SUPPORTED_CONTENT_TYPES: Set<AllSupportedFileContentType> = new Set([
   "text/x-perl",
   "text/x-perl-script",
   "message/rfc822",
-]);
+] as const satisfies readonly AllSupportedFileContentType[];
+
+export type SkillAttachmentContentType =
+  (typeof SKILL_ATTACHMENT_CONTENT_TYPES)[number];
+
+const SUPPORTED_CONTENT_TYPES = new Set<SkillAttachmentContentType>(
+  SKILL_ATTACHMENT_CONTENT_TYPES
+);
 
 export function isSupportedForSkillAttachment(
   contentType: AllSupportedFileContentType
-): boolean {
-  return SUPPORTED_CONTENT_TYPES.has(contentType);
+): contentType is SkillAttachmentContentType {
+  return SUPPORTED_CONTENT_TYPES.has(contentType as SkillAttachmentContentType);
+}
+
+export function getSkillAttachmentContentType(
+  entry: FileEntry
+): SkillAttachmentContentType | null {
+  const ext = path.extname(entry.path).toLowerCase();
+  if (!ext) {
+    return null;
+  }
+  for (const [key, format] of Object.entries(FILE_FORMATS)) {
+    if (
+      format.exts.some((e) => e === ext) &&
+      // Type guards to validate the type of key (lost because of the Object.entries).
+      isSupportedFileContentType(key) &&
+      isSupportedForSkillAttachment(key)
+    ) {
+      return key;
+    }
+  }
+  return null;
 }
