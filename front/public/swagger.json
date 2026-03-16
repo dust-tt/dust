@@ -8371,6 +8371,10 @@
                     "expiresIn": {
                       "type": "integer",
                       "description": "Token expiry in seconds"
+                    },
+                    "expirationDate": {
+                      "type": "integer",
+                      "description": "Token expiry date in milliseconds"
                     }
                   }
                 }
