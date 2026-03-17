@@ -207,6 +207,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "IntercomLogo",
   "JiraLogo",
   "LinearLogo",
+  "LumaLogo",
   "MicrosoftExcelLogo",
   "MicrosoftLogo",
   "MicrosoftOutlookLogo",

@@ -12,15 +12,15 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const LUMA_TOOL_NAME = "luma" as const;
 
 export const LUMA_TOOLS_METADATA = createToolsRecord({
-  get_self: {
+  get_authenticated_user: {
     description:
-      "Get information about the authenticated Luma user. " +
-      "Use this to verify the API key is working correctly.",
+      "Get the name, email, and ID of the Luma account owner whose API key is configured. " +
+      "Useful to confirm which calendar the tools operate on.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting Luma user info",
-      done: "Get Luma user info",
+      running: "Getting Luma account info",
+      done: "Get Luma account info",
     },
   },
   get_event: {
@@ -316,7 +316,7 @@ export const LUMA_SERVER = {
     version: "1.0.0",
     description: "Manage Luma events, guests, and attendance insights.",
     authorization: null,
-    icon: "ActionTimeIcon", // TODO: Replace with "LumaLogo" once added to Sparkle
+    icon: "LumaLogo",
     documentationUrl: null,
     instructions: null,
   },

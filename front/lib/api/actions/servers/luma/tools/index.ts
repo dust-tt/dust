@@ -36,12 +36,12 @@ export function createLumaTools(
   _agentLoopContext?: AgentLoopContextType
 ) {
   const handlers: ToolHandlers<typeof LUMA_TOOLS_METADATA> = {
-    get_self: async (_params, extra: ToolHandlerExtra) => {
+    get_authenticated_user: async (_params, extra: ToolHandlerExtra) => {
       return withClient(extra, async (client) => {
         const result = await client.getSelf();
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to get user info: ${result.error.message}`)
+            new MCPError(`Failed to get account info: ${result.error.message}`)
           );
         }
         return new Ok([
