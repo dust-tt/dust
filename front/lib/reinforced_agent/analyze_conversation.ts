@@ -1,5 +1,6 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -11,7 +12,8 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
-  conversationText: string
+  conversationText: string,
+  toolsAndSkillsContext: string
 ): { systemPrompt: string; userMessage: string } {
   const descriptionSection = agentConfig.description
     ? `Description: ${agentConfig.description}`
@@ -25,7 +27,7 @@ export function buildAnalysisPrompt(
 ## Your task
 Analyze the conversation and identify areas where the agent's instructions could be improved. Pay special attention to any user feedback (thumbs up/down and comments) as direct signals of satisfaction or dissatisfaction. Focus on:
 - Cases where the agent misunderstood the user's intent
-- Missing knowledge or capabilities the agent should have
+- Missing tools and skills the agent should have. Prioritize those over instruction changes when you detect a clear need for a tool or skill.
 - Tone or style improvements based on user reactions and feedback
 - Specific instructions that could prevent repeated mistakes
 
@@ -42,6 +44,8 @@ You MUST call at least one tool. If no improvements are needed, call suggest_pro
 Name: ${agentConfig.name}
 ${descriptionSection}
 ${instructionsSection}
+
+${toolsAndSkillsContext}
 
 ## Conversation to analyze
 
@@ -74,6 +78,8 @@ export async function buildConversationAnalysisBatchMap(
     return null;
   }
 
+  const toolsAndSkillsContext = await buildToolsAndSkillsContext(auth);
+
   const batchMap = new Map<string, LLMStreamParameters>();
 
   for (const conversationId of conversationIds) {
@@ -89,7 +95,11 @@ export async function buildConversationAnalysisBatchMap(
       continue;
     }
 
-    const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+    const prompt = buildAnalysisPrompt(
+      agentConfig,
+      conversationRes.value.text,
+      toolsAndSkillsContext
+    );
     batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
   }
 
@@ -127,10 +137,13 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  const conversationRes = await getShrinkWrappedConversation(auth, {
-    conversationId,
-    includeFeedback: true,
-  });
+  const [conversationRes, toolsAndSkillsContext] = await Promise.all([
+    getShrinkWrappedConversation(auth, {
+      conversationId,
+      includeFeedback: true,
+    }),
+    buildToolsAndSkillsContext(auth),
+  ]);
   if (conversationRes.isErr()) {
     logger.warn(
       { conversationId, error: conversationRes.error },
@@ -139,7 +152,11 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+  const prompt = buildAnalysisPrompt(
+    agentConfig,
+    conversationRes.value.text,
+    toolsAndSkillsContext
+  );
 
   const createdCount = await runReinforcedAnalysis({
     auth,
