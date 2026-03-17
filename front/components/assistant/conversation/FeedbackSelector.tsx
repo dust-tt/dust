@@ -3,7 +3,6 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ButtonGroup,
   Checkbox,
   Dialog,
   DialogContainer,
@@ -11,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  HandThumbUpIcon,
   Label,
   MagicIcon,
   Spinner,
@@ -180,25 +178,15 @@ export function FeedbackSelector({
 
   return (
     <div className="flex items-center">
-      <ButtonGroup>
-        <Button
-          variant={feedback?.thumb === "up" ? "primary" : "outline"}
-          size="xs"
-          disabled={isSubmittingThumb}
-          onClick={() => handleThumbClick("up")}
-          icon={HandThumbUpIcon}
-          className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
-        />
-        <Button
-          variant={feedback?.thumb === "down" ? "primary" : "outline"}
-          size="xs"
-          disabled={isSubmittingThumb}
-          onClick={() => handleThumbClick("down")}
-          icon={MagicIcon}
-          label={improveLabel}
-          className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
-        />
-      </ButtonGroup>
+      <Button
+        variant={feedback ? "primary" : "outline"}
+        size="xs"
+        disabled={isSubmittingThumb}
+        onClick={() => handleThumbClick("down")}
+        icon={MagicIcon}
+        label={improveLabel}
+        className={feedback ? "" : "text-muted-foreground"}
+      />
 
       <Dialog
         open={isDialogOpen}
