@@ -3,7 +3,7 @@ import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -100,8 +100,8 @@ export function getDefaultAgentFormData({
   user: UserType;
   owner: WorkspaceType;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = getSmallWhitelistedModelSync(owner);
+  const preferredModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  const fallbackModel = getLargeWhitelistedModelSync(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
   // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
