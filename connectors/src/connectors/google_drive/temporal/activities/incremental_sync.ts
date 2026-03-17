@@ -351,7 +351,9 @@ async function recurseUpdateParents(
     "Updating parents recursively"
   );
 
-  if (parentIds.includes(file.dustFileId)) {
+  // Move updates recurse from the moved folder itself, so `parentIds[0]` is
+  // the current node and only deeper repeats indicate a real parent cycle.
+  if (parentIds.slice(1).includes(file.dustFileId)) {
     logger.warn(
       {
         fileId: file.driveFileId,
