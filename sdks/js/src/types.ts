@@ -706,6 +706,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "luma_tool"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
