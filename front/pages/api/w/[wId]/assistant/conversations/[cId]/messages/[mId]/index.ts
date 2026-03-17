@@ -139,37 +139,40 @@ async function handler(
     });
   }
 
+  const conversation = await ConversationResource.fetchById(auth, cId);
+
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
+  }
+
+  const messageRes = await conversation.getMessageById(auth, mId);
+
+  if (messageRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found.",
+      },
+    });
+  }
+
+  const message = messageRes.value;
+
+  const branchId = message.branchSId ?? null;
+
   switch (req.method) {
     case "GET": {
-      const conversation = await ConversationResource.fetchById(auth, cId);
-
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found",
-          },
-        });
-      }
-
-      // Verify the message exists.
-      const messageRes = await conversation.getMessageById(auth, mId);
-
-      if (messageRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "message_not_found",
-            message: "Message not found.",
-          },
-        });
-      }
-
       const renderedMessages = await batchRenderMessages(
         auth,
         conversation,
-        [messageRes.value],
+        [message],
         "full"
       );
 
@@ -188,31 +191,6 @@ async function handler(
     }
 
     case "DELETE": {
-      const conversation = await ConversationResource.fetchById(auth, cId);
-
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found",
-          },
-        });
-      }
-
-      const messageRes = await conversation.getMessageById(auth, mId);
-
-      if (messageRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "message_not_found",
-            message: "The message you're trying to delete does not exist.",
-          },
-        });
-      }
-      const message = messageRes.value;
-
       if (!message.userMessage && !message.agentMessage) {
         return apiError(req, res, {
           status_code: 404,
@@ -222,6 +200,25 @@ async function handler(
           },
         });
       }
+
+      const conversationRes = await getConversation(
+        auth,
+        conversation.sId,
+        false,
+        branchId
+      );
+
+      if (conversationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Unable to get the conversation.",
+          },
+        });
+      }
+
+      const fullConversation = conversationRes.value;
 
       const renderRes = await batchRenderMessages(
         auth,
@@ -240,20 +237,6 @@ async function handler(
       }
 
       const renderedMessage = renderRes.value[0];
-
-      const conversationRes = await getConversation(auth, conversation.sId);
-
-      if (conversationRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Unable to get the conversation.",
-          },
-        });
-      }
-
-      const fullConversation = conversationRes.value;
 
       if (isUserMessageType(renderedMessage)) {
         const deleteResult = await softDeleteUserMessage(auth, {
