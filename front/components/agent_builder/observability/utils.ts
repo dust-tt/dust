@@ -1,3 +1,4 @@
+import type { AnalyticsVisibleOrigin } from "@app/components/agent_builder/observability/constants";
 import {
   buildColorClass,
   INDEXED_BASE_COLORS,
@@ -10,7 +11,6 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import moment from "moment-timezone";
 
 export type VersionMarker = { version: string; timestamp: number };
@@ -23,11 +23,11 @@ export type SourceBucket = { origin: string; count: number };
 
 export function isUserMessageOrigin(
   origin?: string | null
-): origin is UserMessageOrigin {
+): origin is AnalyticsVisibleOrigin {
   return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
 }
 
-export function getSourceColor(source: UserMessageOrigin) {
+export function getSourceColor(source: AnalyticsVisibleOrigin) {
   return USER_MESSAGE_ORIGIN_LABELS[source].color;
 }
 
@@ -69,7 +69,7 @@ export function buildSourceChartData(
   // Aggregate by label so origins sharing the same display name are merged.
   const aggregatedByLabel = new Map<
     string,
-    { origin: UserMessageOrigin; count: number }
+    { origin: AnalyticsVisibleOrigin; count: number }
   >();
 
   for (const b of buckets) {

@@ -1,4 +1,4 @@
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type { AnalyticsVisibleOrigin } from "@app/components/agent_builder/observability/constants";
 
 const TOOL_CHART_MODES = ["version", "step"] as const;
 
@@ -40,7 +40,7 @@ export type ToolLatencyDatum = {
 };
 
 export type SourceChartDatum = {
-  origin: UserMessageOrigin;
+  origin: AnalyticsVisibleOrigin;
   count: number;
   percent: number;
   label: string;
