@@ -1,15 +1,22 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
+import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -515,6 +522,226 @@ describe("MCPServerViewResource", () => {
 
       const json = view!.toJSON();
       expect(json.toolsMetadata).toEqual([]);
+    });
+  });
+
+  describe("create", () => {
+    it("should migrate agent, conversation, and skill dependencies when creating a global view", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const remoteServer = await RemoteMCPServerFactory.create(workspace);
+      const systemView =
+        await MCPServerViewResource.getMCPServerViewForSystemSpace(
+          adminAuth,
+          remoteServer.sId
+        );
+      if (!systemView) {
+        throw new Error("Missing system MCP server view");
+      }
+
+      const regularView = await MCPServerViewFactory.create(
+        workspace,
+        remoteServer.sId,
+        regularSpace
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(userAuth);
+
+      const agentMCPServerConfiguration =
+        await AgentMCPServerConfigurationFactory.create(
+          userAuth,
+          regularSpace,
+          {
+            agent,
+            mcpServerView: regularView,
+          }
+        );
+      const conversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      await ConversationMCPServerViewModel.create({
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        mcpServerViewId: regularView.id,
+        userId: user.id,
+        enabled: true,
+        source: "manual",
+        agentConfigurationId: agent.sId,
+      });
+
+      const skill = await SkillFactory.create(userAuth, {
+        mcpServerViews: [regularView],
+      });
+
+      const globalView = await MCPServerViewResource.create(adminAuth, {
+        systemView,
+        space: globalSpace,
+      });
+
+      const migratedAgentConfiguration =
+        await AgentMCPServerConfigurationModel.findOne({
+          where: {
+            workspaceId: workspace.id,
+            id: agentMCPServerConfiguration.id,
+          },
+        });
+      expect(migratedAgentConfiguration).not.toBeNull();
+      expect(migratedAgentConfiguration?.mcpServerViewId).toBe(globalView.id);
+
+      const conversationDependencies =
+        await ConversationMCPServerViewModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            conversationId: conversation.id,
+          },
+        });
+      expect(conversationDependencies).toHaveLength(1);
+      expect(conversationDependencies[0].mcpServerViewId).toBe(globalView.id);
+
+      const skillDependencies = await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: skill.id,
+        },
+      });
+      expect(skillDependencies).toHaveLength(1);
+      expect(skillDependencies[0].mcpServerViewId).toBe(globalView.id);
+
+      const deletedRegularView =
+        await MCPServerViewResource.getByMCPServerAndSpace(
+          adminAuth,
+          remoteServer.sId,
+          regularSpace
+        );
+      expect(deletedRegularView).toBeNull();
+    });
+
+    it("should deduplicate conversation and skill dependencies when collapsing multiple regular views into a global view", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const firstRegularSpace = await SpaceFactory.regular(workspace);
+      const secondRegularSpace = await SpaceFactory.regular(workspace);
+
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const remoteServer = await RemoteMCPServerFactory.create(workspace);
+      const systemView =
+        await MCPServerViewResource.getMCPServerViewForSystemSpace(
+          adminAuth,
+          remoteServer.sId
+        );
+      if (!systemView) {
+        throw new Error("Missing system MCP server view");
+      }
+
+      const firstRegularView = await MCPServerViewFactory.create(
+        workspace,
+        remoteServer.sId,
+        firstRegularSpace
+      );
+      const secondRegularView = await MCPServerViewFactory.create(
+        workspace,
+        remoteServer.sId,
+        secondRegularSpace
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(userAuth);
+
+      await AgentMCPServerConfigurationFactory.create(
+        userAuth,
+        firstRegularSpace,
+        {
+          agent,
+          mcpServerView: firstRegularView,
+        }
+      );
+      const conversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      await ConversationMCPServerViewModel.bulkCreate([
+        {
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
+          mcpServerViewId: firstRegularView.id,
+          userId: user.id,
+          enabled: true,
+          source: "manual",
+          agentConfigurationId: agent.sId,
+        },
+        {
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
+          mcpServerViewId: secondRegularView.id,
+          userId: user.id,
+          enabled: true,
+          source: "manual",
+          agentConfigurationId: agent.sId,
+        },
+      ]);
+
+      const skill = await SkillFactory.create(userAuth, {
+        mcpServerViews: [firstRegularView, secondRegularView],
+      });
+
+      const globalView = await MCPServerViewResource.create(adminAuth, {
+        systemView,
+        space: globalSpace,
+      });
+
+      const conversationDependencies =
+        await ConversationMCPServerViewModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            conversationId: conversation.id,
+          },
+        });
+      expect(conversationDependencies).toHaveLength(1);
+      expect(conversationDependencies[0].mcpServerViewId).toBe(globalView.id);
+
+      const skillDependencies = await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: skill.id,
+        },
+      });
+      expect(skillDependencies).toHaveLength(1);
+      expect(skillDependencies[0].mcpServerViewId).toBe(globalView.id);
+
+      const deletedFirstRegularView =
+        await MCPServerViewResource.getByMCPServerAndSpace(
+          adminAuth,
+          remoteServer.sId,
+          firstRegularSpace
+        );
+      expect(deletedFirstRegularView).toBeNull();
+
+      const deletedSecondRegularView =
+        await MCPServerViewResource.getByMCPServerAndSpace(
+          adminAuth,
+          remoteServer.sId,
+          secondRegularSpace
+        );
+      expect(deletedSecondRegularView).toBeNull();
     });
   });
 });

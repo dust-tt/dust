@@ -11,6 +11,212 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+const getConversationDependencyKey = ({
+  conversationId,
+  agentConfigurationId,
+}: Pick<
+  ConversationMCPServerViewModel,
+  "conversationId" | "agentConfigurationId"
+>) => `${conversationId}:${agentConfigurationId ?? "null"}`;
+
+const getSkillDependencyKey = ({
+  skillConfigurationId,
+}: Pick<SkillMCPServerConfigurationModel, "skillConfigurationId">) =>
+  `${skillConfigurationId}`;
+
+export const reassignMCPServerViewDependencies = async (
+  auth: Authenticator,
+  {
+    fromMCPServerViewIds,
+    toMCPServerViewId,
+    transaction,
+  }: {
+    fromMCPServerViewIds: ModelId[];
+    toMCPServerViewId: ModelId;
+    transaction?: Transaction;
+  }
+) => {
+  if (fromMCPServerViewIds.length === 0) {
+    return;
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const referencedMCPServerViewIds = [
+    toMCPServerViewId,
+    ...fromMCPServerViewIds,
+  ];
+  const fromMCPServerViewIdSet = new Set(fromMCPServerViewIds);
+
+  await AgentMCPServerConfigurationModel.update(
+    { mcpServerViewId: toMCPServerViewId },
+    {
+      where: {
+        workspaceId,
+        mcpServerViewId: { [Op.in]: fromMCPServerViewIds },
+      },
+      transaction,
+    }
+  );
+
+  const conversationDependencies = await ConversationMCPServerViewModel.findAll(
+    {
+      where: {
+        workspaceId,
+        mcpServerViewId: { [Op.in]: referencedMCPServerViewIds },
+      },
+      order: [
+        ["updatedAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      transaction,
+    }
+  );
+
+  const conversationDependencyMap = new Map<
+    string,
+    ConversationMCPServerViewModel[]
+  >();
+  for (const dependency of conversationDependencies) {
+    const key = getConversationDependencyKey(dependency);
+    const existingDependencies = conversationDependencyMap.get(key) ?? [];
+    existingDependencies.push(dependency);
+    conversationDependencyMap.set(key, existingDependencies);
+  }
+
+  const conversationDependencyIdsToDelete: ModelId[] = [];
+  const conversationDependencyIdsToUpdate: ModelId[] = [];
+  for (const dependencies of conversationDependencyMap.values()) {
+    const targetDependencies = dependencies.filter(
+      (dependency) => dependency.mcpServerViewId === toMCPServerViewId
+    );
+
+    if (targetDependencies.length > 0) {
+      const [keptTargetDependency, ...duplicatedTargetDependencies] =
+        targetDependencies;
+      conversationDependencyIdsToDelete.push(
+        ...duplicatedTargetDependencies.map((dependency) => dependency.id),
+        ...dependencies
+          .filter(
+            (dependency) =>
+              dependency.id !== keptTargetDependency.id &&
+              fromMCPServerViewIdSet.has(dependency.mcpServerViewId)
+          )
+          .map((dependency) => dependency.id)
+      );
+      continue;
+    }
+
+    const [dependencyToUpdate, ...dependenciesToDelete] = dependencies;
+    if (fromMCPServerViewIdSet.has(dependencyToUpdate.mcpServerViewId)) {
+      conversationDependencyIdsToUpdate.push(dependencyToUpdate.id);
+    }
+    conversationDependencyIdsToDelete.push(
+      ...dependenciesToDelete.map((dependency) => dependency.id)
+    );
+  }
+
+  if (conversationDependencyIdsToUpdate.length > 0) {
+    await ConversationMCPServerViewModel.update(
+      { mcpServerViewId: toMCPServerViewId },
+      {
+        where: {
+          workspaceId,
+          id: { [Op.in]: conversationDependencyIdsToUpdate },
+        },
+        transaction,
+      }
+    );
+  }
+
+  if (conversationDependencyIdsToDelete.length > 0) {
+    await ConversationMCPServerViewModel.destroy({
+      where: {
+        workspaceId,
+        id: { [Op.in]: conversationDependencyIdsToDelete },
+      },
+      transaction,
+    });
+  }
+
+  const skillDependencies = await SkillMCPServerConfigurationModel.findAll({
+    where: {
+      workspaceId,
+      mcpServerViewId: { [Op.in]: referencedMCPServerViewIds },
+    },
+    order: [
+      ["updatedAt", "DESC"],
+      ["id", "DESC"],
+    ],
+    transaction,
+  });
+
+  const skillDependencyMap = new Map<
+    string,
+    SkillMCPServerConfigurationModel[]
+  >();
+  for (const dependency of skillDependencies) {
+    const key = getSkillDependencyKey(dependency);
+    const existingDependencies = skillDependencyMap.get(key) ?? [];
+    existingDependencies.push(dependency);
+    skillDependencyMap.set(key, existingDependencies);
+  }
+
+  const skillDependencyIdsToDelete: ModelId[] = [];
+  const skillDependencyIdsToUpdate: ModelId[] = [];
+  for (const dependencies of skillDependencyMap.values()) {
+    const targetDependencies = dependencies.filter(
+      (dependency) => dependency.mcpServerViewId === toMCPServerViewId
+    );
+
+    if (targetDependencies.length > 0) {
+      const [keptTargetDependency, ...duplicatedTargetDependencies] =
+        targetDependencies;
+      skillDependencyIdsToDelete.push(
+        ...duplicatedTargetDependencies.map((dependency) => dependency.id),
+        ...dependencies
+          .filter(
+            (dependency) =>
+              dependency.id !== keptTargetDependency.id &&
+              fromMCPServerViewIdSet.has(dependency.mcpServerViewId)
+          )
+          .map((dependency) => dependency.id)
+      );
+      continue;
+    }
+
+    const [dependencyToUpdate, ...dependenciesToDelete] = dependencies;
+    if (fromMCPServerViewIdSet.has(dependencyToUpdate.mcpServerViewId)) {
+      skillDependencyIdsToUpdate.push(dependencyToUpdate.id);
+    }
+    skillDependencyIdsToDelete.push(
+      ...dependenciesToDelete.map((dependency) => dependency.id)
+    );
+  }
+
+  if (skillDependencyIdsToUpdate.length > 0) {
+    await SkillMCPServerConfigurationModel.update(
+      { mcpServerViewId: toMCPServerViewId },
+      {
+        where: {
+          workspaceId,
+          id: { [Op.in]: skillDependencyIdsToUpdate },
+        },
+        transaction,
+      }
+    );
+  }
+
+  if (skillDependencyIdsToDelete.length > 0) {
+    await SkillMCPServerConfigurationModel.destroy({
+      where: {
+        workspaceId,
+        id: { [Op.in]: skillDependencyIdsToDelete },
+      },
+      transaction,
+    });
+  }
+};
+
 export const destroyMCPServerViewDependencies = async (
   auth: Authenticator,
   {

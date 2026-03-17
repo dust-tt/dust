@@ -16,7 +16,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
+import {
+  destroyMCPServerViewDependencies,
+  reassignMCPServerViewDependencies,
+} from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -30,6 +33,7 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -194,33 +198,47 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const mcpServerId = systemView.mcpServerId;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    const regularMCPServerViews =
+      space.kind === "global"
+        ? (await this.listByMCPServer(auth, mcpServerId)).filter(
+            (mcpServerView) => mcpServerView.space.kind === "regular"
+          )
+        : [];
 
-    if (space.kind === "global") {
-      const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
-      for (const mcpServerView of mcpServerViews) {
-        if (mcpServerView.space.kind === "regular") {
-          await mcpServerView.delete(auth, { hardDelete: true });
+    return withTransaction(async (transaction) => {
+      const view = await this.makeNew(
+        auth,
+        {
+          serverType,
+          internalMCPServerId: serverType === "internal" ? mcpServerId : null,
+          remoteMCPServerId: serverType === "remote" ? id : null,
+          // Always copy the oAuthUseCase, name and description from the system view to the custom view.
+          // This way, it's always available on the MCP server view without having to fetch the system view.
+          oAuthUseCase: systemView.oAuthUseCase,
+          name: systemView.name,
+          description: systemView.description,
+        },
+        space,
+        auth.user() ?? undefined,
+        transaction
+      );
+
+      if (regularMCPServerViews.length > 0) {
+        await reassignMCPServerViewDependencies(auth, {
+          fromMCPServerViewIds: regularMCPServerViews.map(
+            (mcpServerView) => mcpServerView.id
+          ),
+          toMCPServerViewId: view.id,
+          transaction,
+        });
+
+        for (const regularMCPServerView of regularMCPServerViews) {
+          await regularMCPServerView.hardDelete(auth, transaction);
         }
       }
-    }
 
-    const view = await this.makeNew(
-      auth,
-      {
-        serverType,
-        internalMCPServerId: serverType === "internal" ? mcpServerId : null,
-        remoteMCPServerId: serverType === "remote" ? id : null,
-        // Always copy the oAuthUseCase, name and description from the system view to the custom view.
-        // This way, it's always available on the MCP server view without having to fetch the system view.
-        oAuthUseCase: systemView.oAuthUseCase,
-        name: systemView.name,
-        description: systemView.description,
-      },
-      space,
-      auth.user() ?? undefined
-    );
-
-    return view;
+      return view;
+    });
   }
 
   // Fetching.
