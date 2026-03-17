@@ -1,5 +1,7 @@
 /** @ignoreswagger */
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   listWorkspaceConnectedMCPServerIds,
@@ -7,9 +9,11 @@ import {
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { SpaceKind } from "@app/types/space";
@@ -42,6 +46,57 @@ const PostQueryParamsSchema = t.type({
 });
 
 export type PostMCPServersQueryParams = t.TypeOf<typeof PostQueryParamsSchema>;
+
+async function notifyWorkspaceAdminsAboutAffectedAgents(
+  auth: Authenticator,
+  {
+    toolName,
+    agentNames,
+  }: {
+    toolName: string;
+    agentNames: string[];
+  }
+): Promise<void> {
+  if (agentNames.length === 0) {
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const { members } = await getMembers(auth, {
+    roles: ["admin"],
+    activeOnly: true,
+  });
+  const adminEmails = Array.from(
+    new Set(members.map((member) => member.email))
+  );
+
+  const results = await Promise.all(
+    adminEmails.map((email) =>
+      sendMCPGlobalSharingReconfigurationEmail({
+        email,
+        workspaceName: workspace.name,
+        toolName,
+        agentNames,
+      })
+    )
+  );
+
+  const failedEmails = results.flatMap((result, index) =>
+    result.isErr() ? [adminEmails[index]] : []
+  );
+
+  if (failedEmails.length > 0) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        toolName,
+        agentNames,
+        failedEmails,
+      },
+      "Failed to send MCP global sharing reconfiguration emails"
+    );
+  }
+}
 
 async function handler(
   req: NextApiRequest,
@@ -190,10 +245,39 @@ async function handler(
         });
       }
 
+      const affectedAgentNames =
+        space.kind === "global"
+          ? await MCPServerViewResource.listLatestActiveAgentNamesToReconfigureOnGlobalShare(
+              auth,
+              mcpServerId
+            )
+          : [];
+
       const serverView = await MCPServerViewResource.create(auth, {
         systemView,
         space,
       });
+
+      if (space.kind === "global" && affectedAgentNames.length > 0) {
+        const toolName = getMcpServerViewDisplayName(systemView.toJSON());
+
+        try {
+          await notifyWorkspaceAdminsAboutAffectedAgents(auth, {
+            toolName,
+            agentNames: affectedAgentNames,
+          });
+        } catch (error) {
+          logger.error(
+            {
+              error,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              toolName,
+              agentNames: affectedAgentNames,
+            },
+            "Failed to notify workspace admins about MCP global sharing impact"
+          );
+        }
+      }
 
       return res.status(200).json({
         success: true,

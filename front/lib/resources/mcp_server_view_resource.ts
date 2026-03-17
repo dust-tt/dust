@@ -18,6 +18,7 @@ import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -46,7 +47,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes as SequelizeQueryTypes } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -221,6 +222,54 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     return view;
+  }
+
+  static async listLatestActiveAgentNamesToReconfigureOnGlobalShare(
+    auth: Authenticator,
+    mcpServerId: string
+  ): Promise<string[]> {
+    const regularViewIds = (await this.listByMCPServer(auth, mcpServerId))
+      .filter((view) => view.space.kind === "regular")
+      .map((view) => view.id);
+
+    if (regularViewIds.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const query = `
+      SELECT DISTINCT ranked_agents.name
+      FROM (
+        SELECT ac.*,
+               ROW_NUMBER() OVER (
+                 PARTITION BY ac."sId"
+                 ORDER BY ac.version DESC
+               ) AS rn
+        FROM agent_configurations ac
+        WHERE ac."workspaceId" = :workspaceId
+      ) ranked_agents
+      INNER JOIN agent_mcp_server_configurations amsc
+        ON amsc."agentConfigurationId" = ranked_agents.id
+      WHERE ranked_agents.rn = 1
+        AND ranked_agents.status = 'active'
+        AND amsc."mcpServerViewId" IN (:mcpServerViewIds)
+      ORDER BY ranked_agents.name ASC
+    `;
+
+    type AgentNameRow = {
+      name: string;
+    };
+
+    const rows =
+      (await AgentConfigurationModel.sequelize?.query<AgentNameRow>(query, {
+        replacements: {
+          workspaceId,
+          mcpServerViewIds: regularViewIds,
+        },
+        type: SequelizeQueryTypes.SELECT,
+      })) ?? [];
+
+    return uniq(rows.map((row) => row.name));
   }
 
   // Fetching.
