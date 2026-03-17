@@ -1,3 +1,4 @@
+import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/zip/file_detection";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -7,8 +8,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
 
-import { detectSkillsFromUploadedFiles } from "./file_detection";
-
 const IMPORT_CONCURRENCY = 4;
 
 type ImportSkillsResult = {
@@ -16,7 +15,6 @@ type ImportSkillsResult = {
   updated: SkillResource[];
   errors: { name: string; message: string }[];
 };
-
 
 /**
  * Imports skills from uploaded files. Detects skills from the files,
@@ -34,7 +32,7 @@ export async function importSkillsFromFiles(
 ): Promise<Result<ImportSkillsResult, Error>> {
   const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
   if (detectResult.isErr()) {
-    return new Err(new Error( detectResult.error.message));
+    return new Err(new Error(detectResult.error.message));
   }
 
   const detectedSkills = detectResult.value;

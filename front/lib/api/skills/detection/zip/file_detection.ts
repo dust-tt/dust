@@ -49,9 +49,7 @@ export async function detectSkillsFromUploadedFiles(
 }
 
 async function cleanupTempFiles(files: formidable.File[]): Promise<void> {
-  await concurrentExecutor(
-    files,
-    (f) => unlink(f.filepath).catch(() => {}),
-    { concurrency: 8 }
-  );
+  await concurrentExecutor(files, (f) => unlink(f.filepath).catch(() => {}), {
+    concurrency: 8,
+  });
 }
