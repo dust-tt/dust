@@ -1481,6 +1481,16 @@ export type AgentGenerationCancelledEvent = z.infer<
   typeof AgentGenerationCancelledEventSchema
 >;
 
+const AgentContextPrunedEventSchema = z.object({
+  type: z.literal("agent_context_pruned"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+});
+export type AgentContextPrunedEvent = z.infer<
+  typeof AgentContextPrunedEventSchema
+>;
+
 const UserMessageErrorEventSchema = z.object({
   type: z.literal("user_message_error"),
   created: z.number(),
@@ -1538,6 +1548,7 @@ const AgentMessageEventTypeSchema = z.object({
     AgentErrorEventSchema,
     AgentActionSpecificEventSchema,
     AgentActionSuccessEventSchema,
+    AgentContextPrunedEventSchema,
     AgentGenerationCancelledEventSchema,
     GenerationTokensEventSchema,
   ]),
