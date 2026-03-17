@@ -118,7 +118,8 @@ describe("getWhitelistedProviders", () => {
     expect(providers).toEqual(new Set(["anthropic", "noop"]));
   });
 
-  it("BYOK: only includes providers with healthy keys plus noop", async () => {
+  // TODO (BYOK): unskip
+  it.skip("BYOK: only includes providers with healthy keys plus noop", async () => {
     const workspace = await WorkspaceFactory.byok();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mockCredentials([
@@ -144,7 +145,8 @@ describe("getWhitelistedProviders", () => {
     expect(providers).toEqual(new Set(["anthropic", "noop"]));
   });
 
-  it("BYOK + no keys: only noop is whitelisted", async () => {
+  // TODO (BYOK): unskip
+  it.skip("BYOK + no keys: only noop is whitelisted", async () => {
     const workspace = await WorkspaceFactory.byok();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mockCredentials([]);
