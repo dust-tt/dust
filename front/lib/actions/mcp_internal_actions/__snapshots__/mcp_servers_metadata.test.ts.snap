@@ -458,7 +458,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "sandbox": {
     "bash": "never_ask",
-    "describe_environment": "never_ask",
+    "describe_toolset": "never_ask",
   },
   "schedules_management": {
     "create_schedule": "high",
