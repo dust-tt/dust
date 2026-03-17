@@ -58,30 +58,36 @@ const FEEDBACK_PREDEFINED_ANSWERS = [
   OTHER_ANSWER,
 ] as const;
 
-const feedbackSchema = z
-  .object({
-    thumbDirection: z.enum(["up", "down"]).nullable().default(null),
-    selectedAnswer: z.string().default(""),
-    feedbackContent: z.string().default(""),
-    isConversationShared: z.boolean().default(true),
-  })
-  .refine(
-    (data) => {
-      if (data.thumbDirection !== "down") {
-        return true;
-      }
-      const hasAnswer =
-        data.selectedAnswer.length > 0 && data.selectedAnswer !== OTHER_ANSWER;
-      const hasContent = data.feedbackContent.trim().length > 0;
-      return hasAnswer || hasContent;
-    },
-    {
-      message: "Please select a reason or describe the issue.",
-      path: ["feedbackContent"],
-    }
-  );
+const feedbackBaseSchema = z.object({
+  thumbDirection: z.enum(["up", "down"]).nullable().default(null),
+  selectedAnswer: z.string().default(""),
+  feedbackContent: z.string().default(""),
+  isConversationShared: z.boolean().default(true),
+});
 
-type FeedbackFormValues = z.infer<typeof feedbackSchema>;
+function makeFeedbackSchema(showPredefinedAnswers: boolean) {
+  return feedbackBaseSchema.superRefine((data, ctx) => {
+    if (data.thumbDirection !== "down") {
+      return;
+    }
+    const hasAnswer =
+      showPredefinedAnswers &&
+      data.selectedAnswer.length > 0 &&
+      data.selectedAnswer !== OTHER_ANSWER;
+    const hasContent = data.feedbackContent.trim().length > 0;
+    if (!hasAnswer && !hasContent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: showPredefinedAnswers
+          ? "Please select a reason or describe the issue."
+          : "Please describe the issue.",
+        path: ["feedbackContent"],
+      });
+    }
+  });
+}
+
+type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
 
 export function FeedbackSelector({
   feedback,
@@ -103,7 +109,7 @@ export function FeedbackSelector({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(feedbackSchema),
+    resolver: zodResolver(makeFeedbackSchema(showPredefinedAnswers)),
     defaultValues: {
       thumbDirection: null,
       selectedAnswer: "",
