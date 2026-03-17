@@ -126,9 +126,10 @@ export function useEventSource(
       }
 
       // If the effect was cleaned up while we were awaiting, discard the connection.
+      // Only close our local source — don't call sourceManager.remove() because a
+      // newer connect() call may have already stored its own source in the manager.
       if (signal.aborted) {
         source.close();
-        sourceManager.remove(uniqueId);
         return null;
       }
 
@@ -187,7 +188,7 @@ export function useEventSource(
     [buildURL, onEventCallback, uniqueId, sourceManager]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `connect` is intentionally excluded — its identity may change every render if callers don't memoize buildURL/onEventCallback, which would abort in-flight connections.
   useEffect(() => {
     if (!isReadyToConsumeStream || isError) {
       return;
@@ -209,7 +210,6 @@ export function useEventSource(
     };
   }, [
     isReadyToConsumeStream,
-    connect,
     reconnectCounter,
     sourceManager,
     uniqueId,
