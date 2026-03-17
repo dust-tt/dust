@@ -839,12 +839,11 @@ export function AgentMessage({
   );
 
   const renderMessageContent = () => {
-    if (isCollapsibleEnabled) {
+    if (isCollapsibleEnabled && !shouldStream) {
       return (
         <TruncatedContent
           className="flex flex-col gap-3"
           defaultCollapsed={!isLastMessage}
-          defer={shouldStream}
           footer={footerButtons}
         >
           {messageContent}

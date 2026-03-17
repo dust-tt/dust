@@ -20,7 +20,6 @@ export interface TruncatedContentProps {
   thresholdPx?: number;
   collapsedHeightPx?: number;
   defaultCollapsed?: boolean;
-  defer?: boolean; // when true, height measurement is deferred (e.g. during streaming).
   animated?: boolean;
   animationDurationMs?: number;
   expandLabel?: string;
@@ -34,7 +33,6 @@ export function TruncatedContent({
   thresholdPx = 420,
   collapsedHeightPx = 320,
   defaultCollapsed = true,
-  defer = false,
   animated = false,
   animationDurationMs = 200,
   expandLabel = "Show more",
@@ -47,17 +45,13 @@ export function TruncatedContent({
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   useEffect(() => {
-    if (defer) {
-      return;
-    }
-
     const el = contentRef.current;
     if (el) {
       setExceedsThreshold(el.scrollHeight > thresholdPx);
     }
-  }, [defer, thresholdPx]);
+  }, [thresholdPx]);
 
-  const shouldShowToggle = exceedsThreshold && !defer;
+  const shouldShowToggle = exceedsThreshold;
   const isCurrentlyCollapsed = shouldShowToggle && isCollapsed;
 
   const handleToggle = () => setIsCollapsed((prev) => !prev);
