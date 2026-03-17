@@ -241,9 +241,9 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export {
-  TruncatedCollapsibleContent,
-  type TruncatedCollapsibleContentProps,
-} from "./TruncatedCollapsibleContent";
+  TruncatedContent,
+  type TruncatedContentProps,
+} from "./TruncatedContent";
 export { TypingAnimation } from "./TypingAnimation";
 export type { UniversalSearchItemProps } from "./UniversalSearchItem";
 export { UniversalSearchItem } from "./UniversalSearchItem";

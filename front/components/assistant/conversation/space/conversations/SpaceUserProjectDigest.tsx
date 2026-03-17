@@ -14,7 +14,7 @@ import {
   Markdown,
   Spinner,
   Tooltip,
-  TruncatedCollapsibleContent,
+  TruncatedContent,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -209,7 +209,7 @@ export function SpaceUserProjectDigest({
       )}
 
       {currentDigest ? (
-        <TruncatedCollapsibleContent
+        <TruncatedContent
           key={currentDigest.id}
           thresholdPx={COLLAPSED_MAX_HEIGHT_PX + 50}
           collapsedHeightPx={COLLAPSED_MAX_HEIGHT_PX}
@@ -219,7 +219,7 @@ export function SpaceUserProjectDigest({
           className="flex flex-col gap-3"
         >
           <Markdown content={currentDigest.digest} />
-        </TruncatedCollapsibleContent>
+        </TruncatedContent>
       ) : (
         <div className="flex items-center gap-3 py-4">
           <Spinner size="sm" variant="color" />

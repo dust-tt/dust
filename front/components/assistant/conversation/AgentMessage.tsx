@@ -97,7 +97,7 @@ import {
   StopIcon,
   Tooltip,
   TrashIcon,
-  TruncatedCollapsibleContent,
+  TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -841,14 +841,14 @@ export function AgentMessage({
   const renderMessageContent = () => {
     if (isCollapsibleEnabled) {
       return (
-        <TruncatedCollapsibleContent
+        <TruncatedContent
           className="flex flex-col gap-3"
           defaultCollapsed={!isLastMessage}
           defer={shouldStream}
           footer={footerButtons}
         >
           {messageContent}
-        </TruncatedCollapsibleContent>
+        </TruncatedContent>
       );
     }
 

@@ -15,7 +15,7 @@ const contentVariants = cva("s-relative", {
   },
 });
 
-export interface TruncatedCollapsibleContentProps {
+export interface TruncatedContentProps {
   children: React.ReactNode;
   thresholdPx?: number;
   collapsedHeightPx?: number;
@@ -29,7 +29,7 @@ export interface TruncatedCollapsibleContentProps {
   className?: string;
 }
 
-export function TruncatedCollapsibleContent({
+export function TruncatedContent({
   children,
   thresholdPx = 420,
   collapsedHeightPx = 320,
@@ -41,7 +41,7 @@ export function TruncatedCollapsibleContent({
   collapseLabel = "Show less",
   footer,
   className,
-}: TruncatedCollapsibleContentProps) {
+}: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [exceedsThreshold, setExceedsThreshold] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
@@ -101,4 +101,4 @@ export function TruncatedCollapsibleContent({
   );
 }
 
-TruncatedCollapsibleContent.displayName = "TruncatedCollapsibleContent";
+TruncatedContent.displayName = "TruncatedContent";
