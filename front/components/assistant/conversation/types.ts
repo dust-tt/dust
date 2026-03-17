@@ -122,6 +122,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
         message.context.origin === "project_kickoff" ||
+        message.context.origin === "reinforced_agent_notification" ||
         isSidekickBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );

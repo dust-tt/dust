@@ -1,5 +1,4 @@
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import type { FileBlob } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { InboxNotification } from "@app/hooks/useInboxNotifications";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -10,7 +9,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { isString } from "@app/types/shared/utils/general";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 function formatSuggestionsAsText(
   suggestions: AgentSuggestionType[],
@@ -25,12 +24,6 @@ function formatSuggestionsAsText(
   }
 
   return lines.join("\n");
-}
-
-function isFileBlobWithFileId(
-  blob: FileBlob
-): blob is FileBlob & { fileId: string } {
-  return blob.fileId !== null;
 }
 
 interface UseNotificationClickHandlerParams {
@@ -57,10 +50,11 @@ export function useNotificationClickHandler({
   const [loadingNotificationId, setLoadingNotificationId] = useState<
     string | null
   >(null);
+  const loadingRef = useRef(false);
 
   const handleNotificationClick = useCallback(
     async (notification: InboxNotification) => {
-      if (loadingNotificationId) {
+      if (loadingRef.current) {
         return;
       }
 
@@ -68,6 +62,7 @@ export function useNotificationClickHandler({
       const agentName = notification.data?.agentName;
 
       if (isString(agentConfigurationId) && isString(agentName)) {
+        loadingRef.current = true;
         setLoadingNotificationId(notification.id);
 
         // Fetch pending suggestions for the agent.
@@ -90,13 +85,14 @@ export function useNotificationClickHandler({
 
         if (suggestions.length > 0) {
           const text = formatSuggestionsAsText(suggestions, agentName);
-          const fileName = `suggestions-${agentName}.txt`;
-          const file = new File([text], fileName, { type: "text/plain" });
+          const file = new File([text], `suggestions-${agentName}.txt`, {
+            type: "text/plain",
+          });
           const blobs = await fileUploaderService.handleFilesUpload([file]);
 
           if (blobs) {
             for (const blob of blobs) {
-              if (isFileBlobWithFileId(blob)) {
+              if (blob.fileId) {
                 uploaded.push({
                   fileId: blob.fileId,
                   title: `Improvement suggestions for @${agentName}`,
@@ -112,8 +108,15 @@ export function useNotificationClickHandler({
             input: `I have new improvement suggestions for my agent @${agentName}. Can you help me review and apply them?`,
             mentions: [{ configurationId: "dust" }],
             contentFragments: { uploaded, contentNodes: [] },
+            origin: "reinforced_agent_notification",
           },
           visibility: "unlisted",
+          metadata: {
+            reinforcedAgentNotification: {
+              agentName,
+              agentConfigurationId,
+            },
+          },
         });
 
         if (result.isOk()) {
@@ -127,7 +130,10 @@ export function useNotificationClickHandler({
           });
         }
 
-        fileUploaderService.resetUpload();
+        if (uploaded.length > 0) {
+          fileUploaderService.resetUpload();
+        }
+        loadingRef.current = false;
         setLoadingNotificationId(null);
       } else {
         // Fallback for notifications without agent data.
@@ -139,7 +145,6 @@ export function useNotificationClickHandler({
       }
     },
     [
-      loadingNotificationId,
       createConversationWithMessage,
       fileUploaderService,
       markAsRead,
