@@ -287,19 +287,6 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       done: "Get Luma event insights",
     },
   },
-  list_ticket_types: {
-    description: "List all ticket types configured for a Luma event.",
-    schema: {
-      event_api_id: z
-        .string()
-        .describe("The API ID of the event to list ticket types for."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing Luma ticket types",
-      done: "List Luma ticket types",
-    },
-  },
 });
 
 export const LUMA_SERVER = {

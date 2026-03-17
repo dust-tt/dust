@@ -15,7 +15,6 @@ import {
   renderEventList,
   renderGuest,
   renderGuestList,
-  renderTicketTypes,
   renderUser,
 } from "@app/lib/api/actions/servers/luma/rendering";
 import type { Authenticator } from "@app/lib/auth";
@@ -263,20 +262,6 @@ export function createLumaTools(
               ticketsResult.value
             ),
           },
-        ]);
-      });
-    },
-
-    list_ticket_types: async ({ event_api_id }, extra: ToolHandlerExtra) => {
-      return withClient(extra, async (client) => {
-        const result = await client.listTicketTypes(event_api_id);
-        if (result.isErr()) {
-          return new Err(
-            new MCPError(`Failed to list ticket types: ${result.error.message}`)
-          );
-        }
-        return new Ok([
-          { type: "text" as const, text: renderTicketTypes(result.value) },
         ]);
       });
     },
