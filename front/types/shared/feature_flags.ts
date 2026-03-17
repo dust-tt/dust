@@ -257,6 +257,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Show conversation files in a side panel instead of a popover",
     stage: "dust_only",
   },
+  collapsible_messages: {
+    description: "Enable collapsible messages in conversations",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

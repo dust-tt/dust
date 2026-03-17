@@ -50,7 +50,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { ConversationAttachmentsUpdatedEvent } from "@app/lib/notifications/events";
@@ -97,6 +97,7 @@ import {
   StopIcon,
   Tooltip,
   TrashIcon,
+  TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -178,6 +179,8 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const { hasFeature } = useFeatureFlags();
+  const isCollapsibleEnabled = hasFeature("collapsible_messages");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -800,6 +803,62 @@ export function AgentMessage({
     ? undefined
     : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
 
+  const messageContent = (
+    <ConversationMessageContent
+      citations={isDeleted ? undefined : citations}
+      type="agent"
+    >
+      {isDeleted ? (
+        <DeletedMessage />
+      ) : (
+        <AgentMessageContent
+          onQuickReplySend={handleQuickReply}
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isRetryHandlerProcessing={isRetryHandlerProcessing}
+          isLastMessage={isLastMessage}
+          agentMessage={agentMessage}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            agentMessage.streaming.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+          triggeringUser={triggeringUser}
+          additionalMarkdownComponents={additionalMarkdownComponents}
+          additionalMarkdownPlugins={additionalMarkdownPlugins}
+        />
+      )}
+    </ConversationMessageContent>
+  );
+
+  const footerButtons = !isCancelledOrDeleted && messageButtons.length > 0 && (
+    <div className="flex justify-start gap-3">{messageButtons}</div>
+  );
+
+  const renderMessageContent = () => {
+    if (isCollapsibleEnabled && !shouldStream) {
+      return (
+        <TruncatedContent
+          className="flex flex-col gap-3"
+          defaultCollapsed={!isLastMessage}
+          footer={footerButtons}
+        >
+          {messageContent}
+        </TruncatedContent>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-3">
+        {messageContent}
+        {footerButtons}
+      </div>
+    );
+  };
+
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
       <div className="inline-flex items-center gap-2 @xs:hidden">
@@ -834,7 +893,7 @@ export function AgentMessage({
         type="agent"
       />
 
-      <div className="flex w-full min-w-0 flex-col gap-3">
+      <div className="flex w-full min-w-0 flex-col gap-2">
         <ConversationMessageTitle
           className="hidden @xs:flex"
           name={agentConfiguration.name}
@@ -849,41 +908,7 @@ export function AgentMessage({
           }
           renderName={renderName}
         />
-        <ConversationMessageContent
-          citations={isDeleted ? undefined : citations}
-          type="agent"
-        >
-          {isDeleted ? (
-            <DeletedMessage />
-          ) : (
-            <AgentMessageContent
-              onQuickReplySend={handleQuickReply}
-              owner={owner}
-              conversationId={conversationId}
-              retryHandler={retryHandler}
-              isRetryHandlerProcessing={isRetryHandlerProcessing}
-              isLastMessage={isLastMessage}
-              agentMessage={agentMessage}
-              references={references}
-              streaming={shouldStream}
-              lastTokenClassification={
-                agentMessage.streaming.agentState === "thinking"
-                  ? "tokens"
-                  : null
-              }
-              activeReferences={activeReferences}
-              setActiveReferences={setActiveReferences}
-              triggeringUser={triggeringUser}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
-          )}
-        </ConversationMessageContent>
-        {!isCancelledOrDeleted &&
-          messageButtons &&
-          messageButtons.length > 0 && (
-            <div className="flex justify-start gap-3">{messageButtons}</div>
-          )}
+        {renderMessageContent()}
       </div>
     </ConversationMessageContainer>
   );
