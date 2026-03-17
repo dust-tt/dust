@@ -26,9 +26,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@connectors/connectors/google_drive", () => ({
-  getSourceUrlForGoogleDriveFiles: (
-    file: { driveFileId?: string; id?: string }
-  ) =>
+  getSourceUrlForGoogleDriveFiles: (file: {
+    driveFileId?: string;
+    id?: string;
+  }) =>
     `https://drive.google.com/drive/folders/${
       "driveFileId" in file ? file.driveFileId : file.id
     }`,
@@ -62,12 +63,9 @@ vi.mock("@connectors/connectors/google_drive/temporal/file", () => ({
   syncOneFile: mocks.syncOneFile,
 }));
 
-vi.mock(
-  "@connectors/connectors/google_drive/temporal/spreadsheets",
-  () => ({
-    deleteSpreadsheet: vi.fn(),
-  })
-);
+vi.mock("@connectors/connectors/google_drive/temporal/spreadsheets", () => ({
+  deleteSpreadsheet: vi.fn(),
+}));
 
 vi.mock(
   "@connectors/connectors/google_drive/temporal/utils",
@@ -256,7 +254,11 @@ describe("google drive incremental sync folder metadata", () => {
       status: 200,
     });
     mocks.driveObjectToDustType.mockResolvedValue(driveFile);
-    mocks.getFileParentsMemoized.mockResolvedValue([folderId, parentId, rootId]);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      parentId,
+      rootId,
+    ]);
 
     const result = await incrementalSync(
       connector.id,
@@ -283,7 +285,11 @@ describe("google drive incremental sync folder metadata", () => {
       expect.objectContaining({
         folderId: `gdrive-${folderId}`,
         parentId: `gdrive-${parentId}`,
-        parents: [`gdrive-${folderId}`, `gdrive-${parentId}`, `gdrive-${rootId}`],
+        parents: [
+          `gdrive-${folderId}`,
+          `gdrive-${parentId}`,
+          `gdrive-${rootId}`,
+        ],
         title: "Board Presentations",
       })
     );
@@ -362,7 +368,11 @@ describe("google drive incremental sync folder metadata", () => {
       expect.objectContaining({
         folderId: `gdrive-${folderId}`,
         parentId: `gdrive-${newParentId}`,
-        parents: [`gdrive-${folderId}`, `gdrive-${newParentId}`, `gdrive-${rootId}`],
+        parents: [
+          `gdrive-${folderId}`,
+          `gdrive-${newParentId}`,
+          `gdrive-${rootId}`,
+        ],
         title: "Board Presentations",
       })
     );
@@ -401,7 +411,11 @@ describe("google drive incremental sync folder metadata", () => {
       status: 200,
     });
     mocks.driveObjectToDustType.mockResolvedValue(driveFile);
-    mocks.getFileParentsMemoized.mockResolvedValue([folderId, parentId, rootId]);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      parentId,
+      rootId,
+    ]);
 
     const result = await incrementalSync(
       connector.id,

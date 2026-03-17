@@ -233,7 +233,8 @@ export async function incrementalSync(
         });
 
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
-        const moved = localFolder && localFolder.parentId !== parentGoogleIds[1];
+        const moved =
+          localFolder && localFolder.parentId !== parentGoogleIds[1];
 
         if (localFolder && moved) {
           await localFolder.update({
