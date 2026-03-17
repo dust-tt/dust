@@ -33,12 +33,6 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Filter the current page to a specific recording by its numeric ID. If not found on this page, paginate using next_cursor."
         ),
-      calendar_invitees: z
-        .array(z.string().email())
-        .optional()
-        .describe(
-          "Filter by email addresses in the calendar invitee list. Returns meetings where any of the given emails appear as attendees. Use the user's email to get only meetings they joined, e.g. ['user@acme.com']."
-        ),
       calendar_invitees_domains: z
         .array(z.string())
         .optional()
