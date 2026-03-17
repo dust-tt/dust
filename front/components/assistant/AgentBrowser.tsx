@@ -642,25 +642,23 @@ export function AgentBrowser({
 
       {viewTab === "all" ? (
         <>
-          {!isMobileOrExtension && (
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              {noTagsDefined ? null : (
-                <>
-                  {uniqueTags.map((tag) => (
-                    <Button
-                      size="xs"
-                      variant={selectedTag === tag.sId ? "primary" : "outline"}
-                      key={tag.sId}
-                      label={tag.name}
-                      onClick={() => {
-                        setSelectedTag(tag.sId);
-                      }}
-                    />
-                  ))}
-                </>
-              )}
-            </div>
-          )}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {noTagsDefined ? null : (
+              <>
+                {uniqueTags.map((tag) => (
+                  <Button
+                    size="xs"
+                    variant={selectedTag === tag.sId ? "primary" : "outline"}
+                    key={tag.sId}
+                    label={tag.name}
+                    onClick={() => {
+                      setSelectedTag(tag.sId);
+                    }}
+                  />
+                ))}
+              </>
+            )}
+          </div>
 
           <div className="flex flex-col gap-4">
             {uniqueTags
