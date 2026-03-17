@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
-import { importSkillsFromFiles } from "@app/lib/api/skills/detection/zip/import_skills";
+import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";

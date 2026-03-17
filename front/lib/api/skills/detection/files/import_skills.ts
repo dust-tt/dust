@@ -1,4 +1,4 @@
-import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/zip/file_detection";
+import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/files/detect_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
