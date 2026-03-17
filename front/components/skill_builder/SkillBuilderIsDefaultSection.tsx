@@ -72,6 +72,7 @@ export function SkillBuilderIsDefaultSection() {
             }}
             rightButtonProps={{
               label: "Confirm",
+              variant: "primary",
               onClick: handleConfirm,
             }}
           />
