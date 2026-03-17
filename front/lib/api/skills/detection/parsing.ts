@@ -94,12 +94,11 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
       continue;
     }
 
-    const lastSlash = entry.path.lastIndexOf("/");
+    const dirPath = path.dirname(entry.path);
     // A skill must live in a directory, not at the root.
-    if (lastSlash === -1) {
+    if (dirPath === ".") {
       continue;
     }
-    const dirPath = entry.path.slice(0, lastSlash);
 
     // Avoid duplicates if a directory has both skill.md and SKILL.md.
     if (seenDirs.has(dirPath)) {
