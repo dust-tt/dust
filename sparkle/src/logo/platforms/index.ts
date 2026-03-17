@@ -43,6 +43,7 @@ export { default as IntercomLogo } from "./Intercom";
 export { default as JiraLogo } from "./Jira";
 export { default as LinearLogo } from "./Linear";
 export { default as LinearWhiteLogo } from "./LinearWhite";
+export { default as LumaLogo } from "./Luma";
 export { default as MetaLogo } from "./Meta";
 export { default as MicrosoftLogo } from "./Microsoft";
 export { default as MicrosoftExcelLogo } from "./MicrosoftExcel";
