@@ -21,7 +21,7 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -263,6 +263,11 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
+const nativeInputValueSetter =
+  typeof window !== "undefined"
+    ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
+    : undefined;
+
 interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
@@ -285,12 +290,79 @@ const DropdownMenuContent = React.forwardRef<
       dropdownHeaders,
       preventAutoFocusOnClose = true,
       onCloseAutoFocus,
+      onKeyDown,
       children,
       ...props
     },
     ref
   ) => {
-    const handleCloseAutoFocus = React.useCallback(
+    const contentRef = useRef<HTMLDivElement | null>(null);
+
+    const mergedRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        contentRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref]
+    );
+
+    const handleKeyDownCapture = useCallback(
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== "ArrowUp") {
+          return;
+        }
+
+        const input = contentRef.current?.querySelector("input");
+        if (!input) {
+          return;
+        }
+
+        const items = contentRef.current?.querySelectorAll('[role="menuitem"]');
+        if (items && items.length > 0 && document.activeElement === items[0]) {
+          e.preventDefault();
+          e.stopPropagation();
+          input.focus();
+        }
+      },
+      []
+    );
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      onKeyDown?.(e);
+      if (e.defaultPrevented) {
+        return;
+      }
+
+      const isInput =
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement;
+      if (isInput) {
+        return;
+      }
+
+      const input = contentRef.current?.querySelector("input");
+      if (!input || !nativeInputValueSetter) {
+        return;
+      }
+
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        input.focus();
+        nativeInputValueSetter.call(input, input.value + e.key);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      } else if (e.key === "Backspace" && input.value.length > 0) {
+        e.preventDefault();
+        input.focus();
+        nativeInputValueSetter.call(input, input.value.slice(0, -1));
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    };
+
+    const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         if (preventAutoFocusOnClose) {
           event.preventDefault();
@@ -302,8 +374,10 @@ const DropdownMenuContent = React.forwardRef<
 
     const content = (
       <DropdownMenuPrimitive.Content
-        ref={ref}
+        ref={mergedRef}
         sideOffset={sideOffset}
+        onKeyDownCapture={handleKeyDownCapture}
+        onKeyDown={handleKeyDown}
         className={cn(
           menuStyleClasses.container,
           "s-flex s-flex-col s-p-0 s-shadow-md",
