@@ -16,7 +16,7 @@ export function runBashFunction(
   const profilePath = path.join(PROFILE_LOCAL_DIR, "common.sh");
   const result = spawnSync(
     "bash",
-    ["-c", `source "${profilePath}" && ${funcCall}`],
+    ["--norc", "-c", `source "${profilePath}" && ${funcCall}`],
     {
       cwd,
       encoding: "utf-8",
