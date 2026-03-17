@@ -120,7 +120,8 @@ function FileCards({
               size="sm"
               variant="primary"
               onClick={row.onClick}
-              className="relative h-[106px] overflow-hidden"
+              containerClassName="h-24 overflow-hidden rounded-xl"
+              className="overflow-hidden"
             >
               <img
                 src={getFileProcessedUrl(owner, row.fileId)}
@@ -137,11 +138,24 @@ function FileCards({
                     </div>
                   }
                 />
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-white/70">
+                <div className="flex items-center justify-between text-white/70">
+                  <div className="text-xs ">
                     {row.date ? `${moment(row.date).fromNow()}` : null}
                   </div>
-                  <CreatorAvatar row={row} />
+                  <div className="flex items-center gap-3">
+                    {row.isInProjectContext && (
+                      <Tooltip
+                        tooltipTriggerAsChild
+                        label="Saved to Project"
+                        trigger={
+                          <span className="inline-flex">
+                            <Icon visual={SpaceClosedIcon} size="md" />
+                          </span>
+                        }
+                      />
+                    )}
+                    <CreatorAvatar row={row} />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -173,7 +187,7 @@ function FileCards({
                 <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                   {row.date ? `${moment(row.date).fromNow()}` : null}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-3">
                   {row.isInProjectContext && (
                     <Tooltip
                       tooltipTriggerAsChild
@@ -182,7 +196,7 @@ function FileCards({
                         <span className="inline-flex">
                           <Icon
                             visual={SpaceClosedIcon}
-                            size="xs"
+                            size="md"
                             className="text-muted-foreground dark:text-muted-foreground-night"
                           />
                         </span>

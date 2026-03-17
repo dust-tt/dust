@@ -17,9 +17,9 @@ import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   ArrowLeftIcon,
+  AttachmentIcon,
   Breadcrumbs,
   Button,
-  FolderOpenIcon,
   MoreIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -118,7 +118,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               label="Files"
               isCounter={attachments.length > 0}
               counterValue={String(attachments.length)}
-              icon={FolderOpenIcon}
+              icon={AttachmentIcon}
               variant="ghost"
               onClick={() => openPanel({ type: "files" })}
             />
