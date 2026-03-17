@@ -3,7 +3,7 @@ import {
   buildClientTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { attachPageTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
+import { attachTabsTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
 import {
   closeBrowserTabTool,
   moveBrowserTabTool,
@@ -28,8 +28,8 @@ export function registerAllTools(
   workspaceId: string
 ): void {
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
-    attach_page_text: (params) =>
-      attachPageTextTool({ ...params, captureService }),
+    attach_tabs_text: (params) =>
+      attachTabsTextTool({ ...params, captureService }),
     take_screenshot_or_attach_file: (params) =>
       takeScreenshotOrAttachFileTool({
         ...params,

@@ -296,6 +296,15 @@ export class BrowserMCPTransport implements Transport {
    * Send a message to the server.
    * This method is required by the Transport interface.
    */
+  private async postResult(body: string): Promise<Response> {
+    return clientFetch(`/api/w/${this.workspaceId}/mcp/results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body,
+    });
+  }
+
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.serverId) {
       console.error("[BrowserMCPTransport] Server ID is not set");
@@ -303,33 +312,57 @@ export class BrowserMCPTransport implements Transport {
     }
 
     try {
-      // Send tool results back to Dust via HTTP POST.
-      const response = await clientFetch(
-        `/api/w/${this.workspaceId}/mcp/results`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            serverId: this.serverId,
-            result: message,
-          }),
-        }
-      );
+      const body = JSON.stringify({
+        serverId: this.serverId,
+        result: message,
+      });
+
+      const response = await this.postResult(body);
 
       if (!response.ok) {
         let errorData: unknown;
         try {
-          errorData = await response.json();
+          const text = await response.text();
+          try {
+            errorData = JSON.parse(text);
+          } catch {
+            errorData = text;
+          }
         } catch {
-          errorData = await response.text();
+          errorData = `HTTP ${response.status}`;
         }
         console.error(
           "[BrowserMCPTransport] Failed to send MCP result:",
           errorData
         );
+
+        // If the payload was too large and this was a response (has an id),
+        // re-send as an error response so the server doesn't hang.
+        if (response.status === 413 && "id" in message && message.id) {
+          console.warn(
+            "[BrowserMCPTransport] Payload too large, sending error response instead"
+          );
+          const errorBody = JSON.stringify({
+            serverId: this.serverId,
+            result: {
+              jsonrpc: "2.0",
+              id: message.id,
+              error: {
+                code: -32000,
+                message:
+                  "Tool result too large to send. Try capturing fewer screenshots or smaller content.",
+              },
+            },
+          });
+          const errorResponse = await this.postResult(errorBody);
+          if (!errorResponse.ok) {
+            console.error(
+              "[BrowserMCPTransport] Failed to send error response"
+            );
+          }
+          return;
+        }
+
         this.onerror?.(
           new Error(`Failed to send MCP result: ${response.status}`)
         );
