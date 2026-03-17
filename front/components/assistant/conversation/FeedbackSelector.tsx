@@ -102,9 +102,11 @@ export function FeedbackSelector({
   // Predefined answers are not so relevant in the context of sidekick.
   const showPredefinedAnswers = !isSidekick;
 
-  const improveLabel = isGlobalAgent
-    ? "Provide feedback"
-    : "Improve this agent";
+  const buttonLabel = feedback
+    ? "Clear feedback"
+    : isGlobalAgent
+      ? "Provide feedback"
+      : "Improve this agent";
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -188,7 +190,7 @@ export function FeedbackSelector({
         disabled={isSubmittingThumb}
         onClick={handleButtonClick}
         icon={MagicIcon}
-        label={improveLabel}
+        label={buttonLabel}
         className={feedback ? "" : "text-muted-foreground"}
       />
 
