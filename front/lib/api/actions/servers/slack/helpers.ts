@@ -2,8 +2,10 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -33,6 +35,16 @@ export function isSlackMissingScope(error: unknown): boolean {
     "message" in error &&
     typeof error.message === "string" &&
     error.message.includes("missing_scope")
+  );
+}
+
+export function isSlackTokenRevoked(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("token_revoked")
   );
 }
 
@@ -1187,6 +1199,31 @@ async function getChannelCanvases({
   return canvases;
 }
 
+type EnrichedCanvasInfo = {
+  id: string;
+  title: string;
+  name: string;
+  permalink?: string;
+  created?: number;
+  timestamp?: number;
+  user?: string;
+  label?: string;
+};
+
+function formatCanvasAsMarkdown(c: EnrichedCanvasInfo): string {
+  const lines = [
+    `- **${c.title || c.name || c.id}**`,
+    `  - ID: ${c.id}`,
+    `  - Title: ${c.title || "(none)"}`,
+    `  - Name: ${c.name || "(none)"}`,
+    `  - Created: ${c.created ?? c.timestamp ?? ""}`,
+    `  - Creator: ${c.user ?? ""}`,
+    `  - Permalink: ${c.permalink ?? ""}`,
+    c.label ? `  - Tab label: ${c.label}` : null,
+  ].filter(Boolean);
+  return lines.join("\n");
+}
+
 export async function executeGetChannelCanvases({
   channel_id,
   accessToken,
@@ -1206,82 +1243,72 @@ export async function executeGetChannelCanvases({
       },
     ]);
   }
-  const lines = canvases.map(
-    (c) => `- ${c.canvas_id} (${c.type}${c.label ? `, "${c.label}"` : ""})`
+
+  const slackClient = await getSlackClient(accessToken);
+
+  const enrichedCanvases = await concurrentExecutor(
+    canvases,
+    async (c) => {
+      const info = await slackClient.files.info({ file: c.canvas_id });
+      if (!info.ok || !info.file) {
+        throw new Error(info.error ?? "files.info failed");
+      }
+      const f = info.file;
+      return {
+        id: c.canvas_id,
+        title: f.title ?? "",
+        name: f.name ?? "",
+        permalink: f.permalink,
+        created: f.created,
+        timestamp: f.timestamp,
+        user: f.user,
+        label: c.label,
+      } satisfies EnrichedCanvasInfo;
+    },
+    { concurrency: 5 }
   );
+
+  const markdown = enrichedCanvases.map(formatCanvasAsMarkdown).join("\n\n");
   return new Ok([
     {
       type: "text" as const,
-      text: `Channel ${channel_id} — ${canvases.length} canvas/canvases:\n\n${lines.join("\n")}\n\nUse these canvas_id values with read_canvas or write_canvas.`,
+      text:
+        `Channel ${channel_id} — ${enrichedCanvases.length} canvas/canvases:\n\n${markdown}\n\n` +
+        "Use these canvas IDs with read_canvas or write_canvas.",
     },
   ]);
 }
 
 export async function executeReadCanvas({
   canvas_id,
-  section_types,
-  contains_text,
   accessToken,
 }: {
   canvas_id: string;
-  section_types?: Array<"h1" | "h2" | "h3" | "any_header">;
-  contains_text?: string;
   accessToken: string;
 }): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   const slackClient = await getSlackClient(accessToken);
 
-  const criteria: Record<string, unknown> = {
-    section_types:
-      section_types && section_types.length > 0
-        ? section_types
-        : ["any_header"],
-  };
-  if (contains_text) {
-    criteria.contains_text = contains_text;
+  const info = await slackClient.files.info({ file: canvas_id });
+  if (!info.ok || !info.file) {
+    throw new Error(info.error ?? "unknown error");
+  }
+  const { url_private, url_private_download } = info.file;
+  const url = url_private ?? url_private_download ?? "";
+  if (!url) {
+    return new Err(new MCPError("File has no downloadable URL"));
   }
 
-  const resp = await slackClient.apiCall("canvases.sections.lookup", {
-    canvas_id,
-    criteria,
+  const response = await untrustedFetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!resp.ok) {
+  if (!response.ok) {
     return new Err(
-      new MCPError(
-        `Failed to look up canvas sections: ${resp.error ?? "unknown error"}`
-      )
+      new MCPError(`Failed to download (HTTP ${response.status})`)
     );
   }
 
-  const rawSections = resp.sections;
-  const sections = Array.isArray(rawSections)
-    ? rawSections.filter(
-        (s): s is { id: string } =>
-          s !== null &&
-          typeof s === "object" &&
-          "id" in s &&
-          typeof s.id === "string"
-      )
-    : [];
-
-  if (sections.length === 0) {
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `No sections found in canvas "${canvas_id}" matching the given criteria.`,
-      },
-    ]);
-  }
-
-  const formatted = sections.map((s, i) => `${i + 1}. ${s.id}`).join("\n");
-
-  return new Ok([
-    {
-      type: "text" as const,
-      text:
-        `Canvas "${canvas_id}" — ${sections.length} section(s) found:\n\n${formatted}\n\n` +
-        "Use these section IDs with write_canvas to target specific sections.",
-    },
-  ]);
+  const content = await response.text();
+  return new Ok([{ type: "text" as const, text: content }]);
 }
 
 export async function executeWriteCanvas({
