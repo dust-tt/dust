@@ -251,36 +251,34 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const impactedMCPServerConfigurations =
-      await AgentMCPServerConfigurationModel.findAll({
-        where: {
-          workspaceId: workspaceModelId,
-          mcpServerViewId: {
-            [Op.in]: regularMCPServerViewModelIds,
+    const impactedAgentConfigurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: workspaceModelId,
+      },
+      include: [
+        {
+          model: AgentMCPServerConfigurationModel,
+          as: "mcpServerConfigurations",
+          required: true,
+          where: {
+            workspaceId: workspaceModelId,
+            mcpServerViewId: {
+              [Op.in]: regularMCPServerViewModelIds,
+            },
           },
+          attributes: [],
         },
-        attributes: ["agentConfigurationId"],
-      });
+      ],
+      attributes: ["id", "sId"],
+    });
 
     const impactedAgentConfigurationModelIds = new Set(
-      impactedMCPServerConfigurations.map(
-        (configuration) => configuration.agentConfigurationId
-      )
+      impactedAgentConfigurations.map((configuration) => configuration.id)
     );
 
     if (impactedAgentConfigurationModelIds.size === 0) {
       return [];
     }
-
-    const impactedAgentConfigurations = await AgentConfigurationModel.findAll({
-      where: {
-        workspaceId: workspaceModelId,
-        id: {
-          [Op.in]: Array.from(impactedAgentConfigurationModelIds),
-        },
-      },
-      attributes: ["sId"],
-    });
 
     const impactedAgentSIds = uniq(
       impactedAgentConfigurations.map((configuration) => configuration.sId)
@@ -298,7 +296,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         },
       },
       attributes: ["id", "sId", "name", "status", "version"],
-      order: [["version", "DESC"]],
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
     });
 
     const latestAgentConfigurations = new Map<
