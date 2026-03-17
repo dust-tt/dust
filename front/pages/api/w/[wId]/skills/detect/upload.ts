@@ -24,8 +24,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<DetectSkillsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "POST": {
       if (!auth.isBuilder()) {
@@ -38,7 +36,7 @@ async function handler(
         });
       }
 
-      const featureFlags = await getFeatureFlags(owner);
+      const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("sandbox_tools")) {
         return apiError(req, res, {
           status_code: 403,
