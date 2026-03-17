@@ -78,6 +78,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import {
   FileModel,
   ShareableFileModel,
+  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -115,7 +116,7 @@ import { sendInitDbMessage } from "@app/types/shared/deployment";
 
 /**
  * Loads all Sequelize models, useful for some tests
- * ⚠️ Order matters here.
+ * /!\ Order matters here.
  */
 export function loadAllModels() {
   return [
@@ -137,6 +138,7 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     ShareableFileModel,
+    SharingGrantModel,
     DustAppSecretModel,
     GroupSpaceModel,
     WebhookSourceModel,
