@@ -4,15 +4,15 @@ import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]"
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
-import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { GEMINI_3_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_LARGE_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
-import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import { GROK_4_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
@@ -72,23 +72,23 @@ function isProviderWhitelistedSync(
   return whiteListedProviders.includes(providerId);
 }
 
-function getSmallWhitelistedModelSync(
+function getLargeWhitelistedModelSync(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
-  if (isProviderWhitelistedSync(owner, "openai")) {
-    return GPT_5_MINI_MODEL_CONFIG;
-  }
   if (isProviderWhitelistedSync(owner, "anthropic")) {
-    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "openai")) {
+    return GPT_5_4_MODEL_CONFIG;
   }
   if (isProviderWhitelistedSync(owner, "google_ai_studio")) {
-    return GEMINI_3_FLASH_MODEL_CONFIG;
+    return GEMINI_3_PRO_MODEL_CONFIG;
   }
   if (isProviderWhitelistedSync(owner, "mistral")) {
-    return MISTRAL_SMALL_MODEL_CONFIG;
+    return MISTRAL_LARGE_MODEL_CONFIG;
   }
   if (isProviderWhitelistedSync(owner, "xai")) {
-    return GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG;
+    return GROK_4_MODEL_CONFIG;
   }
   return null;
 }
