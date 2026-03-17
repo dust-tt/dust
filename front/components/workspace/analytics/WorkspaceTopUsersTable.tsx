@@ -1,16 +1,10 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
-import {
-  Button,
-  DataTable,
-  ScrollableDataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { DataTable, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { DownloadIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface TopUserRowData {
   userId: string;
@@ -87,32 +81,6 @@ export function WorkspaceTopUsersTable({
     }
   );
 
-  const { hasFeature } = useFeatureFlags();
-  const showExport = hasFeature("analytics_csv_export");
-
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = useCallback(async () => {
-    setIsDownloading(true);
-    try {
-      const response = await clientFetch(
-        `/api/w/${workspaceId}/analytics/users-export?days=${period}`
-      );
-      if (!response.ok) {
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dust_users_last_${period}_days.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [workspaceId, period]);
-
   const rows = useMemo<TopUserRowData[]>(() => {
     return topUsers.map((user) => ({
       userId: user.userId,
@@ -123,7 +91,11 @@ export function WorkspaceTopUsersTable({
     }));
   }, [topUsers]);
 
-  const canDownload = !isTopUsersLoading && !isTopUsersError && rows.length > 0;
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/users-export?days=${period}`,
+    filename: `dust_users_last_${period}_days.csv`,
+    disabled: isTopUsersLoading || isTopUsersError || rows.length === 0,
+  });
 
   function renderTableContent() {
     if (isTopUsersLoading) {
@@ -167,17 +139,7 @@ export function WorkspaceTopUsersTable({
             Top 100 users with the most messages over the last {period} days.
           </p>
         </div>
-        {showExport && (
-          <Button
-            icon={DownloadIcon}
-            variant="outline"
-            size="xs"
-            tooltip="Download CSV"
-            onClick={handleDownload}
-            disabled={!canDownload || isDownloading}
-            isLoading={isDownloading}
-          />
-        )}
+        <CsvDownloadButton {...csvDownload} />
       </div>
       {renderTableContent()}
     </div>
