@@ -5,9 +5,7 @@ import {
 } from "@app/lib/api/skills/detection/parsing";
 import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { stripCommonZipPrefix } from "@app/lib/api/skills/detection/zip/parsing";
-import type {
-  ZipEntry
-} from "@app/lib/api/skills/detection/zip/types";
+import type { ZipEntry } from "@app/lib/api/skills/detection/zip/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -29,7 +27,9 @@ function extractZipEntries(
   try {
     zip = new AdmZip(zipBuffer);
   } catch (err) {
-    return new Err(new Error(`Failed to open ZIP: ${normalizeError(err).message}`));
+    return new Err(
+      new Error(`Failed to open ZIP: ${normalizeError(err).message}`)
+    );
   }
 
   const admEntries = zip.getEntries();
@@ -70,7 +70,12 @@ export function detectSkillsFromZip({
   zipBuffer: Buffer;
 }): Result<DetectedSkill[], Error> {
   if (zipBuffer.length > MAX_ZIP_SIZE_BYTES) {
-    return new Err(new Error(`ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). ` + `Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`));
+    return new Err(
+      new Error(
+        `ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). ` +
+          `Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`
+      )
+    );
   }
 
   const extractResult = extractZipEntries(zipBuffer);

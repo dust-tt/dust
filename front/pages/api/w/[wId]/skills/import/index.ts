@@ -20,7 +20,7 @@ const ImportSkillsRequestBodySchema = t.type({
 export type ImportSkillsResponseBody = {
   imported: SkillType[];
   updated: SkillType[];
-  errors: { name: string; message: string }[];
+  errored: { name: string; message: string }[];
 };
 
 async function handler(
@@ -115,7 +115,7 @@ async function handler(
       return res.status(200).json({
         imported: result.value.imported.map((skill) => skill.toJSON(auth)),
         updated: result.value.updated.map((skill) => skill.toJSON(auth)),
-        errors: result.value.errors,
+        errored: result.value.errored,
       });
     }
 
