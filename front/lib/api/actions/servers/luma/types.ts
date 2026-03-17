@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// --- Luma entity schemas ---
-
 export const LumaVisibilitySchema = z.enum([
   "public",
   "members-only",
@@ -82,19 +80,12 @@ export const LumaUserSchema = z
 
 export type LumaUser = z.infer<typeof LumaUserSchema>;
 
-// --- API response wrapper schemas ---
-// Luma wraps list responses in { entries: [...], has_more, next_cursor }
-// and single-item responses vary per endpoint.
-
-// List events returns entries with nested event + tags objects.
 export const LumaEventEntrySchema = z
   .object({
     api_id: z.string(),
     event: LumaEventSchema,
   })
   .passthrough();
-
-export type LumaEventEntry = z.infer<typeof LumaEventEntrySchema>;
 
 export const LumaEventListResponseSchema = z
   .object({
@@ -104,15 +95,12 @@ export const LumaEventListResponseSchema = z
   })
   .passthrough();
 
-// List guests returns entries with nested guest data.
 export const LumaGuestEntrySchema = z
   .object({
     api_id: z.string(),
     guest: LumaGuestSchema,
   })
   .passthrough();
-
-export type LumaGuestEntry = z.infer<typeof LumaGuestEntrySchema>;
 
 export const LumaGuestListResponseSchema = z
   .object({
@@ -122,7 +110,6 @@ export const LumaGuestListResponseSchema = z
   })
   .passthrough();
 
-// List ticket types returns entries array.
 export const LumaTicketTypeListResponseSchema = z
   .object({
     entries: z.array(LumaTicketTypeSchema),
@@ -130,11 +117,6 @@ export const LumaTicketTypeListResponseSchema = z
     next_cursor: z.string().nullable().optional(),
   })
   .passthrough();
-
-// Single-item responses: Luma returns the object directly (no wrapper).
-// We use the entity schemas directly in the client.
-
-// --- Request param interfaces ---
 
 export interface ListEventsParams {
   after?: string;
