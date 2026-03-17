@@ -38,24 +38,14 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
   list_browser_tabs: {
     description:
       "Lists all open tabs in the current browser window with their tab ID, title, URL, and whether they are active. " +
-      "Use this to discover which tabs the user has open. " +
+      "The active tab (what the user is currently looking at) is marked with an asterisk (*). " +
+      "Use this to discover which tabs the user has open and to identify the currently active tab. " +
       "Tab IDs can be passed to attach_page_text or take_screenshot_or_attach_file to read a specific tab.",
     schema: {},
     stake: "low",
     displayLabels: {
       running: "Listing browser tabs...",
       done: "Browser tabs listed",
-    },
-  },
-  get_current_tab_info: {
-    description:
-      "Retrieves the tab ID, title, and URL of the currently active browser tab. " +
-      "Use this to quickly understand what the user is currently looking at without needing to list all tabs.",
-    schema: {},
-    stake: "low",
-    displayLabels: {
-      running: "Getting current tab info...",
-      done: "Current tab info retrieved",
     },
   },
   switch_to_browser_tab: {

@@ -1087,7 +1087,7 @@ export const CLIENT_SIDE_MCP_TOOL_METADATA: Record<
   string,
   Record<string, ClientToolMeta>
 > = {
-  "mcp-client-side:chrome_extension_client": Object.fromEntries(
+  "mcp-client-side:dust_chrome_extension": Object.fromEntries(
     Object.entries(CHROME_TOOLS_METADATA).map(([name, meta]) => [name, meta])
   ),
 };

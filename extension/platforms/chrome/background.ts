@@ -640,26 +640,6 @@ chrome.runtime.onMessage.addListener(
         })();
         return true;
 
-      case "GET_CURRENT_TAB_INFO":
-        void (async () => {
-          const tabs = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
-          });
-          sendResponse({
-            success: true,
-            tabs: tabs
-              .filter((t) => t.id !== undefined && t.url)
-              .map((t) => ({
-                tabId: t.id!,
-                title: t.title || "",
-                url: t.url || "",
-                active: t.active,
-              })),
-          });
-        })();
-        return true;
-
       case "ACTIVATE_TAB":
         void (async () => {
           try {

@@ -14,7 +14,6 @@ import {
 import { takeScreenshotOrAttachFileTool } from "@extension/platforms/chrome/tools/takeScreenshotOrAttachFileTool";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getCurrentTabInfoTool } from "./getCurrentTabInfo";
 import { interactWithPageTool } from "./interactWithPageTool";
 import { listBrowserTabsTool } from "./listTabsTool";
 
@@ -38,7 +37,6 @@ export function registerAllTools(
         workspaceId,
       }),
     list_browser_tabs: () => listBrowserTabsTool(),
-    get_current_tab_info: () => getCurrentTabInfoTool(),
     switch_to_browser_tab: (params) => switchBrowserTabTool(params),
     close_browser_tab: (params) => closeBrowserTabTool(params),
     move_browser_tab: (params) => moveBrowserTabTool(params),
