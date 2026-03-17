@@ -85,7 +85,7 @@ import {
   ButtonGroupDropdown,
   Chip,
   ClipboardCheckIcon,
-  ContentOverflow,
+  TruncatedCollapsibleContent,
   ClipboardIcon,
   ConversationMessageAvatar,
   ConversationMessageContainer,
@@ -850,7 +850,7 @@ export function AgentMessage({
           }
           renderName={renderName}
         />
-        <ContentOverflow
+        <TruncatedCollapsibleContent
           className="flex flex-col gap-3"
           defaultCollapsed={!isLastMessage}
           defer={shouldStream}
@@ -891,7 +891,7 @@ export function AgentMessage({
               />
             )}
           </ConversationMessageContent>
-        </ContentOverflow>
+        </TruncatedCollapsibleContent>
       </div>
     </ConversationMessageContainer>
   );

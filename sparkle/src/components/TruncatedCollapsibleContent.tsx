@@ -1,8 +1,21 @@
 import { Button } from "@sparkle/components/Button";
 import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/icons/app";
+import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
 import React, { useEffect, useRef, useState } from "react";
 
-export interface ContentOverflowProps {
+const contentVariants = cva("s-relative", {
+  variants: {
+    collapsed: {
+      true: "s-overflow-hidden",
+    },
+  },
+  defaultVariants: {
+    collapsed: false,
+  },
+});
+
+export interface TruncatedCollapsibleContentProps {
   children: React.ReactNode;
   thresholdPx?: number;
   collapsedHeightPx?: number;
@@ -16,7 +29,7 @@ export interface ContentOverflowProps {
   className?: string;
 }
 
-export function ContentOverflow({
+export function TruncatedCollapsibleContent({
   children,
   thresholdPx = 420,
   collapsedHeightPx = 320,
@@ -28,7 +41,7 @@ export function ContentOverflow({
   collapseLabel = "Show less",
   footer,
   className,
-}: ContentOverflowProps) {
+}: TruncatedCollapsibleContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [exceedsThreshold, setExceedsThreshold] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
@@ -53,17 +66,16 @@ export function ContentOverflow({
     <div className={className}>
       <div
         ref={contentRef}
-        className="s-relative"
+        className={cn(contentVariants({ collapsed: isCurrentlyCollapsed }))}
         style={{
           maxHeight: isCurrentlyCollapsed
             ? `${collapsedHeightPx}px`
             : animated && shouldShowToggle
-              ? `${contentRef.current?.scrollHeight ?? 9999}px`
+              ? `${contentRef.current?.scrollHeight}px`
               : undefined,
-          overflow: isCurrentlyCollapsed ? "hidden" : undefined,
           transition:
             animated && shouldShowToggle
-              ? `max-height ${animationDurationMs}ms ease`
+              ? `max-height ${animationDurationMs}ms ease-out`
               : undefined,
         }}
       >
@@ -89,4 +101,4 @@ export function ContentOverflow({
   );
 }
 
-ContentOverflow.displayName = "ContentOverflow";
+TruncatedCollapsibleContent.displayName = "TruncatedCollapsibleContent";

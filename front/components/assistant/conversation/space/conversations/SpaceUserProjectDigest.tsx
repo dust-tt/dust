@@ -10,7 +10,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Chip,
-  ContentOverflow,
+  TruncatedCollapsibleContent,
   IconButton,
   Markdown,
   Spinner,
@@ -209,7 +209,7 @@ export function SpaceUserProjectDigest({
       )}
 
       {currentDigest ? (
-        <ContentOverflow
+        <TruncatedCollapsibleContent
           key={currentDigest.id}
           thresholdPx={COLLAPSED_MAX_HEIGHT_PX + 50}
           collapsedHeightPx={COLLAPSED_MAX_HEIGHT_PX}
@@ -219,7 +219,7 @@ export function SpaceUserProjectDigest({
           className="flex flex-col gap-3"
         >
             <Markdown content={currentDigest.digest} />
-        </ContentOverflow>
+        </TruncatedCollapsibleContent>
       ) : (
         <div className="flex items-center gap-3 py-4">
           <Spinner size="sm" variant="color" />

@@ -43,9 +43,9 @@ export {
 } from "./Collapsible";
 export { ConfettiBackground } from "./ConfettiBackground";
 export {
-  ContentOverflow,
-  type ContentOverflowProps,
-} from "./ContentOverflow";
+  TruncatedCollapsibleContent,
+  type TruncatedCollapsibleContentProps,
+} from "./TruncatedCollapsibleContent";
 export { Container } from "./Container";
 export {
   ContainerWithTopBar,
