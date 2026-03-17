@@ -59,6 +59,10 @@ import {
 } from "@app/types/assistant/models/google_ai_studio";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 
 interface DustLikeGlobalAgentArgs {
   settings: GlobalAgentSettingsModel | null;
@@ -312,28 +316,23 @@ function _getDustLikeGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     hasDeepDive,
-<<<<<<< HEAD
     prefetchedModels,
-=======
     globalAgentContext,
->>>>>>> 7d5e0814da ([assistant/conversation] - feature: recognize reinforced agent notifications as hidden messages)
   }: DustLikeGlobalAgentArgs,
-{
-  agentId,
+  {
+    agentId,
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
-}
-:
-{
-  agentId: GLOBAL_AGENTS_SID;
-  name: string;
-  preferredModelConfiguration?: ModelConfigurationType | null;
-  preferredReasoningEffort?: ReasoningEffort;
-}
-): AgentConfigurationType | null
-{
+  }: {
+    agentId: GLOBAL_AGENTS_SID;
+    name: string;
+    preferredModelConfiguration?: ModelConfigurationType | null;
+    preferredReasoningEffort?: ReasoningEffort;
+  }
+): AgentConfigurationType | null {
   const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
+  const owner = auth.getNonNullableWorkspace();
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
 - Find and analyze data across your company knowledge
