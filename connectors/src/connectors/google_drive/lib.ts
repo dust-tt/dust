@@ -29,7 +29,11 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { getLoggerArgs } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ContentNodesViewType, ModelId } from "@connectors/types";
+import type {
+  ContentNodesViewType,
+  GoogleDriveObjectType,
+  ModelId,
+} from "@connectors/types";
 import {
   cacheWithRedis,
   concurrentExecutor,
@@ -232,6 +236,40 @@ export async function updateParentsField(
       parentId: parentIds[1] ?? null,
     });
   }
+}
+
+export async function updateFolderMetadata(
+  connector: ConnectorResource,
+  file: GoogleDriveFilesModel,
+  driveFile: GoogleDriveObjectType,
+  parentIds: string[],
+  logger: Logger
+) {
+  const parentId = parentIds[1] ? getDriveFileId(parentIds[1]) : null;
+
+  await file.update({
+    name: driveFile.name,
+    mimeType: driveFile.mimeType,
+    parentId,
+    lastSeenTs: new Date(),
+  });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  logger.info(
+    { file: file.dustFileId, parentIds, title: driveFile.name },
+    "Updating folder metadata"
+  );
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: file.dustFileId,
+    parents: parentIds,
+    parentId: parentIds[1] ?? null,
+    title: driveFile.name,
+    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+  });
 }
 
 /**

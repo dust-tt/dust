@@ -1,4 +1,7 @@
-import { updateParentsField } from "@connectors/connectors/google_drive/lib";
+import {
+  updateFolderMetadata,
+  updateParentsField,
+} from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   deleteOneFile,
@@ -230,8 +233,14 @@ export async function incrementalSync(
         });
 
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+        const moved = localFolder && localFolder.parentId !== parentGoogleIds[1];
 
-        if (localFolder && localFolder.parentId !== parentGoogleIds[1]) {
+        if (localFolder && moved) {
+          await localFolder.update({
+            name: driveFile.name,
+            mimeType: driveFile.mimeType,
+            lastSeenTs: new Date(),
+          });
           localLogger.info(
             {
               fileId: change.file.id,
@@ -252,6 +261,14 @@ export async function incrementalSync(
               localLogger
             );
           }
+        } else if (localFolder) {
+          await updateFolderMetadata(
+            connector,
+            localFolder,
+            driveFile,
+            parents,
+            localLogger
+          );
         }
 
         if (!localFolder) {
