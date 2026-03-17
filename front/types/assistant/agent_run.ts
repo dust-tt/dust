@@ -297,11 +297,18 @@ export async function getAgentLoopDataWithAuth(
 
   const agentId = agentMessage.configuration.sId;
 
+  const sidekickTargetAgentConfigurationId =
+    typeof conversation.metadata?.sidekickTargetAgentConfigurationId ===
+    "string"
+      ? conversation.metadata.sidekickTargetAgentConfigurationId
+      : undefined;
+
   const globalAgentContext: GlobalAgentContext = {
     userMessageRank: userMessage.rank,
     sidekickIsNewAgentFromScratch:
       conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
       undefined,
+    sidekickTargetAgentConfigurationId,
   };
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.

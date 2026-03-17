@@ -2,7 +2,9 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/sidekick/tools/getAgentConfig";
+import { registerSaveDraftTool } from "@app/components/agent_builder/sidekick/tools/saveDraft";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import { useFetcher } from "@app/lib/swr/swr";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -20,6 +22,7 @@ export interface UseSidekickMCPServerResult {
 
 interface UseSidekickMCPServerOptions {
   enabled: boolean;
+  targetAgentConfigurationId: string | null;
 }
 
 /**
@@ -28,9 +31,11 @@ interface UseSidekickMCPServerOptions {
  */
 export function useSidekickMCPServer({
   enabled,
+  targetAgentConfigurationId,
 }: UseSidekickMCPServerOptions): UseSidekickMCPServerResult {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
+  const { fetcherWithBody } = useFetcher();
   const suggestionsContext = useSidekickSuggestions();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
@@ -43,13 +48,27 @@ export function useSidekickMCPServer({
   const mcpServerRef = useRef<McpServer | null>(null);
   const transportRef = useRef<BrowserMCPTransport | null>(null);
 
-  // Store context in a ref for use in callbacks.
+  // Store context in refs for use in callbacks, avoiding effect dependency issues.
   const suggestionsContextRef = useRef(suggestionsContext);
+  const ownerRef = useRef(owner);
+  const userRef = useRef(user);
+  const fetcherWithBodyRef = useRef(fetcherWithBody);
+  const targetAgentConfigurationIdRef = useRef(targetAgentConfigurationId);
 
-  // Update ref in effect to avoid updating during render.
+  // Update refs in effect to avoid updating during render.
   useEffect(() => {
     suggestionsContextRef.current = suggestionsContext;
-  }, [suggestionsContext]);
+    ownerRef.current = owner;
+    userRef.current = user;
+    fetcherWithBodyRef.current = fetcherWithBody;
+    targetAgentConfigurationIdRef.current = targetAgentConfigurationId;
+  }, [
+    suggestionsContext,
+    owner,
+    user,
+    fetcherWithBody,
+    targetAgentConfigurationId,
+  ]);
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.
@@ -89,6 +108,15 @@ export function useSidekickMCPServer({
             ? () =>
                 suggestionsContextRef.current!.getCommittedInstructionsHtml()
             : undefined,
+        });
+
+        registerSaveDraftTool(mcpServer, {
+          getFormValues,
+          getOwner: () => ownerRef.current,
+          getUser: () => userRef.current,
+          getFetcherWithBody: () => fetcherWithBodyRef.current,
+          getTargetAgentConfigurationId: () =>
+            targetAgentConfigurationIdRef.current,
         });
 
         // Create the browser transport.

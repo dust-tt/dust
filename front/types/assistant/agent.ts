@@ -130,6 +130,7 @@ export type AgentFetchVariant = "light" | "full" | "extra_light";
 export type GlobalAgentContext = {
   userMessageRank: number;
   sidekickIsNewAgentFromScratch?: boolean;
+  sidekickTargetAgentConfigurationId?: string;
 };
 
 /**
