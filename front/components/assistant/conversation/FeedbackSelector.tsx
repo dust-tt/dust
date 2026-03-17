@@ -213,7 +213,9 @@ export function FeedbackSelector({
             ) : (
               <div className="flex flex-col gap-4 pt-2">
                 <div>
-                  <p className="mb-3 text-sm font-semibold text-foreground">Was this answer helpful?</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground dark:text-foreground-night">
+                    Was this answer helpful?
+                  </p>
                   <div className="flex gap-2">
                     <Button
                       label="Yes, helpful"
@@ -268,8 +270,7 @@ export function FeedbackSelector({
                                     label={answer}
                                     size="xs"
                                     variant={
-                                      selectedAnswerField.field.value ===
-                                      answer
+                                      selectedAnswerField.field.value === answer
                                         ? "primary"
                                         : "outline"
                                     }
