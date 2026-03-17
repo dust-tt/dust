@@ -116,14 +116,14 @@ export function collectAttachments(
   entries: FileEntry[],
   skillDir: SkillDirectory
 ): DetectedSkillAttachment[] {
-  const dirPrefix = skillDir.dirPath + "/";
   const attachments: DetectedSkillAttachment[] = [];
 
   for (const entry of entries) {
-    if (!entry.path.startsWith(dirPrefix)) {
+    if (entry.path === skillDir.skillMdPath) {
       continue;
     }
-    if (entry.path === skillDir.skillMdPath) {
+    const rel = path.relative(skillDir.dirPath, entry.path);
+    if (rel.startsWith("..")) {
       continue;
     }
     const contentType = getSkillAttachmentContentType(entry);
