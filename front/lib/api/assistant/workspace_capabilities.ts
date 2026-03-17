@@ -1,4 +1,4 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,

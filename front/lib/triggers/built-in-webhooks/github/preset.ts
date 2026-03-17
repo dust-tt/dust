@@ -1,5 +1,3 @@
-import { CreateWebhookGithubConnection } from "@app/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection";
-import { WebhookSourceGithubDetails } from "@app/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails";
 import {
   issueExample,
   issueSchema,
@@ -104,8 +102,4 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
   filterGenerationInstructions: null,
   webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.NEXT_PUBLIC_OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,
   webhookService: new GitHubWebhookService(),
-  components: {
-    detailsComponent: WebhookSourceGithubDetails,
-    createFormComponent: CreateWebhookGithubConnection,
-  },
 };

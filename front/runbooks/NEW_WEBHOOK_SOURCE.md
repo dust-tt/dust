@@ -12,7 +12,7 @@ This runbook explains the process for implementing new webhook source providers 
 2. ✅ `lib/triggers/built-in-webhooks/{provider}/types.ts`
 3. ✅ `lib/triggers/built-in-webhooks/{provider}/{provider}_client.ts`
 4. ✅ `lib/triggers/built-in-webhooks/{provider}/service.ts`
-5. ✅ `lib/triggers/built-in-webhooks/{provider}/preset.ts`
+5. ✅ `lib/triggers/built-in-webhooks/{provider}/preset.ts` and `preset_ui.ts`
 6. ✅ `lib/triggers/built-in-webhooks/{provider}/schemas/` (at least one event)
 7. ✅ `lib/triggers/built-in-webhooks/{provider}/components/`
 
@@ -204,7 +204,8 @@ For each webhook provider, you'll create:
 
 ```
 front/lib/triggers/built-in-webhooks/your_provider/
-├── preset.ts                       # Main configuration (most important)
+├── preset.ts                       # Common/data-only configuration (worker-safe, no UI deps)
+├── preset_ui.ts                    # UI version with React components
 ├── service.ts                      # Webhook creation/deletion logic
 ├── your_provider_client.ts         # API client wrapper
 ├── types.ts                        # TypeScript types
@@ -240,7 +241,7 @@ type WebhookProviderServiceDataMap = {
   your_provider: YourProviderAdditionalData;
 };
 
-// 3. Import and register the preset at the bottom of the file
+// 3. Import and register the data-only preset at the bottom of the file
 import { YOUR_PROVIDER_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/your_provider/preset";
 
 export const WEBHOOK_PRESETS = {
@@ -485,13 +486,11 @@ You need two components:
 
 ### Step 7: Create Preset Configuration
 
-**Create `preset.ts`:**
+**Create `preset.ts` (common/data-only, worker-safe):**
 
-This is the most important file - it ties everything together:
+This file contains the data-only preset configuration. It must NOT import React components.
 
 ```typescript
-import { CreateWebhookYourProviderConnection } from "./components/CreateWebhookYourProviderConnection";
-import { WebhookSourceYourProviderDetails } from "./components/WebhookSourceYourProviderDetails";
 import { yourEventSchema, yourEventExample } from "./schemas/your_event";
 import { YourProviderWebhookService } from "./service";
 import type {
@@ -526,7 +525,21 @@ export const YOUR_PROVIDER_WEBHOOK_PRESET: PresetWebhook<"your_provider"> = {
   webhookPageUrl: "https://yourprovider.com/settings/webhooks", // Optional
 
   webhookService: new YourProviderWebhookService(),
+};
+```
 
+**Create `preset_ui.ts` (UI version with React components):**
+
+This file extends the data preset with React components. Only import from UI code.
+
+```typescript
+import { CreateWebhookYourProviderConnection } from "./components/CreateWebhookYourProviderConnection";
+import { WebhookSourceYourProviderDetails } from "./components/WebhookSourceYourProviderDetails";
+import { YOUR_PROVIDER_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/your_provider/preset";
+import type { PresetWebhookUi } from "@app/types/triggers/webhooks_source_preset";
+
+export const YOUR_PROVIDER_WEBHOOK_PRESET: PresetWebhookUi<"your_provider"> = {
+  ...YOUR_PROVIDER_WEBHOOK_PRESET,
   components: {
     detailsComponent: WebhookSourceYourProviderDetails,
     createFormComponent: CreateWebhookYourProviderConnection,

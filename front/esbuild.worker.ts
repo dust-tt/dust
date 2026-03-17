@@ -26,6 +26,22 @@ async function buildWorker() {
 
     fs.writeFileSync("dist/meta.json", JSON.stringify(result.metafile));
 
+    // Check for forbidden imports in worker bundle
+    const forbiddenPackages = ["@dust-tt/sparkle"];
+    const violations: string[] = [];
+    for (const [file, info] of Object.entries(result.metafile.inputs)) {
+      for (const imp of info.imports) {
+        if (forbiddenPackages.includes(imp.path)) {
+          violations.push(`${file} imports ${imp.path}`);
+        }
+      }
+    }
+    if (violations.length > 0) {
+      console.error("❌ Worker bundle must not import forbidden packages:");
+      violations.forEach((v) => console.error(`  ${v}`));
+      process.exit(1);
+    }
+
     // Log any warnings
     if (result.warnings.length > 0) {
       console.log(`⚠️  ${result.warnings.length} warning(s) during build`);

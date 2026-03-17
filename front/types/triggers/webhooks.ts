@@ -1,7 +1,7 @@
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
+} from "@app/components/resources/resources_icon_names";
 import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/preset";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/preset";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
@@ -55,6 +55,8 @@ type WebhookProviderServiceDataMap = {
 export type WebhookServiceDataForProvider<P extends WebhookProvider> =
   WebhookProviderServiceDataMap[P];
 
+// Data-only presets (no React components). Safe to import from temporal workers
+// and server-side code without pulling in sparkle/React.
 export const WEBHOOK_PRESETS = {
   fathom: FATHOM_WEBHOOK_PRESET,
   github: GITHUB_WEBHOOK_PRESET,
