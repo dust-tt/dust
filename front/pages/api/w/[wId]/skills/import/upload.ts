@@ -6,6 +6,7 @@ import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import formidable from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -45,11 +46,24 @@ async function handler(
         });
       }
 
-      const form = formidable({
-        multiples: true,
-        maxFileSize: MAX_ZIP_SIZE_BYTES,
-      });
-      const [fields, files] = await form.parse(req);
+      let fields: formidable.Fields;
+      let files: formidable.Files;
+      try {
+        const form = formidable({
+          multiples: true,
+          maxFileSize: MAX_ZIP_SIZE_BYTES,
+        });
+        [fields, files] = await form.parse(req);
+      } catch (err) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `File upload failed: ${normalizeError(err).message}`,
+          },
+        });
+      }
+
       const uploadedFiles = files.files;
 
       const fieldNames = fields.names;
