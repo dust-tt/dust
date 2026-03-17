@@ -263,13 +263,24 @@ export async function incrementalSync(
             );
           }
         } else if (localFolder) {
-          await updateFolderMetadata(
-            connector,
-            localFolder,
-            driveFile,
-            parents,
-            localLogger
-          );
+          if (localFolder.skipReason) {
+            await localFolder.update({
+              name: driveFile.name,
+              mimeType: driveFile.mimeType,
+              lastSeenTs: new Date(),
+            });
+            localLogger.info(
+              `Google Drive folder skipped with skip reason ${localFolder.skipReason}`
+            );
+          } else {
+            await updateFolderMetadata(
+              connector,
+              localFolder,
+              driveFile,
+              parents,
+              localLogger
+            );
+          }
         }
 
         if (!localFolder) {

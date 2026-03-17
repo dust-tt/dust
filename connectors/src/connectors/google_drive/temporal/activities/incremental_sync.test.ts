@@ -295,6 +295,68 @@ describe("google drive incremental sync folder metadata", () => {
     );
   });
 
+  it("keeps skipped folders out of the datasource when renamed in place", async () => {
+    const suffix = randomUUID();
+    const folderId = `folder-${suffix}`;
+    const parentId = `parent-${suffix}`;
+    const rootId = `root-${suffix}`;
+    const connector = await makeConnector(suffix);
+    const previousLastSeenTs = new Date("2025-01-01T00:00:00.000Z");
+
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: folderId,
+      dustFileId: `gdrive-${folderId}`,
+      lastSeenTs: previousLastSeenTs,
+      mimeType: "application/vnd.google-apps.folder",
+      name: "Board Prez",
+      parentId,
+      skipReason: "blacklisted",
+    });
+
+    const driveFile = makeGoogleDriveFolder({
+      id: folderId,
+      name: "Board Presentations",
+      parent: parentId,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [makeFolderChange(driveFile)],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(driveFile);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      parentId,
+      rootId,
+    ]);
+
+    await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token"
+    );
+
+    const folder = await GoogleDriveFilesModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveFileId: folderId,
+      },
+    });
+
+    expect(folder?.name).toBe("Board Presentations");
+    expect(folder?.lastSeenTs?.getTime()).toBeGreaterThan(
+      previousLastSeenTs.getTime()
+    );
+    expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
+  });
+
   it("keeps the renamed folder title when a move triggers parent recursion", async () => {
     const suffix = randomUUID();
     const folderId = `folder-${suffix}`;
