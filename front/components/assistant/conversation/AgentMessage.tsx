@@ -156,6 +156,7 @@ interface AgentMessageProps {
   owner: WorkspaceType;
   user: UserType;
   triggeringUser: UserType | null;
+  isOnboardingConversation: boolean;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -173,6 +174,7 @@ export function AgentMessage({
   owner,
   user,
   triggeringUser,
+  isOnboardingConversation,
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -577,6 +579,7 @@ export function AgentMessage({
 
   const shouldShowFeedback =
     !isDeleted &&
+    !isOnboardingConversation &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
     agentMessage.configuration.status !== "draft" &&
@@ -850,7 +853,7 @@ export function AgentMessage({
     }
 
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-5">
         {messageContent}
         {footerButtons}
       </div>

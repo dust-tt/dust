@@ -168,6 +168,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              isOnboardingConversation={context.isOnboardingConversation}
               additionalMarkdownComponents={
                 context.additionalMarkdownComponents
               }
