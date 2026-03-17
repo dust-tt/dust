@@ -47,7 +47,12 @@ export function isConversationFileUseCase(
   return ["conversation", "tool_output"].includes(useCase);
 }
 
-export const fileShareScopeSchema = z.enum(["workspace", "public"]);
+export const fileShareScopeSchema = z.enum([
+  "emails_only",
+  "public",
+  "workspace_and_emails",
+  "workspace",
+]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 

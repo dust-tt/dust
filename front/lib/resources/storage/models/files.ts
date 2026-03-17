@@ -197,3 +197,98 @@ UserModel.hasMany(ShareableFileModel, {
 ShareableFileModel.belongsTo(UserModel, {
   foreignKey: { name: "sharedBy", allowNull: true },
 });
+
+/**
+ * Sharing grants: email-level ACL for restricted sharing.
+ */
+
+export class SharingGrantModel extends WorkspaceAwareModel<SharingGrantModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare email: string;
+  declare grantedAt: Date;
+  declare expiresAt: Date | null;
+  declare revokedAt: Date | null;
+  declare lastViewedAt: Date | null;
+
+  declare shareableFileId: ForeignKey<ShareableFileModel["id"]>;
+  declare grantedBy: ForeignKey<UserModel["id"]> | null;
+
+  declare shareableFile?: NonAttribute<ShareableFileModel>;
+  declare grantedByUser?: NonAttribute<UserModel> | null;
+}
+
+SharingGrantModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    grantedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    revokedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    lastViewedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    modelName: "sharing_grants",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "shareableFileId"],
+        where: { revokedAt: null },
+      },
+      {
+        fields: ["workspaceId", "email"],
+        where: { revokedAt: null },
+      },
+      {
+        fields: ["workspaceId", "shareableFileId", "email"],
+        unique: true,
+        where: { revokedAt: null },
+      },
+    ],
+  }
+);
+
+ShareableFileModel.hasMany(SharingGrantModel, {
+  foreignKey: { name: "shareableFileId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+SharingGrantModel.belongsTo(ShareableFileModel, {
+  foreignKey: { name: "shareableFileId", allowNull: false },
+});
+
+UserModel.hasMany(SharingGrantModel, {
+  foreignKey: { name: "grantedBy", allowNull: true },
+  onDelete: "SET NULL",
+});
+SharingGrantModel.belongsTo(UserModel, {
+  foreignKey: { name: "grantedBy", allowNull: true },
+});
