@@ -845,6 +845,9 @@ export const ConversationViewer = ({
     ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
     : undefined;
 
+  // After reversal in the hook, messages[0] is the oldest page. This only
+  // returns the actual first conversation message when all pages are loaded
+  // (works for onboarding conversations which are short / single-page).
   const firstMessage = messages.at(-1)?.messages.at(0);
   const isOnboardingConversation =
     !!firstMessage &&
