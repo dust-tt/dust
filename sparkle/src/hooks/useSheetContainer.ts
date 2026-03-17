@@ -8,6 +8,11 @@ export function useSheetContainer(
   );
 
   useEffect(() => {
+    if (mountPortalContainer) {
+      setContainer(mountPortalContainer);
+      return;
+    }
+
     if (!container) {
       const dialogElements = document.querySelectorAll(
         ".s-sheet[role=dialog][data-state=open]"
@@ -17,7 +22,7 @@ export function useSheetContainer(
         setContainer(lastDialog);
       }
     }
-  }, [container]);
+  }, [container, mountPortalContainer]);
 
   return container;
 }
