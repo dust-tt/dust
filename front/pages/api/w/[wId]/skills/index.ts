@@ -76,10 +76,7 @@ const PostSkillRequestBodySchema = t.intersection([
     }),
     t.type({
       source: t.literal("local_file"),
-      sourceMetadata: t.union([
-        t.type({ filePath: t.string }),
-        t.null,
-      ]),
+      sourceMetadata: t.union([t.type({ filePath: t.string }), t.null]),
     }),
     t.partial({
       source: t.literal("web_app"),
