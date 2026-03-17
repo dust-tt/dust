@@ -55,11 +55,15 @@ import { Op } from "sequelize";
 export interface MCPServerViewResource
   extends ReadonlyAttributesType<MCPServerViewModel> {}
 
+export type MCPServerViewCreationResult = {
+  view: MCPServerViewResource;
+  affectedAgents?: Attributes<AgentConfigurationModel>[];
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
-  affectedAgents?: Attributes<AgentConfigurationModel>[];
   private internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
@@ -188,7 +192,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       systemView: MCPServerViewResource;
       space: SpaceResource;
     }
-  ): Promise<MCPServerViewResource> {
+  ): Promise<MCPServerViewCreationResult> {
     if (systemView.space.kind !== "system") {
       throw new Error(
         "You must pass the system view to create a new MCP server view"
@@ -197,42 +201,39 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const mcpServerId = systemView.mcpServerId;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
-    const affectedAgents =
-      space.kind === "global"
-        ? await this.listLatestActiveAgentsToReconfigureOnGlobalShare(
-            auth,
-            mcpServerId
-          )
-        : undefined;
+    const blob = {
+      serverType,
+      internalMCPServerId: serverType === "internal" ? mcpServerId : null,
+      remoteMCPServerId: serverType === "remote" ? id : null,
+      // Always copy the oAuthUseCase, name and description from the system view to the custom view.
+      // This way, it's always available on the MCP server view without having to fetch the system view.
+      oAuthUseCase: systemView.oAuthUseCase,
+      name: systemView.name,
+      description: systemView.description,
+    };
 
     if (space.kind === "global") {
+      const affectedAgents =
+        await this.listLatestActiveAgentsToReconfigureOnGlobalShare(
+          auth,
+          mcpServerId
+        );
       const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
       for (const mcpServerView of mcpServerViews) {
         if (mcpServerView.space.kind === "regular") {
           await mcpServerView.delete(auth, { hardDelete: true });
         }
       }
+
+      return {
+        view: await this.makeNew(auth, blob, space, auth.user() ?? undefined),
+        affectedAgents,
+      };
     }
 
-    const view = await this.makeNew(
-      auth,
-      {
-        serverType,
-        internalMCPServerId: serverType === "internal" ? mcpServerId : null,
-        remoteMCPServerId: serverType === "remote" ? id : null,
-        // Always copy the oAuthUseCase, name and description from the system view to the custom view.
-        // This way, it's always available on the MCP server view without having to fetch the system view.
-        oAuthUseCase: systemView.oAuthUseCase,
-        name: systemView.name,
-        description: systemView.description,
-      },
-      space,
-      auth.user() ?? undefined
-    );
-
-    view.affectedAgents = affectedAgents;
-
-    return view;
+    return {
+      view: await this.makeNew(auth, blob, space, auth.user() ?? undefined),
+    };
   }
 
   private static async listLatestActiveAgentsToReconfigureOnGlobalShare(

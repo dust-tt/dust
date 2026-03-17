@@ -161,10 +161,13 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
 
     expect(systemView).not.toBeNull();
 
-    const regularView = await MCPServerViewResource.create(authenticator, {
-      systemView: systemView!,
-      space: regularSpace,
-    });
+    const { view: regularView } = await MCPServerViewResource.create(
+      authenticator,
+      {
+        systemView: systemView!,
+        space: regularSpace,
+      }
+    );
 
     const impactedAgent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -252,10 +255,13 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
 
     expect(systemView).not.toBeNull();
 
-    const regularView = await MCPServerViewResource.create(authenticator, {
-      systemView: systemView!,
-      space: regularSpace,
-    });
+    const { view: regularView } = await MCPServerViewResource.create(
+      authenticator,
+      {
+        systemView: systemView!,
+        space: regularSpace,
+      }
+    );
 
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
