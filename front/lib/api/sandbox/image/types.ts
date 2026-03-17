@@ -130,6 +130,4 @@ export type SandboxCapability = "gcsfuse";
 // Base Image
 // ---------------------------------------------------------------------------
 
-export type BaseImage =
-  | { readonly type: "sandbox"; readonly id: SandboxImageId }
-  | { readonly type: "docker"; readonly imageRef: string };
+export type BaseImage = { readonly type: "docker"; readonly imageRef: string };

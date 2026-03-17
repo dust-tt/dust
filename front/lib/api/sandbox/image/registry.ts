@@ -75,10 +75,6 @@ function getProfileContent(filename: string): () => string {
   return () => fs.readFileSync(path.join(PROFILE_LOCAL_DIR, filename), "utf-8");
 }
 
-function getFileContent(filePath: string): () => string {
-  return () => fs.readFileSync(filePath, "utf-8");
-}
-
 const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.2.0")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
@@ -159,11 +155,6 @@ SHELLEOF`)
         "chmod +x /tmp/dsbx && " +
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
-  )
-  // Test data file
-  .copy(
-    getFileContent("/Users/jd/Downloads/products-100000.csv"),
-    "/home/user/products-100000.csv"
   )
   .runCmd(`sudo mkdir -p ${PROFILE_DIR}`)
   .copy(getProfileContent("common.sh"), `${PROFILE_DIR}/common.sh`)
