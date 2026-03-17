@@ -63,7 +63,7 @@ export function SkillBuilderIsDefaultSection() {
             <DialogDescription className="pt-4">
               This skill will be set as default. Agents with&nbsp;
               <span className="font-semibold">Discover Skills</span>&nbsp; will
-              be able to find and enable this skill on their own.
+              be able to find and enable it on their own.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
