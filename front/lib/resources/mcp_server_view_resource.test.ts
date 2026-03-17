@@ -1,15 +1,16 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
-import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
-import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { ConversationMCPServerViewFactory } from "@app/tests/utils/ConversationMCPServerViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -571,13 +572,10 @@ describe("MCPServerViewResource", () => {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [new Date()],
       });
-      await ConversationMCPServerViewModel.create({
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
+      await ConversationMCPServerViewFactory.create(userAuth, {
+        conversation,
         mcpServerViewId: regularView.id,
-        userId: user.id,
-        enabled: true,
-        source: "manual",
+        source: "agent_enabled",
         agentConfigurationId: agent.sId,
       });
 
@@ -590,34 +588,24 @@ describe("MCPServerViewResource", () => {
         space: globalSpace,
       });
 
-      const migratedAgentConfiguration =
-        await AgentMCPServerConfigurationModel.findOne({
-          where: {
-            workspaceId: workspace.id,
-            id: agentMCPServerConfiguration.id,
-          },
-        });
-      expect(migratedAgentConfiguration).not.toBeNull();
-      expect(migratedAgentConfiguration?.mcpServerViewId).toBe(globalView.id);
+      const [migratedAgentConfiguration] =
+        await AgentMCPServerConfigurationResource.fetchByModelIds(userAuth, [
+          agentMCPServerConfiguration.id,
+        ]);
+      expect(migratedAgentConfiguration).toBeDefined();
+      expect(migratedAgentConfiguration.mcpServerViewId).toBe(globalView.id);
 
       const conversationDependencies =
-        await ConversationMCPServerViewModel.findAll({
-          where: {
-            workspaceId: workspace.id,
-            conversationId: conversation.id,
-          },
+        await ConversationResource.fetchMCPServerViews(userAuth, conversation, {
+          agentConfigurationId: agent.sId,
         });
       expect(conversationDependencies).toHaveLength(1);
       expect(conversationDependencies[0].mcpServerViewId).toBe(globalView.id);
 
-      const skillDependencies = await SkillMCPServerConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: skill.id,
-        },
-      });
-      expect(skillDependencies).toHaveLength(1);
-      expect(skillDependencies[0].mcpServerViewId).toBe(globalView.id);
+      const reloadedSkill = await SkillResource.fetchById(userAuth, skill.sId);
+      expect(reloadedSkill).not.toBeNull();
+      expect(reloadedSkill?.mcpServerViews).toHaveLength(1);
+      expect(reloadedSkill?.mcpServerViews[0].id).toBe(globalView.id);
 
       const deletedRegularView =
         await MCPServerViewResource.getByMCPServerAndSpace(
@@ -678,26 +666,18 @@ describe("MCPServerViewResource", () => {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [new Date()],
       });
-      await ConversationMCPServerViewModel.bulkCreate([
-        {
-          workspaceId: workspace.id,
-          conversationId: conversation.id,
-          mcpServerViewId: firstRegularView.id,
-          userId: user.id,
-          enabled: true,
-          source: "manual",
-          agentConfigurationId: agent.sId,
-        },
-        {
-          workspaceId: workspace.id,
-          conversationId: conversation.id,
-          mcpServerViewId: secondRegularView.id,
-          userId: user.id,
-          enabled: true,
-          source: "manual",
-          agentConfigurationId: agent.sId,
-        },
-      ]);
+      await ConversationMCPServerViewFactory.create(userAuth, {
+        conversation,
+        mcpServerViewId: firstRegularView.id,
+        source: "agent_enabled",
+        agentConfigurationId: agent.sId,
+      });
+      await ConversationMCPServerViewFactory.create(userAuth, {
+        conversation,
+        mcpServerViewId: secondRegularView.id,
+        source: "agent_enabled",
+        agentConfigurationId: agent.sId,
+      });
 
       const skill = await SkillFactory.create(userAuth, {
         mcpServerViews: [firstRegularView, secondRegularView],
@@ -709,23 +689,16 @@ describe("MCPServerViewResource", () => {
       });
 
       const conversationDependencies =
-        await ConversationMCPServerViewModel.findAll({
-          where: {
-            workspaceId: workspace.id,
-            conversationId: conversation.id,
-          },
+        await ConversationResource.fetchMCPServerViews(userAuth, conversation, {
+          agentConfigurationId: agent.sId,
         });
       expect(conversationDependencies).toHaveLength(1);
       expect(conversationDependencies[0].mcpServerViewId).toBe(globalView.id);
 
-      const skillDependencies = await SkillMCPServerConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: skill.id,
-        },
-      });
-      expect(skillDependencies).toHaveLength(1);
-      expect(skillDependencies[0].mcpServerViewId).toBe(globalView.id);
+      const reloadedSkill = await SkillResource.fetchById(userAuth, skill.sId);
+      expect(reloadedSkill).not.toBeNull();
+      expect(reloadedSkill?.mcpServerViews).toHaveLength(1);
+      expect(reloadedSkill?.mcpServerViews[0].id).toBe(globalView.id);
 
       const deletedFirstRegularView =
         await MCPServerViewResource.getByMCPServerAndSpace(

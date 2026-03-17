@@ -79,8 +79,7 @@ export const reassignMCPServerViewDependencies = async (
   for (const dependency of conversationDependencies) {
     const key = getConversationDependencyKey(dependency);
     const existingDependencies = conversationDependencyMap.get(key) ?? [];
-    existingDependencies.push(dependency);
-    conversationDependencyMap.set(key, existingDependencies);
+    conversationDependencyMap.set(key, [...existingDependencies, dependency]);
   }
 
   const conversationDependencyIdsToDelete: ModelId[] = [];
@@ -157,8 +156,7 @@ export const reassignMCPServerViewDependencies = async (
   for (const dependency of skillDependencies) {
     const key = getSkillDependencyKey(dependency);
     const existingDependencies = skillDependencyMap.get(key) ?? [];
-    existingDependencies.push(dependency);
-    skillDependencyMap.set(key, existingDependencies);
+    skillDependencyMap.set(key, [...existingDependencies, dependency]);
   }
 
   const skillDependencyIdsToDelete: ModelId[] = [];
