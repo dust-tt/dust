@@ -18,7 +18,7 @@ describe("GET /api/poke/workspaces/[wId]/assistants/[aId]/suggestions", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(404);
+    expect(res._getStatusCode()).toBe(401);
   });
 
   it("returns suggestions for a given agent", async () => {
