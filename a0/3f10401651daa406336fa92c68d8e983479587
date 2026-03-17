@@ -1,0 +1,33 @@
+front/lib/assistant.test.ts
+  494892e4cad863a5 13,18-19,22-41,120-154
+front/components/pages/workspace/developers/ProvidersPage.tsx
+  494892e4cad863a5 38-39
+front/lib/assistant.ts
+  494892e4cad863a5 7,52,60-73
+front/hooks/useProvidersSelection.ts
+  494892e4cad863a5 22-23
+front/components/agent_builder/transformAgentConfiguration.ts
+  494892e4cad863a5 78-79
+front/tests/utils/ProviderCredentialFactory.ts
+  494892e4cad863a5 8-9,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "a03f10401651daa406336fa92c68d8e983479587",
+  "prompts": {
+    "494892e4cad863a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1b189c-ed53-4cb0-a90e-1a5408b5e59c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 85,
+      "total_deletions": 5,
+      "accepted_lines": 83,
+      "overriden_lines": 0
+    }
+  }
+}

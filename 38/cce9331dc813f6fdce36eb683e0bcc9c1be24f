@@ -1,0 +1,69 @@
+connectors/src/connectors/slack/chat/slack_stream_handler.ts
+  47a0888bac606936 9-10,14-15,63-67,71-76,84-87
+  d88ec7093329bef8 3-8,11,16,19,40,42,45-46,61-62,68,92-95,98-99
+  a920374687f7db34 13,17,47-52,59-60,69-70,77-81,89-91,96
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  d88ec7093329bef8 11,45,142,161-162,164,226,239-240,281,284-285,337,432-433,502-504,512,555,557,560-561,581,584-585,625-626,665,705,778
+  47a0888bac606936 37-38,56-71,397-421
+  b326b463a7961699 508,515
+  a920374687f7db34 338,505-507,513-514,530,536,553,567,627-628,630-633,638-649
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "38cce9331dc813f6fdce36eb683e0bcc9c1be24f",
+  "prompts": {
+    "47a0888bac606936": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2d7b6e3-314b-4637-8239-1179ebdda49f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 108,
+      "total_deletions": 43,
+      "accepted_lines": 62,
+      "overriden_lines": 0
+    },
+    "a920374687f7db34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a00569c-c284-46e7-852d-c2442870c638",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 305,
+      "total_deletions": 405,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    },
+    "b326b463a7961699": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ab45a41-0556-4087-a110-1647182b1ef0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 348,
+      "total_deletions": 352,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "d88ec7093329bef8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fcb0079-a82b-4d47-9a2d-8eb94e0b7409",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 724,
+      "total_deletions": 769,
+      "accepted_lines": 53,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,87 @@
+front/lib/reinforced_agent/run_reinforced_analysis.ts
+  3099a0d63f25da80 8,122
+front/lib/api/data_sources.ts
+  3099a0d63f25da80 22,566,614,1080
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/index.ts
+  3099a0d63f25da80 9,290
+front/temporal/agent_loop/lib/run_model.ts
+  3099a0d63f25da80 56,496
+front/temporal/relocation/activities/destination_region/core/data_sources.ts
+  3099a0d63f25da80 4,42
+front/lib/api/projects/connector.ts
+  3099a0d63f25da80 19,135
+front/lib/api/actions/servers/image_generation/tools/index.ts
+  3099a0d63f25da80 20,61
+front/lib/api/assistant/process_data_sources.ts
+  3099a0d63f25da80 5,60
+front/lib/api/provider_credentials.ts
+  3099a0d63f25da80 1-11,13-14,22-23,25-38,46-48,55,58-72,74-86
+front/lib/api/projects/search.ts
+  3099a0d63f25da80 5,68
+front/tests/sidekick-evals/lib/judge.ts
+  3099a0d63f25da80 3,107
+front/migrations/20250306_gong_labs_to_connector.ts
+  3099a0d63f25da80 16,95
+front/pages/api/poke/workspaces/[wId]/conversations/[cId]/render.ts
+  3099a0d63f25da80 17,317
+front/lib/api/projects/index.test.ts
+  3099a0d63f25da80 20,214
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]/index.ts
+  3099a0d63f25da80 9,651
+front/lib/api/actions/servers/search/tools/index.ts
+  3099a0d63f25da80 20,54
+front/lib/api/assistant/conversation_rendering/index.ts
+  3099a0d63f25da80 4,82
+front/lib/api/llm/tests/conversations.ts
+  3099a0d63f25da80 17,338
+front/admin/cli.ts
+  3099a0d63f25da80 19,514
+front/tests/sidekick-evals/lib/sidekick-executor.ts
+  3099a0d63f25da80 4,27
+front/lib/api/llm/tests/llmBatch.test.ts
+  3099a0d63f25da80 10,266
+front/lib/resources/provider_credential_resource.test.ts
+  3099a0d63f25da80 1,143,189,205,225
+front/lib/api/actions/servers/data_sources_file_system/tools/search.ts
+  3099a0d63f25da80 23,53
+front/temporal/labs/transcripts/activities.ts
+  3099a0d63f25da80 17,511
+front/lib/api/assistant/call_llm.ts
+  3099a0d63f25da80 5,53
+front/temporal/relocation/activities/destination_region/core/documents.ts
+  3099a0d63f25da80 5,48
+front/pages/api/w/[wId]/spaces/[spaceId]/data_sources/index.ts
+  3099a0d63f25da80 21,379
+front/migrations/20230522_slack_doc_rename_incident.ts
+  3099a0d63f25da80 5,63
+front/lib/api/actions/servers/web_search_browse/tools/index.ts
+  3099a0d63f25da80 21,111
+front/lib/api/actions/servers/agent_sidekick_context/tools/index.ts
+  3099a0d63f25da80 34,1201
+front/lib/api/actions/servers/include_data/tools/index.ts
+  3099a0d63f25da80 27,69
+front/temporal/upsert_queue/activities.ts
+  3099a0d63f25da80 4,91
+front/migrations/20230803_wipe_gdrive_connectors.ts
+  3099a0d63f25da80 6,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "c66df39dc7deee54906e6bb55f980d10f0aa7e9e",
+  "prompts": {
+    "3099a0d63f25da80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bf62d6d-866b-4235-b2bc-069de0623c57",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 164,
+      "total_deletions": 143,
+      "accepted_lines": 132,
+      "overriden_lines": 9
+    }
+  }
+}

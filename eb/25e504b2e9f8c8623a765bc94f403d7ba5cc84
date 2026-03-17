@@ -1,0 +1,25 @@
+front/migrations/db/migration_534.sql
+  25535915742eb8fe 1-14
+front/lib/models/provider_credential.ts
+  25535915742eb8fe 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "eb25e504b2e9f8c8623a765bc94f403d7ba5cc84",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 91,
+      "total_deletions": 3,
+      "accepted_lines": 79,
+      "overriden_lines": 0
+    }
+  }
+}

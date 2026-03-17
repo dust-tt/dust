@@ -1,0 +1,31 @@
+front/lib/plans/pro_plans.ts
+  00381cbdfa1c0ed0 3,87-113
+front/tests/utils/WorkspaceFactory.ts
+  00381cbdfa1c0ed0 3-4,18-24,27,35-37,44,46,50
+front/lib/plans/plan_codes.ts
+  00381cbdfa1c0ed0 15-17
+front/lib/resources/provider_credential_resource.test.ts
+  00381cbdfa1c0ed0 11-12,14,19-22,25,31-35,41,53-57,61,77-88,103-107,112,115
+front/tests/utils/generic_resource_tests.ts
+  00381cbdfa1c0ed0 19,23,37,41,43-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "4fb3a06b3b89427a8e02f6a85d49218e12fe8006",
+  "prompts": {
+    "00381cbdfa1c0ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52a8b9db-0374-45d8-987b-fceb4a9ee0a7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 102,
+      "total_deletions": 70,
+      "accepted_lines": 94,
+      "overriden_lines": 0
+    }
+  }
+}

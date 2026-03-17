@@ -1,0 +1,43 @@
+front/types/core/core_api.ts
+  25535915742eb8fe 2,1526,1532,1556,1561
+front/migrations/20250306_gong_labs_to_connector.ts
+  25535915742eb8fe 16,95-96
+front/lib/api/llm/tests/conversations.ts
+  25535915742eb8fe 14-18,31,34-54,338
+front/tests/sidekick-evals/lib/sidekick-executor.ts
+  25535915742eb8fe 14,27-28,30
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/index.ts
+  25535915742eb8fe 9,289-290,293
+front/tests/sidekick-evals/lib/judge.ts
+  25535915742eb8fe 10,107-108,110
+front/migrations/20230803_wipe_gdrive_connectors.ts
+  25535915742eb8fe 1,5-6,8,41-44,52-53,67
+front/pages/api/academy/chat.ts
+  25535915742eb8fe 6,224-225
+front/migrations/20230522_slack_doc_rename_incident.ts
+  25535915742eb8fe 1-2,4-5,7,25-34,63
+front/lib/api/projects/index.test.ts
+  25535915742eb8fe 17,230-232
+front/lib/tokenization.ts
+  25535915742eb8fe 6,77-78,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "977573dd92c2a42c7d4fa594e2e40823002e4155",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 205,
+      "total_deletions": 116,
+      "accepted_lines": 94,
+      "overriden_lines": 0
+    }
+  }
+}

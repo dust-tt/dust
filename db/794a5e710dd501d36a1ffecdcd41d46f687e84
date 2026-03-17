@@ -1,0 +1,33 @@
+front/lib/resources/provider_credential_resource.ts
+  25535915742eb8fe 1-9,11-70,72-77,79,81,83-98
+front/lib/resources/provider_credential_resource.test.ts
+  25535915742eb8fe 1-32,35-37,40-44,46-49,52-53,55-59,62-66,68-78,81-83,85-100,103-105,108,110-115,118-121,123,125-128
+front/tests/utils/ProviderCredentialFactory.ts
+  25535915742eb8fe 1-18
+front/types/provider_credential.ts
+  25535915742eb8fe 1-14
+front/lib/resources/string_ids.ts
+  25535915742eb8fe 84-86
+front/poke/temporal/activities.ts
+  25535915742eb8fe 710
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "db794a5e710dd501d36a1ffecdcd41d46f687e84",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 159,
+      "total_deletions": 15,
+      "accepted_lines": 235,
+      "overriden_lines": 0
+    }
+  }
+}

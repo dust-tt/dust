@@ -1,0 +1,77 @@
+front/types/core/core_api.ts
+  25535915742eb8fe 2,1532,1560
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/index.ts
+  25535915742eb8fe 18-19,290-293
+front/lib/resources/provider_credential_resource.ts
+  25535915742eb8fe 10,14,17,107-108,151,157
+  ed20067338b79878 78,106,172-180
+front/lib/api/llm/types/options.ts
+  25535915742eb8fe 12,102
+front/lib/api/llm/tests/conversations.ts
+  25535915742eb8fe 14,314
+front/vite.globalSetup.ts
+  25535915742eb8fe 41
+front/lib/resources/provider_credential_resource.test.ts
+  ed20067338b79878 154-157,177
+  25535915742eb8fe 130,136
+front/types/api/credentials.ts
+  25535915742eb8fe 2,94,109-115
+front/migrations/20230522_slack_doc_rename_incident.ts
+  25535915742eb8fe 4,54
+front/lib/api/actions/servers/elevenlabs/utils.ts
+  25535915742eb8fe 7,183
+front/lib/utils/transcribe_service.ts
+  25535915742eb8fe 4,17
+front/lib/utils/websearch.ts
+  25535915742eb8fe 2,12
+front/lib/api/projects/index.test.ts
+  25535915742eb8fe 26,231
+front/tests/sidekick-evals/lib/judge.ts
+  25535915742eb8fe 10,108
+front/lib/utils/webbrowse.ts
+  25535915742eb8fe 5,14
+front/migrations/20230803_wipe_gdrive_connectors.ts
+  25535915742eb8fe 6,58
+front/types/provider_credential.ts
+  25535915742eb8fe 5-21,52,57-64
+  ed20067338b79878 42,68
+front/tests/sidekick-evals/lib/sidekick-executor.ts
+  25535915742eb8fe 14,28
+front/pages/api/academy/chat.ts
+  25535915742eb8fe 6,224
+front/migrations/20250306_gong_labs_to_connector.ts
+  25535915742eb8fe 16,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "4959e244cd1c00aaa319a0fc02e2fe6ab3001fae",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 291,
+      "total_deletions": 249,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    },
+    "ed20067338b79878": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d09d917-1865-45c7-87ac-b08d70312601",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 173,
+      "total_deletions": 64,
+      "accepted_lines": 160,
+      "overriden_lines": 0
+    }
+  }
+}

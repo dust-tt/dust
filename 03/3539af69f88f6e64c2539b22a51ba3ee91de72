@@ -1,0 +1,47 @@
+front/lib/resources/provider_credential_resource.ts
+  25535915742eb8fe 10,14,17,107-108,151,157
+  ed20067338b79878 1,9,13,16,18,49-54,75-80,82-83,85,88-90,92-93,95-96,99-101,103,105-106,172-180
+front/types/provider_credential.ts
+  ed20067338b79878 3,32,34-36,40-50,53-54,68
+  25535915742eb8fe 5-20,52,57-64
+front/lib/resources/provider_credential_resource.test.ts
+  25535915742eb8fe 11,14-15,17-18,130,136
+  ed20067338b79878 6-10,12-13,16,19-20,128-129,131-135,137-208,212-213
+front/vite.globalSetup.ts
+  25535915742eb8fe 41
+front/types/api/credentials.ts
+  25535915742eb8fe 2,94,109-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "033539af69f88f6e64c2539b22a51ba3ee91de72",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 29,
+      "total_deletions": 13,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    },
+    "ed20067338b79878": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d09d917-1865-45c7-87ac-b08d70312601",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}

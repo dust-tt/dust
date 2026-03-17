@@ -1,0 +1,113 @@
+front/tests/sidekick-evals/lib/sidekick-executor.ts
+  ed20067338b79878 3,28
+front/pages/api/w/[wId]/spaces/[spaceId]/data_sources/index.ts
+  ed20067338b79878 26,379-380,397
+front/lib/api/projects/search.ts
+  ed20067338b79878 7,68,72
+front/lib/api/assistant/conversation_rendering/index.ts
+  ed20067338b79878 4,20,82-84,87-88,314-315,377
+front/types/core/core_api.ts
+  ed20067338b79878 1583,1589
+front/lib/api/llm/clients/xai/index.ts
+  ed20067338b79878 22,38-39
+front/tests/sidekick-evals/lib/judge.ts
+  ed20067338b79878 3,108
+front/lib/api/actions/servers/web_search_browse/tools/index.ts
+  ed20067338b79878 21,111-112,280-281
+front/lib/api/llm/clients/fireworks/types.ts
+  ed20067338b79878 2-3,29
+front/lib/api/llm/clients/xai/types.ts
+  ed20067338b79878 2-3,29
+front/types/provider_credential.ts
+  ed20067338b79878 3,15-16,18-20,23-27,29-46
+front/lib/api/actions/servers/include_data/tools/index.ts
+  ed20067338b79878 28,69
+front/lib/api/llm/clients/anthropic/types.ts
+  ed20067338b79878 2-3,37,40,48
+front/temporal/relocation/activities/destination_region/core/documents.ts
+  ed20067338b79878 15-16,45,48
+front/lib/api/llm/clients/google/index.ts
+  ed20067338b79878 26,49-53
+front/lib/api/actions/servers/image_generation/tools/index.ts
+  ed20067338b79878 21,63-65
+front/admin/cli.ts
+  ed20067338b79878 26,514-515,518-519
+front/lib/api/llm/clients/mistral/index.ts
+  ed20067338b79878 20,39-40
+front/lib/api/assistant/process_data_sources.ts
+  ed20067338b79878 7,60
+front/lib/api/assistant/call_llm.ts
+  ed20067338b79878 5,53-55,57
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]/index.ts
+  ed20067338b79878 15,650
+front/lib/api/projects/connector.ts
+  ed20067338b79878 22,134-136,153
+front/temporal/upsert_queue/activities.ts
+  ed20067338b79878 9,91
+front/lib/api/llm/tests/conversations.ts
+  ed20067338b79878 3,314
+front/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/search.ts
+  ed20067338b79878 83
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/search.ts
+  ed20067338b79878 234
+front/temporal/labs/transcripts/activities.ts
+  ed20067338b79878 35,510
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/search.ts
+  ed20067338b79878 195
+front/lib/api/actions/servers/data_sources_file_system/tools/search.ts
+  ed20067338b79878 24,53
+front/lib/api/llm/clients/openai/index.ts
+  ed20067338b79878 23,41-42
+front/lib/tokenization.ts
+  ed20067338b79878 5,29-30,45
+front/lib/resources/provider_credential_resource.ts
+  ed20067338b79878 1,8-9,11-12,14-16,24-60,83-88,106-114,116-119,121-139
+front/lib/api/llm/clients/fireworks/index.ts
+  ed20067338b79878 24,40-41
+front/temporal/agent_loop/lib/run_model.ts
+  ed20067338b79878 54,496-498,500
+front/lib/api/actions/servers/agent_sidekick_context/tools/index.ts
+  ed20067338b79878 39,1198,1202
+front/temporal/relocation/activities/destination_region/core/data_sources.ts
+  ed20067338b79878 9-10,30,42-43,47
+front/pages/api/poke/workspaces/[wId]/conversations/[cId]/render.ts
+  ed20067338b79878 19,317-319,321-322
+front/lib/api/actions/servers/image_generation/helpers.ts
+  ed20067338b79878 11,269
+front/lib/api/llm/types/options.ts
+  ed20067338b79878 12,102,110-115
+front/lib/api/llm/clients/mistral/types.ts
+  ed20067338b79878 1,31
+front/lib/api/data_sources.ts
+  ed20067338b79878 32,566,598,603,614,1079-1081,1098
+front/lib/api/llm/clients/openai/types.ts
+  ed20067338b79878 2-3,54,57,64
+front/lib/api/llm/index.ts
+  ed20067338b79878 23,42,55,69,83,97,109,121
+front/lib/api/llm/clients/anthropic/index.ts
+  ed20067338b79878 33,98-99
+front/lib/api/actions/servers/search/tools/index.ts
+  ed20067338b79878 21,54
+front/lib/api/llm/clients/google/types.ts
+  ed20067338b79878 2-3,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "02cfc8ece06e078923410e21798cc9f9ef61fb15",
+  "prompts": {
+    "ed20067338b79878": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d09d917-1865-45c7-87ac-b08d70312601",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 449,
+      "total_deletions": 236,
+      "accepted_lines": 277,
+      "overriden_lines": 5
+    }
+  }
+}

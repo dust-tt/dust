@@ -1,0 +1,33 @@
+front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+  d85f24eaa205802a 19,141,887
+front/lib/api/files/processing.ts
+  d85f24eaa205802a 282-286
+front/lib/actions/mcp_internal_actions/constants.ts
+  d85f24eaa205802a 591,668
+front/components/workspace/settings/CapabilitiesSection.tsx
+  d85f24eaa205802a 5,20-21,28,30
+front/pages/api/w/[wId]/services/transcribe/index.ts
+  d85f24eaa205802a 40-50
+front/components/agent_builder/AgentBuilderSidekick.tsx
+  d85f24eaa205802a 79,86,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "b90e39a7d40f6e31478725bc43d2663c32c40ca1",
+  "prompts": {
+    "d85f24eaa205802a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9ecc4b2-faa0-4f7f-8097-5d64e8dd8903",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 8,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    }
+  }
+}
