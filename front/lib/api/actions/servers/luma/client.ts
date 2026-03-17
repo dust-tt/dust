@@ -25,6 +25,7 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 const LUMA_API_BASE_URL = "https://public-api.luma.com";
@@ -68,14 +69,19 @@ export class LumaClient {
       }
     }
 
-    const response = await untrustedFetch(url.toString(), {
-      method,
-      headers: {
-        "x-luma-api-key": this.apiKey,
-        "Content-Type": "application/json",
-      },
-      body: method !== "GET" ? JSON.stringify(params ?? {}) : undefined,
-    });
+    let response;
+    try {
+      response = await untrustedFetch(url.toString(), {
+        method,
+        headers: {
+          "x-luma-api-key": this.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: method !== "GET" ? JSON.stringify(params ?? {}) : undefined,
+      });
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -86,7 +92,12 @@ export class LumaClient {
       );
     }
 
-    const rawData: unknown = await response.json();
+    let rawData: unknown;
+    try {
+      rawData = await response.json();
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
