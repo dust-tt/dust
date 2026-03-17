@@ -14,7 +14,7 @@ export const sandboxSkill = {
   userFacingDescription:
     "Run code, scripts, and shell commands in an isolated Linux environment.",
   agentFacingDescription:
-    "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthly tool outputs, run code, " +
+    "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
     "process data, install packages, manipulate files, or perform any task requiring shell access.",
   instructions: SANDBOX_INSTRUCTIONS,
   mcpServers: [{ name: "sandbox" }],
