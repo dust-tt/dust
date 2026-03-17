@@ -6,8 +6,7 @@ import {
 import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { stripCommonZipPrefix } from "@app/lib/api/skills/detection/zip/parsing";
 import type {
-  ZipEntry,
-  ZipSkillDetectionError,
+  ZipEntry
 } from "@app/lib/api/skills/detection/zip/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -25,15 +24,12 @@ const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
  */
 function extractZipEntries(
   zipBuffer: Buffer
-): Result<{ entries: ZipEntry[]; zip: AdmZip }, ZipSkillDetectionError> {
+): Result<{ entries: ZipEntry[]; zip: AdmZip }, Error> {
   let zip: AdmZip;
   try {
     zip = new AdmZip(zipBuffer);
   } catch (err) {
-    return new Err({
-      type: "invalid_zip",
-      message: `Failed to open ZIP: ${normalizeError(err).message}`,
-    });
+    return new Err(new Error(`Failed to open ZIP: ${normalizeError(err).message}`));
   }
 
   const admEntries = zip.getEntries();
@@ -53,13 +49,10 @@ function extractZipEntries(
 function readZipFileContent(
   zip: AdmZip,
   originalPath: string
-): Result<string, ZipSkillDetectionError> {
+): Result<string, Error> {
   const entry = zip.getEntry(originalPath);
   if (!entry) {
-    return new Err({
-      type: "invalid_zip",
-      message: `Entry not found in ZIP: "${originalPath}"`,
-    });
+    return new Err(new Error(`Entry not found in ZIP: "${originalPath}"`));
   }
   const buffer = entry.getData();
 
@@ -75,12 +68,9 @@ export function detectSkillsFromZip({
   zipBuffer,
 }: {
   zipBuffer: Buffer;
-}): Result<DetectedSkill[], ZipSkillDetectionError> {
+}): Result<DetectedSkill[], Error> {
   if (zipBuffer.length > MAX_ZIP_SIZE_BYTES) {
-    return new Err({
-      type: "invalid_zip",
-      message: `ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`,
-    });
+    return new Err(new Error(`ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). ` + `Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`));
   }
 
   const extractResult = extractZipEntries(zipBuffer);
