@@ -315,6 +315,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_self": "never_ask",
     "list_events": "never_ask",
     "list_guests": "never_ask",
+    "search_guests": "never_ask",
     "send_invites": "medium",
     "update_event": "medium",
     "update_guest_status": "medium",
