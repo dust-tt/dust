@@ -475,7 +475,7 @@ export const AshbyJobPostingSchema = z
         secondaryLocationIds: z.array(z.string()),
       })
       .optional(),
-    workplaceType: z.string().optional(),
+    workplaceType: z.string().optional().nullable(),
     employmentType: z.string(),
     isListed: z.boolean(),
     publishedDate: z.string(),
