@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { importSkillsFromFiles } from "@app/lib/api/skills/detection/import_skills_from_files";
+import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
+import { importSkillsFromFiles } from "@app/lib/api/skills/detection/zip/import_skills";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
@@ -46,7 +47,7 @@ async function handler(
 
       const form = formidable({
         multiples: true,
-        maxFileSize: 5 * 1024 * 1024,
+        maxFileSize: MAX_ZIP_SIZE_BYTES,
       });
       const [fields, files] = await form.parse(req);
       const uploadedFiles = files.files;

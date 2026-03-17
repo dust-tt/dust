@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/file_detection";
-import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
+import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
+import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/zip/file_detection";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
@@ -50,7 +50,7 @@ async function handler(
 
       const form = formidable({
         multiples: true,
-        maxFileSize: 5 * 1024 * 1024,
+        maxFileSize: MAX_ZIP_SIZE_BYTES,
       });
       const [, files] = await form.parse(req);
       const uploadedFiles = files.files;
@@ -76,7 +76,7 @@ async function handler(
         });
       }
 
-      const detectedSkills: DetectedSkill[] = result.value;
+      const detectedSkills = result.value;
 
       if (detectedSkills.length === 0) {
         return apiError(req, res, {

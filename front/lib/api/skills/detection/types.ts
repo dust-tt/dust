@@ -1,4 +1,5 @@
 import type { SkillAttachmentContentType } from "@app/lib/api/files/use_cases/skill_attachment";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
 export type DetectedSkillAttachment = {
   path: string;
@@ -22,4 +23,10 @@ export type SkillDirectory = {
 export type FileEntry = {
   path: string;
   sizeBytes: number;
+};
+
+export type ImportSkillsResult = {
+  imported: SkillResource[];
+  updated: SkillResource[];
+  errors: { name: string; message: string }[];
 };
