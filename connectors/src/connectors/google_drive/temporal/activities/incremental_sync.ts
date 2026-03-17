@@ -236,6 +236,8 @@ export async function incrementalSync(
         const moved =
           localFolder && localFolder.parentId !== parentGoogleIds[1];
 
+        // Drive change events do not tell us which folder field changed, so we
+        // refresh folder metadata on every seen folder change.
         if (localFolder && moved) {
           await localFolder.update({
             name: driveFile.name,

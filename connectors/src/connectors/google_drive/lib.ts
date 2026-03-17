@@ -240,14 +240,14 @@ export async function updateParentsField(
 
 export async function updateFolderMetadata(
   connector: ConnectorResource,
-  file: GoogleDriveFilesModel,
+  folder: GoogleDriveFilesModel,
   driveFile: GoogleDriveObjectType,
   parentIds: string[],
   logger: Logger
 ) {
   const parentId = parentIds[1] ? getDriveFileId(parentIds[1]) : null;
 
-  await file.update({
+  await folder.update({
     name: driveFile.name,
     mimeType: driveFile.mimeType,
     parentId,
@@ -257,18 +257,18 @@ export async function updateFolderMetadata(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   logger.info(
-    { file: file.dustFileId, parentIds, title: driveFile.name },
+    { file: folder.dustFileId, parentIds, title: driveFile.name },
     "Updating folder metadata"
   );
 
   await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: file.dustFileId,
+    folderId: folder.dustFileId,
     parents: parentIds,
     parentId: parentIds[1] ?? null,
     title: driveFile.name,
     mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+    sourceUrl: getSourceUrlForGoogleDriveFiles(folder),
   });
 }
 
