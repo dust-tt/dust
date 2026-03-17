@@ -4,7 +4,6 @@ import {
   isEntreprisePlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -49,7 +48,6 @@ export async function getWhitelistedProviders(
   auth: Authenticator
 ): Promise<Set<ModelProviderIdType>> {
   const owner = auth.getNonNullableWorkspace();
-  const plan = auth.getNonNullablePlan();
   const whiteListedProviders = new Set<ModelProviderIdType>(
     owner.whiteListedProviders ?? MODEL_PROVIDER_IDS
   );
@@ -57,20 +55,7 @@ export async function getWhitelistedProviders(
   // noop never sees user data, always whitelisted.
   whiteListedProviders.add("noop");
 
-  if (!plan.isByok) {
-    return whiteListedProviders;
-  }
-
-  // For BYOK: also require a healthy configured key.
-  const credentials = await ProviderCredentialResource.listByWorkspace(auth);
-  const healthyProviders = new Set<ModelProviderIdType>(
-    credentials.filter((c) => c.isHealthy).map((c) => c.providerId)
-  );
-
-  // noop never needs credentials.
-  healthyProviders.add("noop");
-
-  return whiteListedProviders.intersection(healthyProviders);
+  return whiteListedProviders;
 }
 
 export async function isProviderWhitelisted(
