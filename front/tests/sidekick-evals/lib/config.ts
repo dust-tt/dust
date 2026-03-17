@@ -7,7 +7,6 @@ import {
   MCP_SERVERS_FOR_GLOBAL_AGENTS,
   type MCPServerViewsForGlobalAgentsMap,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { prefetchWhitelistedModels } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -98,12 +97,10 @@ export async function getSidekickConfig(): Promise<{
       `Unknown SIDEKICK_AGENT: "${SIDEKICK_AGENT}". Must be "default".`
     );
   }
-  const prefetchedModels = await prefetchWhitelistedModels(auth);
   const sidekickConfig = _getSidekickGlobalAgent(auth, {
     sidekickContext: mockSidekickContext,
     preFetchedDataSources: null,
     mcpServerViews: MOCK_MCP_SERVER_VIEWS,
-    prefetchedModels,
   });
 
   const tools: AgentActionSpecification[] = [GET_AGENT_CONFIG_SPEC];

@@ -24,6 +24,11 @@ import {
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
@@ -40,7 +45,6 @@ import type {
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
@@ -69,7 +73,6 @@ interface DustLikeGlobalAgentArgs {
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
-  prefetchedModels: PrefetchedWhitelistedModels;
   globalAgentContext?: GlobalAgentContext;
 }
 
@@ -316,7 +319,6 @@ function _getDustLikeGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     hasDeepDive,
-    prefetchedModels,
     globalAgentContext,
   }: DustLikeGlobalAgentArgs,
   {
@@ -357,20 +359,18 @@ function _getDustLikeGlobalAgent(
     }
 
     if (!auth.isUpgraded()) {
-      return prefetchedModels.small;
+      return getSmallWhitelistedModel(auth);
     }
 
     if (
       preferredModelConfiguration &&
-      prefetchedModels.whitelistedProviders.has(
-        preferredModelConfiguration.providerId
-      )
+      isProviderWhitelisted(auth, preferredModelConfiguration.providerId)
     ) {
       isPreferredModel = true;
       return preferredModelConfiguration;
     }
 
-    return prefetchedModels.large;
+    return getLargeWhitelistedModel(auth);
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration
