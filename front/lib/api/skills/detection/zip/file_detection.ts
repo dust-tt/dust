@@ -23,7 +23,7 @@ export async function detectSkillsFromUploadedFiles(
     if (!ACCEPTED_EXTENSIONS.has(ext)) {
       await cleanupTempFiles(uploadedFiles);
       return new Err(
-        new Error(`Unsupported file type "${ext}". Accepted: .zip, .skill`)
+        new Error(`Unsupported file type "${ext}". Accepted: ${[...ACCEPTED_EXTENSIONS].join(", ")}`)
       );
     }
   }
