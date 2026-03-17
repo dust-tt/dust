@@ -48,8 +48,10 @@ export function SuggestionDataTable({
       owner={owner}
       useSWRHook={useSuggestionsWithAgent}
     >
-      {(suggestions) => {
-        const columns = makeColumnsForSuggestions();
+      {(suggestions, mutate) => {
+        const columns = makeColumnsForSuggestions(owner, agentId, async () => {
+          await mutate();
+        });
 
         return (
           <PokeDataTable<AgentSuggestionType, unknown>
