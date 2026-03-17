@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
@@ -324,9 +325,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         if (imageResult.isErr()) {
           return imageResult;
         }
-        const createResult = await provider.create(
-          imageResult.value.toCreateConfig()
-        );
+
+        const createConfig = imageResult.value.toCreateConfig();
+
+        const createResult = await provider.create({
+          ...createConfig,
+          envVars: {
+            ...createConfig.envVars,
+            DD_API_KEY: config.getDatadogApiKey() ?? "",
+            DD_HOST: "http-intake.logs.datadoghq.eu",
+            CONVERSATION_ID: conversation.sId,
+            WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+          },
+        });
         if (createResult.isErr()) {
           return createResult;
         }
@@ -336,6 +347,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           providerId: createResult.value.providerId,
           status: "running",
         });
+
+        const startTelemetry = await provider.exec(
+          createResult.value.providerId,
+          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &"
+        );
+        if (startTelemetry.isErr()) {
+          logger.warn(
+            { error: startTelemetry.error.message },
+            "Failed to start fluent-bit telemetry"
+          );
+        }
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -379,14 +401,36 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (imageResult.isErr()) {
             return imageResult;
           }
-          const createResult = await provider.create(
-            imageResult.value.toCreateConfig()
-          );
+
+          const createConfig = imageResult.value.toCreateConfig();
+
+          const createResult = await provider.create({
+            ...createConfig,
+            envVars: {
+              ...createConfig.envVars,
+              DD_API_KEY: config.getDatadogApiKey() ?? "",
+              DD_HOST: "http-intake.logs.datadoghq.eu",
+              CONVERSATION_ID: conversation.sId,
+              WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+            },
+          });
           if (createResult.isErr()) {
             return createResult;
           }
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
+
+          const startTelemetry = await provider.exec(
+            createResult.value.providerId,
+            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &"
+          );
+          if (startTelemetry.isErr()) {
+            logger.warn(
+              { error: startTelemetry.error.message },
+              "Failed to start fluent-bit telemetry"
+            );
+          }
+
           logger.info(
             {
               sandbox: existing.toLogJSON(),

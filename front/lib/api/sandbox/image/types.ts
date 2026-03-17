@@ -81,7 +81,14 @@ export interface NetworkPolicy {
 
 export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
-  allowlist: ["storage.googleapis.com", "dust.tt", "*.dust.tt"],
+  allowlist: [
+    "storage.googleapis.com",
+    "dust.tt",
+    "*.dust.tt",
+    // Datadog EU — sandbox telemetry
+    "http-intake.logs.datadoghq.eu",
+    "api.datadoghq.eu",
+  ],
 };
 
 // ---------------------------------------------------------------------------

@@ -33,17 +33,19 @@ EOF
     return 1
   fi
 
-  local exit_code
-  # Use timeout if available (Linux), otherwise run without timeout (macOS dev)
+  # Build command prefix (Linux has timeout, macOS doesn't)
+  local prefix=()
   if command -v timeout &>/dev/null; then
-    timeout "${timeout_sec}s" bash -c "$cmd" | _dust_truncate_chars
-    exit_code=${PIPESTATUS[0]}
-    if [[ $exit_code -eq 124 ]]; then
-      echo "[Command timed out after ${timeout_sec}s]" >&2
-    fi
-  else
-    bash -c "$cmd" | _dust_truncate_chars
-    exit_code=${PIPESTATUS[0]}
+    prefix=(timeout "${timeout_sec}s")
+  fi
+
+  # Run command
+  local exit_code
+  "${prefix[@]}" bash -c "$cmd" | _dust_truncate_chars
+  exit_code=${PIPESTATUS[0]}
+
+  if [[ $exit_code -eq 124 ]]; then
+    echo "[Command timed out after ${timeout_sec}s]" >&2
   fi
 
   return $exit_code

@@ -485,6 +485,9 @@ const config = {
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
+  getDatadogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
