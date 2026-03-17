@@ -23,8 +23,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetAvailableModelsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "GET":
       const featureFlags = await getFeatureFlags(auth);
