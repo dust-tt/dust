@@ -43,7 +43,10 @@ import type {
   ConversationWithoutContentType,
   LightMessageType,
 } from "@app/types/assistant/conversation";
-import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import {
+  isUserMessageType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
@@ -842,12 +845,19 @@ export const ConversationViewer = ({
     ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
     : undefined;
 
+  const firstMessage = messages.at(-1)?.messages.at(0);
+  const isOnboardingConversation =
+    !!firstMessage &&
+    isUserMessageType(firstMessage) &&
+    firstMessage.context.origin === "onboarding_conversation";
+
   const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
       owner,
       handleSubmit,
       conversation,
+      isOnboardingConversation,
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -866,6 +876,7 @@ export const ConversationViewer = ({
     owner,
     handleSubmit,
     conversation,
+    isOnboardingConversation,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,

@@ -65,6 +65,7 @@ export type VirtuosoMessage =
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
+  isOnboardingConversation: boolean;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
