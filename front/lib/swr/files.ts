@@ -38,6 +38,13 @@ export const getFileViewUrl = (
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
+export const getSandboxFileDownloadUrl = (
+  owner: LightWorkspaceType,
+  conversationId: string,
+  gcsPath: string
+) =>
+  `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files/download?path=${encodeURIComponent(gcsPath)}`;
+
 export function useFileProcessedContent({
   owner,
   fileId,
