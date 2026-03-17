@@ -233,6 +233,15 @@ function BackendSearch({
     setSearchValue(value);
   };
 
+  // Clear local search state after navigating into a folder. Intentionally does
+  // not call searchParam.setParam(undefined): that shallow-pushes to the current
+  // pathname, racing with the folder navigation push and overriding it when
+  // invoked from the category page (see tasks#7098).
+  const handleClearSearchState = React.useCallback(() => {
+    setSearchValue("");
+    setNodeOrUrlCandidate(null);
+  }, [setSearchValue]);
+
   // Check if the search term is a URL
   React.useEffect(() => {
     if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
@@ -457,6 +466,7 @@ function BackendSearch({
               isLoading={isSearchLoading}
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
+              onClearSearchState={handleClearSearchState}
               sorting={sorting}
               setSorting={handleSortingChange}
               scrollableDataTableRef={scrollableDataTableRef}
@@ -550,6 +560,7 @@ interface SearchResultsTableProps {
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
+  onClearSearchState: () => void;
   scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
@@ -567,6 +578,7 @@ function SearchResultsTable({
   isLoading,
   onOpenDocument,
   setEffectiveContentNode,
+  onClearSearchState,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useAppRouter();
@@ -668,6 +680,7 @@ function SearchResultsTable({
                   ? baseUrl
                   : `${baseUrl}?parentId=${parentId}`;
               void router.push(url);
+              onClearSearchState();
             }
           },
         }),
@@ -688,6 +701,7 @@ function SearchResultsTable({
       };
     });
   }, [
+    onClearSearchState,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,
