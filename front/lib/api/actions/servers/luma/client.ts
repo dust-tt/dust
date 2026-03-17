@@ -30,6 +30,23 @@ import { z } from "zod";
 
 const LUMA_API_BASE_URL = "https://public-api.luma.com";
 
+const LUMA_API_PATHS = {
+  getSelf: "/v1/user/get-self",
+  getEvent: "/v1/event/get",
+  listEvents: "/v1/calendar/list-events",
+  getGuests: "/v1/event/get-guests",
+  getGuest: "/v1/event/get-guest",
+  listTicketTypes: "/v1/event/ticket-types/list",
+  createEvent: "/v1/event/create",
+  updateEvent: "/v1/event/update",
+  updateGuestStatus: "/v1/event/update-guest-status",
+  addGuests: "/v1/event/add-guests",
+  sendInvites: "/v1/event/send-invites",
+} as const;
+
+const LUMA_LIST_ALL_GUESTS_MAX = 1000;
+const LUMA_LIST_ALL_GUESTS_PAGE_SIZE = 50;
+
 export function getLumaClient(
   extra: ToolHandlerExtra
 ): Result<LumaClient, MCPError> {
@@ -119,12 +136,12 @@ export class LumaClient {
 
   async getSelf(): Promise<Result<LumaUser, Error>> {
     // get-self returns the user object directly (no wrapper).
-    return this.request("GET", "/v1/user/get-self", LumaUserSchema);
+    return this.request("GET", LUMA_API_PATHS.getSelf, LumaUserSchema);
   }
 
   async getEvent(eventApiId: string): Promise<Result<LumaEvent, Error>> {
     // get event returns the event object directly.
-    return this.request("GET", `/v1/event/get`, LumaEventSchema, {
+    return this.request("GET", LUMA_API_PATHS.getEvent, LumaEventSchema, {
       event_api_id: eventApiId,
     });
   }
@@ -136,7 +153,7 @@ export class LumaClient {
   > {
     const result = await this.request(
       "GET",
-      "/v1/calendar/list-events",
+      LUMA_API_PATHS.listEvents,
       LumaEventListResponseSchema,
       { ...params }
     );
@@ -157,7 +174,7 @@ export class LumaClient {
   > {
     const result = await this.request(
       "GET",
-      "/v1/event/get-guests",
+      LUMA_API_PATHS.getGuests,
       LumaGuestListResponseSchema,
       { event_api_id: eventApiId, ...params }
     );
@@ -174,7 +191,7 @@ export class LumaClient {
     eventApiId: string,
     guestApiId: string
   ): Promise<Result<LumaGuest, Error>> {
-    return this.request("GET", "/v1/event/get-guest", LumaGuestSchema, {
+    return this.request("GET", LUMA_API_PATHS.getGuest, LumaGuestSchema, {
       event_api_id: eventApiId,
       guest_api_id: guestApiId,
     });
@@ -185,7 +202,7 @@ export class LumaClient {
   ): Promise<Result<LumaTicketType[], Error>> {
     const result = await this.request(
       "GET",
-      "/v1/event/ticket-types/list",
+      LUMA_API_PATHS.listTicketTypes,
       LumaTicketTypeListResponseSchema,
       { event_api_id: eventApiId }
     );
@@ -200,7 +217,7 @@ export class LumaClient {
   async createEvent(
     data: CreateEventParams
   ): Promise<Result<LumaEvent, Error>> {
-    return this.request("POST", "/v1/event/create", LumaEventSchema, {
+    return this.request("POST", LUMA_API_PATHS.createEvent, LumaEventSchema, {
       ...data,
     });
   }
@@ -209,7 +226,7 @@ export class LumaClient {
     eventApiId: string,
     data: UpdateEventParams
   ): Promise<Result<LumaEvent, Error>> {
-    return this.request("POST", "/v1/event/update", LumaEventSchema, {
+    return this.request("POST", LUMA_API_PATHS.updateEvent, LumaEventSchema, {
       event_api_id: eventApiId,
       ...data,
     });
@@ -226,7 +243,7 @@ export class LumaClient {
 
     const result = await this.request(
       "POST",
-      "/v1/event/update-guest-status",
+      LUMA_API_PATHS.updateGuestStatus,
       z.object({}).passthrough(),
       {
         event_api_id: eventApiId,
@@ -247,7 +264,7 @@ export class LumaClient {
   ): Promise<Result<LumaGuest[], Error>> {
     const result = await this.request(
       "POST",
-      "/v1/event/add-guests",
+      LUMA_API_PATHS.addGuests,
       LumaGuestListResponseSchema,
       { event_api_id: eventApiId, guests }
     );
@@ -263,7 +280,7 @@ export class LumaClient {
   ): Promise<Result<void, Error>> {
     const result = await this.request(
       "POST",
-      "/v1/event/send-invites",
+      LUMA_API_PATHS.sendInvites,
       z.object({}).passthrough(),
       { event_api_id: eventApiId, ...data }
     );
@@ -277,7 +294,7 @@ export class LumaClient {
 
   async listAllGuests(
     eventApiId: string,
-    maxGuests = 1000
+    maxGuests = LUMA_LIST_ALL_GUESTS_MAX
   ): Promise<Result<LumaGuest[], Error>> {
     const allGuests: LumaGuest[] = [];
     let paginationCursor: string | undefined;
@@ -285,7 +302,7 @@ export class LumaClient {
     while (allGuests.length < maxGuests) {
       const result = await this.listGuests(eventApiId, {
         pagination_cursor: paginationCursor,
-        pagination_limit: 50,
+        pagination_limit: LUMA_LIST_ALL_GUESTS_PAGE_SIZE,
       });
       if (result.isErr()) {
         return result;
