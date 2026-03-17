@@ -92,6 +92,9 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
     "crates.io",
     "static.crates.io",
     "index.crates.io",
+    // Datadog EU — sandbox telemetry
+    "http-intake.logs.datadoghq.eu",
+    "api.datadoghq.eu",
   ],
 };
 
