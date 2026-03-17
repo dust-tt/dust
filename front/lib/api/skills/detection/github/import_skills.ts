@@ -15,7 +15,7 @@ import type {
 import { importDetectedSkills } from "@app/lib/api/skills/detection/import_detected_skills";
 import type { ImportSkillsResult } from "@app/lib/api/skills/detection/types";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -76,9 +76,7 @@ export async function importSkillsFromGitHub(
         { concurrency: IMPORT_CONCURRENCY }
       );
 
-      return uploadResults.filter(
-        (r): r is FileResource => r !== null
-      );
+      return uploadResults.filter((r): r is FileResource => r !== null);
     },
   });
 

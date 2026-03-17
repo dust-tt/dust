@@ -1,6 +1,6 @@
 import { importDetectedSkills } from "@app/lib/api/skills/detection/import_detected_skills";
-import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/zip/file_detection";
 import type { ImportSkillsResult } from "@app/lib/api/skills/detection/types";
+import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/zip/file_detection";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
