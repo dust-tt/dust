@@ -479,7 +479,13 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
-    skills: ["discover_skills", "frames", "go-deep", "mention_users"],
+    skills: [
+      "discover_skills",
+      "frames",
+      "go-deep",
+      "mention_users",
+      "sandbox",
+    ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
