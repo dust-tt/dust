@@ -78,11 +78,11 @@ export async function getAgentConfigurationsActivity({
 export async function getRecentConversationsForAgentActivity({
   workspaceId,
   agentConfigurationId,
-  daysOfConversations = 1,
+  conversationLookbackDays = 1,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
-  daysOfConversations?: number;
+  conversationLookbackDays?: number;
 }): Promise<string[]> {
   updateActiveTrace({
     name: "Reinforced Agent Workflow",
@@ -92,7 +92,9 @@ export async function getRecentConversationsForAgentActivity({
   const auth = await getAuthForWorkspace(workspaceId);
 
   const updatedSince = new Date();
-  updatedSince.setHours(updatedSince.getHours() - daysOfConversations * 24);
+  updatedSince.setHours(
+    updatedSince.getHours() - conversationLookbackDays * 24
+  );
 
   return ConversationResource.listRecentConversationsForAgent(auth, {
     agentConfigurationId,

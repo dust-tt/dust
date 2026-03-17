@@ -66,13 +66,13 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      const daysOfConversations =
+      const conversationLookbackDays =
         argv["days"] !== undefined ? Number(argv["days"]) : 1;
       await startReinforcedAgentForAgentWorkflow({
         workspaceId,
         agentConfigurationId: agentId,
         useBatchMode: argv["batch"],
-        daysOfConversations,
+        conversationLookbackDays,
       });
       return;
     }
