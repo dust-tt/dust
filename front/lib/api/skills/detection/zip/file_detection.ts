@@ -33,6 +33,7 @@ export async function detectSkillsFromUploadedFiles(
   for (const file of uploadedFiles) {
     const buffer = await readFile(file.filepath);
     await unlink(file.filepath).catch(() => {});
+
     const result = detectSkillsFromZip({ zipBuffer: buffer });
     if (result.isErr()) {
       await cleanupTempFiles(uploadedFiles);
