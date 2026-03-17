@@ -120,8 +120,8 @@ export function ConversationFilesPanel({
         <div className="flex h-full flex-col">
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
-              <span className="text-sm font-normal text-primary dark:text-primary-night">
-                Files
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                Working Files
               </span>
               <Button
                 variant="ghost"
@@ -151,7 +151,7 @@ export function ConversationFilesPanel({
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
               <TabsList border={false}>
-                <TabsTrigger value="files" label="Files" />
+                <TabsTrigger value="files" label="Working Files" />
                 <TabsTrigger value="sandbox" label="Sandbox" />
               </TabsList>
               <div className="flex items-center gap-2">
