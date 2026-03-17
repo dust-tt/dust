@@ -202,6 +202,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "GoogleSpreadsheetLogo",
   "GranolaLogo",
   "GuruLogo",
+  "HexLogo",
   "HubspotLogo",
   "IntercomLogo",
   "JiraLogo",
