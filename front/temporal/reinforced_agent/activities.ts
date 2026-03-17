@@ -249,10 +249,10 @@ export async function processConversationAnalysisBatchResultActivity({
   const results = await llm.getBatchResult(batchId);
 
   // Resolve conversation sIds to resources for FK storage.
-  const conversationSIds = [...results.keys()];
+  const conversationIds = [...results.keys()];
   const conversations = await ConversationResource.fetchByIds(
     auth,
-    conversationSIds
+    conversationIds
   );
   const conversationById = new Map(conversations.map((c) => [c.sId, c]));
 
