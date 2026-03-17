@@ -24,6 +24,19 @@ interface ConversationContainerProps {
   serverId?: string;
 }
 
+const SUGGESTIONS = {
+  formHelper: {
+    id: "form_helper",
+    title: "Dust can help you fill out forms",
+    description: "Ask an agent to get started",
+  },
+  multiTab: {
+    id: "multi_tab",
+    title: "Dust can work across all your open tabs",
+    description: "Ask an agent to get started",
+  },
+} as const;
+
 export const ConversationContainer = ({
   workspace,
   user,
@@ -62,6 +75,7 @@ export const ConversationContainer = ({
 
   const [suggestion, setSuggestion] = useState<
     | {
+        id: string;
         title: string;
         description: string;
       }
@@ -91,21 +105,37 @@ export const ConversationContainer = ({
     };
   }, [platform.messaging, fileUploaderService.uploadContentTab]);
 
+  const handleDismissSuggestion = async (id: string) => {
+    const dismissed = await platform.storage.get<string[]>(
+      "dismissedSuggestions"
+    );
+    const updated = [...(dismissed ?? []), id];
+    await platform.storage.set("dismissedSuggestions", updated);
+    setSuggestion(undefined);
+  };
+
   useEffect(() => {
+    const isSuggestionDismissed = async (id: string): Promise<boolean> => {
+      const dismissed = await platform.storage.get<string[]>(
+        "dismissedSuggestions"
+      );
+      return (dismissed ?? []).includes(id);
+    };
+
     void sendGetSessionInfoMessage()
-      .then((response) => {
-        if (response.currentTabHasForm) {
-          setSuggestion({
-            title: "Dust can help you fill out forms",
-            description: "Ask an agent to get started",
-          });
+      .then(async (response) => {
+        if (
+          response.currentTabHasForm &&
+          !(await isSuggestionDismissed(SUGGESTIONS.formHelper.id))
+        ) {
+          setSuggestion(SUGGESTIONS.formHelper);
           return;
         }
-        if (response.tabsCount > 2) {
-          setSuggestion({
-            title: "Dust can work across all your open tabs",
-            description: "Ask an agent to get started",
-          });
+        if (
+          response.tabsCount > 2 &&
+          !(await isSuggestionDismissed(SUGGESTIONS.multiTab.id))
+        ) {
+          setSuggestion(SUGGESTIONS.multiTab);
         }
       })
       .catch(() => {
@@ -126,6 +156,7 @@ export const ConversationContainer = ({
           conversationId={conversationId}
           clientSideMCPServerIds={clientSideMCPServerIds}
           suggestion={suggestion}
+          onDismissSuggestion={handleDismissSuggestion}
         />
       </div>
       {conversation && currentPanel && (
