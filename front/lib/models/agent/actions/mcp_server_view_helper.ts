@@ -6,7 +6,10 @@ import {
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillMCPServerConfigurationModel,
+  SkillVersionModel,
+} from "@app/lib/models/skill";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -23,6 +26,30 @@ const getSkillDependencyKey = ({
   skillConfigurationId,
 }: Pick<SkillMCPServerConfigurationModel, "skillConfigurationId">) =>
   `${skillConfigurationId}`;
+
+const remapMCPServerViewIds = (
+  mcpServerViewIds: ModelId[],
+  fromMCPServerViewIdSet: Set<ModelId>,
+  toMCPServerViewId: ModelId
+) => {
+  const remappedMCPServerViewIds: ModelId[] = [];
+  const seenMCPServerViewIds = new Set<ModelId>();
+
+  for (const mcpServerViewId of mcpServerViewIds) {
+    const nextMCPServerViewId = fromMCPServerViewIdSet.has(mcpServerViewId)
+      ? toMCPServerViewId
+      : mcpServerViewId;
+
+    if (seenMCPServerViewIds.has(nextMCPServerViewId)) {
+      continue;
+    }
+
+    remappedMCPServerViewIds.push(nextMCPServerViewId);
+    seenMCPServerViewIds.add(nextMCPServerViewId);
+  }
+
+  return remappedMCPServerViewIds;
+};
 
 export const reassignMCPServerViewDependencies = async (
   auth: Authenticator,
@@ -212,6 +239,32 @@ export const reassignMCPServerViewDependencies = async (
       },
       transaction,
     });
+  }
+
+  const skillVersions = await SkillVersionModel.findAll({
+    where: {
+      workspaceId,
+    },
+    transaction,
+  });
+
+  for (const skillVersion of skillVersions) {
+    if (
+      !skillVersion.mcpServerViewIds.some((mcpServerViewId) =>
+        fromMCPServerViewIdSet.has(mcpServerViewId)
+      )
+    ) {
+      continue;
+    }
+
+    const remappedMCPServerViewIds = remapMCPServerViewIds(
+      skillVersion.mcpServerViewIds,
+      fromMCPServerViewIdSet,
+      toMCPServerViewId
+    );
+
+    skillVersion.mcpServerViewIds = remappedMCPServerViewIds;
+    await skillVersion.save({ transaction });
   }
 };
 

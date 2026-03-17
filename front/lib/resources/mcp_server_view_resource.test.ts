@@ -18,6 +18,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SkillVersionFactory } from "@app/tests/utils/SkillVersionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -582,6 +583,9 @@ describe("MCPServerViewResource", () => {
       const skill = await SkillFactory.create(userAuth, {
         mcpServerViews: [regularView],
       });
+      await SkillVersionFactory.create(skill, {
+        mcpServerViews: [regularView],
+      });
 
       const globalView = await MCPServerViewResource.create(adminAuth, {
         systemView,
@@ -606,6 +610,10 @@ describe("MCPServerViewResource", () => {
       expect(reloadedSkill).not.toBeNull();
       expect(reloadedSkill?.mcpServerViews).toHaveLength(1);
       expect(reloadedSkill?.mcpServerViews[0].id).toBe(globalView.id);
+      const skillVersions = await reloadedSkill?.listVersions(userAuth);
+      expect(skillVersions).toHaveLength(1);
+      expect(skillVersions?.[0].mcpServerViews).toHaveLength(1);
+      expect(skillVersions?.[0].mcpServerViews[0].id).toBe(globalView.id);
 
       const deletedRegularView =
         await MCPServerViewResource.getByMCPServerAndSpace(
