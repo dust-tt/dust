@@ -9,7 +9,7 @@ import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/Wor
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
 import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -19,6 +19,7 @@ import { useState } from "react";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
+  const { hasFeature } = useFeatureFlags();
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
   const [period, setPeriod] =
@@ -169,13 +170,15 @@ export function AnalyticsPage() {
       <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
       <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
       <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
-      <ActivityReport
-        downloadingMonth={downloadingMonth}
-        monthOptions={monthOptions}
-        handleDownload={handleDownload}
-        includeInactive={includeInactive}
-        onIncludeInactiveChange={setIncludeInactive}
-      />
+      {!hasFeature("analytics_csv_export") && (
+        <ActivityReport
+          downloadingMonth={downloadingMonth}
+          monthOptions={monthOptions}
+          handleDownload={handleDownload}
+          includeInactive={includeInactive}
+          onIncludeInactiveChange={setIncludeInactive}
+        />
+      )}
     </Page.Vertical>
   );
 }
