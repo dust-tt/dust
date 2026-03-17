@@ -87,8 +87,7 @@ async function handler(
         });
       }
 
-      const workspace = auth.getNonNullableWorkspace();
-      const flags = await getFeatureFlags(workspace);
+      const flags = await getFeatureFlags(auth);
       if (!flags.includes("agent_management_tool")) {
         return apiError(req, res, {
           status_code: 403,

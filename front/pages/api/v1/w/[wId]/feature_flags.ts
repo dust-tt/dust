@@ -18,7 +18,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
       status_code: 404,
@@ -31,7 +30,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const feature_flags = await getFeatureFlags(owner);
+      const feature_flags = await getFeatureFlags(auth);
       return res.status(200).json({ feature_flags });
 
     default:

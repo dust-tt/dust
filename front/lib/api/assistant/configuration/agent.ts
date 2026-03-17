@@ -1591,7 +1591,7 @@ async function canPublishAgent(auth: Authenticator): Promise<{
   canPublish: boolean;
   message: string | null;
 }> {
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
   const level = getPublishingRestrictionLevel(featureFlags);
   if (!level || canPublishForAuth(auth, level)) {
     return { canPublish: true, message: null };

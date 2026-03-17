@@ -124,11 +124,11 @@ async function handler(
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
-      const flags = await getFeatureFlags(owner);
+      const flags = await getFeatureFlags(auth);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
       // Fetch the feature flags of the app's workspace.
-      const keyWorkspaceFlags = await getFeatureFlags(owner);
+      const keyWorkspaceFlags = await getFeatureFlags(auth);
 
       const dustRun = await coreAPI.createRun(
         owner,

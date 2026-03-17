@@ -49,8 +49,7 @@ async function handler(
     bodyValidationResult._tag === "Right" &&
     bodyValidationResult.right.auto_respond_without_mention
   ) {
-    const owner = auth.getNonNullableWorkspace();
-    const featureFlags = await getFeatureFlags(owner);
+    const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("slack_enhanced_default_agent")) {
       return apiError(req, res, {
         status_code: 403,

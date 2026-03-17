@@ -44,7 +44,7 @@ export async function getFlaggedWorkspacesActivity(): Promise<string[]> {
 
   for (const workspace of allWorkspaces) {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("reinforced_agents")) {
       flaggedIds.push(workspace.sId);
     }

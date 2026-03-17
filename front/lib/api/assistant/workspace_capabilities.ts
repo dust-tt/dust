@@ -39,8 +39,7 @@ export interface AvailableSkill {
 export async function getAvailableModelsForWorkspace(
   auth: Authenticator
 ): Promise<ModelConfigurationType[]> {
-  const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
 
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
   return filterCustomAvailableAndWhitelistedModels(

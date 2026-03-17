@@ -19,7 +19,7 @@ export const discoverSkillsSkill = {
   icon: "PuzzleIcon",
   isAutoEnabled: true,
   isRestricted: async (auth: Authenticator) => {
-    const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const flags = await getFeatureFlags(auth);
 
     return !flags.includes("discover_skills");
   },

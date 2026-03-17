@@ -27,7 +27,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const featureFlags = await getFeatureFlags(owner);
+      const featureFlags = await getFeatureFlags(auth);
       // Include both standard models and custom models (from GCS at build time)
       const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
       const models = await filterCustomAvailableAndWhitelistedModels(

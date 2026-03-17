@@ -65,8 +65,9 @@ async function isEmailAgentsEnabled(
     );
     return false;
   }
-  const workspace = authResult.value.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
+  const auth = authResult.value;
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("email_agents")) {
     logger.info(
       { workspaceId: authType.workspaceId },

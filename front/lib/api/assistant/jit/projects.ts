@@ -19,7 +19,7 @@ export async function getProjectSearchServer(
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
 
   if (
     !featureFlags.includes("projects") ||

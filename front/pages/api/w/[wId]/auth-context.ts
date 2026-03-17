@@ -85,7 +85,7 @@ async function handler(
     ? await isWorkspaceEligibleForTrial(auth)
     : false;
 
-  const featureFlags = await getFeatureFlags(workspace);
+  const featureFlags = await getFeatureFlags(auth);
 
   return res.status(200).json({
     user: user.toJSON(),
