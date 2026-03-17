@@ -19,6 +19,18 @@ RUN GCSFUSE_REPO=$(lsb_release -c -s) \
 RUN apt-get update && apt-get install -y --no-install-recommends gcsfuse \
   && rm -rf /var/lib/apt/lists/*
 
+# Rename ubuntu -> user (keeps uid 1000, E2B expects 'user' account)
+RUN usermod -l user -d /home/user -m ubuntu \
+  && groupmod -n user ubuntu
+
+# Fluent Bit for telemetry
+RUN curl -fsSL https://packages.fluentbit.io/fluentbit.key | gpg --dearmor -o /usr/share/keyrings/fluentbit-keyring.gpg \
+  && echo 'deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/ubuntu/noble noble main' > /etc/apt/sources.list.d/fluent-bit.list \
+  && apt-get update && apt-get install -y --no-install-recommends fluent-bit \
+  && (getent group systemd-journal || groupadd -r systemd-journal) \
+  && usermod -aG systemd-journal user \
+  && rm -rf /var/lib/apt/lists/*
+
 # Python via uv (official Astral approach)
 # UV handles arch automatically
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
