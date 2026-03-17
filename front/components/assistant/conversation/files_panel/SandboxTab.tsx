@@ -7,10 +7,7 @@ import {
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import {
-  getFileProcessedUrl,
-  getSandboxFileDownloadUrl,
-} from "@app/lib/swr/files";
+import { downloadSandboxFile, getFileProcessedUrl } from "@app/lib/swr/files";
 import type { SandboxFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -23,17 +20,69 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-function getSandboxFileImageUrl(
-  owner: LightWorkspaceType,
-  conversationId: string,
-  entry: SandboxFileEntry
-): string {
-  if (entry.fileId) {
-    return getFileProcessedUrl(owner, entry.fileId);
+interface SandboxImageProps {
+  owner: LightWorkspaceType;
+  conversationId: string;
+  entry: SandboxFileEntry;
+  className?: string;
+}
+
+function SandboxImage({
+  owner,
+  conversationId,
+  entry,
+  className,
+}: SandboxImageProps) {
+  const [src, setSrc] = useState<string | null>(() =>
+    entry.fileId ? getFileProcessedUrl(owner, entry.fileId) : null
+  );
+
+  useEffect(() => {
+    if (entry.fileId) {
+      setSrc(getFileProcessedUrl(owner, entry.fileId));
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    const loadImage = async () => {
+      try {
+        const res = await downloadSandboxFile(
+          owner,
+          conversationId,
+          entry.path
+        );
+        const blob = await res.blob();
+        if (!cancelled) {
+          objectUrl = URL.createObjectURL(blob);
+          setSrc(objectUrl);
+        }
+      } catch {
+        // Silently fail — the spinner stays, which is acceptable for thumbnails.
+      }
+    };
+    void loadImage();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [owner, conversationId, entry.path, entry.fileId]);
+
+  if (!src) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Spinner size="sm" />
+      </div>
+    );
   }
-  return getSandboxFileDownloadUrl(owner, conversationId, entry.path);
+
+  return <img src={src} alt={entry.fileName} className={className} />;
 }
 
 interface SandboxTabProps {
@@ -144,13 +193,10 @@ export function SandboxTab({
                           containerClassName="h-24 overflow-hidden rounded-xl"
                           className="overflow-hidden"
                         >
-                          <img
-                            src={getSandboxFileImageUrl(
-                              owner,
-                              conversationId,
-                              entry
-                            )}
-                            alt={entry.fileName}
+                          <SandboxImage
+                            owner={owner}
+                            conversationId={conversationId}
+                            entry={entry}
                             className="absolute inset-0 h-full w-full object-cover"
                           />
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">

@@ -38,12 +38,23 @@ export const getFileViewUrl = (
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
-export const getSandboxFileDownloadUrl = (
+export async function downloadSandboxFile(
   owner: LightWorkspaceType,
   conversationId: string,
-  gcsPath: string
-) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files/download?path=${encodeURIComponent(gcsPath)}`;
+  filePath: string
+): Promise<Response> {
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files/download`;
+  const res = await clientFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filePath }),
+  });
+  if (!res.ok) {
+    const errorData = await getErrorFromResponse(res);
+    throw new Error(errorData.message);
+  }
+  return res;
+}
 
 export function useFileProcessedContent({
   owner,

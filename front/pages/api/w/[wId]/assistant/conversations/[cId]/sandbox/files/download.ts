@@ -5,6 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -15,17 +16,17 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<never>>,
   auth: Authenticator
 ): Promise<void> {
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
       api_error: {
         type: "method_not_supported_error",
-        message: "Only GET method is supported.",
+        message: "Only POST method is supported.",
       },
     });
   }
 
-  const { cId, path } = req.query;
+  const { cId } = req.query;
   if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
@@ -36,12 +37,13 @@ async function handler(
     });
   }
 
-  if (!isString(path)) {
+  const { filePath } = req.body;
+  if (!isString(filePath)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `path` (string) is required.",
+        message: "Invalid body, `filePath` (string) is required.",
       },
     });
   }
@@ -59,7 +61,7 @@ async function handler(
     workspaceId: owner.sId,
     conversationId: cId,
   });
-  if (path.includes("..") || !path.startsWith(expectedPrefix)) {
+  if (filePath.includes("..") || !filePath.startsWith(expectedPrefix)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -72,7 +74,7 @@ async function handler(
   const bucket = getPrivateUploadBucket();
 
   try {
-    const contentType = await bucket.getFileContentType(path);
+    const contentType = await bucket.getFileContentType(filePath);
     if (contentType) {
       res.setHeader("Content-Type", contentType);
     }
@@ -86,16 +88,12 @@ async function handler(
     });
   }
 
-  const readStream = bucket.file(path).createReadStream();
+  const readStream = bucket.file(filePath).createReadStream();
 
-  readStream.on("error", () => {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
+  readStream.on("error", (err) => {
+    logger.error({ err, filePath }, "Error streaming sandbox file");
+    readStream.destroy();
+    res.end();
   });
 
   readStream.pipe(res);

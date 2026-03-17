@@ -11,8 +11,9 @@ import {
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { getSandboxFileDownloadUrl } from "@app/lib/swr/files";
+import { downloadSandboxFile } from "@app/lib/swr/files";
 import type { SandboxFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
@@ -25,7 +26,7 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 interface ConversationFilesPanelProps {
   conversation: ConversationWithoutContentType;
@@ -41,7 +42,10 @@ export function ConversationFilesPanel({
     null
   );
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
+  const isDownloadingRef = useRef(false);
+  const blobUrlRef = useRef<string | null>(null);
   const { openPanel, closePanel } = useConversationSidePanelContext();
+  const sendNotification = useSendNotification();
 
   const { attachments, isConversationAttachmentsLoading } =
     useConversationAttachments({
@@ -84,24 +88,46 @@ export function ConversationFilesPanel({
   );
 
   const handleSandboxFileClick = useCallback(
-    (entry: SandboxFileEntry) => {
+    async (entry: SandboxFileEntry) => {
       if (entry.fileId) {
         openFile({
           fileId: entry.fileId,
           title: entry.fileName,
           contentType: entry.contentType,
         });
-      } else {
-        // File only exists in GCS — open via sandbox download endpoint.
-        const url = getSandboxFileDownloadUrl(
+        return;
+      }
+
+      if (isDownloadingRef.current) {
+        return;
+      }
+
+      // File only exists in GCS — download via POST and open as blob URL.
+      isDownloadingRef.current = true;
+      try {
+        const res = await downloadSandboxFile(
           owner,
           conversation.sId,
           entry.path
         );
+        const blob = await res.blob();
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
+        const url = URL.createObjectURL(blob);
+        blobUrlRef.current = url;
         window.open(url, "_blank", "noopener,noreferrer");
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to download the file.",
+          description: "An error occurred while downloading. Please try again.",
+        });
+      } finally {
+        isDownloadingRef.current = false;
       }
     },
-    [openFile, owner, conversation.sId]
+    [openFile, owner, conversation.sId, sendNotification]
   );
 
   const fileRows = useMemo(
