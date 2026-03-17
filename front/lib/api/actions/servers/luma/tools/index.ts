@@ -94,7 +94,7 @@ export function createLumaTools(
           {
             type: "text" as const,
             text:
-              `Successfully created event "${event.name}".\n\n` +
+              `Created event "${event.name}".\n\n` +
               `- ID: ${event.api_id}\n` +
               (event.url ? `- URL: ${event.url}\n` : "") +
               `- Start: ${event.start_at}`,
@@ -119,7 +119,7 @@ export function createLumaTools(
           {
             type: "text" as const,
             text:
-              `Successfully updated event "${event.name}".\n\n` +
+              `Updated event "${event.name}".\n\n` +
               `- ID: ${event.api_id}\n` +
               (event.url ? `- URL: ${event.url}\n` : "") +
               `- Start: ${event.start_at}`,
@@ -185,7 +185,7 @@ export function createLumaTools(
         return new Ok([
           {
             type: "text" as const,
-            text: `Successfully updated guest "${guest_api_id_or_email}" to status "${status}".`,
+            text: `Updated guest "${guest_api_id_or_email}" to "${status}".`,
           },
         ]);
       });
@@ -203,7 +203,7 @@ export function createLumaTools(
         return new Ok([
           {
             type: "text" as const,
-            text: `Successfully added ${addedGuests.length} guest(s) to the event.`,
+            text: `Added ${addedGuests.length} guests to the event.`,
           },
         ]);
       });
@@ -220,7 +220,7 @@ export function createLumaTools(
         return new Ok([
           {
             type: "text" as const,
-            text: `Successfully sent invitations to ${emails.length} email address(es).`,
+            text: `Sent invitations to ${emails.length} emails.`,
           },
         ]);
       });

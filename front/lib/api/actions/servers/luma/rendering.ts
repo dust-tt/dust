@@ -16,8 +16,6 @@ function formatStatus(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// --- Event rendering ---
-
 export function renderEvent(event: LumaEvent): string {
   const lines = [`**${event.name}**`, `- ID: ${event.api_id}`];
 
@@ -62,8 +60,6 @@ export function renderEventList(
   return header + body + pagination;
 }
 
-// --- Guest rendering ---
-
 export function renderGuest(guest: LumaGuest): string {
   const lines = [`**${guest.name ?? "Unknown"}**`, `- ID: ${guest.api_id}`];
 
@@ -97,8 +93,6 @@ export function renderGuestList(
 
   return header + body + pagination;
 }
-
-// --- Insights rendering ---
 
 export function renderEventInsights(
   event: LumaEvent,
@@ -141,7 +135,6 @@ export function renderEventInsights(
     `- Checked in: ${checkedInCount} (${checkinRate}% of approved)`,
   ];
 
-  // Registration by day
   if (registrationByDay.size > 0) {
     const sortedDays = [...registrationByDay.entries()].sort(([a], [b]) =>
       a.localeCompare(b)
@@ -150,7 +143,6 @@ export function renderEventInsights(
     lines.push(`- Registration by day: ${dayEntries.join(" | ")}`);
   }
 
-  // Ticket breakdown
   if (ticketTypes.length > 0) {
     const ticketEntries = ticketTypes.map((t) => {
       const priceLabel = t.is_free
@@ -165,8 +157,6 @@ export function renderEventInsights(
 
   return lines.join("\n");
 }
-
-// --- User rendering ---
 
 export function renderUser(user: LumaUser): string {
   const lines = [`**${user.name ?? "Unknown"}**`, `- ID: ${user.api_id}`];

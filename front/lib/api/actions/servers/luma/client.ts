@@ -132,15 +132,11 @@ export class LumaClient {
     return new Ok(parseResult.data);
   }
 
-  // --- Read methods ---
-
   async getSelf(): Promise<Result<LumaUser, Error>> {
-    // get-self returns the user object directly (no wrapper).
     return this.request("GET", LUMA_API_PATHS.getSelf, LumaUserSchema);
   }
 
   async getEvent(eventApiId: string): Promise<Result<LumaEvent, Error>> {
-    // get event returns the event object directly.
     return this.request("GET", LUMA_API_PATHS.getEvent, LumaEventSchema, {
       event_api_id: eventApiId,
     });
@@ -211,8 +207,6 @@ export class LumaClient {
     }
     return new Ok(result.value.entries);
   }
-
-  // --- Write methods ---
 
   async createEvent(
     data: CreateEventParams
@@ -289,8 +283,6 @@ export class LumaClient {
     }
     return new Ok(undefined);
   }
-
-  // --- Composite helpers ---
 
   async listAllGuests(
     eventApiId: string,
