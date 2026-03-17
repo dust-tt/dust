@@ -1,8 +1,8 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { TemplateResource } from "@app/lib/resources/template_resource";
-import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -68,7 +68,7 @@ export async function getSuggestedTemplatesForQuery(
 ): Promise<Result<TemplateResource[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getFastestWhitelistedModel(owner);
+  const model = await getFastestWhitelistedModel(auth);
   if (!model) {
     return new Err(
       new Error(

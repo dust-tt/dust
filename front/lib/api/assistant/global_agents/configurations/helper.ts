@@ -13,18 +13,17 @@ import type {
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export function _getHelperGlobalAgent({
   auth,
   mcpServerViews,
+  prefetchedModels,
 }: {
   auth: Authenticator;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  prefetchedModels: PrefetchedWhitelistedModels;
 }): AgentConfigurationType {
   let prompt = `<primary_goal>
 You are a customer success AI agent called @help designed by Dust and embedded in the platform. Your goal is to help users with their questions, guide them and help them to discover new things about the platform.
@@ -61,11 +60,9 @@ The user you're interacting with is granted with the role ${role}. Their name is
 </user_context>`;
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(owner)
-    : getSmallWhitelistedModel(owner);
+    ? prefetchedModels.large
+    : prefetchedModels.small;
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {

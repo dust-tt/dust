@@ -5,13 +5,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 export class ProviderCredentialFactory {
   static async basic(
     workspace: LightWorkspaceType,
-    providerId: ByokModelProviderIdType = "openai"
+    providerId: ByokModelProviderIdType = "openai",
+    { isHealthy } = { isHealthy: true }
   ) {
     return ProviderCredentialModel.create({
       workspaceId: workspace.id,
       providerId,
       credentialId: `cred-${providerId}`,
-      isHealthy: true,
+      isHealthy,
       placeholder: "sk-...abc",
     });
   }

@@ -4,29 +4,28 @@ import { getBuilderInstructionsSuggestions } from "@app/lib/api/assistant/sugges
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
 import { getBuilderTagSuggestions } from "@app/lib/api/assistant/suggestions/tags";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   BuilderSuggestionInputType,
   BuilderSuggestionType,
 } from "@app/types/api/internal/assistant";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 
-function getModelForSuggestionType(
-  owner: WorkspaceType,
+async function getModelForSuggestionType(
+  auth: Authenticator,
   type: BuilderSuggestionType
-): ModelConfigurationType | null {
+): Promise<ModelConfigurationType | null> {
   switch (type) {
     case "instructions":
     case "name":
     case "description":
     case "emoji":
     case "tags":
-      return getSmallWhitelistedModel(owner);
+      return getSmallWhitelistedModel(auth);
 
     default:
       assertNever(type);
@@ -38,9 +37,7 @@ export async function getBuilderSuggestions(
   type: BuilderSuggestionType,
   inputs: BuilderSuggestionInputType
 ): Promise<Result<SuggestionResults, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = getModelForSuggestionType(owner, type);
+  const model = await getModelForSuggestionType(auth, type);
   if (!model) {
     return new Err(
       new Error("No whitelisted models were found for the workspace.")

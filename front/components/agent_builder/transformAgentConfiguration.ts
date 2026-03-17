@@ -2,10 +2,17 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
@@ -52,6 +59,40 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
+// TODO(BYOK): For BYOK workspaces, this should also check healthy provider credentials.
+// Needs a new endpoint + SWR hook to fetch BYOK-aware whitelisted providers.
+function isProviderWhitelistedSync(
+  owner: WorkspaceType,
+  providerId: ModelProviderIdType
+): boolean {
+  if (providerId === "noop") {
+    return true;
+  }
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  return whiteListedProviders.includes(providerId);
+}
+
+function getSmallWhitelistedModelSync(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelistedSync(owner, "openai")) {
+    return GPT_5_MINI_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "anthropic")) {
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "google_ai_studio")) {
+    return GEMINI_3_FLASH_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "xai")) {
+    return GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG;
+  }
+  return null;
+}
+
 export function getDefaultAgentFormData({
   user,
   owner,
@@ -60,12 +101,13 @@ export function getDefaultAgentFormData({
   owner: WorkspaceType;
 }): AgentBuilderFormData {
   const preferredModel = CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = getSmallWhitelistedModel(owner);
+  const fallbackModel = getSmallWhitelistedModelSync(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
   // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
   const modelConfiguration =
-    !isProviderWhitelisted(owner, preferredModel.providerId) && fallbackModel
+    !isProviderWhitelistedSync(owner, preferredModel.providerId) &&
+    fallbackModel
       ? fallbackModel
       : preferredModel;
 

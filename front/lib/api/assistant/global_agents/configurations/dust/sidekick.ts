@@ -12,14 +12,10 @@ import type {
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
 
@@ -465,15 +461,15 @@ export function _getSidekickGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     globalAgentContext,
+    prefetchedModels,
   }: {
     sidekickContext: SidekickContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     globalAgentContext?: GlobalAgentContext;
+    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType {
-  const owner = auth.getNonNullableWorkspace();
-
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
     mcpServerViews
@@ -499,10 +495,10 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? isProviderWhitelisted(owner, "anthropic")
+      ? prefetchedModels.whitelistedProviders.has("anthropic")
         ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-        : getSmallWhitelistedModel(owner)
-      : getLargeWhitelistedModel(owner);
+        : prefetchedModels.small
+      : prefetchedModels.large;
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,

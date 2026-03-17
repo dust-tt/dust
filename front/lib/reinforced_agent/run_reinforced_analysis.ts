@@ -10,10 +10,10 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -88,7 +88,7 @@ export async function getReinforcedLLM(
   if (!owner) {
     return null;
   }
-  const model = getSmallWhitelistedModel(owner);
+  const model = await getSmallWhitelistedModel(auth);
   if (!model) {
     return null;
   }

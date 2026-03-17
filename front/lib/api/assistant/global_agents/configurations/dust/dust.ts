@@ -38,11 +38,8 @@ import type {
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
@@ -59,7 +56,6 @@ import {
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
@@ -70,6 +66,7 @@ interface DustLikeGlobalAgentArgs {
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
+  prefetchedModels: PrefetchedWhitelistedModels;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -302,6 +299,7 @@ function _getDustLikeGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     hasDeepDive,
+    prefetchedModels,
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
@@ -315,8 +313,6 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort?: ReasoningEffort;
   }
 ): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
   const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
@@ -329,19 +325,20 @@ function _getDustLikeGlobalAgent(
 
   const modelConfiguration = (() => {
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(owner);
+      return prefetchedModels.small;
     }
 
-    if (preferredModelConfiguration) {
-      if (
-        isProviderWhitelisted(owner, preferredModelConfiguration.providerId)
-      ) {
-        isPreferredModel = true;
-        return preferredModelConfiguration;
-      }
+    if (
+      preferredModelConfiguration &&
+      prefetchedModels.whitelistedProviders.has(
+        preferredModelConfiguration.providerId
+      )
+    ) {
+      isPreferredModel = true;
+      return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(owner);
+    return prefetchedModels.large;
   })();
 
   let model: AgentModelConfigurationType;

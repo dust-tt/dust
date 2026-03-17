@@ -3,6 +3,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getAllEvaluators,
@@ -16,7 +17,6 @@ import type {
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
 import logger from "@app/logger/logger";
-import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   ButlerDoneEvent,
   ButlerSuggestionCreatedEvent,
@@ -321,7 +321,7 @@ export async function analyzeConversation(
   });
 
   try {
-    const model = getFastestWhitelistedModel(owner);
+    const model = await getFastestWhitelistedModel(auth);
     if (!model) {
       logger.warn(
         { conversationId: conversation.id, workspaceId: owner.sId },
