@@ -74,7 +74,7 @@ export async function importSkillsFromFiles(
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
           source: "local_file",
-          sourceMetadata: undefined,
+          sourceMetadata: { filePath: skill.skillMdPath },
         });
 
         updated.push(existing);
@@ -107,7 +107,7 @@ export async function importSkillsFromFiles(
             extendedSkillId: null,
             icon,
             source: "local_file",
-            sourceMetadata: null,
+            sourceMetadata: { filePath: skill.skillMdPath },
             isDefault: false,
           },
           { mcpServerViews: [] }
