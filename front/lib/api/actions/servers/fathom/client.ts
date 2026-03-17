@@ -14,6 +14,14 @@ export type FathomListMeetingsOptions = {
   startDate?: string;
   endDate?: string;
   recordingId?: number;
+  calendarInvitees?: string[];
+  calendarInviteesDomains?: string[];
+  calendarInviteesDomainsType?:
+    | "all"
+    | "only_internal"
+    | "one_or_more_external";
+  recordedBy?: string[];
+  teams?: string[];
   includeActionItems?: boolean;
   includeCrmMatches?: boolean;
 };
@@ -42,6 +50,11 @@ export class FathomMCPClient {
       startDate,
       endDate,
       recordingId,
+      calendarInvitees,
+      calendarInviteesDomains,
+      calendarInviteesDomainsType,
+      recordedBy,
+      teams,
       includeActionItems,
       includeCrmMatches,
     } = options;
@@ -51,6 +64,11 @@ export class FathomMCPClient {
         cursor,
         createdAfter: startDate,
         createdBefore: endDate,
+        calendarInvitees,
+        calendarInviteesDomains,
+        calendarInviteesDomainsType,
+        recordedBy,
+        teams,
         includeActionItems: includeActionItems ?? false,
         includeCrmMatches: includeCrmMatches ?? false,
       });
