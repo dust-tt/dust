@@ -1,5 +1,3 @@
-import { createHash } from "crypto";
-
 import type { Authenticator } from "@app/lib/auth";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -7,6 +5,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { createHash } from "crypto";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
