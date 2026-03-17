@@ -18,6 +18,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { updateActiveTrace } from "@langfuse/tracing";
 import { ApplicationFailure } from "@temporalio/common";
 
 const HOURS_LOOKBACK = 24;
@@ -83,6 +84,11 @@ export async function getRecentConversationsForAgentActivity({
   workspaceId: string;
   agentConfigurationId: string;
 }): Promise<string[]> {
+  updateActiveTrace({
+    name: "Reinforced Agent Workflow",
+    metadata: { agentConfigurationId },
+  });
+
   const auth = await getAuthForWorkspace(workspaceId);
 
   const updatedSince = new Date();
@@ -156,7 +162,10 @@ export async function startConversationAnalysisBatchActivity({
     return null;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_analyze_conversation"
+  );
   if (!llm) {
     return null;
   }
@@ -188,7 +197,10 @@ export async function checkBatchStatusActivity({
 }): Promise<BatchStatus> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_analyze_conversation"
+  );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
       "ReinforcedAgent: no LLM available for batch status check"
@@ -224,7 +236,10 @@ export async function processConversationAnalysisBatchResultActivity({
     return;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_analyze_conversation"
+  );
   if (!llm) {
     return;
   }
@@ -273,7 +288,10 @@ export async function startAggregationBatchActivity({
     return null;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_aggregate_suggestions"
+  );
   if (!llm) {
     return null;
   }
@@ -318,7 +336,10 @@ export async function processAggregationBatchResultActivity({
     return;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_aggregate_suggestions"
+  );
   if (!llm) {
     return;
   }
