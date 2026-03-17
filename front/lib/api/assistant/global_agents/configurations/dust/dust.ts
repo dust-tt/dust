@@ -328,15 +328,14 @@ function _getDustLikeGlobalAgent(
       return prefetchedModels.small;
     }
 
-    if (preferredModelConfiguration) {
-      if (
-        prefetchedModels.whitelistedProviders.has(
-          preferredModelConfiguration.providerId
-        )
-      ) {
-        isPreferredModel = true;
-        return preferredModelConfiguration;
-      }
+    if (
+      preferredModelConfiguration &&
+      prefetchedModels.whitelistedProviders.has(
+        preferredModelConfiguration.providerId
+      )
+    ) {
+      isPreferredModel = true;
+      return preferredModelConfiguration;
     }
 
     return prefetchedModels.large;

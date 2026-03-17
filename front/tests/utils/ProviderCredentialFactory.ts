@@ -6,7 +6,7 @@ export class ProviderCredentialFactory {
   static async basic(
     workspace: LightWorkspaceType,
     providerId: ByokModelProviderIdType = "openai",
-    { isHealthy = true }: { isHealthy?: boolean } = {}
+    { isHealthy } = { isHealthy: true }
   ) {
     return ProviderCredentialModel.create({
       workspaceId: workspace.id,
