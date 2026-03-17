@@ -110,13 +110,13 @@ export function useFileUploaderService(
             includeSelectionOnly
               ? `[selection] ${tabContent.title}`
               : `[text] ${tabContent.title}`,
-            "txt",
+            "md",
             existingTitles
           );
 
           if (tabContent && tabContent.content) {
             const file = new File([tabContent.content], title, {
-              type: "text/plain",
+              type: "text/markdown",
             });
 
             const fragments = await handleFilesUpload([file]);
