@@ -74,8 +74,12 @@ const PostSkillRequestBodySchema = t.intersection([
       source: t.literal("github"),
       sourceMetadata: t.type({ repoUrl: t.string, filePath: t.string }),
     }),
+    t.type({
+      source: t.literal("local_file"),
+      sourceMetadata: t.union([t.type({ filePath: t.string }), t.null]),
+    }),
     t.partial({
-      source: t.union([t.literal("web_app"), t.literal("local_file")]),
+      source: t.literal("web_app"),
       sourceMetadata: t.null,
     }),
   ]),

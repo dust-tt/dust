@@ -129,7 +129,7 @@ describe("detectSkillsFromZip", () => {
     });
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe("invalid_zip");
+      expect(result.error.message).toContain("Failed to open ZIP");
     }
   });
 });

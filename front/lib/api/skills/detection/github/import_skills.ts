@@ -28,7 +28,7 @@ const IMPORT_CONCURRENCY = 4;
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
-  errors: { name: string; message: string }[];
+  errored: { name: string; message: string }[];
 };
 
 /**
@@ -68,7 +68,7 @@ export async function importSkillsFromGitHub(
   const user = auth.getNonNullableUser();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
-  const errors: { name: string; message: string }[] = [];
+  const errored: { name: string; message: string }[] = [];
 
   await concurrentExecutor(
     selectedSkills,
@@ -76,7 +76,7 @@ export async function importSkillsFromGitHub(
       const existing = await SkillResource.fetchActiveByName(auth, skill.name);
 
       if (existing && !isSkillFromGitHubRepo(existing, { repoUrl })) {
-        errors.push({
+        errored.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
         });
@@ -174,7 +174,7 @@ export async function importSkillsFromGitHub(
     { concurrency: IMPORT_CONCURRENCY }
   );
 
-  return new Ok({ imported, updated, errors });
+  return new Ok({ imported, updated, errored });
 }
 
 async function uploadAttachment(

@@ -9,7 +9,7 @@ export const SKILL_SOURCES = ["web_app", "github", "local_file"] as const;
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];
 
 export type SkillSourceMetadata = {
-  repoUrl: string;
+  repoUrl?: string;
   filePath: string;
 };
 
