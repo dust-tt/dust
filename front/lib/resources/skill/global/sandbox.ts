@@ -1,3 +1,5 @@
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 
 const SANDBOX_INSTRUCTIONS =
@@ -18,4 +20,9 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
+  isRestricted: async (auth: Authenticator) => {
+    const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+    return !flags.includes("sandbox_tools");
+  },
 } as const satisfies GlobalSkillDefinition;
