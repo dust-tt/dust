@@ -207,7 +207,7 @@ export function FeedbackSelector({
             ) : (
               <div className="flex flex-col gap-4 pt-2">
                 <div>
-                  <Label className="mb-3 block">Was this answer helpful?</Label>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Was this answer helpful?</p>
                   <div className="flex gap-2">
                     <Button
                       label="Yes, helpful"
