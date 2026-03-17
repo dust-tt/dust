@@ -15,11 +15,11 @@ import type {
 } from "@app/lib/api/actions/servers/luma/types";
 import {
   LumaEventListResponseSchema,
-  LumaEventSchema,
+  LumaEventResponseSchema,
   LumaGuestListResponseSchema,
-  LumaGuestSchema,
+  LumaGuestResponseSchema,
   LumaTicketTypeListResponseSchema,
-  LumaUserSchema,
+  LumaUserResponseSchema,
 } from "@app/lib/api/actions/servers/luma/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
@@ -133,13 +133,28 @@ export class LumaClient {
   }
 
   async getSelf(): Promise<Result<LumaUser, Error>> {
-    return this.request("GET", LUMA_API_PATHS.getSelf, LumaUserSchema);
+    const result = await this.request(
+      "GET",
+      LUMA_API_PATHS.getSelf,
+      LumaUserResponseSchema
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(result.value.user);
   }
 
   async getEvent(eventApiId: string): Promise<Result<LumaEvent, Error>> {
-    return this.request("GET", LUMA_API_PATHS.getEvent, LumaEventSchema, {
-      id: eventApiId,
-    });
+    const result = await this.request(
+      "GET",
+      LUMA_API_PATHS.getEvent,
+      LumaEventResponseSchema,
+      { id: eventApiId }
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(result.value.event);
   }
 
   async listEvents(
@@ -187,10 +202,16 @@ export class LumaClient {
     eventApiId: string,
     guestApiId: string
   ): Promise<Result<LumaGuest, Error>> {
-    return this.request("GET", LUMA_API_PATHS.getGuest, LumaGuestSchema, {
-      event_id: eventApiId,
-      id: guestApiId,
-    });
+    const result = await this.request(
+      "GET",
+      LUMA_API_PATHS.getGuest,
+      LumaGuestResponseSchema,
+      { event_id: eventApiId, id: guestApiId }
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(result.value.guest);
   }
 
   async listTicketTypes(
@@ -205,25 +226,38 @@ export class LumaClient {
     if (result.isErr()) {
       return result;
     }
-    return new Ok(result.value.entries);
+    return new Ok(result.value.ticket_types);
   }
 
   async createEvent(
     data: CreateEventParams
   ): Promise<Result<LumaEvent, Error>> {
-    return this.request("POST", LUMA_API_PATHS.createEvent, LumaEventSchema, {
-      ...data,
-    });
+    const result = await this.request(
+      "POST",
+      LUMA_API_PATHS.createEvent,
+      LumaEventResponseSchema,
+      { ...data }
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(result.value.event);
   }
 
   async updateEvent(
     eventApiId: string,
     data: UpdateEventParams
   ): Promise<Result<LumaEvent, Error>> {
-    return this.request("POST", LUMA_API_PATHS.updateEvent, LumaEventSchema, {
-      event_id: eventApiId,
-      ...data,
-    });
+    const result = await this.request(
+      "POST",
+      LUMA_API_PATHS.updateEvent,
+      LumaEventResponseSchema,
+      { id: eventApiId, ...data }
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(result.value.event);
   }
 
   async updateGuestStatus(
@@ -240,7 +274,7 @@ export class LumaClient {
       LUMA_API_PATHS.updateGuestStatus,
       z.object({}).passthrough(),
       {
-        event_id: eventApiId,
+        event_api_id: eventApiId,
         guest,
         status: data.status,
         should_refund: data.should_refund,

@@ -226,6 +226,31 @@ export function createLumaTools(
       });
     },
 
+    search_guests: async ({ event_api_id, query }, extra: ToolHandlerExtra) => {
+      return withClient(extra, async (client) => {
+        const result = await client.listAllGuests(event_api_id);
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to fetch guests: ${result.error.message}`)
+          );
+        }
+
+        const lowerQuery = query.toLowerCase();
+        const matches = result.value.filter(
+          (g) =>
+            g.name?.toLowerCase().includes(lowerQuery) ||
+            g.email?.toLowerCase().includes(lowerQuery)
+        );
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: renderGuestList(matches, null),
+          },
+        ]);
+      });
+    },
+
     get_event_insights: async ({ event_api_id }, extra: ToolHandlerExtra) => {
       return withClient(extra, async (client) => {
         const eventResult = await client.getEvent(event_api_id);

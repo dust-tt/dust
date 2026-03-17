@@ -270,6 +270,27 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       done: "Send Luma invites",
     },
   },
+  search_guests: {
+    description:
+      "Search for a guest by name or email across all registrations of an event. " +
+      "Fetches all guests internally and filters by the query string (case-insensitive partial match). " +
+      "Use this when you need to find a specific person. May take a moment for large events.",
+    schema: {
+      event_api_id: z
+        .string()
+        .describe("The API ID of the event to search guests in."),
+      query: z
+        .string()
+        .describe(
+          "Search query to match against guest name or email (case-insensitive)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching Luma guests",
+      done: "Search Luma guests",
+    },
+  },
   get_event_insights: {
     description:
       "Get total registrations, approval status breakdown, check-in rate, " +

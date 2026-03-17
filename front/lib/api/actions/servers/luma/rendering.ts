@@ -145,12 +145,15 @@ export function renderEventInsights(
 
   if (ticketTypes.length > 0) {
     const ticketEntries = ticketTypes.map((t) => {
-      const priceLabel = t.is_free
-        ? "free"
-        : `${t.currency ?? ""} ${(t.price ?? 0) / 100}`.trim();
-      const soldLabel =
-        t.quantity_sold !== null ? `: ${t.quantity_sold} sold` : "";
-      return `${t.name} (${priceLabel})${soldLabel}`;
+      const priceLabel =
+        t.type === "free"
+          ? "free"
+          : `${t.currency ?? ""} ${(t.cents ?? 0) / 100}`.trim();
+      const capacityLabel =
+        t.max_capacity !== null && t.max_capacity !== undefined
+          ? `, capacity: ${t.max_capacity}`
+          : "";
+      return `${t.name} (${priceLabel}${capacityLabel})`;
     });
     lines.push(`- Ticket breakdown: ${ticketEntries.join(" | ")}`);
   }

@@ -60,11 +60,11 @@ export const LumaTicketTypeSchema = z
   .object({
     api_id: z.string(),
     name: z.string(),
-    price: z.number().nullable(),
+    type: z.string(),
+    cents: z.number().nullable(),
     currency: z.string().nullable(),
-    is_free: z.boolean(),
-    quantity_total: z.number().nullable(),
-    quantity_sold: z.number().nullable(),
+    is_hidden: z.boolean().optional(),
+    max_capacity: z.number().nullable().optional(),
   })
   .passthrough();
 
@@ -79,6 +79,24 @@ export const LumaUserSchema = z
   .passthrough();
 
 export type LumaUser = z.infer<typeof LumaUserSchema>;
+
+export const LumaUserResponseSchema = z
+  .object({
+    user: LumaUserSchema,
+  })
+  .passthrough();
+
+export const LumaEventResponseSchema = z
+  .object({
+    event: LumaEventSchema,
+  })
+  .passthrough();
+
+export const LumaGuestResponseSchema = z
+  .object({
+    guest: LumaGuestSchema,
+  })
+  .passthrough();
 
 export const LumaEventEntrySchema = z
   .object({
@@ -112,9 +130,7 @@ export const LumaGuestListResponseSchema = z
 
 export const LumaTicketTypeListResponseSchema = z
   .object({
-    entries: z.array(LumaTicketTypeSchema),
-    has_more: z.boolean().optional(),
-    next_cursor: z.string().nullable().optional(),
+    ticket_types: z.array(LumaTicketTypeSchema),
   })
   .passthrough();
 
