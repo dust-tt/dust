@@ -21,8 +21,8 @@ import assert from "assert";
 import type Stripe from "stripe";
 import { z } from "zod";
 
-export const MAX_FREE_CREDITS_DOLLARS = 1_000;
-export const MAX_PAYG_CAP_DOLLARS = 10_000;
+export const MAX_FREE_CREDITS_DOLLARS = 2_000;
+export const MAX_PAYG_CAP_DOLLARS = 20_000;
 export const MAX_DAILY_CAP_DOLLARS = 10_000;
 const MIN_DAILY_CAP_DOLLARS = 100;
 
