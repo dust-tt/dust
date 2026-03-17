@@ -28,7 +28,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 
 interface ImportSkillsDialogProps {
@@ -38,7 +38,13 @@ interface ImportSkillsDialogProps {
 
 const TAB_DESCRIPTION: Record<ImportType, string> = {
   repository: "Enter a GitHub repository URL to detect skills.",
-  files: "Upload .md, .zip or .skill files to import skills.",
+  files: "Upload .zip files to import skills.",
+};
+
+const DEFAULT_VALUES: ImportFormValues = {
+  importType: "repository",
+  repoUrl: "",
+  selectedSkillNames: [],
 };
 
 export function ImportSkillsDialog({
@@ -48,17 +54,9 @@ export function ImportSkillsDialog({
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedCount, setDetectedCount] = useState(0);
 
-  const defaultValues = useMemo<ImportFormValues>(() => {
-    return {
-      importType: "repository",
-      repoUrl: "",
-      selectedSkillNames: [],
-    };
-  }, []);
-
   const form = useForm<ImportFormValues>({
     resolver: zodResolver(importFormSchema),
-    defaultValues,
+    defaultValues: DEFAULT_VALUES,
   });
 
   const { field: importTypeField } = useController({
@@ -71,6 +69,9 @@ export function ImportSkillsDialog({
   });
 
   const uploadedFilesRef = useRef<File[]>([]);
+  const handleFilesChange = useCallback((files: File[]) => {
+    uploadedFilesRef.current = files;
+  }, []);
 
   const { importSkills, isImporting: isImportingFromRepo } = useImportSkills({
     owner,
@@ -163,9 +164,7 @@ export function ImportSkillsDialog({
                   owner={owner}
                   onDetectingChange={setIsDetecting}
                   onDetectedCountChange={setDetectedCount}
-                  onFilesChange={(files) => {
-                    uploadedFilesRef.current = files;
-                  }}
+                  onFilesChange={handleFilesChange}
                   isImporting={isImporting}
                 />
               </TabsContent>

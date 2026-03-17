@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-const ACCEPTED_FILE_TYPES = ".md,.zip";
+const ACCEPTED_FILE_TYPES = ".zip";
 
 interface ImportFromFilesTabProps {
   owner: LightWorkspaceType;
@@ -138,7 +138,7 @@ function SkillFileDropzone({
       <DropzoneOverlay
         isDragActive={isDragOver}
         title="Drop files here"
-        description="Upload .md, .zip or .skill files"
+        description="Upload .zip files"
       />
       {isLoading ? (
         <>
@@ -183,7 +183,7 @@ function FileRequirements() {
       size="lg"
     >
       <ul className="list-disc pl-4 text-sm">
-        <li>The imported .zip or file must include a SKILL.md file</li>
+        <li>The imported .zip must include a SKILL.md file</li>
         <li>
           This file must contain the skill name and description formatted in
           YAML
