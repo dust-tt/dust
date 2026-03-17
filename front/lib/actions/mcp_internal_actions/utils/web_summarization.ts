@@ -99,7 +99,7 @@ export async function summarizeWithLLM({
 async function getFastModelConfigForSummarization(
   auth: Authenticator
 ): Promise<ModelConfigurationType | null> {
-  const providers = await getWhitelistedProviders(auth);
+  const providers = getWhitelistedProviders(auth);
 
   if (providers.has("anthropic")) {
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
