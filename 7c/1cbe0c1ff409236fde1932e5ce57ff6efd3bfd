@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "7c1cbe0c1ff409236fde1932e5ce57ff6efd3bfd",
+  "prompts": {
+    "494892e4cad863a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1b189c-ed53-4cb0-a90e-1a5408b5e59c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 437,
+      "overriden_lines": 0
+    }
+  }
+}
