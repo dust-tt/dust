@@ -25,7 +25,7 @@ import path from "path";
 
 const IMPORT_CONCURRENCY = 4;
 
-export type ImportSkillsResult = {
+type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
   errors: { name: string; message: string }[];

@@ -1,4 +1,3 @@
-import type { ImportSkillsResult } from "@app/lib/api/skills/detection/github/import_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -11,6 +10,12 @@ import type formidable from "formidable";
 import { detectSkillsFromUploadedFiles } from "./file_detection";
 
 const IMPORT_CONCURRENCY = 4;
+
+type ImportSkillsResult = {
+  imported: SkillResource[];
+  updated: SkillResource[];
+  errors: { name: string; message: string }[];
+};
 
 interface FileImportError {
   type: "invalid_files";
