@@ -36,7 +36,10 @@ import {
   registerClient,
   selectResourceURL,
 } from "@modelcontextprotocol/sdk/client/auth.js";
-import type { OAuthProtectedResourceMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type {
+  AuthorizationServerMetadata,
+  OAuthProtectedResourceMetadata,
+} from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import assert from "assert";
 import type {
@@ -429,10 +432,21 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       resourceMetadata ?? undefined
     );
 
-    const metadata = await discoverAuthorizationServerMetadata(authServerUrl, {
-      fetchFn,
-    });
-    if (!metadata) {
+    let metadata: AuthorizationServerMetadata | undefined;
+    try {
+      metadata = await discoverAuthorizationServerMetadata(authServerUrl, {
+        fetchFn,
+      });
+      if (!metadata) {
+        return new Err(
+          new DustError("internal_error", "Failed to discover OAuth metadata")
+        );
+      }
+    } catch (e) {
+      logger.info(
+        { error: e, serverUrl },
+        "Failed to discover authorization server metadata"
+      );
       return new Err(
         new DustError("internal_error", "Failed to discover OAuth metadata")
       );
