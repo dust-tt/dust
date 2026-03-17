@@ -1,5 +1,6 @@
 import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { detectSkillsFromZip } from "@app/lib/api/skills/detection/zip/detect_skills";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
@@ -48,5 +49,9 @@ export async function detectSkillsFromUploadedFiles(
 }
 
 async function cleanupTempFiles(files: formidable.File[]): Promise<void> {
-  await Promise.all(files.map((f) => unlink(f.filepath).catch(() => {})));
+  await concurrentExecutor(
+    files,
+    (f) => unlink(f.filepath).catch(() => {}),
+    { concurrency: 8 }
+  );
 }
