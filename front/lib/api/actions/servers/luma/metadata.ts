@@ -272,10 +272,10 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
   },
   get_event_insights: {
     description:
-      "Get a comprehensive summary of event attendance and registration data. " +
-      "Returns total registrations, approval status breakdown, check-in rate, " +
-      "registration timeline, and ticket type breakdown. " +
-      "This fetches all guest data so it may take a moment for large events.",
+      "Get total registrations, approval status breakdown, check-in rate, " +
+      "registration timeline, and ticket type breakdown for an event. " +
+      "Use this instead of list_guests when you need counts or aggregate stats. " +
+      "Fetches all guest data internally so it may take a moment for large events.",
     schema: {
       event_api_id: z
         .string()

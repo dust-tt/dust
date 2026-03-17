@@ -45,7 +45,7 @@ const LUMA_API_PATHS = {
 } as const;
 
 const LUMA_LIST_ALL_GUESTS_MAX = 1000;
-const LUMA_LIST_ALL_GUESTS_PAGE_SIZE = 50;
+const LUMA_LIST_ALL_GUESTS_PAGE_SIZE = 200;
 
 export function getLumaClient(
   extra: ToolHandlerExtra
@@ -138,7 +138,7 @@ export class LumaClient {
 
   async getEvent(eventApiId: string): Promise<Result<LumaEvent, Error>> {
     return this.request("GET", LUMA_API_PATHS.getEvent, LumaEventSchema, {
-      event_api_id: eventApiId,
+      id: eventApiId,
     });
   }
 
@@ -172,7 +172,7 @@ export class LumaClient {
       "GET",
       LUMA_API_PATHS.getGuests,
       LumaGuestListResponseSchema,
-      { event_api_id: eventApiId, ...params }
+      { event_id: eventApiId, ...params }
     );
     if (result.isErr()) {
       return result;
@@ -188,8 +188,8 @@ export class LumaClient {
     guestApiId: string
   ): Promise<Result<LumaGuest, Error>> {
     return this.request("GET", LUMA_API_PATHS.getGuest, LumaGuestSchema, {
-      event_api_id: eventApiId,
-      guest_api_id: guestApiId,
+      event_id: eventApiId,
+      id: guestApiId,
     });
   }
 
@@ -200,7 +200,7 @@ export class LumaClient {
       "GET",
       LUMA_API_PATHS.listTicketTypes,
       LumaTicketTypeListResponseSchema,
-      { event_api_id: eventApiId }
+      { event_id: eventApiId }
     );
     if (result.isErr()) {
       return result;
@@ -221,7 +221,7 @@ export class LumaClient {
     data: UpdateEventParams
   ): Promise<Result<LumaEvent, Error>> {
     return this.request("POST", LUMA_API_PATHS.updateEvent, LumaEventSchema, {
-      event_api_id: eventApiId,
+      event_id: eventApiId,
       ...data,
     });
   }
@@ -240,7 +240,7 @@ export class LumaClient {
       LUMA_API_PATHS.updateGuestStatus,
       z.object({}).passthrough(),
       {
-        event_api_id: eventApiId,
+        event_id: eventApiId,
         guest,
         status: data.status,
         should_refund: data.should_refund,
@@ -260,7 +260,7 @@ export class LumaClient {
       "POST",
       LUMA_API_PATHS.addGuests,
       LumaGuestListResponseSchema,
-      { event_api_id: eventApiId, guests }
+      { event_id: eventApiId, guests }
     );
     if (result.isErr()) {
       return result;
@@ -276,7 +276,7 @@ export class LumaClient {
       "POST",
       LUMA_API_PATHS.sendInvites,
       z.object({}).passthrough(),
-      { event_api_id: eventApiId, ...data }
+      { event_id: eventApiId, ...data }
     );
     if (result.isErr()) {
       return result;
