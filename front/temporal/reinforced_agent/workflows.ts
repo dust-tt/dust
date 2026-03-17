@@ -175,14 +175,17 @@ export async function reinforcedAgentForAgentWorkflow({
   workspaceId,
   agentConfigurationId,
   useBatchMode,
+  daysOfConversations = 1,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   useBatchMode: boolean;
+  daysOfConversations?: number;
 }): Promise<void> {
   const conversationIds = await getRecentConversationsForAgentActivity({
     workspaceId,
     agentConfigurationId,
+    daysOfConversations,
   });
 
   if (useBatchMode) {
