@@ -1,4 +1,3 @@
-import { ConversationAttachmentsPopover } from "@app/components/assistant/conversation/ConversationAttachmentsPopover";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -6,9 +5,8 @@ import {
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
-import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -29,14 +27,7 @@ import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const { openPanel } = useConversationSidePanelContext();
-  const useSidePanelFiles = hasFeature("sidepanel_files");
-  const { attachments } = useConversationAttachments({
-    conversationId: activeConversationId,
-    owner,
-    options: { disabled: !useSidePanelFiles },
-  });
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -108,21 +99,13 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          <ConversationAttachmentsPopover
-            conversation={conversation}
-            owner={owner}
+          <Button
+            size="sm"
+            label="Files"
+            icon={AttachmentIcon}
+            variant="ghost"
+            onClick={() => openPanel({ type: "files" })}
           />
-          {useSidePanelFiles && (
-            <Button
-              size="sm"
-              label="Files"
-              isCounter={attachments.length > 0}
-              counterValue={String(attachments.length)}
-              icon={AttachmentIcon}
-              variant="ghost"
-              onClick={() => openPanel({ type: "files" })}
-            />
-          )}
           <ConversationMenu
             activeConversationId={activeConversationId}
             conversation={conversation}

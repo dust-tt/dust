@@ -15,18 +15,21 @@ import type { SandboxTreeNode } from "./types";
 
 interface SandboxTabProps {
   conversationId: string;
+  disabled?: boolean;
   owner: LightWorkspaceType;
   onFileClick: (node: SandboxTreeNode) => void;
 }
 
 export function SandboxTab({
   conversationId,
+  disabled,
   owner,
   onFileClick,
 }: SandboxTabProps) {
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId,
     owner,
+    options: { disabled },
   });
 
   const sandboxTree = useMemo(
