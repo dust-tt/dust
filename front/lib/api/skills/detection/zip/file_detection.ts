@@ -19,26 +19,34 @@ interface FileDetectionError {
 export async function detectSkillsFromUploadedFiles(
   uploadedFiles: formidable.File[]
 ): Promise<Result<DetectedSkill[], FileDetectionError>> {
-  const allDetectedSkills: DetectedSkill[] = [];
-
   for (const file of uploadedFiles) {
     const filename = file.originalFilename ?? "";
     const ext = path.extname(filename).toLowerCase();
 
     if (!ACCEPTED_EXTENSIONS.has(ext)) {
+      await cleanupTempFiles(uploadedFiles);
       return new Err({
         message: `Unsupported file type "${ext}". Accepted: .zip, .skill`,
       });
     }
+  }
 
+  const allDetectedSkills: DetectedSkill[] = [];
+
+  for (const file of uploadedFiles) {
     const buffer = await readFile(file.filepath);
     await unlink(file.filepath).catch(() => {});
     const result = detectSkillsFromZip({ zipBuffer: buffer });
     if (result.isErr()) {
+      await cleanupTempFiles(uploadedFiles);
       return new Err({ message: result.error.message });
     }
     allDetectedSkills.push(...result.value);
   }
 
   return new Ok(allDetectedSkills);
+}
+
+async function cleanupTempFiles(files: formidable.File[]): Promise<void> {
+  await Promise.all(files.map((f) => unlink(f.filepath).catch(() => {})));
 }
