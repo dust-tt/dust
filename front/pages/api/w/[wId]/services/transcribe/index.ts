@@ -37,6 +37,17 @@ async function handler(
       },
     });
   }
+  const plan = auth.getNonNullablePlan();
+  if (plan.isByok) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Voice transcription is not available on this plan.",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     res.status(405).json({

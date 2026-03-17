@@ -279,6 +279,11 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  // Skip transcription for BYOK workspaces (voice uses third-party services).
+  if (auth.getNonNullablePlan().isByok) {
+    return new Ok(undefined);
+  }
+
   // Skip transcription if the workspace has disabled voice transcription.
   if (
     auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription === false
