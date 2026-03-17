@@ -3,7 +3,8 @@ import { detectSkillsFromZip } from "@app/lib/api/skills/detection/zip/detect_sk
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
-import { readFileSync } from "fs";
+import { readFile, unlink } from "fs/promises";
+import path from "path";
 
 const ACCEPTED_EXTENSIONS = new Set([".zip", ".skill"]);
 
@@ -22,7 +23,7 @@ export function detectSkillsFromUploadedFiles(
 
   for (const file of uploadedFiles) {
     const filename = file.originalFilename ?? "";
-    const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
+    const ext = path.extname(filename).toLowerCase();
 
     if (!ACCEPTED_EXTENSIONS.has(ext)) {
       return new Err({
