@@ -206,7 +206,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
   update_guest_status: {
     description:
       "Update the approval status of a single guest. " +
-      "Can approve, decline, or waitlist a guest. " +
+      "Can approve or decline a guest. " +
       "Use should_refund when declining guests with paid tickets.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event."),

@@ -166,35 +166,6 @@ export function renderEventInsights(
   return lines.join("\n");
 }
 
-// --- Ticket type rendering ---
-
-export function renderTicketTypes(ticketTypes: LumaTicketType[]): string {
-  if (ticketTypes.length === 0) {
-    return "No ticket types found.";
-  }
-
-  const header = `# Ticket Types (${ticketTypes.length})\n\n`;
-  const entries = ticketTypes.map((t) => {
-    const lines = [`**${t.name}**`, `- ID: ${t.api_id}`];
-    if (t.is_free) {
-      lines.push("- Price: Free");
-    } else if (t.price !== null) {
-      lines.push(
-        `- Price: ${t.currency ?? ""} ${(t.price / 100).toFixed(2)}`.trim()
-      );
-    }
-    if (t.quantity_total !== null) {
-      lines.push(`- Total: ${t.quantity_total}`);
-    }
-    if (t.quantity_sold !== null) {
-      lines.push(`- Sold: ${t.quantity_sold}`);
-    }
-    return lines.join("\n");
-  });
-
-  return header + entries.join("\n\n---\n\n");
-}
-
 // --- User rendering ---
 
 export function renderUser(user: LumaUser): string {
