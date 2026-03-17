@@ -25,4 +25,5 @@ export const sandboxSkill = {
 
     return !flags.includes("sandbox_tools");
   },
+  isAutoEnabled: true,
 } as const satisfies GlobalSkillDefinition;
