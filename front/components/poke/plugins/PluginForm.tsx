@@ -67,7 +67,7 @@ export function PluginForm({
               key,
               arg.async && asyncArgs?.[key] !== undefined
                 ? (asyncArgs[key] as number)
-                : 0,
+                : (arg.default ?? 0),
             ];
           case "boolean":
             return [

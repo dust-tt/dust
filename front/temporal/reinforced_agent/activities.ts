@@ -21,8 +21,6 @@ import logger from "@app/logger/logger";
 import { updateActiveTrace } from "@langfuse/tracing";
 import { ApplicationFailure } from "@temporalio/common";
 
-const HOURS_LOOKBACK = 24;
-
 async function getAuthForWorkspace(
   workspaceId: string
 ): Promise<Authenticator> {
@@ -80,9 +78,11 @@ export async function getAgentConfigurationsActivity({
 export async function getRecentConversationsForAgentActivity({
   workspaceId,
   agentConfigurationId,
+  conversationLookbackDays = 1,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  conversationLookbackDays?: number;
 }): Promise<string[]> {
   updateActiveTrace({
     name: "Reinforced Agent Workflow",
@@ -92,7 +92,9 @@ export async function getRecentConversationsForAgentActivity({
   const auth = await getAuthForWorkspace(workspaceId);
 
   const updatedSince = new Date();
-  updatedSince.setHours(updatedSince.getHours() - HOURS_LOOKBACK);
+  updatedSince.setHours(
+    updatedSince.getHours() - conversationLookbackDays * 24
+  );
 
   return ConversationResource.listRecentConversationsForAgent(auth, {
     agentConfigurationId,

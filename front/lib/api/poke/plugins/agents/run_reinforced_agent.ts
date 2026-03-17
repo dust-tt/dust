@@ -16,6 +16,13 @@ export const runReinforcedAgentPlugin = createPlugin({
         description:
           "Process conversations via batch LLM API (slower but cheaper). Uncheck to use streaming (faster but more expensive).",
       },
+      conversationLookbackDays: {
+        type: "number",
+        variant: "text",
+        label: "Days of conversations to analyze",
+        description: "Number of past days of conversations to analyze.",
+        default: 1,
+      },
     },
   },
   execute: async (auth, resource, args) => {
@@ -29,6 +36,7 @@ export const runReinforcedAgentPlugin = createPlugin({
       workspaceId: workspace.sId,
       agentConfigurationId: resource.sId,
       useBatchMode: args.useBatchMode,
+      conversationLookbackDays: args.conversationLookbackDays,
     });
 
     if (result.isErr()) {
