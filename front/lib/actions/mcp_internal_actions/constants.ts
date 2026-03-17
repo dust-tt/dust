@@ -836,7 +836,9 @@ export const INTERNAL_MCP_SERVERS = {
     id: 51,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("luma_tool");
+    },
     isPreview: true,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
