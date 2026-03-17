@@ -17,10 +17,6 @@ type ImportSkillsResult = {
   errors: { name: string; message: string }[];
 };
 
-interface FileImportError {
-  type: "invalid_files";
-  message: string;
-}
 
 /**
  * Imports skills from uploaded files. Detects skills from the files,
@@ -35,13 +31,10 @@ export async function importSkillsFromFiles(
     uploadedFiles: formidable.File[];
     names: string[];
   }
-): Promise<Result<ImportSkillsResult, FileImportError>> {
+): Promise<Result<ImportSkillsResult, Error>> {
   const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
   if (detectResult.isErr()) {
-    return new Err({
-      type: "invalid_files",
-      message: detectResult.error.message,
-    });
+    return new Err(new Error( detectResult.error.message));
   }
 
   const detectedSkills = detectResult.value;
