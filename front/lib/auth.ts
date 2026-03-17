@@ -1454,6 +1454,14 @@ export function getFeatureFlags(
   });
 }
 
+export async function hasFeatureFlag(
+  auth: Authenticator,
+  flag: WhitelistableFeature
+): Promise<boolean> {
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  return flags.includes(flag);
+}
+
 export function invalidateFeatureFlagsCache(
   workspace: LightWorkspaceType
 ): void {

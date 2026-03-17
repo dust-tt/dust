@@ -2,11 +2,15 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  AgentSuggestionSource,
+  AgentSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -115,12 +119,20 @@ async function handler(
         });
       }
 
+      const sources: AgentSuggestionSource[] = (await hasFeatureFlag(
+        auth,
+        "reinforced_agents"
+      ))
+        ? ["sidekick", "reinforcement"]
+        : ["sidekick"];
+
       const suggestions =
         await AgentSuggestionResource.listByAgentConfigurationId(
           auth,
           agentConfigurationId,
           {
             states,
+            sources,
             kind,
             limit: parsedLimit,
           }

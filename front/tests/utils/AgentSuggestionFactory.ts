@@ -35,7 +35,7 @@ export class AgentSuggestionFactory {
         analysis:
           overrides.analysis ?? "Improved instructions for better coding help",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "reinforcement",
+        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -61,7 +61,7 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added useful integration",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "reinforcement",
+        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -140,7 +140,7 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "reinforcement",
+        source: overrides.source ?? "sidekick",
       }
     );
   }
