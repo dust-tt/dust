@@ -236,7 +236,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return [];
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
     const query = `
       SELECT DISTINCT ranked_agents.name
       FROM (
@@ -246,7 +246,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
                  ORDER BY ac.version DESC
                ) AS rn
         FROM agent_configurations ac
-        WHERE ac."workspaceId" = :workspaceId
+        WHERE ac."workspaceId" = :workspaceModelId
       ) ranked_agents
       INNER JOIN agent_mcp_server_configurations amsc
         ON amsc."agentConfigurationId" = ranked_agents.id
@@ -263,7 +263,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const rows =
       (await AgentConfigurationModel.sequelize?.query<AgentNameRow>(query, {
         replacements: {
-          workspaceId,
+          workspaceModelId,
           mcpServerViewIds: regularViewIds,
         },
         type: SequelizeQueryTypes.SELECT,

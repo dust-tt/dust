@@ -13,6 +13,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -70,15 +71,16 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
     new Set(members.map((member) => member.email))
   );
 
-  const results = await Promise.all(
-    adminEmails.map((email) =>
+  const results = await concurrentExecutor(
+    adminEmails,
+    async (email) =>
       sendMCPGlobalSharingReconfigurationEmail({
         email,
         workspaceName: workspace.name,
         toolName,
         agentNames,
-      })
-    )
+      }),
+    { concurrency: 8 }
   );
 
   const failedEmails = results.flatMap((result, index) =>
