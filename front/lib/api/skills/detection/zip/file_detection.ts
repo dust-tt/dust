@@ -16,9 +16,9 @@ interface FileDetectionError {
  * Parses uploaded zip files (via formidable) and extracts detected skills.
  * Supports .zip and .skill (ZIP archives).
  */
-export function detectSkillsFromUploadedFiles(
+export async function detectSkillsFromUploadedFiles(
   uploadedFiles: formidable.File[]
-): Result<DetectedSkill[], FileDetectionError> {
+): Promise<Result<DetectedSkill[], FileDetectionError>> {
   const allDetectedSkills: DetectedSkill[] = [];
 
   for (const file of uploadedFiles) {
@@ -31,7 +31,8 @@ export function detectSkillsFromUploadedFiles(
       });
     }
 
-    const buffer = readFileSync(file.filepath);
+    const buffer = await readFile(file.filepath);
+    await unlink(file.filepath).catch(() => {});
     const result = detectSkillsFromZip({ zipBuffer: buffer });
     if (result.isErr()) {
       return new Err({ message: result.error.message });

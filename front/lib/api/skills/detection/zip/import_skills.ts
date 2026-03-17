@@ -25,7 +25,7 @@ export async function importSkillsFromFiles(
     names: string[];
   }
 ): Promise<Result<ImportSkillsResult, FileImportError>> {
-  const detectResult = detectSkillsFromUploadedFiles(uploadedFiles);
+  const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
   if (detectResult.isErr()) {
     return new Err({
       type: "invalid_files",

@@ -65,7 +65,7 @@ async function handler(
         });
       }
 
-      const result = detectSkillsFromUploadedFiles(uploadedFiles);
+      const result = await detectSkillsFromUploadedFiles(uploadedFiles);
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 400,
