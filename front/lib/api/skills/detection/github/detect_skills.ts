@@ -39,6 +39,7 @@ export async function detectSkillsFromGitHubRepo({
   if (treeResult.isErr()) {
     return treeResult;
   }
+
   const tree = treeResult.value;
 
   const { skillDirs, fileEntries } = findGitHubSkillDirectories(tree);

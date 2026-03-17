@@ -9,26 +9,22 @@ import path from "path";
 
 const ACCEPTED_EXTENSIONS = new Set([".zip", ".skill"]);
 
-interface FileDetectionError {
-  message: string;
-}
-
 /**
  * Parses uploaded zip files (via formidable) and extracts detected skills.
  * Supports .zip and .skill (ZIP archives).
  */
 export async function detectSkillsFromUploadedFiles(
   uploadedFiles: formidable.File[]
-): Promise<Result<DetectedSkill[], FileDetectionError>> {
+): Promise<Result<DetectedSkill[], Error>> {
   for (const file of uploadedFiles) {
     const filename = file.originalFilename ?? "";
     const ext = path.extname(filename).toLowerCase();
 
     if (!ACCEPTED_EXTENSIONS.has(ext)) {
       await cleanupTempFiles(uploadedFiles);
-      return new Err({
-        message: `Unsupported file type "${ext}". Accepted: .zip, .skill`,
-      });
+      return new Err(
+        new Error(`Unsupported file type "${ext}". Accepted: .zip, .skill`)
+      );
     }
   }
 
@@ -40,7 +36,7 @@ export async function detectSkillsFromUploadedFiles(
     const result = detectSkillsFromZip({ zipBuffer: buffer });
     if (result.isErr()) {
       await cleanupTempFiles(uploadedFiles);
-      return new Err({ message: result.error.message });
+      return new Err(new Error(result.error.message));
     }
     allDetectedSkills.push(...result.value);
   }

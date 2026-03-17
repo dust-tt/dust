@@ -5,7 +5,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
 
 const IMPORT_CONCURRENCY = 4;
@@ -32,7 +32,7 @@ export async function importSkillsFromFiles(
 ): Promise<Result<ImportSkillsResult, Error>> {
   const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
   if (detectResult.isErr()) {
-    return new Err(new Error(detectResult.error.message));
+    return detectResult;
   }
 
   const detectedSkills = detectResult.value;

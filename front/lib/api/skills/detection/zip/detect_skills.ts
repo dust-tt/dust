@@ -62,6 +62,7 @@ function readZipFileContent(
     });
   }
   const buffer = entry.getData();
+
   return new Ok(buffer.toString("utf-8"));
 }
 
