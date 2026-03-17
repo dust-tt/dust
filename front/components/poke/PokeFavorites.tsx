@@ -10,11 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useState } from "react";
 
-interface PokeFavoriteButtonProps {
-  title: string;
-}
-
-export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
+export function PokeFavoriteButton() {
   const router = useAppRouter();
   const { isFavorite, toggleFavorite } = usePokeFavorites();
   const [hasMounted, setHasMounted] = React.useState(false);
@@ -23,8 +19,10 @@ export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
   const isCurrentlyFavorite = isFavorite(url);
 
   const handleToggle = useCallback(() => {
+    // Derive the favorite label from document.title (strip "Poke - " prefix).
+    const title = document.title.replace(/^Poke - /, "");
     toggleFavorite(createFavorite(url, title));
-  }, [toggleFavorite, url, title]);
+  }, [toggleFavorite, url]);
 
   useEffect(() => {
     setHasMounted(true);

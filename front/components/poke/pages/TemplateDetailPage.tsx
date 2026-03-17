@@ -1,5 +1,4 @@
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeForm,
   PokeFormControl,
@@ -9,6 +8,7 @@ import {
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -429,7 +429,7 @@ function PreviewDialog({ form }: { form: any }) {
 }
 
 export function TemplateDetailPage() {
-  useSetPokePageTitle("Template");
+  useDocumentTitle("Poke - Template");
 
   const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);

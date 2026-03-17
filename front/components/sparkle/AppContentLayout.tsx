@@ -4,8 +4,8 @@ import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
 import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { Head } from "@app/lib/platform";
 import { isAdmin } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import React from "react";
@@ -29,6 +29,8 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
   } = useAppLayout();
 
   const hasTitleBar = !!title || hasTitle;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  useDocumentTitle(pageTitle || `Dust - ${owner.name}`);
   useAppKeyboardShortcuts(owner);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -41,10 +43,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
 
   return (
     <div className="flex h-full flex-row">
-      <Head>
-        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-        <title>{pageTitle || `Dust - ${owner.name}`}</title>
-      </Head>
       {loaded && (
         <Navigation
           hideSidebar={hideSidebar}

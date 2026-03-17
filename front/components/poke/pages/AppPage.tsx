@@ -1,7 +1,7 @@
 import { ViewAppTable } from "@app/components/poke/apps/view";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -25,7 +25,7 @@ import { JsonViewer } from "@textea/json-viewer";
 
 export function AppPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - App`);
+  useDocumentTitle(`Poke - ${owner.name} - App`);
 
   const appId = useRequiredPathParam("appId");
   const hash = useSearchParam("hash");

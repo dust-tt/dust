@@ -1,4 +1,3 @@
-import { Image } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
@@ -45,13 +44,12 @@ function SidekickBanner({
       )}
     >
       <div className="relative overflow-hidden rounded-t-2xl">
-        <Image
+        <img
           src={SIDEKICK_IMAGE_PATH}
           alt="Sidekick"
           width={300}
           height={98}
           className="h-[98px] w-[300px] border-b border-border-dark object-cover dark:border-border-night"
-          priority
         />
         <Button
           variant="outline"
