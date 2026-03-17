@@ -15,7 +15,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import AdmZip from "adm-zip";
 
-const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
 // Total uncompressed size limit (prevents issues with small zip but
 // super large uncompressed data).
 const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
