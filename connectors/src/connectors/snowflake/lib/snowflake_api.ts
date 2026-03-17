@@ -628,6 +628,7 @@ async function _checkRoleGrants(
       [
         "FILE_FORMAT",
         "FUNCTION",
+        "INTEGRATION",
         "PROCEDURE",
         "STAGE",
         "SEQUENCE",
