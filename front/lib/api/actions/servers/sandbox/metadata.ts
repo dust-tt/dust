@@ -63,15 +63,7 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-
-    instructions:
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
-      "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
-      "Use `bash` to run commands and scripts. " +
-      "The sandbox persists for the conversation duration. " +
-      "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
+    instructions: null,
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
