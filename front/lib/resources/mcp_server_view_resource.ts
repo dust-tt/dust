@@ -15,6 +15,7 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/ena
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
@@ -47,7 +48,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op, QueryTypes as SequelizeQueryTypes } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -224,52 +225,121 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return view;
   }
 
-  static async listLatestActiveAgentNamesToReconfigureOnGlobalShare(
+  static async createWithAffectedAgentNames(
+    auth: Authenticator,
+    {
+      systemView,
+      space,
+    }: {
+      systemView: MCPServerViewResource;
+      space: SpaceResource;
+    }
+  ): Promise<{
+    serverView: MCPServerViewResource;
+    affectedAgentNames: string[];
+  }> {
+    const affectedAgentNames =
+      space.kind === "global"
+        ? await this.listLatestActiveAgentNamesToReconfigureOnGlobalShare(
+            auth,
+            systemView.mcpServerId
+          )
+        : [];
+
+    const serverView = await this.create(auth, {
+      systemView,
+      space,
+    });
+
+    return { serverView, affectedAgentNames };
+  }
+
+  private static async listLatestActiveAgentNamesToReconfigureOnGlobalShare(
     auth: Authenticator,
     mcpServerId: string
   ): Promise<string[]> {
-    const regularViewIds = (await this.listByMCPServer(auth, mcpServerId))
+    const regularMCPServerViewModelIds = (
+      await this.listByMCPServer(auth, mcpServerId)
+    )
       .filter((view) => view.space.kind === "regular")
       .map((view) => view.id);
 
-    if (regularViewIds.length === 0) {
+    if (regularMCPServerViewModelIds.length === 0) {
       return [];
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const query = `
-      SELECT DISTINCT ranked_agents.name
-      FROM (
-        SELECT ac.*,
-               ROW_NUMBER() OVER (
-                 PARTITION BY ac."sId"
-                 ORDER BY ac.version DESC
-               ) AS rn
-        FROM agent_configurations ac
-        WHERE ac."workspaceId" = :workspaceModelId
-      ) ranked_agents
-      INNER JOIN agent_mcp_server_configurations amsc
-        ON amsc."agentConfigurationId" = ranked_agents.id
-      WHERE ranked_agents.rn = 1
-        AND ranked_agents.status = 'active'
-        AND amsc."mcpServerViewId" IN (:mcpServerViewIds)
-      ORDER BY ranked_agents.name ASC
-    `;
-
-    type AgentNameRow = {
-      name: string;
-    };
-
-    const rows =
-      (await AgentConfigurationModel.sequelize?.query<AgentNameRow>(query, {
-        replacements: {
-          workspaceModelId,
-          mcpServerViewIds: regularViewIds,
+    const impactedMCPServerConfigurations =
+      await AgentMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspaceModelId,
+          mcpServerViewId: {
+            [Op.in]: regularMCPServerViewModelIds,
+          },
         },
-        type: SequelizeQueryTypes.SELECT,
-      })) ?? [];
+        attributes: ["agentConfigurationId"],
+      });
 
-    return uniq(rows.map((row) => row.name));
+    const impactedAgentConfigurationModelIds = new Set(
+      impactedMCPServerConfigurations.map(
+        (configuration) => configuration.agentConfigurationId
+      )
+    );
+
+    if (impactedAgentConfigurationModelIds.size === 0) {
+      return [];
+    }
+
+    const impactedAgentConfigurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: workspaceModelId,
+        id: {
+          [Op.in]: Array.from(impactedAgentConfigurationModelIds),
+        },
+      },
+      attributes: ["sId"],
+    });
+
+    const impactedAgentSIds = uniq(
+      impactedAgentConfigurations.map((configuration) => configuration.sId)
+    );
+
+    if (impactedAgentSIds.length === 0) {
+      return [];
+    }
+
+    const agentConfigurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: workspaceModelId,
+        sId: {
+          [Op.in]: impactedAgentSIds,
+        },
+      },
+      attributes: ["id", "sId", "name", "status", "version"],
+      order: [["version", "DESC"]],
+    });
+
+    const latestAgentConfigurations = new Map<
+      string,
+      AgentConfigurationModel
+    >();
+    for (const agentConfiguration of agentConfigurations) {
+      if (!latestAgentConfigurations.has(agentConfiguration.sId)) {
+        latestAgentConfigurations.set(
+          agentConfiguration.sId,
+          agentConfiguration
+        );
+      }
+    }
+
+    return Array.from(latestAgentConfigurations.values())
+      .filter(
+        (agentConfiguration) =>
+          agentConfiguration.status === "active" &&
+          impactedAgentConfigurationModelIds.has(agentConfiguration.id)
+      )
+      .map((agentConfiguration) => agentConfiguration.name)
+      .sort((left, right) => left.localeCompare(right));
   }
 
   // Fetching.

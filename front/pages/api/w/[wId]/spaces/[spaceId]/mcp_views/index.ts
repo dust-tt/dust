@@ -9,7 +9,7 @@ import {
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import { getMembers } from "@app/lib/api/workspace";
+import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -63,13 +63,7 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const { members } = await getMembers(auth, {
-    roles: ["admin"],
-    activeOnly: true,
-  });
-  const adminEmails = Array.from(
-    new Set(members.map((member) => member.email))
-  );
+  const adminEmails = await getActiveAdminEmails(auth);
 
   const results = await concurrentExecutor(
     adminEmails,
@@ -247,18 +241,11 @@ async function handler(
         });
       }
 
-      const affectedAgentNames =
-        space.kind === "global"
-          ? await MCPServerViewResource.listLatestActiveAgentNamesToReconfigureOnGlobalShare(
-              auth,
-              mcpServerId
-            )
-          : [];
-
-      const serverView = await MCPServerViewResource.create(auth, {
-        systemView,
-        space,
-      });
+      const { serverView, affectedAgentNames } =
+        await MCPServerViewResource.createWithAffectedAgentNames(auth, {
+          systemView,
+          space,
+        });
 
       if (space.kind === "global" && affectedAgentNames.length > 0) {
         const toolName = getMcpServerViewDisplayName(systemView.toJSON());
