@@ -14,7 +14,11 @@ interface FeatureFlagsDataTableProps {
 }
 
 function prepareFeatureFlagsForDisplay(
-  workspaceFlags: { name: WhitelistableFeature; createdAt: string }[],
+  workspaceFlags: {
+    name: WhitelistableFeature;
+    createdAt: string;
+    groups: { id: number; title: string }[] | null;
+  }[],
   whitelistableFeatures: WhitelistableFeature[]
 ) {
   return removeNulls(
@@ -26,6 +30,11 @@ function prepareFeatureFlagsForDisplay(
         return null;
       }
 
+      let scope = "All users";
+      if (enabledFlag?.groups) {
+        scope = enabledFlag.groups.map((g) => g.title).join(", ");
+      }
+
       return {
         name: ff,
         description: WHITELISTABLE_FEATURES_CONFIG[ff].description,
@@ -33,6 +42,7 @@ function prepareFeatureFlagsForDisplay(
         enabled: !!enabledFlag,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         enabledAt: enabledFlag?.createdAt || null,
+        scope,
       };
     })
   );
