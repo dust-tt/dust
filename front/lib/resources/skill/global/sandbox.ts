@@ -6,7 +6,10 @@ const SANDBOX_INSTRUCTIONS =
   "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
   "Use `bash` to run commands and scripts. " +
   "The sandbox persists for the conversation duration. " +
-  "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.";
+  "Common tools like Python, Node.js, and standard Unix utilities are pre-installed. " +
+  "Conversation files are mounted at /files/conversation. " +
+  "This includes files uploaded by the user and files created by the agent. " +
+  "Write output files (scripts, results, exports) to /files/conversation to make them available to the user.";
 
 export const sandboxSkill = {
   sId: "sandbox",
