@@ -10,7 +10,7 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -89,7 +89,7 @@ export async function getReinforcedLLM(
   if (!owner) {
     return null;
   }
-  const model = await getSmallWhitelistedModel(auth);
+  const model = await getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }
@@ -97,7 +97,7 @@ export async function getReinforcedLLM(
     skipEmbeddingApiKeyRequirement: true,
   });
   return getLLM(auth, {
-    modelId: "mistral-large-latest",
+    modelId: model.modelId,
     credentials,
     context: {
       operationType,
