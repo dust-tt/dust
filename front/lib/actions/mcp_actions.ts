@@ -232,6 +232,8 @@ function makeClientSideMCPToolConfigurations(
   config: ClientSideMCPServerConfigurationType,
   tools: ClientSideMCPToolTypeWithStakeLevel[]
 ): ClientSideMCPToolConfigurationType[] {
+  const toolServerId = getBaseServerId(config.clientSideMcpServerId);
+
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -249,10 +251,10 @@ function makeClientSideMCPToolConfigurations(
     permission: tool.stakeLevel,
     // Use the base serverId (without suffix) to ensure tools are shared across all instances
     // of the same server name, allowing for consistent tool behavior.
-    toolServerId: getBaseServerId(config.clientSideMcpServerId),
+    toolServerId,
     icon: config.icon,
     argumentsRequiringApproval: getClientSideToolArgumentsRequiringApproval(
-      config.clientSideMcpServerId,
+      toolServerId,
       tool.name
     ),
   }));
