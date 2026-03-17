@@ -42,6 +42,10 @@ export {
   CollapsibleTrigger,
 } from "./Collapsible";
 export { ConfettiBackground } from "./ConfettiBackground";
+export {
+  ContentOverflow,
+  type ContentOverflowProps,
+} from "./ContentOverflow";
 export { Container } from "./Container";
 export {
   ContainerWithTopBar,

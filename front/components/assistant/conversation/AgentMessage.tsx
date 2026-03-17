@@ -6,7 +6,6 @@ import { AgentMessageActions } from "@app/components/assistant/conversation/acti
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { CollapsibleContent } from "@app/components/assistant/conversation/CollapsibleContent";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -86,6 +85,7 @@ import {
   ButtonGroupDropdown,
   Chip,
   ClipboardCheckIcon,
+  ContentOverflow,
   ClipboardIcon,
   ConversationMessageAvatar,
   ConversationMessageContainer,
@@ -850,9 +850,10 @@ export function AgentMessage({
           }
           renderName={renderName}
         />
-        <CollapsibleContent
+        <ContentOverflow
+          className="flex flex-col gap-3"
           defaultCollapsed={!isLastMessage}
-          isStreaming={shouldStream}
+          defer={shouldStream}
           footer={
             !isCancelledOrDeleted &&
             messageButtons.length > 0 && (
@@ -890,7 +891,7 @@ export function AgentMessage({
               />
             )}
           </ConversationMessageContent>
-        </CollapsibleContent>
+        </ContentOverflow>
       </div>
     </ConversationMessageContainer>
   );
