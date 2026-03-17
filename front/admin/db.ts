@@ -45,6 +45,7 @@ import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
@@ -191,6 +192,7 @@ export function loadAllModels() {
     AgentMCPActionOutputItemModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
+    GlobalFeatureFlagModel,
     KillSwitchModel,
     LabsTranscriptsConfigurationModel,
     LabsTranscriptsHistoryModel,
