@@ -58,6 +58,7 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isJobType } from "@app/types/job_type";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -196,11 +197,13 @@ export async function createInstructionSuggestions({
   agentConfigurationId,
   suggestions,
   source,
+  conversationModelId,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
   suggestions: InstructionSuggestionInput[];
   source: AgentSuggestionSource;
+  conversationModelId?: ModelId;
 }): Promise<
   Result<{ sId: string; kind: string; targetBlockId: string }[], string>
 > {
@@ -259,6 +262,7 @@ export async function createInstructionSuggestions({
         analysis: analysis ?? null,
         state: "pending",
         source,
+        conversationId: conversationModelId ?? null,
       }
     );
 
@@ -291,11 +295,13 @@ export async function createToolsSuggestions({
   agentConfigurationId,
   suggestions,
   source,
+  conversationModelId,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
   suggestions: ToolsSuggestionInput[];
   source: AgentSuggestionSource;
+  conversationModelId?: ModelId;
 }): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Reject batches where multiple suggestions target the same tool.
   const suggestionToolIds = suggestions.map((s) => s.toolId);
@@ -385,6 +391,7 @@ export async function createToolsSuggestions({
         analysis: analysis ?? null,
         state: "pending",
         source,
+        conversationId: conversationModelId ?? null,
       }
     );
 
@@ -407,11 +414,13 @@ export async function createSkillsSuggestions({
   agentConfigurationId,
   suggestions,
   source,
+  conversationModelId,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
   suggestions: SkillsSuggestionInput[];
   source: AgentSuggestionSource;
+  conversationModelId?: ModelId;
 }): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Reject batches where multiple suggestions target the same skill.
   const suggestionSkillIds = suggestions.map((s) => s.skillId);
@@ -488,6 +497,7 @@ export async function createSkillsSuggestions({
         analysis: analysis ?? null,
         state: "pending",
         source,
+        conversationId: conversationModelId ?? null,
       }
     );
 

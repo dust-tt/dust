@@ -7,6 +7,7 @@ import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
@@ -137,16 +138,21 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  const [conversationRes, toolsAndSkillsContext] = await Promise.all([
-    getShrinkWrappedConversation(auth, {
-      conversationId,
-      includeFeedback: true,
-    }),
-    buildToolsAndSkillsContext(auth),
-  ]);
-  if (conversationRes.isErr()) {
+  const [conversationRes, conversationResource, toolsAndSkillsContext] =
+    await Promise.all([
+      getShrinkWrappedConversation(auth, {
+        conversationId,
+        includeFeedback: true,
+      }),
+      ConversationResource.fetchById(auth, conversationId),
+      buildToolsAndSkillsContext(auth),
+    ]);
+  if (conversationRes.isErr() || !conversationResource) {
     logger.warn(
-      { conversationId, error: conversationRes.error },
+      {
+        conversationId,
+        error: conversationRes.isErr() && conversationRes.error,
+      },
       "ReinforcedAgent: conversation not found"
     );
     return;
@@ -165,6 +171,7 @@ export async function analyzeConversationForReinforcement(
     source: "synthetic",
     operationType: "reinforced_agent_analyze_conversation",
     contextId: conversationId,
+    conversationModelId: conversationResource.id,
   });
 
   if (createdCount > 0) {

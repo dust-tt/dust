@@ -1,4 +1,5 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -22,6 +23,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
 
   declare state: AgentSuggestionState;
   declare source: AgentSuggestionSource;
+  declare conversationId: ForeignKey<ConversationModel["id"]> | null;
 
   declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
 }
@@ -71,6 +73,12 @@ AgentSuggestionModel.init(
       allowNull: false,
       comment: "Origin of the suggestion such as reinforcement or sidekick",
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      comment:
+        "FK to the conversation that triggered this suggestion (only set for synthetic suggestions)",
+    },
   },
   {
     modelName: "agent_suggestion",
@@ -89,6 +97,10 @@ AgentSuggestionModel.init(
         fields: ["agentConfigurationId"],
         concurrently: true,
       },
+      {
+        fields: ["conversationId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -102,4 +114,11 @@ AgentSuggestionModel.belongsTo(AgentConfigurationModel, {
 AgentConfigurationModel.hasMany(AgentSuggestionModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "suggestions",
+});
+
+// Association with ConversationModel (nullable — only set for synthetic suggestions).
+AgentSuggestionModel.belongsTo(ConversationModel, {
+  foreignKey: { name: "conversationId", allowNull: true },
+  onDelete: "RESTRICT",
+  as: "conversation",
 });
