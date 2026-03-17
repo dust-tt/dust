@@ -37,6 +37,7 @@ export function ConversationFilesPanel({
   conversation,
   owner,
 }: ConversationFilesPanelProps) {
+  const [activeTab, setActiveTab] = useState("files");
   const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(
     null
   );
@@ -147,7 +148,11 @@ export function ConversationFilesPanel({
   return (
     <>
       <div className="flex h-full flex-col">
-        <Tabs defaultValue="files" className="flex h-full flex-col">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex h-full flex-col"
+        >
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
               <TabsList border={false}>
@@ -171,6 +176,7 @@ export function ConversationFilesPanel({
           <TabsContent value="sandbox" className="flex-1 overflow-hidden">
             <SandboxTab
               conversationId={conversation.sId}
+              disabled={activeTab !== "sandbox"}
               owner={owner}
               onFileClick={handleSandboxFileClick}
             />

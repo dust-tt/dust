@@ -53,7 +53,6 @@ import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { ConversationAttachmentsUpdatedEvent } from "@app/lib/notifications/events";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
@@ -315,7 +314,6 @@ export function AgentMessage({
           case "agent_action_success": {
             const action = eventPayload.data.action;
             if (action.generatedFiles.length > 0) {
-              window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
               void mutateConversationAttachments();
             }
             if (action.internalMCPServerName === "sandbox") {
