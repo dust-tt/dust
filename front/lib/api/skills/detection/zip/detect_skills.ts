@@ -90,12 +90,12 @@ export function detectSkillsFromZip({
   }
   if (totalDecompressedSizeBytes > MAX_DECOMPRESSED_SIZE_BYTES) {
     const sizeMb = Math.round(totalDecompressedSizeBytes / 1024 / 1024);
-    return new Err({
-      type: "invalid_zip",
-      message:
+    return new Err(
+      new Error(
         `Total decompressed size too large (${sizeMb} MB). ` +
-        `Maximum allowed is ${MAX_DECOMPRESSED_SIZE_BYTES / 1024 / 1024} MB.`,
-    });
+          `Maximum allowed is ${MAX_DECOMPRESSED_SIZE_BYTES / 1024 / 1024} MB.`
+      )
+    );
   }
 
   const entries = stripCommonZipPrefix(rawEntries);
