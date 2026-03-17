@@ -1,4 +1,8 @@
 import {
+  fetchBlobContent,
+  fetchRepoTree,
+} from "@app/lib/api/skills/detection/github/github_api";
+import {
   collectGitHubAttachments,
   findGitHubSkillDirectories,
 } from "@app/lib/api/skills/detection/github/parsing";
@@ -7,144 +11,16 @@ import type {
   GitHubFileEntry,
   GitHubSkillDetectionError,
   GitHubSkillDirectory,
-  GitHubTreeEntry,
-} from "@app/lib/api/skills/detection/github/types";
-import {
-  GitHubBlobResponseSchema,
-  GitHubTreeResponseSchema,
 } from "@app/lib/api/skills/detection/github/types";
 import { parseSkillMarkdown } from "@app/lib/api/skills/detection/parsing";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { Octokit } from "@octokit/core";
+import { Ok } from "@app/types/shared/result";
+import type { Octokit } from "@octokit/core";
 
 const FETCH_CONCURRENCY = 4;
-
-async function fetchRepoTree(
-  octokit: InstanceType<typeof Octokit>,
-  {
-    owner,
-    repo,
-  }: {
-    owner: string;
-    repo: string;
-  }
-): Promise<Result<GitHubTreeEntry[], GitHubSkillDetectionError>> {
-  let rawData: unknown;
-  try {
-    const response = await octokit.request(
-      "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
-      { owner, repo, tree_sha: "HEAD", recursive: "1" }
-    );
-    rawData = response.data;
-  } catch (err) {
-    const error = normalizeError(err);
-    if (error.message.includes("Not Found")) {
-      return new Err({
-        type: "not_found",
-        message: `Repository "${owner}/${repo}" not found.`,
-      });
-    }
-    if (
-      error.message.includes("Bad credentials") ||
-      error.message.includes("401")
-    ) {
-      return new Err({
-        type: "auth_error",
-        message: `Authentication failed for repository "${owner}/${repo}".`,
-      });
-    }
-    return new Err({
-      type: "github_api_error",
-      message: `Failed to fetch repository tree: ${error.message}`,
-    });
-  }
-
-  const parsed = GitHubTreeResponseSchema.safeParse(rawData);
-  if (!parsed.success) {
-    return new Err({
-      type: "github_api_error",
-      message: `Invalid tree response from GitHub: ${parsed.error.message}`,
-    });
-  }
-
-  if (parsed.data.truncated) {
-    logger.warn(
-      { owner, repo },
-      "GitHub tree response was truncated; some skills may be missed."
-    );
-  }
-
-  return new Ok(parsed.data.tree);
-}
-
-/**
- * Fetches a blob's raw base64 content from GitHub.
- */
-export async function fetchBlobContent(
-  octokit: InstanceType<typeof Octokit>,
-  {
-    owner,
-    repo,
-    fileSha,
-  }: {
-    owner: string;
-    repo: string;
-    fileSha: string;
-  }
-): Promise<Result<string, GitHubSkillDetectionError>> {
-  let rawData: unknown;
-  try {
-    const response = await octokit.request(
-      "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
-      { owner, repo, file_sha: fileSha }
-    );
-    rawData = response.data;
-  } catch (err) {
-    return new Err({
-      type: "github_api_error",
-      message: `Failed to fetch blob: ${normalizeError(err).message}`,
-    });
-  }
-
-  const parsed = GitHubBlobResponseSchema.safeParse(rawData);
-  if (!parsed.success) {
-    return new Err({
-      type: "github_api_error",
-      message: `Invalid blob response from GitHub: ${parsed.error.message}`,
-    });
-  }
-
-  return new Ok(parsed.data.content);
-}
-
-/**
- * Parses a GitHub repo URL and creates an authenticated Octokit client.
- * Shared setup for both skill detection and import flows.
- */
-export function initGitHubRepoClient({
-  repoUrl,
-  accessToken,
-}: {
-  repoUrl: string;
-  accessToken?: string | null;
-}): Result<
-  { octokit: InstanceType<typeof Octokit>; owner: string; repo: string },
-  GitHubSkillDetectionError
-> {
-  const parseResult = parseGitHubRepoUrl(repoUrl);
-  if (parseResult.isErr()) {
-    return parseResult;
-  }
-  const { owner, repo } = parseResult.value;
-  const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
-  return new Ok({ octokit, owner, repo });
-}
 
 /**
  * Detects Agent Skills (https://agentskills.io/specification) in a GitHub

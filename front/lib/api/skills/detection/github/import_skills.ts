@@ -1,10 +1,12 @@
 import { uploadBase64DataToFileStorage } from "@app/lib/api/files/upload";
 import {
   detectSkillsFromGitHubRepo,
-  fetchBlobContent,
-  initGitHubRepoClient,
   isSkillFromGitHubRepo,
 } from "@app/lib/api/skills/detection/github/detect_skills";
+import {
+  fetchBlobContent,
+  initGitHubRepoClient,
+} from "@app/lib/api/skills/detection/github/github_api";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
 import type {
   GitHubDetectedSkillAttachment,
