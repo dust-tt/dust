@@ -14,7 +14,6 @@ export type FathomListMeetingsOptions = {
   startDate?: string;
   endDate?: string;
   recordingId?: number;
-  calendarInvitees?: string[];
   calendarInviteesDomains?: string[];
   calendarInviteesDomainsType?:
     | "all"
@@ -50,7 +49,6 @@ export class FathomMCPClient {
       startDate,
       endDate,
       recordingId,
-      calendarInvitees,
       calendarInviteesDomains,
       calendarInviteesDomainsType,
       recordedBy,
@@ -64,7 +62,6 @@ export class FathomMCPClient {
         cursor,
         createdAfter: startDate,
         createdBefore: endDate,
-        calendarInvitees,
         calendarInviteesDomains,
         calendarInviteesDomainsType,
         recordedBy,
