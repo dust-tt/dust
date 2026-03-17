@@ -10,11 +10,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Chip,
-  TruncatedCollapsibleContent,
   IconButton,
   Markdown,
   Spinner,
   Tooltip,
+  TruncatedCollapsibleContent,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -218,7 +218,7 @@ export function SpaceUserProjectDigest({
           animationDurationMs={200}
           className="flex flex-col gap-3"
         >
-            <Markdown content={currentDigest.digest} />
+          <Markdown content={currentDigest.digest} />
         </TruncatedCollapsibleContent>
       ) : (
         <div className="flex items-center gap-3 py-4">

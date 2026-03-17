@@ -42,10 +42,6 @@ export {
   CollapsibleTrigger,
 } from "./Collapsible";
 export { ConfettiBackground } from "./ConfettiBackground";
-export {
-  TruncatedCollapsibleContent,
-  type TruncatedCollapsibleContentProps,
-} from "./TruncatedCollapsibleContent";
 export { Container } from "./Container";
 export {
   ContainerWithTopBar,
@@ -244,6 +240,10 @@ export {
   TooltipTrigger,
 } from "./Tooltip";
 export { Tree } from "./Tree";
+export {
+  TruncatedCollapsibleContent,
+  type TruncatedCollapsibleContentProps,
+} from "./TruncatedCollapsibleContent";
 export { TypingAnimation } from "./TypingAnimation";
 export type { UniversalSearchItemProps } from "./UniversalSearchItem";
 export { UniversalSearchItem } from "./UniversalSearchItem";
