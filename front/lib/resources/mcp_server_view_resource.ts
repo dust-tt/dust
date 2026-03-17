@@ -59,6 +59,7 @@ export interface MCPServerViewResource
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
+  affectedAgents?: Attributes<AgentConfigurationModel>[];
   private internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
@@ -196,6 +197,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const mcpServerId = systemView.mcpServerId;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    const affectedAgents =
+      space.kind === "global"
+        ? await this.listLatestActiveAgentsToReconfigureOnGlobalShare(
+            auth,
+            mcpServerId
+          )
+        : undefined;
 
     if (space.kind === "global") {
       const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
@@ -222,42 +230,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       auth.user() ?? undefined
     );
 
+    view.affectedAgents = affectedAgents;
+
     return view;
   }
 
-  static async createWithAffectedAgentNames(
-    auth: Authenticator,
-    {
-      systemView,
-      space,
-    }: {
-      systemView: MCPServerViewResource;
-      space: SpaceResource;
-    }
-  ): Promise<{
-    serverView: MCPServerViewResource;
-    affectedAgentNames: string[];
-  }> {
-    const affectedAgentNames =
-      space.kind === "global"
-        ? await this.listLatestActiveAgentNamesToReconfigureOnGlobalShare(
-            auth,
-            systemView.mcpServerId
-          )
-        : [];
-
-    const serverView = await this.create(auth, {
-      systemView,
-      space,
-    });
-
-    return { serverView, affectedAgentNames };
-  }
-
-  private static async listLatestActiveAgentNamesToReconfigureOnGlobalShare(
+  private static async listLatestActiveAgentsToReconfigureOnGlobalShare(
     auth: Authenticator,
     mcpServerId: string
-  ): Promise<string[]> {
+  ): Promise<Attributes<AgentConfigurationModel>[]> {
     const regularMCPServerViewModelIds = (
       await this.listByMCPServer(auth, mcpServerId)
     )
@@ -338,8 +319,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           agentConfiguration.status === "active" &&
           impactedAgentConfigurationModelIds.has(agentConfiguration.id)
       )
-      .map((agentConfiguration) => agentConfiguration.name)
-      .sort((left, right) => left.localeCompare(right));
+      .map((agentConfiguration) => agentConfiguration.get())
+      .sort((left, right) => left.name.localeCompare(right.name));
   }
 
   // Fetching.

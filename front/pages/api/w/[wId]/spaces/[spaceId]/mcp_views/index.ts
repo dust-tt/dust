@@ -241,11 +241,12 @@ async function handler(
         });
       }
 
-      const { serverView, affectedAgentNames } =
-        await MCPServerViewResource.createWithAffectedAgentNames(auth, {
-          systemView,
-          space,
-        });
+      const serverView = await MCPServerViewResource.create(auth, {
+        systemView,
+        space,
+      });
+      const affectedAgentNames =
+        serverView.affectedAgents?.map((agent) => agent.name) ?? [];
 
       if (space.kind === "global" && affectedAgentNames.length > 0) {
         const toolName = getMcpServerViewDisplayName(systemView.toJSON());
