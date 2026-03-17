@@ -171,7 +171,7 @@ export async function analyzeConversationForReinforcement(
     source: "synthetic",
     operationType: "reinforced_agent_analyze_conversation",
     contextId: conversationId,
-    conversationModelId: conversationResource.id,
+    conversation: conversationResource,
   });
 
   if (createdCount > 0) {

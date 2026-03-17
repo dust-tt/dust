@@ -248,15 +248,13 @@ export async function processConversationAnalysisBatchResultActivity({
 
   const results = await llm.getBatchResult(batchId);
 
-  // Resolve conversation sIds to model IDs for FK storage.
-  const conversationIds = [...results.keys()];
+  // Resolve conversation sIds to resources for FK storage.
+  const conversationSIds = [...results.keys()];
   const conversations = await ConversationResource.fetchByIds(
     auth,
-    conversationIds
+    conversationSIds
   );
-  const conversationModelIdById = new Map(
-    conversations.map((c) => [c.sId, c.id])
-  );
+  const conversationById = new Map(conversations.map((c) => [c.sId, c]));
 
   let totalCreated = 0;
   for (const [conversationId, events] of results) {
@@ -267,7 +265,7 @@ export async function processConversationAnalysisBatchResultActivity({
       source: "synthetic",
       operationType: "reinforced_agent_analyze_conversation",
       contextId: conversationId,
-      conversationModelId: conversationModelIdById.get(conversationId),
+      conversation: conversationById.get(conversationId),
     });
     totalCreated += createdCount;
   }
