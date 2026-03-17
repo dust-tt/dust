@@ -77,6 +77,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_butler":
+    case "reinforced_agent_notification":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":

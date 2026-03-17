@@ -513,6 +513,7 @@ export function isUserMessageContextValid(
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_kickoff":
+    case "reinforced_agent_notification":
     case "web":
       return false;
     default:

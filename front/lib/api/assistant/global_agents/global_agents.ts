@@ -727,6 +727,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         prefetchedModels,
+        globalAgentContext,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:
