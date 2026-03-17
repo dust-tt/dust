@@ -83,7 +83,7 @@ export function createSandboxTools(
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: async (
-      { command, workingDirectory, timeoutMs },
+      { command, workingDirectory, timeoutMs, background },
       { auth, agentLoopContext }
     ) => {
       const conversation = agentLoopContext?.runContext?.conversation;
@@ -137,13 +137,33 @@ export function createSandboxTools(
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
-      const execResult = await sandbox.exec(auth, command, {
+      const baseOpts = {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
-        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
           DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
         },
+      };
+
+      if (background) {
+        const execResult = await sandbox.exec(auth, command, {
+          ...baseOpts,
+          background: true,
+        });
+        if (execResult.isErr()) {
+          return new Err(new MCPError(execResult.error.message));
+        }
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Process started in background (pid: ${execResult.value.pid})`,
+          },
+        ]);
+      }
+
+      const execResult = await sandbox.exec(auth, command, {
+        ...baseOpts,
+        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
       });
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));

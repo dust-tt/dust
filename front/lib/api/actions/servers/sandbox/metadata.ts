@@ -12,7 +12,9 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "Execute a shell command in an isolated sandbox environment. " +
       "The sandbox is a Linux container with common tools pre-installed. " +
       "Use this for running scripts, installing packages, or executing code. " +
-      "The sandbox persists for the duration of the conversation.",
+      "The sandbox persists for the duration of the conversation. " +
+      "To start long-running processes (e.g. servers, or long running commands), use background mode. " +
+      "Do NOT use shell backgrounding (& or nohup).",
     schema: {
       command: z
         .string()
@@ -28,7 +30,15 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .max(120000)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
+          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000. Ignored when background is true."
+        ),
+      background: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, start the command in the background and return immediately with a process ID (pid). " +
+            "Output (stdout/stderr) of background commands is NOT accessible directly. " +
+            "You MUST redirect output to a file (e.g. `cmd > /tmp/out.log 2>&1`) to read it later."
         ),
     },
     stake: "never_ask",

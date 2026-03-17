@@ -3,9 +3,12 @@ import {
   type NetworkPolicy,
 } from "@app/lib/api/sandbox/image/types";
 import type {
+  BackgroundExecOptions,
+  BackgroundExecResult,
   ExecOptions,
   ExecResult,
   FileEntry,
+  ForegroundExecOptions,
   SandboxCreateConfig,
   SandboxHandle,
   SandboxProvider,
@@ -181,8 +184,18 @@ export class E2BSandboxProvider implements SandboxProvider {
   async exec(
     providerId: string,
     command: string,
+    opts: BackgroundExecOptions
+  ): Promise<Result<BackgroundExecResult, Error>>;
+  async exec(
+    providerId: string,
+    command: string,
+    opts?: ForegroundExecOptions
+  ): Promise<Result<ExecResult, Error>>;
+  async exec(
+    providerId: string,
+    command: string,
     opts?: ExecOptions
-  ): Promise<Result<ExecResult, Error>> {
+  ): Promise<Result<ExecResult | BackgroundExecResult, Error>> {
     let sandbox: Sandbox;
     try {
       sandbox = await Sandbox.connect(providerId, {
@@ -194,6 +207,20 @@ export class E2BSandboxProvider implements SandboxProvider {
         return new Err(new SandboxNotFoundError(providerId));
       }
       return new Err(normalizeError(err));
+    }
+
+    if (opts?.background) {
+      try {
+        const handle = await sandbox.commands.run(command, {
+          cwd: opts?.workingDirectory,
+          envs: opts?.envVars,
+          background: true,
+        });
+
+        return new Ok({ pid: handle.pid });
+      } catch (err) {
+        return new Err(normalizeError(err));
+      }
     }
 
     try {

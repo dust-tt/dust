@@ -51,14 +51,28 @@ export interface ExecResult {
   stderr: string;
 }
 
-export interface ExecOptions {
+export interface BackgroundExecResult {
+  pid: number;
+}
+
+interface BaseExecOptions {
   /** Working directory for command execution. */
   workingDirectory?: string;
-  /** Timeout in milliseconds. */
-  timeoutMs?: number;
   /** Additional environment variables for this execution only. */
   envVars?: Record<string, string>;
 }
+
+export interface ForegroundExecOptions extends BaseExecOptions {
+  /** Timeout in milliseconds. */
+  timeoutMs?: number;
+  background?: false;
+}
+
+export interface BackgroundExecOptions extends BaseExecOptions {
+  background: true;
+}
+
+export type ExecOptions = ForegroundExecOptions | BackgroundExecOptions;
 
 // ---------------------------------------------------------------------------
 // Filesystem
@@ -105,8 +119,18 @@ export interface SandboxProvider {
   exec(
     providerId: string,
     command: string,
-    opts?: ExecOptions
+    opts: BackgroundExecOptions
+  ): Promise<Result<BackgroundExecResult, Error>>;
+  exec(
+    providerId: string,
+    command: string,
+    opts?: ForegroundExecOptions
   ): Promise<Result<ExecResult, Error>>;
+  exec(
+    providerId: string,
+    command: string,
+    opts?: ExecOptions
+  ): Promise<Result<ExecResult | BackgroundExecResult, Error>>;
 
   writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
 
