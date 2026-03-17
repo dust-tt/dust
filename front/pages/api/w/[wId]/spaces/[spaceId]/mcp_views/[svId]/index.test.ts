@@ -15,7 +15,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace, user, authenticator, systemSpace, globalSpace } =
+  const { req, res, workspace, user, auth, systemSpace, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -31,7 +31,7 @@ async function setupTest(
     workspace,
     space: systemSpace,
     user,
-    authenticator,
+    auth,
     globalSpace,
   };
 }
@@ -45,7 +45,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
@@ -87,7 +87,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
       user: user.toJSON(),
     });
 
-    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
@@ -138,20 +138,17 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   it("only supports DELETE method", async () => {
-    const { req, res, workspace, authenticator, globalSpace } = await setupTest(
+    const { req, res, workspace, auth, globalSpace } = await setupTest(
       "admin",
       "GET"
     );
 
-    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
 
-    const mcpServer = await InternalMCPServerInMemoryResource.makeNew(
-      authenticator,
-      {
-        name: "primitive_types_debugger",
-        useCase: null,
-      }
-    );
+    const mcpServer = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "primitive_types_debugger",
+      useCase: null,
+    });
 
     const serverView = await MCPServerViewFactory.create(
       workspace,

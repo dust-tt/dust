@@ -15,13 +15,13 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator, globalSpace, systemSpace } =
+  const { req, res, workspace, auth, globalSpace, systemSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  const conversation = await ConversationFactory.create(authenticator, {
+  const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     messagesCreatedAt: [new Date()],
   });
@@ -32,7 +32,7 @@ async function setupTest(
   req.url = `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/tools`;
 
   return {
-    auth: authenticator,
+    auth: auth,
     conversation,
     globalSpace,
     req,

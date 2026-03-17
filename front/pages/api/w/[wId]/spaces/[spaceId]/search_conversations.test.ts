@@ -160,7 +160,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("returns conversations ordered by relevance", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -178,7 +178,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
@@ -189,19 +189,19 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       workspace,
       globalGroup
     );
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
-    const conv1 = await ConversationFactory.create(authenticator, {
+    const conv1 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
     });
-    const conv2 = await ConversationFactory.create(authenticator, {
+    const conv2 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
     });
-    const conv3 = await ConversationFactory.create(authenticator, {
+    const conv3 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
@@ -273,7 +273,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("returns empty array when no conversations found", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -291,14 +291,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
     req.query.query = "test query";
 
     await setupDataSourceMocks(workspace, globalGroup);
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
     vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockResolvedValue(
       new Ok({
@@ -314,7 +314,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("returns empty array when documents have no conversation tags", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -332,7 +332,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
@@ -342,7 +342,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       workspace,
       globalGroup
     );
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
     const mockDocuments: CoreAPIDocument[] = [
       {
@@ -376,7 +376,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("handles documents with multiple chunks and uses max score", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -394,7 +394,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
@@ -404,14 +404,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       workspace,
       globalGroup
     );
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
-    const conv1 = await ConversationFactory.create(authenticator, {
+    const conv1 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
     });
-    const conv2 = await ConversationFactory.create(authenticator, {
+    const conv2 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
@@ -472,7 +472,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("handles documents with chunks without scores", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -490,7 +490,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
@@ -500,9 +500,9 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       workspace,
       globalGroup
     );
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
-    const conv1 = await ConversationFactory.create(authenticator, {
+    const conv1 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
@@ -591,7 +591,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("uses default limit when not provided", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -609,14 +609,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
     req.query.query = "test query";
 
     await setupDataSourceMocks(workspace, globalGroup);
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
     const bulkSearchSpy = vi
       .spyOn(CoreAPI.prototype, "bulkSearchDataSources")
@@ -658,7 +658,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("handles CoreAPI search errors", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -676,14 +676,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
     req.query.query = "test query";
 
     await setupDataSourceMocks(workspace, globalGroup);
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
     vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockResolvedValue(
       new Err({
@@ -699,7 +699,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("returns empty array when project datasource does not exist", async () => {
-    const { req, res, workspace, user, authenticator } =
+    const { req, res, workspace, user, auth } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -717,7 +717,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = regularSpace.sId;
@@ -731,7 +731,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
   });
 
   it("filters out conversations that cannot be fetched", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -749,7 +749,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       throw new Error("Failed to add user to space");
     }
 
-    await authenticator.refresh();
+    await auth.refresh();
 
     req.query.wId = workspace.sId;
     req.query.spaceId = projectSpace.sId;
@@ -759,9 +759,9 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/search_conversations", () => {
       workspace,
       globalGroup
     );
-    await createDataSourceAndConnectorForProject(authenticator, projectSpace);
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
 
-    const conv1 = await ConversationFactory.create(authenticator, {
+    const conv1 = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
       spaceId: projectSpace.id,
