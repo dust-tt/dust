@@ -97,7 +97,7 @@ export async function getReinforcedLLM(
     skipEmbeddingApiKeyRequirement: true,
   });
   return getLLM(auth, {
-    modelId: "mistral-large-latest",
+    modelId: model.modelId,
     credentials,
     context: {
       operationType,
