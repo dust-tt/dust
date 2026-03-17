@@ -9,6 +9,8 @@ const SANDBOX_INSTRUCTIONS =
   "Common tools like Python, Node.js, and standard Unix utilities are pre-installed. " +
   "Conversation files are mounted at /files/conversation. " +
   "This includes files uploaded by the user and files created by the agent. " +
+  "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox. " +
+  "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information. " +
   "Write output files (scripts, results, exports) to /files/conversation to make them available to the user.";
 
 export const sandboxSkill = {
