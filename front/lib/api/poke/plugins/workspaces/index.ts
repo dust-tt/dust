@@ -1,5 +1,6 @@
 export * from "./add_user_to_workos_organization";
 export * from "./apply_group_roles";
+export * from "./audit_user_feature_flags";
 export * from "./buy_programmatic_usage_credits";
 export * from "./check_message_usage";
 export * from "./check_seat_count";

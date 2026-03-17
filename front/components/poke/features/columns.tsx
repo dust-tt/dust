@@ -14,6 +14,7 @@ type FeatureFlagsDisplayType = {
   stage: FeatureFlagStage;
   enabled: boolean;
   enabledAt: string | null;
+  scope: string;
 };
 
 export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>[] {
@@ -67,6 +68,26 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
           >
             {enabled ? "✅ Enabled" : "❌ Disabled"}
           </span>
+        );
+      },
+    },
+    {
+      accessorKey: "scope",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Scope" />
+      ),
+      cell: ({ row }) => {
+        const { scope, enabled } = row.original;
+        if (!enabled) {
+          return <span className="text-gray-400">—</span>;
+        }
+        return (
+          <Chip
+            color={scope === "All users" ? "highlight" : "warning"}
+            size="xs"
+          >
+            {scope}
+          </Chip>
         );
       },
     },
