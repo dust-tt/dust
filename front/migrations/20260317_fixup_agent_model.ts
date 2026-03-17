@@ -23,7 +23,12 @@ makeScript({}, async ({ execute }, logger) => {
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 
-  console.log(
+  logger.info(
+    {
+      count: activeAgents.length,
+      modelId: OLD_MODEL_ID,
+      cutoff: CUTOFF_DATE.toISOString(),
+    },
     `Found ${activeAgents.length} active agents using model ${OLD_MODEL_ID}. Checking for creation date after ${CUTOFF_DATE.toISOString()}...`
   );
 
