@@ -228,12 +228,6 @@ function BackendSearch({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const handleClearSearch = React.useCallback(() => {
-    searchParam.setParam(undefined);
-    setSearchValue("");
-    setNodeOrUrlCandidate(null);
-  }, [searchParam, setSearchValue]);
-
   const handleSearchChange = (value: string) => {
     searchParam.setParam(value);
     setSearchValue(value);
@@ -463,7 +457,6 @@ function BackendSearch({
               isLoading={isSearchLoading}
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
-              onClearSearch={handleClearSearch}
               sorting={sorting}
               setSorting={handleSortingChange}
               scrollableDataTableRef={scrollableDataTableRef}
@@ -557,7 +550,6 @@ interface SearchResultsTableProps {
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
-  onClearSearch: () => void;
   scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
@@ -575,7 +567,6 @@ function SearchResultsTable({
   isLoading,
   onOpenDocument,
   setEffectiveContentNode,
-  onClearSearch,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useAppRouter();
@@ -677,7 +668,6 @@ function SearchResultsTable({
                   ? baseUrl
                   : `${baseUrl}?parentId=${parentId}`;
               void router.push(url);
-              onClearSearch();
             }
           },
         }),
@@ -698,7 +688,6 @@ function SearchResultsTable({
       };
     });
   }, [
-    onClearSearch,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,
