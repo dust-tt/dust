@@ -34,7 +34,7 @@ async function handler(
   switch (req.method) {
     case "POST": {
       const bodyValidation = PostTextAsCronRuleRequestBodySchema.safeParse(
-        JSON.parse(req.body)
+        req.body
       );
 
       if (!bodyValidation.success) {
