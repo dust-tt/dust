@@ -44,7 +44,7 @@ export function ButlerSuggestionCard({
           onAction={onAction}
           icon={ChatBubbleLeftRightIcon}
           title={`Try asking @${suggestion.metadata.agentName}`}
-          actionLabel="Ask"
+          actionLabel="Draft"
         />
       );
     case "create_frame":
@@ -54,7 +54,7 @@ export function ButlerSuggestionCard({
           onAction={onAction}
           icon={ActionFrameIcon}
           title="Create a Frame?"
-          actionLabel="Create"
+          actionLabel="Draft"
         />
       );
     default:
@@ -99,6 +99,11 @@ function RenameTitleSuggestionCard({
             {suggestion.metadata.suggestedTitle}
           </span>
         </div>
+        {suggestion.metadata.rationale && (
+          <div className="text-sm text-muted-foreground">
+            {suggestion.metadata.rationale}
+          </div>
+        )}
         <div className="flex flex-row gap-2">
           <Button
             label="Rename"
@@ -159,6 +164,11 @@ function AgentInvocationSuggestionCard({
       className="my-3 w-full max-w-full"
     >
       <div className="flex flex-col gap-3">
+        {suggestion.metadata.rationale && (
+          <div className="text-sm text-muted-foreground">
+            {suggestion.metadata.rationale}
+          </div>
+        )}
         <div className="italic text-sm text-muted-foreground">
           "{suggestion.metadata.prompt}"
         </div>
