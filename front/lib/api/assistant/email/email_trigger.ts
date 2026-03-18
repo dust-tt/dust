@@ -255,6 +255,11 @@ function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
 }
 
+// Cap on total reply recipients (to + cc combined). To/Cc are sourced from raw email headers,
+// which a sender can freely forge to list arbitrary addresses. The cap prevents using the agent
+// as a bulk relay while leaving no impact on legitimate threads (nobody CCs 15+ people normally).
+export const MAX_REPLY_RECIPIENTS = 15;
+
 function buildReferencesHeaderValue({
   inReplyTo,
   references,
@@ -325,7 +330,17 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
     })
   );
 
-  return { to, cc };
+  // Enforce recipient cap: sender (envelope.from) is always kept, extras are dropped from cc first.
+  const total = to.length + cc.length;
+  if (total <= MAX_REPLY_RECIPIENTS) {
+    return { to, cc };
+  }
+  const cappedCc = cc.slice(0, Math.max(0, MAX_REPLY_RECIPIENTS - to.length));
+  logger.warn(
+    { totalRecipients: total, cappedTo: to.length, cappedCc: cappedCc.length },
+    "[email] Reply recipient list truncated to MAX_REPLY_RECIPIENTS."
+  );
+  return { to, cc: cappedCc };
 }
 export async function userAndWorkspaceFromEmail({
   email,

@@ -2,6 +2,7 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   buildReplyThreadingHeaders,
   buildSuccessReplyRecipients,
+  MAX_REPLY_RECIPIENTS,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { describe, expect, it } from "vitest";
 
@@ -82,6 +83,37 @@ describe("buildSuccessReplyRecipients", () => {
       to: ["sender@dust.tt", "teammate@dust.tt"],
       cc: ["observer@dust.tt"],
     });
+  });
+
+  it("caps total recipients at MAX_REPLY_RECIPIENTS, dropping cc first", () => {
+    const manyCC = Array.from(
+      { length: MAX_REPLY_RECIPIENTS },
+      (_, i) => `cc${i}@dust.tt`
+    );
+    const recipients = buildSuccessReplyRecipients({
+      subject: "Test",
+      text: "Hello",
+      auth: { SPF: "pass", dkim: "pass" },
+      threadingHeaders: {
+        messageId: null,
+        inReplyTo: null,
+        references: null,
+      },
+      envelope: {
+        from: "sender@dust.tt",
+        full: "Sender <sender@dust.tt>",
+        to: ["teammate@dust.tt"],
+        cc: manyCC,
+        bcc: [],
+      },
+      attachments: [],
+    });
+
+    expect(recipients.to).toEqual(["sender@dust.tt", "teammate@dust.tt"]);
+    expect(recipients.to.length + recipients.cc.length).toBe(
+      MAX_REPLY_RECIPIENTS
+    );
+    expect(recipients.cc).toEqual(manyCC.slice(0, MAX_REPLY_RECIPIENTS - 2));
   });
 });
 
