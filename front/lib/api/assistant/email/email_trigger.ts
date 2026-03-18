@@ -336,6 +336,10 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
     return { to, cc };
   }
   const cappedCc = cc.slice(0, Math.max(0, MAX_REPLY_RECIPIENTS - to.length));
+  logger.warn(
+    { totalRecipients: total, cappedTo: to.length, cappedCc: cappedCc.length },
+    "[email] Reply recipient list truncated to MAX_REPLY_RECIPIENTS."
+  );
   return { to, cc: cappedCc };
 }
 export async function userAndWorkspaceFromEmail({
