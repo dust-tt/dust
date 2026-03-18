@@ -60,6 +60,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
+  DUST_ANT_MEDIUM_OMITTED = "dust-ant-medium-omitted",
+  DUST_ANT_HIGH_OMITTED = "dust-ant-high-omitted",
   DUST_KIMI = "dust-kimi",
   DUST_KIMI_MEDIUM = "dust-kimi-medium",
   DUST_KIMI_HIGH = "dust-kimi-high",

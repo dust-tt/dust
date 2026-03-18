@@ -355,6 +355,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-ant but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+        name: "dust-ant-medium-omitted",
+        description:
+          "Same as dust-ant-medium but with omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+        name: "dust-ant-high-omitted",
+        description:
+          "Same as dust-ant-high but with omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_KIMI,

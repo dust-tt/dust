@@ -18,7 +18,9 @@ import {
 import {
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
+  _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
+  _getDustAntMediumOmittedGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
   _getDustGlmHighGlobalAgent,
@@ -201,6 +203,18 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -800,6 +814,22 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
+      agentConfiguration = _getDustAntMediumOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
+      agentConfiguration = _getDustAntHighOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       agentConfiguration = _getDustKimiGlobalAgent(auth, {
         settings,
@@ -1090,9 +1120,14 @@ export async function getGlobalAgents(
     );
   }
   const DUST_INTERNAL_AGENTS = [
+    GLOBAL_AGENTS_SID.DUST_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT,
     GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
+    GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,

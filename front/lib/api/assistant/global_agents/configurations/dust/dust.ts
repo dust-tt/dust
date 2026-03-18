@@ -637,6 +637,32 @@ export function _getDustAntHighGlobalAgent(
   });
 }
 
+export function _getDustAntMediumOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    name: "dust-ant-medium-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustAntHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    name: "dust-ant-high-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+    omittedThinking: true,
+  });
+}
+
 export function _getDustKimiGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
