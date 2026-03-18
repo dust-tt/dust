@@ -103,57 +103,42 @@ export function MCPToolValidationRequired({
       blockedAction.metadata.toolName
     ];
 
-  const title = useMemo(() => {
-    if (isTriggeredByCurrentUser) {
-      if (toolOverride?.title) {
-        return toolOverride.title(
-          blockedAction.metadata.agentName,
-          blockedAction.inputs
-        );
-      }
-      return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
-    } else {
+  function getTitle() {
+    if (!isTriggeredByCurrentUser) {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
-  }, [
-    blockedAction.metadata.mcpServerName,
-    blockedAction.metadata.toolName,
-    blockedAction.metadata.agentName,
-    blockedAction.inputs,
-    isTriggeredByCurrentUser,
-    toolOverride,
-  ]);
+    if (toolOverride?.title) {
+      return toolOverride.title(
+        blockedAction.metadata.agentName,
+        blockedAction.inputs
+      );
+    }
+    return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
+  }
 
-  const alwaysAllowLabel = useMemo(() => {
+  function getAlwaysAllowLabel() {
     if (blockedAction.stake !== "medium") {
       return "Always allow";
     }
-
     if (toolOverride?.alwaysAllowLabel) {
       return toolOverride.alwaysAllowLabel(
         blockedAction.metadata.agentName,
         blockedAction.inputs
       );
     }
-
     const args = blockedAction.argumentsRequiringApproval ?? [];
     const argValues = args
       .filter((arg) => blockedAction.inputs[arg] != null)
       .map((arg) => JSON.stringify(blockedAction.inputs[arg]));
-
     return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0
         ? ` for the following parameters: ${argValues.join(", ")}`
         : ""
     }`;
-  }, [
-    blockedAction.stake,
-    blockedAction.argumentsRequiringApproval,
-    blockedAction.inputs,
-    blockedAction.metadata.agentName,
-    blockedAction.metadata.toolName,
-    toolOverride,
-  ]);
+  }
+
+  const title = getTitle();
+  const alwaysAllowLabel = getAlwaysAllowLabel();
 
   return (
     <ContentMessage
