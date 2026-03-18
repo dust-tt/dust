@@ -3054,6 +3054,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "IntercomLogo"
   | "JiraLogo"
   | "LinearLogo"
+  | "LumaLogo"
   | "MicrosoftExcelLogo"
   | "MicrosoftLogo"
   | "MicrosoftOutlookLogo"
