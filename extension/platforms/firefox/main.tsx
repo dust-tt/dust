@@ -14,7 +14,7 @@ if (process.env.DATADOG_CLIENT_TOKEN) {
     site: "datadoghq.eu",
     service: "dust-firefox-extension",
     env: process.env.DATADOG_ENV,
-    version: process.env.VERSION,
+    version: process.env.DUST_EXTENSION_VERSION,
     forwardConsoleLogs: ["error"],
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
