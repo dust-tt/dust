@@ -8,11 +8,13 @@ import {
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
+  ContextItem,
   GlobeAltIcon,
   IconButton,
   Input,
   LinkIcon,
   LockIcon,
+  ScrollArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -20,10 +22,12 @@ import {
   SheetTitle,
   Spinner,
   UserGroupIcon,
-  XMarkIcon,
   useCopyToClipboard,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { isEmailValid } from "@app/lib/utils";
+import type React from "react";
+import { useMemo, useState } from "react";
 
 const SCOPE_OPTIONS: {
   icon: typeof LockIcon;
@@ -78,16 +82,29 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
     await doShare(scope);
   };
 
-  const handleInvite = async () => {
-    const emails = emailInput
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const parseEmails = () =>
+    emailInput
       .split(",")
       .map((e) => e.trim())
       .filter((e) => e.length > 0);
 
+  const validateAndInvite = async () => {
+    const emails = parseEmails();
     if (emails.length === 0) {
       return;
     }
 
+    const invalid = emails.filter((e) => !isEmailValid(e));
+    if (invalid.length > 0) {
+      const quoted = invalid.map((e) => `"${e}"`).join(", ");
+      const verb = invalid.length === 1 ? "is not a valid email address" : "are not valid email addresses";
+      setEmailError(`${quoted} ${verb}`);
+      return;
+    }
+
+    setEmailError(null);
     setIsInviting(true);
     try {
       await doAddGrants(emails);
@@ -100,7 +117,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      void handleInvite();
+      void validateAndInvite();
     }
   };
 
@@ -169,15 +186,19 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                           <Input
                             placeholder="Add comma separated emails to invite"
                             value={emailInput}
-                            onChange={(e) => setEmailInput(e.target.value)}
+                            onChange={(e) => {
+                              setEmailInput(e.target.value);
+                              setEmailError(null);
+                            }}
                             onKeyDown={handleKeyDown}
-                            className="text-sm"
+                            message={emailError ?? undefined}
+                            messageStatus={emailError ? "error" : undefined}
                           />
                         </div>
                         <Button
                           variant="primary"
                           label="Invite"
-                          onClick={handleInvite}
+                          onClick={validateAndInvite}
                           disabled={
                             isInviting || emailInput.trim().length === 0
                           }
@@ -186,25 +207,25 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                     </div>
 
                     {/* Grants list */}
-                    <div className="flex flex-col gap-1">
-                      {isGrantsLoading ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Spinner size="sm" />
-                        </div>
-                      ) : grants.length === 0 ? (
-                        <p className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          No one has been invited yet.
-                        </p>
-                      ) : (
-                        grants.map((grant) => (
+                    {isGrantsLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Spinner size="sm" />
+                      </div>
+                    ) : grants.length === 0 ? (
+                      <p className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        No one has been invited yet.
+                      </p>
+                    ) : (
+                      <ScrollArea className="max-h-96">
+                        {grants.map((grant) => (
                           <GrantRow
                             key={grant.id}
                             grant={grant}
                             onRevoke={() => doRevokeGrant(grant.id)}
                           />
-                        ))
-                      )}
-                    </div>
+                        ))}
+                      </ScrollArea>
+                    )}
                   </div>
                 )}
 
@@ -269,22 +290,23 @@ function GrantRow({ grant, onRevoke }: GrantRowProps) {
     : "Never viewed";
 
   return (
-    <div className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50">
-      <Avatar size="sm" name={grant.email} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm text-primary dark:text-primary-night">
-          {grant.email}
-        </span>
-        <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
-          {invitedLabel} · {viewedLabel}
-        </span>
-      </div>
-      <IconButton
-        icon={XMarkIcon}
-        tooltip="Revoke access"
-        size="xs"
-        onClick={onRevoke}
-      />
-    </div>
+    <ContextItem
+      title={grant.email}
+      visual={<Avatar size="sm" name={grant.email} isRounded />}
+      hasSeparator={false}
+      action={
+        <IconButton
+          icon={XMarkIcon}
+          tooltip="Revoke access"
+          size="xs"
+          onClick={onRevoke}
+        />
+      }
+      hoverAction
+    >
+      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+        {invitedLabel} · {viewedLabel}
+      </span>
+    </ContextItem>
   );
 }
