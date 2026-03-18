@@ -295,16 +295,12 @@ export async function destroyConversation(
     },
   });
 
-  // Nullify conversationId on agent suggestions (nullable FK, RESTRICT).
-  await AgentSuggestionModel.update(
-    { conversationId: null },
-    {
-      where: {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-      },
-    }
-  );
+  await AgentSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+  });
 
   await ConversationSkillModel.destroy({
     where: {
