@@ -1,5 +1,3 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { JOB_FIELD_PATH } from "@app/lib/api/actions/servers/ashby/helpers";
 import type {
   AshbyCandidate,
   AshbyCandidateInfo,
@@ -14,6 +12,8 @@ import type {
 } from "@app/lib/api/actions/servers/ashby/types";
 import { toCsv } from "@app/lib/api/csv";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+export const JOB_FIELD_PATH = "_systemfield.job";
 
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
