@@ -368,10 +368,21 @@ export async function runModel(
 
   let emailContext: string | undefined;
   if (userMessage.context.origin === "email") {
-    const replyContext = await getEmailReplyContext(
-      auth.getNonNullableWorkspace().sId,
-      agentMessage.sId
-    );
+    let replyContext = null;
+    try {
+      replyContext = await getEmailReplyContext(
+        auth.getNonNullableWorkspace().sId,
+        agentMessage.sId
+      );
+    } catch (error) {
+      localLogger.warn(
+        {
+          agentMessageId: agentMessage.sId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        "[email] Failed to load reply context for prompt; using fallback audience context."
+      );
+    }
     emailContext = buildEmailResponseAudienceContext(replyContext);
   }
 

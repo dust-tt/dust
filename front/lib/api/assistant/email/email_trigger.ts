@@ -5,6 +5,7 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import config from "@app/lib/api/config";
@@ -530,8 +531,11 @@ export async function triggerFromEmail({
     });
   }
 
-  const { userMessage, restOfThread, conversationId } =
-    await splitThreadContent(email.text);
+  const {
+    userMessage: emailUserMessage,
+    restOfThread,
+    conversationId,
+  } = await splitThreadContent(email.text);
 
   let conversation;
   if (conversationId) {
@@ -698,7 +702,7 @@ export async function triggerFromEmail({
       })
       .join(" ") +
     " " +
-    userMessage;
+    emailUserMessage;
 
   const mentions = agentConfigurations.map((agent) => {
     return { configurationId: agent.sId };
@@ -720,6 +724,7 @@ export async function triggerFromEmail({
     },
     // Tool validation is now handled via email with signed approval links.
     skipToolsValidation: false,
+    triggerAgentLoop: false,
   });
 
   if (messageRes.isErr()) {
@@ -730,7 +735,7 @@ export async function triggerFromEmail({
     });
   }
 
-  const { agentMessages } = messageRes.value;
+  const { userMessage: postedUserMessage, agentMessages } = messageRes.value;
   const successReplyRecipients = buildSuccessReplyRecipients(email);
 
   // Store email reply context in Redis for each agent message.
@@ -757,6 +762,15 @@ export async function triggerFromEmail({
       });
     }
   }
+
+  // Store reply context before launching the workflow so the first model run always
+  // sees the email audience information in its prompt.
+  await runAgentLoopWorkflow({
+    auth,
+    agentMessages,
+    conversation,
+    userMessage: postedUserMessage,
+  });
 
   localLogger.info(
     {

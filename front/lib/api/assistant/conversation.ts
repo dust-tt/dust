@@ -534,6 +534,7 @@ export async function postUserMessage(
     agenticMessageData,
     skipToolsValidation,
     doNotAssociateUser,
+    triggerAgentLoop = true,
   }: {
     conversation: ConversationType;
     content: string;
@@ -542,6 +543,7 @@ export async function postUserMessage(
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
+    triggerAgentLoop?: boolean;
   }
 ): Promise<
   Result<
@@ -864,7 +866,7 @@ export async function postUserMessage(
   });
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
-  if (agentMessages.length > 0) {
+  if (triggerAgentLoop && agentMessages.length > 0) {
     await runAgentLoopWorkflow({
       auth,
       agentMessages,
