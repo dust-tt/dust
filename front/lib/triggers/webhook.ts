@@ -17,7 +17,7 @@ import {
 } from "@app/lib/triggers/rate_limits";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import { verifySignature } from "@app/lib/webhookSource";
+import { verifySignature } from "@app/lib/webhookSource_server";
 import logger from "@app/logger/logger";
 
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";

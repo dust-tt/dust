@@ -1,4 +1,4 @@
-import { verifySignature } from "@app/lib/webhookSource";
+import { verifySignature } from "@app/lib/webhookSource_server";
 import { createHmac } from "crypto";
 import { describe, expect, test } from "vitest";
 
