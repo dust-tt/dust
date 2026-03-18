@@ -214,6 +214,20 @@ describe("WorkspaceResource", () => {
       const updated = await WorkspaceResource.fetchById(workspace.sId);
       expect(updated?.conversationsRetentionDays).toBeNull();
     });
+
+    it("should reject values below the minimum retention through generic updates", async () => {
+      const result = await WorkspaceResource.updateByModelIdAndCheckExistence(
+        workspace.id,
+        {
+          conversationsRetentionDays: 59,
+        }
+      );
+
+      expect(result.isErr()).toBe(true);
+
+      const updated = await WorkspaceResource.fetchById(workspace.sId);
+      expect(updated?.conversationsRetentionDays).toBeNull();
+    });
   });
 
   describe("disableSSOEnforcement", () => {

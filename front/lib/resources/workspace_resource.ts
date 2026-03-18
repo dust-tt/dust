@@ -620,14 +620,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     id: ModelId,
     nbDays: number
   ): Promise<Result<void, Error>> {
-    if (nbDays !== -1 && !isValidConversationsRetentionDays(nbDays)) {
-      return new Err(
-        new Error(
-          `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
-        )
-      );
-    }
-
     return this.updateByModelIdAndCheckExistence(id, {
       conversationsRetentionDays: nbDays === -1 ? null : nbDays,
     });
@@ -843,6 +835,21 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     id: ModelId,
     updateValues: Partial<Attributes<WorkspaceModel>>
   ): Promise<Result<void, Error>> {
+    if (updateValues.conversationsRetentionDays !== undefined) {
+      const retentionDays = updateValues.conversationsRetentionDays;
+
+      if (
+        retentionDays !== null &&
+        !isValidConversationsRetentionDays(retentionDays)
+      ) {
+        return new Err(
+          new Error(
+            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
+          )
+        );
+      }
+    }
+
     const workspace = await this.model.findOne({
       where: { id },
     });
