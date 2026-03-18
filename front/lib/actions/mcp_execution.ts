@@ -206,7 +206,7 @@ export async function processToolResults(
         case "image": {
           const fileName = isResourceWithName(block)
             ? block.name
-            : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as any)[0]}`;
+            : `generated-image-${Date.now()}${extensionsForContentType(block.mimeType as any)[0]}`;
 
           return handleBase64Upload(auth, {
             base64Data: block.data,
