@@ -6,6 +6,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -13,22 +14,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  EyeSlashIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface UnpublishAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];
-  isOpen: boolean;
+  disabled: boolean;
   owner: LightWorkspaceType;
-  onClose: () => void;
   onSave: () => void;
 }
 
 export function UnpublishAssistantsDialog({
   agentConfigurations,
-  isOpen,
+  disabled,
   owner,
-  onClose,
   onSave,
 }: UnpublishAssistantsDialogProps) {
   const [isUnpublishing, setIsUnpublishing] = useState(false);
@@ -48,14 +49,16 @@ export function UnpublishAssistantsDialog({
   );
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          size="xs"
+          variant="outline"
+          icon={EyeSlashIcon}
+          label="Unpublish"
+          disabled={disabled}
+        />
+      </DialogTrigger>
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
           <DialogTitle>
@@ -66,7 +69,7 @@ export function UnpublishAssistantsDialog({
             <div>
               <span className="font-bold">
                 {total > 0 &&
-                  `These agents have been used ${total} time${pluralize(total)} in the last 30 days.&nbsp;`}
+                  `These agents have been used ${total} time${pluralize(total)} in the last 30 days. `}
               </span>
               Unpublished agents will no longer be accessible to everyone in the
               workspace. Members will need to manually add them to use them.

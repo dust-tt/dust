@@ -13,7 +13,6 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
-  EyeSlashIcon,
   Spinner,
   TagIcon,
   TrashIcon,
@@ -40,7 +39,6 @@ export const AgentEditBar = ({
   mutateAgentConfigurations,
 }: AgentEditBarProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isUnpublishDialogOpen, setIsUnpublishDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -78,16 +76,6 @@ export const AgentEditBar = ({
         }}
       />
 
-      <UnpublishAssistantsDialog
-        owner={owner}
-        agentConfigurations={selectedAgents}
-        isOpen={isUnpublishDialogOpen}
-        onClose={() => setIsUnpublishDialogOpen(false)}
-        onSave={() => {
-          onClose();
-          setIsUnpublishDialogOpen(false);
-        }}
-      />
 
       <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2 dark:bg-muted-background-night">
         <Button
@@ -168,15 +156,11 @@ export const AgentEditBar = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button
-          size="xs"
-          variant="outline"
-          icon={EyeSlashIcon}
-          label="Unpublish"
+        <UnpublishAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
           disabled={selectedAgents.length === 0 || isLoading}
-          onClick={() => {
-            setIsUnpublishDialogOpen(true);
-          }}
+          onSave={onClose}
         />
 
         <Button
