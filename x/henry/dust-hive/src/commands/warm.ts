@@ -81,7 +81,7 @@ async function isTemporalRunning(): Promise<boolean> {
 
 async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
 
   const command = buildShell({
     sourceEnv: envShPath,

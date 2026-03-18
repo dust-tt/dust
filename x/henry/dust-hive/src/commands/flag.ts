@@ -56,7 +56,7 @@ export async function flagCommand(
     );
   }
 
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const frontPath = path.join(worktreePath, "front");
 
   // Resolve flag name — interactive select if not provided
