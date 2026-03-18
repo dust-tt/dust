@@ -1278,15 +1278,45 @@ async function makeContentFragments(
     }
   }
 
-  const supportedFiles = removeNulls(
+  const slackFiles = removeNulls(
     allMessages.filter((m) => m.files).flatMap((m) => m.files)
-  ).filter(
-    (f) =>
-      isSupportedFileContentType(f.mimetype ?? "") &&
-      !!f.size &&
-      !!f.url_private_download &&
-      f.size <= MAX_FILE_SIZE_TO_UPLOAD
   );
+
+  const supportedFiles = slackFiles.flatMap((file) => {
+    const skipReason = !isSupportedFileContentType(file.mimetype ?? "")
+      ? "unsupported_mimetype"
+      : !file.size
+        ? "missing_size"
+        : !file.url_private_download
+          ? "missing_private_download_url"
+          : file.size > MAX_FILE_SIZE_TO_UPLOAD
+            ? "over_size_limit"
+            : null;
+
+    if (!skipReason) {
+      return [file];
+    }
+
+    logger.warn(
+      {
+        channelId,
+        connectorId: connector.id,
+        conversationId,
+        fileId: file.id,
+        fileName: file.name ?? null,
+        fileTitle: file.title ?? null,
+        fileMimetype: file.mimetype ?? null,
+        fileSize: file.size ?? null,
+        hasPrivateDownloadUrl: !!file.url_private_download,
+        maxFileSizeBytes: MAX_FILE_SIZE_TO_UPLOAD,
+        skipReason,
+        threadTs,
+      },
+      "Skipping slack file attachment"
+    );
+
+    return [];
+  });
 
   if (supportedFiles.length > 0) {
     logger.info({ conversationId }, "Found supported files, uploading them.");
