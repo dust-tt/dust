@@ -4,8 +4,11 @@ import { useNovuClient } from "@app/hooks/useNovuClient";
 import config from "@app/lib/api/config";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
+import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
+import { isString } from "@app/types/shared/utils/general";
 import type { Novu } from "@novu/js";
 import { useEffect } from "react";
+import { mutate } from "swr";
 
 export const useSetupNotifications = () => {
   const { push } = useAppRouter();
@@ -20,6 +23,16 @@ export const useSetupNotifications = () => {
       const unsubscribe = novuClient.on(
         "notifications.notification_received",
         (notification) => {
+          // Silently refresh auth context and skip all user-facing display.
+          if (
+            notification.result.tags?.includes("provider-credentials-health")
+          ) {
+            const workspaceId = notification.result.data?.workspaceId;
+            if (isString(workspaceId)) {
+              void mutate(workspaceAuthContextUrl(workspaceId));
+            }
+          }
+
           if (
             notification.result.tags?.includes("conversations") &&
             window !== undefined
