@@ -51,7 +51,13 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
     workspace,
   });
 
-  const membersWithUser = memberships.filter((m) => m.user !== undefined);
+  const membersWithUser = memberships.filter(
+    (
+      m
+    ): m is MembershipResource & {
+      user: NonNullable<MembershipResource["user"]>;
+    } => m.user !== undefined
+  );
 
   if (membersWithUser.length === 0) {
     return new Ok(undefined);
@@ -66,18 +72,13 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
 
     const r = await novuClient.triggerBulk({
       events: membersWithUser.map((m) => {
-        const user = m.user;
-        if (!user) {
-          throw new Error("Unexpected: user should be defined");
-        }
-
         return {
           workflowId: PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,
           to: {
-            subscriberId: user.sId,
-            email: user.email,
-            firstName: user.firstName ?? undefined,
-            lastName: user.lastName ?? undefined,
+            subscriberId: m.user.sId,
+            email: m.user.email,
+            firstName: m.user.firstName ?? undefined,
+            lastName: m.user.lastName ?? undefined,
           },
           payload,
         };
