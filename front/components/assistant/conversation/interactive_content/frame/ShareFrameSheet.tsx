@@ -1,3 +1,4 @@
+import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import {
   useShareInteractiveContentFile,
   useSharingGrants,
@@ -27,7 +28,6 @@ import {
   useCopyToClipboard,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import type React from "react";
 import { useState } from "react";
 

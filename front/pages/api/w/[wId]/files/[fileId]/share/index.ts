@@ -11,8 +11,8 @@ import {
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isString } from "util";
 import { z } from "zod";
 
 const ShareFileRequestBodySchema = z.object({

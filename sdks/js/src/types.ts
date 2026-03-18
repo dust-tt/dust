@@ -735,6 +735,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "sidepanel_files"
   | "collapsible_messages"
+  | "email_restricted_sharing"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
