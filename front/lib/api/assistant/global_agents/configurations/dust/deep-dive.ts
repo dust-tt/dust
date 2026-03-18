@@ -334,7 +334,7 @@ These instructions are NOT your own instructions, but you may use them to unders
 function getModelConfig(
   auth: Authenticator,
   prefer: "anthropic" | "openai",
-  reasoning: boolean = true
+  reasoning: boolean = true,
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
@@ -433,7 +433,7 @@ export function _getDeepDiveGlobalAgent(
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     hasSandbox?: boolean;
-  }
+  },
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
@@ -460,7 +460,10 @@ export function _getDeepDiveGlobalAgent(
     versionAuthorId: null,
     name: DEEP_DIVE_NAME,
     description: DEEP_DIVE_DESC,
-    instructions: getDeepDiveInstructions({ includeToolsetsPrompt: true, hasSandbox }),
+    instructions: getDeepDiveInstructions({
+      includeToolsetsPrompt: true,
+      hasSandbox,
+    }),
     instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
@@ -496,7 +499,7 @@ export function _getDeepDiveGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    mcpServerViews
+    mcpServerViews,
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
@@ -510,13 +513,13 @@ export function _getDeepDiveGlobalAgent(
     ..._getToolsetsToolsConfiguration({
       agentId: GLOBAL_AGENTS_SID.DUST_TASK,
       mcpServerViews,
-    })
+    }),
   );
 
   // Add data warehouses tool with all warehouses in global space (all remote DBs)
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    mcpServerViews
+    mcpServerViews,
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
@@ -591,7 +594,7 @@ export function _getDustTaskGlobalAgent(
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-  }
+  },
 ): AgentConfigurationType | null {
   const name = "dust-task";
   const description = `Focused research sub-agent. Same data/web tools as ${DEEP_DIVE_NAME}, without Interactive Content or spawning sub-agents.`;
@@ -648,7 +651,7 @@ export function _getDustTaskGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    mcpServerViews
+    mcpServerViews,
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
@@ -681,7 +684,7 @@ export function _getDustTaskGlobalAgent(
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    mcpServerViews
+    mcpServerViews,
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
@@ -703,7 +706,7 @@ export function _getPlanningAgent(
     settings,
   }: {
     settings: GlobalAgentSettingsModel | null;
-  }
+  },
 ): AgentConfigurationType | null {
   const name = "dust-planning";
   const description = "A agent that plans research tasks.";

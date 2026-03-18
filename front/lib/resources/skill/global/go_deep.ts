@@ -21,7 +21,10 @@ export const goDeepSkill = {
   fetchInstructions: async (auth: Authenticator, _spaceIds: string[]) => {
     const flags = await getFeatureFlags(auth);
     const hasSandbox = flags.includes("sandbox_tools");
-    return getDeepDiveInstructions({ includeToolsetsPrompt: false, hasSandbox });
+    return getDeepDiveInstructions({
+      includeToolsetsPrompt: false,
+      hasSandbox,
+    });
   },
   mcpServers: [
     {

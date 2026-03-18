@@ -984,7 +984,7 @@ export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[],
   variant: AgentFetchVariant = "full",
-  options?: { globalAgentContext?: GlobalAgentContext }
+  options?: { globalAgentContext?: GlobalAgentContext },
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
@@ -1028,20 +1028,20 @@ export async function getGlobalAgents(
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1,
     );
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O3
+      (sId) => sId !== GLOBAL_AGENTS_SID.O3,
     );
   }
   if (!flags.includes("openai_o1_high_reasoning_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
     );
   }
   if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1,
     );
   }
   const DUST_INTERNAL_AGENTS = [
@@ -1071,7 +1071,7 @@ export async function getGlobalAgents(
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => !DUST_INTERNAL_AGENTS.includes(sId as GLOBAL_AGENTS_SID)
+      (sId) => !DUST_INTERNAL_AGENTS.includes(sId as GLOBAL_AGENTS_SID),
     );
   }
   // Also hide dust-next variants if the custom model's own feature flag isn't enabled.
@@ -1082,7 +1082,7 @@ export async function getGlobalAgents(
       (sId) =>
         sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
         sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
-        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
     );
   }
   const sidekickContext =
@@ -1103,7 +1103,7 @@ export async function getGlobalAgents(
       hasDeepDive: !isDeepDiveDisabled,
       hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
-    })
+    }),
   );
 
   const globalAgents: AgentConfigurationType[] = [];
@@ -1141,7 +1141,7 @@ export async function upsertGlobalAgentSettings(
   }: {
     agentId: string;
     status: GlobalAgentStatus;
-  }
+  },
 ): Promise<boolean> {
   const owner = auth.getNonNullableWorkspace();
 
