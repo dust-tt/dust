@@ -24,6 +24,7 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -1145,20 +1146,19 @@ export class FileResource extends BaseResource<FileModel> {
 
     const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
 
-    const newGrants =
-      newEmails.length > 0
-        ? await SharingGrantModel.bulkCreate(
-            newEmails.map((email) => ({
-              workspaceId: this.workspaceId,
-              shareableFileId,
-              email,
-              grantedBy: user.id,
-              grantedAt: new Date(),
-            }))
-          )
-        : [];
+    if (newEmails.length > 0) {
+      await SharingGrantModel.bulkCreate(
+        newEmails.map((email) => ({
+          workspaceId: this.workspaceId,
+          shareableFileId,
+          email,
+          grantedBy: user.id,
+          grantedAt: new Date(),
+        }))
+      );
+    }
 
-    return [...existingGrants, ...newGrants].map(renderSharingGrant);
+    return this.listActiveSharingGrants();
   }
 
   async revokeSharingGrant({
@@ -1205,11 +1205,14 @@ export class FileResource extends BaseResource<FileModel> {
         shareableFileId,
         revokedAt: null,
       },
-      // FIXME: Do we have an index?
       order: [["grantedAt", "DESC"]],
     });
 
-    return grants.map(renderSharingGrant);
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
   }
 
   // Serialization logic.
@@ -1360,11 +1363,17 @@ export class FileResource extends BaseResource<FileModel> {
   }
 }
 
-function renderSharingGrant(grant: SharingGrantModel): SharingGrantType {
+function renderSharingGrant(
+  grant: SharingGrantModel,
+  usersById: Map<ModelId, UserResource>
+): SharingGrantType {
+  const user = grant.grantedBy ? usersById.get(grant.grantedBy) : null;
+
   return {
     id: grant.id,
     email: grant.email,
     grantedAt: grant.grantedAt,
+    grantedBy: user?.toJSON() ?? null,
     expiresAt: grant.expiresAt,
     lastViewedAt: grant.lastViewedAt,
   };

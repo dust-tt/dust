@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { removeNulls } from "./shared/utils/general";
+import type { UserType } from "./user";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
@@ -60,6 +61,7 @@ export interface SharingGrantType {
   id: number;
   email: string;
   grantedAt: Date;
+  grantedBy: UserType | null;
   expiresAt: Date | null;
   lastViewedAt: Date | null;
 }

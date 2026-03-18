@@ -130,6 +130,40 @@ describe("sharing grants endpoint", () => {
       ]);
     });
 
+    it("should populate grantedBy with the granting user", async () => {
+      const {
+        req,
+        res,
+        workspace,
+        authenticator: auth,
+        user,
+      } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+      req.query = { ...req.query, fileId: file.sId };
+      req.body = { emails: ["alice@example.com"] };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const { grants } = res._getJSONData();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].grantedBy).not.toBeNull();
+      expect(grants[0].grantedBy.sId).toBe(user.sId);
+      expect(grants[0].grantedBy.email).toBe(user.email);
+    });
+
     it("should be idempotent when adding the same email twice", async () => {
       const {
         req,
