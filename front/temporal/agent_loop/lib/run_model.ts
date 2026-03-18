@@ -10,6 +10,8 @@ import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { getEmailReplyContext } from "@app/lib/api/assistant/email/email_trigger";
+import { buildEmailResponseAudienceContext } from "@app/lib/api/assistant/email/prompt_context";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
@@ -364,6 +366,15 @@ export async function runModel(
     userContext = (await buildUserContext(auth)) ?? undefined;
   }
 
+  let emailContext: string | undefined;
+  if (userMessage.context.origin === "email") {
+    const replyContext = await getEmailReplyContext(
+      auth.getNonNullableWorkspace().sId,
+      agentMessage.sId
+    );
+    emailContext = buildEmailResponseAudienceContext(replyContext);
+  }
+
   let workspaceContext: string | undefined;
   if (globalAgentInjectsWorkspaceContext(agentConfiguration.sId)) {
     workspaceContext = await buildWorkspaceContext(auth);
@@ -384,6 +395,7 @@ export async function runModel(
     memoriesContext,
     toolsetsContext,
     userContext,
+    emailContext,
     workspaceContext,
   });
 

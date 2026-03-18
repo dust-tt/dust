@@ -406,6 +406,7 @@ export function constructPromptMultiActions(
     memoriesContext,
     toolsetsContext,
     userContext,
+    emailContext,
     workspaceContext,
   }: {
     userMessage: UserMessageType;
@@ -422,6 +423,7 @@ export function constructPromptMultiActions(
     memoriesContext?: string;
     toolsetsContext?: string;
     userContext?: string;
+    emailContext?: string;
     workspaceContext?: string;
   }
 ): SystemPromptSections {
@@ -498,6 +500,7 @@ export function constructPromptMultiActions(
     const ephemeralContext: SystemPromptContext[] = [
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
+      { role: "context" as const, content: emailContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
     const structured: StructuredSystemPrompt = {
@@ -522,6 +525,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: toolsetsContext ?? "" },
     { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
+    { role: "context" as const, content: emailContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
   ].filter((s) => s.content.trim() !== "");
 

@@ -416,6 +416,28 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("User prefers TypeScript");
   });
 
+  it("should include emailContext in prompt output when provided", () => {
+    const emailContext =
+      "<email_response_audience>\nTo: sender@example.com\n</email_response_audience>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      emailContext,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("<email_response_audience>");
+    expect(text).toContain("sender@example.com");
+  });
+
   it("should produce a valid prompt when memoriesContext is omitted", () => {
     const params = {
       userMessage: userMessage1,
@@ -471,6 +493,40 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
     expect(memoriesSection).toBeDefined();
     expect(memoriesSection?.content).toContain("Some memory");
+  });
+
+  it("should place email context in the ephemeral tier for dust-like agents", () => {
+    const dustConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DUST,
+      scope: "global" as const,
+    };
+
+    const emailContext =
+      "<email_response_audience>\nTo: sender@example.com\n</email_response_audience>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: dustConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      emailContext,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const { instructions, ephemeralContext } = normalizePrompt(sections);
+
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].content).not.toContain("<email_response_audience>");
+
+    const emailSection = ephemeralContext.find((s) =>
+      s.content.includes("<email_response_audience>")
+    );
+    expect(emailSection).toBeDefined();
+    expect(emailSection?.content).toContain("sender@example.com");
   });
 });
 
