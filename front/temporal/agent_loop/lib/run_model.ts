@@ -10,7 +10,6 @@ import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
-import { getEmailReplyContext } from "@app/lib/api/assistant/email/email_trigger";
 import { buildEmailResponseAudienceContext } from "@app/lib/api/assistant/email/prompt_context";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -368,22 +367,7 @@ export async function runModel(
 
   let emailContext: string | undefined;
   if (userMessage.context.origin === "email") {
-    let replyContext = null;
-    try {
-      replyContext = await getEmailReplyContext(
-        auth.getNonNullableWorkspace().sId,
-        agentMessage.sId
-      );
-    } catch (error) {
-      localLogger.warn(
-        {
-          agentMessageId: agentMessage.sId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "[email] Failed to load reply context for prompt; using fallback audience context."
-      );
-    }
-    emailContext = buildEmailResponseAudienceContext(replyContext);
+    emailContext = buildEmailResponseAudienceContext();
   }
 
   let workspaceContext: string | undefined;

@@ -1282,36 +1282,6 @@ describe("postUserMessage", () => {
     }
   });
 
-  it("should allow skipping agent loop launch", async () => {
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } satisfies AgentMention,
-    ];
-
-    const user = auth.getNonNullableUser();
-    const userJson = user.toJSON();
-
-    const result = await postUserMessage(auth, {
-      conversation,
-      content: `Hello @${agentConfig1.name}`,
-      mentions,
-      context: {
-        username: userJson.username,
-        timezone: "UTC",
-        fullName: userJson.fullName,
-        email: userJson.email,
-        profilePictureUrl: userJson.image,
-        origin: "email",
-      },
-      skipToolsValidation: false,
-      triggerAgentLoop: false,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
-  });
-
   it("should preserve user mentions in the returned userMessage", async () => {
     const mentionedUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, mentionedUser, {
