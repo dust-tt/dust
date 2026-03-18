@@ -4,7 +4,10 @@ import { getNovuClient } from "@app/lib/notifications/novu-client";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
-import { PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID } from "@app/types/notification_preferences";
+import {
+  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG,
+  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,
+} from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -22,9 +25,6 @@ const ProviderCredentialsHealthUpdatedPayloadSchema = z.object({
 type ProviderCredentialsHealthUpdatedPayloadType = z.infer<
   typeof ProviderCredentialsHealthUpdatedPayloadSchema
 >;
-
-export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
-  "provider-credentials-health";
 
 export const providerCredentialsHealthUpdatedWorkflow = workflow(
   PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,

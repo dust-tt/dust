@@ -121,6 +121,8 @@ export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =
   "agent-suggestions-ready" as const;
 export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID =
   "provider-credentials-health-updated" as const;
+export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
+  "provider-credentials-health" as const;
 
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
