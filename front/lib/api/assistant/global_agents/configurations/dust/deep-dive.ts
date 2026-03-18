@@ -579,7 +579,7 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    skills: ["frames"],
+    skills: hasSandbox ? ["frames", "sandbox"] : ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
