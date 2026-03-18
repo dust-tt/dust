@@ -2,7 +2,10 @@ import type {
   ConversationAttachmentRow,
   FilePanelCategory,
 } from "@app/components/assistant/conversation/files_panel/types";
-import { CATEGORY_CONFIG } from "@app/components/assistant/conversation/files_panel/utils";
+import {
+  CATEGORY_CONFIG,
+  MIN_FILES_FOR_SEARCH,
+} from "@app/components/assistant/conversation/files_panel/utils";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { getFileProcessedUrl } from "@app/lib/swr/files";
@@ -73,7 +76,7 @@ export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {rows.length >= 5 && (
+      {rows.length > MIN_FILES_FOR_SEARCH && (
         <div className="shrink-0 px-4 pt-4">
           <SearchInput
             name="file-search"
