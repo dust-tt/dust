@@ -41,7 +41,7 @@ async function handler(
       // TODO(2026-03-18 aubin): remove this once we do not get calls from clients that predate the front-end change.
       if (isString(body)) {
         try {
-          body = JSON.parse(req.body);
+          body = JSON.parse(body);
         } catch {
           return apiError(req, res, {
             status_code: 400,
