@@ -252,12 +252,13 @@ export async function deregisterMCPServer(
   auth: Authenticator,
   { serverId }: { serverId: string }
 ): Promise<boolean> {
-  if (!serverId) {
-    return false;
-  }
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userModelId = auth.getNonNullableUser().id.toString();
-  const key = getMCPServerRegistryKey({ workspaceId, userId: userModelId, serverId });
+  const key = getMCPServerRegistryKey({
+    workspaceId,
+    userId: userModelId,
+    serverId,
+  });
 
   const deleted = await runOnRedis(
     { origin: "mcp_client_side_request" },

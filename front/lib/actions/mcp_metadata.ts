@@ -13,7 +13,10 @@ import {
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isMcpTimeoutError,
+} from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
   getInternalMCPServerInfo,
@@ -663,7 +666,7 @@ export async function connectToMCPServer(
           timeout: CLIENT_SIDE_CONNECT_TIMEOUT_MS,
         });
       } catch (e: unknown) {
-        const isTimeout = e instanceof McpError && e.code === -32001;
+        const isTimeout = isMcpTimeoutError(e);
 
         logger[isTimeout ? "warn" : "error"](
           {
