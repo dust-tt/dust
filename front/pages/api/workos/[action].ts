@@ -217,7 +217,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       : null;
     // Extract UTM params from query to preserve through OAuth flow
     const utmParams = extractUTMParams(req.query);
-
     const state = {
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
