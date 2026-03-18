@@ -30,6 +30,7 @@ export async function getLLM(
     metaData,
     bypassFeatureFlag = false,
     context,
+    omittedThinking,
   }: LLMParameters
 ): Promise<LLM | null> {
   const modelConfig = getModelConfigByModelId(modelId);
@@ -89,6 +90,7 @@ export async function getLLM(
       responseFormat,
       bypassFeatureFlag,
       context,
+      omittedThinking,
     });
   }
 

@@ -53,6 +53,9 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_OMITTED = "dust-omitted",
+  DUST_HIGH = "dust-high",
+  DUST_HIGH_OMITTED = "dust-high-omitted",
   DUST_EDGE = "dust-edge",
   DUST_QUICK = "dust-quick",
   DUST_QUICK_MEDIUM = "dust-quick-medium",
@@ -66,6 +69,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
+  DUST_ANT_MEDIUM_OMITTED = "dust-ant-medium-omitted",
+  DUST_ANT_HIGH_OMITTED = "dust-ant-high-omitted",
   DUST_KIMI = "dust-kimi",
   DUST_KIMI_MEDIUM = "dust-kimi-medium",
   DUST_KIMI_HIGH = "dust-kimi-high",
