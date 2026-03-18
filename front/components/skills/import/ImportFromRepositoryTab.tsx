@@ -1,5 +1,5 @@
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
-import type { ImportFormValues } from "@app/components/skills/import/formSchema";
+import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import {
   isImportableSkillStatus,
   parseGitHubRepoUrl,
@@ -12,6 +12,7 @@ import { useController, useFormContext } from "react-hook-form";
 
 interface ImportFromRepositoryTabProps {
   owner: LightWorkspaceType;
+  isActive: boolean;
   onDetectingChange: (isDetecting: boolean) => void;
   onDetectedCountChange: (count: number) => void;
   isImporting: boolean;
@@ -19,27 +20,30 @@ interface ImportFromRepositoryTabProps {
 
 export function ImportFromRepositoryTab({
   owner,
+  isActive,
   onDetectingChange,
   onDetectedCountChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
-  const { control, setValue } = useFormContext<ImportFormValues>();
+  const { control, setValue } = useFormContext<RepositoryImportFormValues>();
   const { field: repoUrlField } = useController({ name: "repoUrl", control });
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
 
-  // Pre-select all importable skills when detection completes. detectedSkills come
-  // from an async SWR hook (useDetectSkillsFromRepo), so the values don't exist at
-  // form initialization time and can't be provided as defaultValues.
+  // Re-sync selected skills when detection completes or when this tab becomes active.
+  // detectedSkills come from an async hook, so values don't exist at form init time.
   useEffect(() => {
+    if (!isActive) {
+      return;
+    }
     setValue(
       "selectedSkillNames",
       detectedSkills
         .filter((skill) => isImportableSkillStatus(skill.status))
         .map((skill) => skill.name)
     );
-  }, [detectedSkills, setValue]);
+  }, [isActive, detectedSkills, setValue]);
 
   // Sync detecting state to the parent. Expects a stable callback (e.g. setState).
   useEffect(() => {

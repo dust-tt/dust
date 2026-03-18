@@ -6,6 +6,7 @@ import {
   importFormSchema,
   isImportType,
 } from "@app/components/skills/import/formSchema";
+import { ImportFromFilesTab } from "@app/components/skills/import/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
 import { useImportSkills } from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -24,7 +25,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 
 interface ImportSkillsDialogProps {
@@ -34,6 +35,7 @@ interface ImportSkillsDialogProps {
 
 const TAB_DESCRIPTION: Record<ImportType, string> = {
   repository: "Enter a GitHub repository URL to detect skills.",
+  files: "Upload a .zip file with your skills.",
 };
 
 export function ImportSkillsDialog({
@@ -65,6 +67,11 @@ export function ImportSkillsDialog({
     name: "selectedSkillNames",
   });
 
+  const uploadedFilesRef = useRef<File[]>([]);
+  const handleFilesChange = useCallback((files: File[]) => {
+    uploadedFilesRef.current = files;
+  }, []);
+
   const { importSkills, isImporting } = useImportSkills({ owner });
 
   const onSubmit = useCallback(
@@ -72,7 +79,8 @@ export function ImportSkillsDialog({
       if (data.selectedSkillNames.length === 0) {
         return;
       }
-      const result = await importSkills(data.repoUrl, data.selectedSkillNames);
+
+      const result = await importSkills(data, uploadedFilesRef.current);
       if (result.successCount > 0) {
         onClose();
       }
@@ -108,19 +116,29 @@ export function ImportSkillsDialog({
               onValueChange={(value) => {
                 if (isImportType(value)) {
                   importTypeField.onChange(value);
-                  selectedSkillNamesField.onChange([]);
-                  setDetectedCount(0);
                 }
               }}
             >
               <TabsList>
                 <TabsTrigger value="repository" label="Repository" />
+                <TabsTrigger value="files" label="Files" />
               </TabsList>
               <TabsContent value="repository">
                 <ImportFromRepositoryTab
                   owner={owner}
+                  isActive={importTypeField.value === "repository"}
                   onDetectingChange={setIsDetecting}
                   onDetectedCountChange={setDetectedCount}
+                  isImporting={isImporting}
+                />
+              </TabsContent>
+              <TabsContent value="files">
+                <ImportFromFilesTab
+                  owner={owner}
+                  isActive={importTypeField.value === "files"}
+                  onDetectingChange={setIsDetecting}
+                  onDetectedCountChange={setDetectedCount}
+                  onFilesChange={handleFilesChange}
                   isImporting={isImporting}
                 />
               </TabsContent>

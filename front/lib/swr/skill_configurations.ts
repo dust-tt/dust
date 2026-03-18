@@ -1,3 +1,4 @@
+import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -426,6 +427,45 @@ export function useDetectSkillsFromRepo({
   return { detectedSkills, isDetecting, detectError, triggerDetect };
 }
 
+function notifyImportResult(
+  data: ImportSkillsResponseBody,
+  sendNotification: ReturnType<typeof useSendNotification>
+): {
+  successCount: number;
+  errors: string[];
+} {
+  const importedCount = data.imported.length;
+  const updatedCount = data.updated.length;
+  const successCount = importedCount + updatedCount;
+  const errors = data.errored.map((e) => e.message);
+
+  if (successCount > 0) {
+    const parts: string[] = [];
+    if (importedCount > 0) {
+      parts.push(`${importedCount} skill${pluralize(importedCount)} imported`);
+    }
+    if (updatedCount > 0) {
+      parts.push(`${updatedCount} skill${pluralize(updatedCount)} updated`);
+    }
+    if (errors.length > 0) {
+      parts.push(`${errors.length} skill${pluralize(errors.length)} failed`);
+    }
+    sendNotification({
+      type: "success",
+      title: "Import successful",
+      description: parts.join(", ") + ".",
+    });
+  } else {
+    sendNotification({
+      type: "error",
+      title: "Import failed",
+      description: errors[0] ?? "Failed to import skills.",
+    });
+  }
+
+  return { successCount, errors };
+}
+
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const [isImporting, setIsImporting] = useState(false);
@@ -437,14 +477,37 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
     });
 
   const importSkills = useCallback(
-    async (repoUrl: string, names: string[]) => {
+    async (formData: ImportFormValues, files: File[]) => {
       setIsImporting(true);
       try {
-        const res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ repoUrl, names }),
-        });
+        let res: Response;
+        switch (formData.importType) {
+          case "repository": {
+            res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                repoUrl: formData.repoUrl,
+                names: formData.selectedSkillNames,
+              }),
+            });
+            break;
+          }
+          case "files": {
+            const body = new FormData();
+            for (const file of files) {
+              body.append("files", file);
+            }
+            for (const name of formData.selectedSkillNames) {
+              body.append("names", name);
+            }
+            res = await clientFetch(
+              `/api/w/${owner.sId}/skills/import/upload`,
+              { method: "POST", body }
+            );
+            break;
+          }
+        }
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
@@ -460,42 +523,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         void mutateActiveSkills();
 
-        const importedCount = data.imported.length;
-        const updatedCount = data.updated.length;
-        const successCount = importedCount + updatedCount;
-        const errors = data.errored.map((e) => e.message);
-
-        if (successCount > 0) {
-          const parts: string[] = [];
-          if (importedCount > 0) {
-            parts.push(
-              `${importedCount} skill${pluralize(importedCount)} imported`
-            );
-          }
-          if (updatedCount > 0) {
-            parts.push(
-              `${updatedCount} skill${pluralize(updatedCount)} updated`
-            );
-          }
-          if (errors.length > 0) {
-            parts.push(
-              `${errors.length} skill${pluralize(errors.length)} failed`
-            );
-          }
-          sendNotification({
-            type: "success",
-            title: "Import successful",
-            description: parts.join(", ") + ".",
-          });
-        } else {
-          sendNotification({
-            type: "error",
-            title: "Import failed",
-            description: errors[0] ?? "Failed to import skills.",
-          });
-        }
-
-        return { successCount, errors };
+        return notifyImportResult(data, sendNotification);
       } finally {
         setIsImporting(false);
       }
@@ -504,4 +532,61 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return { importSkills, isImporting };
+}
+
+export function useDetectSkillsFromFiles({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
+    []
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
+
+  const triggerDetect = useCallback(
+    async (files: File[]) => {
+      setIsUploading(true);
+      setDetectError(null);
+      setDetectedSkills([]);
+
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append("files", file);
+      }
+
+      try {
+        const res = await clientFetch(
+          `/api/w/${owner.sId}/skills/detect/upload`,
+          { method: "POST", body: formData }
+        );
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          setDetectError(errorData.message);
+          return;
+        }
+
+        const data: DetectSkillsResponseBody = await res.json();
+        setDetectedSkills(data.skills);
+      } catch (err) {
+        setDetectError(
+          isAPIErrorResponse(err)
+            ? err.error.message
+            : "Failed to detect skills from the uploaded files."
+        );
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [owner.sId]
+  );
+
+  return {
+    detectedSkills,
+    isUploading,
+    detectError,
+    triggerDetect,
+  };
 }
