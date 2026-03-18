@@ -20,6 +20,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   FileModel,
   ShareableFileModel,
+  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -34,6 +35,7 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
+  SharingGrantType,
 } from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
@@ -1096,6 +1098,120 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  // Sharing grants logic.
+
+  private async getShareableFileId(): Promise<ModelId> {
+    assert(
+      this.isInteractiveContent,
+      `Sharing grants are only supported for interactive content files (file: ${this.sId})`
+    );
+
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+
+    assert(
+      shareableFile,
+      `ShareableFileModel record not found for file ${this.sId}`
+    );
+
+    return shareableFile.id;
+  }
+
+  async addSharingGrants(
+    auth: Authenticator,
+    { emails }: { emails: string[] }
+  ): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "addSharingGrants requires interactive content file"
+    );
+    const user = auth.getNonNullableUser();
+    const shareableFileId = await this.getShareableFileId();
+
+    const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
+
+    // Find existing active grants for these emails.
+    const existingGrants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email: { [Op.in]: normalizedEmails },
+        revokedAt: null,
+      },
+    });
+
+    const existingEmails = new Set(existingGrants.map((g) => g.email));
+
+    const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
+
+    const newGrants =
+      newEmails.length > 0
+        ? await SharingGrantModel.bulkCreate(
+            newEmails.map((email) => ({
+              workspaceId: this.workspaceId,
+              shareableFileId,
+              email,
+              grantedBy: user.id,
+              grantedAt: new Date(),
+            }))
+          )
+        : [];
+
+    return [...existingGrants, ...newGrants].map(renderSharingGrant);
+  }
+
+  async revokeSharingGrant({
+    grantId,
+  }: {
+    grantId: ModelId;
+  }): Promise<Result<undefined, DustError>> {
+    assert(
+      this.isInteractiveContent,
+      "revokeSharingGrant requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        id: grantId,
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return new Err(
+        new DustError("file_not_found", "Sharing grant not found")
+      );
+    }
+
+    await grant.update({ revokedAt: new Date() });
+
+    return new Ok(undefined);
+  }
+
+  async listActiveSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listActiveSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+      // FIXME: Do we have an index?
+      order: [["grantedAt", "DESC"]],
+    });
+
+    return grants.map(renderSharingGrant);
+  }
+
   // Serialization logic.
 
   toJSON(auth?: Authenticator): FileType {
@@ -1242,4 +1358,14 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(normalizeError(error));
     }
   }
+}
+
+function renderSharingGrant(grant: SharingGrantModel): SharingGrantType {
+  return {
+    id: grant.id,
+    email: grant.email,
+    grantedAt: grant.grantedAt,
+    expiresAt: grant.expiresAt,
+    lastViewedAt: grant.lastViewedAt,
+  };
 }

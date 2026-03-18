@@ -12,6 +12,7 @@ import {
   isInteractiveContentType,
 } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { isString } from "util";
 import { z } from "zod";
 
 const ShareFileRequestBodySchema = z.object({
@@ -30,7 +31,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { fileId } = req.query;
-  if (typeof fileId !== "string") {
+  if (!isString(fileId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

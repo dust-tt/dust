@@ -56,6 +56,14 @@ export const fileShareScopeSchema = z.enum([
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
+export interface SharingGrantType {
+  id: number;
+  email: string;
+  grantedAt: Date;
+  expiresAt: Date | null;
+  lastViewedAt: Date | null;
+}
+
 export interface FileType {
   contentType: AllSupportedFileContentType;
   downloadUrl?: string;
