@@ -430,9 +430,14 @@ export function FrameRenderer({
 
   if (error) {
     return (
-      <CenteredState>
-        <p className="text-warning-500">Error loading file: {error}</p>
-      </CenteredState>
+      <div className="flex h-full flex-col">
+        <InteractiveContentHeader
+          onClose={conversation ? onClosePanel : undefined}
+        />
+        <CenteredState>
+          <p className="text-warning-500">Error loading file: {error}</p>
+        </CenteredState>
+      </div>
     );
   }
 

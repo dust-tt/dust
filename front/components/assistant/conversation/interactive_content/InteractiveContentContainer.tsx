@@ -1,6 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
+import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -18,7 +19,7 @@ export function InteractiveContentContainer({
   conversation,
   owner,
 }: InteractiveContentContainerProps) {
-  const { data: contentHash } = useConversationSidePanelContext();
+  const { data: contentHash, closePanel } = useConversationSidePanelContext();
 
   const contentId = useMemo(() => {
     if (!contentHash) {
@@ -42,18 +43,24 @@ export function InteractiveContentContainer({
   const renderContent = () => {
     if (isFileMetadataLoading) {
       return (
-        <CenteredState>
-          <Spinner size="sm" />
-          <span>Loading frame...</span>
-        </CenteredState>
+        <div className="flex h-full flex-col">
+          <InteractiveContentHeader onClose={closePanel} />
+          <CenteredState>
+            <Spinner size="sm" />
+            <span>Loading frame...</span>
+          </CenteredState>
+        </div>
       );
     }
 
     if (isFileMetadataError || !fileMetadata) {
       return (
-        <CenteredState>
-          <p className="text-warning-500">Error loading file metadata</p>
-        </CenteredState>
+        <div className="flex h-full flex-col">
+          <InteractiveContentHeader onClose={closePanel} />
+          <CenteredState>
+            <p className="text-warning-500">Error loading file metadata</p>
+          </CenteredState>
+        </div>
       );
     }
 
