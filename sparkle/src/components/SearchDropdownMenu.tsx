@@ -6,6 +6,16 @@ import {
 import { SearchInput } from "@sparkle/components/SearchInput";
 import React, { useRef, useState } from "react";
 
+const OPEN_MENU_ITEM_SELECTOR = [
+  '[data-radix-menu-content][data-state=open] [role="menuitem"]',
+  '[data-radix-menu-content][data-state=open] [role="menuitemcheckbox"]',
+  '[data-radix-menu-content][data-state=open] [role="menuitemradio"]',
+].join(", ");
+
+function getFirstOpenMenuItem(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(OPEN_MENU_ITEM_SELECTOR);
+}
+
 type SearchDropdownMenuProps = {
   searchInputValue: string;
   setSearchInputValue: (value: string) => void;
@@ -57,9 +67,7 @@ export function SearchDropdownMenu({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              const firstItem = document.querySelector(
-                '[data-radix-menu-content][data-state=open] [role="menuitem"]'
-              );
+              const firstItem = getFirstOpenMenuItem();
               if (firstItem instanceof HTMLElement) {
                 firstItem.click();
               }
@@ -67,9 +75,7 @@ export function SearchDropdownMenu({
             }
             if (e.key === "Tab" || e.key === "ArrowDown") {
               e.preventDefault();
-              const firstItem = document.querySelector(
-                '[data-radix-menu-content][data-state=open] [role="menuitem"]'
-              );
+              const firstItem = getFirstOpenMenuItem();
               if (firstItem instanceof HTMLElement) {
                 firstItem.focus();
               }
@@ -81,6 +87,7 @@ export function SearchDropdownMenu({
         side="bottom"
         align="start"
         className="s-w-[--radix-popper-anchor-width]"
+        searchInputRef={searchInputRef}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
         }}
