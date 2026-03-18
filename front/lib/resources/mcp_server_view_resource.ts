@@ -55,9 +55,14 @@ import { Op } from "sequelize";
 export interface MCPServerViewResource
   extends ReadonlyAttributesType<MCPServerViewModel> {}
 
+type AffectedAgent = Pick<
+  Attributes<AgentConfigurationModel>,
+  "id" | "sId" | "name"
+>;
+
 export type MCPServerViewCreationResult = {
   view: MCPServerViewResource;
-  affectedAgents?: Attributes<AgentConfigurationModel>[];
+  affectedAgents?: AffectedAgent[];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -213,39 +218,50 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     };
 
     if (space.kind === "global") {
+      const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
+      const regularMCPServerViewModelIds = mcpServerViews
+        .filter((view) => view.space.kind === "regular")
+        .map((view) => view.id);
       const affectedAgents =
         await this.listLatestActiveAgentsToReconfigureOnGlobalShare(
           auth,
-          mcpServerId
+          regularMCPServerViewModelIds
         );
-      const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
       for (const mcpServerView of mcpServerViews) {
         if (mcpServerView.space.kind === "regular") {
           await mcpServerView.delete(auth, { hardDelete: true });
         }
       }
 
+      const view = await this.makeNew(
+        auth,
+        blob,
+        space,
+        auth.user() ?? undefined
+      );
+
       return {
-        view: await this.makeNew(auth, blob, space, auth.user() ?? undefined),
+        view,
         affectedAgents,
       };
     }
 
+    const view = await this.makeNew(
+      auth,
+      blob,
+      space,
+      auth.user() ?? undefined
+    );
+
     return {
-      view: await this.makeNew(auth, blob, space, auth.user() ?? undefined),
+      view,
     };
   }
 
   private static async listLatestActiveAgentsToReconfigureOnGlobalShare(
     auth: Authenticator,
-    mcpServerId: string
-  ): Promise<Attributes<AgentConfigurationModel>[]> {
-    const regularMCPServerViewModelIds = (
-      await this.listByMCPServer(auth, mcpServerId)
-    )
-      .filter((view) => view.space.kind === "regular")
-      .map((view) => view.id);
-
+    regularMCPServerViewModelIds: ModelId[]
+  ): Promise<AffectedAgent[]> {
     if (regularMCPServerViewModelIds.length === 0) {
       return [];
     }
@@ -272,11 +288,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       attributes: ["id", "sId"],
     });
 
-    const impactedAgentConfigurationModelIds = new Set(
+    const impactedAgentIds = new Set(
       impactedAgentConfigurations.map((configuration) => configuration.id)
     );
 
-    if (impactedAgentConfigurationModelIds.size === 0) {
+    if (impactedAgentIds.size === 0) {
       return [];
     }
 
@@ -318,10 +334,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return Array.from(latestAgentConfigurations.values())
       .filter(
         (agentConfiguration) =>
-          agentConfiguration.status === "active" &&
-          impactedAgentConfigurationModelIds.has(agentConfiguration.id)
+          impactedAgentIds.has(agentConfiguration.id) &&
+          agentConfiguration.status === "active"
       )
-      .map((agentConfiguration) => agentConfiguration.get())
+      .map((agentConfiguration) => ({
+        id: agentConfiguration.id,
+        sId: agentConfiguration.sId,
+        name: agentConfiguration.name,
+      }))
       .sort((left, right) => left.name.localeCompare(right.name));
   }
 

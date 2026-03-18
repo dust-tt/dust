@@ -1,4 +1,3 @@
-import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -8,24 +7,39 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Err, Ok } from "@app/types/shared/result";
+import sgMail from "@sendgrid/mail";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
-vi.mock(import("@app/lib/api/email"), async (importOriginal) => {
+vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
-    sendMCPGlobalSharingReconfigurationEmail: vi.fn(),
+    default: {
+      ...mod.default,
+      getSendgridApiKey: vi.fn().mockReturnValue("SG.test"),
+      getGenericEmailTemplate: vi.fn().mockReturnValue("d-test"),
+      getSupportEmailAddress: vi.fn().mockReturnValue({
+        name: "Dust team",
+        email: "support@dust.tt",
+      }),
+    },
   };
 });
 
+vi.spyOn(sgMail, "setApiKey").mockImplementation(() => {});
+vi.spyOn(sgMail, "send").mockResolvedValue([
+  { statusCode: 202, headers: {}, body: {} },
+  {},
+] as never);
+
 beforeEach(() => {
-  vi.mocked(sendMCPGlobalSharingReconfigurationEmail).mockReset();
-  vi.mocked(sendMCPGlobalSharingReconfigurationEmail).mockResolvedValue(
-    new Ok(undefined)
-  );
+  vi.clearAllMocks();
+  vi.mocked(sgMail.send).mockResolvedValue([
+    { statusCode: 202, headers: {}, body: {} },
+    {},
+  ] as never);
 });
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
@@ -213,25 +227,32 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const emailCalls = vi
-      .mocked(sendMCPGlobalSharingReconfigurationEmail)
-      .mock.calls.map(([args]) => args);
+    const sentMessages = vi.mocked(sgMail.send).mock.calls.map(([message]) => {
+      return message;
+    });
 
-    expect(emailCalls).toHaveLength(2);
-    expect(emailCalls.map((call) => call.email).sort()).toEqual(
+    expect(sentMessages).toHaveLength(2);
+    expect(sentMessages.flatMap((message) => message.to).sort()).toEqual(
       [user.email, extraAdmin.email].sort()
     );
-    emailCalls.forEach((call) => {
-      expect(call.workspaceName).toBe(workspace.name);
-      expect(call.toolName).toBe("Notion");
-      expect(call.agentNames).toEqual(["Needs Reconfiguration"]);
+    sentMessages.forEach((message) => {
+      expect(message.from).toEqual({
+        name: "Dust team",
+        email: "support@dust.tt",
+      });
+      expect(message.templateId).toBe("d-test");
+      expect(message.dynamic_template_data.subject).toBe(
+        "[Dust] Agents to reconfigure after sharing Notion"
+      );
+      expect(message.dynamic_template_data.body).toContain(workspace.name);
+      expect(message.dynamic_template_data.body).toContain(
+        "Needs Reconfiguration"
+      );
     });
   });
 
   it("does not fail the sharing request when the notification email fails", async () => {
-    vi.mocked(sendMCPGlobalSharingReconfigurationEmail).mockResolvedValue(
-      new Err(new Error("email failed"))
-    );
+    vi.mocked(sgMail.send).mockRejectedValue(new Error("email failed"));
 
     const { req, res, workspace, authenticator, globalSpace, globalGroup } =
       await createPrivateApiMockRequest({

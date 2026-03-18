@@ -17,6 +17,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -57,31 +60,35 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
     toolName: string;
     agentNames: string[];
   }
-): Promise<void> {
+): Promise<Result<void, Error>> {
   if (agentNames.length === 0) {
-    return;
+    return new Ok(undefined);
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const adminEmails = await getActiveAdminEmails(auth);
+  try {
+    const adminEmails = await getActiveAdminEmails(auth);
 
-  const results = await concurrentExecutor(
-    adminEmails,
-    async (email) =>
-      sendMCPGlobalSharingReconfigurationEmail({
-        email,
-        workspaceName: workspace.name,
-        toolName,
-        agentNames,
-      }),
-    { concurrency: 8 }
-  );
+    const results = await concurrentExecutor(
+      adminEmails,
+      async (email) =>
+        sendMCPGlobalSharingReconfigurationEmail({
+          email,
+          workspaceName: workspace.name,
+          toolName,
+          agentNames,
+        }),
+      { concurrency: 8 }
+    );
 
-  const failedEmails = results.flatMap((result, index) =>
-    result.isErr() ? [adminEmails[index]] : []
-  );
+    const failedEmails = results.flatMap((result, index) =>
+      result.isErr() ? [adminEmails[index]] : []
+    );
 
-  if (failedEmails.length > 0) {
+    if (failedEmails.length === 0) {
+      return new Ok(undefined);
+    }
+
     logger.error(
       {
         workspaceId: workspace.sId,
@@ -91,6 +98,24 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
       },
       "Failed to send MCP global sharing reconfiguration emails"
     );
+
+    return new Err(
+      new Error("Failed to send MCP global sharing reconfiguration emails")
+    );
+  } catch (error) {
+    const normalizedError = normalizeError(error);
+
+    logger.error(
+      {
+        error: normalizedError,
+        workspaceId: workspace.sId,
+        toolName,
+        agentNames,
+      },
+      "Failed to notify workspace admins about MCP global sharing impact"
+    );
+
+    return new Err(normalizedError);
   }
 }
 
@@ -252,22 +277,10 @@ async function handler(
       if (space.kind === "global" && affectedAgentNames.length > 0) {
         const toolName = getMcpServerViewDisplayName(systemView.toJSON());
 
-        try {
-          await notifyWorkspaceAdminsAboutAffectedAgents(auth, {
-            toolName,
-            agentNames: affectedAgentNames,
-          });
-        } catch (error) {
-          logger.error(
-            {
-              error,
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              toolName,
-              agentNames: affectedAgentNames,
-            },
-            "Failed to notify workspace admins about MCP global sharing impact"
-          );
-        }
+        await notifyWorkspaceAdminsAboutAffectedAgents(auth, {
+          toolName,
+          agentNames: affectedAgentNames,
+        });
       }
 
       return res.status(200).json({
