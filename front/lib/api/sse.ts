@@ -1,4 +1,4 @@
-// @ts-ignore This function only applies to NextAPIResponse
+// eslint-disable-next-line no-restricted-imports
 import type { NextApiResponse } from "next";
 
 /**
