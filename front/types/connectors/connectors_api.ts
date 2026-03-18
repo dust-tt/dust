@@ -1,8 +1,8 @@
-import type { ConnectorsAPIError } from "@dust-tt/client";
-
-import { isConnectorsAPIError } from "@dust-tt/client";
+import {
+  type ConnectorsAPIError,
+  isConnectorsAPIError,
+} from "connectors/src/types";
 import * as t from "io-ts";
-
 import type { ContentNodeType } from "../core/content_node";
 import type { ConnectorProvider, DataSourceType } from "../data_source";
 import type { LoggerInterface } from "../shared/logger";

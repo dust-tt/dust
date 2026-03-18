@@ -2,28 +2,24 @@ engine biome(1.0)
 language js
 
 // Enforces that files outside /api/v1/ and lib/actions/mcp_internal_actions/
-// cannot import from @dust-tt/client.
+// cannot import from @dust-tt/client or any of its subpaths.
 //
-// Note: The other parts of the original ESLint rule (requiring client imports
-// in v1 files, validating handler response types) require file-path-based
-// logic and type annotation inspection that GritQL cannot express.
-`"@dust-tt/client"` as $source where {
-    $filename <: not r".*pages/api/v1/.*",
-    $filename <: not r".*lib/actions/mcp_internal_actions/.*",
-    $filename <: not r".*lib/api/actions/servers/.*",
-    $filename <: not r".*\.test\..*",
-    $filename <: not r".*/connectors/.*",
-    $filename <: not r".*/cli/.*",
-    $filename <: not r".*/extension/.*",
-    $filename <: not r".*/sdks/.*",
-    $filename <: not r".*/sparkle/.*",
-    $filename <: not r".*/viz/.*",
-    $filename <: not r".*/front-spa/.*",
-    $filename <: not r".*/firebase-functions/.*",
-    $filename <: not r".*/core/.*",
+// Uses two snippet patterns: one for the exact package import and one with
+// a metavariable to catch any subpath import (e.g. @dust-tt/client/src/foo).
+or {
+    `"@dust-tt/client"`,
+    `"@dust-tt/client/$_"`,
+} as $source where {
+    $filename <: r".*/front/.*",
+    $filename <: not or {
+        r".*pages/api/v1/.*",
+        r".*lib/actions/mcp_internal_actions/.*",
+        r".*lib/api/actions/servers/.*",
+        r".*\.test\..*",
+    },
     register_diagnostic(
         span = $source,
-        message = "Files outside /api/v1/, lib/actions/mcp_internal_actions/ or lib/api/actions/mcp_internal_actions/ cannot import from '@dust-tt/client'.",
+        message = "Files outside front/api/v1/, front/lib/actions/mcp_internal_actions/ or front/lib/api/actions/servers/ cannot import from '@dust-tt/client'.",
         severity = "error"
     )
 }
