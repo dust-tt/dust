@@ -139,6 +139,9 @@ export function useTextAsCronRule({
           `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
           {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
               naturalDescription,
               defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -180,6 +183,9 @@ export function useWebhookFilterGenerator({
         `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             naturalDescription,
             event,
