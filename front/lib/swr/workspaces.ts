@@ -626,6 +626,9 @@ export function useWorkspaceSeatsCount({
   };
 }
 
+export const workspaceAuthContextUrl = (workspaceId: string) =>
+  `/api/w/${workspaceId}/auth-context`;
+
 interface UseAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
@@ -655,7 +658,7 @@ export function useAuthContext(
   const regionContext = useRegionContext();
 
   const url = workspaceId
-    ? `/api/w/${workspaceId}/auth-context`
+    ? workspaceAuthContextUrl(workspaceId)
     : `/api/auth-context`;
 
   const authContextFetcher: Fetcher<

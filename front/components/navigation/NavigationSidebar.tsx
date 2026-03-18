@@ -6,11 +6,13 @@ import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { SubscriptionType } from "@app/types/plan";
+import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
@@ -111,20 +113,14 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div
-        className={cn(
-          "flex flex-col gap-2",
-          appStatus?.dustStatus ||
-            appStatus?.providersStatus ||
-            subscription.paymentFailingSince
-            ? ""
-            : "pt-3"
-        )}
-      >
-        {appStatus && <AppStatusBanner appStatus={appStatus} />}
-        {subscription.paymentFailingSince && isAdmin(owner) && (
-          <SubscriptionPastDueBanner />
-        )}
+      <div className={cn("flex flex-col gap-3")}>
+        <div className={cn("flex flex-col gap-2")}>
+          <UnhealthyCredentialsBanner owner={owner} />
+          {appStatus && <AppStatusBanner appStatus={appStatus} />}
+          {subscription.paymentFailingSince && isAdmin(owner) && (
+            <SubscriptionPastDueBanner />
+          )}
+        </div>
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
             <div className="border-b border-separator px-2 dark:border-separator-night">
@@ -231,6 +227,49 @@ function StatusBanner({
       <div className="font-normal">{description}</div>
       {footer && <div>{footer}</div>}
     </div>
+  );
+}
+
+function UnhealthyCredentialsBanner({ owner }: { owner: WorkspaceType }) {
+  const { providersHealth } = useAuth();
+
+  if (!providersHealth) {
+    return null;
+  }
+
+  const hasConfiguredProviders = Object.keys(providersHealth).length > 0;
+  const isWorkspaceHealthy = Object.values(providersHealth).every(Boolean);
+
+  if (hasConfiguredProviders && isWorkspaceHealthy) {
+    return null;
+  }
+
+  const description = !hasConfiguredProviders
+    ? "No provider credentials configured. Please set up at least one model provider."
+    : "The following model providers have invalid credentials: " +
+      Object.entries(providersHealth)
+        .filter(([_, isHealthy]) => !isHealthy)
+        .map(
+          ([providerId]) =>
+            PRETTIFIED_PROVIDER_NAMES[providerId as ByokModelProviderIdType]
+        )
+        .join(", ") +
+      ".";
+  const footer = isAdmin(owner) ? (
+    <LinkWrapper href={`/w/${owner.sId}/model-providers`} className="underline">
+      Model providers
+    </LinkWrapper>
+  ) : (
+    <>Contact your workspace admin.</>
+  );
+
+  return (
+    <StatusBanner
+      title="Your workspace is not operational"
+      description={description}
+      variant="warning"
+      footer={footer}
+    />
   );
 }
 

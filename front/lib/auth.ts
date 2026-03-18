@@ -26,9 +26,9 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
   PermissionType,
   ResourcePermission,
@@ -64,8 +64,6 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
 const SANDBOX_TOKEN_AUTH_METHOD = "sandbox_token" as const;
-
-type ProvidersHealth = Partial<Record<ByokModelProviderIdType, boolean>>;
 
 export type AuthMethodType =
   | "system_api_key"
