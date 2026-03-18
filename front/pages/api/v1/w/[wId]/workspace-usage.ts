@@ -1,6 +1,7 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { getConversationsDataRetention } from "@app/lib/data_retention";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
@@ -8,6 +9,7 @@ import {
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
+import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -158,6 +160,21 @@ async function handler(
       }
 
       const { endDate, startDate } = resolveDates(query);
+      const conversationsRetentionDays =
+        await getConversationsDataRetention(auth);
+      const retentionErrorMessage = getWorkspaceUsageRetentionErrorMessage({
+        startDate,
+        retentionDays: conversationsRetentionDays,
+      });
+      if (retentionErrorMessage) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: retentionErrorMessage,
+          },
+        });
+      }
       const data = await fetchUsageData({
         table: query.table,
         start: startDate,
