@@ -1,9 +1,18 @@
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+export interface AgentContextConfig {
+  name: string;
+  description: string;
+  instructionsHtml: string | null;
+  actions: { name: string; sId: string }[];
+}
+
+export interface AgentContextSkill {
+  name: string;
+  sId: string;
+}
 
 export function formatAgentContext(
-  agentConfig: AgentConfigurationType,
-  agentSkills: SkillResource[]
+  agentConfig: AgentContextConfig,
+  agentSkills: AgentContextSkill[]
 ): string {
   const sections: string[] = [];
 

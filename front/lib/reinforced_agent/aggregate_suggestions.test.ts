@@ -1,6 +1,5 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { buildAggregationPrompt } from "@app/lib/reinforced_agent/aggregate_suggestions";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentInstructionsSuggestionType,
@@ -18,14 +17,14 @@ function makeAgentConfig(
     version: 1,
     versionCreatedAt: null,
     versionAuthorId: null,
+    instructions: null,
     model: {
-      modelId: "gpt-4o-mini" as const,
-      providerId: "openai" as const,
+      modelId: "gpt-4o-mini",
+      providerId: "openai",
       temperature: 0.7,
-      reasoningEffort: null,
     },
     status: "active",
-    scope: "workspace",
+    scope: "visible",
     userFavorite: false,
     name: "TestAgent",
     description: "A test agent",
@@ -38,10 +37,33 @@ function makeAgentConfig(
     canRead: true,
     canEdit: true,
     instructionsHtml: null,
-    instructions: null,
     actions: [],
     ...overrides,
-  } as AgentConfigurationType;
+  };
+}
+
+function makeAction(
+  overrides: Partial<ServerSideMCPServerConfigurationType> = {}
+): ServerSideMCPServerConfigurationType {
+  return {
+    id: 1,
+    sId: "tool-1",
+    type: "mcp_server_configuration",
+    name: "test_tool",
+    description: null,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "view-1",
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+    internalMCPServerId: null,
+    ...overrides,
+  };
 }
 
 function makeInstructionSuggestion(
@@ -279,13 +301,7 @@ describe("buildAggregationPrompt", () => {
   });
 
   it("includes agent configured tools in user message", () => {
-    const action = {
-      id: 1,
-      sId: "tool-ws",
-      type: "mcp_server_configuration",
-      name: "web_search",
-      description: "Search the web",
-    } as ServerSideMCPServerConfigurationType;
+    const action = makeAction({ name: "web_search", sId: "tool-ws" });
     const { userMessage } = buildAggregationPrompt(
       makeAgentConfig({ actions: [action] }),
       [makeInstructionSuggestion()],
@@ -299,11 +315,7 @@ describe("buildAggregationPrompt", () => {
   });
 
   it("includes agent configured skills in user message", () => {
-    const skill = {
-      name: "code_review",
-      sId: "skill-cr",
-      agentFacingDescription: "Review code for quality",
-    } as SkillResource;
+    const skill = { name: "code_review", sId: "skill-cr" };
     const { userMessage } = buildAggregationPrompt(
       makeAgentConfig(),
       [makeInstructionSuggestion()],

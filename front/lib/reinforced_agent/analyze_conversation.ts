@@ -3,7 +3,10 @@ import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversatio
 import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { formatAgentContext } from "@app/lib/reinforced_agent/format_agent_context";
+import {
+  type AgentContextSkill,
+  formatAgentContext,
+} from "@app/lib/reinforced_agent/format_agent_context";
 import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
@@ -17,7 +20,7 @@ export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
   conversationText: string,
   toolsAndSkillsContext: string,
-  agentSkills: SkillResource[]
+  agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
 

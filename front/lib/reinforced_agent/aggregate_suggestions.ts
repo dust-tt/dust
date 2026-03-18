@@ -3,7 +3,10 @@ import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
-import { formatAgentContext } from "@app/lib/reinforced_agent/format_agent_context";
+import {
+  type AgentContextSkill,
+  formatAgentContext,
+} from "@app/lib/reinforced_agent/format_agent_context";
 import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
@@ -158,7 +161,7 @@ export function buildAggregationPrompt(
     rejected: ReinforcedSuggestionType[];
   },
   toolsAndSkillsContext: string,
-  agentSkills: SkillResource[]
+  agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
 

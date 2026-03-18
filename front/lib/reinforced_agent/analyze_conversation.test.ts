@@ -1,6 +1,5 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { buildAnalysisPrompt } from "@app/lib/reinforced_agent/analyze_conversation";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { describe, expect, it } from "vitest";
 
@@ -13,14 +12,14 @@ function makeAgentConfig(
     version: 1,
     versionCreatedAt: null,
     versionAuthorId: null,
+    instructions: null,
     model: {
-      modelId: "gpt-4o-mini" as const,
-      providerId: "openai" as const,
+      modelId: "gpt-4o-mini",
+      providerId: "openai",
       temperature: 0.7,
-      reasoningEffort: null,
     },
     status: "active",
-    scope: "workspace",
+    scope: "visible",
     userFavorite: false,
     name: "TestAgent",
     description: "A test agent",
@@ -35,7 +34,31 @@ function makeAgentConfig(
     instructionsHtml: null,
     actions: [],
     ...overrides,
-  } as AgentConfigurationType;
+  };
+}
+
+function makeAction(
+  overrides: Partial<ServerSideMCPServerConfigurationType> = {}
+): ServerSideMCPServerConfigurationType {
+  return {
+    id: 1,
+    sId: "tool-1",
+    type: "mcp_server_configuration",
+    name: "test_tool",
+    description: null,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "view-1",
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+    internalMCPServerId: null,
+    ...overrides,
+  };
 }
 
 describe("buildAnalysisPrompt", () => {
@@ -142,13 +165,7 @@ describe("buildAnalysisPrompt", () => {
   });
 
   it("includes agent configured tools in user message", () => {
-    const action = {
-      id: 1,
-      sId: "tool-ws",
-      type: "mcp_server_configuration",
-      name: "web_search",
-      description: "Search the web",
-    } as ServerSideMCPServerConfigurationType;
+    const action = makeAction({ name: "web_search", sId: "tool-ws" });
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig({ actions: [action] }),
       "User: hello",
@@ -161,11 +178,7 @@ describe("buildAnalysisPrompt", () => {
   });
 
   it("includes agent configured skills in user message", () => {
-    const skill = {
-      name: "code_review",
-      sId: "skill-cr",
-      agentFacingDescription: "Review code for quality",
-    } as SkillResource;
+    const skill = { name: "code_review", sId: "skill-cr" };
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig(),
       "User: hello",
