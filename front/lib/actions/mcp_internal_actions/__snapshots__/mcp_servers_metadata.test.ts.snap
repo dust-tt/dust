@@ -427,6 +427,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "poke": {
     "check_notion_page": "high",
     "check_slack_channel": "high",
+    "find_workspace_by_connector_id": "high",
     "get_connector_details": "high",
     "get_conversation_details": "high",
     "get_mcp_server_details": "high",
@@ -437,6 +438,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_workspace_plan_and_subscription": "high",
     "get_workspace_spaces": "high",
     "list_data_sources": "high",
+    "list_workspace_groups": "high",
   },
   "primitive_types_debugger": {
     "pass_through": "high",
