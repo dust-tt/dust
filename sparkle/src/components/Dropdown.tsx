@@ -310,26 +310,23 @@ const DropdownMenuContent = React.forwardRef<
       [ref]
     );
 
-    const handleKeyDownCapture = useCallback(
-      (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (e.key !== "ArrowUp") {
-          return;
-        }
+    const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "ArrowUp") {
+        return;
+      }
 
-        const input = contentRef.current?.querySelector("input");
-        if (!input) {
-          return;
-        }
+      const input = contentRef.current?.querySelector("input");
+      if (!input) {
+        return;
+      }
 
-        const items = contentRef.current?.querySelectorAll('[role="menuitem"]');
-        if (items && items.length > 0 && document.activeElement === items[0]) {
-          e.preventDefault();
-          e.stopPropagation();
-          input.focus();
-        }
-      },
-      []
-    );
+      const items = contentRef.current?.querySelectorAll('[role="menuitem"]');
+      if (items && items.length > 0 && document.activeElement === items[0]) {
+        e.preventDefault();
+        e.stopPropagation();
+        input.focus();
+      }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
       onKeyDown?.(e);
