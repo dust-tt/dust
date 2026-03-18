@@ -2,17 +2,19 @@ import {
   useShareInteractiveContentFile,
   useSharingGrants,
 } from "@app/lib/swr/files";
+import { isEmailValid, timeAgoFrom } from "@app/lib/utils";
 import type { FileShareScope, SharingGrantType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   ContextItem,
   GlobeAltIcon,
   IconButton,
   Input,
-  LinkIcon,
   LockIcon,
   ScrollArea,
   Sheet,
@@ -25,9 +27,8 @@ import {
   useCopyToClipboard,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { isEmailValid } from "@app/lib/utils";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 const SCOPE_OPTIONS: {
   icon: typeof LockIcon;
@@ -99,7 +100,10 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
     const invalid = emails.filter((e) => !isEmailValid(e));
     if (invalid.length > 0) {
       const quoted = invalid.map((e) => `"${e}"`).join(", ");
-      const verb = invalid.length === 1 ? "is not a valid email address" : "are not valid email addresses";
+      const verb =
+        invalid.length === 1
+          ? "is not a valid email address"
+          : "are not valid email addresses";
       setEmailError(`${quoted} ${verb}`);
       return;
     }
@@ -132,7 +136,18 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent size="lg">
           <SheetHeader>
-            <SheetTitle>Share this content</SheetTitle>
+            <div className="flex items-center justify-between pr-10">
+              <SheetTitle>Share this content</SheetTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                label={isCopied ? "Copied!" : "Copy link"}
+                onClick={async () => {
+                  await copyToClipboard(shareURL);
+                }}
+              />
+            </div>
           </SheetHeader>
           <SheetContainer>
             {isFileShareLoading ? (
@@ -228,21 +243,6 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                     )}
                   </div>
                 )}
-
-                {/* Copy link */}
-                <div className="border-t border-border pt-3 dark:border-border-night">
-                  <button
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
-                    onClick={async () => {
-                      await copyToClipboard(shareURL);
-                    }}
-                  >
-                    <LinkIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
-                    <span className="text-primary dark:text-primary-night">
-                      {isCopied ? "Link copied!" : "Copy link"}
-                    </span>
-                  </button>
-                </div>
               </div>
             )}
           </SheetContainer>
@@ -257,36 +257,15 @@ interface GrantRowProps {
   onRevoke: () => void;
 }
 
-function formatRelativeDate(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
-  const diffMinutes = Math.floor(diffMs / 60_000);
-  const diffHours = Math.floor(diffMs / 3_600_000);
-  const diffDays = Math.floor(diffMs / 86_400_000);
-
-  if (diffMinutes < 1) {
-    return "just now";
-  }
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
-  }
-  if (diffHours < 24) {
-    return `${diffHours}h ago`;
-  }
-  if (diffDays < 30) {
-    return `${diffDays}d ago`;
-  }
-  return new Date(date).toLocaleDateString();
-}
-
 function GrantRow({ grant, onRevoke }: GrantRowProps) {
   const invitedBy = grant.grantedBy?.fullName ?? grant.grantedBy?.email;
+  const grantedAgo = timeAgoFrom(new Date(grant.grantedAt).getTime());
   const invitedLabel = invitedBy
-    ? `Invited by ${invitedBy} ${formatRelativeDate(grant.grantedAt)}`
-    : `Invited ${formatRelativeDate(grant.grantedAt)}`;
+    ? `Invited by ${invitedBy} ${grantedAgo} ago`
+    : `Invited ${grantedAgo} ago`;
 
   const viewedLabel = grant.lastViewedAt
-    ? `Viewed ${formatRelativeDate(grant.lastViewedAt)}`
+    ? `Viewed ${timeAgoFrom(new Date(grant.lastViewedAt).getTime())} ago`
     : "Never viewed";
 
   return (
