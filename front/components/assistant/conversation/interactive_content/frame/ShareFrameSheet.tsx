@@ -30,6 +30,8 @@ import {
 import type React from "react";
 import { useState } from "react";
 
+const MAX_EMAILS_PER_INVITE = 50;
+
 const SCOPE_OPTIONS: {
   icon: typeof LockIcon;
   label: string;
@@ -64,6 +66,7 @@ interface ShareFrameSheetProps {
 export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [emailInput, setEmailInput] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
@@ -79,12 +82,6 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
 
-  const handleScopeChange = async (scope: FileShareScope) => {
-    await doShare(scope);
-  };
-
-  const [emailError, setEmailError] = useState<string | null>(null);
-
   const parseEmails = () =>
     emailInput
       .split(",")
@@ -94,6 +91,13 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const validateAndInvite = async () => {
     const emails = parseEmails();
     if (emails.length === 0) {
+      return;
+    }
+
+    if (emails.length > MAX_EMAILS_PER_INVITE) {
+      setEmailError(
+        `You can invite up to ${MAX_EMAILS_PER_INVITE} people at a time`
+      );
       return;
     }
 
@@ -172,7 +176,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                               ? "bg-muted-background dark:bg-muted-background-night"
                               : "hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
                           }`}
-                          onClick={() => handleScopeChange(option.value)}
+                          onClick={() => doShare(option.value)}
                         >
                           <option.icon className="h-4 w-4 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
                           <div className="flex flex-col">
