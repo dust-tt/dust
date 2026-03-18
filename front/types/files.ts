@@ -82,8 +82,7 @@ export type FileFormatCategory =
   | "delimited"
   | "audio";
 
-// Keep aligned with MAX_SUPPORTED_FILE_SIZES in sdks/js/src/types.ts.
-// front/types/files.ts cannot import runtime values from @dust-tt/client.
+// Define max sizes for each category.
 export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
