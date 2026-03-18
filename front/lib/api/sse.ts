@@ -1,3 +1,4 @@
+// @ts-ignore This function only applies to NextAPIResponse
 import type { NextApiResponse } from "next";
 
 /**
