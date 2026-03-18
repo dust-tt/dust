@@ -12,6 +12,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
+type TemplateEmailMessage = {
+  to: string;
+  from: {
+    name: string;
+    email: string;
+  };
+  templateId: string;
+  dynamic_template_data: {
+    subject: string;
+    body: string;
+  };
+};
+
 vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -227,9 +240,12 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const sentMessages = vi.mocked(sgMail.send).mock.calls.map(([message]) => {
-      return message;
-    });
+    const sentMessages = vi
+      .mocked(sgMail.send)
+      .mock.calls.flatMap(([message]) =>
+        Array.isArray(message) ? message : [message]
+      )
+      .map((message) => message as TemplateEmailMessage);
 
     expect(sentMessages).toHaveLength(2);
     expect(sentMessages.flatMap((message) => message.to).sort()).toEqual(
