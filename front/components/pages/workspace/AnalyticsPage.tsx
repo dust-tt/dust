@@ -164,21 +164,23 @@ export function AnalyticsPage() {
         workspaceId={owner.sId}
         period={period}
       />
-      <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
-      <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
-      <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
-      <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
-      <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
-      <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
-      {!hasFeature("analytics_csv_export") && (
-        <ActivityReport
-          downloadingMonth={downloadingMonth}
-          monthOptions={monthOptions}
-          handleDownload={handleDownload}
-          includeInactive={includeInactive}
-          onIncludeInactiveChange={setIncludeInactive}
-        />
-      )}
+      <div className="flex flex-col pb-8 gap-8">
+        <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
+        <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
+        <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
+        <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
+        <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
+        <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
+        {!hasFeature("analytics_csv_export") && (
+          <ActivityReport
+            downloadingMonth={downloadingMonth}
+            monthOptions={monthOptions}
+            handleDownload={handleDownload}
+            includeInactive={includeInactive}
+            onIncludeInactiveChange={setIncludeInactive}
+          />
+        )}
+      </div>
     </Page.Vertical>
   );
 }
