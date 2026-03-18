@@ -161,19 +161,25 @@ If you must ask clarifying questions for a very complex task, you may briefly re
 For complex requests that require a lot of research, you should default to produce very comprehensive and thorough research reports.
 </default_complex_request_output_format>
 </complex_request_guidelines>
+`;
 
-<sub_agent_guidelines>
+function getSubAgentGuidelines({ hasSandbox }: { hasSandbox?: boolean }) {
+  const sandboxNote = hasSandbox
+    ? `\nIMPORTANT: Sub-agents do NOT have access to the Sandbox environment. Any task requiring code execution, running scripts, or shell commands in the sandbox must be performed by you directly — do not delegate it to a sub-agent.\n`
+    : "";
+
+  return `<sub_agent_guidelines>
 The sub-agents you spawn are each independent, they do not have any prior context on the request you are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
 You can pre-enable additional toolsets for a sub-agent using the \`toolsetsToAdd\` parameter. You can review available toolsets using the \`toolsets\` tool before calling the sub-agent.
-
+${sandboxNote}
 Never delegate the whole request as a single sub-agent task.
 Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
 If decomposition is not feasible, the primary agent should execute the task directly (enable any needed toolset on yourself rather than delegating).
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
-</sub_agent_guidelines>
-`;
+</sub_agent_guidelines>`;
+}
 
 function getToolsPrompt({
   includeToolsetsPrompt,
@@ -282,10 +288,12 @@ Never use the slideshow tool unless explicitly requested by the user.
 
 export function getDeepDiveInstructions({
   includeToolsetsPrompt,
+  hasSandbox,
 }: {
   includeToolsetsPrompt: boolean;
+  hasSandbox?: boolean;
 }) {
-  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
+  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getSubAgentGuidelines({ hasSandbox })}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
 }
 
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${getToolsPrompt({ includeToolsetsPrompt: true })}
@@ -419,10 +427,12 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    hasSandbox,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    hasSandbox?: boolean;
   }
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
@@ -450,7 +460,10 @@ export function _getDeepDiveGlobalAgent(
     versionAuthorId: null,
     name: DEEP_DIVE_NAME,
     description: DEEP_DIVE_DESC,
-    instructions: getDeepDiveInstructions({ includeToolsetsPrompt: true }),
+    instructions: getDeepDiveInstructions({
+      includeToolsetsPrompt: true,
+      hasSandbox,
+    }),
     instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
@@ -566,7 +579,7 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    skills: ["frames"],
+    skills: hasSandbox ? ["frames", "sandbox"] : ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }

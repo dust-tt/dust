@@ -538,6 +538,7 @@ function getGlobalAgent({
   mcpServerViews,
   sidekickContext,
   hasDeepDive,
+  hasSandbox,
   globalAgentContext,
 }: {
   auth: Authenticator;
@@ -547,6 +548,7 @@ function getGlobalAgent({
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
+  hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
 }): AgentConfigurationType | null {
   const settings =
@@ -987,6 +989,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        hasSandbox,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -1181,6 +1184,7 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
+      hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
     })
   );
