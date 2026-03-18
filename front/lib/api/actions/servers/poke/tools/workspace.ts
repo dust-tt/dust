@@ -11,6 +11,7 @@ import {
 import {
   enforcePokeSecurityGates,
   getTargetAuth,
+  jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
@@ -22,7 +23,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { format } from "date-fns/format";
 
 const THIRTY_DAYS_MS = -30 * 24 * 60 * 60 * 1000;
@@ -35,12 +36,6 @@ type WorkspaceHandlers = Pick<
   | typeof GET_WORKSPACE_SPACES_TOOL_NAME
   | typeof GET_WORKSPACE_CREDITS_TOOL_NAME
 >;
-
-function jsonResponse(data: unknown) {
-  return new Ok([
-    { type: "text" as const, text: JSON.stringify(data, null, 2) },
-  ]);
-}
 
 export const workspaceHandlers: WorkspaceHandlers = {
   [GET_WORKSPACE_PLAN_TOOL_NAME]: async ({ workspace_id }, extra) => {

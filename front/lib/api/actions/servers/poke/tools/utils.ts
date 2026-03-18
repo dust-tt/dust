@@ -1,11 +1,23 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isDustWorkspace } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+/**
+ * Wraps any serializable data as a successful text content MCP response.
+ */
+export function jsonResponse(data: unknown): ToolHandlerResult {
+  return new Ok([
+    { type: "text" as const, text: JSON.stringify(data, null, 2) },
+  ]);
+}
 
 /**
  * Runs the three security gates required by every poke tool, then emits the
