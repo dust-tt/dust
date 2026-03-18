@@ -8,7 +8,7 @@
     "dev:front": "tsx run/watch.ts --platform=front --mode=development",
     "package:chrome:production": "tsx run/build.ts --platform=chrome",
     "package:front:production": "tsx run/build.ts --platform=front",
-    "dev:firefox": "npm run clean && tsx run/watch.ts --platform=firefox --mode=development",
+    "dev:firefox": "tsx run/watch.ts --platform=firefox --mode=development",
     "package:firefox:production": "tsx run/build.ts --platform=firefox",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
     "analyze:chrome": "tsx run/build.ts --platform=chrome --analyze",
