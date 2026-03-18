@@ -103,7 +103,7 @@ export type AshbyApplicationFeedbackListRequest = z.infer<
 export const AshbyFeedbackSubmissionSchema = z
   .object({
     id: z.string(),
-    submittedAt: z.string().optional().nullable(),
+    submittedAt: z.string().nullish(),
     submittedByUser: z
       .object({
         id: z.string(),
@@ -113,8 +113,8 @@ export const AshbyFeedbackSubmissionSchema = z
       })
       .optional()
       .nullable(),
-    interviewId: z.string().optional().nullable(),
-    interviewEventId: z.string().optional().nullable(),
+    interviewId: z.string().nullish(),
+    interviewEventId: z.string().nullish(),
     formDefinition: z
       .object({
         sections: z
@@ -201,7 +201,7 @@ export type AshbyCandidateListNotesRequest = z.infer<
 export const AshbyCandidateNoteSchema = z
   .object({
     id: z.string(),
-    content: z.string().nullable().optional(),
+    content: z.string().nullish(),
     createdAt: z.string(),
     author: z
       .object({
@@ -475,14 +475,14 @@ export const AshbyJobPostingSchema = z
         secondaryLocationIds: z.array(z.string()),
       })
       .optional(),
-    workplaceType: z.string().optional().nullable(),
+    workplaceType: z.string().nullish(),
     employmentType: z.string(),
     isListed: z.boolean(),
     publishedDate: z.string(),
-    applicationDeadline: z.string().optional().nullable(),
-    externalLink: z.string().optional().nullable(),
+    applicationDeadline: z.string().nullish(),
+    externalLink: z.string().nullish(),
     applyLink: z.string(),
-    compensationTierSummary: z.string().optional().nullable(),
+    compensationTierSummary: z.string().nullish(),
     shouldDisplayCompensationOnJobBoard: z.boolean(),
     updatedAt: z.string(),
   })
@@ -533,9 +533,9 @@ export const AshbyJobPostingInfoSchema = z
     descriptionHtml: z.string().optional(),
     descriptionParts: z
       .object({
-        descriptionOpening: AshbyDescriptionPartSchema.optional().nullable(),
-        descriptionBody: AshbyDescriptionPartSchema.optional().nullable(),
-        descriptionClosing: AshbyDescriptionPartSchema.optional().nullable(),
+        descriptionOpening: AshbyDescriptionPartSchema.nullish(),
+        descriptionBody: AshbyDescriptionPartSchema.nullish(),
+        descriptionClosing: AshbyDescriptionPartSchema.nullish(),
       })
       .optional(),
   })
@@ -684,9 +684,9 @@ export const AshbyCandidateInfoSchema = z
       .optional(),
     location: z
       .object({
-        city: z.string().optional().nullable(),
-        region: z.string().optional().nullable(),
-        country: z.string().optional().nullable(),
+        city: z.string().nullish(),
+        region: z.string().nullish(),
+        country: z.string().nullish(),
       })
       .passthrough()
       .optional()
@@ -703,7 +703,7 @@ export const AshbyCandidateInfoSchema = z
       )
       .optional(),
     applicationIds: z.array(z.string()).optional(),
-    createdAt: z.string().optional().nullable(),
+    createdAt: z.string().nullish(),
   })
   .passthrough();
 
@@ -734,7 +734,7 @@ export type AshbyOfferFormFieldValue = z.infer<
 export const AshbyOfferVersionSchema = z
   .object({
     id: z.string().optional(),
-    startDate: z.string().optional().nullable(),
+    startDate: z.string().nullish(),
     formFieldValues: z.array(AshbyOfferFormFieldValueSchema).optional(),
   })
   .passthrough();
@@ -746,8 +746,8 @@ export const AshbyOfferSchema = z
     id: z.string(),
     applicationId: z.string().optional(),
     status: z.string().optional(),
-    decidedAt: z.string().optional().nullable(),
-    latestVersion: AshbyOfferVersionSchema.optional().nullable(),
+    decidedAt: z.string().nullish(),
+    latestVersion: AshbyOfferVersionSchema.nullish(),
   })
   .passthrough();
 
@@ -783,9 +783,9 @@ export const AshbyJobInfoSchema = z
     id: z.string(),
     title: z.string(),
     status: z.string(),
-    departmentName: z.string().optional().nullable(),
-    teamName: z.string().optional().nullable(),
-    locationName: z.string().optional().nullable(),
+    departmentName: z.string().nullish(),
+    teamName: z.string().nullish(),
+    locationName: z.string().nullish(),
     customFields: z
       .array(
         z
