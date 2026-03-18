@@ -22,19 +22,19 @@ import {
 import moment from "moment";
 import { useEffect, useMemo, useState } from "react";
 
-interface SandboxImageProps {
+interface SandboxImageCardProps {
   owner: LightWorkspaceType;
   conversationId: string;
   entry: SandboxFileEntry;
-  className?: string;
+  onClick: () => void;
 }
 
-function SandboxImage({
+function SandboxImageCard({
   owner,
   conversationId,
   entry,
-  className,
-}: SandboxImageProps) {
+  onClick,
+}: SandboxImageCardProps) {
   const [src, setSrc] = useState<string | null>(() =>
     entry.fileId ? getFileProcessedUrl(owner, entry.fileId) : null
   );
@@ -74,15 +74,42 @@ function SandboxImage({
     };
   }, [owner, conversationId, entry.path, entry.fileId]);
 
-  if (!src) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Spinner size="sm" />
+  return (
+    <Card
+      key={entry.path}
+      size="sm"
+      variant="primary"
+      onClick={onClick}
+      containerClassName="h-24 overflow-hidden rounded-xl"
+      className="overflow-hidden"
+    >
+      {src ? (
+        <img
+          src={src}
+          alt={entry.fileName}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <Spinner size="sm" />
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={entry.fileName}
+          trigger={
+            <div className="truncate text-sm font-medium text-white">
+              {entry.fileName}
+            </div>
+          }
+        />
+        <div className="text-xs text-white/70">
+          {entry.lastModifiedMs ? moment(entry.lastModifiedMs).fromNow() : null}
+        </div>
       </div>
-    );
-  }
-
-  return <img src={src} alt={entry.fileName} className={className} />;
+    </Card>
+  );
 }
 
 interface SandboxTabProps {
@@ -185,37 +212,13 @@ export function SandboxTab({
                   {categoryFiles.map((entry) => {
                     if (value === "image") {
                       return (
-                        <Card
+                        <SandboxImageCard
                           key={entry.path}
-                          size="sm"
-                          variant="primary"
+                          owner={owner}
+                          conversationId={conversationId}
+                          entry={entry}
                           onClick={() => onFileClick(entry)}
-                          containerClassName="h-24 overflow-hidden rounded-xl"
-                          className="overflow-hidden"
-                        >
-                          <SandboxImage
-                            owner={owner}
-                            conversationId={conversationId}
-                            entry={entry}
-                            className="absolute inset-0 h-full w-full object-cover"
-                          />
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
-                            <Tooltip
-                              tooltipTriggerAsChild
-                              label={entry.fileName}
-                              trigger={
-                                <div className="truncate text-sm font-medium text-white">
-                                  {entry.fileName}
-                                </div>
-                              }
-                            />
-                            <div className="text-xs text-white/70">
-                              {entry.lastModifiedMs
-                                ? moment(entry.lastModifiedMs).fromNow()
-                                : null}
-                            </div>
-                          </div>
-                        </Card>
+                        />
                       );
                     }
 

@@ -1,8 +1,15 @@
 import handler from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files/download";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockGetFileContentType, mockCreateReadStream } = vi.hoisted(() => ({
+  mockGetFileContentType: vi.fn().mockResolvedValue("application/pdf"),
+  mockCreateReadStream: vi.fn().mockReturnValue({
+    on: vi.fn().mockReturnThis(),
+    pipe: vi.fn(),
+  }),
+}));
 
 vi.mock("@app/lib/api/auth_wrappers", async () => {
   const actual = await vi.importActual("@app/lib/api/auth_wrappers");
@@ -17,14 +24,8 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
 });
 
 vi.mock("@app/lib/api/assistant/conversation/fetch", () => ({
-  getConversation: vi.fn().mockResolvedValue(new Ok({})),
+  getConversation: vi.fn().mockResolvedValue({ isErr: () => false }),
 }));
-
-const mockGetFileContentType = vi.fn().mockResolvedValue("application/pdf");
-const mockCreateReadStream = vi.fn().mockReturnValue({
-  on: vi.fn().mockReturnThis(),
-  pipe: vi.fn(),
-});
 
 vi.mock("@app/lib/file_storage", () => ({
   getPrivateUploadBucket: () => ({
