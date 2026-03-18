@@ -112,6 +112,26 @@ export function makeColumnsForSuggestions(
       ),
     },
     {
+      accessorKey: "conversationId",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Conversation" />
+      ),
+      cell: ({ row }) => {
+        const conversationId = row.original.conversationId;
+        if (!conversationId) {
+          return "-";
+        }
+        return (
+          <a
+            href={`/${owner.sId}/conversation/${conversationId}`}
+            className="text-action-500 hover:underline"
+          >
+            {conversationId}
+          </a>
+        );
+      },
+    },
+    {
       accessorKey: "analysis",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Analysis" />

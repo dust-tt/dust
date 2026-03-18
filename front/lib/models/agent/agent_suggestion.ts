@@ -26,6 +26,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
 
   declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
+  declare conversation: NonAttribute<ConversationModel | null>;
 }
 
 AgentSuggestionModel.init(

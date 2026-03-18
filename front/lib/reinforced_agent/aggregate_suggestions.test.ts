@@ -18,6 +18,7 @@ function makeInstructionSuggestion(
     analysis: "Should be more polite",
     state: "pending",
     source: "synthetic",
+    conversationId: null,
     kind: "instructions",
     suggestion: {
       content: "<p>Always be polite.</p>",
@@ -40,6 +41,7 @@ function makeToolSuggestion(
     analysis: "Needs search capability",
     state: "pending",
     source: "synthetic",
+    conversationId: null,
     kind: "tools",
     suggestion: {
       action: "add",
@@ -61,6 +63,7 @@ function makeSkillSuggestion(
     analysis: "Needs coding skill",
     state: "pending",
     source: "synthetic",
+    conversationId: null,
     kind: "skills",
     suggestion: {
       action: "add",
