@@ -4,6 +4,7 @@ import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -361,11 +362,7 @@ async function handler(
       switch (runFlavor) {
         case "streaming":
           // Start SSE stream.
-          res.writeHead(200, {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          });
+          initSSEResponse(res);
           break;
         case "blocking":
           // Blocking, nothing to do for now
