@@ -530,11 +530,8 @@ export async function triggerFromEmail({
     });
   }
 
-  const {
-    userMessage: emailUserMessage,
-    restOfThread,
-    conversationId,
-  } = await splitThreadContent(email.text);
+  const { userMessage, restOfThread, conversationId } =
+    await splitThreadContent(email.text);
 
   let conversation;
   if (conversationId) {
@@ -701,7 +698,7 @@ export async function triggerFromEmail({
       })
       .join(" ") +
     " " +
-    emailUserMessage;
+    userMessage;
 
   const mentions = agentConfigurations.map((agent) => {
     return { configurationId: agent.sId };
