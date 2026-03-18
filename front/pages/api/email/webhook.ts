@@ -30,6 +30,44 @@ export const config = {
   },
 };
 
+function extractEmailAddressesFromHeader(headerValue: string | null): string[] {
+  if (!headerValue) {
+    return [];
+  }
+  const addresses: string[] = [];
+  const seen = new Set<string>();
+
+  const addEmail = (raw: string) => {
+    const email = raw.trim().toLowerCase();
+    if (!seen.has(email)) {
+      seen.add(email);
+      addresses.push(email);
+    }
+  };
+
+  // First pass: extract addresses inside angle brackets (e.g., "Name <email@domain.com>").
+  // This correctly handles display names with special characters (apostrophes, quotes, etc.)
+  // and ensures case-insensitive matching by lowercasing here.
+  const anglePattern = /<([^>]+)>/g;
+  let match;
+  while ((match = anglePattern.exec(headerValue)) !== null) {
+    const content = match[1].trim();
+    // Basic validation: must contain exactly one "@" and no spaces.
+    if (content.includes("@") && !content.includes(" ")) {
+      addEmail(content);
+    }
+  }
+
+  // Second pass: extract bare email addresses from parts without angle brackets.
+  const remaining = headerValue.replace(/<[^>]*>/g, " ");
+  const barePattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  while ((match = barePattern.exec(remaining)) !== null) {
+    addEmail(match[0]);
+  }
+
+  return addresses;
+}
+
 function parseHeaderValue(
   rawHeaders: string,
   headerName: string
@@ -128,10 +166,20 @@ const parseSendgridWebhookContent = async (
         isString(rawHeaders) ? rawHeaders : null
       ),
       envelope: {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        to: envelope.to || [],
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        cc: envelope.cc || [],
+        // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
+        // contains addresses matching the inbound-parse domain, omitting human recipients.
+        // envelope.cc is not populated by Sendgrid at all.
+        // Fall back to envelope.to if headers are absent so agent routing still works.
+        to: (() => {
+          const fromHeaders = extractEmailAddressesFromHeader(
+            isString(rawHeaders) ? parseHeaderValue(rawHeaders, "To") : null
+          );
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          return fromHeaders.length > 0 ? fromHeaders : envelope.to || [];
+        })(),
+        cc: extractEmailAddressesFromHeader(
+          isString(rawHeaders) ? parseHeaderValue(rawHeaders, "Cc") : null
+        ),
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         bcc: envelope.bcc || [],
         from,
