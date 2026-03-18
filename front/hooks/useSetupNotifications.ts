@@ -34,6 +34,10 @@ export const useSetupNotifications = () => {
             if (isString(workspaceId)) {
               void mutate(workspaceAuthContextUrl(workspaceId));
             }
+            void novuClient.notifications.delete({
+              notificationId: notification.result.id,
+            });
+            return;
           }
 
           if (
