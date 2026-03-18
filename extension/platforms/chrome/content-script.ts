@@ -338,7 +338,7 @@ async function init(): Promise<void> {
 
     // Restore saved width
     if (result[STORAGE_KEY_WIDTH]) {
-      sidebarWidth = result[STORAGE_KEY_WIDTH];
+      sidebarWidth = result[STORAGE_KEY_WIDTH] as number;
     }
   } catch (error) {
     console.error("[Dust Content Script] Error initializing:", error);

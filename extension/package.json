@@ -19,7 +19,7 @@
   "license": "ISC",
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
-    "@types/chrome": "^0.0.276",
+    "@types/chrome": "^0.1.37",
     "@types/dotenv-webpack": "^7.0.8",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.19.11",
