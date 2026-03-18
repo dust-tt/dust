@@ -11,6 +11,9 @@ import fs from "fs";
 import path from "path";
 
 const DSBX_CLI_VERSION = "0.1.1";
+// Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
+// Released via the "Release sandbox tool" GitHub Actions workflow.
+const APPLY_PATCH_VERSION = "0.1.0";
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 
 interface PythonLibrary {
@@ -154,6 +157,26 @@ SHELLEOF`)
         "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
         "chmod +x /tmp/dsbx && " +
         "sudo mv /tmp/dsbx /opt/bin/dsbx",
+    }
+  )
+  .registerTool(
+    {
+      name: "apply_patch",
+      description:
+        "Apply V4A diffs to files. Supports add, update, and delete operations",
+      usage:
+        "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
+      returns: "Summary of applied changes (A/M/D per file)",
+      runtime: "system",
+      profile: "openai",
+    },
+    {
+      installCmd:
+        `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/apply_patch-linux-x86_64 -o /tmp/apply_patch && ` +
+        `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
+        "grep apply_patch-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/apply_patch\"}' | sha256sum -c - && " +
+        "chmod +x /tmp/apply_patch && " +
+        "sudo mv /tmp/apply_patch /opt/bin/apply_patch",
     }
   )
   .runCmd(`sudo mkdir -p ${PROFILE_DIR}`)
