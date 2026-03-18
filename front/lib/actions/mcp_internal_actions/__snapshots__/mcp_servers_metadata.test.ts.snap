@@ -309,10 +309,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "luma": {
     "add_guests": "low",
     "create_event": "high",
+    "get_authenticated_user": "never_ask",
     "get_event": "never_ask",
     "get_event_insights": "never_ask",
     "get_guest": "never_ask",
-    "get_self": "never_ask",
     "list_events": "never_ask",
     "list_guests": "never_ask",
     "search_guests": "never_ask",
