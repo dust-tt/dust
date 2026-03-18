@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications/novu-client";
+import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import { PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID } from "@app/types/notification_preferences";
@@ -9,6 +10,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workflow } from "@novu/framework";
 import z from "zod";
+
+// Novu's triggerBulk API is capped at 100 events per call.
+// Fetch memberships in pages of the same size to avoid extra chunking.
+const NOVU_BULK_TRIGGER_LIMIT = 100;
 
 const ProviderCredentialsHealthUpdatedPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -47,32 +52,37 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
 ): Promise<Result<void, DustError<"internal_error">>> => {
   const workspace = auth.getNonNullableWorkspace();
 
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace,
-  });
+  const novuClient = await getNovuClient();
 
-  const membersWithUser = memberships.filter(
-    (
-      m
-    ): m is MembershipResource & {
-      user: NonNullable<MembershipResource["user"]>;
-    } => m.user !== undefined
-  );
+  const novuPayload: ProviderCredentialsHealthUpdatedPayloadType = {
+    workspaceId: workspace.sId,
+  };
 
-  if (membersWithUser.length === 0) {
-    return new Ok(undefined);
-  }
+  let paginationParams: MembershipsPaginationParams | undefined = {
+    orderColumn: "createdAt",
+    orderDirection: "asc",
+    lastValue: null,
+    limit: NOVU_BULK_TRIGGER_LIMIT,
+  };
 
   try {
-    const novuClient = await getNovuClient();
+    do {
+      const { memberships, nextPageParams } =
+        await MembershipResource.getActiveMemberships({
+          workspace,
+          paginationParams,
+        });
 
-    const payload: ProviderCredentialsHealthUpdatedPayloadType = {
-      workspaceId: workspace.sId,
-    };
+      const membersWithUser = memberships.filter(
+        (
+          m
+        ): m is MembershipResource & {
+          user: NonNullable<MembershipResource["user"]>;
+        } => m.user !== undefined
+      );
 
-    const r = await novuClient.triggerBulk({
-      events: membersWithUser.map((m) => {
-        return {
+      const r = await novuClient.triggerBulk({
+        events: membersWithUser.map((m) => ({
           workflowId: PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,
           to: {
             subscriberId: m.user.sId,
@@ -80,22 +90,24 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
             firstName: m.user.firstName ?? undefined,
             lastName: m.user.lastName ?? undefined,
           },
-          payload,
-        };
-      }),
-    });
-
-    if (r.result.some((res) => !!res.error?.length)) {
-      const eventErrors = r.result
-        .filter((res) => !!res.error?.length)
-        .map(({ error }) => error?.join("; "))
-        .join("; ");
-      return new Err({
-        name: "dust_error",
-        code: "internal_error",
-        message: `Failed to trigger provider credentials health updated notification: ${eventErrors}`,
+          payload: novuPayload,
+        })),
       });
-    }
+
+      if (r.result.some((res) => !!res.error?.length)) {
+        const eventErrors = r.result
+          .filter((res) => !!res.error?.length)
+          .map(({ error }) => error?.join("; "))
+          .join("; ");
+        return new Err({
+          name: "dust_error",
+          code: "internal_error",
+          message: `Failed to trigger provider credentials health updated notification: ${eventErrors}`,
+        });
+      }
+
+      paginationParams = nextPageParams;
+    } while (paginationParams);
   } catch (err) {
     return new Err({
       name: "dust_error",
