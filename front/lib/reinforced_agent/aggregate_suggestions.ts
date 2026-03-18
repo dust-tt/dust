@@ -218,7 +218,8 @@ export async function buildAggregationBatchMap(
  */
 export async function aggregateSyntheticSuggestions(
   auth: Authenticator,
-  agentConfigurationId: string
+  agentConfigurationId: string,
+  { disableNotifications }: { disableNotifications: boolean }
 ): Promise<void> {
   const ctx = await loadAggregationContext(auth, agentConfigurationId);
   if (!ctx) {
@@ -236,7 +237,7 @@ export async function aggregateSyntheticSuggestions(
     contextId: "n/a",
   });
 
-  if (createdCount > 0) {
+  if (createdCount > 0 && !disableNotifications) {
     notifyAgentSuggestionsReady(auth, {
       agentConfiguration: agentConfig,
       suggestionCount: createdCount,

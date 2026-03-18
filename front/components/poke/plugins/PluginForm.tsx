@@ -74,7 +74,7 @@ export function PluginForm({
               key,
               arg.async && asyncArgs?.[key] !== undefined
                 ? (asyncArgs[key] as boolean)
-                : false,
+                : (arg.default ?? false),
             ];
           case "enum":
             return [

@@ -2,6 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   aggregateSyntheticSuggestions,
   buildAggregationBatchMap,
@@ -128,13 +129,17 @@ export async function analyzeConversationActivity({
 export async function aggregateSuggestionsActivity({
   workspaceId,
   agentConfigurationId,
+  disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  await aggregateSyntheticSuggestions(auth, agentConfigurationId);
+  await aggregateSyntheticSuggestions(auth, agentConfigurationId, {
+    disableNotifications,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -328,10 +333,12 @@ export async function processAggregationBatchResultActivity({
   workspaceId,
   agentConfigurationId,
   batchId,
+  disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   batchId: string;
+  disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -367,6 +374,13 @@ export async function processAggregationBatchResultActivity({
       source: "reinforcement",
       operationType: "reinforced_agent_aggregate_suggestions",
       contextId: "n/a",
+    });
+  }
+
+  if (createdCount > 0 && !disableNotifications) {
+    notifyAgentSuggestionsReady(auth, {
+      agentConfiguration: agentConfig,
+      suggestionCount: createdCount,
     });
   }
 
