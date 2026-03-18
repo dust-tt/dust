@@ -147,7 +147,6 @@ export const AgentEditBar = ({
           disabled={selectedAgents.length === 0 || isLoading}
           onSave={onClose}
         />
-        a{" "}
         <DeleteAssistantsDialog
           owner={owner}
           agentConfigurations={selectedAgents}
