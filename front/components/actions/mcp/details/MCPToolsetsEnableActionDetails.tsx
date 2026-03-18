@@ -4,6 +4,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { isString } from "@app/types/shared/utils/general";
 import { BoltIcon } from "@dust-tt/sparkle";
 
 export function MCPToolsetsEnableActionDetails({
@@ -11,8 +12,8 @@ export function MCPToolsetsEnableActionDetails({
   toolParams,
   displayContext,
 }: ToolExecutionDetailsProps) {
-  const toolsetId =
-    typeof toolParams.toolsetId === "string" ? toolParams.toolsetId : null;
+  const { toolsetId } = toolParams;
+  const resolvedToolsetId = isString(toolsetId) ? toolsetId : null;
 
   const { spaces } = useSpaces({
     kinds: ["global"],
@@ -24,8 +25,8 @@ export function MCPToolsetsEnableActionDetails({
     availability: "all",
   });
 
-  const mcpServerView = toolsetId
-    ? mcpServerViews.find((v) => v.sId === toolsetId)
+  const mcpServerView = resolvedToolsetId
+    ? mcpServerViews.find((v) => v.sId === resolvedToolsetId)
     : null;
 
   const toolName = mcpServerView
