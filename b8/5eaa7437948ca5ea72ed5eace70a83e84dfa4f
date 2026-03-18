@@ -1,0 +1,67 @@
+front/temporal/agent_loop/activities/run_model_and_create_actions_wrapper.ts
+  7c453455edfc6c89 3,114-118,301
+  468295640c5d93a1 245
+front/lib/api/content_guard/index.ts
+  468295640c5d93a1 6
+front/lib/api/content_guard/wrapper.ts
+  468295640c5d93a1 4,14-16,143
+front/lib/api/content_guard/clients/whitecircle.ts
+  468295640c5d93a1 12,90,98,130-134
+front/lib/api/content_guard/clients/index.ts
+  468295640c5d93a1 3-4
+front/lib/api/content_guard/clients/ai_guard.ts
+  468295640c5d93a1 8,114,122
+front/temporal/agent_loop/lib/run_model.ts
+  7c453455edfc6c89 12,16,201-202,204,215,222-225,749,967
+  468295640c5d93a1 13,113,119,200,203,747,750-752,755,965,968-970,973
+front/lib/api/content_guard/clients/types.ts
+  468295640c5d93a1 23-34
+front/lib/api/content_guard/gate_helpers.ts
+  468295640c5d93a1 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "b85eaa7437948ca5ea72ed5eace70a83e84dfa4f",
+  "prompts": {
+    "468295640c5d93a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6ed5e8c-8ede-43e9-80e0-fd1b230f0a2b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 105,
+      "total_deletions": 60,
+      "accepted_lines": 1287,
+      "overriden_lines": 0
+    },
+    "7c453455edfc6c89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a43aa4e8-e8c1-4f70-ba71-41517903ea59",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 632,
+      "overriden_lines": 1
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}

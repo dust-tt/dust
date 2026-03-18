@@ -1,0 +1,27 @@
+poke-perms/scripts/migrate-model.ts
+  93e2a4bb9aeb1bc6 17,53
+poke-perms/tests/setup/global-setup.ts
+  93e2a4bb9aeb1bc6 21
+poke-perms/tests/integration/smoke.test.ts
+  93e2a4bb9aeb1bc6 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "28db438312ab41eed103f9c6baf562e2e414a3fa",
+  "prompts": {
+    "93e2a4bb9aeb1bc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45dd6cc1-0eab-4efe-b29a-ffe22b05cb1f",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 262,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}

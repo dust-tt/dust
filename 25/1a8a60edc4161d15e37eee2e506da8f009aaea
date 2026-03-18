@@ -1,0 +1,40 @@
+front/temporal/agent_loop/lib/run_model.ts
+  4dd3c29fa54403ee 208,752
+front/lib/api/mcp/run_tool.ts
+  4dd3c29fa54403ee 168
+front/temporal/agent_loop/activities/run_model_and_create_actions_wrapper.ts
+  4dd3c29fa54403ee 297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "251a8a60edc4161d15e37eee2e506da8f009aaea",
+  "prompts": {
+    "4dd3c29fa54403ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50c2fab5-7937-474c-a45a-ffad774d11bc",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 20,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
