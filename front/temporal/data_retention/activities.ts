@@ -63,6 +63,7 @@ export async function purgeConversationsBatchActivity({
       cutoffDate,
       {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+        dangerouslySkipPermissionFiltering: true,
         includeDeleted: true,
       }
     );
@@ -174,6 +175,7 @@ export async function purgeAgentConversationsBatchActivity({
         cutoffDate,
       },
       {
+        dangerouslySkipPermissionFiltering: true,
         includeDeleted: true,
       }
     );
