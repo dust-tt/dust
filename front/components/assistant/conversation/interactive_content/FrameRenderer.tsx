@@ -209,7 +209,6 @@ export function FrameRenderer({
   contentHash,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
-  const clientType = useClientType();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -432,11 +431,9 @@ export function FrameRenderer({
   if (error) {
     return (
       <div className="flex h-full flex-col">
-        {clientType === "extension" && (
-          <InteractiveContentHeader
-            onClose={conversation ? onClosePanel : undefined}
-          />
-        )}
+        <InteractiveContentHeader
+          onClose={conversation ? onClosePanel : undefined}
+        />
         <CenteredState>
           <p className="text-warning-500">Error loading file: {error}</p>
         </CenteredState>

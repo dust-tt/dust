@@ -3,7 +3,6 @@ import { CenteredState } from "@app/components/assistant/conversation/interactiv
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
-import { useClientType } from "@app/lib/context/clientType";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
@@ -21,7 +20,6 @@ export function InteractiveContentContainer({
   owner,
 }: InteractiveContentContainerProps) {
   const { data: contentHash, closePanel } = useConversationSidePanelContext();
-  const clientType = useClientType();
 
   const contentId = useMemo(() => {
     if (!contentHash) {
@@ -46,9 +44,7 @@ export function InteractiveContentContainer({
     if (isFileMetadataLoading) {
       return (
         <div className="flex h-full flex-col">
-          {clientType === "extension" && (
-            <InteractiveContentHeader onClose={closePanel} />
-          )}
+          <InteractiveContentHeader onClose={closePanel} />
           <CenteredState>
             <Spinner size="sm" />
             <span>Loading frame...</span>
@@ -60,9 +56,7 @@ export function InteractiveContentContainer({
     if (isFileMetadataError || !fileMetadata) {
       return (
         <div className="flex h-full flex-col">
-          {clientType === "extension" && (
-            <InteractiveContentHeader onClose={closePanel} />
-          )}
+          <InteractiveContentHeader onClose={closePanel} />
           <CenteredState>
             <p className="text-warning-500">Error loading file metadata</p>
           </CenteredState>
