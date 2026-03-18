@@ -77,9 +77,10 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     return stored.posthog_id ?? undefined;
   }, []);
 
-  const disabled = !posthogId && (!!authenticated || !hasSession);
-  // Skip useUser in authenticated contexts — user is always logged in so
-  // hasCookiesAccepted is always true and we don't need user data for consent.
+  // Fetch user data whenever there is a session (or posthogId). We need the
+  // user's sId for posthog.identify() in all contexts, including authenticated
+  // SPAs where hasCookiesAccepted is auto-true.
+  const disabled = !posthogId && !hasSession;
   const { user } = useUser({
     disabled,
   });
@@ -152,11 +153,19 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     const cookieDomain = getPostHogCookieDomain();
 
+    // Use the persistent _dust_aid cookie as the initial distinct_id so that
+    // anonymous events share a stable identity across page loads. Without this,
+    // memory persistence generates a new throwaway distinct_id on every page
+    // load, and only the last one gets stitched when identify() fires — all
+    // prior anonymous browsing events are orphaned.
+    const anonymousId = getOrCreateAnonymousId();
+
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       persistence: "memory",
+      ...(anonymousId ? { bootstrap: { distinctID: anonymousId } } : {}),
       // Share PostHog cookies (including distinct_id) across all *.dust.tt
       // subdomains so the same identity persists through dust.tt → signin →
       // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
@@ -210,6 +219,43 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     hasInitialized.current = true;
   }, [isTrackablePage]);
 
+  // Identify the user as soon as possible after auth completes — NOT gated on
+  // cookie consent. identify() is a first-party operation on an already-
+  // authenticated user. Per PostHog support: "call PostHog.identify from your
+  // front end as soon as possible after auth completes."
+  //
+  // This must run BEFORE the persistence upgrade (Phase 2) so that the current
+  // distinct_id (the _dust_aid bootstrap value) is correctly merged with the
+  // user's sId in the $identify event sent to PostHog's server.
+  useEffect(() => {
+    if (!posthog.__loaded || !hasInitialized.current || !user) {
+      return;
+    }
+
+    if (lastIdentifiedUserId.current !== user.sId) {
+      posthog.identify(user.sId);
+      if (posthogId) {
+        posthog.alias(user.sId, posthogId);
+      }
+
+      lastIdentifiedUserId.current = user.sId;
+
+      // Set first-touch attribution as $set_once person properties so the
+      // earliest UTM/click-ID values are permanently recorded on the profile.
+      const storedParams = getStoredUTMParams();
+      const firstTouchProps: Record<string, string> = {};
+      for (const param of MARKETING_PARAMS) {
+        const value = storedParams[param];
+        if (value) {
+          firstTouchProps[`first_${param}`] = value;
+        }
+      }
+      if (Object.keys(firstTouchProps).length > 0) {
+        posthog.setPersonProperties({}, firstTouchProps);
+      }
+    }
+  }, [user, posthogId]);
+
   // Phase 2: Upgrade to full cookie persistence and enable session recording
   // once the user has accepted cookies (consent banner or login).
   useEffect(() => {
@@ -240,41 +286,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     hasUpgradedPersistence.current = true;
   }, [hasAcceptedCookies]);
-
-  // Identify with posthog_id query param when present.
-  useEffect(() => {
-    if (
-      !posthog.__loaded ||
-      !hasInitialized.current ||
-      !hasAcceptedCookies ||
-      !user
-    ) {
-      return;
-    }
-
-    if (lastIdentifiedUserId.current !== user.sId) {
-      posthog.identify(user.sId);
-      if (posthogId) {
-        posthog.alias(user.sId, posthogId);
-      }
-
-      lastIdentifiedUserId.current = user.sId;
-
-      // Set first-touch attribution as $set_once person properties so the
-      // earliest UTM/click-ID values are permanently recorded on the profile.
-      const storedParams = getStoredUTMParams();
-      const firstTouchProps: Record<string, string> = {};
-      for (const param of MARKETING_PARAMS) {
-        const value = storedParams[param];
-        if (value) {
-          firstTouchProps[`first_${param}`] = value;
-        }
-      }
-      if (Object.keys(firstTouchProps).length > 0) {
-        posthog.setPersonProperties({}, firstTouchProps);
-      }
-    }
-  }, [hasAcceptedCookies, user, posthogId]);
 
   // Group users by workspace and set workspace properties (admin only).
   const lastUserRole = useRef<string | null>(null);
