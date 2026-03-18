@@ -7,7 +7,7 @@ import { useEffect } from "react";
 export function useGTMScript() {
   useEffect(() => {
     const gtmId = process.env.NEXT_PUBLIC_GTM_TRACKING_ID;
-    if (!gtmId) {
+    if (!gtmId || document.getElementById("google-tag-manager")) {
       return;
     }
 
