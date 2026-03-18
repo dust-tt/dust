@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
@@ -15,7 +16,7 @@ vi.mock("@temporalio/activity", () => ({
   heartbeat: vi.fn(),
 }));
 
-const RETENTION_DAYS = 30;
+const RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS;
 const OLD_CONVERSATION_DAYS = RETENTION_DAYS + 1;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 

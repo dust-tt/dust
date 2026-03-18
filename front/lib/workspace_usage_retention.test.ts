@@ -12,7 +12,7 @@ describe("workspace_usage_retention", () => {
         retentionDays: 60,
       });
 
-      expect(retentionStartDate).toEqual(new Date(2026, 0, 17, 0, 0, 0, 0));
+      expect(retentionStartDate).toEqual(new Date(2026, 0, 18, 0, 0, 0, 0));
     });
   });
 
@@ -29,7 +29,7 @@ describe("workspace_usage_retention", () => {
 
     it("should return null when the requested period is within retention", () => {
       const errorMessage = getWorkspaceUsageRetentionErrorMessage({
-        startDate: new Date(2026, 0, 17, 0, 0, 0),
+        startDate: new Date(2026, 0, 18, 0, 0, 0),
         retentionDays: 60,
         now: new Date(2026, 2, 18, 12, 0, 0),
       });
@@ -47,7 +47,7 @@ describe("workspace_usage_retention", () => {
       expect(errorMessage).toBe(
         "This workspace has a 60-day conversation retention policy. " +
           "Detailed activity reports and the related usage API rely on live " +
-          "conversation data and would be incomplete for periods starting before 2026-01-17."
+          "conversation data and would be incomplete for periods starting before 2026-01-18."
       );
     });
   });

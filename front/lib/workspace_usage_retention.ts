@@ -1,4 +1,5 @@
 const ZEROED_TIME_COMPONENT = 0;
+const ONE_DAY_IN_DAYS = 1;
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -15,14 +16,19 @@ export function getWorkspaceUsageRetentionStartDate({
   now?: Date;
   retentionDays: number;
 }): Date {
-  const retentionStartDate = new Date(now);
-  retentionStartDate.setDate(retentionStartDate.getDate() - retentionDays);
+  const retentionCutoffDate = new Date(now);
+  retentionCutoffDate.setDate(retentionCutoffDate.getDate() - retentionDays);
+
+  const retentionStartDate = new Date(retentionCutoffDate);
   retentionStartDate.setHours(
     ZEROED_TIME_COMPONENT,
     ZEROED_TIME_COMPONENT,
     ZEROED_TIME_COMPONENT,
     ZEROED_TIME_COMPONENT
   );
+  if (retentionCutoffDate > retentionStartDate) {
+    retentionStartDate.setDate(retentionStartDate.getDate() + ONE_DAY_IN_DAYS);
+  }
 
   return retentionStartDate;
 }
