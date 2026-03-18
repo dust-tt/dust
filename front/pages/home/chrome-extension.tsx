@@ -12,9 +12,9 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
-import { Button } from "@dust-tt/sparkle";
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 
 const SECTION_CLASSES = "py-12 md:py-16";
 const CONTAINER_CLASSES = "container mx-auto px-6";
@@ -26,10 +26,121 @@ const GRID_SECTION_CLASSES = classNames(
   "2xl:col-start-1"
 );
 
+interface ExtensionTab {
+  label: string;
+  heading: string;
+  image: {
+    src: string;
+    alt: string;
+  };
+  features: {
+    title: string;
+    description: string;
+    dotCSS: string;
+    shape: "circle" | "square" | "rectangle" | "triangle" | "hexagon";
+  }[];
+}
+
+const EXTENSION_TABS: ExtensionTab[] = [
+  {
+    label: "Sales",
+    heading: "Close faster, from any tab.",
+    image: {
+      src: "/static/landing/chrome_ext/Ext_Sales.png",
+      alt: "Sales teams using Dust Chrome Extension",
+    },
+    features: [
+      {
+        title: "Instant follow-ups from any call",
+        description:
+          "Paste a Gong transcript, get a personalized follow-up email without switching tools.",
+        dotCSS: "text-pink-400",
+        shape: "circle",
+      },
+      {
+        title: "Outreach that feels human",
+        description:
+          "Pull context from your CRM and craft tailored messages right where you're prospecting.",
+        dotCSS: "text-red-500",
+        shape: "rectangle",
+      },
+      {
+        title: "Your knowledge, everywhere you browse",
+        description:
+          "Access playbooks, battlecards, and customer data while you're live on a prospect's website.",
+        dotCSS: "text-yellow-400",
+        shape: "triangle",
+      },
+    ],
+  },
+  {
+    label: "Engineering",
+    heading: "Build faster, from any tab.",
+    image: {
+      src: "/static/landing/chrome_ext/Ext_Engineer.png",
+      alt: "Engineering teams using Dust Chrome Extension",
+    },
+    features: [
+      {
+        title: "Code reviews, where you code",
+        description:
+          "Leverage review assistants directly from PRs without leaving your browser.",
+        dotCSS: "text-pink-400",
+        shape: "rectangle",
+      },
+      {
+        title: "Suggestions while you browse docs",
+        description:
+          "Get intelligent suggestions while browsing documentation.",
+        dotCSS: "text-red-500",
+        shape: "circle",
+      },
+      {
+        title: "Better PR comments, faster",
+        description:
+          "Share better PR comments on the go using company knowledge.",
+        dotCSS: "text-yellow-500",
+        shape: "triangle",
+      },
+    ],
+  },
+  {
+    label: "Customer Support",
+    heading: "Resolve faster, from any tab.",
+    image: {
+      src: "/static/landing/chrome_ext/Ext_CSupport.png",
+      alt: "Support teams using Dust Chrome Extension",
+    },
+    features: [
+      {
+        title: "Respond from any web tool",
+        description:
+          "Reply to customer tickets from any web-based solution without switching apps.",
+        dotCSS: "text-pink-400",
+        shape: "square",
+      },
+      {
+        title: "AI-assisted analysis",
+        description:
+          "Analyze dashboards with AI assistance right where you need it.",
+        dotCSS: "text-red-500",
+        shape: "rectangle",
+      },
+      {
+        title: "Knowledge at your fingertips",
+        description:
+          "Get instant access to knowledge base without switching apps.",
+        dotCSS: "text-blue-500",
+        shape: "circle",
+      },
+    ],
+  },
+];
+
 interface InstallationStep {
   number: string;
   title: string;
-  description: string | ReactNode;
+  description: string;
   image: {
     src: string;
     alt: string;
@@ -67,14 +178,11 @@ const INSTALLATION_STEPS: InstallationStep[] = [
   },
 ];
 
-const DEMO_VIDEO = {
-  sectionTitle: "Chrome Extension in motion",
-  videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
-  showCaptions: true,
-};
-
 const CHROME_EXTENSION_URL =
   "https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn";
+
+const CHROME_EXTENSION_VIDEO_URL =
+  "https://fast.wistia.net/embed/iframe/ivk2mh7it7";
 
 export async function getStaticProps() {
   return {
@@ -142,165 +250,81 @@ function HeroSection() {
   );
 }
 
-function ChromeExtensionInAction() {
-  return (
-    <div className={SECTION_CLASSES}>
-      <div className={CONTAINER_CLASSES}>
-        <div className="mb-12">
-          <H2>Chrome extension in action</H2>
-        </div>
-
-        <div className="space-y-16">
-          <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
-            <div className="order-1 flex items-center justify-center lg:order-1">
-              <div className="w-full">
-                <div className="relative w-full overflow-hidden rounded-lg bg-blue-50">
-                  <img
-                    src="/static/landing/chrome_ext/Ext_Sales.png"
-                    alt="Sales teams Features"
-                    className="h-auto w-full object-contain"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="order-2 flex flex-col justify-center lg:order-2">
-              <H3 className="mb-6">Sales teams</H3>
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-red-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Pull insights from multiple platforms to write custom
-                      follow-ups.
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-bl-full bg-yellow-400"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Craft personalized outreach without leaving your CRM.
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Access company knowledge while browsing prospect websites.
-                    </P>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
-            <div className="order-2 flex flex-col justify-center lg:order-1">
-              <H3 className="mb-6">Support teams</H3>
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 bg-pink-400"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Respond to customer tickets from any web-based solution.
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-red-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Analyze dashboards with AI assistance right where you need
-                      it.
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Get instant access to knowledge base without switching
-                      apps.
-                    </P>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="order-1 flex items-center justify-center lg:order-2">
-              <div className="w-full">
-                <div className="relative w-full overflow-hidden rounded-lg bg-pink-50">
-                  <img
-                    src="/static/landing/chrome_ext/Ext_CSupport.png"
-                    alt="Support teams Features"
-                    className="h-auto w-full object-contain"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
-            <div className="order-1 flex items-center justify-center lg:order-1">
-              <div className="w-full">
-                <div className="relative w-full overflow-hidden rounded-lg bg-green-50">
-                  <img
-                    src="/static/landing/chrome_ext/Ext_Engineer.png"
-                    alt="Engineering teams Features"
-                    className="h-auto w-full object-contain"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="order-2 flex flex-col justify-center lg:order-2">
-              <H3 className="mb-6">Engineering teams</H3>
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-pink-400"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Leverage code review assistants directly from PRs.
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 bg-red-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Get intelligent suggestions while browsing documentation.
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-yellow-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      Share better PR comments faster on the go.
-                    </P>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function VideoSection() {
+function WebAppSidebarSection() {
   return (
     <Grid>
       <div className={GRID_SECTION_CLASSES}>
-        <DemoVideoSection demoVideo={DEMO_VIDEO} />
+        <H2 className="text-center">
+          Everything the web app can do in your{" "}
+          <span className="text-brand-electric-blue">sidebar</span>
+        </H2>
+        <DemoVideoSection
+          demoVideo={{
+            videoUrl: CHROME_EXTENSION_VIDEO_URL,
+            showCaptions: true,
+          }}
+        />
       </div>
     </Grid>
+  );
+}
+
+function ChromeExtensionInActionFor() {
+  return (
+    <div className={SECTION_CLASSES}>
+      <div className={CONTAINER_CLASSES}>
+        <H2 className="mb-8 text-center">Chrome extension in action for</H2>
+
+        <Tabs defaultValue={EXTENSION_TABS[0].label}>
+          <TabsList border>
+            {EXTENSION_TABS.map((t) => (
+              <TabsTrigger key={t.label} value={t.label} label={t.label} />
+            ))}
+          </TabsList>
+
+          {EXTENSION_TABS.map((t) => (
+            <TabsContent key={t.label} value={t.label}>
+              {/* Content: image left, features right */}
+              <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:gap-16">
+                <div className="flex-1">
+                  <div className="relative w-full overflow-hidden rounded-2xl bg-blue-50">
+                    <img
+                      src={t.image.src}
+                      alt={t.image.alt}
+                      className="h-auto w-full object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col justify-center">
+                  <H3 className="mb-6">{t.heading}</H3>
+                  <div className="flex flex-col gap-6">
+                    {t.features.map((f, i) => (
+                      <div key={i}>
+                        <P
+                          size="sm"
+                          dotCSS={f.dotCSS}
+                          shape={f.shape}
+                          className="text-foreground"
+                        >
+                          <strong className="font-semibold">{f.title}</strong>
+                          <br />
+                          <span className="text-muted-foreground">
+                            {f.description}
+                          </span>
+                        </P>
+                        {i < t.features.length - 1 && (
+                          <hr className="mt-6 border-gray-200" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+    </div>
   );
 }
 
@@ -308,65 +332,41 @@ function InstallationSection() {
   return (
     <div className="py-16 md:py-20">
       <div className={CONTAINER_CLASSES}>
-        <div className="mb-12">
-          <H2>Installation</H2>
-        </div>
+        <H2 className="mb-12 text-center">How to install</H2>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6">
-          <div className="flex w-full flex-col gap-4">
-            <div className="min-h-24">
-              <H4 className="mb-4 text-left text-lg font-semibold text-blue-600">
-                {INSTALLATION_STEPS[0].number} {INSTALLATION_STEPS[0].title}
-              </H4>
-              <P size="sm" className="text-left text-gray-700">
-                {INSTALLATION_STEPS[0].description}
-              </P>
-            </div>
-            <div className="min-h-48">
-              <img
-                src={INSTALLATION_STEPS[0].image.src}
-                alt={INSTALLATION_STEPS[0].image.alt}
-                className="h-full w-full rounded-lg border object-contain"
-              />
-            </div>
-            <div className="flex min-h-12 items-center justify-start">
-              <Button
-                variant="primary"
-                size="md"
-                label="Install Chrome Extension"
-                icon={() => (
-                  <img
-                    src="/static/landing/chrome_ext/Chrome.svg"
-                    alt="Chrome"
-                  />
-                )}
-                href={CHROME_EXTENSION_URL}
-                target="_blank"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {INSTALLATION_STEPS.slice(1).map((step, index) => (
-            <div key={index + 1} className="flex w-full flex-col gap-4">
-              <div className="min-h-24">
-                <H4 className="mb-4 text-left text-lg font-semibold text-blue-600">
-                  {step.number} {step.title}
-                </H4>
-                <P size="sm" className="text-left text-gray-700">
-                  {step.description}
-                </P>
-              </div>
-              <div className="min-h-48">
+          {INSTALLATION_STEPS.map((step, index) => (
+            <div key={index} className="flex w-full flex-col gap-4">
+              <div className="w-full overflow-hidden rounded-2xl">
                 <img
                   src={step.image.src}
                   alt={step.image.alt}
-                  className="h-full w-full rounded-lg border object-contain"
+                  className="h-auto w-full object-contain"
                 />
               </div>
-              <div className="min-h-12" />
+              <div>
+                <H4 className="mb-2 text-left font-semibold">
+                  {step.number} {step.title}
+                </H4>
+                <P size="sm" className="text-left text-muted-foreground">
+                  {step.description}
+                </P>
+              </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Button
+            variant="primary"
+            size="md"
+            label="Install Chrome Extension"
+            icon={() => (
+              <img src="/static/landing/chrome_ext/Chrome.svg" alt="Chrome" />
+            )}
+            href={CHROME_EXTENSION_URL}
+            target="_blank"
+          />
         </div>
       </div>
     </div>
@@ -421,8 +421,8 @@ export default function ChromeExtension() {
 
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />
-        <ChromeExtensionInAction />
-        <VideoSection />
+        <WebAppSidebarSection />
+        <ChromeExtensionInActionFor />
         <InstallationSection />
         <TrustedBy logoSet="landing" />
         <JustUseDustSection />
