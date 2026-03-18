@@ -59,6 +59,20 @@ export function useConversationSidePanelContext() {
   return context;
 }
 
+export function parseDataAsMessageIdAndActionId(data?: string): {
+  messageId?: string;
+  actionId?: string;
+} {
+  // data can be "messageId" or "messageId@actionId" for single-action view.
+  // TODO: Clean up once inline activity is rolled out -- the single-action view
+  // should fetch only the action it needs, not the full message.
+  const [messageId, actionId] = data?.includes("@")
+    ? data.split("@")
+    : [data, undefined];
+
+  return { messageId, actionId };
+}
+
 interface ConversationSidePanelProviderProps {
   children: React.ReactNode;
 }

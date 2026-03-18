@@ -102,6 +102,7 @@ export type VirtuosoMessageListContext = {
   isProjectRestricted?: boolean;
   projectSpaceId?: string;
   projectSpaceName?: string;
+  branchIdToApprove?: string;
 };
 
 export const areSameRankAndBranch = (
