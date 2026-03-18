@@ -18,6 +18,18 @@ export const VOICE_LANGUAGES = [
   "japanese",
   "hindi",
   "chinese",
+  "spanish",
+  "portuguese",
+  "korean",
+  "arabic",
+  "turkish",
+  "polish",
+  "swedish",
+  "russian",
+  "indonesian",
+  "filipino",
+  "thai",
+  "vietnamese",
 ] as const;
 
 export type VoiceLanguage = (typeof VOICE_LANGUAGES)[number];
@@ -43,7 +55,7 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
       text: z
         .string()
         .min(1)
-        .max(10_000)
+        .max(5_000)
         .describe("The text to convert to speech."),
       gender: z
         .enum(VOICE_GENDERS)
