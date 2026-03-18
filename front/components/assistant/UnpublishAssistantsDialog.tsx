@@ -1,4 +1,7 @@
-import { useBatchUpdateAgentScope } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useBatchUpdateAgentScope,
+} from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -19,7 +22,6 @@ interface UnpublishAssistantsDialogProps {
   owner: LightWorkspaceType;
   onClose: () => void;
   onSave: () => void;
-  mutateAgentConfigurations: () => Promise<unknown>;
 }
 
 export function UnpublishAssistantsDialog({
@@ -28,9 +30,15 @@ export function UnpublishAssistantsDialog({
   owner,
   onClose,
   onSave,
-  mutateAgentConfigurations,
 }: UnpublishAssistantsDialogProps) {
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: null,
+      disabled: true,
+    });
 
   const batchUpdateAgentScope = useBatchUpdateAgentScope({ owner });
 
