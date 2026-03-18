@@ -9,7 +9,7 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isDustWorkspace } from "@app/types/shared/env";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@dust-tt/client/src/error_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   [GET_WORKSPACE_METADATA_TOOL_NAME]: async ({ workspace_id }, { auth }) => {
