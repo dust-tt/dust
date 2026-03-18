@@ -22,11 +22,20 @@ export function isSupportedModel(
   model: unknown,
   checkProvider: boolean = true
 ): model is SupportedModel {
-  const maybeSupportedModel = model as SupportedModel;
+  if (
+    typeof model !== "object" ||
+    model === null ||
+    !("modelId" in model) ||
+    typeof model.modelId !== "string"
+  ) {
+    return false;
+  }
+
   return SUPPORTED_MODEL_CONFIGS.some(
     (m) =>
-      m.modelId === maybeSupportedModel.modelId &&
-      (!checkProvider || m.providerId === maybeSupportedModel.providerId)
+      m.modelId === model.modelId &&
+      (!checkProvider ||
+        ("providerId" in model && m.providerId === model.providerId))
   );
 }
 
