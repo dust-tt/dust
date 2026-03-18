@@ -17,6 +17,8 @@ export type DataRetentionConfig = {
   agents: Record<string, number>;
 };
 
+export const CONVERSATIONS_RETENTION_MIN_DAYS = 60;
+
 export const getConversationsDataRetention = async (
   auth: Authenticator
 ): Promise<number | null> => {
@@ -51,6 +53,14 @@ export const isValidWorkspaceRetentionDays = (
     isNumber(retentionDays) &&
     retentionDays >= WORKSPACE_RETENTION_MIN_DAYS &&
     retentionDays <= WORKSPACE_RETENTION_MAX_DAYS
+  );
+};
+
+export const isValidConversationsRetentionDays = (
+  retentionDays: string | number | boolean | object | undefined
+): retentionDays is number => {
+  return (
+    isNumber(retentionDays) && retentionDays >= CONVERSATIONS_RETENTION_MIN_DAYS
   );
 };
 
