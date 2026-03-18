@@ -11,6 +11,7 @@ import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import {
   DUST_ANONYMOUS_ID_COOKIE,
   getOrCreateAnonymousId,
+  getPostHogCookieDomain,
 } from "@app/lib/utils/anonymous_id";
 import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
@@ -149,11 +150,17 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       return;
     }
 
+    const cookieDomain = getPostHogCookieDomain();
+
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       persistence: "memory",
+      // Share PostHog cookies (including distinct_id) across all *.dust.tt
+      // subdomains so the same identity persists through dust.tt → signin →
+      // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
+      ...(cookieDomain ? { cookie_domain: cookieDomain } : {}),
       capture_pageview: true,
       capture_pageleave: false,
       autocapture: false,
@@ -217,6 +224,9 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     posthog.set_config({
       persistence: "localStorage+cookie",
+      ...(getPostHogCookieDomain()
+        ? { cookie_domain: getPostHogCookieDomain() }
+        : {}),
       disable_session_recording: false,
     });
     posthog.startSessionRecording();

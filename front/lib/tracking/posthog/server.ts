@@ -87,33 +87,35 @@ export class PostHogServerSideTracking {
         }
       }
 
-      client.identify({
+      /* Set person properties and first-touch attribution via $set/$set_once.
+      We intentionally avoid client.identify() here because it generates a
+        server-side distinct_id that would create an extra "person".
+      The identify() call happens from the frontend (posthog-js)
+        which naturally merges the browser's anonymous distinct_id with user.sId.
+      */
+      const setProps: Record<string, string> = {
+        first_name: user.firstName,
+        last_name: user.lastName ?? "",
+        name: user.fullName,
+        ...(user.provider ? { provider: user.provider } : {}),
+        ...utmProperties,
+      };
+
+      const setOnceProps: Record<string, string> = {};
+      for (const [key, value] of Object.entries(utmProperties)) {
+        setOnceProps[`first_${key}`] = value;
+      }
+
+      client.capture({
         distinctId: user.sId,
+        event: "$set",
         properties: {
-          first_name: user.firstName,
-          last_name: user.lastName,
-          name: user.fullName,
-          provider: user.provider,
-          ...utmProperties,
+          $set: setProps,
+          ...(Object.keys(setOnceProps).length > 0
+            ? { $set_once: setOnceProps }
+            : {}),
         },
       });
-
-      // Set first-touch attribution as $set_once person properties so the
-      // very first UTM/click-ID values are permanently recorded.
-      if (Object.keys(utmProperties).length > 0) {
-        const firstTouchProps: Record<string, string> = {};
-        for (const [key, value] of Object.entries(utmProperties)) {
-          firstTouchProps[`first_${key}`] = value;
-        }
-
-        client.capture({
-          distinctId: user.sId,
-          event: "$set",
-          properties: {
-            $set_once: firstTouchProps,
-          },
-        });
-      }
 
       if (userCreated) {
         client.capture({
