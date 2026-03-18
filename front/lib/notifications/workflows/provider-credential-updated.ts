@@ -31,8 +31,8 @@ export const providerCredentialsHealthUpdatedWorkflow = workflow(
   async ({ step, payload }) => {
     await step.inApp("provider-credentials-health-updated-in-app", async () => {
       return {
-        subject: "",
-        body: "",
+        subject: "Provider credentials health updated",
+        body: payload.workspaceId,
         data: {
           autoDelete: true,
           mutateAuthContext: true,
