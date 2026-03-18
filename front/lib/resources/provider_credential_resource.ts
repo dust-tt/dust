@@ -360,6 +360,18 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return this.baseFetch(auth);
   }
 
+  /**
+   * Fetches health records for all providers in a workspace by workspace model ID.
+   * Bypasses auth check for use during Authenticator initialization.
+   */
+  static async fetchProvidersHealthByWorkspaceId(
+    workspaceId: ModelId
+  ): Promise<Partial<Record<ByokModelProviderIdType, boolean>>> {
+    const cached = await this.baseFetchCached(workspaceId);
+
+    return Object.fromEntries(cached.map((c) => [c.providerId, c.isHealthy]));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 

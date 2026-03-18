@@ -4,7 +4,6 @@ import {
   isEntreprisePlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -44,10 +43,11 @@ export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   );
 }
 
-export async function getWhitelistedProviders(
+export function getWhitelistedProviders(
   auth: Authenticator
-): Promise<Set<ModelProviderIdType>> {
+): Set<ModelProviderIdType> {
   const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
   const whiteListedProviders = new Set<ModelProviderIdType>(
     owner.whiteListedProviders ?? MODEL_PROVIDER_IDS
   );
@@ -55,33 +55,34 @@ export async function getWhitelistedProviders(
   // noop never sees user data, always whitelisted.
   whiteListedProviders.add("noop");
 
-  return whiteListedProviders;
+  if (!plan.isByok) {
+    return whiteListedProviders;
+  }
+
+  const providersHealth = auth.providersHealth();
+
+  const configuredProviders = new Set(
+    Object.keys(providersHealth ?? {}) as ModelProviderIdType[]
+  );
+
+  // noop never needs credentials.
+  configuredProviders.add("noop");
+
+  return whiteListedProviders.intersection(configuredProviders);
 }
 
-export async function isProviderWhitelisted(
+export function isProviderWhitelisted(
   auth: Authenticator,
   providerId: ModelProviderIdType
-): Promise<boolean> {
-  const whitelistedProviders = await getWhitelistedProviders(auth);
+): boolean {
+  const whitelistedProviders = getWhitelistedProviders(auth);
   return whitelistedProviders.has(providerId);
 }
 
-export async function prefetchWhitelistedModels(
+export function getFastestWhitelistedModel(
   auth: Authenticator
-): Promise<PrefetchedWhitelistedModels> {
-  const whitelistedProviders = await getWhitelistedProviders(auth);
-
-  return {
-    small: _getSmallWhitelistedModel(whitelistedProviders),
-    large: _getLargeWhitelistedModel(whitelistedProviders),
-    whitelistedProviders,
-  };
-}
-
-export async function getFastestWhitelistedModel(
-  auth: Authenticator
-): Promise<ModelConfigurationType | null> {
-  const whitelistedProviders = await getWhitelistedProviders(auth);
+): ModelConfigurationType | null {
+  const whitelistedProviders = getWhitelistedProviders(auth);
   if (whitelistedProviders.has("mistral")) {
     return MISTRAL_SMALL_MODEL_CONFIG;
   }
@@ -91,17 +92,17 @@ export async function getFastestWhitelistedModel(
   return _getSmallWhitelistedModel(whitelistedProviders);
 }
 
-export async function getSmallWhitelistedModel(
+export function getSmallWhitelistedModel(
   auth: Authenticator
-): Promise<ModelConfigurationType | null> {
-  const whitelistedProviders = await getWhitelistedProviders(auth);
+): ModelConfigurationType | null {
+  const whitelistedProviders = getWhitelistedProviders(auth);
   return _getSmallWhitelistedModel(whitelistedProviders);
 }
 
-export async function getLargeWhitelistedModel(
+export function getLargeWhitelistedModel(
   auth: Authenticator
-): Promise<ModelConfigurationType | null> {
-  const whitelistedProviders = await getWhitelistedProviders(auth);
+): ModelConfigurationType | null {
+  const whitelistedProviders = getWhitelistedProviders(auth);
   return _getLargeWhitelistedModel(whitelistedProviders);
 }
 
@@ -198,13 +199,13 @@ export function isModelCustomAvailable(
   return true;
 }
 
-export async function filterCustomAvailableAndWhitelistedModels(
+export function filterCustomAvailableAndWhitelistedModels(
   models: ModelConfigurationType[],
   featureFlags: WhitelistableFeature[],
   auth: Authenticator
-): Promise<ModelConfigurationType[]> {
+): ModelConfigurationType[] {
   const plan = auth.plan();
-  const whitelistedProviders = await getWhitelistedProviders(auth);
+  const whitelistedProviders = getWhitelistedProviders(auth);
 
   return models.filter(
     (m) =>

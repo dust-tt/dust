@@ -83,7 +83,7 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { prefetchWhitelistedModels } from "@app/lib/assistant";
+import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -93,7 +93,6 @@ import type {
   GlobalAgentContext,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
@@ -505,7 +504,6 @@ function getGlobalAgent({
   sidekickContext,
   hasDeepDive,
   globalAgentContext,
-  prefetchedModels,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -515,7 +513,6 @@ function getGlobalAgent({
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
-  prefetchedModels: PrefetchedWhitelistedModels;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -527,7 +524,6 @@ function getGlobalAgent({
       agentConfiguration = _getHelperGlobalAgent({
         auth,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
@@ -685,7 +681,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
@@ -693,7 +688,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
@@ -701,7 +695,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
@@ -709,7 +702,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
@@ -717,7 +709,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
@@ -726,7 +717,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
         globalAgentContext,
       });
       break;
@@ -736,7 +726,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT:
@@ -745,7 +734,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
@@ -754,7 +742,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
@@ -763,7 +750,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
@@ -772,7 +758,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
@@ -781,7 +766,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI_HIGH:
@@ -790,7 +774,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM:
@@ -799,7 +782,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM:
@@ -808,7 +790,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM_HIGH:
@@ -817,7 +798,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX:
@@ -826,7 +806,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM:
@@ -835,7 +814,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH:
@@ -844,7 +822,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
@@ -853,7 +830,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI:
@@ -862,7 +838,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
@@ -871,7 +846,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_HIGH:
@@ -880,7 +854,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG:
@@ -889,7 +862,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
@@ -898,7 +870,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
@@ -907,7 +878,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
@@ -916,7 +886,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
@@ -925,7 +894,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
@@ -934,7 +902,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
@@ -942,7 +909,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -950,7 +916,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
@@ -959,7 +924,6 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
       agentConfiguration = _getPlanningAgent(auth, {
         settings,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.SIDEKICK:
@@ -968,7 +932,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         globalAgentContext,
-        prefetchedModels,
       });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
@@ -1037,21 +1000,16 @@ export async function getGlobalAgents(
 
   const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
 
-  const [
-    preFetchedDataSources,
-    globalAgentSettings,
-    mcpServerViews,
-    prefetchedModels,
-  ] = await Promise.all([
-    variant === "full"
-      ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
-      : null,
-    GlobalAgentSettingsModel.findAll({
-      where: { workspaceId: owner.id },
-    }),
-    getMCPServerViewsForGlobalAgents(auth, variant),
-    prefetchWhitelistedModels(auth),
-  ]);
+  const [preFetchedDataSources, globalAgentSettings, mcpServerViews] =
+    await Promise.all([
+      variant === "full"
+        ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
+        : null,
+      GlobalAgentSettingsModel.findAll({
+        where: { workspaceId: owner.id },
+      }),
+      getMCPServerViewsForGlobalAgents(auth, variant),
+    ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
@@ -1141,7 +1099,6 @@ export async function getGlobalAgents(
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
       globalAgentContext: options?.globalAgentContext,
-      prefetchedModels,
     })
   );
 
@@ -1151,9 +1108,7 @@ export async function getGlobalAgents(
     if (
       agentFetcherResult &&
       agentFetcherResult.scope === "global" &&
-      prefetchedModels.whitelistedProviders.has(
-        agentFetcherResult.model.providerId
-      )
+      isProviderWhitelisted(auth, agentFetcherResult.model.providerId)
     ) {
       globalAgents.push(agentFetcherResult);
     }

@@ -638,7 +638,7 @@ export async function postUserMessage(
       });
     }
 
-    const isProviderEnabled = await isProviderWhitelisted(
+    const isProviderEnabled = isProviderWhitelisted(
       auth,
       agentConfig.model.providerId
     );
@@ -1019,7 +1019,7 @@ export async function editUserMessage(
       });
     }
 
-    const isProviderEnabled = await isProviderWhitelisted(
+    const isProviderEnabled = isProviderWhitelisted(
       auth,
       agentConfig.model.providerId
     );

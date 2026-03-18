@@ -246,7 +246,7 @@ async function generateConversationTitle(
 async function getFastModelConfig(
   auth: Authenticator
 ): Promise<ModelConfigurationType | null> {
-  const providers = await getWhitelistedProviders(auth);
+  const providers = getWhitelistedProviders(auth);
 
   if (providers.has("openai")) {
     return GPT_5_1_MODEL_CONFIG;

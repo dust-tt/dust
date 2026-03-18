@@ -6,6 +6,10 @@ import type {
   PrefetchedDataSourcesType,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -13,7 +17,6 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -29,7 +32,6 @@ function _getManagedDataSourceAgent(
     pictureUrl,
     preFetchedDataSources,
     searchMCPServerView,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     connectorProvider: ConnectorProvider;
@@ -40,12 +42,11 @@ function _getManagedDataSourceAgent(
     pictureUrl: string;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
   const modelConfiguration = auth.isUpgraded()
-    ? prefetchedModels.large
-    : prefetchedModels.small;
+    ? getLargeWhitelistedModel(auth)
+    : getSmallWhitelistedModel(auth);
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -154,12 +155,10 @@ export function _getGoogleDriveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
   const agentId = GLOBAL_AGENTS_SID.GOOGLE_DRIVE;
@@ -177,7 +176,6 @@ export function _getGoogleDriveGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
-    prefetchedModels,
   });
 }
 
@@ -187,12 +185,10 @@ export function _getSlackGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.SLACK;
@@ -210,7 +206,6 @@ export function _getSlackGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
-    prefetchedModels,
   });
 }
 
@@ -220,12 +215,10 @@ export function _getGithubGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.GITHUB;
@@ -243,7 +236,6 @@ export function _getGithubGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
-    prefetchedModels,
   });
 }
 
@@ -253,12 +245,10 @@ export function _getNotionGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.NOTION;
@@ -276,7 +266,6 @@ export function _getNotionGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
-    prefetchedModels,
   });
 }
 
@@ -286,12 +275,10 @@ export function _getIntercomGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.INTERCOM;
@@ -309,6 +296,5 @@ export function _getIntercomGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
-    prefetchedModels,
   });
 }
