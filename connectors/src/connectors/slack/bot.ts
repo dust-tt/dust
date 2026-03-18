@@ -1308,7 +1308,7 @@ async function makeContentFragments(
         fileMimetype: file.mimetype ?? null,
         fileSize: file.size ?? null,
         hasPrivateDownloadUrl: !!file.url_private_download,
-        maxFileSize: MAX_FILE_SIZE_TO_UPLOAD,
+        maxFileSizeBytes: MAX_FILE_SIZE_TO_UPLOAD,
         skipReason,
         threadTs,
       },
