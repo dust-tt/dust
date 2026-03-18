@@ -49,8 +49,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     }
 
     // Load skill file attachments to the sandbox (behind feature flag).
-    const owner = auth.getNonNullableWorkspace();
-    const featureFlags = await getFeatureFlags(owner);
+    const featureFlags = await getFeatureFlags(auth);
 
     if (
       !featureFlags.includes("sandbox_tools") ||
