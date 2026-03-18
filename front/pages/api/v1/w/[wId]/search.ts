@@ -1,5 +1,6 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleSearch } from "@app/lib/api/search";
+import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
@@ -89,12 +90,7 @@ async function handleStreamingSearch(
   const searchParams = r.data;
 
   try {
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-    res.flushHeaders();
+    initSSEResponse(res);
 
     // Create an AbortController to handle client disconnection
     const controller = new AbortController();
