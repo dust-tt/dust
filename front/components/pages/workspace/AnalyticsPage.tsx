@@ -13,6 +13,7 @@ import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
+import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { BarChartIcon, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -50,6 +51,11 @@ export function AnalyticsPage() {
       );
 
       if (!response.ok) {
+        const responseBody = await response.json().catch(() => null);
+        if (isAPIErrorResponse(responseBody)) {
+          throw new Error(responseBody.error.message);
+        }
+
         throw new Error(`Error: ${response.status}`);
       }
 
@@ -100,7 +106,7 @@ export function AnalyticsPage() {
         },
         "[Analytics] Failed to download activity data"
       );
-      alert("Failed to download activity data.");
+      window.alert(normalizedError.message);
     } finally {
       setDownloadingMonth(null);
     }
