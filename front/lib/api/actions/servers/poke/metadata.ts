@@ -29,6 +29,12 @@ export const CHECK_SLACK_CHANNEL_TOOL_NAME = "check_slack_channel";
 export const GET_CONVERSATION_DETAILS_TOOL_NAME = "get_conversation_details";
 export const GET_MCP_SERVER_DETAILS_TOOL_NAME = "get_mcp_server_details";
 
+// ─── Users & Cross-Reference ─────────────────────────────────────────────────
+
+export const LIST_WORKSPACE_GROUPS_TOOL_NAME = "list_workspace_groups";
+export const FIND_WORKSPACE_BY_CONNECTOR_ID_TOOL_NAME =
+  "find_workspace_by_connector_id";
+
 // ─── Shared schema fragments ─────────────────────────────────────────────────
 
 const workspaceIdSchema = {
@@ -199,6 +205,33 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Fetching MCP server details",
       done: "Fetched MCP server details",
+    },
+  },
+
+  // ── Users & Cross-Reference ──────────────────────────────────────────────
+
+  [LIST_WORKSPACE_GROUPS_TOOL_NAME]: {
+    description: "List groups in a workspace with their kind and member count.",
+    schema: { ...workspaceIdSchema },
+    stake: "high" as const,
+    displayLabels: {
+      running: "Listing groups",
+      done: "Listed groups",
+    },
+  },
+
+  [FIND_WORKSPACE_BY_CONNECTOR_ID_TOOL_NAME]: {
+    description: "Reverse-lookup workspace from a connector ID.",
+    schema: {
+      ...workspaceIdSchema,
+      connector_id: z
+        .string()
+        .describe("The numeric connector ID (as string)."),
+    },
+    stake: "high" as const,
+    displayLabels: {
+      running: "Looking up workspace",
+      done: "Found workspace",
     },
   },
 });
