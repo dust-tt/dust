@@ -66,19 +66,27 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
+  const { wId } = router.query;
+  const workspaceId = isString(wId) ? wId : undefined;
+
+  // Read posthog_id from stored UTM params (sessionStorage) rather than the
+  // URL, because useStripUtmParams strips it before other effects run.
+  const posthogId = useMemo(() => {
+    const stored = getStoredUTMParams();
+    return stored.posthog_id ?? undefined;
+  }, []);
+
+  const disabled = !posthogId && (!!authenticated || !hasSession);
   // Skip useUser in authenticated contexts — user is always logged in so
   // hasCookiesAccepted is always true and we don't need user data for consent.
   const { user } = useUser({
-    disabled: !!authenticated || !hasSession,
+    disabled,
   });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const hasAcceptedCookies = authenticated
     ? true
     : hasCookiesAccepted(cookieValue, user);
-
-  const { wId } = router.query;
-  const workspaceId = isString(wId) ? wId : undefined;
 
   const currentWorkspace =
     user && workspaceId && "workspaces" in user
@@ -223,8 +231,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     hasUpgradedPersistence.current = true;
   }, [hasAcceptedCookies]);
 
-  // Identify user after consent is given. Handles both cases:
-  // consent-then-login and login-then-consent.
+  // Identify with posthog_id query param when present.
   useEffect(() => {
     if (
       !posthog.__loaded ||
@@ -237,6 +244,10 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     if (lastIdentifiedUserId.current !== user.sId) {
       posthog.identify(user.sId);
+      if (posthogId) {
+        posthog.alias(user.sId, posthogId);
+      }
+
       lastIdentifiedUserId.current = user.sId;
 
       // Set first-touch attribution as $set_once person properties so the
@@ -253,7 +264,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
         posthog.setPersonProperties({}, firstTouchProps);
       }
     }
-  }, [hasAcceptedCookies, user]);
+  }, [hasAcceptedCookies, user, posthogId]);
 
   // Group users by workspace and set workspace properties (admin only).
   const lastUserRole = useRef<string | null>(null);
