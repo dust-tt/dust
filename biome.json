@@ -81,7 +81,7 @@
   },
   "overrides": [
     {
-      "includes": ["**", "!front/pages/**"],
+      "includes": ["**", "!front/pages/**", "!front/lib/api/sse.ts"],
       "plugins": ["./biome-plugins/noNextImports.grit"]
     },
     {

@@ -1,4 +1,7 @@
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+
+export const MIN_FILES_FOR_SEARCH = 10;
+
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
@@ -34,6 +37,35 @@ export const CATEGORY_CONFIG: {
   { value: "knowledge", label: "Knowledge" },
   { value: "other", label: "Other" },
 ];
+
+/**
+ * Categorize a file by its content type alone (used for sandbox/mounted files).
+ */
+export function getCategoryFromContentType(
+  contentType: string
+): FilePanelCategory {
+  const previewConfig = getFilePreviewConfig(contentType);
+
+  switch (previewConfig.category) {
+    case "pdf":
+      return "pdf";
+    case "image":
+      return "image";
+    case "audio":
+      return "audio";
+    case "delimited":
+      return "table";
+    case "code":
+    case "viewer":
+    case "markdown":
+    case "text":
+      return "document";
+    case "frame":
+      return "frame";
+    default:
+      return "other";
+  }
+}
 
 export function getFilePanelCategory(
   item: ConversationAttachmentItem

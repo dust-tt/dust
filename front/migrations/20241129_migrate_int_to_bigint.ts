@@ -1,5 +1,4 @@
 import assert from "assert";
-import chalk from "chalk";
 import type { PoolClient } from "pg";
 import { Pool } from "pg";
 
@@ -284,9 +283,7 @@ class IntToBigIntMigration {
       }
 
       // Create indexes and constraints now that data is ready
-      console.log(
-        chalk.yellow(`[Pre-Cutover] Creating indexes and constraints`)
-      );
+      console.log(`[Pre-Cutover] Creating indexes and constraints`);
 
       // Create indexes concurrently
       await this.createIndexes(client, referencingTables);
@@ -307,9 +304,7 @@ class IntToBigIntMigration {
       }
 
       console.log(
-        chalk.green(
-          `[Pre-Cutover] Successfully created all indexes and constraints`
-        )
+        `[Pre-Cutover] Successfully created all indexes and constraints`
       );
     } finally {
       client.release();
@@ -357,9 +352,7 @@ class IntToBigIntMigration {
       );
 
       await this.executeSql(client, "COMMIT");
-      console.log(
-        chalk.green(`[Switch] Successfully completed all table switches`)
-      );
+      console.log(`[Switch] Successfully completed all table switches`);
     } catch (error) {
       await this.executeSql(client, "ROLLBACK");
       throw new Error(
@@ -386,9 +379,7 @@ class IntToBigIntMigration {
       for (const ref of referencingTables) {
         // Create former FK indexes before renaming.
         console.log(
-          chalk.yellow(
-            `[Indexes] Creating constraints for table: ${chalk.bold(ref.tableName)}`
-          )
+          `[Indexes] Creating constraints for table: ${ref.tableName}`
         );
 
         // Create foreign key constraint.
@@ -437,9 +428,7 @@ class IntToBigIntMigration {
       );
 
       await this.executeSql(client, "COMMIT");
-      console.log(
-        chalk.green(`[Switch] Successfully completed all table switches`)
-      );
+      console.log(`[Switch] Successfully completed all table switches`);
     } catch (error) {
       await this.executeSql(client, "ROLLBACK");
       throw new Error(
@@ -537,7 +526,7 @@ class IntToBigIntMigration {
         await this.cleanupForeignKeyConstraints(client, ref);
       }
 
-      console.log(chalk.green("[Cleanup] Successfully cleaned up all tables"));
+      console.log("[Cleanup] Successfully cleaned up all tables");
     } finally {
       client.release();
     }
@@ -588,15 +577,11 @@ class IntToBigIntMigration {
     );
 
     console.log(
-      chalk.magenta(
-        `[Referencing Tables] Found ${rows.length} referencing tables for table ${this.config.tableName}`
-      )
+      `[Referencing Tables] Found ${rows.length} referencing tables for table ${this.config.tableName}`
     );
 
     rows.forEach((row) =>
-      console.log(
-        chalk.dim(`- ${row.schema}.${row.tableName} (${row.foreignKeyColumn})`)
-      )
+      console.log(`- ${row.schema}.${row.tableName} (${row.foreignKeyColumn})`)
     );
 
     return rows;
@@ -647,11 +632,7 @@ class IntToBigIntMigration {
     const sizeGB = sizeBytes / (1024 * 1024 * 1024);
 
     console.log(
-      chalk.yellow(
-        `[Migration] Table ${chalk.bold(tableName)} size: ${chalk.bold(
-          `${Math.round(sizeGB * 100) / 100}GB`
-        )}`
-      )
+      `[Migration] Table ${tableName} size: ${Math.round(sizeGB * 100) / 100}GB`
     );
 
     // >= 1GB: Use CHECK constraint only
@@ -660,11 +641,9 @@ class IntToBigIntMigration {
     const useCheckConstraint = sizeGB >= LARGE_TABLE_THRESHOLD_GB;
 
     console.log(
-      chalk.yellow(
-        `[Migration] Using ${chalk.bold(
-          useCheckConstraint ? "CHECK constraint" : "SET NOT NULL"
-        )} approach for table ${chalk.bold(tableName)}`
-      )
+      `[Migration] Using ${
+        useCheckConstraint ? "CHECK constraint" : "SET NOT NULL"
+      } approach for table ${tableName}`
     );
 
     return useCheckConstraint;
@@ -696,11 +675,7 @@ class IntToBigIntMigration {
         );
 
         console.log(
-          chalk.yellow(
-            `[Constraints] Adding NOT NULL constraint for ${chalk.bold(
-              `${tableName}.${columnName}`
-            )}`
-          )
+          `[Constraints] Adding NOT NULL constraint for ${`${tableName}.${columnName}`}`
         );
 
         // Add the NOT NULL constraint without validation
@@ -715,11 +690,7 @@ class IntToBigIntMigration {
 
         // Validate the constraint
         console.log(
-          chalk.yellow(
-            `[Constraints] Validating NOT NULL constraint for ${chalk.bold(
-              `${tableName}.${columnName}`
-            )}`
-          )
+          `[Constraints] Validating NOT NULL constraint for ${`${tableName}.${columnName}`}`
         );
 
         await this.executeSql(
@@ -742,9 +713,7 @@ class IntToBigIntMigration {
       }
     } catch (error) {
       console.error(
-        chalk.red(
-          `[ERROR] Failed to set NOT NULL constraint on ${tableName}.${columnName}`
-        )
+        `[ERROR] Failed to set NOT NULL constraint on ${tableName}.${columnName}`
       );
       throw error;
     }
@@ -756,11 +725,9 @@ class IntToBigIntMigration {
   ): Promise<void> {
     const newColumn = createColumnName.new(MAIN_ID_COLUMN);
 
-    console.log(chalk.blue("[Columns] Adding new BigInt columns"));
+    console.log("[Columns] Adding new BigInt columns");
 
-    console.log(
-      chalk.yellow(`- Main table (${chalk.bold(this.config.tableName)}):`)
-    );
+    console.log(`- Main table (${this.config.tableName}):`);
 
     // Add new ID BigInt column to main table
     await this.executeSql(
@@ -771,13 +738,9 @@ class IntToBigIntMigration {
     `
     );
 
-    console.log(chalk.dim(`✓ Added column "${newColumn}"`));
+    console.log(`✓ Added column "${newColumn}"`);
 
-    console.log(
-      chalk.yellow(
-        `- Referencing tables (${chalk.bold(referencingTables.length)}):`
-      )
-    );
+    console.log(`- Referencing tables (${referencingTables.length}):`);
 
     // Add new columns to referencing tables
     for (const ref of referencingTables) {
@@ -792,10 +755,10 @@ class IntToBigIntMigration {
       `
       );
 
-      console.log(chalk.dim(`✓ ${ref.tableName} Added "${newRefColumn}"`));
+      console.log(`✓ ${ref.tableName} Added "${newRefColumn}"`);
     }
 
-    console.log(chalk.green(`[Columns] Successfully added all BigInt columns`));
+    console.log(`[Columns] Successfully added all BigInt columns`);
   }
 
   private async dropColumn(
@@ -838,18 +801,14 @@ class IntToBigIntMigration {
         ? createColumnName.legacy(sourceCol)
         : createColumnName.new(sourceCol);
 
-    console.log(
-      chalk.blue(
-        `[Trigger] Creating ${chalk.bold(triggerName)} for ${chalk.bold(tableName)}`
-      )
-    );
+    console.log(`[Trigger] Creating ${triggerName} for ${tableName}`);
 
     await this.executeSql(
       client,
       `DROP TRIGGER IF EXISTS ${triggerName} ON ${tableName}`
     );
 
-    console.log(chalk.dim(`- Dropped existing trigger if present`));
+    console.log(`- Dropped existing trigger if present`);
 
     await this.executeSql(
       client,
@@ -864,7 +823,7 @@ class IntToBigIntMigration {
     `
     );
 
-    console.log(chalk.dim(`- Created trigger function`));
+    console.log(`- Created trigger function`);
 
     await this.executeSql(
       client,
@@ -876,11 +835,7 @@ class IntToBigIntMigration {
     `
     );
 
-    console.log(
-      chalk.green(
-        `[Trigger] Completed ${chalk.bold(triggerName)} setup for ${chalk.bold(tableName)}`
-      )
-    );
+    console.log(`[Trigger] Completed ${triggerName} setup for ${tableName}`);
   }
 
   private async createFKSyncTrigger(
@@ -897,18 +852,14 @@ class IntToBigIntMigration {
         ? createColumnName.legacy(ref.foreignKeyColumn)
         : createColumnName.new(ref.foreignKeyColumn);
 
-    console.log(
-      chalk.blue(
-        `[Trigger] Creating ${chalk.bold(triggerName)} for ${chalk.bold(ref.tableName)}`
-      )
-    );
+    console.log(`[Trigger] Creating ${triggerName} for ${ref.tableName}`);
 
     await this.executeSql(
       client,
       `DROP TRIGGER IF EXISTS ${triggerName} ON ${ref.tableName}`
     );
 
-    console.log(chalk.dim(`- Dropped existing trigger if present`));
+    console.log(`- Dropped existing trigger if present`);
 
     await this.executeSql(
       client,
@@ -923,7 +874,7 @@ class IntToBigIntMigration {
     `
     );
 
-    console.log(chalk.dim(`- Created trigger function`));
+    console.log(`- Created trigger function`);
 
     await this.executeSql(
       client,
@@ -934,12 +885,10 @@ class IntToBigIntMigration {
         EXECUTE FUNCTION ${functionName}()
     `
     );
-    console.log(chalk.dim(`- Created trigger`));
+    console.log(`- Created trigger`);
 
     console.log(
-      chalk.green(
-        `[Trigger] Completed ${chalk.bold(triggerName)} setup for ${chalk.bold(ref.tableName)}`
-      )
+      `[Trigger] Completed ${triggerName} setup for ${ref.tableName}`
     );
   }
 
@@ -984,9 +933,7 @@ class IntToBigIntMigration {
       currentId = currentId + this.config.batchSize;
 
       console.log(
-        chalk.blue(
-          `[Progress] ${chalk.bold(tableName)}: ${currentId}/${maxId} (${Math.round((currentId / maxId) * 100)}%) - batch: ${this.config.batchSize}`
-        )
+        `[Progress] ${tableName}: ${currentId}/${maxId} (${Math.round((currentId / maxId) * 100)}%) - batch: ${this.config.batchSize}`
       );
     }
   }
@@ -1082,16 +1029,10 @@ class IntToBigIntMigration {
       [tableName, columnName]
     );
 
-    console.log(
-      chalk.blue(
-        `[Composite Indexes] Found ${chalk.bold(rows.length)} for ${tableName}:`
-      )
-    );
+    console.log(`[Composite Indexes] Found ${rows.length} for ${tableName}:`);
     rows.forEach((r) =>
       console.log(
-        chalk.magenta(
-          `  - ${chalk.bold(r.index_name)} (${r.column_names})${r.is_unique ? " UNIQUE" : ""}${r.where_clause ? ` WHERE ${r.where_clause}` : ""}`
-        )
+        `  - ${r.index_name} (${r.column_names})${r.is_unique ? " UNIQUE" : ""}${r.where_clause ? ` WHERE ${r.where_clause}` : ""}`
       )
     );
 
@@ -1149,7 +1090,7 @@ class IntToBigIntMigration {
     client: PoolClient,
     { tableName, columnName }: { tableName: string; columnName: string }
   ): Promise<void> {
-    console.log(chalk.yellow(`[Cleanup] Processing indexes for ${tableName}`));
+    console.log(`[Cleanup] Processing indexes for ${tableName}`);
 
     // Composite indexes.
 
@@ -1175,9 +1116,7 @@ class IntToBigIntMigration {
           `DROP INDEX CONCURRENTLY IF EXISTS "${index.indexName}";`
         );
 
-        console.log(
-          chalk.green(`[Cleanup] Dropped index ${chalk.bold(index.indexName)}`)
-        );
+        console.log(`[Cleanup] Dropped index ${index.indexName}`);
       }
     }
   }
@@ -1186,11 +1125,7 @@ class IntToBigIntMigration {
     client: PoolClient,
     referencingTables: ReferencingTable[]
   ): Promise<void> {
-    console.log(
-      chalk.yellow(
-        `[Indexes] Creating for table: ${chalk.bold(this.config.tableName)}`
-      )
-    );
+    console.log(`[Indexes] Creating for table: ${this.config.tableName}`);
 
     const newMainColumn = createColumnName.new(MAIN_ID_COLUMN);
 
@@ -1238,11 +1173,7 @@ class IntToBigIntMigration {
 
     // Create FK indexes and their composite indexes
     for (const ref of referencingTables) {
-      console.log(
-        chalk.yellow(
-          `[Indexes] Creating for table: ${chalk.bold(ref.tableName)}`
-        )
-      );
+      console.log(`[Indexes] Creating for table: ${ref.tableName}`);
 
       const newFKColumn = createColumnName.new(ref.foreignKeyColumn);
 
@@ -1255,11 +1186,7 @@ class IntToBigIntMigration {
 
       // Only create FK index if one existed before
       if (hasFKIndex) {
-        console.log(
-          chalk.yellow(
-            `[Indexes] Creating FK index for ${chalk.bold(ref.tableName)}`
-          )
-        );
+        console.log(`[Indexes] Creating FK index for ${ref.tableName}`);
 
         await this.createAndWaitForIndex(client, {
           tableName: ref.tableName,
@@ -1364,17 +1291,11 @@ class IntToBigIntMigration {
     const startTime = Date.now();
 
     if (this.config.dryRun) {
-      console.log(
-        chalk.yellow(
-          `[Index] Would wait for ${chalk.bold(indexName)} in dry-run mode`
-        )
-      );
+      console.log(`[Index] Would wait for ${indexName} in dry-run mode`);
       return;
     }
 
-    console.log(
-      chalk.blue(`[Index] Waiting for ${chalk.bold(indexName)} to be ready`)
-    );
+    console.log(`[Index] Waiting for ${indexName} to be ready`);
 
     while (true) {
       const { rows } = await this.executeSql<{
@@ -1393,9 +1314,7 @@ class IntToBigIntMigration {
 
       if (!rows[0]) {
         console.log(
-          chalk.dim(
-            `[Index] Waiting for ${chalk.bold(indexName)} to appear (${Math.floor((Date.now() - startTime) / 1000)}s)`
-          )
+          `[Index] Waiting for ${indexName} to appear (${Math.floor((Date.now() - startTime) / 1000)}s)`
         );
         await new Promise((resolve) => setTimeout(resolve, 10000));
         continue;
@@ -1403,27 +1322,19 @@ class IntToBigIntMigration {
 
       const { indisready, indisvalid } = rows[0];
       if (indisvalid && !indisready) {
-        console.log(
-          chalk.red(`[Index] Creation failed for ${chalk.bold(indexName)}`)
-        );
+        console.log(`[Index] Creation failed for ${indexName}`);
         throw new Error(`Index ${indexName} creation failed`);
       }
       if (indisready && indisvalid) {
         const duration = Math.floor((Date.now() - startTime) / 1000);
-        console.log(
-          chalk.green(
-            `[Index] ${chalk.bold(indexName)} ready after ${duration}s`
-          )
-        );
+        console.log(`[Index] ${indexName} ready after ${duration}s`);
 
         return;
       }
 
       if (Date.now() - startTime > this.config.timeoutSeconds * 1000) {
         console.log(
-          chalk.red(
-            `[Index] Timeout waiting for ${chalk.bold(indexName)} after ${this.config.timeoutSeconds}s`
-          )
+          `[Index] Timeout waiting for ${indexName} after ${this.config.timeoutSeconds}s`
         );
         throw new Error(`Index ${indexName} creation timed out`);
       }
@@ -1485,11 +1396,7 @@ class IntToBigIntMigration {
 
     const newConstraintName = constraintName.replace("_bigint", "");
 
-    console.log(
-      chalk.yellow(
-        `[Cleanup] Creating clean FK constraint for ${chalk.bold(ref.tableName)}`
-      )
-    );
+    console.log(`[Cleanup] Creating clean FK constraint for ${ref.tableName}`);
 
     // Create new FK without _bigint suffix
     try {
@@ -1523,9 +1430,7 @@ class IntToBigIntMigration {
     );
 
     console.log(
-      chalk.green(
-        `[Cleanup] Renamed FK constraint ${chalk.bold(constraintName)} to ${chalk.bold(newConstraintName)}`
-      )
+      `[Cleanup] Renamed FK constraint ${constraintName} to ${newConstraintName}`
     );
     return;
   }
@@ -1554,9 +1459,7 @@ class IntToBigIntMigration {
       : createColumnName.legacy(MAIN_ID_COLUMN);
 
     console.log(
-      chalk.yellow(
-        `[Setup] Creating FK constraint for ${chalk.bold(ref.tableName)}."${sourceColumn}"`
-      )
+      `[Setup] Creating FK constraint for ${ref.tableName}."${sourceColumn}"`
     );
 
     // Create the new FK constraint concurrently.
@@ -1591,9 +1494,7 @@ class IntToBigIntMigration {
     );
 
     console.log(
-      chalk.green(
-        `[Setup] Created and validated FK constraint ${chalk.bold(newConstraintName)}`
-      )
+      `[Setup] Created and validated FK constraint ${newConstraintName}`
     );
   }
 
@@ -1625,11 +1526,7 @@ class IntToBigIntMigration {
     const { currentColumn, newColumn, legacyColumn, sequenceName, indexName } =
       config;
 
-    console.log(
-      chalk.yellow(
-        `[Switch] Processing main table: ${chalk.bold(this.config.tableName)}`
-      )
-    );
+    console.log(`[Switch] Processing main table: ${this.config.tableName}`);
 
     await this.executeSql(
       client,
@@ -1736,7 +1633,7 @@ class IntToBigIntMigration {
       );
     }
 
-    console.log(chalk.green(`[Switch] Main table processed successfully`));
+    console.log(`[Switch] Main table processed successfully`);
   }
 
   private async switchReferencingTable(
@@ -1747,11 +1644,7 @@ class IntToBigIntMigration {
   ): Promise<void> {
     const { currentColumn, newColumn, legacyColumn, constraintName } = config;
 
-    console.log(
-      chalk.yellow(
-        `[Switch] Processing referencing table: ${chalk.bold(ref.tableName)}`
-      )
-    );
+    console.log(`[Switch] Processing referencing table: ${ref.tableName}`);
 
     await this.executeSql(
       client,
@@ -1874,9 +1767,9 @@ class IntToBigIntMigration {
 
     const { source_count, target_count, progress_percentage } = rows[0];
 
-    console.log(chalk.dim(`[Progress Details] ${tableName}:`));
-    console.log(chalk.dim(`- Non-NULL in ${sourceColumn}: ${source_count}`));
-    console.log(chalk.dim(`- Non-NULL in ${targetColumn}: ${target_count}`));
+    console.log(`[Progress Details] ${tableName}:`);
+    console.log(`- Non-NULL in ${sourceColumn}: ${source_count}`);
+    console.log(`- Non-NULL in ${targetColumn}: ${target_count}`);
 
     return {
       tableName,
@@ -1898,13 +1791,12 @@ class IntToBigIntMigration {
   ): Promise<void> {
     const progress = await this.checkProgress(client, referencingTables);
 
-    console.log(chalk.blue("\n[Migration Progress]"));
+    console.log("\n[Migration Progress]");
     for (const p of progress) {
-      const status =
-        p.progressPercentage === 100 ? chalk.green("✓") : chalk.yellow("~");
+      const status = p.progressPercentage === 100 ? "✓" : "~";
 
       console.log(
-        `  ${status} ${chalk.bold(p.tableName.padEnd(20))} ${p.migratedRows}/${p.totalRows} rows (${chalk.bold(p.progressPercentage)}%)`
+        `  ${status} ${p.tableName.padEnd(20)} ${p.migratedRows}/${p.totalRows} rows (${p.progressPercentage}%)`
       );
     }
   }
@@ -2003,18 +1895,14 @@ makeScript(
         "Only allowed in development"
       );
 
-      console.log(
-        chalk.red("About to run migration on all tables in development")
-      );
+      console.log("About to run migration on all tables in development");
 
       const tables = await getAllTables(database);
-      console.log(chalk.yellow(`Found ${tables.length} tables`));
-      tables.forEach((t) => console.log(chalk.yellow(`- ${t}`)));
+      console.log(`Found ${tables.length} tables`);
+      tables.forEach((t) => console.log(`- ${t}`));
 
       for (const t of tables) {
-        console.log(
-          chalk.blue(`\n[Migration] Starting migration for table: ${t}`)
-        );
+        console.log(`\n[Migration] Starting migration for table: ${t}`);
 
         const migration = new IntToBigIntMigration(database, {
           tableName: t,
@@ -2031,22 +1919,17 @@ makeScript(
             continue;
           }
 
-          console.log(chalk.blue(`\n[${t}] Executing step: ${step}`));
+          console.log(`\n[${t}] Executing step: ${step}`);
 
           try {
             await migration.execute(step);
           } catch (error) {
-            console.error(
-              chalk.red(`Failed during ${step} for table ${t}:`),
-              error
-            );
+            console.error(`Failed during ${step} for table ${t}:`, error);
             throw error; // Stop the entire migration if any step fails
           }
         }
 
-        console.log(
-          chalk.green(`\n[Migration] Completed migration for table: ${t}`)
-        );
+        console.log(`\n[Migration] Completed migration for table: ${t}`);
       }
     } else {
       const migration = new IntToBigIntMigration(database, {

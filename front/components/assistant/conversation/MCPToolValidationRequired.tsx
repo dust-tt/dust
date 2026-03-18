@@ -96,7 +96,7 @@ export function MCPToolValidationRequired({
     const args = blockedAction.argumentsRequiringApproval ?? [];
     const argValues = args
       .filter((arg) => blockedAction.inputs[arg] != null)
-      .map((arg) => `${blockedAction.inputs[arg]}`);
+      .map((arg) => JSON.stringify(blockedAction.inputs[arg]));
 
     return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0

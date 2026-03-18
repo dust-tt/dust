@@ -461,4 +461,58 @@ describe("validateJsonSchema", () => {
     });
     expect(result.isValid).toBe(true);
   });
+
+  // Schema where top-level "required" references fields that only exist inside
+  // a nested array's items, not at the root properties level.
+  const schemaWithRequiredAtWrongLevel = {
+    type: "object",
+    properties: {
+      calls: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            value: { type: "string" },
+          },
+        },
+      },
+    },
+    required: ["name", "value"], // wrong: "name" and "value" are not root properties
+  };
+
+  it("should accept schema with required at wrong level when enforceRequiredFields=false (default)", () => {
+    const result = validateJsonSchema(schemaWithRequiredAtWrongLevel);
+    expect(result.isValid).toBe(true);
+  });
+
+  it("should reject schema with required at wrong level when enforceRequiredFields=true", () => {
+    const result = validateJsonSchema(schemaWithRequiredAtWrongLevel, {
+      enforceRequiredFields: true,
+    });
+    expect(result.isValid).toBe(false);
+  });
+
+  it("should accept schema with required correctly nested when enforceRequiredFields=true", () => {
+    const result = validateJsonSchema(
+      {
+        type: "object",
+        properties: {
+          calls: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["name", "value"],
+              properties: {
+                name: { type: "string" },
+                value: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      { enforceRequiredFields: true }
+    );
+    expect(result.isValid).toBe(true);
+  });
 });

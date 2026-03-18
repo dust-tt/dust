@@ -158,6 +158,7 @@ export function ExtensionAuthProvider({
       isBuilder: isBuilder(workspace),
       featureFlags,
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
+      providersHealth: null,
     };
   }, [user, workspace, featureFlags]);
 
