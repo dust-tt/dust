@@ -6,6 +6,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
 import type { GetProviderCredentialsResponseBody } from "@app/pages/api/w/[wId]/provider_credentials";
 import type {
   ProviderCredentialBody,
@@ -97,6 +98,7 @@ export function useSaveProviderCredential({
         });
 
         await mutate(baseProviderCredentialsApiUrl(owner.sId));
+        await mutate(workspaceAuthContextUrl(owner.sId));
 
         return data.providerCredential;
       } catch (e) {
@@ -156,7 +158,7 @@ export function useDeleteProviderCredential({
         });
 
         await mutate(baseProviderCredentialsApiUrl(owner.sId));
-
+        await mutate(workspaceAuthContextUrl(owner.sId));
         return true;
       } catch (e) {
         const message = normalizeError(e).message;

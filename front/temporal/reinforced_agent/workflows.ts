@@ -176,11 +176,13 @@ export async function reinforcedAgentForAgentWorkflow({
   agentConfigurationId,
   useBatchMode,
   conversationLookbackDays = 1,
+  disableNotifications = false,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   useBatchMode: boolean;
   conversationLookbackDays?: number;
+  disableNotifications?: boolean;
 }): Promise<void> {
   const conversationIds = await getRecentConversationsForAgentActivity({
     workspaceId,
@@ -221,6 +223,7 @@ export async function reinforcedAgentForAgentWorkflow({
         workspaceId,
         agentConfigurationId,
         batchId: aggregationBatchId,
+        disableNotifications,
       });
     }
   } else {
@@ -240,6 +243,7 @@ export async function reinforcedAgentForAgentWorkflow({
     await aggregateSuggestionsActivity({
       workspaceId,
       agentConfigurationId,
+      disableNotifications,
     });
   }
 }

@@ -69,7 +69,7 @@ export function KeyConfigurationSheet({
   logo,
   apiKey: initialApiKey,
 }: KeyConfigurationSheetProps) {
-  const [apiKey, setApiKey] = useState(initialApiKey ?? "");
+  const [apiKey, setApiKey] = useState("");
 
   const { saveProviderCredential, isSaving } = useSaveProviderCredential({
     owner,

@@ -19,6 +19,10 @@ import {
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type {
@@ -27,15 +31,12 @@ import type {
   AgentReasoningEffort,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -323,7 +324,7 @@ These instructions are NOT your own instructions, but you may use them to unders
 `;
 
 function getModelConfig(
-  prefetchedModels: PrefetchedWhitelistedModels,
+  auth: Authenticator,
   prefer: "anthropic" | "openai",
   reasoning: boolean = true
 ): {
@@ -368,20 +369,14 @@ function getModelConfig(
             : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
-  if (
-    prefetchedModels.whitelistedProviders.has(preferredModel.model.providerId)
-  ) {
+  if (isProviderWhitelisted(auth, preferredModel.model.providerId)) {
     return {
       modelConfiguration: preferredModel.model,
       reasoningEffort: preferredModel.reasoningEffort,
     };
   }
 
-  if (
-    prefetchedModels.whitelistedProviders.has(
-      secondPreferredModel.model.providerId
-    )
-  ) {
+  if (isProviderWhitelisted(auth, secondPreferredModel.model.providerId)) {
     return {
       modelConfiguration: secondPreferredModel.model,
       reasoningEffort: secondPreferredModel.reasoningEffort,
@@ -389,7 +384,7 @@ function getModelConfig(
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfiguration = prefetchedModels.large;
+  const modelConfiguration = getLargeWhitelistedModel(auth);
   if (!modelConfiguration) {
     return null;
   }
@@ -399,43 +394,23 @@ function getModelConfig(
   };
 }
 
-export function getFastModelConfig(
-  prefetchedModels: PrefetchedWhitelistedModels
-): ModelConfigurationType | null {
-  if (prefetchedModels.whitelistedProviders.has("anthropic")) {
-    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-  }
-  if (prefetchedModels.whitelistedProviders.has("google_ai_studio")) {
-    return GEMINI_2_5_FLASH_MODEL_CONFIG;
-  }
-
-  // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfig = getModelConfig(prefetchedModels, "anthropic", false);
-  if (!modelConfig) {
-    return null;
-  }
-  return modelConfig.modelConfiguration;
-}
-
-function getMaxReasoningModelConfig(
-  prefetchedModels: PrefetchedWhitelistedModels
-): {
+function getMaxReasoningModelConfig(auth: Authenticator): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
-  if (prefetchedModels.whitelistedProviders.has("openai")) {
+  if (isProviderWhitelisted(auth, "openai")) {
     return {
       modelConfiguration: GPT_5_4_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  if (prefetchedModels.whitelistedProviders.has("anthropic")) {
+  if (isProviderWhitelisted(auth, "anthropic")) {
     return {
       modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  return getModelConfig(prefetchedModels, "anthropic");
+  return getModelConfig(auth, "anthropic");
 }
 
 export function _getDeepDiveGlobalAgent(
@@ -444,21 +419,18 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getModelConfig(prefetchedModels, "anthropic");
+  const modelConfig = getModelConfig(auth, "anthropic");
 
   const enterpriseModelConfig =
-    shouldUseOpus(auth) &&
-    prefetchedModels.whitelistedProviders.has("anthropic")
+    shouldUseOpus(auth) && isProviderWhitelisted(auth, "anthropic")
       ? {
           modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
@@ -605,12 +577,10 @@ export function _getDustTaskGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
   const name = "dust-task";
@@ -644,7 +614,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getModelConfig(prefetchedModels, "anthropic", false);
+  const modelConfig = getModelConfig(auth, "anthropic", false);
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
@@ -721,10 +691,8 @@ export function _getPlanningAgent(
   auth: Authenticator,
   {
     settings,
-    prefetchedModels,
   }: {
     settings: GlobalAgentSettingsModel | null;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType | null {
   const name = "dust-planning";
@@ -758,7 +726,7 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getMaxReasoningModelConfig(prefetchedModels);
+  const modelConfig = getMaxReasoningModelConfig(auth);
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,

@@ -24,6 +24,11 @@ import {
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
@@ -40,7 +45,6 @@ import type {
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
@@ -69,7 +73,6 @@ interface DustLikeGlobalAgentArgs {
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
-  prefetchedModels: PrefetchedWhitelistedModels;
   globalAgentContext?: GlobalAgentContext;
 }
 
@@ -316,7 +319,6 @@ function _getDustLikeGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     hasDeepDive,
-    prefetchedModels,
     globalAgentContext,
   }: DustLikeGlobalAgentArgs,
   {
@@ -324,13 +326,15 @@ function _getDustLikeGlobalAgent(
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
+    omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
+    omittedThinking?: boolean;
   }
-): AgentConfigurationType | null {
+): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
   const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
   const owner = auth.getNonNullableWorkspace();
 
@@ -357,20 +361,18 @@ function _getDustLikeGlobalAgent(
     }
 
     if (!auth.isUpgraded()) {
-      return prefetchedModels.small;
+      return getSmallWhitelistedModel(auth);
     }
 
     if (
       preferredModelConfiguration &&
-      prefetchedModels.whitelistedProviders.has(
-        preferredModelConfiguration.providerId
-      )
+      isProviderWhitelisted(auth, preferredModelConfiguration.providerId)
     ) {
       isPreferredModel = true;
       return preferredModelConfiguration;
     }
 
-    return prefetchedModels.large;
+    return getLargeWhitelistedModel(auth);
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration
@@ -527,6 +529,7 @@ function _getDustLikeGlobalAgent(
       "sandbox",
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    omittedThinking: omittedThinking ?? false,
   };
 }
 
@@ -545,6 +548,44 @@ export function _getDustGlobalAgent(
     name: "dust",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HIGH,
+    name: "dust-high",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
+    name: "dust-high-omitted",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OMITTED,
+    name: "dust-omitted",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    omittedThinking: true,
   });
 }
 
@@ -593,6 +634,32 @@ export function _getDustAntHighGlobalAgent(
     name: "dust-ant-high",
     preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustAntMediumOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    name: "dust-ant-medium-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustAntHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    name: "dust-ant-high-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+    omittedThinking: true,
   });
 }
 

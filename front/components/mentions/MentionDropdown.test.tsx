@@ -32,14 +32,14 @@ vi.mock("@dust-tt/sparkle", () => {
       <button onClick={onClick}>{label}</button>
     </div>
   );
-  const ChatBubbleBottomCenterTextIcon = () => null;
+  const ChatBubbleBottomCenterPlusIcon = () => null;
   const EyeIcon = () => null;
   return {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
-    ChatBubbleBottomCenterTextIcon,
+    ChatBubbleBottomCenterPlusIcon,
     EyeIcon,
   };
 });

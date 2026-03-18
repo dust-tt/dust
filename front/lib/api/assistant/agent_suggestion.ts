@@ -93,7 +93,7 @@ export async function getSuggestedAgentsForContent(
   }
 
   // TODO(daphne): See if we can put Flash 2 as the default model.
-  const providers = await getWhitelistedProviders(auth);
+  const providers = getWhitelistedProviders(auth);
   if (providers.has("google_ai_studio")) {
     model = GEMINI_2_5_FLASH_MODEL_CONFIG;
   }

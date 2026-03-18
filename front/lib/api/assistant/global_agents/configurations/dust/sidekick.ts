@@ -6,13 +6,17 @@ import type {
   PrefetchedDataSourcesType,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import type { PrefetchedWhitelistedModels } from "@app/types/assistant/assistant";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
@@ -39,7 +43,7 @@ Treat <agent_workflow> as your primary instruction set. Other sections after tha
 Follow this process for every interaction:
 
 Step 1: ALWAYS call \`get_agent_config\`. You risk outdated suggestions if you skip this even once.
-The ONLY exception is the first message of a conversation when it is a new agent. NEVER skip this step otherwise.
+The ONLY exception is the first message of a conversation. NEVER call it on the first message, but NEVER skip this step otherwise.
 
 Step 2: Understand the agent's workflow
 Reason about the agent based on the output of \`get_agent_config\`. Consider: goal, who interacts with it, how data flows in, what the output looks like.
@@ -461,13 +465,11 @@ export function _getSidekickGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     globalAgentContext,
-    prefetchedModels,
   }: {
     sidekickContext: SidekickContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     globalAgentContext?: GlobalAgentContext;
-    prefetchedModels: PrefetchedWhitelistedModels;
   }
 ): AgentConfigurationType {
   const companyDataAction = getCompanyDataAction(
@@ -495,10 +497,10 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? prefetchedModels.whitelistedProviders.has("anthropic")
+      ? isProviderWhitelisted(auth, "anthropic")
         ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-        : prefetchedModels.small
-      : prefetchedModels.large;
+        : getSmallWhitelistedModel(auth)
+      : getLargeWhitelistedModel(auth);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,

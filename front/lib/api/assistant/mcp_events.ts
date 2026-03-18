@@ -26,7 +26,7 @@ export async function* getMCPEventsForServer(
   const channelId = getMCPServerChannelId(auth, { mcpServerId });
 
   const callbackReader = createCallbackReader<EventPayload | "close">();
-  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+  let { history, unsubscribe } = await getRedisHybridManager().subscribe(
     channelId,
     callbackReader.callback,
     "mcp_events",
@@ -36,15 +36,19 @@ export async function* getMCPEventsForServer(
   // Unsubscribe if the signal is aborted.
   signal.addEventListener("abort", unsubscribe, { once: true });
 
-  // Yield the history based on the lastEventId.
-  for (const event of history) {
-    yield {
-      eventId: event.id,
-      data: JSON.parse(event.message.payload),
-    };
-  }
-
   try {
+    // Yield the history based on the lastEventId.
+    for (const event of history) {
+      yield {
+        eventId: event.id,
+        data: JSON.parse(event.message.payload),
+      };
+    }
+
+    // Free history entries: V8 retains all locals across `await` in async generators,
+    // pinning large event payloads for the entire SSE connection lifetime.
+    history = [];
+
     // Do not loop forever, we will timeout after some time to avoid blocking the load balancer.
     while (true) {
       if (signal.aborted) {

@@ -83,15 +83,18 @@ function setupMocksForHighConfidenceRename() {
     new Ok({
       actions: [
         {
-          name: "analyze_conversation",
+          name: "suggest_actions",
           arguments: {
             rename_confidence: 85,
             new_title: "Better Title",
+            rename_rationale: "The current title is not descriptive enough.",
             agent_confidence: 0,
             agent_name: "",
             agent_prompt: "",
+            agent_rationale: "",
             frame_confidence: 0,
             frame_prompt: "",
+            frame_rationale: "",
           },
         },
       ],
@@ -150,6 +153,7 @@ describe("analyzeConversation", () => {
     expect(suggestions[0].suggestionType).toBe("rename_title");
     expect(suggestions[0].metadata).toEqual({
       suggestedTitle: "Better Title",
+      rationale: "The current title is not descriptive enough.",
     });
     expect(suggestions[0].status).toBe("pending");
     expect(suggestions[0].sourceMessageId).toBe(message!.id);
@@ -162,7 +166,10 @@ describe("analyzeConversation", () => {
         type: "butler_suggestion_created",
         suggestion: expect.objectContaining({
           suggestionType: "rename_title",
-          metadata: { suggestedTitle: "Better Title" },
+          metadata: {
+            suggestedTitle: "Better Title",
+            rationale: "The current title is not descriptive enough.",
+          },
           sourceMessageSId: message!.sId,
         }),
       }),
@@ -189,15 +196,18 @@ describe("analyzeConversation", () => {
       new Ok({
         actions: [
           {
-            name: "analyze_conversation",
+            name: "suggest_actions",
             arguments: {
               rename_confidence: 40,
               new_title: "Some Title",
+              rename_rationale: "",
               agent_confidence: 0,
               agent_name: "",
               agent_prompt: "",
+              agent_rationale: "",
               frame_confidence: 0,
               frame_prompt: "",
+              frame_rationale: "",
             },
           },
         ],
@@ -235,15 +245,18 @@ describe("analyzeConversation", () => {
       new Ok({
         actions: [
           {
-            name: "analyze_conversation",
+            name: "suggest_actions",
             arguments: {
               rename_confidence: 90,
               new_title: "  test conversation  ",
+              rename_rationale: "",
               agent_confidence: 0,
               agent_name: "",
               agent_prompt: "",
+              agent_rationale: "",
               frame_confidence: 0,
               frame_prompt: "",
+              frame_rationale: "",
             },
           },
         ],
@@ -318,15 +331,18 @@ describe("analyzeConversation", () => {
       new Ok({
         actions: [
           {
-            name: "analyze_conversation",
+            name: "suggest_actions",
             arguments: {
               rename_confidence: 20,
               new_title: "",
+              rename_rationale: "",
               agent_confidence: 85,
               agent_name: "CodeHelper",
               agent_prompt: "Can you help me debug this issue?",
+              agent_rationale: "This agent can help debug the issue.",
               frame_confidence: 0,
               frame_prompt: "",
+              frame_rationale: "",
             },
           },
         ],
@@ -347,6 +363,7 @@ describe("analyzeConversation", () => {
       agentSId: "agent-1",
       agentName: "CodeHelper",
       prompt: "Can you help me debug this issue?",
+      rationale: "This agent can help debug the issue.",
     });
   });
 
@@ -376,15 +393,18 @@ describe("analyzeConversation", () => {
       new Ok({
         actions: [
           {
-            name: "analyze_conversation",
+            name: "suggest_actions",
             arguments: {
               rename_confidence: 85,
               new_title: "Better Title",
+              rename_rationale: "The current title is not descriptive enough.",
               agent_confidence: 80,
               agent_name: "CodeHelper",
               agent_prompt: "Can you help?",
+              agent_rationale: "This agent can help with your question.",
               frame_confidence: 0,
               frame_prompt: "",
+              frame_rationale: "",
             },
           },
         ],
@@ -432,15 +452,18 @@ describe("analyzeConversation", () => {
       new Ok({
         actions: [
           {
-            name: "analyze_conversation",
+            name: "suggest_actions",
             arguments: {
               rename_confidence: 20,
               new_title: "",
+              rename_rationale: "",
               agent_confidence: 90,
               agent_name: "NonExistentAgent",
               agent_prompt: "Help me",
+              agent_rationale: "This agent could help.",
               frame_confidence: 0,
               frame_prompt: "",
+              frame_rationale: "",
             },
           },
         ],

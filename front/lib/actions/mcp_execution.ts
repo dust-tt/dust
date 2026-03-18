@@ -159,12 +159,13 @@ export async function processToolResults(
     conversationId: conversation.sId,
   };
 
+  const timestamp = Date.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
     file: FileResource | null;
   }[] = await concurrentExecutor(
     toolCallResultContent,
-    async (block) => {
+    async (block, idx) => {
       switch (block.type) {
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
@@ -172,7 +173,7 @@ export async function processToolResults(
             computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE_BYTES &&
             toolConfiguration.mcpServerName !== "conversation_files"
           ) {
-            const fileName = `${toolConfiguration.mcpServerName}_${Date.now()}.txt`;
+            const fileName = `${toolConfiguration.mcpServerName}_${timestamp}_${idx}.txt`;
             const snippet =
               block.text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
               "... (truncated)";
@@ -206,7 +207,7 @@ export async function processToolResults(
         case "image": {
           const fileName = isResourceWithName(block)
             ? block.name
-            : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as any)[0]}`;
+            : `generated-image-${timestamp}_${idx}${extensionsForContentType(block.mimeType as any)[0]}`;
 
           return handleBase64Upload(auth, {
             base64Data: block.data,

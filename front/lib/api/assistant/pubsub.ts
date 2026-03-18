@@ -35,7 +35,7 @@ export async function* getConversationEvents({
   const pubsubChannel = getConversationChannelId(conversationId);
 
   const callbackReader = createCallbackReader<EventPayload | "close">();
-  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+  let { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
     callbackReader.callback,
     "conversation_events",
@@ -45,14 +45,17 @@ export async function* getConversationEvents({
   // Unsubscribe if the signal is aborted
   signal.addEventListener("abort", unsubscribe, { once: true });
 
-  for (const event of history) {
-    yield {
-      eventId: event.id,
-      data: JSON.parse(event.message.payload),
-    };
-  }
-
   try {
+    for (const event of history) {
+      yield {
+        eventId: event.id,
+        data: JSON.parse(event.message.payload),
+      };
+    }
+    // Free history entries: V8 retains all locals across `await` in async generators,
+    // pinning large event payloads for the entire SSE connection lifetime.
+    history = [];
+
     // As most clients always listen to conversation events, we have a longer timeout to limit the overhead of initiating a new subscription.
     // See https://dust4ai.slack.com/archives/C050SM8NSPK/p1757577149634519
     const TIMEOUT = 180000; // 3 minutes
@@ -159,7 +162,7 @@ export async function* getMessagesEvents(
   const TIMEOUT = 60000; // 1 minute
 
   const callbackReader = createCallbackReader<EventPayload | "close">();
-  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+  let { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
     callbackReader.callback,
     "message_events",
@@ -176,6 +179,9 @@ export async function* getMessagesEvents(
         data: JSON.parse(event.message.payload),
       };
     }
+    // Free history entries: V8 retains all locals across `await` in async generators,
+    // pinning large event payloads for the entire SSE connection lifetime.
+    history = [];
 
     // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
     while (Date.now() - start < TIMEOUT) {

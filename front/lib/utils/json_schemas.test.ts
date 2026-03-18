@@ -2,7 +2,11 @@
 
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ensurePathExists, setValueAtPath } from "@app/lib/utils/json_schemas";
+import {
+  ensurePathExists,
+  setValueAtPath,
+  validateJsonSchema,
+} from "@app/lib/utils/json_schemas";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
@@ -389,5 +393,126 @@ describe("JSON Schema Utilities", () => {
         expect(Object.keys(result)).toStrictEqual([]);
       }
     });
+  });
+});
+
+// Schema where "required" is misplaced inside "properties" instead of at the object level.
+const SCHEMA_WITH_REQUIRED_INSIDE_PROPERTIES = {
+  type: "object",
+  properties: {
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Name of the item.",
+          },
+          // "required" is incorrectly placed here, inside "properties"
+          required: ["name", "value"],
+          value: {
+            type: "string",
+            description: "Value of the item.",
+          },
+          active: {
+            type: "boolean",
+            description: "Whether the item is active.",
+          },
+        },
+      },
+    },
+  },
+};
+
+describe("validateJsonSchema", () => {
+  it("should reject schema with misplaced required inside properties", () => {
+    const result = validateJsonSchema(SCHEMA_WITH_REQUIRED_INSIDE_PROPERTIES);
+    expect(result.isValid).toBe(false);
+  });
+
+  it("should accept a valid schema", () => {
+    const result = validateJsonSchema({
+      type: "object",
+      required: ["name", "value"],
+      properties: {
+        name: { type: "string" },
+        value: { type: "string" },
+      },
+    });
+    expect(result.isValid).toBe(true);
+  });
+
+  it("should accept a valid nested schema with items", () => {
+    const result = validateJsonSchema({
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["name"],
+            properties: {
+              name: { type: "string" },
+            },
+          },
+        },
+      },
+    });
+    expect(result.isValid).toBe(true);
+  });
+
+  // Schema where top-level "required" references fields that only exist inside
+  // a nested array's items, not at the root properties level.
+  const schemaWithRequiredAtWrongLevel = {
+    type: "object",
+    properties: {
+      calls: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            value: { type: "string" },
+          },
+        },
+      },
+    },
+    required: ["name", "value"], // wrong: "name" and "value" are not root properties
+  };
+
+  it("should accept schema with required at wrong level when enforceRequiredFields=false (default)", () => {
+    const result = validateJsonSchema(schemaWithRequiredAtWrongLevel);
+    expect(result.isValid).toBe(true);
+  });
+
+  it("should reject schema with required at wrong level when enforceRequiredFields=true", () => {
+    const result = validateJsonSchema(schemaWithRequiredAtWrongLevel, {
+      enforceRequiredFields: true,
+    });
+    expect(result.isValid).toBe(false);
+  });
+
+  it("should accept schema with required correctly nested when enforceRequiredFields=true", () => {
+    const result = validateJsonSchema(
+      {
+        type: "object",
+        properties: {
+          calls: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["name", "value"],
+              properties: {
+                name: { type: "string" },
+                value: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      { enforceRequiredFields: true }
+    );
+    expect(result.isValid).toBe(true);
   });
 });

@@ -228,16 +228,19 @@ function BackendSearch({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const handleClearSearch = React.useCallback(() => {
-    searchParam.setParam(undefined);
-    setSearchValue("");
-    setNodeOrUrlCandidate(null);
-  }, [searchParam, setSearchValue]);
-
   const handleSearchChange = (value: string) => {
     searchParam.setParam(value);
     setSearchValue(value);
   };
+
+  // Clear local search state after navigating into a folder. Intentionally does
+  // not call searchParam.setParam(undefined): that shallow-pushes to the current
+  // pathname, racing with the folder navigation push and overriding it when
+  // invoked from the category page (see tasks#7098).
+  const handleClearSearchState = React.useCallback(() => {
+    setSearchValue("");
+    setNodeOrUrlCandidate(null);
+  }, [setSearchValue]);
 
   // Check if the search term is a URL
   React.useEffect(() => {
@@ -463,7 +466,7 @@ function BackendSearch({
               isLoading={isSearchLoading}
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
-              onClearSearch={handleClearSearch}
+              onClearSearchState={handleClearSearchState}
               sorting={sorting}
               setSorting={handleSortingChange}
               scrollableDataTableRef={scrollableDataTableRef}
@@ -557,7 +560,7 @@ interface SearchResultsTableProps {
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
-  onClearSearch: () => void;
+  onClearSearchState: () => void;
   scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
@@ -575,7 +578,7 @@ function SearchResultsTable({
   isLoading,
   onOpenDocument,
   setEffectiveContentNode,
-  onClearSearch,
+  onClearSearchState,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useAppRouter();
@@ -677,7 +680,7 @@ function SearchResultsTable({
                   ? baseUrl
                   : `${baseUrl}?parentId=${parentId}`;
               void router.push(url);
-              onClearSearch();
+              onClearSearchState();
             }
           },
         }),
@@ -698,7 +701,7 @@ function SearchResultsTable({
       };
     });
   }, [
-    onClearSearch,
+    onClearSearchState,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,

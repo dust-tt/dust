@@ -22,11 +22,20 @@ export function isSupportedModel(
   model: unknown,
   checkProvider: boolean = true
 ): model is SupportedModel {
-  const maybeSupportedModel = model as SupportedModel;
+  if (
+    typeof model !== "object" ||
+    model === null ||
+    !("modelId" in model) ||
+    typeof model.modelId !== "string"
+  ) {
+    return false;
+  }
+
   return SUPPORTED_MODEL_CONFIGS.some(
     (m) =>
-      m.modelId === maybeSupportedModel.modelId &&
-      (!checkProvider || m.providerId === maybeSupportedModel.providerId)
+      m.modelId === model.modelId &&
+      (!checkProvider ||
+        ("providerId" in model && m.providerId === model.providerId))
   );
 }
 
@@ -44,6 +53,9 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_OMITTED = "dust-omitted",
+  DUST_HIGH = "dust-high",
+  DUST_HIGH_OMITTED = "dust-high-omitted",
   DUST_EDGE = "dust-edge",
   DUST_QUICK = "dust-quick",
   DUST_QUICK_MEDIUM = "dust-quick-medium",
@@ -57,6 +69,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
+  DUST_ANT_MEDIUM_OMITTED = "dust-ant-medium-omitted",
+  DUST_ANT_HIGH_OMITTED = "dust-ant-high-omitted",
   DUST_KIMI = "dust-kimi",
   DUST_KIMI_MEDIUM = "dust-kimi-medium",
   DUST_KIMI_HIGH = "dust-kimi-high",

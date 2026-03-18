@@ -35,6 +35,7 @@ import type {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
+import compact from "lodash/compact";
 
 function userContentToParam(
   content: Content
@@ -60,8 +61,14 @@ function assistantContentToParam(
   content:
     | AgentTextContentType
     | AgentReasoningContentType
-    | AgentFunctionCallContentType
-): TextBlockParam | ImageBlockParam | ThinkingBlockParam | ToolUseBlockParam {
+    | AgentFunctionCallContentType,
+  omittedThinking: boolean
+):
+  | TextBlockParam
+  | ImageBlockParam
+  | ThinkingBlockParam
+  | ToolUseBlockParam
+  | undefined {
   switch (content.type) {
     case "text_content":
       return {
@@ -69,6 +76,9 @@ function assistantContentToParam(
         text: content.value,
       };
     case "reasoning":
+      if (omittedThinking) {
+        return;
+      }
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
       const signature = extractEncryptedContentFromMetadata(
         content.value.metadata
@@ -128,9 +138,14 @@ function userMessage(
 function assistantMessage(
   message:
     | AssistantFunctionCallMessageTypeModel
-    | AssistantContentMessageTypeModel
+    | AssistantContentMessageTypeModel,
+  omittedThinking: boolean
 ): MessageParam {
-  const contents = message.contents.map(assistantContentToParam);
+  const contents = compact(
+    message.contents.map((content) =>
+      assistantContentToParam(content, omittedThinking)
+    )
+  );
 
   return {
     role: "assistant",
@@ -140,7 +155,10 @@ function assistantMessage(
 
 export function toMessage(
   message: ModelMessageTypeMultiActionsWithoutContentFragment,
-  { isLast }: { isLast: boolean } = { isLast: false }
+  { isLast, omittedThinking }: { isLast: boolean; omittedThinking: boolean } = {
+    isLast: false,
+    omittedThinking: false,
+  }
 ): MessageParam {
   switch (message.role) {
     case "user":
@@ -148,7 +166,7 @@ export function toMessage(
     case "function":
       return functionMessage(message);
     case "assistant":
-      return assistantMessage(message);
+      return assistantMessage(message, omittedThinking);
     default:
       assertNever(message);
   }

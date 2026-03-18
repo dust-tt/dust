@@ -1,5 +1,6 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -288,6 +289,13 @@ export async function destroyConversation(
   });
 
   await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+  });
+
+  await AgentSuggestionModel.destroy({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,

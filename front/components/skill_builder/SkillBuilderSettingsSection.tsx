@@ -5,6 +5,7 @@ import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
+  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -37,9 +38,14 @@ export function SkillBuilderSettingsSection() {
       {hasFeature("discover_skills") && (
         <Collapsible defaultOpen>
           <CollapsibleTrigger variant="secondary">
-            <span className="text-base text-foreground dark:text-foreground-night">
-              Advanced
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-base text-foreground dark:text-foreground-night">
+                Advanced
+              </span>
+              <Chip color="golden" size="xs">
+                Preview
+              </Chip>
+            </div>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="pt-3">

@@ -169,6 +169,16 @@ async function runEvaluator(
     return null;
   }
 
+  // Inject the evaluator prompt as a trailing user message so the conversation
+  // never ends with an assistant message. Some providers (e.g. Mistral) reject
+  // requests where the last message has the assistant role.
+  // The prompt being duplicated (system + user) is fine — it reinforces the instruction and is semantically correct since the evaluator prompt is the "question" being asked
+  conv.messages.push({
+    role: "user",
+    name: "butler",
+    content: [{ type: "text", text: "prompt" }],
+  });
+
   const res = await runMultiActionsAgent(
     auth,
     {

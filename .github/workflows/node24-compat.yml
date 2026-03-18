@@ -63,6 +63,8 @@ jobs:
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
+      - name: Install Sandbox Tools
+        run: sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd
       - name: Run Tests
         working-directory: front
         env:
@@ -70,7 +72,16 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
+        run: npx tsx admin/db.ts && npm run test:ci -- --outputFile=junit.xml
+      - name: Build Tests Report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: "front/junit.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: "[Node 24] Front Tests Report"
 
   connectors-tsgo:
     name: "[Node 24] connectors typecheck"
@@ -112,3 +123,12 @@ jobs:
           CONNECTORS_DATABASE_URI: "postgres://test:test@localhost:5433/connectors_test"
           NODE_ENV: test
         run: npx tsx src/admin/db.ts && npm run test:ci
+      - name: Build Tests Report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: "**/connectors/junit*.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: "[Node 24] Connectors Tests Report"

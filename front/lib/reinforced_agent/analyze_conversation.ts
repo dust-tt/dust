@@ -4,24 +4,24 @@ import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  type AgentContextSkill,
+  formatAgentContext,
+} from "@app/lib/reinforced_agent/format_agent_context";
+import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
   conversationText: string,
-  toolsAndSkillsContext: string
+  toolsAndSkillsContext: string,
+  agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
-  const descriptionSection = agentConfig.description
-    ? `Description: ${agentConfig.description}`
-    : "";
-  const instructionsSection = agentConfig.instructionsHtml
-    ? `\n### Current instructions\n${agentConfig.instructionsHtml}`
-    : "";
-
   const systemPrompt = `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
 
 ## Your task
@@ -40,10 +40,7 @@ You have three tools available:
 
 You MUST call at least one tool. If no improvements are needed, call suggest_prompt_edits with an empty suggestions array.`;
 
-  const userMessage = `## Agent being analyzed
-Name: ${agentConfig.name}
-${descriptionSection}
-${instructionsSection}
+  const userMessage = `${formatAgentContext(agentConfig, agentSkills)}
 
 ${toolsAndSkillsContext}
 
@@ -78,7 +75,10 @@ export async function buildConversationAnalysisBatchMap(
     return null;
   }
 
-  const toolsAndSkillsContext = await buildToolsAndSkillsContext(auth);
+  const [toolsAndSkillsContext, agentSkills] = await Promise.all([
+    buildToolsAndSkillsContext(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfig),
+  ]);
 
   const batchMap = new Map<string, LLMStreamParameters>();
 
@@ -98,7 +98,8 @@ export async function buildConversationAnalysisBatchMap(
     const prompt = buildAnalysisPrompt(
       agentConfig,
       conversationRes.value.text,
-      toolsAndSkillsContext
+      toolsAndSkillsContext,
+      agentSkills
     );
     batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
   }
@@ -137,16 +138,26 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  const [conversationRes, toolsAndSkillsContext] = await Promise.all([
+  const [
+    conversationRes,
+    conversationResource,
+    toolsAndSkillsContext,
+    agentSkills,
+  ] = await Promise.all([
     getShrinkWrappedConversation(auth, {
       conversationId,
       includeFeedback: true,
     }),
+    ConversationResource.fetchById(auth, conversationId),
     buildToolsAndSkillsContext(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfig),
   ]);
-  if (conversationRes.isErr()) {
+  if (conversationRes.isErr() || !conversationResource) {
     logger.warn(
-      { conversationId, error: conversationRes.error },
+      {
+        conversationId,
+        error: conversationRes.isErr() && conversationRes.error,
+      },
       "ReinforcedAgent: conversation not found"
     );
     return;
@@ -155,7 +166,8 @@ export async function analyzeConversationForReinforcement(
   const prompt = buildAnalysisPrompt(
     agentConfig,
     conversationRes.value.text,
-    toolsAndSkillsContext
+    toolsAndSkillsContext,
+    agentSkills
   );
 
   const createdCount = await runReinforcedAnalysis({
@@ -165,6 +177,7 @@ export async function analyzeConversationForReinforcement(
     source: "synthetic",
     operationType: "reinforced_agent_analyze_conversation",
     contextId: conversationId,
+    conversation: conversationResource,
   });
 
   if (createdCount > 0) {

@@ -505,6 +505,7 @@ export async function runModel(
     responseFormat: agentConfiguration.model.responseFormat,
     metaData: agentConfiguration.model.metaData,
     context: traceContext,
+    omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
       const lastUserMessage = conv.messages.findLast(

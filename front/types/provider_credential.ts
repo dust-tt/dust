@@ -2,6 +2,8 @@ import type { ByokModelProviderIdType } from "@app/types/assistant/models/types"
 import type { ModelId } from "@app/types/shared/model_id";
 import { z } from "zod";
 
+export type ProvidersHealth = Partial<Record<ByokModelProviderIdType, boolean>>;
+
 export type LLMCredentialsType = {
   OPENAI_API_KEY?: string;
   OPENAI_EMBEDDING_API_KEY?: string;

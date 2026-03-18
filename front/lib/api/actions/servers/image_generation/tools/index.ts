@@ -8,11 +8,12 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
-  formatImageResponse,
+  geminiPartsToBase64Images,
   processImageFileIds,
   QUALITY_TO_IMAGE_SIZE,
   sendImageProgressNotification,
   trackGeminiTokenUsage,
+  uploadAndFormatImageResponse,
   validateGeminiImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
@@ -188,7 +189,12 @@ export function createImageGenerationTools(
         });
       }
       generation.end();
-      return formatImageResponse(imageParts, outputName);
+      return uploadAndFormatImageResponse(
+        auth,
+        agentLoopContext,
+        geminiPartsToBase64Images(imageParts),
+        outputName
+      );
     },
   };
 

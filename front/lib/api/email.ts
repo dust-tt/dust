@@ -11,6 +11,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import sgMail from "@sendgrid/mail";
+import { escape } from "html-escaper";
 
 let sgMailClient: typeof sgMail | null = null;
 
@@ -212,6 +213,34 @@ export async function sendCreditUsageAlertEmail({
         <li>Learn more about <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage at Dust</a></li>
       </ul>
       <p>Please reply to this email if you have any questions.</p>`,
+  });
+}
+
+export async function sendMCPGlobalSharingReconfigurationEmail({
+  email,
+  workspaceName,
+  toolName,
+  agentNames,
+}: {
+  email: string;
+  workspaceName: string;
+  toolName: string;
+  agentNames: string[];
+}): Promise<Result<void, Error>> {
+  const agentsList = agentNames
+    .map((agentName) => `<li>${escape(agentName)}</li>`)
+    .join("");
+
+  return sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: `[Dust] Agents to reconfigure after sharing ${toolName}`,
+    body: `
+      <p>You're receiving this as Admin of the Dust workspace <strong>${escape(workspaceName)}</strong>.</p>
+      <p>The tool <strong>${escape(toolName)}</strong> was just made available to all workspace members.</p>
+      <p>This removes older space-specific versions of the same tool. The following agents may need to be reconfigured:</p>
+      <ul>${agentsList}</ul>
+      <p>Please review these agents and re-add the tool if needed.</p>`,
   });
 }
 

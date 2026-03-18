@@ -223,11 +223,31 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async writeFile(
-    _providerId: string,
-    _path: string,
-    _content: Buffer
-  ): Promise<void> {
-    throw new Error("writeFile is not implemented yet.");
+    providerId: string,
+    path: string,
+    data: ArrayBuffer
+  ): Promise<Result<void, Error>> {
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      // Note: this creates the necessary directories if missing.
+      await sandbox.files.write(path, data);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+
+    return new Ok(undefined);
   }
 
   async readFile(_providerId: string, _path: string): Promise<Buffer> {

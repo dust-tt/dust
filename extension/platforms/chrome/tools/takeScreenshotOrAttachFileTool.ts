@@ -6,6 +6,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { normalizeError } from "@extension/shared/lib/utils";
 import type { CaptureService } from "@extension/shared/services/capture";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Max characters of extracted text to include inline in the tool result.
 // The full content is also indexed in the conversation JIT data source.
@@ -104,11 +105,11 @@ async function uploadPdf(
  * Captures a screenshot or attaches the file content of a browser tab.
  */
 export async function takeScreenshotOrAttachFileTool({
-  tabId,
+  tabIds,
   captureService,
   workspaceId,
 }: {
-  tabId: number;
+  tabIds: number[];
   captureService: CaptureService | null;
   workspaceId: string;
 }): Promise<ToolHandlerResult> {
@@ -116,70 +117,91 @@ export async function takeScreenshotOrAttachFileTool({
     return new Err(new MCPError("Capture service not available."));
   }
 
-  try {
-    const result = await captureService.handleOperation(
-      "capture-page-content",
-      { includeContent: false, includeCapture: true, tabId }
-    );
+  const results: CallToolResult["content"] = [];
+  const errors: Error[] = [];
 
-    if (result.isErr()) {
-      return new Err(new MCPError(`Error: ${result.error.message}`));
-    }
+  if (tabIds.length === 0) {
+    return new Err(new MCPError("No tabs specified."));
+  }
 
-    const { captures, fileData } = result.value;
+  for (const tabId of tabIds) {
+    try {
+      const result = await captureService.handleOperation(
+        "capture-page-content",
+        { includeContent: false, includeCapture: true, tabId }
+      );
 
-    if (fileData) {
-      const { base64, mimeType, url } = fileData;
+      if (result.isErr()) {
+        errors.push(new MCPError(`Error: ${result.error.message}`));
+        continue;
+      }
 
-      if (mimeType === "application/pdf") {
-        const data = await uploadPdf(workspaceId, base64, mimeType, url);
-        if (data) {
-          // The MCP SDK strips non-standard fields from resource objects during
-          // parsing. We store Dust-specific fields (fileId, title, etc.) in _meta
-          // so they survive the MCP protocol round-trip. The server will move
-          // them back to the root level in mcp_actions.ts (tryCallMCPTool).
-          const resource = {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            uri: `/api/w/${workspaceId}/files/${data.fileId}`,
-            text: data.extractedText ?? `PDF from ${url}`,
-            _meta: {
-              fileId: data.fileId,
-              title: data.fileName,
-              contentType: mimeType,
-              snippet: data.extractedText
-                ? data.extractedText.slice(0, 500)
-                : null,
-            },
-          };
-          return new Ok([{ type: "resource" as const, resource }]);
+      const { captures, fileData } = result.value;
+
+      if (fileData) {
+        const { base64, mimeType, url } = fileData;
+
+        if (mimeType === "application/pdf") {
+          const data = await uploadPdf(workspaceId, base64, mimeType, url);
+          if (data) {
+            // The MCP SDK strips non-standard fields from resource objects during
+            // parsing. We store Dust-specific fields (fileId, title, etc.) in _meta
+            // so they survive the MCP protocol round-trip. The server will move
+            // them back to the root level in mcp_actions.ts (tryCallMCPTool).
+            const resource = {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: `/api/w/${workspaceId}/files/${data.fileId}`,
+              text: data.extractedText ?? `PDF from ${url}`,
+              _meta: {
+                fileId: data.fileId,
+                title: data.fileName,
+                contentType: mimeType,
+                snippet: data.extractedText
+                  ? data.extractedText.slice(0, 500)
+                  : null,
+              },
+            };
+            results.push({ type: "resource" as const, resource });
+            continue;
+          }
+          errors.push(
+            new MCPError(
+              "Failed to process the PDF. It may be too large or inaccessible."
+            )
+          );
+          continue;
         }
-        return new Err(
-          new MCPError(
-            "Failed to process the PDF. It may be too large or inaccessible."
-          )
-        );
+
+        // For images, return the raw image so the model can analyze it visually.
+        if (mimeType.startsWith("image/")) {
+          results.push({ type: "image" as const, data: base64, mimeType });
+          continue;
+        }
       }
 
-      // For images, return the raw image so the model can analyze it visually.
-      if (mimeType.startsWith("image/")) {
-        return new Ok([{ type: "image" as const, data: base64, mimeType }]);
+      if (!captures || captures.length === 0) {
+        errors.push(new MCPError("No screenshot captured."));
+        continue;
       }
-    }
 
-    if (!captures || captures.length === 0) {
-      return new Err(new MCPError("No screenshot captured."));
+      results.push(
+        ...captures.map((dataUrl) => {
+          const [header, data] = dataUrl.split(",");
+          const mimeType = header.replace("data:", "").replace(";base64", "");
+          return { type: "image" as const, data, mimeType };
+        })
+      );
+    } catch (error) {
+      errors.push(normalizeError(error));
     }
+  }
 
-    return new Ok(
-      captures.map((dataUrl) => {
-        const [header, data] = dataUrl.split(",");
-        const mimeType = header.replace("data:", "").replace(";base64", "");
-        return { type: "image" as const, data, mimeType };
-      })
-    );
-  } catch (error) {
+  if (results.length === 0) {
     return new Err(
-      new MCPError(`Failed to capture page: ${normalizeError(error).message}`)
+      new MCPError(errors.map((error) => error.message).join("\n")) ??
+        "An unknown error occurred while capturing page content."
     );
   }
+
+  return new Ok(results);
 }

@@ -29,15 +29,13 @@ function mockCredentials(
     isHealthy: boolean;
   }>
 ) {
-  vi.mocked(ProviderCredentialResource.listByWorkspace).mockResolvedValue(
-    credentials.map(
-      (c) =>
-        ({
-          providerId: c.providerId,
-          isHealthy: c.isHealthy,
-        }) as unknown as ProviderCredentialResource
-    )
-  );
+  const health = Object.fromEntries(
+    credentials.map((c) => [c.providerId, c.isHealthy])
+  ) as Partial<Record<ModelProviderIdType, boolean>>;
+
+  vi.mocked(
+    ProviderCredentialResource.fetchProvidersHealthByWorkspaceId
+  ).mockResolvedValue(health);
 }
 
 function createMockModel(
@@ -104,7 +102,7 @@ describe("getWhitelistedProviders", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = await getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(auth);
     expect(providers).toEqual(new Set(MODEL_PROVIDER_IDS));
   });
 
@@ -114,44 +112,42 @@ describe("getWhitelistedProviders", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = await getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(auth);
     expect(providers).toEqual(new Set(["anthropic", "noop"]));
   });
 
-  // TODO (BYOK): unskip
-  it.skip("BYOK: only includes providers with healthy keys plus noop", async () => {
+  it("BYOK: only includes providers with configured keys plus noop", async () => {
     const workspace = await WorkspaceFactory.byok();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mockCredentials([
       { providerId: "openai", isHealthy: true },
       { providerId: "anthropic", isHealthy: false },
     ]);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = await getWhitelistedProviders(auth);
-    expect(providers).toEqual(new Set(["openai", "noop"]));
+    const providers = getWhitelistedProviders(auth);
+    expect(providers).toEqual(new Set(["openai", "anthropic", "noop"]));
   });
 
   it("BYOK + restricted whitelist: healthy key for non-whitelisted provider is ignored", async () => {
     const workspace = await WorkspaceFactory.byok({
       whiteListedProviders: ["anthropic"],
     });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mockCredentials([
       { providerId: "openai", isHealthy: true },
       { providerId: "anthropic", isHealthy: true },
     ]);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = await getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(auth);
     expect(providers).toEqual(new Set(["anthropic", "noop"]));
   });
 
-  // TODO (BYOK): unskip
-  it.skip("BYOK + no keys: only noop is whitelisted", async () => {
+  it("BYOK + no keys: only noop is whitelisted", async () => {
     const workspace = await WorkspaceFactory.byok();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mockCredentials([]);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = await getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(auth);
     expect(providers).toEqual(new Set(["noop"]));
   });
 });

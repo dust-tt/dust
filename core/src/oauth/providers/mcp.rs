@@ -395,24 +395,27 @@ impl Provider for MCPConnectionProvider {
                 // If the MCP server do not return a new refresh token when refreshing an access token.
                 // So we merge the new raw_json information in the existing one to preserve original
                 // refresh token.
-                merged_raw_json["refresh_token"] = serde_json::Value::String(refresh_token.clone());
+                merged_raw_json.insert(
+                    "refresh_token".to_string(),
+                    serde_json::Value::String(refresh_token.clone()),
+                );
                 refresh_token
             }
         };
 
-        merged_raw_json["access_token"] = raw_json["access_token"].clone();
+        merged_raw_json.insert("access_token".to_string(), raw_json["access_token"].clone());
 
         // Only overwrite expires_in and token_type if present in the refresh response.
         if let Some(expires_in_val) = raw_json.get("expires_in") {
-            merged_raw_json["expires_in"] = expires_in_val.clone();
+            merged_raw_json.insert("expires_in".to_string(), expires_in_val.clone());
         }
         if let Some(token_type_val) = raw_json.get("token_type") {
-            merged_raw_json["token_type"] = token_type_val.clone();
+            merged_raw_json.insert("token_type".to_string(), token_type_val.clone());
         }
 
         // If we have a scope, we add it to the merged raw_json.
         if let Some(scope) = scope {
-            merged_raw_json["scope"] = serde_json::Value::String(scope);
+            merged_raw_json.insert("scope".to_string(), serde_json::Value::String(scope));
         }
 
         // In a refresh context there is always a refresh token, so default to 1h if missing.

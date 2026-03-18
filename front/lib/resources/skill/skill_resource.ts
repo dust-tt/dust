@@ -235,6 +235,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this._mcpServerConfigurations.map((config) => config.view);
   }
 
+  getFileAttachments(): readonly FileResource[] {
+    return this.fileAttachments;
+  }
+
   get mcpServerConfigurations(): SkillMCPServerConfiguration[] {
     return this._mcpServerConfigurations;
   }

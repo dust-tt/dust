@@ -53,7 +53,6 @@ import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { ConversationAttachmentsUpdatedEvent } from "@app/lib/notifications/events";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
@@ -157,6 +156,7 @@ interface AgentMessageProps {
   owner: WorkspaceType;
   user: UserType;
   triggeringUser: UserType | null;
+  isOnboardingConversation: boolean;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -174,6 +174,7 @@ export function AgentMessage({
   owner,
   user,
   triggeringUser,
+  isOnboardingConversation,
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -315,7 +316,6 @@ export function AgentMessage({
           case "agent_action_success": {
             const action = eventPayload.data.action;
             if (action.generatedFiles.length > 0) {
-              window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
               void mutateConversationAttachments();
             }
             if (action.internalMCPServerName === "sandbox") {
@@ -579,6 +579,7 @@ export function AgentMessage({
 
   const shouldShowFeedback =
     !isDeleted &&
+    !isOnboardingConversation &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
     agentMessage.configuration.status !== "draft" &&
@@ -852,7 +853,7 @@ export function AgentMessage({
     }
 
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-5">
         {messageContent}
         {footerButtons}
       </div>

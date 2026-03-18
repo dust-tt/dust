@@ -49,7 +49,7 @@ jobs:
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
-      - name: Install Profile Tools
+      - name: Install Sandbox
         run: sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd
       - name: Run Tests
         working-directory: front

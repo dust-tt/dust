@@ -1,6 +1,7 @@
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -35,18 +36,17 @@ import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types"
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
-import { serializeMention } from "@app/lib/mentions/format";
-import {
-  AgentMessageCompletedEvent,
-  ConversationAttachmentsUpdatedEvent,
-} from "@app/lib/notifications/events";
+import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   LightMessageType,
 } from "@app/types/assistant/conversation";
-import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import {
+  isUserMessageType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
@@ -70,6 +70,7 @@ import debounce from "lodash/debounce";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -244,6 +245,8 @@ export const ConversationViewer = ({
   });
   const submitInFlightRef = useRef(false);
 
+  const { setSelectedAgent, setPendingInputText } = useContext(InputBarContext);
+
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
   >(undefined);
@@ -378,18 +381,22 @@ export const ConversationViewer = ({
         }
       }
 
-      // If accepting a call_agent or create_frame suggestion, submit the message with the agent mention.
+      // If accepting a call_agent or create_frame suggestion, pre-fill the input bar
+      // with the agent mention and prompt so the user can review/edit before sending.
       if (
         status === "accepted" &&
         (matchedSuggestion?.suggestionType === "call_agent" ||
           matchedSuggestion?.suggestionType === "create_frame")
       ) {
         const { agentSId, agentName, prompt } = matchedSuggestion.metadata;
-        void submitMessage({
-          input: `${serializeMention({ name: agentName, sId: agentSId })} ${prompt}`,
-          mentions: [{ configurationId: agentSId }],
-          contentFragments: { uploaded: [], contentNodes: [] },
+        setSelectedAgent({
+          id: agentSId,
+          type: "agent",
+          label: agentName,
+          pictureUrl: "",
+          description: "",
         });
+        setPendingInputText(prompt);
       }
 
       // Optimistic update: remove the suggestion from local state.
@@ -413,7 +420,13 @@ export const ConversationViewer = ({
         }
       );
     },
-    [conversationId, owner.sId, suggestionsByMessageSId, submitMessage]
+    [
+      conversationId,
+      owner.sId,
+      suggestionsByMessageSId,
+      setSelectedAgent,
+      setPendingInputText,
+    ]
   );
 
   // Hooks related to conversation events streaming.
@@ -488,7 +501,6 @@ export const ConversationViewer = ({
               void debouncedMarkAsRead(conversationId);
 
               if (userMessage.contentFragments.length > 0) {
-                window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
                 void mutateConversationAttachments();
               }
             }
@@ -846,12 +858,22 @@ export const ConversationViewer = ({
     ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
     : undefined;
 
+  // After reversal in the hook, messages[0] is the oldest page. This only
+  // returns the actual first conversation message when all pages are loaded
+  // (works for onboarding conversations which are short / single-page).
+  const firstMessage = messages.at(-1)?.messages.at(0);
+  const isOnboardingConversation =
+    !!firstMessage &&
+    isUserMessageType(firstMessage) &&
+    firstMessage.context.origin === "onboarding_conversation";
+
   const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
       owner,
       handleSubmit,
       conversation,
+      isOnboardingConversation,
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -870,6 +892,7 @@ export const ConversationViewer = ({
     owner,
     handleSubmit,
     conversation,
+    isOnboardingConversation,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,

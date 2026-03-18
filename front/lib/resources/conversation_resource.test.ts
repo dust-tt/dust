@@ -354,20 +354,26 @@ describe("fetchMCPServerViews", () => {
         remoteMCPServer1.sId
       );
     assert(systemView1, "MCP server view not found");
-    const mcpServerView1 = await MCPServerViewResource.create(authenticator, {
-      systemView: systemView1,
-      space: globalSpace,
-    });
+    const { view: mcpServerView1 } = await MCPServerViewResource.create(
+      authenticator,
+      {
+        systemView: systemView1,
+        space: globalSpace,
+      }
+    );
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         authenticator,
         remoteMCPServer2.sId
       );
     assert(systemView2, "MCP server view not found");
-    const mcpServerView2 = await MCPServerViewResource.create(authenticator, {
-      systemView: systemView2,
-      space: globalSpace,
-    });
+    const { view: mcpServerView2 } = await MCPServerViewResource.create(
+      authenticator,
+      {
+        systemView: systemView2,
+        space: globalSpace,
+      }
+    );
     assert(mcpServerView1, "MCP server view not found");
     assert(mcpServerView2, "MCP server view not found");
 
@@ -417,10 +423,13 @@ describe("fetchMCPServerViews", () => {
         remoteMCPServer.sId
       );
     assert(systemView, "MCP server view not found");
-    const mcpServerView = await MCPServerViewResource.create(authenticator, {
-      systemView,
-      space: globalSpace,
-    });
+    const { view: mcpServerView } = await MCPServerViewResource.create(
+      authenticator,
+      {
+        systemView,
+        space: globalSpace,
+      }
+    );
 
     // Create one enabled and one disabled relationship
     await ConversationResource.upsertMCPServerViews(authenticator, {
@@ -438,10 +447,13 @@ describe("fetchMCPServerViews", () => {
         remoteMCPServer2.sId
       );
     assert(systemView2, "MCP server view not found");
-    const mcpServerView2 = await MCPServerViewResource.create(authenticator, {
-      systemView: systemView2,
-      space: globalSpace,
-    });
+    const { view: mcpServerView2 } = await MCPServerViewResource.create(
+      authenticator,
+      {
+        systemView: systemView2,
+        space: globalSpace,
+      }
+    );
 
     await ConversationResource.upsertMCPServerViews(authenticator, {
       conversation: conversation,
@@ -5120,6 +5132,7 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_skills",
   "agent_message_feedback",
+  "agent_suggestion",
   "conversation_branch",
   "conversation_mcp_server_view",
   "conversation_participant",

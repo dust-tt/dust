@@ -7,7 +7,10 @@
     "rootDir": "src",
     "paths": {
       "@modelcontextprotocol/sdk/*": [
-        "../../node_modules/@modelcontextprotocol/sdk/dist/esm/*"
+        // Workaround to fix invalid type mapping in @modelcontextprotocol/sdk, see https://github.com/modelcontextprotocol/typescript-sdk/pull/1623
+        "../../node_modules/@modelcontextprotocol/sdk/dist/esm/*",
+        // This path is needed to also support the same issue when using dust-hive under .hives folder
+        "../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/*"
       ]
     },
     "outDir": "dist",

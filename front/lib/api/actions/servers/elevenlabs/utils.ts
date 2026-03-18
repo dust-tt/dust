@@ -1,11 +1,14 @@
-import type {
-  VoiceGender,
-  VoiceLanguage,
-  VoiceUseCase,
+import {
+  VOICE_LANGUAGES,
+  type VoiceGender,
+  type VoiceLanguage,
+  type VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 
 interface VoiceDefinition {
@@ -14,122 +17,199 @@ interface VoiceDefinition {
   gender: VoiceGender;
   languages: VoiceLanguage[];
   useCase: VoiceUseCase;
+  score: number;
 }
 
-// Curated list of voices mapped from the provided JSON, restricted to our current
-// VoiceLanguage union. We favor high-quality and broadly applicable options.
-const VOICES: VoiceDefinition[] = [
-  {
-    voiceId: "JBFqnCBsd6RMkjVDRZzb",
-    name: "George",
-    gender: "male",
-    languages: ["english_british", "french", "japanese", "hindi"],
-    useCase: "narrative_story",
-  },
-  {
-    voiceId: "CwhRBWXzGAHq8TQ4Fs17",
-    name: "Roger",
-    gender: "male",
-    languages: ["english_american", "french", "german", "dutch"],
-    useCase: "conversational",
-  },
-  {
-    voiceId: "2EiwWnXFnvU5JabPnv8n",
-    name: "Clyde",
-    gender: "male",
-    languages: ["english_american"],
-    useCase: "characters_animation",
-  },
-  {
-    voiceId: "FGY2WhTYpPnrIDTdsKH5",
-    name: "Laura",
-    gender: "female",
-    languages: ["english_american", "french", "chinese", "german"],
-    useCase: "social_media",
-  },
-  {
-    voiceId: "EXAVITQu4vr4xnSDxMaL",
-    name: "Sarah",
-    gender: "female",
-    languages: ["english_american", "french", "chinese", "hindi"],
-    useCase: "entertainment_tv",
-  },
-  {
-    voiceId: "Xb7hH8MSUJpSbSDYk0k2",
-    name: "Alice",
-    gender: "female",
-    languages: ["english_british", "italian", "french", "japanese", "hindi"],
-    useCase: "advertisement",
-  },
-  {
-    voiceId: "XrExE9yKIg1WjnnlVkGX",
-    name: "Matilda",
-    gender: "female",
-    languages: ["english_american", "italian", "french", "german"],
-    useCase: "informative_educational",
-  },
-  {
-    voiceId: "pFZP5JQG7iQjIQuC4Bku",
-    name: "Lily",
-    gender: "female",
-    languages: ["english_american", "italian", "german", "chinese", "dutch"],
-    useCase: "narrative_story",
-  },
-  {
-    voiceId: "cgSgspJ2msm6clMCkdW9",
-    name: "Jessica",
-    gender: "female",
-    languages: [
-      "english_american",
-      "french",
-      "japanese",
-      "chinese",
-      "german",
-      "hindi",
-    ],
-    useCase: "conversational",
-  },
-  {
-    voiceId: "TX3LPaxmHKxFdv7VOQHJ",
-    name: "Liam",
-    gender: "male",
-    languages: ["english_american", "german", "hindi"],
-    useCase: "social_media",
-  },
-  {
-    voiceId: "bIHbv24MWmeRgasZH58o",
-    name: "Will",
-    gender: "male",
-    languages: ["english_american", "french", "german", "chinese"],
-    useCase: "conversational",
-  },
-  {
-    voiceId: "nPczCjzI2devNBz1zQrb",
-    name: "Brian",
-    gender: "male",
-    languages: ["english_american", "chinese", "german", "dutch", "hindi"],
-    useCase: "social_media",
-  },
-];
+// Maps our VoiceLanguage identifiers to ElevenLabs locale prefixes used in
+// verifiedLanguages[].locale (e.g. "en-US", "fr-FR").
+const LANGUAGE_TO_LOCALE_PREFIX: Record<VoiceLanguage, string[]> = {
+  english_american: ["en-US", "en"],
+  english_british: ["en-GB", "en-UK"],
+  french: ["fr"],
+  german: ["de"],
+  dutch: ["nl"],
+  italian: ["it"],
+  japanese: ["ja"],
+  hindi: ["hi"],
+  chinese: ["zh"],
+  spanish: ["es"],
+  portuguese: ["pt"],
+  korean: ["ko"],
+  arabic: ["ar"],
+  turkish: ["tr"],
+  polish: ["pl"],
+  swedish: ["sv"],
+  russian: ["ru"],
+  indonesian: ["id"],
+  filipino: ["fil", "tl"],
+  thai: ["th"],
+  vietnamese: ["vi"],
+};
 
+function matchesLanguage(
+  locale: string | undefined,
+  language: string | undefined,
+  voiceLanguage: VoiceLanguage
+): boolean {
+  const prefixes = LANGUAGE_TO_LOCALE_PREFIX[voiceLanguage];
+  if (locale) {
+    return prefixes.some(
+      (p) => locale === p || locale.startsWith(`${p}-`) || locale.startsWith(p)
+    );
+  }
+  if (language) {
+    const lc = language.toLowerCase();
+    return prefixes.some(
+      (p) => lc === p.toLowerCase() || lc.startsWith(p.toLowerCase())
+    );
+  }
+  return false;
+}
+
+function extractLanguages(voice: Voice): VoiceLanguage[] {
+  const languages = voice.verifiedLanguages;
+  if (!languages || languages.length === 0) {
+    return [];
+  }
+  const matched = new Set<VoiceLanguage>();
+  for (const vl of languages) {
+    for (const lang of VOICE_LANGUAGES) {
+      if (matchesLanguage(vl.locale, vl.language, lang)) {
+        matched.add(lang);
+      }
+    }
+  }
+  return [...matched];
+}
+
+function normalizeGender(labels: Record<string, string>): VoiceGender {
+  const raw = (labels["gender"] ?? labels["Gender"] ?? "").toLowerCase();
+  if (raw.includes("male") && !raw.includes("female")) {
+    return "male";
+  }
+  return "female";
+}
+
+function inferUseCase(labels: Record<string, string>): VoiceUseCase {
+  const raw = (
+    labels["use case"] ??
+    labels["use_case"] ??
+    labels["Use Case"] ??
+    ""
+  ).toLowerCase();
+  if (raw.match(/narrat|story|audiobook|documentary/)) {
+    return "narrative_story";
+  }
+  if (raw.match(/charact|anime|animation|cartoon|acting/)) {
+    return "characters_animation";
+  }
+  if (raw.match(/social|tiktok|instagram|influencer|shorts/)) {
+    return "social_media";
+  }
+  if (raw.match(/tv|broadcast|film|cinema|entertainment/)) {
+    return "entertainment_tv";
+  }
+  if (raw.match(/ad |ads|advert|commercial|promo/)) {
+    return "advertisement";
+  }
+  if (raw.match(/educat|tutorial|lesson|course|informative|explainer/)) {
+    return "informative_educational";
+  }
+  return "conversational";
+}
+
+function scoreVoice(voice: Voice): number {
+  const category = (voice.category ?? "").toLowerCase();
+  const labels = voice.labels ?? {};
+  const featured = (labels["featured"] ?? "").toLowerCase();
+  let score = 0;
+  if (
+    category.includes("high_quality") ||
+    category.includes("professional") ||
+    category.includes("premade")
+  ) {
+    score += 5;
+  }
+  if (featured === "true" || featured === "yes") {
+    score += 3;
+  }
+  if (voice.previewUrl) {
+    score += 2;
+  }
+  return score;
+}
+
+function toVoiceDefinition(voice: Voice): VoiceDefinition | undefined {
+  const labels = voice.labels ?? {};
+  const languages = extractLanguages(voice);
+  if (languages.length === 0) {
+    return undefined;
+  }
+  return {
+    voiceId: voice.voiceId,
+    name: voice.name ?? "",
+    gender: normalizeGender(labels),
+    languages,
+    useCase: inferUseCase(labels),
+    score: scoreVoice(voice),
+  };
+}
+
+// In-memory cache for fetched voices. Refreshes every 6 hours.
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+let cachedVoices: VoiceDefinition[] | null = null;
+let cacheTimestampMs = 0;
+
+async function fetchVoices(): Promise<VoiceDefinition[]> {
+  const now = Date.now();
+  if (cachedVoices && now - cacheTimestampMs < CACHE_TTL_MS) {
+    return cachedVoices;
+  }
+
+  try {
+    const client = getElevenLabsClient();
+    const resp = await client.voices.getAll();
+    const definitions = resp.voices
+      .map(toVoiceDefinition)
+      .filter((v): v is VoiceDefinition => v !== undefined);
+
+    // Sort by score descending for deterministic best-first selection.
+    definitions.sort(
+      (a, b) => b.score - a.score || a.name.localeCompare(b.name)
+    );
+
+    cachedVoices = definitions;
+    cacheTimestampMs = now;
+
+    logger.info(
+      { voiceCount: definitions.length },
+      "Refreshed ElevenLabs voice cache."
+    );
+
+    return definitions;
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch ElevenLabs voices, using cache.");
+    // Return stale cache if available, otherwise empty.
+    return cachedVoices ?? [];
+  }
+}
+
+// Hardcoded fallbacks used when the API is unreachable and cache is empty.
 const DEFAULT_GENDER_FALLBACK = {
   male: "JBFqnCBsd6RMkjVDRZzb", // George
   female: "cgSgspJ2msm6clMCkdW9", // Jessica
 } as const;
 
-function pickBestCandidate(
-  candidates: VoiceDefinition[]
-): VoiceDefinition | undefined {
+function pickBest(candidates: VoiceDefinition[]): string | undefined {
   if (candidates.length === 0) {
     return undefined;
   }
-  // Prefer high_quality, then featured, then stable alphabetical by name for determinism.
-  return candidates.slice().sort((a, b) => {
-    return a.name.localeCompare(b.name);
-  })[0];
+  // Already sorted by score desc, so first match is best.
+  return candidates[0].voiceId;
 }
 
-export function resolveDefaultVoiceId({
+export async function resolveDefaultVoiceId({
   language,
   gender,
   useCase,
@@ -137,45 +217,43 @@ export function resolveDefaultVoiceId({
   language: VoiceLanguage;
   gender: VoiceGender;
   useCase: VoiceUseCase;
-}): string {
+}): Promise<string> {
+  const voices = await fetchVoices();
+
   // 1) language + useCase + gender
-  let candidates = VOICES.filter(
-    (v) =>
-      v.languages.includes(language) &&
-      v.useCase === useCase &&
-      v.gender === gender
+  let voiceId = pickBest(
+    voices.filter(
+      (v) =>
+        v.languages.includes(language) &&
+        v.useCase === useCase &&
+        v.gender === gender
+    )
   );
-  let chosen = pickBestCandidate(candidates);
-  if (chosen) {
-    return chosen.voiceId;
+  if (voiceId) {
+    return voiceId;
   }
 
-  // 2) language + useCase
-  candidates = VOICES.filter(
-    (v) => v.languages.includes(language) && v.useCase === useCase
+  // 2) language + gender (relax use case)
+  voiceId = pickBest(
+    voices.filter((v) => v.languages.includes(language) && v.gender === gender)
   );
-  chosen = pickBestCandidate(candidates);
-  if (chosen) {
-    return chosen.voiceId;
+  if (voiceId) {
+    return voiceId;
   }
 
-  // 3) language + gender
-  candidates = VOICES.filter(
-    (v) => v.languages.includes(language) && v.gender === gender
-  );
-  chosen = pickBestCandidate(candidates);
-  if (chosen) {
-    return chosen.voiceId;
+  // 3) language only
+  voiceId = pickBest(voices.filter((v) => v.languages.includes(language)));
+  if (voiceId) {
+    return voiceId;
   }
 
-  // 4) language only
-  candidates = VOICES.filter((v) => v.languages.includes(language));
-  chosen = pickBestCandidate(candidates);
-  if (chosen) {
-    return chosen.voiceId;
+  // 4) gender only
+  voiceId = pickBest(voices.filter((v) => v.gender === gender));
+  if (voiceId) {
+    return voiceId;
   }
 
-  // 5) Final safety fallback to previous behavior.
+  // 5) Final safety fallback.
   return DEFAULT_GENDER_FALLBACK[gender];
 }
 

@@ -26,7 +26,7 @@ async function getElevenLabs() {
   });
 }
 
-const _ELEVENLABS_TRANSCRIBE_MODEL = "scribe_v1";
+const _ELEVENLABS_TRANSCRIBE_MODEL = "scribe_v2";
 
 type FormidableFileLike = Pick<
   formidable.File,

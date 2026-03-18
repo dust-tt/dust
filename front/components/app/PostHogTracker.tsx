@@ -27,7 +27,6 @@ const EXCLUDED_PATHS = [
   "/sso-enforced",
   "/maintenance",
   "/oauth/",
-  "/share/",
 ];
 
 interface PostHogTrackerProps {

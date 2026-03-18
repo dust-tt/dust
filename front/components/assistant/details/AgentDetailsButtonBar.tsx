@@ -17,7 +17,7 @@ import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BracesIcon,
   Button,
-  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleBottomCenterPlusIcon,
   ClipboardIcon,
   DocumentIcon,
   DropdownMenu,
@@ -108,7 +108,7 @@ export function AgentDetailsButtonBar({
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
         <Button
-          icon={ChatBubbleBottomCenterTextIcon}
+          icon={ChatBubbleBottomCenterPlusIcon}
           size="sm"
           variant="outline"
           tooltip="New conversation"

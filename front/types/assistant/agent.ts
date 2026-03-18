@@ -192,6 +192,8 @@ export type LightAgentConfigurationType = {
 
   canRead: boolean;
   canEdit: boolean;
+  // TODO (Pierre): Remove after omitted thinking evals
+  omittedThinking?: boolean;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
