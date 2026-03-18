@@ -54,6 +54,7 @@ export function AgentBrowser({
 
   const clientType = useClientType();
   const isMobile = useIsMobile();
+  const isMobileOrExtension = clientType === "extension" || isMobile;
 
   const { selectedTagId: persistedSelectedTagId, setSelectedTagId } =
     usePersistedAgentBrowserSelection(owner.sId);
@@ -197,8 +198,6 @@ export function AgentBrowser({
       setSelectedTagId(selectedTag);
     }
   }, [selectedTag, noTagsDefined, persistedSelectedTagId, setSelectedTagId]);
-
-  const isMobileOrExtension = clientType === "extension" || isMobile;
 
   const sharedProps = {
     owner,

@@ -100,6 +100,8 @@ export function MobileOrExtensionAgentBrowser({
             handleAssistantClick={handleAgentClick}
             handleMoreClick={setDisplayedAssistantId}
             owner={owner}
+            iconSize="sm"
+            canGetMore={false}
           />
         )
       )}

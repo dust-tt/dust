@@ -1,6 +1,4 @@
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
-import { useClientType } from "@app/lib/context/clientType";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
@@ -87,6 +85,8 @@ type AgentGridProps = {
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
   owner: WorkspaceType;
+  iconSize?: "sm" | "md";
+  canGetMore?: boolean;
 };
 
 export const AgentGrid = ({
@@ -94,6 +94,8 @@ export const AgentGrid = ({
   handleAssistantClick,
   handleMoreClick,
   owner,
+  iconSize = "md",
+  canGetMore = true,
 }: AgentGridProps) => {
   // Context menu state
   const [contextMenuAgent, setContextMenuAgent] =
@@ -102,9 +104,6 @@ export const AgentGrid = ({
     x: number;
     y: number;
   } | null>(null);
-
-  const clientType = useClientType();
-  const isMobile = useIsMobile();
 
   // Handle "infinite" scroll
   // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
@@ -146,8 +145,6 @@ export const AgentGrid = ({
     (itemsPage + 1) * ITEMS_PER_PAGE
   );
 
-  const isMobileOrExtension = clientType === "extension" || isMobile;
-
   return (
     <>
       <CardGrid>
@@ -168,9 +165,9 @@ export const AgentGrid = ({
                 setContextMenuAgent(agent);
                 setContextMenuPosition({ x: e.clientX, y: e.clientY });
               }}
-              iconSize={isMobileOrExtension ? "sm" : "md"}
+              iconSize={iconSize}
               action={
-                isMobileOrExtension ? undefined : (
+                canGetMore && (
                   <AssistantCardMore
                     onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
