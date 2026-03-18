@@ -14,6 +14,8 @@ export const GPT_5_MODEL_ID = "gpt-5" as const;
 export const GPT_5_1_MODEL_ID = "gpt-5.1" as const;
 export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
+export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
+export const GPT_5_4_NANO_MODEL_ID = "gpt-5.4-nano" as const;
 export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
 export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
 export const O1_MODEL_ID = "o1" as const;
@@ -300,6 +302,58 @@ export const GPT_5_4_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
 };
+// https://developers.openai.com/api/docs/models/gpt-5.4-mini
+export const GPT_5_4_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_4_MINI_MODEL_ID,
+  displayName: "GPT-5.4 Mini",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's faster, cost-efficient version of GPT-5.4 for well-defined tasks (400k context).",
+  shortDescription: "OpenAI's latest mini model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+};
+// https://developers.openai.com/api/docs/models/gpt-5.4-nano
+export const GPT_5_4_NANO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_4_NANO_MODEL_ID,
+  displayName: "GPT-5.4 Nano",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's fastest, most cost-efficient version of GPT-5.4 (400k context).",
+  shortDescription: "OpenAI's fastest model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+};
 export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_5_MINI_MODEL_ID,
@@ -312,7 +366,7 @@ export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's faster, and cost-efficient version of GPT-5 for well-defined tasks.",
   shortDescription: "OpenAI's latest mini model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
