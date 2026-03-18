@@ -836,14 +836,14 @@ export function AgentMessage({
   );
 
   const footerButtons = !isCancelledOrDeleted && messageButtons.length > 0 && (
-    <div className="flex justify-start gap-3">{messageButtons}</div>
+    <div className="flex justify-start gap-3 mt-1">{messageButtons}</div>
   );
 
   const renderMessageContent = () => {
     if (isCollapsibleEnabled && !shouldStream) {
       return (
         <TruncatedContent
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-5"
           defaultCollapsed={!isLastMessage}
           footer={footerButtons}
         >
