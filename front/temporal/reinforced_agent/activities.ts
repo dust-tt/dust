@@ -137,9 +137,11 @@ export async function aggregateSuggestionsActivity({
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  await aggregateSyntheticSuggestions(auth, agentConfigurationId, {
-    disableNotifications,
-  });
+  await aggregateSyntheticSuggestions(
+    auth,
+    agentConfigurationId,
+    disableNotifications
+  );
 }
 
 // ---------------------------------------------------------------------------

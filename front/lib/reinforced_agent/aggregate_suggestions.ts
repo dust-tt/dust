@@ -219,7 +219,7 @@ export async function buildAggregationBatchMap(
 export async function aggregateSyntheticSuggestions(
   auth: Authenticator,
   agentConfigurationId: string,
-  { disableNotifications }: { disableNotifications: boolean }
+  disableNotifications: boolean
 ): Promise<void> {
   const ctx = await loadAggregationContext(auth, agentConfigurationId);
   if (!ctx) {
