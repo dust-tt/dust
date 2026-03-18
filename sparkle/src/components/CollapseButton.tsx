@@ -1,6 +1,6 @@
 import collapseBar from "@sparkle/lottie/collapseBar";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 // Custom color definitions
 const customColors = {
@@ -86,6 +86,11 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
   variant = "light",
 }) => {
   const lottieRef = useRef<LottieRefCurrentProps | null>(null);
+  const animationData = useMemo(
+    () =>
+      replaceColors(JSON.parse(JSON.stringify(collapseBar)), colors[variant]),
+    [variant]
+  );
 
   // Function to handle hover event
   const handleMouseEnter = () => {
@@ -148,10 +153,7 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
     >
       <Lottie
         lottieRef={lottieRef}
-        animationData={replaceColors(
-          JSON.parse(JSON.stringify(collapseBar)),
-          colors[variant]
-        )}
+        animationData={animationData}
         loop={false}
         autoplay={false}
       />
