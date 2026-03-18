@@ -162,6 +162,7 @@ const BaseAgentSuggestionSchema = z.object({
   analysis: z.string().nullable(),
   state: z.enum(AGENT_SUGGESTION_STATES),
   source: z.enum(AGENT_SUGGESTION_SOURCES),
+  conversationId: z.string().nullable(),
 });
 
 export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(

@@ -12,6 +12,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -119,6 +120,7 @@ export async function processReinforcedEvents({
   source,
   operationType,
   contextId,
+  conversation,
 }: {
   auth: Authenticator;
   agentConfig: LightAgentConfigurationType;
@@ -126,6 +128,7 @@ export async function processReinforcedEvents({
   source: AgentSuggestionSource;
   operationType: ReinforcedOperationType;
   contextId: string;
+  conversation?: ConversationResource;
 }): Promise<number> {
   const errorEvents = events.filter((e) => e.type === "error");
   if (errorEvents.length > 0) {
@@ -165,6 +168,7 @@ export async function processReinforcedEvents({
       source,
       operationType,
       contextId,
+      conversation,
     });
   }
 
@@ -182,6 +186,7 @@ async function createSuggestionsFromToolCall({
   source,
   operationType,
   contextId,
+  conversation,
 }: {
   auth: Authenticator;
   agentConfig: LightAgentConfigurationType;
@@ -190,6 +195,7 @@ async function createSuggestionsFromToolCall({
   source: AgentSuggestionSource;
   operationType: ReinforcedOperationType;
   contextId: string;
+  conversation?: ConversationResource;
 }): Promise<number> {
   switch (toolName) {
     case "suggest_prompt_edits": {
@@ -212,6 +218,7 @@ async function createSuggestionsFromToolCall({
         agentConfigurationId: agentConfig.sId,
         suggestions: parsed.data.suggestions,
         source,
+        conversation,
       });
       if (result.isErr()) {
         logger.warn(
@@ -242,6 +249,7 @@ async function createSuggestionsFromToolCall({
         agentConfigurationId: agentConfig.sId,
         suggestions: parsed.data.suggestions,
         source,
+        conversation,
       });
       if (result.isErr()) {
         logger.warn(
@@ -272,6 +280,7 @@ async function createSuggestionsFromToolCall({
         agentConfigurationId: agentConfig.sId,
         suggestions: parsed.data.suggestions,
         source,
+        conversation,
       });
       if (result.isErr()) {
         logger.warn(
@@ -304,6 +313,7 @@ export async function runReinforcedAnalysis({
   source,
   operationType,
   contextId,
+  conversation,
 }: {
   auth: Authenticator;
   agentConfig: LightAgentConfigurationType;
@@ -311,6 +321,7 @@ export async function runReinforcedAnalysis({
   source: AgentSuggestionSource;
   operationType: ReinforcedOperationType;
   contextId: string;
+  conversation?: ConversationResource;
 }): Promise<number> {
   const llm = await getReinforcedLLM(auth, operationType);
   if (!llm) {
@@ -333,5 +344,6 @@ export async function runReinforcedAnalysis({
     source,
     operationType,
     contextId,
+    conversation,
   });
 }

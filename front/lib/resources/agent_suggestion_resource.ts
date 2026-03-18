@@ -2,6 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -46,15 +47,18 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   readonly editorsGroupId: ModelId | null;
   readonly agentConfigurationSId: string;
+  readonly conversationSId: string | null;
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
     editorsGroupId: ModelId | null,
-    agentConfigurationSId: string
+    agentConfigurationSId: string,
+    conversationId: string | null
   ) {
     super(AgentSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
     this.agentConfigurationSId = agentConfigurationSId;
+    this.conversationSId = conversationId;
   }
 
   /**
@@ -147,7 +151,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       AgentSuggestionModel,
       suggestion.get(),
       editorsGroupId ?? null,
-      agentConfiguration.sId
+      agentConfiguration.sId,
+      null
     );
   }
 
@@ -168,6 +173,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
           model: AgentConfigurationModel,
           as: "agentConfiguration",
           required: true,
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: false,
+          attributes: ["sId"],
         },
       ],
       ...otherOptions,
@@ -201,7 +212,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
           AgentSuggestionModel,
           suggestion.get(),
           editorsGroupId,
-          agentConfig.sId
+          agentConfig.sId,
+          suggestion.conversation?.sId ?? null
         );
       })
     );
@@ -399,6 +411,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       analysis: this.analysis,
       state: this.state,
       source: this.source,
+      conversationId: this.conversationSId,
       ...suggestionData,
     };
   }
