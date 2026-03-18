@@ -1,10 +1,10 @@
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import {
-  createMessageListener,
   getActionHandler,
   registerConnectionListener,
   registerContextMenuTabListeners,
   registerForceUpdateListener,
+  registerMessageListener,
 } from "@extension/shared/background";
 
 const log = console.error;
@@ -180,13 +180,8 @@ chrome.runtime.onMessageExternal.addListener((request) => {
 });
 
 const getAuthenticateRedirectUrl = () => chrome.identity.getRedirectURL();
-/**
- * Listener for messages sent from the react app to the background script.
- * For now we use messages to authenticate the user.
- */
-chrome.runtime.onMessage.addListener(
-  createMessageListener({
-    platform,
-    getAuthenticateRedirectUrl,
-  })
-);
+
+registerMessageListener({
+  platform,
+  getAuthenticateRedirectUrl,
+});

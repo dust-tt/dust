@@ -1,5 +1,5 @@
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
+import type { FirefoxPlatformService } from "@extension/platforms/firefox/services/platform";
 import {
   checkHasForm,
   clickPageElement,
@@ -10,7 +10,7 @@ import {
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
 import { htmlToMarkdown } from "@extension/shared/lib/html_to_markdown";
-import { generatePKCE } from "@extension/shared/lib/utils";
+import { generatePKCE, normalizeError } from "@extension/shared/lib/utils";
 import type {
   AuthBackgroundMessage,
   AuthBackgroundResponseError,
@@ -39,11 +39,6 @@ import type { PlatformService } from "@extension/shared/services/platform";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
-
-type SharedMessageListenerDeps = {
-  platform: PlatformService;
-  getAuthenticateRedirectUrl: () => string;
-};
 
 // Mutex to serialize tab capture operations. captureVisibleTab only captures
 // the currently visible tab, so concurrent captures would produce duplicates.
@@ -113,7 +108,7 @@ const toggleContextMenus = (isDisabled: boolean) => {
  * Listener for force update mechanism.
  */
 export const registerForceUpdateListener = (
-  platform: ChromePlatformService
+  platform: ChromePlatformService | FirefoxPlatformService
 ): void => {
   chrome.runtime.onUpdateAvailable.addListener(async (details) => {
     const pendingUpdate = {
@@ -468,281 +463,300 @@ const logout = async (
   }
 };
 
-export const createMessageListener = ({
+function capture(sendResponse: (x: CaptureResponse) => void) {
+  return chrome.tabs.captureVisibleTab(function (dataURI) {
+    if (dataURI) {
+      sendResponse({ dataURI });
+    }
+  });
+}
+
+export const registerMessageListener = ({
   platform,
   getAuthenticateRedirectUrl,
-}: SharedMessageListenerDeps) => {
-  return (
-    message:
-      | AuthBackgroundMessage
-      | GetActiveTabBackgroundMessage
-      | CaptureMesssage
-      | InputBarStatusMessage
-      | TabActionMessage
-      | GetPageElementsMessage
-      | ClickPageElementMessage
-      | TypeTextMessage
-      | DeleteTextMessage
-      | GetSessionInfoMessage,
-    _sender: chrome.runtime.MessageSender,
-    sendResponse: (
-      response:
-        | OAuthAuthorizeResponse
-        | AuthBackgroundResponseSuccess
-        | AuthBackgroundResponseError
-        | CaptureResponse
-        | GetActiveTabBackgroundResponse
-        | TabActionResponse
-        | GetPageElementsResponse
-        | ClickPageElementResponse
-        | TypeTextResponse
-        | DeleteTextResponse
-        | GetSessionInfoResponse
-    ) => void
-  ): boolean | undefined => {
-    switch (message.type) {
-      // ─── Auth ────────────────────────────────────────────────────────────
-      case "AUTHENTICATE":
-        void authenticate(getAuthenticateRedirectUrl, message, sendResponse);
-        return true; // Keep the message channel open for async response.
+}: {
+  platform: PlatformService;
+  getAuthenticateRedirectUrl: () => string;
+}) => {
+  chrome.runtime.onMessage.addListener(
+    (
+      message:
+        | AuthBackgroundMessage
+        | GetActiveTabBackgroundMessage
+        | CaptureMesssage
+        | InputBarStatusMessage
+        | TabActionMessage
+        | GetPageElementsMessage
+        | ClickPageElementMessage
+        | TypeTextMessage
+        | DeleteTextMessage
+        | GetSessionInfoMessage,
+      _sender: chrome.runtime.MessageSender,
+      sendResponse: (
+        response:
+          | OAuthAuthorizeResponse
+          | AuthBackgroundResponseSuccess
+          | AuthBackgroundResponseError
+          | CaptureResponse
+          | GetActiveTabBackgroundResponse
+          | TabActionResponse
+          | GetPageElementsResponse
+          | ClickPageElementResponse
+          | TypeTextResponse
+          | DeleteTextResponse
+          | GetSessionInfoResponse
+      ) => void
+    ): boolean | undefined => {
+      switch (message.type) {
+        case "AUTHENTICATE":
+          void authenticate(getAuthenticateRedirectUrl, message, sendResponse);
+          return true; // Keep the message channel open for async response.
 
-      case "REFRESH_TOKEN":
-        if (!message.refreshToken) {
-          log("No refresh token provided on REFRESH_TOKEN message.");
-          sendResponse({
-            success: false,
-            error: "No refresh token provided on REFRESH_TOKEN message.",
-          });
-          return true;
-        }
-        void refreshToken(platform, message.refreshToken, sendResponse);
-        return true;
-      case "LOGOUT":
-        void logout(platform, sendResponse);
-        return true; // Keep the message channel open.
-
-      case "SIGN_CONNECT":
-        return true;
-
-      // ─── Capture ─────────────────────────────────────────────────────────
-
-      case "CAPTURE":
-        chrome.tabs.captureVisibleTab(function (dataURI) {
-          if (dataURI) {
-            sendResponse({ dataURI });
-          }
-        });
-        return true;
-
-      // ─── Active tab content ───────────────────────────────────────────────
-
-      case "GET_ACTIVE_TAB":
-        void (async () => {
-          let tab: chrome.tabs.Tab | undefined;
-          if (message.tabId) {
-            tab = await chrome.tabs.get(message.tabId);
-          } else {
-            const tabs = await chrome.tabs.query({
-              active: true,
-              currentWindow: true,
-            });
-            tab = tabs[0];
-          }
-
-          if (!tab?.id) {
-            log("No active tab found.");
-            sendResponse({ url: "", content: "", title: "" });
-            return;
-          }
-
-          if (
-            tab.url &&
-            (await shouldDisableContextMenuForDomain(tab.url, platform))
-          ) {
+        case "REFRESH_TOKEN":
+          if (!message.refreshToken) {
+            log("No refresh token provided on REFRESH_TOKEN message.");
             sendResponse({
-              url: tab.url || "",
-              content: "",
-              title: "",
-              error: "Capture is disabled for this domain.",
+              success: false,
+              error: "No refresh token provided on REFRESH_TOKEN message.",
             });
-            return;
+            return true;
           }
+          void refreshToken(platform, message.refreshToken, sendResponse);
+          return true;
+        case "LOGOUT":
+          void logout(platform, sendResponse);
+          return true; // Keep the message channel open.
 
-          try {
-            const includeContent = message.includeContent ?? true;
-            const includeCapture = message.includeCapture ?? false;
-            const [mimetypeExecution] = await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              func: () => document.contentType,
-            });
+        case "SIGN_CONNECT":
+          return true;
 
-            // 45 MB: base64 encoding adds ~33% overhead, keeping the
-            // serialized message well under Chrome's 64 MB limit.
-            const MAX_FILE_SIZE_BYTES = 45 * 1024 * 1024;
+        case "CAPTURE":
+          capture(sendResponse);
+          return true;
 
-            let captures: string[] | undefined;
-            let fileData: FileData | undefined;
-            if (includeCapture) {
-              // Chrome's built-in PDF viewer does not expose document.contentType
-              // via executeScript, so fall back to URL extension detection.
-              const mimeType: string =
-                (mimetypeExecution.result as string) ||
-                (() => {
-                  const path = (tab.url || "").split("?")[0].toLowerCase();
-                  if (path.endsWith(".pdf")) {
-                    return "application/pdf";
-                  }
-                  if (path.endsWith(".png")) {
-                    return "image/png";
-                  }
-                  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
-                    return "image/jpeg";
-                  }
-                  if (path.endsWith(".gif")) {
-                    return "image/gif";
-                  }
-                  if (path.endsWith(".webp")) {
-                    return "image/webp";
-                  }
-                  if (path.endsWith(".svg")) {
-                    return "image/svg+xml";
-                  }
-                  return "";
-                })();
+        case "GET_ACTIVE_TAB":
+          void (async () => {
+            let tab: chrome.tabs.Tab | undefined;
+            if (message.tabId) {
+              tab = await chrome.tabs.get(message.tabId);
+            } else {
+              const tabs = await chrome.tabs.query({
+                active: true,
+                currentWindow: true,
+              });
+              tab = tabs[0];
+            }
 
-              const isAttachableFile =
-                tab.url &&
-                tab.url.startsWith("https://") &&
-                (mimeType === "application/pdf" ||
-                  mimeType.startsWith("image/"));
+            if (!tab?.id) {
+              log("No active tab found.");
+              sendResponse({ url: "", content: "", title: "" });
+              return;
+            }
 
-              // Serialize capture operations: captureVisibleTab only captures
-              // the currently visible tab, so concurrent captures would race.
-              ({ captures, fileData } = await withTabLock(async () => {
-                // If targeting a non-active tab, activate it first so
-                // captureVisibleTab and full-page capture work correctly.
-                let previousTabId: number | undefined;
-                if (!tab.active && tab.id) {
-                  const [activeTab] = await chrome.tabs.query({
-                    active: true,
-                    windowId: tab.windowId,
-                  });
-                  previousTabId = activeTab?.id;
-                  await chrome.tabs.update(tab.id, { active: true });
-                  // Brief wait for the tab to render.
-                  await new Promise((r) => setTimeout(r, 500));
-                }
+            if (
+              tab.url &&
+              (await shouldDisableContextMenuForDomain(tab.url, platform))
+            ) {
+              sendResponse({
+                url: tab.url || "",
+                content: "",
+                title: "",
+                error: "Capture is disabled for this domain.",
+              });
+              return;
+            }
 
-                let resultCaptures: string[] | undefined;
-                let resultFileData: FileData | undefined;
-                try {
-                  if (mimeType === "text/html") {
-                    // Full page capture
-                    await chrome.scripting.executeScript({
-                      target: { tabId: tab.id! },
-                      files: ["page.js"],
+            try {
+              const includeContent = message.includeContent ?? true;
+              const includeCapture = message.includeCapture ?? false;
+              const [mimetypeExecution] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => document.contentType,
+              });
+
+              // 45 MB: base64 encoding adds ~33% overhead, keeping the
+              // serialized message well under Chrome's 64 MB limit.
+              const MAX_FILE_SIZE_BYTES = 45 * 1024 * 1024;
+
+              let captures: string[] | undefined;
+              let fileData: FileData | undefined;
+              if (includeCapture) {
+                // Chrome's built-in PDF viewer does not expose document.contentType
+                // via executeScript, so fall back to URL extension detection.
+                const mimeType: string =
+                  (mimetypeExecution.result as string) ||
+                  (() => {
+                    const path = (tab.url || "").split("?")[0].toLowerCase();
+                    if (path.endsWith(".pdf")) {
+                      return "application/pdf";
+                    }
+                    if (path.endsWith(".png")) {
+                      return "image/png";
+                    }
+                    if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+                      return "image/jpeg";
+                    }
+                    if (path.endsWith(".gif")) {
+                      return "image/gif";
+                    }
+                    if (path.endsWith(".webp")) {
+                      return "image/webp";
+                    }
+                    if (path.endsWith(".svg")) {
+                      return "image/svg+xml";
+                    }
+                    return "";
+                  })();
+
+                const isAttachableFile =
+                  tab.url &&
+                  tab.url.startsWith("https://") &&
+                  (mimeType === "application/pdf" ||
+                    mimeType.startsWith("image/"));
+
+                // Serialize capture operations: captureVisibleTab only captures
+                // the currently visible tab, so concurrent captures would race.
+                ({ captures, fileData } = await withTabLock(async () => {
+                  // If targeting a non-active tab, activate it first so
+                  // captureVisibleTab and full-page capture work correctly.
+                  let previousTabId: number | undefined;
+                  if (!tab.active && tab.id) {
+                    const [activeTab] = await chrome.tabs.query({
+                      active: true,
+                      windowId: tab.windowId,
                     });
-                    resultCaptures = await new Promise<string[]>(
-                      (resolve, reject) => {
-                        if (tab?.id) {
-                          const timeout = setTimeout(() => {
-                            console.error(
-                              "Timeout waiting for full page capture"
+                    previousTabId = activeTab?.id;
+                    await chrome.tabs.update(tab.id, { active: true });
+                    // Brief wait for the tab to render.
+                    await new Promise((r) => setTimeout(r, 500));
+                  }
+
+                  let resultCaptures: string[] | undefined;
+                  let resultFileData: FileData | undefined;
+                  try {
+                    if (mimeType === "text/html") {
+                      // Full page capture
+                      await chrome.scripting.executeScript({
+                        target: { tabId: tab.id! },
+                        files: ["page.js"],
+                      });
+                      resultCaptures = await new Promise<string[]>(
+                        (resolve, reject) => {
+                          if (tab?.id) {
+                            const timeout = setTimeout(() => {
+                              console.error(
+                                "Timeout waiting for full page capture"
+                              );
+                              reject(
+                                new Error(
+                                  "Timeout waiting for full page screenshot."
+                                )
+                              );
+                            }, 10000);
+                            chrome.tabs.sendMessage(
+                              tab.id,
+                              { type: "PAGE_CAPTURE_FULL_PAGE" },
+                              (res) => {
+                                clearTimeout(timeout);
+                                resolve(res);
+                              }
                             );
-                            reject(
-                              new Error(
-                                "Timeout waiting for full page screenshot."
-                              )
-                            );
-                          }, 10000);
-                          chrome.tabs.sendMessage(
-                            tab.id,
-                            { type: "PAGE_CAPTURE_FULL_PAGE" },
-                            (res) => {
+                          } else {
+                            console.error("No tab id");
+                            reject(new Error("No tab selected."));
+                          }
+                        }
+                      );
+                    } else if (isAttachableFile) {
+                      // Fetch the file by injecting a script into the tab so that
+                      // the request runs in the page's origin (same-origin, no
+                      // CORS) and is not subject to the extension's own
+                      // content_security_policy. Falls back to a visible-tab
+                      // screenshot if the file is too large or the fetch fails.
+                      try {
+                        const [fetchExecution] =
+                          await chrome.scripting.executeScript({
+                            target: { tabId: tab.id! },
+                            func: async (
+                              url: string,
+                              maxBytes: number
+                            ): Promise<
+                              { base64: string } | { error: string }
+                            > => {
+                              try {
+                                const response = await fetch(url);
+                                if (!response.ok) {
+                                  return { error: `HTTP ${response.status}` };
+                                }
+                                const contentLength =
+                                  response.headers.get("content-length");
+                                if (
+                                  contentLength &&
+                                  parseInt(contentLength) > maxBytes
+                                ) {
+                                  return { error: "too-large" };
+                                }
+                                const buffer = await response.arrayBuffer();
+                                if (buffer.byteLength > maxBytes) {
+                                  return { error: "too-large" };
+                                }
+                                const bytes = new Uint8Array(buffer);
+                                const chunkSize = 8192;
+                                let binary = "";
+                                for (
+                                  let i = 0;
+                                  i < bytes.byteLength;
+                                  i += chunkSize
+                                ) {
+                                  binary += String.fromCharCode(
+                                    ...bytes.subarray(i, i + chunkSize)
+                                  );
+                                }
+                                return { base64: btoa(binary) };
+                              } catch (e) {
+                                return { error: String(e) };
+                              }
+                            },
+                            args: [tab.url as string, MAX_FILE_SIZE_BYTES],
+                          });
+
+                        const result = fetchExecution?.result;
+                        if (!result || "error" in result) {
+                          throw new Error(
+                            result && "error" in result
+                              ? result.error
+                              : "Failed to fetch file"
+                          );
+                        }
+                        resultFileData = {
+                          base64: result.base64,
+                          mimeType,
+                          url: tab.url as string,
+                        };
+                      } catch (fetchError) {
+                        console.warn(
+                          "File fetch failed, falling back to screenshot:",
+                          fetchError
+                        );
+                        resultCaptures = [
+                          await new Promise<string>((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                              reject(
+                                new Error("Timeout waiting for page screenshot")
+                              );
+                            }, 2000);
+                            chrome.tabs.captureVisibleTab((res) => {
                               clearTimeout(timeout);
                               resolve(res);
-                            }
-                          );
-                        } else {
-                          console.error("No tab id");
-                          reject(new Error("No tab selected."));
-                        }
+                            });
+                          }),
+                        ];
                       }
-                    );
-                  } else if (isAttachableFile) {
-                    // Fetch the file by injecting a script into the tab so that
-                    // the request runs in the page's origin (same-origin, no
-                    // CORS) and is not subject to the extension's own
-                    // content_security_policy. Falls back to a visible-tab
-                    // screenshot if the file is too large or the fetch fails.
-                    try {
-                      const [fetchExecution] =
-                        await chrome.scripting.executeScript({
-                          target: { tabId: tab.id! },
-                          func: async (
-                            url: string,
-                            maxBytes: number
-                          ): Promise<
-                            { base64: string } | { error: string }
-                          > => {
-                            try {
-                              const response = await fetch(url);
-                              if (!response.ok) {
-                                return { error: `HTTP ${response.status}` };
-                              }
-                              const contentLength =
-                                response.headers.get("content-length");
-                              if (
-                                contentLength &&
-                                parseInt(contentLength) > maxBytes
-                              ) {
-                                return { error: "too-large" };
-                              }
-                              const buffer = await response.arrayBuffer();
-                              if (buffer.byteLength > maxBytes) {
-                                return { error: "too-large" };
-                              }
-                              const bytes = new Uint8Array(buffer);
-                              const chunkSize = 8192;
-                              let binary = "";
-                              for (
-                                let i = 0;
-                                i < bytes.byteLength;
-                                i += chunkSize
-                              ) {
-                                binary += String.fromCharCode(
-                                  ...bytes.subarray(i, i + chunkSize)
-                                );
-                              }
-                              return { base64: btoa(binary) };
-                            } catch (e) {
-                              return { error: String(e) };
-                            }
-                          },
-                          args: [tab.url as string, MAX_FILE_SIZE_BYTES],
-                        });
-
-                      const result = fetchExecution?.result;
-                      if (!result || "error" in result) {
-                        throw new Error(
-                          result && "error" in result
-                            ? result.error
-                            : "Failed to fetch file"
-                        );
-                      }
-                      resultFileData = {
-                        base64: result.base64,
-                        mimeType,
-                        url: tab.url as string,
-                      };
-                    } catch (fetchError) {
-                      console.warn(
-                        "File fetch failed, falling back to screenshot:",
-                        fetchError
-                      );
+                    } else {
                       resultCaptures = [
                         await new Promise<string>((resolve, reject) => {
                           const timeout = setTimeout(() => {
+                            console.error("Timeout waiting for capture");
                             reject(
                               new Error("Timeout waiting for page screenshot")
                             );
@@ -754,359 +768,365 @@ export const createMessageListener = ({
                         }),
                       ];
                     }
-                  } else {
-                    resultCaptures = [
-                      await new Promise<string>((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                          console.error("Timeout waiting for capture");
-                          reject(
-                            new Error("Timeout waiting for page screenshot")
-                          );
-                        }, 2000);
-                        chrome.tabs.captureVisibleTab((res) => {
-                          clearTimeout(timeout);
-                          resolve(res);
-                        });
-                      }),
-                    ];
+                  } finally {
+                    // Restore the previously active tab.
+                    if (previousTabId !== undefined) {
+                      await chrome.tabs.update(previousTabId, { active: true });
+                    }
                   }
-                } finally {
-                  // Restore the previously active tab.
-                  if (previousTabId !== undefined) {
-                    await chrome.tabs.update(previousTabId, { active: true });
-                  }
+                  return { captures: resultCaptures, fileData: resultFileData };
+                }));
+
+                if (!fileData && (!captures || captures.length === 0)) {
+                  console.error("Empty captures array");
+                  throw new Error("Failed to get a screenshot of the page.");
                 }
-                return { captures: resultCaptures, fileData: resultFileData };
-              }));
-
-              if (!fileData && (!captures || captures.length === 0)) {
-                console.error("Empty captures array");
-                throw new Error("Failed to get a screenshot of the page.");
               }
-            }
-            let content: string | undefined;
-            if (includeContent) {
-              if (message.includeSelectionOnly) {
-                const [execution] = await chrome.scripting.executeScript({
-                  target: { tabId: tab.id },
-                  func: () => window.getSelection()?.toString(),
-                });
-                content = execution?.result ?? "no content.";
-              } else {
-                const [execution] = await chrome.scripting.executeScript({
-                  target: { tabId: tab.id },
-                  func: extractPage(),
-                });
-                const html = execution?.result;
-                content = html ? htmlToMarkdown(html) : "no content.";
+              let content: string | undefined;
+              if (includeContent) {
+                if (message.includeSelectionOnly) {
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => window.getSelection()?.toString(),
+                  });
+                  content = execution?.result ?? "no content.";
+                } else {
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: extractPage(),
+                  });
+                  const html = execution?.result;
+                  content = html ? htmlToMarkdown(html) : "no content.";
+                }
               }
+              sendResponse({
+                title: tab.title || "",
+                url: tab.url || "",
+                content,
+                captures,
+                fileData,
+              });
+            } catch (error) {
+              log("Error getting active tab content:", error);
+              sendResponse({
+                url: tab.url || "",
+                content: "",
+                title: "",
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to get content from the current tab.",
+              });
             }
+          })();
+          return true;
+
+        case "LIST_TABS":
+          void (async () => {
+            const tabs = await chrome.tabs.query({ currentWindow: true });
             sendResponse({
-              title: tab.title || "",
-              url: tab.url || "",
-              content,
-              captures,
-              fileData,
+              success: true,
+              tabs: tabs
+                .filter((t) => t.id !== undefined && t.url)
+                .map((t) => ({
+                  tabId: t.id!,
+                  title: t.title || "",
+                  url: t.url || "",
+                  active: t.active,
+                })),
             });
-          } catch (error) {
-            log("Error getting active tab content:", error);
-            sendResponse({
-              url: tab.url || "",
-              content: "",
-              title: "",
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to get content from the current tab.",
-            });
-          }
-        })();
-        return true;
+          })();
+          return true;
 
-      // ─── Tab management ───────────────────────────────────────────────────
+        case "ACTIVATE_TAB":
+          void (async () => {
+            try {
+              await chrome.tabs.update(message.tabId, { active: true });
+              sendResponse({ success: true });
+            } catch (error) {
+              sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })();
+          return true;
 
-      case "LIST_TABS":
-        void (async () => {
-          const tabs = await chrome.tabs.query({ currentWindow: true });
-          sendResponse({
-            success: true,
-            tabs: tabs
-              .filter((t) => t.id !== undefined && t.url)
-              .map((t) => ({
-                tabId: t.id!,
-                title: t.title || "",
-                url: t.url || "",
-                active: t.active,
-              })),
-          });
-        })();
-        return true;
+        case "CLOSE_TAB":
+          void (async () => {
+            try {
+              await chrome.tabs.remove(message.tabId);
+              sendResponse({ success: true });
+            } catch (error) {
+              sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })();
+          return true;
 
-      case "ACTIVATE_TAB":
-        void (async () => {
-          try {
-            await chrome.tabs.update(message.tabId, { active: true });
-            sendResponse({ success: true });
-          } catch (error) {
-            sendResponse({
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-        return true;
+        case "OPEN_TAB":
+          void (async () => {
+            try {
+              const tab = await chrome.tabs.create({ url: message.url });
+              sendResponse({ success: true, tabId: tab.id });
+            } catch (error) {
+              sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })();
+          return true;
 
-      case "CLOSE_TAB":
-        void (async () => {
-          try {
-            await chrome.tabs.remove(message.tabId);
-            sendResponse({ success: true });
-          } catch (error) {
-            sendResponse({
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-        return true;
+        case "MOVE_TAB":
+          void (async () => {
+            try {
+              await chrome.tabs.move(message.tabId, { index: message.index });
+              sendResponse({ success: true });
+            } catch (error) {
+              sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })();
+          return true;
 
-      case "OPEN_TAB":
-        void (async () => {
-          try {
-            const tab = await chrome.tabs.create({ url: message.url });
-            sendResponse({ success: true, tabId: tab.id });
-          } catch (error) {
-            sendResponse({
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-        return true;
+        case "RELOAD_TAB":
+          void (async () => {
+            try {
+              await chrome.tabs.reload(message.tabId);
+              sendResponse({ success: true });
+            } catch (error) {
+              sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })();
+          return true;
 
-      case "MOVE_TAB":
-        void (async () => {
-          try {
-            await chrome.tabs.move(message.tabId, { index: message.index });
-            sendResponse({ success: true });
-          } catch (error) {
-            sendResponse({
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-        return true;
+        case "GET_ELEMENTS":
+          chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+            const tab = tabs.find((t) => t.id === message.tabId);
+            try {
+              const result = await getPageElements(tab);
 
-      case "RELOAD_TAB":
-        void (async () => {
-          try {
-            await chrome.tabs.reload(message.tabId);
-            sendResponse({ success: true });
-          } catch (error) {
-            sendResponse({
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-        return true;
+              if (result.isErr()) {
+                log("Error reading page elements:", result.error);
+                sendResponse({
+                  elements: "",
+                  error: result.error.message,
+                });
+                return;
+              }
 
-      // ─── Page interaction ─────────────────────────────────────────────────
-
-      case "GET_ELEMENTS":
-        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
-          try {
-            const result = await getPageElements(tab);
-
-            if (result.isErr()) {
+              sendResponse({
+                elements: result.value,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error reading page elements:", normalizedError.message);
               sendResponse({
                 elements: "",
-                error: result.error.message,
+                error:
+                  normalizedError.message ?? "Failed to read page elements.",
               });
-              return;
             }
+          });
+          return true;
 
-            sendResponse({
-              elements: result.value,
-            });
-          } catch (error) {
-            const normalizedError = normalizeError(error);
-            sendResponse({
-              elements: "",
-              error: normalizedError.message ?? "Failed to read page elements.",
-            });
-          }
-        });
-        return true;
+        case "CLICK_ELEMENT":
+          chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+            const tab = tabs.find((t) => t.id === message.tabId);
+            try {
+              const result = await clickPageElement(tab, message.elementId);
 
-      case "CLICK_ELEMENT":
-        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
-          try {
-            const result = await clickPageElement(tab, message.elementId);
+              if (result.isErr()) {
+                log("Error clicking page element:", result.error);
+                sendResponse({
+                  success: false,
+                  error: result.error.message,
+                });
+                return;
+              }
 
-            if (result.isErr()) {
+              const elementsDiff = await getPageElementsDiff(tab);
+
+              if (elementsDiff.isErr()) {
+                log(
+                  "Error getting page elements diff after click:",
+                  elementsDiff.error
+                );
+                sendResponse({
+                  success: false,
+                  error: `Element clicked successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+                });
+                return;
+              }
+
+              sendResponse({
+                success: true,
+                elementsDiff: elementsDiff.value,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error clicking page element:", normalizedError.message);
               sendResponse({
                 success: false,
-                error: result.error.message,
+                error:
+                  normalizedError.message ?? "Failed to click page element.",
               });
-              return;
             }
+          });
+          return true;
 
-            const elementsDiff = await getPageElementsDiff(tab);
+        case "TYPE_TEXT":
+          chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+            const tab = tabs.find((t) => t.id === message.tabId);
+            try {
+              const result = await typeText(
+                tab,
+                message.elementId,
+                message.text,
+                message.variant
+              );
 
-            if (elementsDiff.isErr()) {
+              if (result.isErr()) {
+                log("Error typing text in element:", result.error);
+                sendResponse({
+                  success: false,
+                  error: result.error.message,
+                });
+                return;
+              }
+
+              const elementsDiff = await getPageElementsDiff(tab);
+
+              if (elementsDiff.isErr()) {
+                log(
+                  "Error getting page elements diff after typing text:",
+                  elementsDiff.error
+                );
+                sendResponse({
+                  success: false,
+                  error: `Text typed successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+                });
+                return;
+              }
+
+              sendResponse({
+                success: true,
+                elementsDiff: elementsDiff.value,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error typing text in element:", normalizedError.message);
               sendResponse({
                 success: false,
-                error: `Element clicked successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+                error:
+                  normalizedError.message ?? "Failed to type text in element.",
               });
-              return;
             }
+          });
+          return true;
 
-            sendResponse({
-              success: true,
-              elementsDiff: elementsDiff.value,
-            });
-          } catch (error) {
-            const normalizedError = normalizeError(error);
-            sendResponse({
-              success: false,
-              error: normalizedError.message ?? "Failed to click page element.",
-            });
-          }
-        });
-        return true;
+        case "DELETE_TEXT":
+          chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+            const tab = tabs.find((t) => t.id === message.tabId);
+            try {
+              const result = await typeText(
+                tab,
+                message.elementId,
+                "",
+                "delete"
+              );
 
-      case "TYPE_TEXT":
-        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
-          try {
-            const result = await typeText(
-              tab,
-              message.elementId,
-              message.text,
-              message.variant
-            );
+              if (result.isErr()) {
+                log("Error deleting text in element:", result.error);
+                sendResponse({
+                  success: false,
+                  error: result.error.message,
+                });
+                return;
+              }
 
-            if (result.isErr()) {
+              const elementsDiff = await getPageElementsDiff(tab);
+
+              if (elementsDiff.isErr()) {
+                log(
+                  "Error getting page elements diff after deleting text:",
+                  elementsDiff.error
+                );
+                sendResponse({
+                  success: false,
+                  error: `Text deleted successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+                });
+                return;
+              }
+
+              sendResponse({
+                success: true,
+                elementsDiff: elementsDiff.value,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error deleting text in element:", normalizedError.message);
               sendResponse({
                 success: false,
-                error: result.error.message,
+                error:
+                  normalizedError.message ??
+                  "Failed to delete text in element.",
               });
-              return;
             }
+          });
+          return true;
 
-            const elementsDiff = await getPageElementsDiff(tab);
+        case "INPUT_BAR_STATUS":
+          void (async () => {
+            if (message.available) {
+              const pendingAction =
+                await platform.storage.get<string>("pendingAction");
+              if (pendingAction) {
+                getActionHandler(pendingAction)?.();
+              }
+            }
+            await platform.storage.delete("pendingAction");
+          })();
+          return false;
 
-            if (elementsDiff.isErr()) {
+        case "GET_SESSION_INFO":
+          chrome.tabs.query({ currentWindow: true }, async (tabs) => {
+            const activeTab = tabs.find((t) => t.active);
+
+            try {
+              const hasForm = await checkHasForm(activeTab);
+              if (hasForm.isErr()) {
+                sendResponse({
+                  tabsCount: tabs.length,
+                  currentTabHasForm: false,
+                });
+                return;
+              }
               sendResponse({
-                success: false,
-                error: `Text typed successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
+                tabsCount: tabs.length,
+                currentTabHasForm: hasForm.value,
               });
-              return;
-            }
-
-            sendResponse({
-              success: true,
-              elementsDiff: elementsDiff.value,
-            });
-          } catch (error) {
-            const normalizedError = normalizeError(error);
-            log("Error typing text in element:", normalizedError.message);
-            sendResponse({
-              success: false,
-              error:
-                normalizedError.message ?? "Failed to type text in element.",
-            });
-          }
-        });
-        return true;
-
-      case "DELETE_TEXT":
-        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const tab = tabs.find((t) => t.id === message.tabId);
-          try {
-            const result = await typeText(tab, message.elementId, "", "delete");
-
-            if (result.isErr()) {
-              sendResponse({
-                success: false,
-                error: result.error.message,
-              });
-              return;
-            }
-
-            const elementsDiff = await getPageElementsDiff(tab);
-
-            if (elementsDiff.isErr()) {
-              sendResponse({
-                success: false,
-                error: `Text deleted successfully. Error while getting page elements diff: ${elementsDiff.error.message}`,
-              });
-              return;
-            }
-
-            sendResponse({
-              success: true,
-              elementsDiff: elementsDiff.value,
-            });
-          } catch (error) {
-            const normalizedError = normalizeError(error);
-            log("Error deleting text in element:", normalizedError.message);
-            sendResponse({
-              success: false,
-              error:
-                normalizedError.message ?? "Failed to delete text in element.",
-            });
-          }
-        });
-        return true;
-
-      case "GET_SESSION_INFO":
-        chrome.tabs.query({ currentWindow: true }, async (tabs) => {
-          const activeTab = tabs.find((t) => t.active);
-
-          try {
-            const hasForm = await checkHasForm(activeTab);
-            if (hasForm.isErr()) {
+            } catch {
               sendResponse({
                 tabsCount: tabs.length,
                 currentTabHasForm: false,
               });
-              return;
             }
-            sendResponse({
-              tabsCount: tabs.length,
-              currentTabHasForm: hasForm.value,
-            });
-          } catch {
-            sendResponse({
-              tabsCount: tabs.length,
-              currentTabHasForm: false,
-            });
-          }
-        });
-        return true;
+          });
+          return true;
 
-      // ─── UI state ─────────────────────────────────────────────────────────
-
-      case "INPUT_BAR_STATUS":
-        void (async () => {
-          if (message.available) {
-            const pendingAction =
-              await platform.storage.get<string>("pendingAction");
-            if (pendingAction) {
-              getActionHandler(pendingAction)?.();
-            }
-          }
-          await platform.storage.delete("pendingAction");
-        })();
-        return false;
-
-      default:
-        log(`Unknown message: ${JSON.stringify(message, null, 2)}.`);
+        default:
+          log(`Unknown message: ${JSON.stringify(message, null, 2)}.`);
+          return false;
+      }
     }
-  };
+  );
 };

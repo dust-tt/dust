@@ -4,11 +4,11 @@
 
 import { FirefoxPlatformService } from "@extension/platforms/firefox/services/platform";
 import {
-  createMessageListener,
   getActionHandler,
   registerConnectionListener,
   registerContextMenuTabListeners,
   registerForceUpdateListener,
+  registerMessageListener,
 } from "@extension/shared/background";
 import browser from "webextension-polyfill";
 
@@ -69,12 +69,7 @@ chrome.contextMenus.onClicked.addListener(async (event) => {
 
 const getAuthenticateRedirectUrl = () => browser.identity.getRedirectURL();
 
-/**
- * Listener for messages sent from the react app to the background script.
- */
-chrome.runtime.onMessage.addListener(
-  createMessageListener({
-    platform,
-    getAuthenticateRedirectUrl,
-  })
-);
+registerMessageListener({
+  platform,
+  getAuthenticateRedirectUrl,
+});
