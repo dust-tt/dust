@@ -140,9 +140,12 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const { success, results } = response;
 
     if (!success || !results) {
+      const fallbackReason =
+        "unknown error, the ID extracted from the URL may not map to an existing report";
       return new Err(
         new MCPError(
-          `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
+          `Report retrieval failed: ${response.results?.failureReason ?? fallbackReason} ` +
+            `(status: ${response.results?.status ?? "unknown"})`
         )
       );
     }
