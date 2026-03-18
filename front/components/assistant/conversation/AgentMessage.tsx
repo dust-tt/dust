@@ -3,6 +3,7 @@ import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle"
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -963,6 +964,8 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const isInlineActivityEnabled = hasFeature("inline_activity");
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -1180,12 +1183,19 @@ function AgentMessageContent({
 
   return (
     <div className="flex flex-col gap-y-4">
-      <AgentMessageActions
-        agentMessage={agentMessage}
-        lastAgentStateClassification={agentMessage.streaming.agentState}
-        actionProgress={agentMessage.streaming.actionProgress}
-        owner={owner}
-      />
+      {isInlineActivityEnabled ? (
+        <InlineActivitySteps
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+        />
+      ) : (
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+          actionProgress={agentMessage.streaming.actionProgress}
+          owner={owner}
+        />
+      )}
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
       {completedImages.length > 0 && (
         <InteractiveImageGrid
