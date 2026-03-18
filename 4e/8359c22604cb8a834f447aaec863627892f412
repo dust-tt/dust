@@ -1,0 +1,23 @@
+front/lib/api/actions/servers/data_warehouses/tools/index.ts
+  d7bfc585242fab5e 181-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "4e8359c22604cb8a834f447aaec863627892f412",
+  "prompts": {
+    "d7bfc585242fab5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "544f5739-4b58-45f8-bf3e-1a7b2e4376e5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
