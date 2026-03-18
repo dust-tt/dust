@@ -12,6 +12,10 @@ const OPEN_MENU_ITEM_SELECTOR = [
   '[data-radix-menu-content][data-state=open] [role="menuitemradio"]',
 ].join(", ");
 
+function getFirstOpenMenuItem(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(OPEN_MENU_ITEM_SELECTOR);
+}
+
 type SearchDropdownMenuProps = {
   searchInputValue: string;
   setSearchInputValue: (value: string) => void;
@@ -63,9 +67,7 @@ export function SearchDropdownMenu({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              const firstItem = document.querySelector<HTMLElement>(
-                OPEN_MENU_ITEM_SELECTOR
-              );
+              const firstItem = getFirstOpenMenuItem();
               if (firstItem instanceof HTMLElement) {
                 firstItem.click();
               }
@@ -73,9 +75,7 @@ export function SearchDropdownMenu({
             }
             if (e.key === "Tab" || e.key === "ArrowDown") {
               e.preventDefault();
-              const firstItem = document.querySelector<HTMLElement>(
-                OPEN_MENU_ITEM_SELECTOR
-              );
+              const firstItem = getFirstOpenMenuItem();
               if (firstItem instanceof HTMLElement) {
                 firstItem.focus();
               }

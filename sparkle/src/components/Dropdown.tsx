@@ -296,6 +296,22 @@ function getDropdownSearchInput(
   );
 }
 
+function resolveDropdownSearchInput(
+  searchInputRef: React.RefObject<HTMLInputElement | null> | undefined,
+  container: ParentNode
+): HTMLInputElement | null {
+  return searchInputRef?.current ?? getDropdownSearchInput(container);
+}
+
+function isDropdownTextEntryElement(
+  element: Element | null
+): element is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
+  );
+}
+
 function setDropdownSearchInputValue(
   input: HTMLInputElement,
   nextValue: string
@@ -350,8 +366,7 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
-      const input =
-        searchInputRef?.current ?? getDropdownSearchInput(e.currentTarget);
+      const input = resolveDropdownSearchInput(searchInputRef, e.currentTarget);
       const firstItem = getFirstDropdownMenuItem(e.currentTarget);
 
       if (!input || !firstItem || document.activeElement !== firstItem) {
@@ -369,15 +384,11 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
-      const isInput =
-        document.activeElement instanceof HTMLInputElement ||
-        document.activeElement instanceof HTMLTextAreaElement;
-      if (isInput) {
+      if (isDropdownTextEntryElement(document.activeElement)) {
         return;
       }
 
-      const input =
-        searchInputRef?.current ?? getDropdownSearchInput(e.currentTarget);
+      const input = resolveDropdownSearchInput(searchInputRef, e.currentTarget);
       if (!input) {
         return;
       }
