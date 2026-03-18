@@ -32,7 +32,7 @@ const EXCLUDED_PATHS = [
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
-  // When true, skip fetching user data and assume cookies are accepted.
+  // When true, assume cookies are accepted (logged in users).
   // Use in authenticated contexts (e.g. SPA) where the user is always logged in.
   authenticated?: boolean;
 }
