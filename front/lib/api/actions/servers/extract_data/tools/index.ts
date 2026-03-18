@@ -66,7 +66,8 @@ export function createExtractDataTools(
       } catch {
         return new Err(
           new MCPError(
-            `Invalid jsonSchema: expected a valid JSON object but received a malformed string`
+            `Invalid jsonSchema: expected a valid JSON object but received a malformed string`,
+            { tracked: false }
           )
         );
       }
@@ -79,7 +80,8 @@ export function createExtractDataTools(
     if (!validationResult.isValid) {
       return new Err(
         new MCPError(
-          `Invalid jsonSchema: ${validationResult.error ?? "unknown error"}`
+          `Invalid jsonSchema: ${validationResult.error ?? "unknown error"}`,
+          { tracked: false }
         )
       );
     }
