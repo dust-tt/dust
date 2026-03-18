@@ -194,6 +194,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
   },
+  luma_tool: {
+    description: "Luma MCP tool for event management and guest tracking",
+    stage: "on_demand",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
