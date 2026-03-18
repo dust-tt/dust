@@ -1,6 +1,6 @@
 import { cn, Spinner } from "@dust-tt/sparkle";
-import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type { RouteChangeMesssage } from "@extension/shared/messages";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";

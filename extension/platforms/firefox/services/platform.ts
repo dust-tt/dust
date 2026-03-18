@@ -1,4 +1,4 @@
-import { ChromeMcpService } from "@extension/platforms/chrome/services/mcp";
+import { FirefoxMcpService } from "@extension/platforms/firefox/services/mcp";
 import { ChromeFirefoxAuthService } from "@extension/shared/services/browser_auth";
 import { ChromeFirefoxCaptureService } from "@extension/shared/services/browser_capture";
 import { ChromeFirefoxBrowserMessagingService } from "@extension/shared/services/browser_messaging";
@@ -10,15 +10,15 @@ export interface PendingUpdate {
   version: string;
 }
 
-export class ChromePlatformService extends PlatformService {
+export class FirefoxPlatformService extends PlatformService {
   constructor() {
     const messaging = new ChromeFirefoxBrowserMessagingService();
     const captureService = new ChromeFirefoxCaptureService();
-    const mcpService = new ChromeMcpService();
+    const mcpService = new FirefoxMcpService();
     mcpService.setCaptureService(captureService);
 
     super(
-      "chrome",
+      "firefox",
       ChromeFirefoxAuthService,
       new ChromeFirefoxStorageService(),
       captureService,
@@ -27,20 +27,15 @@ export class ChromePlatformService extends PlatformService {
     );
   }
 
-  // Chrome specific helpers.
-
-  // Store version for force update.
   async savePendingUpdate(
     pendingUpdate: PendingUpdate
   ): Promise<PendingUpdate> {
     await this.storage.set("pendingUpdate", pendingUpdate);
-
     return pendingUpdate;
   }
 
   async getPendingUpdate(): Promise<PendingUpdate | null> {
     const result = await this.storage.get<PendingUpdate>("pendingUpdate");
-
     return result ?? null;
   }
 }

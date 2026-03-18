@@ -1,6 +1,6 @@
 import type { StorageService } from "@extension/shared/services/storage";
 
-export class ChromeStorageService implements StorageService {
+export class ChromeFirefoxStorageService implements StorageService {
   private storage = chrome.storage.local;
 
   async get<T>(key: string): Promise<T | undefined> {

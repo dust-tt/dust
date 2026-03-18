@@ -1,0 +1,26 @@
+{
+  "icons": {
+    "16": "images/dust32green.png",
+    "32": "images/dust32green.png",
+    "48": "images/dust32green.png",
+    "128": "images/dust32green.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dust-dev@dust.tt",
+      "strict_min_version": "109.0"
+    }
+  },
+  "sidebar_action": {
+    "default_panel": "main.html",
+    "default_title": "Dust",
+    "open_at_install": true,
+    "default_icon": {
+      "16": "images/dust32green.png",
+      "32": "images/dust32green.png"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu ws://localhost:* http://localhost:* https://*.novu.co wss://*.novu.co data:; frame-src http://localhost:*"
+  }
+}

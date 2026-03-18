@@ -2,9 +2,8 @@ import { RootLayout } from "@app/components/app/RootLayout";
 import { RegionProvider } from "@app/lib/auth/RegionContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { SparkleContext } from "@dust-tt/sparkle";
-import { ChromeExtensionWrapper } from "@extension/platforms/chrome/ChromeExtensionWrapper";
-import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
-import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
+import { PortProvider } from "@extension/platforms/firefox/context/PortContext";
+import { FirefoxPlatformService } from "@extension/platforms/firefox/services/platform";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
 import { useCaptureActions } from "@extension/shared/hooks/useCaptureActions";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
@@ -12,9 +11,10 @@ import { ReactRouterLinkWrapper } from "@extension/shared/ReactRouterLinkWrapper
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { FirefoxExtensionWrapper } from "./FirefoxExtensionWrapper";
 
-export const ChromeApp = () => {
-  const platformService = new ChromePlatformService();
+export const FirefoxApp = () => {
+  const platformService = new FirefoxPlatformService();
   platformService.useCaptureActions = useCaptureActions;
   const router = createBrowserRouter(routes);
 
@@ -29,9 +29,9 @@ export const ChromeApp = () => {
                   value={{ components: { link: ReactRouterLinkWrapper } }}
                 >
                   <RootLayout>
-                    <ChromeExtensionWrapper>
+                    <FirefoxExtensionWrapper>
                       <RouterProvider router={router} />
-                    </ChromeExtensionWrapper>
+                    </FirefoxExtensionWrapper>
                   </RootLayout>
                 </SparkleContext.Provider>
               </ExtensionFetcherProvider>

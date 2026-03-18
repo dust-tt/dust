@@ -18,6 +18,13 @@ export const useCurrentUrlAndDomain = () => {
             setCurrentUrl("");
             setCurrentDomain("chrome");
           }
+          if (
+            url.protocol.startsWith("moz-extension") ||
+            url.protocol.startsWith("about")
+          ) {
+            setCurrentUrl("");
+            setCurrentDomain("firefox-internal");
+          }
         } catch (e) {
           console.error("Invalid URL:", e);
           setCurrentUrl("");

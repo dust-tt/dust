@@ -1,7 +1,9 @@
-import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
+import type { AttachSelectionMessage } from "@extension/shared/messages";
 import type { BrowserMessagingService } from "@extension/shared/services/platform";
 
-export class ChromeBrowserMessagingService implements BrowserMessagingService {
+export class ChromeFirefoxBrowserMessagingService
+  implements BrowserMessagingService
+{
   addMessageListener(
     listener: (message: AttachSelectionMessage) => void | Promise<void>
   ) {
