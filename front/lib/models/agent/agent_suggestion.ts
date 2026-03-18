@@ -98,7 +98,7 @@ AgentSuggestionModel.init(
         concurrently: true,
       },
       {
-        fields: ["conversationId"],
+        fields: ["workspaceId", "conversationId"],
         concurrently: true,
       },
     ],
