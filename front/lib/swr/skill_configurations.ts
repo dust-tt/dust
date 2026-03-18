@@ -543,7 +543,6 @@ export function useDetectSkillsFromFiles({
     []
   );
   const [isUploading, setIsUploading] = useState(false);
-  const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
   const triggerDetect = useCallback(
@@ -563,10 +562,6 @@ export function useDetectSkillsFromFiles({
           { method: "POST", body: formData }
         );
 
-        // Upload complete, server has responded.
-        setIsUploading(false);
-        setIsDetecting(true);
-
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
           setDetectError(errorData.message);
@@ -583,7 +578,6 @@ export function useDetectSkillsFromFiles({
         );
       } finally {
         setIsUploading(false);
-        setIsDetecting(false);
       }
     },
     [owner.sId]
@@ -592,7 +586,6 @@ export function useDetectSkillsFromFiles({
   return {
     detectedSkills,
     isUploading,
-    isDetecting,
     detectError,
     triggerDetect,
   };

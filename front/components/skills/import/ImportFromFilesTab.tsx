@@ -38,13 +38,8 @@ export function ImportFromFilesTab({
   const { setValue } = useFormContext<FilesImportFormValues>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const {
-    detectedSkills,
-    isUploading,
-    isDetecting,
-    detectError,
-    triggerDetect,
-  } = useDetectSkillsFromFiles({ owner });
+  const { detectedSkills, isUploading, detectError, triggerDetect } =
+    useDetectSkillsFromFiles({ owner });
 
   // Re-sync selected skills when detection completes or when this tab becomes active.
   useEffect(() => {
@@ -60,8 +55,8 @@ export function ImportFromFilesTab({
   }, [isActive, detectedSkills, setValue]);
 
   useEffect(() => {
-    onDetectingChange(isUploading || isDetecting);
-  }, [isUploading, isDetecting, onDetectingChange]);
+    onDetectingChange(isUploading);
+  }, [isUploading, onDetectingChange]);
 
   useEffect(() => {
     onDetectedCountChange(detectedSkills.length);
@@ -106,12 +101,13 @@ export function ImportFromFilesTab({
           handleFilesSelected(Array.from(e.target.files ?? []));
         }}
         fileInputRef={fileInputRef}
-        disabled={isImporting || isDetecting}
+        disabled={isImporting}
         isLoading={isUploading}
       />
       <DetectedSkillsList
         detectedSkills={detectedSkills}
-        isDetecting={isDetecting}
+        // The detection happens jointly with the upload and we can't really dissociate the two.
+        isDetecting={false}
         detectError={fileTypeError ?? detectError}
       />
       <FileRequirements />
