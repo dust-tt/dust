@@ -1,7 +1,4 @@
-import {
-  useBatchUpdateAgentScope,
-  useBatchUpdateAgentTags,
-} from "@app/lib/swr/assistants";
+import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
@@ -25,6 +22,7 @@ import {
 import { useState } from "react";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
+import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 type AgentEditBarProps = {
   onClose: () => void;
@@ -42,14 +40,11 @@ export const AgentEditBar = ({
   mutateAgentConfigurations,
 }: AgentEditBarProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isUnpublishDialogOpen, setIsUnpublishDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const batchUpdateAgentTags = useBatchUpdateAgentTags({
-    owner,
-  });
-
-  const batchUpdateAgentScope = useBatchUpdateAgentScope({
     owner,
   });
 
@@ -81,6 +76,18 @@ export const AgentEditBar = ({
           onClose();
           setIsDeleteDialogOpen(false);
         }}
+      />
+
+      <UnpublishAssistantsDialog
+        owner={owner}
+        agentConfigurations={selectedAgents}
+        isOpen={isUnpublishDialogOpen}
+        onClose={() => setIsUnpublishDialogOpen(false)}
+        onSave={() => {
+          onClose();
+          setIsUnpublishDialogOpen(false);
+        }}
+        mutateAgentConfigurations={mutateAgentConfigurations}
       />
 
       <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2 dark:bg-muted-background-night">
@@ -168,15 +175,8 @@ export const AgentEditBar = ({
           icon={EyeSlashIcon}
           label="Unpublish"
           disabled={selectedAgents.length === 0 || isLoading}
-          onClick={async () => {
-            setIsLoading(true);
-            await batchUpdateAgentScope(
-              selectedAgents.map((a) => a.sId),
-              { scope: "hidden" }
-            );
-            void mutateAgentConfigurations();
-            setIsLoading(false);
-            onClose();
+          onClick={() => {
+            setIsUnpublishDialogOpen(true);
           }}
         />
 
