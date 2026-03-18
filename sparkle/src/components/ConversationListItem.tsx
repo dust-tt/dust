@@ -53,7 +53,9 @@ export function ReplySection({
             )}
           </>
         ) : unreadCount === 0 ? (
-          <span className="s-heading-xs">{replyCount} Replies</span>
+          <span className="s-heading-xs">
+            {replyCount} {replyCount === 1 ? "Reply" : "Replies"}
+          </span>
         ) : unreadCount === replyCount ? (
           <span className="s-heading-xs s-text-highlight">
             {unreadCount} Unread
@@ -64,7 +66,10 @@ export function ReplySection({
               {unreadCount} Unread
             </span>
             {replyCount > 0 && (
-              <span className="s-heading-xs"> ({replyCount} replies).</span>
+              <span className="s-heading-xs">
+                {" "}
+                ({replyCount} {replyCount === 1 ? "reply" : "replies"}).
+              </span>
             )}
           </>
         )}{" "}
