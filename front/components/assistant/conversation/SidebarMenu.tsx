@@ -895,26 +895,24 @@ export function AgentSidebarMenu({
                                       "create_from_template"
                                     )}
                                   />
-                                  {hasFeature("agent_to_yaml") && (
-                                    <DropdownMenuItem
-                                      icon={
-                                        isUploadingYAML ? (
-                                          <Spinner size="xs" />
-                                        ) : (
-                                          BracesIcon
-                                        )
-                                      }
-                                      label={
-                                        isUploadingYAML
-                                          ? "Uploading..."
-                                          : "From YAML"
-                                      }
-                                      disabled={isUploadingYAML}
-                                      onClick={triggerYAMLUpload}
-                                      data-gtm-label="yamlUploadButton"
-                                      data-gtm-location="sidebarMenu"
-                                    />
-                                  )}
+                                  <DropdownMenuItem
+                                    icon={
+                                      isUploadingYAML ? (
+                                        <Spinner size="xs" />
+                                      ) : (
+                                        BracesIcon
+                                      )
+                                    }
+                                    label={
+                                      isUploadingYAML
+                                        ? "Uploading..."
+                                        : "From YAML"
+                                    }
+                                    disabled={isUploadingYAML}
+                                    onClick={triggerYAMLUpload}
+                                    data-gtm-label="yamlUploadButton"
+                                    data-gtm-location="sidebarMenu"
+                                  />
                                 </DropdownMenuSubContent>
                               </DropdownMenuPortal>
                             </DropdownMenuSub>
