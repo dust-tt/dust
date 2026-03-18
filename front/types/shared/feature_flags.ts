@@ -257,14 +257,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
   },
-<<<<<<< HEAD
   email_restricted_sharing: {
     description:
       "Enable email-restricted sharing for interactive content (Frames)",
-=======
+    stage: "dust_only",
+  },
   poke_mcp: {
     description: "Enable the Poke MCP server for cross-workspace data access.",
->>>>>>> main
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
