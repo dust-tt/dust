@@ -80,7 +80,7 @@ const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
 const SLACK_ERROR_TEXT =
   "An unexpected error occurred while answering your message, please retry.";
 
-const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE_TO_UPLOAD = 50 * 1024 * 1024; // 50 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
