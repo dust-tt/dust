@@ -1,10 +1,48 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { buildAggregationPrompt } from "@app/lib/reinforced_agent/aggregate_suggestions";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentInstructionsSuggestionType,
   AgentSkillsSuggestionType,
   AgentToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { describe, expect, it } from "vitest";
+
+function makeAgentConfig(
+  overrides: Partial<AgentConfigurationType> = {}
+): AgentConfigurationType {
+  return {
+    id: 1,
+    sId: "agent-1",
+    version: 1,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    model: {
+      modelId: "gpt-4o-mini" as const,
+      providerId: "openai" as const,
+      temperature: 0.7,
+      reasoningEffort: null,
+    },
+    status: "active",
+    scope: "workspace",
+    userFavorite: false,
+    name: "TestAgent",
+    description: "A test agent",
+    pictureUrl: "https://example.com/pic.png",
+    maxStepsPerRun: 3,
+    tags: [],
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    canRead: true,
+    canEdit: true,
+    instructionsHtml: null,
+    instructions: null,
+    actions: [],
+    ...overrides,
+  } as AgentConfigurationType;
+}
 
 function makeInstructionSuggestion(
   overrides: Partial<AgentInstructionsSuggestionType> = {}
@@ -76,13 +114,14 @@ function makeSkillSuggestion(
 describe("buildAggregationPrompt", () => {
   it("includes the agent name in the user message", () => {
     const { userMessage } = buildAggregationPrompt(
-      "SalesBot",
+      makeAgentConfig({ name: "SalesBot" }),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
-    expect(userMessage).toContain("## Agent: SalesBot");
+    expect(userMessage).toContain("Name: SalesBot");
   });
 
   it("formats instruction suggestions with targetBlockId and content", () => {
@@ -94,10 +133,11 @@ describe("buildAggregationPrompt", () => {
       },
     });
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [suggestion],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("kind: instructions");
@@ -107,10 +147,11 @@ describe("buildAggregationPrompt", () => {
 
   it("formats tool suggestions with action and toolId", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeToolSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("kind: tools");
@@ -120,10 +161,11 @@ describe("buildAggregationPrompt", () => {
 
   it("formats skill suggestions with action and skillId", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeSkillSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("kind: skills");
@@ -134,10 +176,11 @@ describe("buildAggregationPrompt", () => {
   it("shows N/A when analysis is null", () => {
     const suggestion = makeInstructionSuggestion({ analysis: null });
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [suggestion],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("analysis: N/A");
@@ -145,10 +188,11 @@ describe("buildAggregationPrompt", () => {
 
   it("numbers multiple suggestions sequentially", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion(), makeToolSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("### Suggestion 1");
@@ -157,10 +201,11 @@ describe("buildAggregationPrompt", () => {
 
   it("includes pending suggestions section when non-empty", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [makeToolSuggestion()], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain(
@@ -170,10 +215,11 @@ describe("buildAggregationPrompt", () => {
 
   it("omits pending suggestions section when empty", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).not.toContain("Existing pending suggestions");
@@ -181,10 +227,11 @@ describe("buildAggregationPrompt", () => {
 
   it("includes rejected suggestions section when non-empty", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [makeToolSuggestion()] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain(
@@ -194,10 +241,11 @@ describe("buildAggregationPrompt", () => {
 
   it("omits rejected suggestions section when empty", () => {
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).not.toContain("Previously rejected suggestions");
@@ -206,10 +254,11 @@ describe("buildAggregationPrompt", () => {
   it("includes tools and skills context", () => {
     const toolsContext = "## Available tools\n- web_search\n- code_review";
     const { userMessage } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      toolsContext
+      toolsContext,
+      []
     );
 
     expect(userMessage).toContain(toolsContext);
@@ -217,14 +266,53 @@ describe("buildAggregationPrompt", () => {
 
   it("system prompt mentions the three tools", () => {
     const { systemPrompt } = buildAggregationPrompt(
-      "TestAgent",
+      makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(systemPrompt).toContain("suggest_prompt_edits");
     expect(systemPrompt).toContain("suggest_tools");
     expect(systemPrompt).toContain("suggest_skills");
+  });
+
+  it("includes agent configured tools in user message", () => {
+    const action = {
+      id: 1,
+      sId: "tool-ws",
+      type: "mcp_server_configuration",
+      name: "web_search",
+      description: "Search the web",
+    } as ServerSideMCPServerConfigurationType;
+    const { userMessage } = buildAggregationPrompt(
+      makeAgentConfig({ actions: [action] }),
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] },
+      "No tools.",
+      []
+    );
+
+    expect(userMessage).toContain("## Agent's configured tools");
+    expect(userMessage).toContain("web_search (ID: tool-ws)");
+  });
+
+  it("includes agent configured skills in user message", () => {
+    const skill = {
+      name: "code_review",
+      sId: "skill-cr",
+      agentFacingDescription: "Review code for quality",
+    } as SkillResource;
+    const { userMessage } = buildAggregationPrompt(
+      makeAgentConfig(),
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] },
+      "No tools.",
+      [skill]
+    );
+
+    expect(userMessage).toContain("## Agent's configured skills");
+    expect(userMessage).toContain("code_review (ID: skill-cr)");
   });
 });

@@ -62,7 +62,7 @@ export function formatAvailableSkills(skills: AvailableSkill[]): string {
         `- **${s.name}** (ID: ${s.sId}): ${(s.agentFacingDescription ?? "No description").replace(/\n/g, " ")}`
     )
     .join("\n");
-  return `## AVAILABLE SKILLS\n${skills.length} skills available.\n\n${skillLines}`;
+  return `## AVAILABLE SKILLS IN WORKSPACE\n${skills.length} skills available.\n\n${skillLines}`;
 }
 
 export function formatAvailableTools(tools: AvailableTool[]): string {
@@ -72,7 +72,7 @@ export function formatAvailableTools(tools: AvailableTool[]): string {
         `- **${t.name}** (ID: ${t.sId}): ${t.description.replace(/\n/g, " ")}`
     )
     .join("\n");
-  return `## AVAILABLE TOOLS\n${tools.length} tools available.\n\n${toolLines}`;
+  return `## AVAILABLE TOOLS IN WORKSPACE\n${tools.length} tools available.\n\n${toolLines}`;
 }
 
 async function fetchSidekickUserMetadata(

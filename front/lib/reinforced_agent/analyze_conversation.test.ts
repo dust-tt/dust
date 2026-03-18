@@ -1,4 +1,6 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { buildAnalysisPrompt } from "@app/lib/reinforced_agent/analyze_conversation";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { describe, expect, it } from "vitest";
 
@@ -42,7 +44,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       agent,
       "User: hello",
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("Name: SalesBot");
@@ -53,7 +56,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       agent,
       "User: hello",
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("Description: Handles sales queries");
@@ -64,7 +68,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       agent,
       "User: hello",
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).not.toContain("Description:");
@@ -77,7 +82,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       agent,
       "User: hello",
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("### Current instructions");
@@ -89,7 +95,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       agent,
       "User: hello",
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).not.toContain("### Current instructions");
@@ -100,7 +107,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig(),
       conversationText,
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(userMessage).toContain("<conversation>");
@@ -113,7 +121,8 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig(),
       "User: hello",
-      toolsContext
+      toolsContext,
+      []
     );
 
     expect(userMessage).toContain(toolsContext);
@@ -123,11 +132,48 @@ describe("buildAnalysisPrompt", () => {
     const { systemPrompt } = buildAnalysisPrompt(
       makeAgentConfig(),
       "User: hello",
-      "No tools."
+      "No tools.",
+      []
     );
 
     expect(systemPrompt).toContain("suggest_prompt_edits");
     expect(systemPrompt).toContain("suggest_tools");
     expect(systemPrompt).toContain("suggest_skills");
+  });
+
+  it("includes agent configured tools in user message", () => {
+    const action = {
+      id: 1,
+      sId: "tool-ws",
+      type: "mcp_server_configuration",
+      name: "web_search",
+      description: "Search the web",
+    } as ServerSideMCPServerConfigurationType;
+    const { userMessage } = buildAnalysisPrompt(
+      makeAgentConfig({ actions: [action] }),
+      "User: hello",
+      "No tools.",
+      []
+    );
+
+    expect(userMessage).toContain("## Agent's configured tools");
+    expect(userMessage).toContain("web_search (ID: tool-ws)");
+  });
+
+  it("includes agent configured skills in user message", () => {
+    const skill = {
+      name: "code_review",
+      sId: "skill-cr",
+      agentFacingDescription: "Review code for quality",
+    } as SkillResource;
+    const { userMessage } = buildAnalysisPrompt(
+      makeAgentConfig(),
+      "User: hello",
+      "No tools.",
+      [skill]
+    );
+
+    expect(userMessage).toContain("## Agent's configured skills");
+    expect(userMessage).toContain("code_review (ID: skill-cr)");
   });
 });

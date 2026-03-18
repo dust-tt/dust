@@ -3,13 +3,15 @@ import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
+import { formatAgentContext } from "@app/lib/reinforced_agent/format_agent_context";
 import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentInstructionsSuggestionType,
   AgentSkillsSuggestionType,
@@ -28,7 +30,7 @@ const REINFORCED_SUGGESTION_KINDS = new Set([
 ]);
 
 interface AggregationContext {
-  agentConfig: LightAgentConfigurationType;
+  agentConfig: AgentConfigurationType;
   syntheticSuggestions: AgentSuggestionResource[];
   prompt: { systemPrompt: string; userMessage: string };
 }
@@ -60,7 +62,7 @@ async function loadAggregationContext(
 
   const [agentConfig] = await getAgentConfigurations(auth, {
     agentIds: [agentConfigurationId],
-    variant: "light",
+    variant: "full",
   });
   if (!agentConfig) {
     logger.warn(
@@ -73,27 +75,32 @@ async function loadAggregationContext(
   const REJECTED_SUGGESTIONS_MAX_COUNT = 20;
   const REJECTED_SUGGESTIONS_MAX_AGE_MONTHS = 3;
 
-  const [pendingSuggestions, rejectedSuggestions, toolsAndSkillsContext] =
-    await Promise.all([
-      AgentSuggestionResource.listByAgentConfigurationId(
-        auth,
-        agentConfigurationId,
-        {
-          sources: ["reinforcement", "sidekick"],
-          states: ["pending"],
-        }
-      ),
-      AgentSuggestionResource.listByAgentConfigurationId(
-        auth,
-        agentConfigurationId,
-        {
-          sources: ["reinforcement", "sidekick"],
-          states: ["rejected"],
-          limit: REJECTED_SUGGESTIONS_MAX_COUNT,
-        }
-      ),
-      buildToolsAndSkillsContext(auth),
-    ]);
+  const [
+    pendingSuggestions,
+    rejectedSuggestions,
+    toolsAndSkillsContext,
+    agentSkills,
+  ] = await Promise.all([
+    AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      {
+        sources: ["reinforcement", "sidekick"],
+        states: ["pending"],
+      }
+    ),
+    AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      {
+        sources: ["reinforcement", "sidekick"],
+        states: ["rejected"],
+        limit: REJECTED_SUGGESTIONS_MAX_COUNT,
+      }
+    ),
+    buildToolsAndSkillsContext(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfig),
+  ]);
 
   const rejectedCutoff = new Date();
   rejectedCutoff.setMonth(
@@ -104,13 +111,14 @@ async function loadAggregationContext(
   );
 
   const prompt = buildAggregationPrompt(
-    agentConfig.name,
+    agentConfig,
     toReinforcedSuggestions(syntheticSuggestions),
     {
       pending: toReinforcedSuggestions(pendingSuggestions),
       rejected: toReinforcedSuggestions(recentRejectedSuggestions),
     },
-    toolsAndSkillsContext
+    toolsAndSkillsContext,
+    agentSkills
   );
 
   return { agentConfig, syntheticSuggestions, prompt };
@@ -143,13 +151,14 @@ function formatSuggestions(suggestions: ReinforcedSuggestionType[]): string {
 }
 
 export function buildAggregationPrompt(
-  agentName: string,
+  agentConfig: AgentConfigurationType,
   syntheticSuggestions: ReinforcedSuggestionType[],
   existingSuggestions: {
     pending: ReinforcedSuggestionType[];
     rejected: ReinforcedSuggestionType[];
   },
-  toolsAndSkillsContext: string
+  toolsAndSkillsContext: string,
+  agentSkills: SkillResource[]
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
 
@@ -169,7 +178,7 @@ You have three tools available:
 
 You MUST call at least one tool. If no suggestions survive aggregation, call suggest_prompt_edits with an empty suggestions array.`;
 
-  let userMessage = `## Agent: ${agentName}
+  let userMessage = `${formatAgentContext(agentConfig, agentSkills)}
 
 ${toolsAndSkillsContext}
 
