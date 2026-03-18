@@ -1,0 +1,23 @@
+poke-perms/scripts/seed.ts
+  93e2a4bb9aeb1bc6 187-188,210-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "8ef0ec9adfb3e0e8986e40e2ac46b38eec41bb05",
+  "prompts": {
+    "93e2a4bb9aeb1bc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45dd6cc1-0eab-4efe-b29a-ffe22b05cb1f",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 16,
+      "total_deletions": 8,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
