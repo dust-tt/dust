@@ -393,7 +393,8 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Treat single-character keys as search input
+      if (e.key.length === 1) {
         e.preventDefault();
         input.focus();
         setDropdownSearchInputValue(input, input.value + e.key);
