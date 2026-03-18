@@ -67,7 +67,9 @@ import type {
 import {
   DustAPI,
   Err,
+  isSupportedAudioContentType,
   isSupportedFileContentType,
+  isSupportedImageContentType,
   Ok,
   removeNulls,
 } from "@dust-tt/client";
@@ -80,9 +82,23 @@ const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
 const SLACK_ERROR_TEXT =
   "An unexpected error occurred while answering your message, please retry.";
 
-const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
+// Keep aligned with front/types/files.ts MAX_FILE_SIZES for conversation uploads.
+const MAX_OTHER_FILE_SIZE_TO_UPLOAD = 50 * 1024 * 1024; // 50 MB
+const MAX_IMAGE_FILE_SIZE_TO_UPLOAD = 20 * 1024 * 1024; // 20 MB
+const MAX_AUDIO_FILE_SIZE_TO_UPLOAD = 100 * 1024 * 1024; // 100 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+
+function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
+  if (isSupportedImageContentType(contentType)) {
+    return MAX_IMAGE_FILE_SIZE_TO_UPLOAD;
+  }
+  if (isSupportedAudioContentType(contentType)) {
+    return MAX_AUDIO_FILE_SIZE_TO_UPLOAD;
+  }
+
+  return MAX_OTHER_FILE_SIZE_TO_UPLOAD;
+}
 
 // Pattern to match +mention or ~mention at the beginning of the string (whitespaces allowed).
 const SLACK_MENTION_PATTERN = /^\s*([+~][a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/;
@@ -1283,15 +1299,20 @@ async function makeContentFragments(
   );
 
   const supportedFiles = slackFiles.flatMap((file) => {
-    const skipReason = !isSupportedFileContentType(file.mimetype ?? "")
-      ? "unsupported_mimetype"
-      : !file.size
-        ? "missing_size"
-        : !file.url_private_download
-          ? "missing_private_download_url"
-          : file.size > MAX_FILE_SIZE_TO_UPLOAD
-            ? "over_size_limit"
-            : null;
+    const contentType = file.mimetype ?? "";
+    const maxFileSizeBytes = isSupportedFileContentType(contentType)
+      ? getMaxFileSizeToUpload(contentType)
+      : null;
+    const skipReason =
+      maxFileSizeBytes === null
+        ? "unsupported_mimetype"
+        : !file.size
+          ? "missing_size"
+          : !file.url_private_download
+            ? "missing_private_download_url"
+            : file.size > maxFileSizeBytes
+              ? "over_size_limit"
+              : null;
 
     if (!skipReason) {
       return [file];
@@ -1308,7 +1329,7 @@ async function makeContentFragments(
         fileMimetype: file.mimetype ?? null,
         fileSize: file.size ?? null,
         hasPrivateDownloadUrl: !!file.url_private_download,
-        maxFileSizeBytes: MAX_FILE_SIZE_TO_UPLOAD,
+        maxFileSizeBytes,
         skipReason,
         threadTs,
       },
