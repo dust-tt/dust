@@ -27,6 +27,7 @@ import {
   useCopyToClipboard,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import type React from "react";
 import { useState } from "react";
 
@@ -69,6 +70,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
+  const { AwaitableDialog, showDialog } = useAwaitableDialog();
 
   const { doShare, fileShare, isFileShareLoading } =
     useShareInteractiveContentFile({ fileId, owner });
@@ -129,8 +131,29 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
     }
   };
 
+  const handleRevoke = async (grant: SharingGrantType) => {
+    const confirmed = await showDialog({
+      title: "Revoke access",
+      validateLabel: "Revoke",
+      validateVariant: "warning",
+      cancelLabel: "Cancel",
+      children: (
+        <p>
+          Are you sure you want to revoke access for{" "}
+          <strong>{grant.email}</strong>? They will no longer be able to view
+          this content.
+        </p>
+      ),
+    });
+
+    if (confirmed) {
+      await doRevokeGrant(grant.id);
+    }
+  };
+
   return (
     <>
+      <AwaitableDialog />
       <Button
         variant="ghost"
         label="Share"
@@ -240,7 +263,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                           <GrantRow
                             key={grant.id}
                             grant={grant}
-                            onRevoke={() => doRevokeGrant(grant.id)}
+                            onRevoke={() => handleRevoke(grant)}
                           />
                         ))}
                       </ScrollArea>
