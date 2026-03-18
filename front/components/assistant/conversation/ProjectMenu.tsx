@@ -237,7 +237,7 @@ export function ProjectMenu({
         ) : (
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent>
+        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
           {canRename && (
             <DropdownMenuItem
               label="Rename"
