@@ -426,6 +426,45 @@ export function useDetectSkillsFromRepo({
   return { detectedSkills, isDetecting, detectError, triggerDetect };
 }
 
+function notifyImportResult(
+  data: ImportSkillsResponseBody,
+  sendNotification: ReturnType<typeof useSendNotification>
+): {
+  successCount: number;
+  errors: string[];
+} {
+  const importedCount = data.imported.length;
+  const updatedCount = data.updated.length;
+  const successCount = importedCount + updatedCount;
+  const errors = data.errored.map((e) => e.message);
+
+  if (successCount > 0) {
+    const parts: string[] = [];
+    if (importedCount > 0) {
+      parts.push(`${importedCount} skill${pluralize(importedCount)} imported`);
+    }
+    if (updatedCount > 0) {
+      parts.push(`${updatedCount} skill${pluralize(updatedCount)} updated`);
+    }
+    if (errors.length > 0) {
+      parts.push(`${errors.length} skill${pluralize(errors.length)} failed`);
+    }
+    sendNotification({
+      type: "success",
+      title: "Import successful",
+      description: parts.join(", ") + ".",
+    });
+  } else {
+    sendNotification({
+      type: "error",
+      title: "Import failed",
+      description: errors[0] ?? "Failed to import skills.",
+    });
+  }
+
+  return { successCount, errors };
+}
+
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const [isImporting, setIsImporting] = useState(false);
@@ -460,42 +499,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         void mutateActiveSkills();
 
-        const importedCount = data.imported.length;
-        const updatedCount = data.updated.length;
-        const successCount = importedCount + updatedCount;
-        const errors = data.errored.map((e) => e.message);
-
-        if (successCount > 0) {
-          const parts: string[] = [];
-          if (importedCount > 0) {
-            parts.push(
-              `${importedCount} skill${pluralize(importedCount)} imported`
-            );
-          }
-          if (updatedCount > 0) {
-            parts.push(
-              `${updatedCount} skill${pluralize(updatedCount)} updated`
-            );
-          }
-          if (errors.length > 0) {
-            parts.push(
-              `${errors.length} skill${pluralize(errors.length)} failed`
-            );
-          }
-          sendNotification({
-            type: "success",
-            title: "Import successful",
-            description: parts.join(", ") + ".",
-          });
-        } else {
-          sendNotification({
-            type: "error",
-            title: "Import failed",
-            description: errors[0] ?? "Failed to import skills.",
-          });
-        }
-
-        return { successCount, errors };
+        return notifyImportResult(data, sendNotification);
       } finally {
         setIsImporting(false);
       }
@@ -504,4 +508,112 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return { importSkills, isImporting };
+}
+
+export function useDetectSkillsFromFiles({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
+    []
+  );
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
+
+  const triggerDetect = useCallback(
+    async (files: File[]) => {
+      setIsDetecting(true);
+      setDetectError(null);
+      setDetectedSkills([]);
+
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append("files", file);
+      }
+
+      try {
+        const res = await clientFetch(
+          `/api/w/${owner.sId}/skills/detect/upload`,
+          { method: "POST", body: formData }
+        );
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          setDetectError(errorData.message);
+          return;
+        }
+
+        const data: DetectSkillsResponseBody = await res.json();
+        setDetectedSkills(data.skills);
+      } catch (err) {
+        setDetectError(
+          isAPIErrorResponse(err)
+            ? err.error.message
+            : "Failed to detect skills from the uploaded files."
+        );
+      } finally {
+        setIsDetecting(false);
+      }
+    },
+    [owner.sId]
+  );
+
+  return { detectedSkills, isDetecting, detectError, triggerDetect };
+}
+
+export function useImportSkillsFromFiles({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isImporting, setIsImporting] = useState(false);
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+
+  const importSkillsFromFiles = useCallback(
+    async (files: File[], names: string[]) => {
+      setIsImporting(true);
+      try {
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append("files", file);
+        }
+        for (const name of names) {
+          formData.append("names", name);
+        }
+
+        const res = await clientFetch(
+          `/api/w/${owner.sId}/skills/import/upload`,
+          { method: "POST", body: formData }
+        );
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: "Import failed",
+            description: errorData.message,
+          });
+          return { successCount: 0, errors: [errorData.message] };
+        }
+
+        const data: ImportSkillsResponseBody = await res.json();
+
+        void mutateActiveSkills();
+
+        return notifyImportResult(data, sendNotification);
+      } finally {
+        setIsImporting(false);
+      }
+    },
+    [owner.sId, mutateActiveSkills, sendNotification]
+  );
+
+  return { importSkillsFromFiles, isImporting };
 }
