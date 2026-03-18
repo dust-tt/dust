@@ -94,6 +94,7 @@ interface ConversationViewerProps {
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
+  inputTransformer?: (input: string) => Promise<string>;
 }
 
 function easeOutQuint(x: number): number {
@@ -164,6 +165,7 @@ export const ConversationViewer = ({
   additionalMarkdownPlugins,
   setPlanLimitReached,
   clientSideMCPServerIds,
+  inputTransformer,
 }: ConversationViewerProps) => {
   const ref =
     useRef<
@@ -650,8 +652,12 @@ export const ConversationViewer = ({
       submitInFlightRef.current = true;
 
       try {
+        const transformedInput = inputTransformer
+          ? await inputTransformer(input)
+          : input;
+
         const messageData = {
-          input,
+          input: transformedInput,
           mentions: mentions.map(toMentionType),
           contentFragments,
           clientSideMCPServerIds:
@@ -795,6 +801,7 @@ export const ConversationViewer = ({
       clientSideMCPServerIds,
       agentBuilderContext?.skipToolsValidation,
       conversationId,
+      inputTransformer,
       mutateConversations,
       sendNotification,
       setPlanLimitReached,

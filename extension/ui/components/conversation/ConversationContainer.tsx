@@ -10,10 +10,11 @@ import { Button, MenuIcon } from "@dust-tt/sparkle";
 import {
   type AttachSelectionMessage,
   sendGetSessionInfoMessage,
+  sendListTabsMessage,
 } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface ConversationContainerProps {
   workspace: LightWorkspaceType;
@@ -63,6 +64,22 @@ export const ConversationContainer = ({
     () => (serverId ? [serverId] : undefined),
     [serverId]
   );
+
+  const inputTransformer = useCallback(async (input: string) => {
+    try {
+      const result = await sendListTabsMessage();
+      const tabs = result.tabs ?? [];
+      if (tabs.length === 0) {
+        return input;
+      }
+      const lines = tabs.map(
+        (t) => `${t.active ? "* " : "  "}[${t.tabId}] ${t.title} — ${t.url}`
+      );
+      return `<dust_system>\n- Browser tabs:\n${lines.join("\n")}\n</dust_system>\n\n${input}`;
+    } catch {
+      return input;
+    }
+  }, []);
 
   // Reset fileBlobs when conversationId changes.
   // We intentionally avoid using a key prop as it would remount
@@ -155,6 +172,7 @@ export const ConversationContainer = ({
           subscription={subscription}
           conversationId={conversationId}
           clientSideMCPServerIds={clientSideMCPServerIds}
+          inputTransformer={inputTransformer}
           suggestion={suggestion}
           onDismissSuggestion={handleDismissSuggestion}
         />

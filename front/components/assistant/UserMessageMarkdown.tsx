@@ -58,9 +58,14 @@ export const UserMessageMarkdown = ({
     []
   );
 
+  const displayContent = message.content.replace(
+    /<dust_system>[\s\S]*?<\/dust_system>\s*/g,
+    ""
+  );
+
   return (
     <Markdown
-      content={message.content}
+      content={displayContent}
       isStreaming={false}
       isLastMessage={isLastMessage}
       additionalMarkdownComponents={additionalMarkdownComponents}

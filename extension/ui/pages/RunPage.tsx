@@ -1,5 +1,6 @@
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { Spinner } from "@dust-tt/sparkle";
+import { sendListTabsMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
@@ -28,15 +29,28 @@ export const RunPage = () => {
         return;
       }
 
-      const files = await fileUploaderService.uploadContentTab({
-        includeContent: params.includeContent,
-        includeCapture: params.includeCapture,
-        includeSelectionOnly: params.includeSelectionOnly,
-      });
+      const [files, tabsResult] = await Promise.all([
+        fileUploaderService.uploadContentTab({
+          includeContent: params.includeContent,
+          includeCapture: params.includeCapture,
+          includeSelectionOnly: params.includeSelectionOnly,
+        }),
+        sendListTabsMessage().catch(() => ({ tabs: [] })),
+      ]);
+
+      const tabs = tabsResult.tabs ?? [];
+      let input = params.text as string;
+      if (tabs.length > 0) {
+        const lines = tabs.map(
+          (t: { active: boolean; tabId: number; title: string; url: string }) =>
+            `${t.active ? "* " : "  "}[${t.tabId}] ${t.title} — ${t.url}`
+        );
+        input = `<dust_system>\n- Browser tabs:\n${lines.join("\n")}\n</dust_system>\n\n${input}`;
+      }
 
       const conversationRes = await createConversationWithMessage({
         messageData: {
-          input: params.text,
+          input,
           mentions: [{ configurationId: params.configurationId }],
           contentFragments: {
             uploaded: files

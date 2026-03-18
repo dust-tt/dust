@@ -35,6 +35,7 @@ interface ConversationContainerProps {
   user: UserType;
   conversationId?: string | null;
   clientSideMCPServerIds?: string[];
+  inputTransformer?: (input: string) => Promise<string>;
   suggestion?: {
     id: string;
     title: string;
@@ -49,6 +50,7 @@ export function ConversationContainerVirtuoso({
   user,
   conversationId: conversationIdProp,
   clientSideMCPServerIds,
+  inputTransformer,
   suggestion,
   onDismissSuggestion,
 }: ConversationContainerProps) {
@@ -93,9 +95,13 @@ export function ConversationContainerVirtuoso({
 
       setIsSubmitting(true);
 
+      const transformedInput = inputTransformer
+        ? await inputTransformer(input)
+        : input;
+
       const conversationRes = await createConversationWithMessage({
         messageData: {
-          input,
+          input: transformedInput,
           mentions: mentions.map(toMentionType),
           contentFragments,
           clientSideMCPServerIds,
@@ -150,6 +156,7 @@ export function ConversationContainerVirtuoso({
       sendNotification,
       createConversationWithMessage,
       clientSideMCPServerIds,
+      inputTransformer,
     ]
   );
 
@@ -173,6 +180,7 @@ export function ConversationContainerVirtuoso({
           setPlanLimitReached={setPlanLimitReached}
           key={activeConversationId}
           clientSideMCPServerIds={clientSideMCPServerIds}
+          inputTransformer={inputTransformer}
         />
       ) : (
         <>
