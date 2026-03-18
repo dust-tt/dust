@@ -24,6 +24,11 @@ export const GET_CONNECTOR_DETAILS_TOOL_NAME = "get_connector_details";
 export const CHECK_NOTION_PAGE_TOOL_NAME = "check_notion_page";
 export const CHECK_SLACK_CHANNEL_TOOL_NAME = "check_slack_channel";
 
+// ─── Conversations & Agents ──────────────────────────────────────────────────
+
+export const GET_CONVERSATION_DETAILS_TOOL_NAME = "get_conversation_details";
+export const GET_MCP_SERVER_DETAILS_TOOL_NAME = "get_mcp_server_details";
+
 // ─── Shared schema fragments ─────────────────────────────────────────────────
 
 const workspaceIdSchema = {
@@ -161,6 +166,39 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Checking Slack channel",
       done: "Checked Slack channel",
+    },
+  },
+
+  // ── Conversations & Agents ───────────────────────────────────────────────
+
+  [GET_CONVERSATION_DETAILS_TOOL_NAME]: {
+    description:
+      "Full conversation with messages, tool calls, agent actions, and errors.",
+    schema: {
+      ...workspaceIdSchema,
+      conversation_id: z.string().describe("The sId of the conversation."),
+    },
+    stake: "high" as const,
+    displayLabels: {
+      running: "Fetching conversation",
+      done: "Fetched conversation",
+    },
+  },
+
+  [GET_MCP_SERVER_DETAILS_TOOL_NAME]: {
+    description:
+      "Get MCP server view details, or list all MCP server views in a workspace.",
+    schema: {
+      ...workspaceIdSchema,
+      server_view_id: z
+        .string()
+        .optional()
+        .describe("The sId of a specific MCP server view. Omit to list all."),
+    },
+    stake: "high" as const,
+    displayLabels: {
+      running: "Fetching MCP server details",
+      done: "Fetched MCP server details",
     },
   },
 });

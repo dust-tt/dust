@@ -428,6 +428,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "check_notion_page": "high",
     "check_slack_channel": "high",
     "get_connector_details": "high",
+    "get_conversation_details": "high",
+    "get_mcp_server_details": "high",
     "get_workspace_credits": "high",
     "get_workspace_feature_flags": "high",
     "get_workspace_members": "high",
