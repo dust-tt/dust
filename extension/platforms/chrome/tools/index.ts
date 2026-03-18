@@ -1,9 +1,9 @@
-import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
 import {
   buildClientTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { attachTabsTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
+import { CHROME_TOOLS_METADATA } from "@extension/platforms/chrome/tools/metadata";
 import {
   closeBrowserTabTool,
   moveBrowserTabTool,
@@ -48,18 +48,34 @@ export function registerAllTools(
   const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
 
   for (const tool of tools) {
-    server.tool(tool.name, tool.description, tool.schema, async (params) => {
-      const result = await tool.handler(params);
-      if (result.isErr()) {
+    server.registerTool(
+      tool.name,
+      {
+        description: tool.description,
+        inputSchema: tool.schema,
+        _meta: {
+          dust: {
+            stake: tool.stake,
+            displayLabels: tool.displayLabels,
+            ...(tool.argumentsRequiringApproval
+              ? { argumentsRequiringApproval: tool.argumentsRequiringApproval }
+              : {}),
+          },
+        },
+      },
+      async (params) => {
+        const result = await tool.handler(params);
+        if (result.isErr()) {
+          return {
+            isError: true,
+            content: [{ type: "text" as const, text: result.error.message }],
+          };
+        }
         return {
-          isError: true,
-          content: [{ type: "text" as const, text: result.error.message }],
+          isError: false,
+          content: result.value,
         };
       }
-      return {
-        isError: false,
-        content: result.value,
-      };
-    });
+    );
   }
 }

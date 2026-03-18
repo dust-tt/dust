@@ -72,7 +72,9 @@ export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
   };
 
 export type ClientSideMCPToolTypeWithStakeLevel =
-  WithStakeLevelType<MCPToolWithAvailabilityType>;
+  WithStakeLevelType<MCPToolWithAvailabilityType> & {
+    argumentsRequiringApproval?: string[];
+  };
 
 export type MCPServerType = {
   // This will be part of the MCP server metadata at the protocol level.

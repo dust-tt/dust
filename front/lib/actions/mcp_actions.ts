@@ -7,6 +7,7 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
@@ -29,8 +30,6 @@ import {
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
-  getClientSideToolArgumentsRequiringApproval,
-  getClientSideToolStake,
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
@@ -50,6 +49,7 @@ import type {
 import {
   connectToMCPServer,
   extractMetadataFromTools,
+  getDustToolMeta,
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
@@ -253,10 +253,8 @@ function makeClientSideMCPToolConfigurations(
     // of the same server name, allowing for consistent tool behavior.
     toolServerId,
     icon: config.icon,
-    argumentsRequiringApproval: getClientSideToolArgumentsRequiringApproval(
-      toolServerId,
-      tool.name
-    ),
+    argumentsRequiringApproval: tool.argumentsRequiringApproval,
+    displayLabels: tool.displayLabels,
   }));
 }
 
@@ -1049,20 +1047,26 @@ async function listToolsForClientSideMCPServer(
   let allTools: ClientSideMCPToolTypeWithStakeLevel[] = [];
   let nextPageCursor;
 
-  const serverId = getBaseServerId(config.clientSideMcpServerId);
-
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
     const { tools, nextCursor } = await mcpClient.listTools();
 
     nextPageCursor = nextCursor;
+    const dustMetaByTool = new Map(
+      tools.map((t) => [t.name, getDustToolMeta(t._meta)])
+    );
     allTools = [
       ...allTools,
-      ...extractMetadataFromTools(tools).map((tool) => ({
-        ...tool,
-        availability: "manual" as const,
-        stakeLevel: getClientSideToolStake(serverId, tool.name),
-      })),
+      ...extractMetadataFromTools(tools).map((tool) => {
+        const dustMeta = dustMetaByTool.get(tool.name);
+        return {
+          ...tool,
+          availability: "manual" as const,
+          stakeLevel:
+            dustMeta?.stake ?? DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
+          argumentsRequiringApproval: dustMeta?.argumentsRequiringApproval,
+        };
+      }),
     ];
   } while (nextPageCursor);
 

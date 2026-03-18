@@ -2,7 +2,6 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
-  getClientSideToolDisplayLabels,
   getInternalMCPServerNameFromSId,
   getInternalMCPServerToolDisplayLabels,
   type InternalMCPServerNameType,
@@ -959,8 +958,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           toolName
         ] ?? null)
       : isLightClientSideMCPToolConfiguration(this.toolConfiguration) &&
-          this.metadata.mcpServerId
-        ? getClientSideToolDisplayLabels(this.metadata.mcpServerId, toolName)
+          this.toolConfiguration.displayLabels
+        ? this.toolConfiguration.displayLabels
         : getDefaultRemoteDisplayLabels(
             this.toolConfiguration.mcpServerName,
             toolName
