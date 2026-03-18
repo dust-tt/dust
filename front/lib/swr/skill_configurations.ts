@@ -1,3 +1,4 @@
+import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -476,14 +477,37 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
     });
 
   const importSkills = useCallback(
-    async (repoUrl: string, names: string[]) => {
+    async (formData: ImportFormValues, files: File[]) => {
       setIsImporting(true);
       try {
-        const res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ repoUrl, names }),
-        });
+        let res: Response;
+        switch (formData.importType) {
+          case "repository": {
+            res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                repoUrl: formData.repoUrl,
+                names: formData.selectedSkillNames,
+              }),
+            });
+            break;
+          }
+          case "files": {
+            const body = new FormData();
+            for (const file of files) {
+              body.append("files", file);
+            }
+            for (const name of formData.selectedSkillNames) {
+              body.append("names", name);
+            }
+            res = await clientFetch(
+              `/api/w/${owner.sId}/skills/import/upload`,
+              { method: "POST", body }
+            );
+            break;
+          }
+        }
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
@@ -562,58 +586,3 @@ export function useDetectSkillsFromFiles({
   return { detectedSkills, isDetecting, detectError, triggerDetect };
 }
 
-export function useImportSkillsFromFiles({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
-  const sendNotification = useSendNotification();
-  const [isImporting, setIsImporting] = useState(false);
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
-
-  const importSkillsFromFiles = useCallback(
-    async (files: File[], names: string[]) => {
-      setIsImporting(true);
-      try {
-        const formData = new FormData();
-        for (const file of files) {
-          formData.append("files", file);
-        }
-        for (const name of names) {
-          formData.append("names", name);
-        }
-
-        const res = await clientFetch(
-          `/api/w/${owner.sId}/skills/import/upload`,
-          { method: "POST", body: formData }
-        );
-
-        if (!res.ok) {
-          const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
-            title: "Import failed",
-            description: errorData.message,
-          });
-          return { successCount: 0, errors: [errorData.message] };
-        }
-
-        const data: ImportSkillsResponseBody = await res.json();
-
-        void mutateActiveSkills();
-
-        return notifyImportResult(data, sendNotification);
-      } finally {
-        setIsImporting(false);
-      }
-    },
-    [owner.sId, mutateActiveSkills, sendNotification]
-  );
-
-  return { importSkillsFromFiles, isImporting };
-}

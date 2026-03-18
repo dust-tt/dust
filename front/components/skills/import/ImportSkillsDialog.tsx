@@ -8,10 +8,7 @@ import {
 } from "@app/components/skills/import/formSchema";
 import { ImportFromFilesTab } from "@app/components/skills/import/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
-import {
-  useImportSkills,
-  useImportSkillsFromFiles,
-} from "@app/lib/swr/skill_configurations";
+import { useImportSkills } from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -75,13 +72,7 @@ export function ImportSkillsDialog({
     uploadedFilesRef.current = files;
   }, []);
 
-  const { importSkills, isImporting: isImportingFromRepo } = useImportSkills({
-    owner,
-  });
-  const { importSkillsFromFiles, isImporting: isImportingFromFiles } =
-    useImportSkillsFromFiles({ owner });
-
-  const isImporting = isImportingFromRepo || isImportingFromFiles;
+  const { importSkills, isImporting } = useImportSkills({ owner });
 
   const onSubmit = useCallback(
     async (data: ImportFormValues) => {
@@ -89,31 +80,12 @@ export function ImportSkillsDialog({
         return;
       }
 
-      let successCount = 0;
-      switch (data.importType) {
-        case "repository": {
-          const result = await importSkills(
-            data.repoUrl,
-            data.selectedSkillNames
-          );
-          successCount = result.successCount;
-          break;
-        }
-        case "files": {
-          const result = await importSkillsFromFiles(
-            uploadedFilesRef.current,
-            data.selectedSkillNames
-          );
-          successCount = result.successCount;
-          break;
-        }
-      }
-
-      if (successCount > 0) {
+      const result = await importSkills(data, uploadedFilesRef.current);
+      if (result.successCount > 0) {
         onClose();
       }
     },
-    [importSkills, importSkillsFromFiles, onClose]
+    [importSkills, onClose]
   );
 
   const selectedCount = selectedSkillNamesField.value.length;
