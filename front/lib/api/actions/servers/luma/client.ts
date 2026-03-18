@@ -294,7 +294,7 @@ export class LumaClient {
       "POST",
       LUMA_API_PATHS.addGuests,
       LumaGuestListResponseSchema,
-      { event_id: eventApiId, guests }
+      { event_api_id: eventApiId, guests }
     );
     if (result.isErr()) {
       return result;
@@ -310,7 +310,10 @@ export class LumaClient {
       "POST",
       LUMA_API_PATHS.sendInvites,
       z.object({}).passthrough(),
-      { event_id: eventApiId, ...data }
+      {
+        event_api_id: eventApiId,
+        guests: data.emails.map((email) => ({ email })),
+      }
     );
     if (result.isErr()) {
       return result;
