@@ -1,7 +1,4 @@
-import {
-  useBatchUpdateAgentScope,
-  useBatchUpdateAgentTags,
-} from "@app/lib/swr/assistants";
+import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
@@ -16,7 +13,6 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
-  EyeSlashIcon,
   Spinner,
   TagIcon,
   TrashIcon,
@@ -25,6 +21,7 @@ import {
 import { useState } from "react";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
+import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 type AgentEditBarProps = {
   onClose: () => void;
@@ -46,10 +43,6 @@ export const AgentEditBar = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const batchUpdateAgentTags = useBatchUpdateAgentTags({
-    owner,
-  });
-
-  const batchUpdateAgentScope = useBatchUpdateAgentScope({
     owner,
   });
 
@@ -162,22 +155,11 @@ export const AgentEditBar = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button
-          size="xs"
-          variant="outline"
-          icon={EyeSlashIcon}
-          label="Unpublish"
+        <UnpublishAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
           disabled={selectedAgents.length === 0 || isLoading}
-          onClick={async () => {
-            setIsLoading(true);
-            await batchUpdateAgentScope(
-              selectedAgents.map((a) => a.sId),
-              { scope: "hidden" }
-            );
-            void mutateAgentConfigurations();
-            setIsLoading(false);
-            onClose();
-          }}
+          onSave={onClose}
         />
 
         <Button
