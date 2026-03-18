@@ -632,3 +632,25 @@ export function isPdfContentType(contentType: string): boolean {
 export function isMarkdownContentType(contentType: string): boolean {
   return contentType === "text/markdown";
 }
+
+/**
+ * Infers a supported content type from a file name's extension.
+ * Returns null if the extension is not recognized.
+ */
+export function contentTypeFromFileName(
+  fileName: string
+): SupportedFileContentType | null {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex === -1) {
+    return null;
+  }
+  const extension = fileName.slice(dotIndex).toLowerCase();
+
+  for (const [contentType, format] of Object.entries(FILE_FORMATS)) {
+    if ((format.exts as readonly string[]).includes(extension)) {
+      return contentType as SupportedFileContentType;
+    }
+  }
+
+  return null;
+}

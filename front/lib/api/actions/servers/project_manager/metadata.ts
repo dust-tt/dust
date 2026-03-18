@@ -31,7 +31,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "MIME type (default: text/plain, or inherited from sourceFileId if provided)"
+          "MIME type (default: inferred from file extension, e.g. text/markdown for .md files, or text/plain if unknown. Inherited from sourceFileId if provided)"
         ),
       dustProject:
         ConfigurableToolInputSchemas[
