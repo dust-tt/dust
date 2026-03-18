@@ -1,5 +1,6 @@
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import logger from "@app/logger/logger";
+import { isRecord } from "@app/types/shared/utils/general";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import type {
@@ -232,10 +233,67 @@ function getAjvInstance(): Ajv {
 }
 
 /**
+ * Recursively checks that all required field actually exist in the properties.
+ * Returns null if the schema is valid, and the error message otherwise.
+ */
+function checkRequiredFieldsExist(schema: unknown, path = ""): string | null {
+  if (typeof schema !== "object" || schema === null || !isRecord(schema)) {
+    return null;
+  }
+
+  const properties = schema["properties"];
+  const required = schema["required"];
+
+  if (Array.isArray(required)) {
+    for (const field of required) {
+      if (
+        typeof properties !== "object" ||
+        properties === null ||
+        !(field in properties)
+      ) {
+        return `"required" field "${field}" at ${path ?? "root"} has no corresponding entry in "properties"`;
+      }
+    }
+  }
+
+  if (
+    typeof properties === "object" &&
+    properties !== null &&
+    isRecord(properties)
+  ) {
+    for (const [key, val] of Object.entries(properties)) {
+      const err = checkRequiredFieldsExist(
+        val,
+        path ? `${path}.properties.${key}` : `properties.${key}`
+      );
+      if (err) {
+        return err;
+      }
+    }
+  }
+
+  const items = schema["items"];
+  if (typeof items === "object" && items !== null) {
+    const err = checkRequiredFieldsExist(
+      items,
+      path ? `${path}.items` : "items"
+    );
+    if (err) {
+      return err;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Validates a generic JSON schema as per the JSON schema specification.
  * Less strict than the JsonSchemaSchema zod schema.
  */
-export function validateJsonSchema(value: object | string | null | undefined): {
+export function validateJsonSchema(
+  value: object | string | null | undefined,
+  { enforceRequiredFields = false }: { enforceRequiredFields?: boolean } = {}
+): {
   isValid: boolean;
   error?: string;
 } {
@@ -248,6 +306,14 @@ export function validateJsonSchema(value: object | string | null | undefined): {
     const ajv = getAjvInstance();
 
     ajv.compile(parsed); // Throws an error if the schema is invalid
+
+    if (enforceRequiredFields) {
+      const error = checkRequiredFieldsExist(parsed);
+      if (error) {
+        return { isValid: false, error };
+      }
+    }
+
     return { isValid: true };
   } catch (e) {
     return {
