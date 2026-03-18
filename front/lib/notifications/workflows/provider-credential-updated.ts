@@ -18,6 +18,9 @@ type ProviderCredentialsHealthUpdatedPayloadType = z.infer<
   typeof ProviderCredentialsHealthUpdatedPayloadSchema
 >;
 
+export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
+  "provider-credentials-health";
+
 export const providerCredentialsHealthUpdatedWorkflow = workflow(
   PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,
   async ({ step, payload }) => {
@@ -35,7 +38,7 @@ export const providerCredentialsHealthUpdatedWorkflow = workflow(
   },
   {
     payloadSchema: ProviderCredentialsHealthUpdatedPayloadSchema,
-    tags: ["provider-credentials-health"],
+    tags: [PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG],
   }
 );
 
