@@ -8,7 +8,7 @@
   "rust-analyzer.linkedProjects": [
     "./core/Cargo.toml"
   ],
-  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "js/ts.preferences.importModuleSpecifier": "non-relative",
   "github-actions.workflows.pinned.workflows": [],
   "editor.formatOnSave": true,
   "[rust]": {
