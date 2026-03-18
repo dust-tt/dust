@@ -21,7 +21,7 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -268,6 +268,47 @@ const nativeInputValueSetter =
     ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
     : undefined;
 
+const SEARCHABLE_MENU_ITEM_SELECTOR =
+  '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
+const OPEN_SEARCHABLE_MENU_ITEM_SELECTOR = [
+  '[data-radix-menu-content][data-state=open] [role="menuitem"]',
+  '[data-radix-menu-content][data-state=open] [role="menuitemcheckbox"]',
+  '[data-radix-menu-content][data-state=open] [role="menuitemradio"]',
+].join(", ");
+
+function getFirstDropdownMenuItem(container: ParentNode): HTMLElement | null {
+  return container.querySelector<HTMLElement>(SEARCHABLE_MENU_ITEM_SELECTOR);
+}
+
+function getFirstOpenDropdownMenuItem(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(
+    OPEN_SEARCHABLE_MENU_ITEM_SELECTOR
+  );
+}
+
+function getDropdownSearchInput(
+  container: ParentNode
+): HTMLInputElement | null {
+  return (
+    container.querySelector<HTMLInputElement>(
+      '[data-dropdown-searchbar] input[type="text"]'
+    ) ?? container.querySelector<HTMLInputElement>('input[type="text"]')
+  );
+}
+
+function setDropdownSearchInputValue(
+  input: HTMLInputElement,
+  nextValue: string
+): void {
+  if (!nativeInputValueSetter) {
+    return;
+  }
+
+  // Use the native setter so React sees the value change before the input event.
+  nativeInputValueSetter.call(input, nextValue);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
@@ -275,6 +316,7 @@ interface DropdownMenuContentProps
   dropdownHeaders?: React.ReactNode;
   preventAutoFocusOnClose?: boolean;
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 const DropdownMenuContent = React.forwardRef<
@@ -290,42 +332,35 @@ const DropdownMenuContent = React.forwardRef<
       dropdownHeaders,
       preventAutoFocusOnClose = true,
       onCloseAutoFocus,
+      onKeyDownCapture,
       onKeyDown,
+      searchInputRef,
       children,
       ...props
     },
     ref
   ) => {
-    const contentRef = useRef<HTMLDivElement | null>(null);
-
-    const mergedRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        contentRef.current = node;
-        if (typeof ref === "function") {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref]
-    );
-
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      onKeyDownCapture?.(e);
+      if (e.defaultPrevented) {
+        return;
+      }
+
       if (e.key !== "ArrowUp") {
         return;
       }
 
-      const input = contentRef.current?.querySelector("input");
-      if (!input) {
+      const input =
+        searchInputRef?.current ?? getDropdownSearchInput(e.currentTarget);
+      const firstItem = getFirstDropdownMenuItem(e.currentTarget);
+
+      if (!input || !firstItem || document.activeElement !== firstItem) {
         return;
       }
 
-      const items = contentRef.current?.querySelectorAll('[role="menuitem"]');
-      if (items && items.length > 0 && document.activeElement === items[0]) {
-        e.preventDefault();
-        e.stopPropagation();
-        input.focus();
-      }
+      e.preventDefault();
+      e.stopPropagation();
+      input.focus();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -341,25 +376,24 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
-      const input = contentRef.current?.querySelector("input");
-      if (!input || !nativeInputValueSetter) {
+      const input =
+        searchInputRef?.current ?? getDropdownSearchInput(e.currentTarget);
+      if (!input) {
         return;
       }
 
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         input.focus();
-        nativeInputValueSetter.call(input, input.value + e.key);
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        setDropdownSearchInputValue(input, input.value + e.key);
       } else if (e.key === "Backspace" && input.value.length > 0) {
         e.preventDefault();
         input.focus();
-        nativeInputValueSetter.call(input, input.value.slice(0, -1));
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        setDropdownSearchInputValue(input, input.value.slice(0, -1));
       }
     };
 
-    const handleCloseAutoFocus = useCallback(
+    const handleCloseAutoFocus = React.useCallback(
       (event: Event) => {
         if (preventAutoFocusOnClose) {
           event.preventDefault();
@@ -371,7 +405,7 @@ const DropdownMenuContent = React.forwardRef<
 
     const content = (
       <DropdownMenuPrimitive.Content
-        ref={mergedRef}
+        ref={ref}
         sideOffset={sideOffset}
         onKeyDownCapture={handleKeyDownCapture}
         onKeyDown={handleKeyDown}
@@ -739,18 +773,14 @@ const DropdownMenuSearchbar = React.forwardRef<
       if (!e.defaultPrevented) {
         if (e.key === "Enter") {
           e.preventDefault();
-          const firstItem = document.querySelector(
-            '[data-radix-menu-content][data-state=open] [role="menuitem"]'
-          );
+          const firstItem = getFirstOpenDropdownMenuItem();
           if (firstItem instanceof HTMLElement) {
             firstItem.click();
           }
         }
         if (e.key === "Tab" || e.key === "ArrowDown") {
           e.preventDefault();
-          const firstItem = document.querySelector(
-            '[data-radix-menu-content][data-state=open] [role="menuitem"]'
-          );
+          const firstItem = getFirstOpenDropdownMenuItem();
           if (firstItem instanceof HTMLElement) {
             firstItem.focus();
           }
@@ -759,7 +789,10 @@ const DropdownMenuSearchbar = React.forwardRef<
     };
 
     return (
-      <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
+      <div
+        className={cn("s-flex s-gap-1.5 s-p-1.5", className)}
+        data-dropdown-searchbar
+      >
         <SearchInput
           className="s-w-full"
           ref={internalRef}
