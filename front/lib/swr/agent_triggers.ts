@@ -142,7 +142,7 @@ export function useTextAsCronRule({
             body: JSON.stringify({
               naturalDescription,
               defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            } as PostTextAsCronRuleRequestBody),
+            } satisfies PostTextAsCronRuleRequestBody),
             signal,
           }
         );
@@ -422,7 +422,7 @@ export function useTriggerEstimation({
   );
 
   return {
-    estimation: (data as GetTriggerEstimationResponseBody | undefined) ?? null,
+    estimation: data ?? null,
     isEstimationLoading: !!webhookSourceId && !error && !data,
     isEstimationError: error,
     isEstimationValidating: isValidating,
