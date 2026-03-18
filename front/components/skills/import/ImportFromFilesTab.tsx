@@ -79,6 +79,9 @@ export function ImportFromFilesTab({
       );
       if (rejected.length > 0) {
         setFileTypeError("Only .zip files are accepted.");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
       setFileTypeError(null);
