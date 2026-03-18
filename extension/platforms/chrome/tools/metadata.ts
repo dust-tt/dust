@@ -149,17 +149,20 @@ Avoid unnecessary actions.`,
         .describe(
           "ID of the element to interact with. Required for click_element, type_text and delete_text. Must match an element returned by get_elements."
         ),
-
       text: z
         .string()
         .nullish()
         .describe("Text to insert when using type_text."),
-
       textActionVariant: z
         .enum(["replace", "append"])
         .nullish()
         .describe(
           "How text should be applied when using type_text: replace existing content or append to it."
+        ),
+      humanReadableDescription: z
+        .string()
+        .describe(
+          "A human-readable description of the interaction being performed. Describe the tab, the element, and the action clearly, e.g. 'Click the Submit button on the Login tab' or 'Type \"hello\" into the search input on the Google tab'."
         ),
     }).shape,
     argumentsRequiringApproval: ["tabId"],

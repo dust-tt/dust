@@ -17,6 +17,28 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+type ToolOverride = {
+  title?: (agentName: string, inputs: Record<string, unknown>) => string;
+  alwaysAllowLabel?: (
+    agentName: string,
+    inputs: Record<string, unknown>
+  ) => string;
+};
+
+/** Overrides title and alwaysAllowLabel for specific MCP tools */
+const MCP_TOOL_OVERRIDES: Partial<
+  Record<string, Partial<Record<string, ToolOverride>>>
+> = {
+  "dust-chrome-extension": {
+    interact_with_page: {
+      title: (agentName, inputs) =>
+        `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
+      alwaysAllowLabel: (agentName, inputs) =>
+        "Allow all the interactions with this tab",
+    },
+  },
+};
+
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
@@ -76,8 +98,19 @@ export function MCPToolValidationRequired({
     setNeverAskAgain(false);
   };
 
+  const toolOverride =
+    MCP_TOOL_OVERRIDES[blockedAction.metadata.mcpServerName]?.[
+      blockedAction.metadata.toolName
+    ];
+
   const title = useMemo(() => {
     if (isTriggeredByCurrentUser) {
+      if (toolOverride?.title) {
+        return toolOverride.title(
+          blockedAction.metadata.agentName,
+          blockedAction.inputs
+        );
+      }
       return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
     } else {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
@@ -85,12 +118,22 @@ export function MCPToolValidationRequired({
   }, [
     blockedAction.metadata.mcpServerName,
     blockedAction.metadata.toolName,
+    blockedAction.metadata.agentName,
+    blockedAction.inputs,
     isTriggeredByCurrentUser,
+    toolOverride,
   ]);
 
   const alwaysAllowLabel = useMemo(() => {
     if (blockedAction.stake !== "medium") {
       return "Always allow";
+    }
+
+    if (toolOverride?.alwaysAllowLabel) {
+      return toolOverride.alwaysAllowLabel(
+        blockedAction.metadata.agentName,
+        blockedAction.inputs
+      );
     }
 
     const args = blockedAction.argumentsRequiringApproval ?? [];
@@ -109,6 +152,7 @@ export function MCPToolValidationRequired({
     blockedAction.inputs,
     blockedAction.metadata.agentName,
     blockedAction.metadata.toolName,
+    toolOverride,
   ]);
 
   return (
