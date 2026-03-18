@@ -1194,8 +1194,6 @@ type EnrichedCanvasInfo = {
   title: string;
   name: string;
   permalink?: string;
-  created?: number;
-  timestamp?: number;
   user?: string;
   label?: string;
 };
@@ -1206,7 +1204,6 @@ function formatCanvasAsMarkdown(c: EnrichedCanvasInfo): string {
     `  - ID: ${c.id}`,
     `  - Title: ${c.title || "(none)"}`,
     `  - Name: ${c.name || "(none)"}`,
-    `  - Created: ${c.created ?? c.timestamp ?? ""}`,
     `  - Creator: ${c.user ?? ""}`,
     `  - Permalink: ${c.permalink ?? ""}`,
     c.label ? `  - Tab label: ${c.label}` : null,
@@ -1241,7 +1238,7 @@ export async function executeGetChannelCanvases({
     async (c) => {
       const info = await slackClient.files.info({ file: c.canvas_id });
       if (!info.ok || !info.file) {
-        throw new Error(info.error ?? "files.info failed");
+        throw new MCPError(info.error ?? "files.info failed");
       }
       const f = info.file;
       return {
@@ -1249,8 +1246,6 @@ export async function executeGetChannelCanvases({
         title: f.title ?? "",
         name: f.name ?? "",
         permalink: f.permalink,
-        created: f.created,
-        timestamp: f.timestamp,
         user: f.user,
         label: c.label,
       } satisfies EnrichedCanvasInfo;
@@ -1280,7 +1275,7 @@ export async function executeReadCanvas({
 
   const info = await slackClient.files.info({ file: canvas_id });
   if (!info.ok || !info.file) {
-    throw new Error(info.error ?? "unknown error");
+    return new Err(new MCPError(info.error ?? "unknown error"));
   }
   const { url_private, url_private_download } = info.file;
   const url = url_private ?? url_private_download ?? "";
