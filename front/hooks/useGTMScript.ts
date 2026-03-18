@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+const ELEMENT_ID = "google-tag-manager";
+
 /**
  * Injects the Google Tag Manager script into the page.
  * Uses process.env.NEXT_PUBLIC_GTM_TRACKING_ID (compile-time substituted).
@@ -7,12 +9,12 @@ import { useEffect } from "react";
 export function useGTMScript() {
   useEffect(() => {
     const gtmId = process.env.NEXT_PUBLIC_GTM_TRACKING_ID;
-    if (!gtmId || document.getElementById("google-tag-manager")) {
+    if (!gtmId || document.getElementById(ELEMENT_ID)) {
       return;
     }
 
     const script = document.createElement("script");
-    script.id = "google-tag-manager";
+    script.id = ELEMENT_ID;
     script.async = true;
     script.textContent = `
       (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
