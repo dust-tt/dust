@@ -1,10 +1,11 @@
 import { MobileOrExtensionAgentBrowser } from "@app/components/assistant/conversation/agent_browser/MobileOrExtensionAgentBrowser";
 import {
-  AgentGrid,
+  AGENTS_TABS,
   type AgentsByTab,
   ALL_TAG,
   isValidTab,
   MOST_POPULAR_TAG,
+  OTHERS_TAG,
   type SortType,
 } from "@app/components/assistant/conversation/agent_browser/shared";
 import { WebAgentBrowser } from "@app/components/assistant/conversation/agent_browser/WebAgentBrowser";
@@ -22,23 +23,8 @@ import {
 } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-export { AgentGrid };
-
-const AGENTS_TABS = [
-  { label: "Favorites", id: "favorites" },
-  { label: "All agents", id: "all" },
-  { label: "Editable by me", id: "editable_by_me" },
-] as const;
-
-const OTHERS_TAG: TagType = {
-  sId: "--others--",
-  name: "Others",
-  kind: "protected",
-};
 
 interface AssistantBrowserProps {
   owner: WorkspaceType;
@@ -125,7 +111,7 @@ export function AgentBrowser({
           filteredAgents: [],
           filteredTags: [],
           uniqueTags,
-          noTagsDefined: uniqueTags.length === 2, // Only most popular and others
+          noTagsDefined: uniqueTags.length === 3, // Only all, most popular and others
         };
       }
       const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
@@ -229,7 +215,7 @@ export function AgentBrowser({
     noTagsDefined,
     selectedTag,
     setSelectedTag: (tag: string) => setSelectedTag(tag),
-    setDisplayedAssistantId: (id: string) => setDisplayedAssistantId(id),
+    setDisplayedAssistantId,
   };
 
   return (
