@@ -10,7 +10,6 @@
   ],
   "js/ts.preferences.importModuleSpecifier": "non-relative",
   "github-actions.workflows.pinned.workflows": [],
-  "editor.formatOnSave": true,
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true,
@@ -22,10 +21,6 @@
   "rust-analyzer.inlayHints.typeHints.enable": false,
   "rust-analyzer.lens.implementations.enable": false,
   "git.ignoreLimitWarning": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.biome": "explicit",
-    "source.organizeImports.biome": "explicit"
-  },
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
