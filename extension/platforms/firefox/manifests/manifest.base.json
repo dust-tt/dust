@@ -14,15 +14,14 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Dust"
+    "default_title": "Dust ⇧⌘E"
   },
   "commands": {
     "_execute_sidebar_action": {
       "suggested_key": {
-        "default": "Ctrl+Shift+E",
-        "mac": "Command+Shift+E"
-      },
-      "description": "Toggle Dust sidebar"
+        "default": "Ctrl + Shift + E",
+        "mac": "Command + Shift + E"
+      }
     }
   },
   "sidebar_action": {
