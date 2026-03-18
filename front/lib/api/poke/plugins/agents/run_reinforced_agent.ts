@@ -23,6 +23,13 @@ export const runReinforcedAgentPlugin = createPlugin({
         description: "Number of past days of conversations to analyze.",
         default: 1,
       },
+      disableNotifications: {
+        type: "boolean",
+        label: "Disable notifications",
+        description:
+          "Disable sending notifications to agent editors when new suggestions are created.",
+        default: true,
+      },
     },
   },
   execute: async (auth, resource, args) => {
@@ -37,6 +44,7 @@ export const runReinforcedAgentPlugin = createPlugin({
       agentConfigurationId: resource.sId,
       useBatchMode: args.useBatchMode,
       conversationLookbackDays: args.conversationLookbackDays,
+      disableNotifications: args.disableNotifications,
     });
 
     if (result.isErr()) {
