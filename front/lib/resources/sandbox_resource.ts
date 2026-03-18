@@ -547,8 +547,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     const loadedPaths: string[] = [];
 
     for (const file of fileAttachments) {
-      const fileName = file.fileName ?? `file_${file.sId}`;
-      const targetPath = `/skills/${skill.name}/${fileName}`;
+      const targetPath = `/skills/${skill.name}/${file.fileName}`;
 
       const readStream = file.getReadStream({ auth, version: "original" });
       const data = await streamConsumers.arrayBuffer(readStream);
