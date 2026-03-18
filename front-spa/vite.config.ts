@@ -278,6 +278,26 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       rollupOptions: {
         input: appDefinition.inputs,
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("@dust-tt/sparkle")) {
+                return undefined;
+              }
+              if (
+                id.includes("react-dom") ||
+                id.includes("/react/") ||
+                id.includes("react-router")
+              ) {
+                return "vendor-react";
+              }
+              if (id.includes("@radix-ui") || id.includes("@headlessui")) {
+                return "vendor-ui";
+              }
+              return "vendor";
+            }
+          },
+        },
       },
     },
   };
