@@ -50,7 +50,7 @@ export const AshbyReportSynchronousResponseSchema = z.object({
         requestId: z.string(),
         status: z.literal("complete"),
         reportData: z.object({
-          data: z.array(z.array(z.union([z.string(), z.number()]))),
+          data: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
           columnNames: z.array(z.string()),
           metadata: z
             .object({
@@ -201,7 +201,7 @@ export type AshbyCandidateListNotesRequest = z.infer<
 export const AshbyCandidateNoteSchema = z
   .object({
     id: z.string(),
-    content: z.string(),
+    content: z.string().nullable().optional(),
     createdAt: z.string(),
     author: z
       .object({
@@ -703,7 +703,7 @@ export const AshbyCandidateInfoSchema = z
       )
       .optional(),
     applicationIds: z.array(z.string()).optional(),
-    createdAt: z.string(),
+    createdAt: z.string().optional().nullable(),
   })
   .passthrough();
 

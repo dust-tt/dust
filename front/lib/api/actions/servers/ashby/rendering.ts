@@ -187,7 +187,7 @@ function renderSingleNote(note: AshbyCandidateNote): string {
 
   lines.push(`**Created at:** ${new Date(note.createdAt).toISOString()}`);
   lines.push("");
-  lines.push(note.content);
+  lines.push(note.content ?? "Empty note");
 
   return lines.join("\n");
 }
