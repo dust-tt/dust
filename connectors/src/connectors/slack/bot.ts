@@ -27,12 +27,19 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
+  countPendingSlackFileMetadata,
+  getSlackFilesFromMessages,
+  hasPendingSlackFileMetadata,
+  selectBotThreadMessages,
+} from "@connectors/connectors/slack/lib/thread_file_upload";
+import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMentions } from "@connectors/lib/bot/mentions";
@@ -64,13 +71,7 @@ import type {
   SupportedFileContentType,
   UserMessageType,
 } from "@dust-tt/client";
-import {
-  DustAPI,
-  Err,
-  isSupportedFileContentType,
-  Ok,
-  removeNulls,
-} from "@dust-tt/client";
+import { DustAPI, Err, isSupportedFileContentType, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
@@ -81,6 +82,8 @@ const SLACK_ERROR_TEXT =
   "An unexpected error occurred while answering your message, please retry.";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
+const SLACK_FILE_READINESS_RETRY_COUNT = 2;
+const SLACK_FILE_READINESS_RETRY_DELAY_MS = 2_000;
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
@@ -1252,7 +1255,7 @@ async function makeContentFragments(
     },
   });
 
-  const replies = await getRepliesFromThread({
+  let replies = await getRepliesFromThread({
     connectorId: connector.id,
     slackClient,
     channelId,
@@ -1260,27 +1263,49 @@ async function makeContentFragments(
     useCase: "bot",
   });
 
-  let shouldTake = false;
-  for (const reply of replies) {
-    if (reply.ts === startingAtTs) {
-      // Signal that we must take all the messages starting from this one.
-      shouldTake = true;
-    }
+  allMessages = selectBotThreadMessages({
+    replies,
+    startingAtTs,
+    allowedSlackBotId,
+  });
 
-    const isFromAllowedBot =
-      allowedSlackBotId && reply.bot_id === allowedSlackBotId;
-    // Message is not from a user or an allowed bot, so we skip it.
-    if (!reply.user && !isFromAllowedBot) {
-      continue;
-    }
-    if (shouldTake) {
-      allMessages.push(reply);
-    }
+  let slackFiles = getSlackFilesFromMessages(allMessages);
+  for (
+    let retryCount = 1;
+    retryCount <= SLACK_FILE_READINESS_RETRY_COUNT &&
+    hasPendingSlackFileMetadata(slackFiles);
+    retryCount += 1
+  ) {
+    logger.info(
+      {
+        channelId,
+        connectorId: connector.id,
+        conversationId,
+        retryCount,
+        retryDelayMs: SLACK_FILE_READINESS_RETRY_DELAY_MS,
+        threadTs,
+        ...countPendingSlackFileMetadata(slackFiles),
+      },
+      "Retrying slack thread fetch while waiting for file metadata"
+    );
+
+    await setTimeoutAsync(SLACK_FILE_READINESS_RETRY_DELAY_MS);
+
+    replies = await getRepliesFromThread({
+      connectorId: connector.id,
+      slackClient,
+      channelId,
+      threadTs,
+      useCase: "bot",
+    });
+
+    allMessages = selectBotThreadMessages({
+      replies,
+      startingAtTs,
+      allowedSlackBotId,
+    });
+    slackFiles = getSlackFilesFromMessages(allMessages);
   }
-
-  const slackFiles = removeNulls(
-    allMessages.filter((m) => m.files).flatMap((m) => m.files)
-  );
 
   const supportedFiles = slackFiles.flatMap((file) => {
     const skipReason = !isSupportedFileContentType(file.mimetype ?? "")
