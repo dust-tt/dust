@@ -302,27 +302,19 @@ Set search_all=true only if the user explicitly requests to search all public wo
   },
   read_canvas: {
     description:
-      "Find sections within a Slack canvas. " +
-      "Returns section IDs that can be used with write_canvas to insert, replace, or delete specific sections.",
+      "Read the full text/markdown content of a Slack canvas by its file ID. " +
+      "Use get_channel_canvases first to discover available canvas IDs.",
     schema: {
-      canvas_id: z.string().describe("The canvas file ID (e.g. 'F01234ABCD')."),
-      section_types: z
-        .array(z.enum(["h1", "h2", "h3", "any_header"]))
-        .optional()
-        .describe(
-          "Filter by section type. Defaults to ['any_header'] to return all headings"
-        ),
-      contains_text: z
+      canvas_id: z
         .string()
-        .optional()
         .describe(
-          "Narrow results to sections containing this text. Can be combined with section_types."
+          "The Slack file ID of the canvas (e.g. 'F01234ABCD'). Use get_channel_canvases to find canvas IDs."
         ),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading Slack canvas sections",
-      done: "Read Slack canvas sections",
+      running: "Reading Slack canvas",
+      done: "Read Slack canvas",
     },
   },
   write_canvas: {
@@ -332,11 +324,11 @@ Set search_all=true only if the user explicitly requests to search all public wo
       "  - Optionally provide title, content (initial markdown), and channel_id to pin it to a channel tab.\n" +
       "**Editing an existing canvas** (provide canvas_id + operation):\n" +
       "  - insert_at_end / insert_at_start: add content at the end or beginning (requires content).\n" +
-      "  - insert_after / insert_before: insert content relative to a section (requires content + section_id from read_canvas).\n" +
+      "  - insert_after / insert_before: insert content relative to a section (requires content + section_id).\n" +
       "  - replace: replace entire canvas or a specific section (requires content; section_id optional).\n" +
       "  - delete: remove a specific section (requires section_id).\n" +
       "  - rename: rename the canvas (requires title).\n\n" +
-      "Content must be Markdown. Use read_canvas to get section IDs before doing relative edits.",
+      "Content must be Markdown.",
     schema: {
       canvas_id: z
         .string()

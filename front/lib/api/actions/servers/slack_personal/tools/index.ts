@@ -857,22 +857,14 @@ export function createSlackPersonalTools(
       }
     },
 
-    read_canvas: async (
-      { canvas_id, section_types, contains_text },
-      { authInfo }
-    ) => {
+    read_canvas: async ({ canvas_id }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeReadCanvas({
-          canvas_id,
-          section_types,
-          contains_text,
-          accessToken,
-        });
+        return await executeReadCanvas({ canvas_id, accessToken });
       } catch (error) {
         const authError = handleSlackAuthError(error);
         if (authError) {
