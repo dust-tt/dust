@@ -74,6 +74,7 @@ interface DustLikeGlobalAgentArgs {
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
+  omittedThinking?: boolean;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -320,6 +321,7 @@ function _getDustLikeGlobalAgent(
     mcpServerViews,
     hasDeepDive,
     globalAgentContext,
+    omittedThinking,
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
@@ -527,6 +529,7 @@ function _getDustLikeGlobalAgent(
       "sandbox",
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    omittedThinking: omittedThinking ?? false,
   };
 }
 
@@ -543,6 +546,42 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HIGH,
+    name: "dust-high",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
+    name: "dust-high-omitted",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OMITTED,
+    name: "dust-omitted",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });

@@ -26,6 +26,8 @@ import {
   _getDustGlobalAgent,
   _getDustGoogGlobalAgent,
   _getDustGoogMediumGlobalAgent,
+  _getDustHighGlobalAgent,
+  _getDustHighOmittedGlobalAgent,
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
@@ -38,6 +40,7 @@ import {
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
+  _getDustOmittedGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -114,6 +117,24 @@ const GLOBAL_AGENT_FLAGS: Record<
   }
 > = {
   [GLOBAL_AGENTS_SID.DUST]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -718,6 +739,35 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_HIGH:
+      agentConfiguration = _getDustHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OMITTED:
+      agentConfiguration = _getDustOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+        omittedThinking: true,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED:
+      agentConfiguration = _getDustHighOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+        omittedThinking: true,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:
