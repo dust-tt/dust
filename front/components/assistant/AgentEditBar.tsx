@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger,
   Spinner,
   TagIcon,
-  TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -38,7 +37,6 @@ export const AgentEditBar = ({
   tags,
   mutateAgentConfigurations,
 }: AgentEditBarProps) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -65,17 +63,6 @@ export const AgentEditBar = ({
 
   return (
     <>
-      <DeleteAssistantsDialog
-        owner={owner}
-        agentConfigurations={selectedAgents}
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onSave={() => {
-          onClose();
-          setIsDeleteDialogOpen(false);
-        }}
-      />
-
       <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2 dark:bg-muted-background-night">
         <Button
           size="xs"
@@ -154,23 +141,18 @@ export const AgentEditBar = ({
             </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
-
         <UnpublishAssistantsDialog
           owner={owner}
           agentConfigurations={selectedAgents}
           disabled={selectedAgents.length === 0 || isLoading}
           onSave={onClose}
         />
-
-        <Button
-          size="xs"
-          variant="warning"
-          icon={TrashIcon}
-          label="Archive selection"
+        a{" "}
+        <DeleteAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
           disabled={selectedAgents.length === 0 || isLoading}
-          onClick={() => {
-            setIsDeleteDialogOpen(true);
-          }}
+          onSave={onClose}
         />
       </div>
     </>
