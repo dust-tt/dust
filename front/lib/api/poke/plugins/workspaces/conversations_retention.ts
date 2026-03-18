@@ -1,9 +1,9 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   CONVERSATIONS_RETENTION_MIN_DAYS,
-  getConversationsDataRetention,
   isValidConversationsRetentionDays,
-} from "@app/lib/data_retention";
+} from "@app/lib/conversations_retention";
+import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types/shared/result";
 

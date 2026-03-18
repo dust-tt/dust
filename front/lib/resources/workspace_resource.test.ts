@@ -175,16 +175,28 @@ describe("WorkspaceResource", () => {
   });
 
   describe("updateConversationsRetention", () => {
+    it("should reject values below the minimum retention", async () => {
+      const result = await WorkspaceResource.updateConversationsRetention(
+        workspace.id,
+        59
+      );
+
+      expect(result.isErr()).toBe(true);
+
+      const updated = await WorkspaceResource.fetchById(workspace.sId);
+      expect(updated?.conversationsRetentionDays).toBeNull();
+    });
+
     it("should set retention days value", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        30
+        60
       );
 
       expect(result.isOk()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.conversationsRetentionDays).toBe(30);
+      expect(updated?.conversationsRetentionDays).toBe(60);
     });
 
     it("should convert -1 to null", async () => {
