@@ -1,0 +1,23 @@
+front/types/assistant/assistant.ts
+  d7bfc585242fab5e 25-33,36,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "a2377add31ef6a301376f11d5962b12b43cfc579",
+  "prompts": {
+    "d7bfc585242fab5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "544f5739-4b58-45f8-bf3e-1a7b2e4376e5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 3,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
