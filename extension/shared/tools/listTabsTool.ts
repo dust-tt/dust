@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Err, Ok } from "@app/types/shared/result";
-import { sendListTabsMessage } from "@extension/platforms/chrome/messages";
 import { normalizeError } from "@extension/shared/lib/utils";
+import { sendListTabsMessage } from "@extension/shared/messages";
 
 /**
  * Registers the list-browser-tabs tool with the MCP server.

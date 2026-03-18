@@ -2,20 +2,21 @@ import {
   buildClientTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { attachTabsTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
-import { CHROME_TOOLS_METADATA } from "@extension/platforms/chrome/tools/metadata";
+
+import type { CaptureService } from "@extension/shared/services/capture";
+import { attachTabsTextTool } from "@extension/shared/tools/attachPageTextTool";
+import { interactWithPageTool } from "@extension/shared/tools/interactWithPageTool";
+import { listBrowserTabsTool } from "@extension/shared/tools/listTabsTool";
+import { CHROME_TOOLS_METADATA } from "@extension/shared/tools/metadata";
 import {
   closeBrowserTabTool,
   moveBrowserTabTool,
   openBrowserTab,
   reloadBrowserTabTool,
   switchBrowserTabTool,
-} from "@extension/platforms/chrome/tools/tabActionTools";
-import { takeScreenshotOrAttachFileTool } from "@extension/platforms/chrome/tools/takeScreenshotOrAttachFileTool";
-import type { CaptureService } from "@extension/shared/services/capture";
+} from "@extension/shared/tools/tabActionTools";
+import { takeScreenshotOrAttachFileTool } from "@extension/shared/tools/takeScreenshotOrAttachFileTool";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { interactWithPageTool } from "./interactWithPageTool";
-import { listBrowserTabsTool } from "./listTabsTool";
 
 /**
  * Registers all Chrome MCP tools with the server
