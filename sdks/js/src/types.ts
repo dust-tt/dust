@@ -227,6 +227,14 @@ export const supportedAudioFileFormats = {
   "audio/webm": [".webm"],
 } as const;
 
+export const MAX_SUPPORTED_FILE_SIZES = {
+  data: 50 * 1024 * 1024, // 50 MB
+  code: 50 * 1024 * 1024, // 50 MB
+  delimited: 50 * 1024 * 1024, // 50 MB
+  image: 20 * 1024 * 1024, // 20 MB - Gemini limit due to base64 conversion overhead
+  audio: 100 * 1024 * 1024, // 100 MB
+} as const;
+
 // Webhook trigger endpoint (skeleton) response type
 export const PostWebhookTriggerResponseSchema = z.object({
   success: z.literal(true),
@@ -314,6 +322,19 @@ export function isSupportedAudioContentType(
   contentType: string
 ): contentType is AudioContentType {
   return supportedAudioContentTypes.includes(contentType as AudioContentType);
+}
+
+export function getSupportedFileSizeLimit(
+  contentType: SupportedFileContentType
+): number {
+  if (isSupportedImageContentType(contentType)) {
+    return MAX_SUPPORTED_FILE_SIZES.image;
+  }
+  if (isSupportedAudioContentType(contentType)) {
+    return MAX_SUPPORTED_FILE_SIZES.audio;
+  }
+
+  return MAX_SUPPORTED_FILE_SIZES.data;
 }
 
 const USER_MESSAGE_ORIGINS = [
