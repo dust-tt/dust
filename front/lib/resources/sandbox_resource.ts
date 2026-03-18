@@ -509,7 +509,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   /**
    * Write a file to the sandbox filesystem.
    */
-  async writeFile(
+  private async writeFile(
     path: string,
     data: ArrayBuffer
   ): Promise<Result<void, Error>> {
