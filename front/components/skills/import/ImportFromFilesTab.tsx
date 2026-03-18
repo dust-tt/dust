@@ -38,8 +38,13 @@ export function ImportFromFilesTab({
   const { setValue } = useFormContext<FilesImportFormValues>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { detectedSkills, isDetecting, detectError, triggerDetect } =
-    useDetectSkillsFromFiles({ owner });
+  const {
+    detectedSkills,
+    isUploading,
+    isDetecting,
+    detectError,
+    triggerDetect,
+  } = useDetectSkillsFromFiles({ owner });
 
   // Re-sync selected skills when detection completes or when this tab becomes active.
   useEffect(() => {
@@ -55,8 +60,8 @@ export function ImportFromFilesTab({
   }, [isActive, detectedSkills, setValue]);
 
   useEffect(() => {
-    onDetectingChange(isDetecting);
-  }, [isDetecting, onDetectingChange]);
+    onDetectingChange(isUploading || isDetecting);
+  }, [isUploading, isDetecting, onDetectingChange]);
 
   useEffect(() => {
     onDetectedCountChange(detectedSkills.length);
@@ -98,8 +103,8 @@ export function ImportFromFilesTab({
           handleFilesSelected(Array.from(e.target.files ?? []));
         }}
         fileInputRef={fileInputRef}
-        disabled={isImporting}
-        isLoading={isDetecting}
+        disabled={isImporting || isDetecting}
+        isLoading={isUploading}
       />
       <DetectedSkillsList
         detectedSkills={detectedSkills}
@@ -137,7 +142,7 @@ function SkillFileDropzone({
       )}
       onDragOver={(e) => {
         e.preventDefault();
-        if (!isLoading) {
+        if (!disabled && !isLoading) {
           setIsDragOver(true);
         }
       }}
@@ -145,7 +150,7 @@ function SkillFileDropzone({
       onDrop={(e) => {
         e.preventDefault();
         setIsDragOver(false);
-        if (!isLoading) {
+        if (!disabled && !isLoading) {
           onDrop(e);
         }
       }}
@@ -159,7 +164,7 @@ function SkillFileDropzone({
         <>
           <Spinner size="md" />
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Detecting skills...
+            Uploading files...
           </p>
         </>
       ) : (

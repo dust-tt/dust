@@ -542,12 +542,13 @@ export function useDetectSkillsFromFiles({
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
     []
   );
+  const [isUploading, setIsUploading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
   const triggerDetect = useCallback(
     async (files: File[]) => {
-      setIsDetecting(true);
+      setIsUploading(true);
       setDetectError(null);
       setDetectedSkills([]);
 
@@ -561,6 +562,10 @@ export function useDetectSkillsFromFiles({
           `/api/w/${owner.sId}/skills/detect/upload`,
           { method: "POST", body: formData }
         );
+
+        // Upload complete, server has responded.
+        setIsUploading(false);
+        setIsDetecting(true);
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
@@ -577,12 +582,18 @@ export function useDetectSkillsFromFiles({
             : "Failed to detect skills from the uploaded files."
         );
       } finally {
+        setIsUploading(false);
         setIsDetecting(false);
       }
     },
     [owner.sId]
   );
 
-  return { detectedSkills, isDetecting, detectError, triggerDetect };
+  return {
+    detectedSkills,
+    isUploading,
+    isDetecting,
+    detectError,
+    triggerDetect,
+  };
 }
-
