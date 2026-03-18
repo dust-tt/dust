@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   purgeAgentConversationsBatchActivity,
   purgeConversationsBatchActivity,
@@ -52,24 +52,41 @@ async function createOldRestrictedConversation() {
 
   return {
     agent,
+    adminAuth,
     conversation,
     workspace,
   };
 }
 
+async function expectConversationDeleted(
+  auth: Authenticator,
+  conversationId: string
+) {
+  const deletedConversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    {
+      dangerouslySkipPermissionFiltering: true,
+      includeDeleted: true,
+    }
+  );
+
+  expect(deletedConversation).toBeNull();
+}
+
 describe("data retention activities", () => {
   it("purges workspace-level retained conversations in restricted regular spaces", async () => {
-    const { conversation, workspace } = await createOldRestrictedConversation();
+    const { adminAuth, conversation, workspace } =
+      await createOldRestrictedConversation();
 
-    await WorkspaceModel.update(
-      {
-        conversationsRetentionDays: RETENTION_DAYS,
-      },
-      {
-        where: {
-          id: workspace.id,
-        },
-      }
+    const updateRetentionRes =
+      await WorkspaceResource.updateConversationsRetention(
+        workspace.id,
+        RETENTION_DAYS
+      );
+    assert(
+      updateRetentionRes.isOk(),
+      "Failed to set workspace conversation retention."
     );
 
     const result = await purgeConversationsBatchActivity({
@@ -84,18 +101,11 @@ describe("data retention activities", () => {
       },
     ]);
 
-    const deletedConversation = await ConversationModel.findOne({
-      where: {
-        sId: conversation.sId,
-        workspaceId: workspace.id,
-      },
-    });
-
-    expect(deletedConversation).toBeNull();
+    await expectConversationDeleted(adminAuth, conversation.sId);
   });
 
   it("purges agent-level retained conversations in restricted regular spaces", async () => {
-    const { agent, conversation, workspace } =
+    const { adminAuth, agent, conversation, workspace } =
       await createOldRestrictedConversation();
 
     const result = await purgeAgentConversationsBatchActivity({
@@ -112,13 +122,6 @@ describe("data retention activities", () => {
       nbConversationsDeleted: 1,
     });
 
-    const deletedConversation = await ConversationModel.findOne({
-      where: {
-        sId: conversation.sId,
-        workspaceId: workspace.id,
-      },
-    });
-
-    expect(deletedConversation).toBeNull();
+    await expectConversationDeleted(adminAuth, conversation.sId);
   });
 });
