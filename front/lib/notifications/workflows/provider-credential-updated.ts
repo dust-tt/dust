@@ -52,8 +52,6 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
 ): Promise<Result<void, DustError<"internal_error">>> => {
   const workspace = auth.getNonNullableWorkspace();
 
-  const novuClient = await getNovuClient();
-
   const novuPayload: ProviderCredentialsHealthUpdatedPayloadType = {
     workspaceId: workspace.sId,
   };
@@ -66,6 +64,8 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
   };
 
   try {
+    const novuClient = await getNovuClient();
+
     do {
       const { memberships, nextPageParams } =
         await MembershipResource.getActiveMemberships({
