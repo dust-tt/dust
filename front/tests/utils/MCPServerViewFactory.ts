@@ -22,9 +22,11 @@ export class MCPServerViewFactory {
       );
     }
 
-    return MCPServerViewResource.create(auth, {
+    const { view } = await MCPServerViewResource.create(auth, {
       systemView,
       space,
     });
+
+    return view;
   }
 }

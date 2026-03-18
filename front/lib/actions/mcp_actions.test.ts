@@ -509,10 +509,12 @@ describe("tryCallMCPTool", () => {
 
     const mcpServerView =
       existingView ??
-      (await MCPServerViewResource.create(auth, {
-        systemView,
-        space: systemSpace,
-      }));
+      (
+        await MCPServerViewResource.create(auth, {
+          systemView,
+          space: systemSpace,
+        })
+      ).view;
 
     // Create agent configuration and conversation
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);

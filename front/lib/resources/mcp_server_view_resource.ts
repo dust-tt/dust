@@ -15,9 +15,11 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/ena
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -52,6 +54,16 @@ import { Op } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerViewResource
   extends ReadonlyAttributesType<MCPServerViewModel> {}
+
+type AffectedAgent = Pick<
+  Attributes<AgentConfigurationModel>,
+  "id" | "sId" | "name"
+>;
+
+export type MCPServerViewCreationResult = {
+  view: MCPServerViewResource;
+  affectedAgents?: AffectedAgent[];
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
@@ -185,7 +197,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       systemView: MCPServerViewResource;
       space: SpaceResource;
     }
-  ): Promise<MCPServerViewResource> {
+  ): Promise<MCPServerViewCreationResult> {
     if (systemView.space.kind !== "system") {
       throw new Error(
         "You must pass the system view to create a new MCP server view"
@@ -194,33 +206,143 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const mcpServerId = systemView.mcpServerId;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    const blob = {
+      serverType,
+      internalMCPServerId: serverType === "internal" ? mcpServerId : null,
+      remoteMCPServerId: serverType === "remote" ? id : null,
+      // Always copy the oAuthUseCase, name and description from the system view to the custom view.
+      // This way, it's always available on the MCP server view without having to fetch the system view.
+      oAuthUseCase: systemView.oAuthUseCase,
+      name: systemView.name,
+      description: systemView.description,
+    };
 
     if (space.kind === "global") {
       const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
+      const regularMCPServerViewModelIds = mcpServerViews
+        .filter((view) => view.space.kind === "regular")
+        .map((view) => view.id);
+      const affectedAgents =
+        await this.listLatestActiveAgentsToReconfigureOnGlobalShare(
+          auth,
+          regularMCPServerViewModelIds
+        );
       for (const mcpServerView of mcpServerViews) {
         if (mcpServerView.space.kind === "regular") {
           await mcpServerView.delete(auth, { hardDelete: true });
         }
       }
+
+      const view = await this.makeNew(
+        auth,
+        blob,
+        space,
+        auth.user() ?? undefined
+      );
+
+      return {
+        view,
+        affectedAgents,
+      };
     }
 
     const view = await this.makeNew(
       auth,
-      {
-        serverType,
-        internalMCPServerId: serverType === "internal" ? mcpServerId : null,
-        remoteMCPServerId: serverType === "remote" ? id : null,
-        // Always copy the oAuthUseCase, name and description from the system view to the custom view.
-        // This way, it's always available on the MCP server view without having to fetch the system view.
-        oAuthUseCase: systemView.oAuthUseCase,
-        name: systemView.name,
-        description: systemView.description,
-      },
+      blob,
       space,
       auth.user() ?? undefined
     );
 
-    return view;
+    return {
+      view,
+    };
+  }
+
+  private static async listLatestActiveAgentsToReconfigureOnGlobalShare(
+    auth: Authenticator,
+    regularMCPServerViewModelIds: ModelId[]
+  ): Promise<AffectedAgent[]> {
+    if (regularMCPServerViewModelIds.length === 0) {
+      return [];
+    }
+
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const impactedAgentConfigurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: workspaceModelId,
+      },
+      include: [
+        {
+          model: AgentMCPServerConfigurationModel,
+          as: "mcpServerConfigurations",
+          required: true,
+          where: {
+            workspaceId: workspaceModelId,
+            mcpServerViewId: {
+              [Op.in]: regularMCPServerViewModelIds,
+            },
+          },
+          attributes: [],
+        },
+      ],
+      attributes: ["id", "sId"],
+    });
+
+    const impactedAgentIds = new Set(
+      impactedAgentConfigurations.map((configuration) => configuration.id)
+    );
+
+    if (impactedAgentIds.size === 0) {
+      return [];
+    }
+
+    const impactedAgentSIds = uniq(
+      impactedAgentConfigurations.map((configuration) => configuration.sId)
+    );
+
+    if (impactedAgentSIds.length === 0) {
+      return [];
+    }
+
+    const agentConfigurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: workspaceModelId,
+        sId: {
+          [Op.in]: impactedAgentSIds,
+        },
+      },
+      attributes: ["id", "sId", "name", "status", "version"],
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    const latestAgentConfigurations = new Map<
+      string,
+      AgentConfigurationModel
+    >();
+    for (const agentConfiguration of agentConfigurations) {
+      if (!latestAgentConfigurations.has(agentConfiguration.sId)) {
+        latestAgentConfigurations.set(
+          agentConfiguration.sId,
+          agentConfiguration
+        );
+      }
+    }
+
+    return Array.from(latestAgentConfigurations.values())
+      .filter(
+        (agentConfiguration) =>
+          impactedAgentIds.has(agentConfiguration.id) &&
+          agentConfiguration.status === "active"
+      )
+      .map((agentConfiguration) => ({
+        id: agentConfiguration.id,
+        sId: agentConfiguration.sId,
+        name: agentConfiguration.name,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
   }
 
   // Fetching.
