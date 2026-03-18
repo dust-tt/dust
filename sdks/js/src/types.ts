@@ -735,7 +735,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
-  | "inline_activity"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

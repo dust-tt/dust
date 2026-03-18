@@ -178,6 +178,7 @@ export function createPlaceholderAgentMessage({
 
     streaming: {
       agentState: "placeholder",
+      inlineActivitySteps: [],
       isRetrying: false,
       lastUpdated: new Date(),
       actionProgress: new Map(),

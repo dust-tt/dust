@@ -52,6 +52,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -964,8 +965,7 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const isInlineActivityEnabled = hasFeature("inline_activity");
+  const isInlineActivityEnabled = isDevInlineActivityEnabled();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -1187,6 +1187,7 @@ function AgentMessageContent({
         <InlineActivitySteps
           agentMessage={agentMessage}
           lastAgentStateClassification={agentMessage.streaming.agentState}
+          completedSteps={agentMessage.streaming.inlineActivitySteps}
         />
       ) : (
         <AgentMessageActions
