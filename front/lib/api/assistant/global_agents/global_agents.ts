@@ -757,7 +757,6 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         globalAgentContext,
-        omittedThinking: true,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED:
@@ -767,7 +766,6 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         globalAgentContext,
-        omittedThinking: true,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:

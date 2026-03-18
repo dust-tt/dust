@@ -74,7 +74,6 @@ interface DustLikeGlobalAgentArgs {
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
-  omittedThinking?: boolean;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -321,20 +320,21 @@ function _getDustLikeGlobalAgent(
     mcpServerViews,
     hasDeepDive,
     globalAgentContext,
-    omittedThinking,
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
+    omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
+    omittedThinking?: boolean;
   }
-): AgentConfigurationType | null {
+): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
   const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
   const owner = auth.getNonNullableWorkspace();
 
@@ -572,6 +572,7 @@ export function _getDustHighOmittedGlobalAgent(
     name: "dust-high-omitted",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+    omittedThinking: true,
   });
 }
 
@@ -584,6 +585,7 @@ export function _getDustOmittedGlobalAgent(
     name: "dust-omitted",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+    omittedThinking: true,
   });
 }
 
