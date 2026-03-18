@@ -7,14 +7,18 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       "Extracts the title, URL, and text content of a browser tab. " +
       "Use this to read and understand what the user is viewing. " +
       "For non-text pages (PDFs, images, etc.), use take_screenshot_or_attach_file instead — it will attach the file directly to the conversation." +
-      "Use list_browser_tabs to discover tab IDs.",
+      "Use list_browser_tabs to discover tab IDs. Group by domains to fetch the content of all tabs from the same domain.",
     schema: {
       tabsToFetch: z
         .string()
         .describe("The list of tabs title, readable for the user."),
+      domainToFetch: z
+        .string()
+        .describe("The domain of the tab(s) that will be fetched."),
       tabIds: z.number().array().describe("The tab IDs to read."),
     },
-    stake: "high",
+    argumentsRequiringApproval: ["domainToFetch"],
+    stake: "medium",
     displayLabels: {
       running: "Getting page content...",
       done: "Page content retrieved",
@@ -26,14 +30,18 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       "For PDF pages, uploads the file and returns the full extracted text so you can read it. " +
       "For image pages, returns the image directly so you can visually analyze it. " +
       "For HTML pages, takes a screenshot for visual inspection (Drive canvas, dashboards, etc.)." +
-      "Use list_browser_tabs to discover tab IDs.",
+      "Use list_browser_tabs to discover tab IDs. Group by domains to fetch the content of all tabs from the same domain.",
     schema: {
       tabsToFetch: z
         .string()
         .describe("The list of tabs title, readable for the user."),
+      domainToFetch: z
+        .string()
+        .describe("The domain of the tab(s) that will be fetched."),
       tabIds: z.number().array().describe("The tab IDs to capture."),
     },
-    stake: "high",
+    argumentsRequiringApproval: ["domainToFetch"],
+    stake: "medium",
     displayLabels: {
       running: "Attaching tab content...",
       done: "Tab content attached",
