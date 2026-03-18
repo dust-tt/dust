@@ -37,7 +37,8 @@ export const ANTHROPIC_THINKING_EFFORT_MAPPING: Record<
 
 export function toAutoThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean
+  useNativeLightReasoning?: boolean,
+  omittedThinking: boolean = false
 ): {
   thinking: ThinkingConfigParam;
   output_config?: BetaOutputConfig;
@@ -49,7 +50,12 @@ export function toAutoThinkingConfig(
 
   switch (reasoningEffort) {
     case null:
-      return { thinking: { type: "adaptive" } };
+      return {
+        thinking: {
+          type: "adaptive",
+          display: omittedThinking ? "omitted" : "summarized",
+        },
+      };
     case "none":
       return { thinking: { type: "disabled" } };
     case "light":
@@ -58,6 +64,7 @@ export function toAutoThinkingConfig(
       return {
         thinking: {
           type: "adaptive",
+          display: omittedThinking ? "omitted" : "summarized",
         },
         output_config: {
           effort: ANTHROPIC_THINKING_EFFORT_MAPPING[reasoningEffort],
