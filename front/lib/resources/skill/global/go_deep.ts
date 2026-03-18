@@ -1,5 +1,7 @@
 import { getDeepDiveInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
@@ -16,7 +18,11 @@ export const goDeepSkill = {
     "or for thorough analysis. When in doubt, prefer enabling this skill than not. " +
     "If you realize that the question turns out to be complex and ran multiple steps (e.g. more " +
     "than 3) of web or company data research, you can enable the Go deep skill midway.",
-  instructions: getDeepDiveInstructions({ includeToolsetsPrompt: false }),
+  fetchInstructions: async (auth: Authenticator, _spaceIds: string[]) => {
+    const flags = await getFeatureFlags(auth);
+    const hasSandbox = flags.includes("sandbox_tools");
+    return getDeepDiveInstructions({ includeToolsetsPrompt: false, hasSandbox });
+  },
   mcpServers: [
     {
       name: "run_agent",
