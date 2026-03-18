@@ -178,7 +178,8 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     if (schemaResult.isErr()) {
       return new Err(
         new MCPError(
-          `Error retrieving database schema: ${schemaResult.error.message}`
+          `Error retrieving database schema: ${schemaResult.error.message}`,
+          { tracked: false }
         )
       );
     }
