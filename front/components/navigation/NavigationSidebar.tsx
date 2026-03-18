@@ -26,7 +26,38 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { cva, type VariantProps } from "class-variance-authority";
 import React, { useCallback, useContext, useMemo, useState } from "react";
+
+const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
+  variants: {
+    variant: {
+      info: cn(
+        "border-info-200 dark:border-info-200-night",
+        "bg-info-100 dark:bg-info-100-night",
+        "text-info-900 dark:text-info-900-night"
+      ),
+      warning: cn(
+        "border-warning-200 dark:border-warning-200-night",
+        "bg-warning-100 dark:bg-warning-100-night",
+        "text-warning-900 dark:text-warning-900-night"
+      ),
+      success: cn(
+        "border-success-200 dark:border-success-200-night",
+        "bg-success-100 dark:bg-success-100-night",
+        "text-success-900 dark:text-success-900-night"
+      ),
+      danger: cn(
+        "border-red-200 dark:border-red-200",
+        "bg-red-100 dark:bg-red-100",
+        "text-red-900 dark:text-red-900"
+      ),
+    },
+  },
+  defaultVariants: {
+    variant: "info",
+  },
+});
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -182,49 +213,20 @@ export const NavigationSidebar = React.forwardRef<
   );
 });
 
-interface StatusBannerProps {
-  variant?: "info" | "warning" | "success" | "danger";
+interface StatusBannerProps extends VariantProps<typeof statusBannerVariants> {
   title: string;
   description: React.ReactNode;
   footer?: React.ReactNode;
 }
 
 function StatusBanner({
-  variant = "info",
+  variant,
   title,
   description,
   footer,
 }: StatusBannerProps) {
-  const colorClasses = {
-    info: cn(
-      "border-info-200 dark:border-info-200-night",
-      "bg-info-100 dark:bg-info-100-night",
-      "text-info-900 dark:text-info-900-night"
-    ),
-    warning: cn(
-      "border-warning-200 dark:border-warning-200-night",
-      "bg-warning-100 dark:bg-warning-100-night",
-      "text-warning-900 dark:text-warning-900-night"
-    ),
-    success: cn(
-      "border-success-200 dark:border-success-200-night",
-      "bg-success-100 dark:bg-success-100-night",
-      "text-success-900 dark:text-success-900-night"
-    ),
-    danger: cn(
-      "border-red-200 dark:border-red-200",
-      "bg-red-100 dark:bg-red-100",
-      "text-red-900 dark:text-red-900"
-    ),
-  };
-
   return (
-    <div
-      className={cn(
-        "space-y-2 border-y px-3 py-3 text-xs",
-        colorClasses[variant]
-      )}
-    >
+    <div className={statusBannerVariants({ variant })}>
       <div className="font-bold">{title}</div>
       <div className="font-normal">{description}</div>
       {footer && <div>{footer}</div>}
