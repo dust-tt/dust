@@ -43,7 +43,7 @@ export function SkillBuilderIsDefaultSection() {
           Allow agents to discover this skill
         </span>
         <Tooltip
-          label="Agents with the Discover Skills tool will be able to find and enable this skill on their own."
+          label="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
           trigger={
             <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
           }
@@ -61,8 +61,9 @@ export function SkillBuilderIsDefaultSection() {
           <DialogHeader hideButton>
             <DialogTitle>Allow agents to discover this skill?</DialogTitle>
             <DialogDescription className="pt-4">
-              Agents with <span className="font-semibold">Discover Skills</span>{" "}
-              will be able to find and enable this skill on their own.
+              This skill will be set as default. Agents with&nbsp;
+              <span className="font-semibold">Discover Skills</span>&nbsp; will
+              be able to find and enable it on their own.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
