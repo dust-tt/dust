@@ -59,8 +59,7 @@ import {
   BoltOffIcon,
   BracesIcon,
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
+  ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   CheckDoubleIcon,
   cn,
@@ -321,7 +320,7 @@ function SearchResults({
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={ChatBubbleBottomCenterPlusIcon}
                 variant="ghost"
                 tooltip="New Conversation"
                 href={getConversationRoute(owner.sId)}
@@ -847,7 +846,7 @@ export function AgentSidebarMenu({
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterTextIcon}
+                    icon={ChatBubbleBottomCenterPlusIcon}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -1459,7 +1458,7 @@ function NavigationListWithInbox({
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={ChatBubbleBottomCenterPlusIcon}
                 variant="ghost"
                 aria-label="New Conversation"
                 tooltip="New Conversation"
