@@ -37,6 +37,19 @@ function isSkillSuggestionItem(value: unknown): value is SkillSuggestionItem {
   );
 }
 
+interface PromptSuggestionItem {
+  targetBlockId: string;
+}
+
+function isPromptSuggestionItem(value: unknown): value is PromptSuggestionItem {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "targetBlockId" in value &&
+    typeof value.targetBlockId === "string"
+  );
+}
+
 function getSuggestions(args: Record<string, unknown>): unknown[] | undefined {
   const suggestions = args.suggestions;
   if (!Array.isArray(suggestions)) {
@@ -55,6 +68,12 @@ function getSkillSuggestions(
   args: Record<string, unknown>
 ): SkillSuggestionItem[] {
   return (getSuggestions(args) ?? []).filter(isSkillSuggestionItem);
+}
+
+function getPromptSuggestions(
+  args: Record<string, unknown>
+): PromptSuggestionItem[] {
+  return (getSuggestions(args) ?? []).filter(isPromptSuggestionItem);
 }
 
 /**
@@ -107,12 +126,21 @@ export function validateToolCallAssertion(
           error: "Expected suggest_prompt_edits to be called, but it was not",
         };
       }
-      const suggestions = getSuggestions(call.arguments);
-      if (!suggestions || suggestions.length === 0) {
+      const suggestions = getPromptSuggestions(call.arguments);
+      if (suggestions.length === 0) {
         return {
           success: false,
           error:
             "Expected suggest_prompt_edits to contain at least one suggestion, but got none",
+        };
+      }
+      if (
+        assertion.targetBlockId &&
+        !suggestions.some((s) => s.targetBlockId === assertion.targetBlockId)
+      ) {
+        return {
+          success: false,
+          error: `Expected suggest_prompt_edits to contain targetBlockId "${assertion.targetBlockId}", but got: ${JSON.stringify(suggestions.map((s) => s.targetBlockId))}`,
         };
       }
       return { success: true };

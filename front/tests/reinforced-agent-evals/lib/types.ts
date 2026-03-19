@@ -219,7 +219,7 @@ export interface ToolCall {
 export type ToolCallAssertion =
   | { type: "toolSuggestion"; toolId: string }
   | { type: "skillSuggestion"; skillId: string }
-  | { type: "promptSuggestion" }
+  | { type: "promptSuggestion"; targetBlockId?: string }
   | { type: "noSuggestion" };
 
 export function toolSuggestion(toolId: string): ToolCallAssertion {
@@ -230,8 +230,8 @@ export function skillSuggestion(skillId: string): ToolCallAssertion {
   return { type: "skillSuggestion", skillId };
 }
 
-export function promptSuggestion(): ToolCallAssertion {
-  return { type: "promptSuggestion" };
+export function promptSuggestion(targetBlockId?: string): ToolCallAssertion {
+  return { type: "promptSuggestion", targetBlockId };
 }
 
 export function noSuggestion(): ToolCallAssertion {
