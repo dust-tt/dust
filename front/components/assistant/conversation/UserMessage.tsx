@@ -433,8 +433,8 @@ const actionMenuContainerVariants = cva(
   {
     variants: {
       mode: {
-        side: "", // repositioned via compound variants below
-        bottom: "", // always below the bubble, no repositioning
+        side: "",
+        bottom: "",
       },
       isCurrentUser: {
         true: "",
@@ -445,20 +445,34 @@ const actionMenuContainerVariants = cva(
       {
         mode: "side",
         isCurrentUser: true,
-        // current user: float to the left of the bubble
         className:
           "@sm/conversation:translate-y-0 @sm/conversation:-translate-x-full @sm/conversation:pr-2",
       },
       {
         mode: "side",
         isCurrentUser: false,
-        // other user: float to the right of the bubble
         className:
           "@sm/conversation:left-auto @sm/conversation:right-0 @sm/conversation:translate-y-0 @sm/conversation:translate-x-full @sm/conversation:pl-2",
       },
     ],
   }
 );
+
+interface ActionMenuProps {
+  mode: "side" | "bottom";
+  isCurrentUser: boolean;
+  isDeleted: boolean;
+  showActions: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  handleEditMessage: () => void;
+  handleDeleteMessage: () => void;
+  message: UserMessageTypeWithContentFragments;
+  onReactionToggle: (emoji: string) => void;
+  isUserMessageHovered: boolean;
+  conversationId: string;
+  owner: WorkspaceType;
+}
 
 function ActionMenu({
   mode,
@@ -474,21 +488,7 @@ function ActionMenu({
   isUserMessageHovered,
   conversationId,
   owner,
-}: {
-  mode: "side" | "bottom";
-  isCurrentUser: boolean;
-  isDeleted: boolean;
-  showActions: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  handleEditMessage: () => void;
-  handleDeleteMessage: () => void;
-  message: UserMessageTypeWithContentFragments;
-  onReactionToggle: (emoji: string) => void;
-  isUserMessageHovered: boolean;
-  conversationId: string;
-  owner: WorkspaceType;
-}) {
+}: ActionMenuProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
   const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
