@@ -135,12 +135,14 @@ export function validateToolCallAssertion(
         };
       }
       if (
-        assertion.targetBlockId &&
-        !suggestions.some((s) => s.targetBlockId === assertion.targetBlockId)
+        assertion.targetBlockIds &&
+        !suggestions.some((s) =>
+          assertion.targetBlockIds!.includes(s.targetBlockId)
+        )
       ) {
         return {
           success: false,
-          error: `Expected suggest_prompt_edits to contain targetBlockId "${assertion.targetBlockId}", but got: ${JSON.stringify(suggestions.map((s) => s.targetBlockId))}`,
+          error: `Expected suggest_prompt_edits to contain one of targetBlockIds ${JSON.stringify(assertion.targetBlockIds)}, but got: ${JSON.stringify(suggestions.map((s) => s.targetBlockId))}`,
         };
       }
       return { success: true };

@@ -86,6 +86,7 @@ export async function buildConversationAnalysisBatchMap(
     const conversationRes = await getShrinkWrappedConversation(auth, {
       conversationId,
       includeFeedback: true,
+      includeActionDetails: true,
     });
     if (conversationRes.isErr()) {
       logger.warn(

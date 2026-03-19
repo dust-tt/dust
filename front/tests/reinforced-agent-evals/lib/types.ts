@@ -1,5 +1,8 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { formatConversationForShrinkWrap } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import {
+  formatConversationForShrinkWrap,
+  type ShrinkWrapAction,
+} from "@app/lib/api/assistant/conversation/shrink_wrap";
 import {
   formatAvailableSkills,
   formatAvailableTools,
@@ -74,10 +77,19 @@ export interface MockFeedback {
   comment?: string;
 }
 
+/** Lightweight action descriptor for mock conversations. */
+export interface MockAction {
+  functionCallName: string;
+  status: "succeeded" | "failed";
+  params?: Record<string, unknown>;
+  output?: string | null;
+}
+
 export interface MockConversationMessage {
   role: "user" | "agent";
   content: string;
   feedback?: MockFeedback;
+  actions?: MockAction[];
 }
 
 /**
@@ -117,6 +129,14 @@ export function buildConversationText(
       ]);
     }
 
+    const actions: ShrinkWrapAction[] = (msg.actions ?? []).map((a) => ({
+      functionCallName: a.functionCallName,
+      status: a.status,
+      internalMCPServerName: null,
+      params: a.params ?? {},
+      output: a.output ?? null,
+    }));
+
     return {
       type: "agent_message" as const,
       sId,
@@ -124,14 +144,14 @@ export function buildConversationText(
       content: msg.content,
       status: "succeeded",
       configuration: { sId: agentConfigSId, name: "Agent" },
-      actions: [],
+      actions,
       parentAgentMessageId: null,
     };
   });
 
   return formatConversationForShrinkWrap(
     { sId: "conv_eval", title: "Eval conversation", messages: shrinkMessages },
-    { feedbackByMessageId }
+    { feedbackByMessageId, includeActionDetails: true }
   );
 }
 
@@ -219,7 +239,7 @@ export interface ToolCall {
 export type ToolCallAssertion =
   | { type: "toolSuggestion"; toolId: string }
   | { type: "skillSuggestion"; skillId: string }
-  | { type: "promptSuggestion"; targetBlockId?: string }
+  | { type: "promptSuggestion"; targetBlockIds?: string[] }
   | { type: "noSuggestion" };
 
 export function toolSuggestion(toolId: string): ToolCallAssertion {
@@ -230,8 +250,13 @@ export function skillSuggestion(skillId: string): ToolCallAssertion {
   return { type: "skillSuggestion", skillId };
 }
 
-export function promptSuggestion(targetBlockId?: string): ToolCallAssertion {
-  return { type: "promptSuggestion", targetBlockId };
+export function promptSuggestion(
+  ...targetBlockIds: string[]
+): ToolCallAssertion {
+  return {
+    type: "promptSuggestion",
+    targetBlockIds: targetBlockIds.length > 0 ? targetBlockIds : undefined,
+  };
 }
 
 export function noSuggestion(): ToolCallAssertion {

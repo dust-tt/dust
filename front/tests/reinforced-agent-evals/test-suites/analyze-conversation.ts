@@ -18,6 +18,10 @@ const WORKSPACE_CONTEXT: WorkspaceContext = {
     mockTool("Notion", "Search Notion workspace"),
     mockTool("GitHub", "Access GitHub repositories"),
     mockTool("JIRA", "Search and manage JIRA issues and projects"),
+    mockTool(
+      "CRM",
+      "Search companies, manage contacts, and look up account ownership details using search-company, get-owner, and other CRM operations"
+    ),
   ],
 };
 
@@ -169,6 +173,72 @@ Score 0 if no suggest_tools call is made.
 Score 0-1 if suggest_tools is called but with the wrong tool ID or wrong action.
 Score 2 if the correct tool is suggested but the analysis is weak.
 Score 3 if the correct tool is suggested with a clear, well-reasoned analysis.`,
+    },
+    {
+      scenarioId: "improve-tool-usage-crm-owner-lookup",
+      type: "analysis",
+      agentConfig: {
+        name: "CRM Assistant",
+        description:
+          "Helps the sales team with CRM queries and account management",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="cb63b301" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="75935445">You are a CRM assistant for the sales team. Help them look up account information, contacts, and ownership details. Always be concise and professional.</p>
+        </div>
+        <div data-block-id="0ff1016e" data-instruction-type="tools" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="b35e0731">Use the CRM tools to fetch data when answering user queries.</p>
+        </div>
+        </div>`,
+        tools: [{ name: "CRM", sId: "mcp_crm" }],
+      },
+      conversation: [
+        {
+          role: "user",
+          content: "Who is the owner for Acme Corp account?",
+        },
+        {
+          role: "agent",
+          content:
+            "The account owner for Acme Corp is Sarah Johnson (sarah.johnson@company.com), Senior Account Manager.",
+          actions: [
+            {
+              functionCallName: "get-owner",
+              status: "failed",
+              params: { companyId: "Acme Corp" },
+              output: 'No company with ID "Acme Corp"',
+            },
+            {
+              functionCallName: "search-company",
+              status: "succeeded",
+              params: { query: "Acme Corp" },
+              output:
+                '{"id": "comp_48291", "name": "Acme Corp", "industry": "Technology", "website": "acme.com"}',
+            },
+            {
+              functionCallName: "get-owner",
+              status: "succeeded",
+              params: { companyId: "comp_48291" },
+              output:
+                '{"owner": "Sarah Johnson", "email": "sarah.johnson@company.com", "title": "Senior Account Manager"}',
+            },
+          ],
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [promptSuggestion("0ff1016e", "b35e0731")],
+      judgeCriteria: `The reinforced agent MUST call suggest_prompt_edits with a suggestion that improves
+the "tools" instruction block. The suggestion should:
+- Target the tools section block ("0ff1016e") or its paragraph ("b35e0731"), NOT "role"/"cb63b301" or "instructions-root"
+- Include guidance to use search-company first to retrieve the company ID before calling get-owner
+- Explain that get-owner requires a company ID, not a company name
+- Preserve the existing content of the tools section while adding the new guidance
+- Have a meaningful analysis explaining why tool usage order matters
+
+Score 0 if no suggest_prompt_edits call is made.
+Score 0 if the suggestion targets the wrong block (e.g. "cb63b301" or "instructions-root" instead of "0ff1016e"/"b35e0731").
+Score 1 if the suggestion targets the correct block but is too vague or generic.
+Score 2 if the suggestion correctly targets the tools block and addresses the tool usage order but lacks specificity.
+Score 3 if the suggestion targets the tools block with clear, specific instructions about using search-company first to get the ID, then get-owner with the ID.`,
     },
   ],
 };
