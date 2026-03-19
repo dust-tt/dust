@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 10_000;
+const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
