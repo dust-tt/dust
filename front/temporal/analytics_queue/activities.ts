@@ -1,6 +1,5 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import {
@@ -165,33 +164,9 @@ export async function storeAgentAnalytics(
     conversationRow,
     contextOrigin,
   } = params;
-  // Only index agent messages if there are no blocked actions awaiting approval.
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentAgentMessageRow.id,
   ]);
-
-  const hasBlockedActions = actions.some((action) =>
-    isToolExecutionStatusBlocked(action.status)
-  );
-
-  if (hasBlockedActions) {
-    const blockedStatuses = actions
-      .filter((a) => isToolExecutionStatusBlocked(a.status))
-      .map((a) => a.status);
-
-    logger.info(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        conversationId: conversationRow.sId,
-        agentMessageId: agentMessageRow.sId,
-        actionCount: actions.length,
-        blockedStatuses,
-      },
-      "[Analytics] Skipping ingestion due to blocked actions"
-    );
-
-    return;
-  }
 
   // Collect token usage from run data.
   const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
