@@ -1,5 +1,6 @@
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
+  buildEmailUserMessage,
   buildReplyThreadingHeaders,
   buildSuccessReplyRecipients,
   MAX_REPLY_RECIPIENTS,
@@ -194,5 +195,84 @@ describe("buildReplyThreadingHeaders", () => {
       inReplyTo: "<incoming-message-id@dust.tt>",
       references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
     });
+  });
+});
+
+describe("buildEmailUserMessage", () => {
+  it("includes the email envelope and reply audience", () => {
+    const message = buildEmailUserMessage({
+      email: {
+        subject: "Budget review",
+        text: "Can you take a look?",
+        auth: { SPF: "pass", dkim: "pass" },
+        threadingHeaders: {
+          messageId: null,
+          inReplyTo: null,
+          references: null,
+        },
+        envelope: {
+          from: "sender@dust.tt",
+          full: "Sender <sender@dust.tt>",
+          to: [`agent@${ASSISTANT_EMAIL_SUBDOMAIN}`, "teammate@dust.tt"],
+          cc: ["observer@dust.tt"],
+          bcc: [],
+        },
+        attachments: [],
+      },
+      userMessage: "Can you take a look?",
+      replyRecipients: {
+        to: ["sender@dust.tt", "teammate@dust.tt"],
+        cc: ["observer@dust.tt"],
+      },
+      hasThreadHistory: false,
+      attachmentCount: 0,
+    });
+
+    expect(message).toContain(
+      `Dust agent recipients: agent@${ASSISTANT_EMAIL_SUBDOMAIN}`
+    );
+    expect(message).toContain(
+      `To: agent@${ASSISTANT_EMAIL_SUBDOMAIN}, teammate@dust.tt`
+    );
+    expect(message).toContain("Cc: observer@dust.tt");
+    expect(message).toContain("Body:\n---\nCan you take a look?\n---");
+    expect(message).toContain(
+      "If you respond, your response will be emailed back as-is to:"
+    );
+    expect(message).toContain("To: sender@dust.tt, teammate@dust.tt");
+  });
+
+  it("mentions available thread history and attachments when present", () => {
+    const message = buildEmailUserMessage({
+      email: {
+        subject: "Fwd: Contract",
+        text: "Please summarize",
+        auth: { SPF: "pass", dkim: "pass" },
+        threadingHeaders: {
+          messageId: null,
+          inReplyTo: null,
+          references: null,
+        },
+        envelope: {
+          from: "sender@dust.tt",
+          full: "Sender <sender@dust.tt>",
+          to: [`agent@${ASSISTANT_EMAIL_SUBDOMAIN}`],
+          cc: [],
+          bcc: [],
+        },
+        attachments: [],
+      },
+      userMessage: "Please summarize",
+      replyRecipients: {
+        to: ["sender@dust.tt"],
+        cc: [],
+      },
+      hasThreadHistory: true,
+      attachmentCount: 2,
+    });
+
+    expect(message).toContain(
+      "The email thread history and 2 attachments are available below in this conversation."
+    );
   });
 });
