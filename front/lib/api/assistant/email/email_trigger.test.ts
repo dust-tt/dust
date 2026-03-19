@@ -1,6 +1,5 @@
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
-  buildEmailUserMessage,
   buildReplyThreadingHeaders,
   buildSuccessReplyRecipients,
   MAX_REPLY_RECIPIENTS,
@@ -195,99 +194,5 @@ describe("buildReplyThreadingHeaders", () => {
       inReplyTo: "<incoming-message-id@dust.tt>",
       references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
     });
-  });
-});
-
-describe("buildEmailUserMessage", () => {
-  it("includes the email envelope and reply audience", () => {
-    const message = buildEmailUserMessage({
-      email: {
-        subject: "Budget review",
-        text: "Can you take a look?",
-        auth: { SPF: "pass", dkim: "pass" },
-        threadingHeaders: {
-          messageId: null,
-          inReplyTo: null,
-          references: null,
-        },
-        envelope: {
-          from: "sender@dust.tt",
-          full: "Sender <sender@dust.tt>",
-          to: [`agent@${ASSISTANT_EMAIL_SUBDOMAIN}`, "teammate@dust.tt"],
-          cc: ["observer@dust.tt"],
-          bcc: [],
-        },
-        attachments: [],
-      },
-      userMessage: "Can you take a look?",
-      replyRecipients: {
-        to: ["sender@dust.tt", "teammate@dust.tt"],
-        cc: ["observer@dust.tt"],
-      },
-      hasThreadHistory: false,
-      attachmentCount: 0,
-    });
-
-    expect(message).toContain("I sent the following email:");
-    expect(message).toContain("<email_message>");
-    expect(message).toContain(
-      "<email_from>Sender &lt;sender@dust.tt&gt;</email_from>"
-    );
-    expect(message).toContain(
-      `<dust_agent_recipients>agent@${ASSISTANT_EMAIL_SUBDOMAIN}</dust_agent_recipients>`
-    );
-    expect(message).toContain(
-      `<email_to>agent@${ASSISTANT_EMAIL_SUBDOMAIN}, teammate@dust.tt</email_to>`
-    );
-    expect(message).toContain("<email_cc>observer@dust.tt</email_cc>");
-    expect(message).toContain(
-      "<email_body>\nCan you take a look?\n  </email_body>"
-    );
-    expect(message).toContain(
-      "<email_response_to>sender@dust.tt, teammate@dust.tt</email_response_to>"
-    );
-    expect(message).toContain(
-      "<email_response_cc>observer@dust.tt</email_response_cc>"
-    );
-    expect(message).toContain(
-      "You are in the recipients. Answer appropriately. Your response will be emailed back as-is to me and any other to/cc recipients."
-    );
-  });
-
-  it("mentions available thread history and attachments when present", () => {
-    const message = buildEmailUserMessage({
-      email: {
-        subject: "Fwd: Contract",
-        text: "Please summarize",
-        auth: { SPF: "pass", dkim: "pass" },
-        threadingHeaders: {
-          messageId: null,
-          inReplyTo: null,
-          references: null,
-        },
-        envelope: {
-          from: "sender@dust.tt",
-          full: "Sender <sender@dust.tt>",
-          to: [`agent@${ASSISTANT_EMAIL_SUBDOMAIN}`],
-          cc: [],
-          bcc: [],
-        },
-        attachments: [],
-      },
-      userMessage: "Please summarize",
-      replyRecipients: {
-        to: ["sender@dust.tt"],
-        cc: [],
-      },
-      hasThreadHistory: true,
-      attachmentCount: 2,
-    });
-
-    expect(message).toContain(
-      "<email_thread_history_may_be_available_in_conversation>true</email_thread_history_may_be_available_in_conversation>"
-    );
-    expect(message).toContain(
-      "<email_attachment_count_may_be_available_in_conversation>2</email_attachment_count_may_be_available_in_conversation>"
-    );
   });
 });
