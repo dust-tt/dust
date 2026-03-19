@@ -12,6 +12,7 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
+import { cva } from "class-variance-authority";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
@@ -252,6 +253,11 @@ export function UserMessage({
   };
 
   const showActions = !isDeleted && !shouldShowEditor;
+  const hasReactions = (message.reactions ?? []).length > 0;
+  // When there are reactions, show the action menu below the message.
+  // Otherwise, show it to the side of the message.
+  const showBottomActionMenu = !isDeleted && hasReactions;
+  const showSideActionMenu = !isDeleted && !hasReactions;
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -278,7 +284,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative min-w-60 max-w-3xl"
+            "relative min-w-60 max-w-3xl @sm/conversation:max-w-[85%] @md/conversation:max-w-[80%] @lg/conversation:max-w-[75%] @xl/conversation:max-w-[70%]"
           )}
           ref={userMessageHoveredRef}
         >
@@ -301,7 +307,7 @@ export function UserMessage({
                           <TriggerChip message={message} />
                         </span>
                       )}
-                      {message.version > 0 && (
+                      {message.version > 0 && !isDeleted && (
                         <span className="text-xs text-faint dark:text-muted-foreground-night">
                           (edited)
                         </span>
@@ -327,20 +333,41 @@ export function UserMessage({
                 />
               )}
             </ConversationMessageContent>
+            {showBottomActionMenu && (
+              <ActionMenu
+                mode="bottom"
+                isCurrentUser={isCurrentUser}
+                isDeleted={isDeleted}
+                showActions={showActions}
+                isUserMessageHovered={isUserMessageHovered}
+                message={message}
+                onReactionToggle={onReactionToggle}
+                handleEditMessage={handleEditMessage}
+                handleDeleteMessage={handleDeleteMessage}
+                canDelete={canDelete}
+                canEdit={canEdit}
+                conversationId={conversationId}
+                owner={owner}
+              />
+            )}
           </div>
-          <ActionMenu
-            isDeleted={isDeleted}
-            showActions={showActions}
-            isUserMessageHovered={isUserMessageHovered}
-            message={message}
-            onReactionToggle={onReactionToggle}
-            handleEditMessage={handleEditMessage}
-            handleDeleteMessage={handleDeleteMessage}
-            canDelete={canDelete}
-            canEdit={canEdit}
-            conversationId={conversationId}
-            owner={owner}
-          />
+          {showSideActionMenu && (
+            <ActionMenu
+              mode="side"
+              isCurrentUser={isCurrentUser}
+              isDeleted={isDeleted}
+              showActions={showActions}
+              isUserMessageHovered={isUserMessageHovered}
+              message={message}
+              onReactionToggle={onReactionToggle}
+              handleEditMessage={handleEditMessage}
+              handleDeleteMessage={handleDeleteMessage}
+              canDelete={canDelete}
+              canEdit={canEdit}
+              conversationId={conversationId}
+              owner={owner}
+            />
+          )}
         </ConversationMessageContainer>
       )}
 
@@ -399,7 +426,43 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   );
 }
 
+// When the conversation container is narrow, the action menu sits below the message bubble.
+// When the conversation container is wider, it floats to the left (current user) or right (other user).
+const actionMenuContainerVariants = cva(
+  "flex items-center gap-1 absolute left-0 bottom-0 translate-y-[calc(100%+2px)]",
+  {
+    variants: {
+      mode: {
+        side: "",   // repositioned via compound variants below
+        bottom: "", // always below the bubble, no repositioning
+      },
+      isCurrentUser: {
+        true: "",
+        false: "",
+      },
+    },
+    compoundVariants: [
+      {
+        mode: "side",
+        isCurrentUser: true,
+        // current user: float to the left of the bubble
+        className:
+          "@sm/conversation:translate-y-0 @sm/conversation:-translate-x-full @sm/conversation:pr-2",
+      },
+      {
+        mode: "side",
+        isCurrentUser: false,
+        // other user: float to the right of the bubble
+        className:
+          "@sm/conversation:left-auto @sm/conversation:right-0 @sm/conversation:translate-y-0 @sm/conversation:translate-x-full @sm/conversation:pl-2",
+      },
+    ],
+  }
+);
+
 function ActionMenu({
+  mode,
+  isCurrentUser,
   isDeleted,
   showActions,
   canEdit,
@@ -412,6 +475,8 @@ function ActionMenu({
   conversationId,
   owner,
 }: {
+  mode: "side" | "bottom";
+  isCurrentUser: boolean;
   isDeleted: boolean;
   showActions: boolean;
   canEdit: boolean;
@@ -428,8 +493,11 @@ function ActionMenu({
   const sendNotification = useSendNotification();
   const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
     useHover();
+  // Keep buttons visible when there are existing reactions, the message is hovered,
+  // the reactions area is hovered, or the dropdown menu is open.
+  const hasReactions = (message.reactions ?? []).length > 0;
   const shouldHideActions =
-    !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
+    !hasReactions && !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -473,28 +541,31 @@ function ActionMenu({
       ]
     : [];
 
+  // On larger screens, side mode buttons float beside the bubble — fade in/out on hover.
+  // On mobile (and in bottom mode), buttons sit below the bubble — always visible.
+  const sideItemVisibilityClass = cn(
+    "transition-opacity duration-300",
+    mode === "side" && shouldHideActions && "@sm/conversation:opacity-0"
+  );
+
   return (
     <div
-      className={cn(
-        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
-      )}
+      className={actionMenuContainerVariants({ mode, isCurrentUser })}
       ref={isReactionsHoveredRef}
     >
+      {mode === "bottom" && (
+        <MessageReactions
+
+          reactions={message.reactions ?? []}
+          onReactionClick={onReactionToggle}
+        />
+      )}
       {!isDeleted && (
-        <>
-          <MessageReactions
-            reactions={message.reactions ?? []}
-            onReactionClick={onReactionToggle}
-          />
-          <MessageEmojiPicker
-            key="emoji-picker"
-            onEmojiSelect={onReactionToggle}
-            className={cn(
-              "opacity-100 transition-opacity duration-200",
-              shouldHideActions && "sm:opacity-0"
-            )}
-          />
-        </>
+        <MessageEmojiPicker
+          key="emoji-picker"
+          onEmojiSelect={onReactionToggle}
+          className={sideItemVisibilityClass}
+        />
       )}
       {!isDeleted && actions && actions.length > 0 && (
         <DropdownMenu
@@ -507,10 +578,7 @@ function ActionMenu({
               size="icon-xs"
               variant="outline"
               aria-label="Message actions"
-              className={cn(
-                "opacity-100 transition-opacity duration-200",
-                shouldHideActions && "sm:opacity-0"
-              )}
+              className={sideItemVisibilityClass}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
