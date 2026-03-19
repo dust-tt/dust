@@ -676,6 +676,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
