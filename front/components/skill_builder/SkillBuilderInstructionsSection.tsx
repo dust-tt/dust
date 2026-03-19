@@ -6,6 +6,7 @@ import {
   BookOpenIcon,
   Button,
   ContentMessage,
+  InformationCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
