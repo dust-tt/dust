@@ -1,12 +1,14 @@
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
+import { EmailVerificationFlow } from "@app/components/pages/share/EmailVerificationFlow";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePathParam } from "@app/lib/platform";
+import { usePublicFrame } from "@app/lib/swr/frames";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Origins from which the share frame is considered as embedded.
 // We hide the header for embedded origins.
@@ -14,6 +16,8 @@ const EMBEDDED_ORIGINS = ["https://dust.tt/blog/"];
 
 export function SharedFramePage() {
   const token = usePathParam("token");
+
+  const [isVerified, setIsVerified] = useState(false);
 
   const hideHeader = useMemo(() => {
     if (typeof window === "undefined" || !document.referrer) {
@@ -28,6 +32,18 @@ export function SharedFramePage() {
     useShareFrameMetadata({
       shareToken: token,
     });
+
+  // Fetch the frame to check if the user is already authorized.
+  const { error: frameError, mutateFrame } = usePublicFrame({
+    shareToken: token,
+  });
+
+  // Show the email form when:
+  // 1. Metadata says the scope requires email verification, AND
+  // 2. The frame endpoint returned an error (user is not yet authorized), AND
+  // 3. The user hasn't just completed verification in this session.
+  const needsEmailVerification =
+    !isVerified && !!shareMetadata?.requiresEmailVerification && !!frameError;
 
   const humanFriendlyTitle = shareMetadata
     ? formatFilenameForDisplay(shareMetadata.title)
@@ -103,6 +119,12 @@ export function SharedFramePage() {
     };
   }, [shareMetadata, humanFriendlyTitle]);
 
+  const handleVerified = useCallback(() => {
+    setIsVerified(true);
+    // Refetch the frame now that the cookie is set.
+    void mutateFrame();
+  }, [mutateFrame]);
+
   if (!token) {
     return <Custom404 />;
   }
@@ -117,6 +139,13 @@ export function SharedFramePage() {
 
   if (shareMetadataError || !shareMetadata) {
     return <Custom404 />;
+  }
+
+  // Show email verification form when scope requires it and user isn't authorized yet.
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationFlow shareToken={token} onVerified={handleVerified} />
+    );
   }
 
   return (

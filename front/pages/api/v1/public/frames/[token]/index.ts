@@ -1,5 +1,9 @@
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import {
+  FRAME_SESSION_COOKIE_NAME,
+  getFrameSessionEmail,
+} from "@app/lib/api/share/frame_session";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -42,8 +46,8 @@ async function handler(
     });
   }
 
-  const result = await FileResource.fetchByShareTokenWithContent(token);
-  if (!result) {
+  const result = await FileResource.fetchByShareToken(token);
+  if (result.isErr()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -53,9 +57,9 @@ async function handler(
     });
   }
 
-  const workspace = await WorkspaceResource.fetchByModelId(
-    result.file.workspaceId
-  );
+  const { file, shareScope, shareableFileId } = result.value;
+  // TODO: Refactor FileResource.fetchByShareToken to return the WorkspaceResource directly to avoid this extra query.
+  const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
   if (!workspace) {
     return apiError(req, res, {
       status_code: 404,
@@ -65,8 +69,6 @@ async function handler(
       },
     });
   }
-
-  const { file, shareScope } = result;
 
   // Only allow conversation Frame files.
   if (
@@ -116,6 +118,55 @@ async function handler(
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
     if (!auth) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  }
+
+  // Handle email-based share scopes.
+  if (shareScope === "emails_only" || shareScope === "workspace_and_emails") {
+    let emailAuthorized = false;
+
+    // For workspace_and_emails: workspace members are authorized directly.
+    if (shareScope === "workspace_and_emails" && auth) {
+      emailAuthorized = true;
+    }
+
+    // If not authorized via Dust session, check external viewer session cookie.
+    if (!emailAuthorized) {
+      const sessionToken = req.cookies[FRAME_SESSION_COOKIE_NAME];
+      if (sessionToken) {
+        const sessionEmail = await getFrameSessionEmail({
+          sessionToken,
+          workspaceId: workspace.id,
+        });
+
+        if (sessionEmail) {
+          const hasGrant = await FileResource.getActiveGrantForEmail(
+            workspace,
+            {
+              email: sessionEmail,
+              shareableFileId,
+            }
+          );
+          if (hasGrant) {
+            emailAuthorized = true;
+
+            await FileResource.recordGrantView(workspace, {
+              email: sessionEmail,
+              shareableFileId,
+            });
+          }
+        }
+      }
+    }
+
+    if (!emailAuthorized) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
