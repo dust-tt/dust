@@ -147,7 +147,7 @@ export interface MockAgentConfig {
 
 interface BaseTestCase {
   scenarioId: string;
-  expectedToolCalls?: string[];
+  expectedToolCalls?: ToolCallAssertion[];
   judgeCriteria: string;
   agentConfig: MockAgentConfig;
   workspaceContext: WorkspaceContext;
@@ -214,6 +214,28 @@ export interface TestSuite {
 export interface ToolCall {
   name: string;
   arguments: Record<string, unknown>;
+}
+
+export type ToolCallAssertion =
+  | { type: "toolSuggestion"; toolId: string }
+  | { type: "skillSuggestion"; skillId: string }
+  | { type: "promptSuggestion"; targetBlockId?: string }
+  | { type: "noSuggestion" };
+
+export function toolSuggestion(toolId: string): ToolCallAssertion {
+  return { type: "toolSuggestion", toolId };
+}
+
+export function skillSuggestion(skillId: string): ToolCallAssertion {
+  return { type: "skillSuggestion", skillId };
+}
+
+export function promptSuggestion(targetBlockId?: string): ToolCallAssertion {
+  return { type: "promptSuggestion", targetBlockId };
+}
+
+export function noSuggestion(): ToolCallAssertion {
+  return { type: "noSuggestion" };
 }
 
 export interface JudgeResult {
