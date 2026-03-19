@@ -228,18 +228,30 @@ describe("buildEmailUserMessage", () => {
       attachmentCount: 0,
     });
 
+    expect(message).toContain("I sent the following email:");
+    expect(message).toContain("<email_message>");
     expect(message).toContain(
-      `Dust agent recipients: agent@${ASSISTANT_EMAIL_SUBDOMAIN}`
+      "<email_from>Sender &lt;sender@dust.tt&gt;</email_from>"
     );
     expect(message).toContain(
-      `To: agent@${ASSISTANT_EMAIL_SUBDOMAIN}, teammate@dust.tt`
+      `<dust_agent_recipients>agent@${ASSISTANT_EMAIL_SUBDOMAIN}</dust_agent_recipients>`
     );
-    expect(message).toContain("Cc: observer@dust.tt");
-    expect(message).toContain("Body:\n> Can you take a look?");
     expect(message).toContain(
-      "If you respond, your response will be emailed back as-is to:"
+      `<email_to>agent@${ASSISTANT_EMAIL_SUBDOMAIN}, teammate@dust.tt</email_to>`
     );
-    expect(message).toContain("To: sender@dust.tt, teammate@dust.tt");
+    expect(message).toContain("<email_cc>observer@dust.tt</email_cc>");
+    expect(message).toContain(
+      "<email_body>\nCan you take a look?\n  </email_body>"
+    );
+    expect(message).toContain(
+      "<email_response_to>sender@dust.tt, teammate@dust.tt</email_response_to>"
+    );
+    expect(message).toContain(
+      "<email_response_cc>observer@dust.tt</email_response_cc>"
+    );
+    expect(message).toContain(
+      "You are in the recipients. Answer appropriately. Your response will be emailed back as-is to me and any other to/cc recipients."
+    );
   });
 
   it("mentions available thread history and attachments when present", () => {
@@ -272,7 +284,10 @@ describe("buildEmailUserMessage", () => {
     });
 
     expect(message).toContain(
-      "The email thread history may also be available in this conversation. The email included 2 attachments, which may also be available in this conversation."
+      "<email_thread_history_may_be_available_in_conversation>true</email_thread_history_may_be_available_in_conversation>"
+    );
+    expect(message).toContain(
+      "<email_attachment_count_may_be_available_in_conversation>2</email_attachment_count_may_be_available_in_conversation>"
     );
   });
 });
