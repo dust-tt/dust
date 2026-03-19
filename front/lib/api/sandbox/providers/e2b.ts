@@ -201,6 +201,7 @@ export class E2BSandboxProvider implements SandboxProvider {
         cwd: opts?.workingDirectory,
         envs: opts?.envVars,
         timeoutMs: opts?.timeoutMs,
+        user: opts?.user,
       });
 
       return new Ok({
