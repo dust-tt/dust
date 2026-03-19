@@ -1,18 +1,33 @@
+import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
+import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
+import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
+import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
 import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
+import {
+  findWebhookSourceViewForTrigger,
+  triggerTypeToBuilderType,
+  useTriggerSheetState,
+} from "@app/components/assistant/details/useTriggerSheetState";
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
+  ArrowLeftIcon,
   ArrowPathIcon,
   Avatar,
   BarChartIcon,
@@ -36,7 +51,7 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
@@ -84,6 +99,10 @@ export function AgentDetailsSheet({
   const [selectedTab, setSelectedTab] = useState<
     "info" | "insights" | "editors" | "agent_memory" | "triggers"
   >("info");
+  const [triggerEditMode, setTriggerEditMode] = useState<SheetMode | null>(
+    null
+  );
+
   const {
     agentConfiguration,
     isAgentConfigurationLoading,
@@ -94,10 +113,44 @@ export function AgentDetailsSheet({
     agentConfigurationId: agentId,
   });
 
+  // Fetch webhook source views when triggers tab is active so they're ready
+  // when the user clicks edit on a webhook trigger.
+  const isTriggersTabActive = selectedTab === "triggers" && !!agentId;
+
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: "all",
+    disabled: !isTriggersTabActive,
+  });
+
+  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(
+    owner,
+    spaces,
+    !isTriggersTabActive
+  );
+
+  const handleAddTrigger = useCallback(() => {
+    setTriggerEditMode({ type: "add" });
+  }, []);
+
+  const handleEditTrigger = useCallback(
+    (trigger: TriggerType) => {
+      const builderTrigger = triggerTypeToBuilderType(trigger);
+      const wsv = findWebhookSourceViewForTrigger(trigger, webhookSourceViews);
+      setTriggerEditMode({
+        type: "edit",
+        trigger: builderTrigger,
+        webhookSourceView: wsv,
+      });
+    },
+    [webhookSourceViews]
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    // Reset to info tab when we open/close the modal
+    // Reset to info tab and close trigger editing when we open/close the modal
     setSelectedTab("info");
+    setTriggerEditMode(null);
   }, [agentId]);
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
@@ -110,9 +163,7 @@ export function AgentDetailsSheet({
     !isGlobalAgent &&
     agentConfiguration?.status === "active";
   const showTriggersTabs =
-    agentId != null &&
-    (!isGlobalAgent || agentId === GLOBAL_AGENTS_SID.DUST) &&
-    agentConfiguration?.status === "active";
+    agentId != null && agentConfiguration?.status === "active";
   const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
@@ -222,6 +273,14 @@ export function AgentDetailsSheet({
           <div className="flex h-full w-full items-center justify-center">
             <Spinner size="lg" />
           </div>
+        ) : triggerEditMode ? (
+          <TriggerEditView
+            owner={owner}
+            agentConfigurationId={agentConfiguration?.sId ?? ""}
+            mode={triggerEditMode}
+            webhookSourceViews={webhookSourceViews}
+            onClose={() => setTriggerEditMode(null)}
+          />
         ) : (
           <>
             <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
@@ -291,8 +350,9 @@ export function AgentDetailsSheet({
                       <TabsContent value="triggers">
                         <AgentTriggersTab
                           agentConfiguration={agentConfiguration}
-                          isGlobalAgent={isGlobalAgent}
                           owner={owner}
+                          onEditTrigger={handleEditTrigger}
+                          onAddTrigger={handleAddTrigger}
                         />
                       </TabsContent>
                       <TabsContent value="editors">
@@ -330,5 +390,106 @@ export function AgentDetailsSheet({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+interface TriggerEditViewProps {
+  owner: WorkspaceType;
+  agentConfigurationId: string;
+  mode: SheetMode;
+  webhookSourceViews: WebhookSourceViewType[];
+  onClose: () => void;
+}
+
+function TriggerEditView({
+  owner,
+  agentConfigurationId,
+  mode,
+  webhookSourceViews,
+  onClose,
+}: TriggerEditViewProps) {
+  const {
+    form,
+    currentPageId,
+    webhookSourceView,
+    editTrigger,
+    isEditor,
+    isOnSelectionPage,
+    pageTitle,
+    handleScheduleSelect,
+    handleWebhookSelect,
+    handleCancel,
+    handleFormSubmit,
+  } = useTriggerSheetState({
+    owner,
+    agentConfigurationId,
+    mode,
+    webhookSourceViews,
+    onSuccess: onClose,
+  });
+
+  return (
+    <FormProvider form={form} className="flex h-full flex-col overflow-hidden">
+      <SheetHeader className="flex flex-row items-center gap-2 text-sm text-foreground dark:text-foreground-night">
+        <Button
+          icon={ArrowLeftIcon}
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (!isOnSelectionPage && mode.type !== "edit") {
+              handleCancel();
+            } else {
+              onClose();
+            }
+          }}
+        />
+        <h2 className="text-lg font-semibold">{pageTitle}</h2>
+      </SheetHeader>
+      <SheetContainer className="pb-4">
+        {currentPageId === "trigger-selection" && (
+          <TriggerSelectionPageContent
+            onScheduleSelect={handleScheduleSelect}
+            onWebhookSelect={handleWebhookSelect}
+            webhookSourceViews={webhookSourceViews}
+          />
+        )}
+        {currentPageId === "schedule-edition" && (
+          <ScheduleEditionSheetContent
+            owner={owner}
+            trigger={editTrigger?.kind === "schedule" ? editTrigger : null}
+            isEditor={isEditor}
+          />
+        )}
+        {currentPageId === "webhook-edition" && (
+          <WebhookEditionSheetContent
+            owner={owner}
+            trigger={editTrigger?.kind === "webhook" ? editTrigger : null}
+            agentConfigurationId={agentConfigurationId}
+            webhookSourceView={webhookSourceView}
+            isEditor={isEditor}
+          />
+        )}
+      </SheetContainer>
+      {!isOnSelectionPage && (
+        <div className="flex flex-row gap-2 border-t border-border p-3 dark:border-border-night">
+          <Button
+            type="button"
+            label="Cancel"
+            variant="outline"
+            onClick={() => {
+              handleCancel();
+              onClose();
+            }}
+          />
+          <div className="flex-grow" />
+          <Button
+            type="button"
+            label="Save"
+            variant="primary"
+            onClick={form.handleSubmit(handleFormSubmit)}
+          />
+        </div>
+      )}
+    </FormProvider>
   );
 }
