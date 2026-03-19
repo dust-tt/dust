@@ -261,8 +261,8 @@ export function UserMessage({
   // With reactions the button is always below; without, CSS container query floats it to the side.
   const actionMenuBottomMargin = !isDeleted
     ? hasReactions
-      ? "mb-6"
-      : "mb-6 @sm/conversation:mb-1"
+      ? "mb-8"
+      : "mb-8 @sm/conversation:mb-1"
     : undefined;
 
   const displayChip =
