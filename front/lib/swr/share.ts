@@ -7,8 +7,7 @@ import {
 } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetShareFrameMetadataResponseBody } from "@app/pages/api/share/frame/[token]";
-import { useCallback } from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { Fetcher } from "swr";
 
 export function useShareFrameMetadata({
