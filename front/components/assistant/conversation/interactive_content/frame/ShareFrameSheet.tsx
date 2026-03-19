@@ -34,9 +34,11 @@ import {
   useCopyToClipboard,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { intlFormatDistance } from "date-fns";
-import type React from "react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const SCOPE_OPTIONS: {
   icon: typeof LockIcon;
@@ -64,6 +66,41 @@ const SCOPE_OPTIONS: {
   },
 ];
 
+const inviteFormSchema = z.object({
+  emailsRaw: z
+    .string()
+    .min(1)
+    .superRefine((val, ctx) => {
+      const emails = val
+        .split(",")
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+
+      if (emails.length > MAX_EMAILS_PER_INVITE) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `You can invite up to ${MAX_EMAILS_PER_INVITE} people at a time`,
+        });
+        return;
+      }
+
+      const invalid = emails.filter((e) => !isEmailValid(e));
+      if (invalid.length > 0) {
+        const quoted = invalid.map((e) => `"${e}"`).join(", ");
+        const verb =
+          invalid.length === 1
+            ? "is not a valid email address"
+            : "are not valid email addresses";
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${quoted} ${verb}`,
+        });
+      }
+    }),
+});
+
+type InviteFormValues = z.infer<typeof inviteFormSchema>;
+
 interface ShareFrameSheetProps {
   fileId: string;
   owner: LightWorkspaceType;
@@ -71,9 +108,6 @@ interface ShareFrameSheetProps {
 
 export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [emailInput, setEmailInput] = useState("");
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [isInviting, setIsInviting] = useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 
@@ -83,57 +117,31 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const { grants, isGrantsLoading, doAddGrants, doRevokeGrant } =
     useSharingGrants({ fileId, owner, disabled: !isOpen });
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<InviteFormValues>({
+    resolver: zodResolver(inviteFormSchema),
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
+  });
+
   const currentScope = fileShare?.scope ?? "workspace";
   const shareURL = fileShare?.shareUrl ?? "";
 
   const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
 
-  const parseEmails = () =>
-    emailInput
+  const onInviteSubmit = async (data: InviteFormValues) => {
+    const emails = data.emailsRaw
       .split(",")
       .map((e) => e.trim())
       .filter((e) => e.length > 0);
 
-  const validateAndInvite = async () => {
-    const emails = parseEmails();
-    if (emails.length === 0) {
-      return;
-    }
-
-    if (emails.length > MAX_EMAILS_PER_INVITE) {
-      setEmailError(
-        `You can invite up to ${MAX_EMAILS_PER_INVITE} people at a time`
-      );
-      return;
-    }
-
-    const invalid = emails.filter((e) => !isEmailValid(e));
-    if (invalid.length > 0) {
-      const quoted = invalid.map((e) => `"${e}"`).join(", ");
-      const verb =
-        invalid.length === 1
-          ? "is not a valid email address"
-          : "are not valid email addresses";
-      setEmailError(`${quoted} ${verb}`);
-      return;
-    }
-
-    setEmailError(null);
-    setIsInviting(true);
-    try {
-      await doAddGrants(emails);
-      setEmailInput("");
-    } finally {
-      setIsInviting(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      void validateAndInvite();
-    }
+    await doAddGrants(emails);
+    reset();
   };
 
   const handleRevoke = async (grant: SharingGrantType) => {
@@ -188,21 +196,33 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="share-scope">Who has access</Label>
+                <fieldset className="flex flex-col gap-2 border-none p-0">
+                  <legend className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                    Who has access
+                  </legend>
                   <div className="flex flex-col gap-1">
                     {SCOPE_OPTIONS.map((option) => {
                       const isSelected = option.value === currentScope;
+                      const inputId = `share-scope-${option.value}`;
                       return (
-                        <button
+                        <label
                           key={option.value}
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                          htmlFor={inputId}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
                             isSelected
                               ? "bg-muted-background dark:bg-muted-background-night"
                               : "hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
                           }`}
-                          onClick={() => doShare(option.value)}
                         >
+                          <input
+                            type="radio"
+                            id={inputId}
+                            name="share-scope"
+                            value={option.value}
+                            checked={isSelected}
+                            onChange={() => doShare(option.value)}
+                            className="sr-only"
+                          />
                           <Icon
                             visual={option.icon}
                             size="sm"
@@ -216,41 +236,39 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                               {option.description}
                             </span>
                           </div>
-                        </button>
+                        </label>
                       );
                     })}
                   </div>
-                </div>
+                </fieldset>
 
                 {showEmailSection && (
                   <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-2">
+                    <form
+                      className="flex flex-col gap-2"
+                      onSubmit={handleSubmit(onInviteSubmit)}
+                    >
                       <Label htmlFor="email-invite">Invite by email</Label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <Input
                             id="email-invite"
                             placeholder="Add comma separated emails to invite"
-                            value={emailInput}
-                            onChange={(e) => {
-                              setEmailInput(e.target.value);
-                              setEmailError(null);
-                            }}
-                            onKeyDown={handleKeyDown}
-                            message={emailError ?? undefined}
-                            messageStatus={emailError ? "error" : undefined}
+                            {...register("emailsRaw")}
+                            message={errors.emailsRaw?.message}
+                            messageStatus={
+                              errors.emailsRaw ? "error" : undefined
+                            }
                           />
                         </div>
                         <Button
                           variant="primary"
                           label="Invite"
-                          onClick={validateAndInvite}
-                          disabled={
-                            isInviting || emailInput.trim().length === 0
-                          }
+                          type="submit"
+                          disabled={isSubmitting}
                         />
                       </div>
-                    </div>
+                    </form>
 
                     {isGrantsLoading ? (
                       <div className="flex items-center justify-center py-4">
@@ -299,6 +317,8 @@ function GrantRow({ grant, onRevoke }: GrantRowProps) {
     ? `Viewed ${intlFormatDistance(new Date(grant.lastViewedAt), now)}`
     : "Never viewed";
 
+  // TODO(sparkle): ContextItem forces items-start when children are present.
+  // Add an itemsAlignment prop to ContextItem to allow centering.
   return (
     <ContextItem
       title={grant.email}
