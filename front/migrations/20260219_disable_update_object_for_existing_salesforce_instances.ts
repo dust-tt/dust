@@ -11,7 +11,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Logger } from "@app/logger/logger";
 
-const DEPLOYMENT_CUTOFF_DATE = new Date("2026-03-19T00:00:00Z");
+const DEFAULT_CUTOFF_DATE = new Date("2026-03-19T00:00:00Z");
 const TOOL_NAME = "update_object";
 const INTERNAL_MCP_SERVER_NAME = "salesforce";
 const PERMISSION_LEVEL = "medium";
@@ -19,7 +19,8 @@ const PERMISSION_LEVEL = "medium";
 async function disableUpdateObjectForWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
-  logger: Logger
+  logger: Logger,
+  cutoffDate: Date
 ): Promise<{ processedCount: number }> {
   // Skip workspaces that had the salesforce_tool_write feature flag enabled.
   // These workspaces were already using update_object, so we should not disable it.
@@ -45,7 +46,7 @@ async function disableUpdateObjectForWorkspace(
         [Op.ne]: null,
       },
       createdAt: {
-        [Op.lt]: DEPLOYMENT_CUTOFF_DATE,
+        [Op.lt]: cutoffDate,
       },
     },
   });
@@ -154,12 +155,26 @@ makeScript(
         "Optional workspace sId to process (processes all if omitted)",
       required: false,
     },
+    cutoffDate: {
+      type: "string",
+      description:
+        "ISO date string for the cutoff date (connections created before this date are affected)",
+      required: false,
+    },
   },
-  async ({ workspaceId, execute }, logger) => {
+  async ({ workspaceId, cutoffDate: cutoffDateStr, execute }, logger) => {
+    const cutoffDate = cutoffDateStr
+      ? new Date(cutoffDateStr)
+      : DEFAULT_CUTOFF_DATE;
+
+    if (isNaN(cutoffDate.getTime())) {
+      throw new Error(`Invalid cutoff date: ${cutoffDateStr}`);
+    }
+
     logger.info(
       {
         workspaceId: workspaceId || "all",
-        cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
+        cutoffDate: cutoffDate.toISOString(),
         toolName: TOOL_NAME,
         serverName: INTERNAL_MCP_SERVER_NAME,
       },
@@ -182,7 +197,8 @@ makeScript(
       const result = await disableUpdateObjectForWorkspace(
         workspace,
         execute,
-        logger
+        logger,
+        cutoffDate
       );
       totalProcessed = result.processedCount;
     } else {
@@ -192,7 +208,8 @@ makeScript(
           const result = await disableUpdateObjectForWorkspace(
             workspace,
             execute,
-            logger
+            logger,
+            cutoffDate
           );
           totalProcessed += result.processedCount;
         },
