@@ -259,11 +259,12 @@ export function UserMessage({
   const showBottomActionMenu = !isDeleted && hasReactions;
   const showSideActionMenu = !isDeleted && !hasReactions;
   // With reactions the button is always below; without, CSS container query floats it to the side.
-  const actionMenuBottomMargin = !isDeleted
-    ? hasReactions
+  // Deleted messages have no action menu → tight spacing.
+  const actionMenuBottomMargin = isDeleted
+    ? "mb-1"
+    : hasReactions
       ? "mb-8"
-      : "mb-8 @sm/conversation:mb-1"
-    : undefined;
+      : "mb-8 @sm/conversation:mb-1";
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
