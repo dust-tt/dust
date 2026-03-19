@@ -646,9 +646,12 @@ export function contentTypeFromFileName(
   }
   const extension = fileName.slice(dotIndex).toLowerCase();
 
-  for (const [contentType, format] of Object.entries(FILE_FORMATS)) {
-    if ((format.exts as readonly string[]).includes(extension)) {
-      return contentType as SupportedFileContentType;
+  for (const key of Object.keys(FILE_FORMATS)) {
+    if (isSupportedFileContentType(key)) {
+      const exts: readonly string[] = FILE_FORMATS[key].exts;
+      if (exts.includes(extension)) {
+        return key;
+      }
     }
   }
 
