@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import handler from "@app/pages/api/v1/w/[wId]/feature_flags";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import {
@@ -30,13 +31,13 @@ describe(
 
 describe("GET /api/v1/w/[wId]/feature_flags", () => {
   it("returns 200 and an array of feature flags", async () => {
-    const { req, res, workspace } = await createPublicApiMockRequest({
+    const { req, res, auth } = await createPublicApiMockRequest({
       systemKey: true,
     });
 
     // Add features flag
-    await FeatureFlagFactory.basic("deepseek_feature", workspace);
-    await FeatureFlagFactory.basic("xai_feature", workspace);
+    await FeatureFlagFactory.basic(auth, "deepseek_feature");
+    await FeatureFlagFactory.basic(auth, "xai_feature");
 
     await handler(req, res);
 
@@ -87,13 +88,16 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
     const {
       req,
       res,
-      workspace: workspace1,
+      auth: auth1,
     } = await createPublicApiMockRequest({ systemKey: true });
 
     const workspace2 = await WorkspaceFactory.basic();
 
-    await FeatureFlagFactory.basic("xai_feature", workspace1);
-    await FeatureFlagFactory.basic("labs_transcripts", workspace2);
+    await FeatureFlagFactory.basic(auth1, "xai_feature");
+    await FeatureFlagFactory.basic(
+      await Authenticator.internalAdminForWorkspace(workspace2.sId),
+      "labs_transcripts"
+    );
 
     await handler(req, res);
 

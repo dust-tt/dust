@@ -31,12 +31,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
   });
 
   it("should return 400 when fileName is missing", async () => {
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-    } = await createPrivateApiMockRequest({
+    const { req, res, auth, user } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "builder",
     });
@@ -70,7 +65,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "PATCH",
@@ -106,7 +101,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "PATCH",
@@ -137,7 +132,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "PATCH",
@@ -176,7 +171,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
         req,
         res,
         workspace,
-        authenticator: auth,
+        auth: auth,
         user,
       } = await createPrivateApiMockRequest({
         method: "PATCH",
@@ -184,7 +179,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
       });
 
       // Enable the projects feature flag
-      await FeatureFlagFactory.basic("projects", workspace);
+      await FeatureFlagFactory.basic(auth, "projects");
 
       // Create a project space where the user is an editor (has write access)
       const projectSpace = await SpaceFactory.project(workspace, user.id);
@@ -214,7 +209,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
 
     it("should deny user without space write access from renaming project files", async () => {
       const {
-        authenticator: auth,
+        auth: auth,
         req,
         res,
         workspace,
@@ -225,7 +220,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
       });
 
       // Enable the projects feature flag
-      await FeatureFlagFactory.basic("projects", workspace);
+      await FeatureFlagFactory.basic(auth, "projects");
 
       // Create a regular space (user has no access)
       const space = await SpaceFactory.regular(workspace);
@@ -263,7 +258,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "GET",
@@ -299,7 +294,7 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "PATCH",

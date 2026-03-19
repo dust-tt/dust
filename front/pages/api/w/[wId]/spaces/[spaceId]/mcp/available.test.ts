@@ -51,7 +51,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     });
 
     // Create some servers
-    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
 
     // Internal server in the right workspace
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(

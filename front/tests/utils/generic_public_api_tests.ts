@@ -62,7 +62,15 @@ export const createPublicApiMockRequest = async ({
 
   const auth = await Authenticator.fromKey(key, workspace.sId);
 
-  return { auth, req, res, workspace, globalGroup, systemGroup, key };
+  return {
+    auth: auth.workspaceAuth,
+    req,
+    res,
+    workspace,
+    globalGroup,
+    systemGroup,
+    key,
+  };
 };
 
 export function createPublicApiSystemOnlyAuthenticationTests(

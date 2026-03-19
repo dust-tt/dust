@@ -11,19 +11,18 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role,
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
 
   // Create a system space to hold the Webhook sources
-  await SpaceFactory.defaults(authenticator);
+  await SpaceFactory.defaults(auth);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 describe("GET /api/w/[wId]/webhook_sources/", () => {
@@ -166,7 +165,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     const {
       req: postReq,
       res: postRes,
-      authenticator,
+      auth,
     } = await setupTest("admin", "POST");
 
     const testDescription = "This is a test webhook for monitoring events";
@@ -192,7 +191,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
 
     const systemView =
       await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
-        authenticator,
+        auth,
         postData.webhookSource.sId
       );
     expect(systemView).not.toBeNull();

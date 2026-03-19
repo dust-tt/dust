@@ -30,10 +30,10 @@ async function getMessageByRank(
 
 describe("GET /api/w/[wId]/assistant/conversations/[cId]/feedbacks", () => {
   it("returns empty feedbacks when none exist", async () => {
-    const { req, res, authenticator } = await createPrivateApiMockRequest({
+    const { req, res, auth } = await createPrivateApiMockRequest({
       method: "GET",
     });
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
     });
@@ -47,29 +47,29 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/feedbacks", () => {
   });
 
   it("returns feedbacks for the current user only", async () => {
-    const { req, res, authenticator, workspace } =
-      await createPrivateApiMockRequest({ method: "GET" });
-    const user = authenticator.getNonNullableUser();
+    const { req, res, auth, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+    const user = auth.getNonNullableUser();
 
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Test Agent" }
-    );
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date(), new Date()],
     });
 
     // rank 1 = first agent message, rank 3 = second agent message.
-    const msg1 = await getMessageByRank(authenticator, conversation.id, 1);
-    const msg2 = await getMessageByRank(authenticator, conversation.id, 3);
+    const msg1 = await getMessageByRank(auth, conversation.id, 1);
+    const msg2 = await getMessageByRank(auth, conversation.id, 3);
     const { agentMessage: am1 } = await ConversationFactory.getMessage(
-      authenticator,
+      auth,
       msg1.id
     );
     const { agentMessage: am2 } = await ConversationFactory.getMessage(
-      authenticator,
+      auth,
       msg2.id
     );
 
@@ -116,29 +116,26 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/feedbacks", () => {
   });
 
   it("does not return feedbacks from other conversations", async () => {
-    const { req, res, authenticator, workspace } =
-      await createPrivateApiMockRequest({ method: "GET" });
-    const user = authenticator.getNonNullableUser();
+    const { req, res, auth, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+    const user = auth.getNonNullableUser();
 
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Test Agent" }
-    );
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
 
-    const conversation1 = await ConversationFactory.create(authenticator, {
+    const conversation1 = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date()],
     });
-    const conversation2 = await ConversationFactory.create(authenticator, {
+    const conversation2 = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date()],
     });
 
-    const msg = await getMessageByRank(authenticator, conversation2.id, 1);
-    const { agentMessage } = await ConversationFactory.getMessage(
-      authenticator,
-      msg.id
-    );
+    const msg = await getMessageByRank(auth, conversation2.id, 1);
+    const { agentMessage } = await ConversationFactory.getMessage(auth, msg.id);
 
     await AgentMessageFeedbackResource.makeNew({
       workspaceId: workspace.id,

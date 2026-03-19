@@ -81,7 +81,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
     // requests hitting it immediately reflect the updated flags. Other pods
     // will pick up the change once their 3s memoizer TTL expires.
     if (toAdd.length > 0 || toRemove.length > 0) {
-      invalidateFeatureFlagsCache(workspace);
+      invalidateFeatureFlagsCache(auth);
     }
 
     const actions: string[] = [];

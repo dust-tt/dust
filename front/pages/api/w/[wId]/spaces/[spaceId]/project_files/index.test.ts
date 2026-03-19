@@ -10,7 +10,7 @@ import handler from "./index";
 describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
   it("should return project files for a valid space", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       user,
@@ -110,7 +110,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({
@@ -198,7 +198,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
 
   it("should return files with correct metadata format", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       user,

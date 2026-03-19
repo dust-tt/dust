@@ -61,18 +61,12 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should return 400 when file is not a frame", async () => {
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-      authenticator,
-    } = await createPrivateApiMockRequest({
+    const { req, res, auth, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
@@ -109,7 +103,7 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "POST",
@@ -145,18 +139,12 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should return 400 for invalid orientation value", async () => {
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-      authenticator,
-    } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
@@ -188,18 +176,12 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should export PDF successfully with default orientation", async () => {
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-      authenticator,
-    } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
@@ -233,15 +215,15 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
     const {
       req,
       res,
-      authenticator: auth,
+
       user,
-      authenticator,
+      auth,
     } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
@@ -279,15 +261,15 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
     const {
       req,
       res,
-      authenticator: auth,
+
       user,
-      authenticator,
+      auth,
     } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });

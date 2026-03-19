@@ -12,15 +12,14 @@ import handler from "./index";
 
 describe("MCP Connection API Handler", () => {
   it("GET should return the connection", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     const connection = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "personal"
     );
@@ -36,14 +35,13 @@ describe("MCP Connection API Handler", () => {
   });
 
   it("GET should ignore conversation kill switch on non-conversation routes", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
     const connection = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "personal"
     );
@@ -68,7 +66,7 @@ describe("MCP Connection API Handler", () => {
 
   it("GET cannot return a connection from another workspace", async () => {
     // Create first workspace and its connection
-    const { workspace: workspace1, authenticator: authenticator1 } =
+    const { workspace: workspace1, auth: authenticator1 } =
       await createPrivateApiMockRequest({
         method: "GET",
       });
@@ -97,7 +95,7 @@ describe("MCP Connection API Handler", () => {
   });
 
   it("GET cannot return a connection from another user in the same workspace", async () => {
-    const { workspace, authenticator: authenticator1 } =
+    const { workspace, auth: authenticator1 } =
       await createPrivateApiMockRequest({
         method: "GET",
       });
@@ -132,7 +130,7 @@ describe("MCP Connection API Handler", () => {
       req: deleteReq,
       res: deleteRes,
       workspace,
-      authenticator,
+      auth,
     } = await createPrivateApiMockRequest({
       method: "DELETE",
     });
@@ -140,15 +138,11 @@ describe("MCP Connection API Handler", () => {
 
     // Create two personal connections for the same server
     const connection1 = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "personal"
     );
-    await MCPServerConnectionFactory.remote(
-      authenticator,
-      remoteServer,
-      "personal"
-    );
+    await MCPServerConnectionFactory.remote(auth, remoteServer, "personal");
 
     // Create an extra one for the same server, but for a different user
     const user2 = await UserFactory.basic();
@@ -172,7 +166,7 @@ describe("MCP Connection API Handler", () => {
     expect(deleteRes._getJSONData()).toEqual({ success: true });
 
     const remainingPersonalConnections =
-      await MCPServerConnectionResource.listByWorkspace(authenticator, {
+      await MCPServerConnectionResource.listByWorkspace(auth, {
         connectionType: "personal",
       });
     expect(remainingPersonalConnections).toHaveLength(0);
@@ -189,7 +183,7 @@ describe("MCP Connection API Handler", () => {
       req: deleteReq,
       res: deleteRes,
       workspace,
-      authenticator,
+      auth,
     } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "admin",
@@ -197,14 +191,10 @@ describe("MCP Connection API Handler", () => {
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     // Create both personal and workspace connections for the same server
-    await MCPServerConnectionFactory.remote(
-      authenticator,
-      remoteServer,
-      "personal"
-    );
+    await MCPServerConnectionFactory.remote(auth, remoteServer, "personal");
 
     const workspaceConnection = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "workspace"
     );
@@ -219,13 +209,13 @@ describe("MCP Connection API Handler", () => {
 
     // Verify both connections are deleted
     const remainingWorkspaceConnections =
-      await MCPServerConnectionResource.listByWorkspace(authenticator, {
+      await MCPServerConnectionResource.listByWorkspace(auth, {
         connectionType: "workspace",
       });
     expect(remainingWorkspaceConnections).toHaveLength(0);
 
     const remainingPersonalConnections =
-      await MCPServerConnectionResource.listByWorkspace(authenticator, {
+      await MCPServerConnectionResource.listByWorkspace(auth, {
         connectionType: "personal",
       });
     expect(remainingPersonalConnections).toHaveLength(0);
@@ -282,7 +272,7 @@ describe("MCP Connection API Handler", () => {
 
   it("DELETE a personal connection as non-admin and wrong user should return 404", async () => {
     // Create first user and their connection
-    const { workspace, authenticator: authenticator1 } =
+    const { workspace, auth: authenticator1 } =
       await createPrivateApiMockRequest({
         method: "GET",
       });
