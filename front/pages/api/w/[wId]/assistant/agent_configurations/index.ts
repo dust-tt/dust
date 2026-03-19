@@ -158,8 +158,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
@@ -188,20 +186,19 @@ async function handler(
   switch (req.method) {
     case "GET":
       // extract the view from the query parameters
-      const queryValidation = GetAgentConfigurationsQuerySchema.decode({
+      const queryValidation = GetAgentConfigurationsQuerySchema.safeParse({
         ...req.query,
         limit:
           typeof req.query.limit === "string"
             ? parseInt(req.query.limit, 10)
             : undefined,
       });
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${queryValidation.error.message}`,
           },
         });
       }
@@ -214,7 +211,7 @@ async function handler(
         withFeedbacks,
         withEditors,
         sort,
-      } = queryValidation.right;
+      } = queryValidation.data;
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
@@ -332,21 +329,20 @@ async function handler(
         });
       }
       const bodyValidation =
-        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        PostOrPatchAgentConfigurationRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: bodyValidation.right.assistant,
+        assistant: bodyValidation.data.assistant,
       });
 
       if (agentConfigurationRes.isErr()) {

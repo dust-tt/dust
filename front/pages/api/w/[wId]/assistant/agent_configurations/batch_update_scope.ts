@@ -8,14 +8,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const BatchUpdateAgentScopeRequestBodySchema = t.type({
-  agentIds: t.array(t.string),
-  scope: t.union([t.literal("hidden"), t.literal("visible")]),
+const BatchUpdateAgentScopeRequestBodySchema = z.object({
+  agentIds: z.array(z.string()),
+  scope: z.enum(["hidden", "visible"]),
 });
 
 type BatchUpdateAgentTagsResponseBody = {
@@ -47,21 +45,20 @@ async function handler(
     });
   }
 
-  const bodyValidation = BatchUpdateAgentScopeRequestBodySchema.decode(
+  const bodyValidation = BatchUpdateAgentScopeRequestBodySchema.safeParse(
     req.body
   );
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.reporter(bodyValidation);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError.join(", ")}`,
+        message: `Invalid request body: ${bodyValidation.error.message}`,
       },
     });
   }
 
-  const { agentIds, scope } = bodyValidation.right;
+  const { agentIds, scope } = bodyValidation.data;
 
   // Process agents concurrently
   await concurrentExecutor(

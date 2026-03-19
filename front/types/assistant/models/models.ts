@@ -1,5 +1,6 @@
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
+import { z } from "zod";
 
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
@@ -226,6 +227,13 @@ export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
+
+// Note: MODEL_IDS includes dynamic custom models from GCS, so we use z.custom
+// with the isModelId guard rather than z.enum (which requires a static tuple).
+export const ModelIdSchema = z.custom<ModelIdType>(
+  (val) => typeof val === "string" && isModelId(val),
+  { message: "Invalid model ID" }
+);
 
 // Image generation model IDs (internal-only, not user-selectable)
 export const IMAGE_MODEL_IDS = [GEMINI_3_PRO_IMAGE_MODEL_ID] as const;
