@@ -1,7 +1,11 @@
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { isChromeExtension } from "@app/lib/utils/extension";
+import {
+  isBrowserExtension,
+  isChromeExtension,
+} from "@app/lib/utils/extension";
+
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -358,7 +362,7 @@ const getMicrophonePermissionState = async (): Promise<PermissionState> => {
 
 const openMicrophoneAccessPopup = async (): Promise<void> => {
   const createdWindow = await chrome.windows.create({
-    url: `chrome-extension://${chrome.runtime.id}/request-mic.html`,
+    url: chrome.runtime.getURL("request-mic.html"),
     type: "popup",
     width: 400,
     height: 400,
@@ -393,10 +397,13 @@ const extensionRequestMicrophonePermission = async (): Promise<MediaStream> => {
   const state = await getMicrophonePermissionState();
 
   if (state === "denied") {
-    // Open extension settings so user can manually re-enable microphone
-    await chrome.tabs.create({
-      url: `chrome://settings/content/siteDetails?site=chrome-extension%3A%2F%2F${chrome.runtime.id}%2F`,
-    });
+    if (isChromeExtension()) {
+      // Open Chrome extension settings so user can manually re-enable microphone.
+      await chrome.tabs.create({
+        url: `chrome://settings/content/siteDetails?site=chrome-extension%3A%2F%2F${chrome.runtime.id}%2F`,
+      });
+    }
+    // Firefox has no deep link to extension site settings
     throw new DOMException("Microphone permission denied", "NotAllowedError");
   }
 
@@ -410,7 +417,7 @@ const extensionRequestMicrophonePermission = async (): Promise<MediaStream> => {
 };
 
 export const requestMicrophone = async (): Promise<MediaStream> => {
-  if (isChromeExtension()) {
+  if (isBrowserExtension()) {
     return extensionRequestMicrophonePermission();
   }
   return navigator.mediaDevices.getUserMedia({ audio: true });
