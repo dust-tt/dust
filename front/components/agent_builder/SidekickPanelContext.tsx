@@ -126,7 +126,9 @@ export const SidekickPanelProvider = ({
         mentions: [{ configurationId: GLOBAL_AGENTS_SID.SIDEKICK }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_sidekick",
-        clientSideMCPServerIds,
+        // Don't pass clientSideMCPServerIds on the initial greeting - it doesn't use MCP tools,
+        // and doing so races with SSE setup.
+        clientSideMCPServerIds: [],
       },
       // TODO(sidekick 2026-01-23): same visibility as the 'Preview' tab conversation.
       // We should rename it.
