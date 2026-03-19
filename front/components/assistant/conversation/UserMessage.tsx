@@ -12,7 +12,6 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
-import { cva } from "class-variance-authority";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
@@ -52,6 +51,7 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import { cva } from "class-variance-authority";
 import type React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -433,7 +433,7 @@ const actionMenuContainerVariants = cva(
   {
     variants: {
       mode: {
-        side: "",   // repositioned via compound variants below
+        side: "", // repositioned via compound variants below
         bottom: "", // always below the bubble, no repositioning
       },
       isCurrentUser: {
@@ -497,7 +497,10 @@ function ActionMenu({
   // the reactions area is hovered, or the dropdown menu is open.
   const hasReactions = (message.reactions ?? []).length > 0;
   const shouldHideActions =
-    !hasReactions && !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
+    !hasReactions &&
+    !isUserMessageHovered &&
+    !isReactionsHovered &&
+    !isMenuOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -555,7 +558,6 @@ function ActionMenu({
     >
       {mode === "bottom" && (
         <MessageReactions
-
           reactions={message.reactions ?? []}
           onReactionClick={onReactionToggle}
         />

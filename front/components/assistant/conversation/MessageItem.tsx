@@ -158,10 +158,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto min-w-60 max-w-4xl",
-            // Extra bottom margin to make room for the action menu appearing below the bubble.
-            // Deleted messages have no action menu so they just use the tight grouped spacing.
-            // When reactions exist, the menu is always below so mb-8 applies at all sizes.
-            // When no reactions, the menu floats to the side on larger screens so we reduce it.
+            // Extra bottom margin to make room for the action menu that appears below the bubble.
+            // Deleted messages have no action menu, so use tight grouped spacing.
+            // With reactions: menu is always below the bubble → mb-8 at all sizes.
+            // Without reactions: menu is below on mobile (mb-8) but floats to the side on
+            // larger screens where less space is needed (@sm/conversation:mb-1).
             isNextMessageSameSender
               ? isDeleted
                 ? "mb-1"
