@@ -141,7 +141,8 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     if (!success || !results) {
       const fallbackReason =
-        "unknown error, the ID extracted from the URL may not map to an existing report";
+        "unknown error, the ID extracted from the URL may not map to an existing report. " +
+        "Dashboards and saved views are not supported.";
       return new Err(
         new MCPError(
           `Report retrieval failed: ${response.results?.failureReason ?? fallbackReason} ` +
