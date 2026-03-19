@@ -10,13 +10,14 @@ import type { SharingGrantType } from "@app/types/files";
 import {
   isConversationFileUseCase,
   isInteractiveContentType,
+  MAX_EMAILS_PER_INVITE,
 } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const AddGrantsRequestBodySchema = z.object({
-  emails: z.array(z.string().email()).min(1).max(50),
+  emails: z.array(z.string().email()).min(1).max(MAX_EMAILS_PER_INVITE),
 });
 
 const RevokeGrantRequestBodySchema = z.object({

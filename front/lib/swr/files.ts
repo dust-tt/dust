@@ -336,7 +336,7 @@ export function useSharingGrants({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Failed to add sharing grants.",
+        title: "Failed to send invites.",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -357,7 +357,7 @@ export function useSharingGrants({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Failed to revoke sharing grant.",
+        title: "Failed to revoke access.",
         description: `Error: ${errorData.message}`,
       });
       return false;

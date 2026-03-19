@@ -3,8 +3,13 @@ import {
   useShareInteractiveContentFile,
   useSharingGrants,
 } from "@app/lib/swr/files";
-import { isEmailValid, timeAgoFrom } from "@app/lib/utils";
-import type { FileShareScope, SharingGrantType } from "@app/types/files";
+import { isEmailValid } from "@app/lib/utils";
+import { intlFormatDistance } from "date-fns";
+import {
+  MAX_EMAILS_PER_INVITE,
+  type FileShareScope,
+  type SharingGrantType,
+} from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
@@ -14,8 +19,10 @@ import {
   ClipboardIcon,
   ContextItem,
   GlobeAltIcon,
+  Icon,
   IconButton,
   Input,
+  Label,
   LockIcon,
   ScrollArea,
   Sheet,
@@ -31,8 +38,6 @@ import {
 import type React from "react";
 import { useState } from "react";
 
-const MAX_EMAILS_PER_INVITE = 50;
-
 const SCOPE_OPTIONS: {
   icon: typeof LockIcon;
   label: string;
@@ -41,14 +46,14 @@ const SCOPE_OPTIONS: {
 }[] = [
   {
     icon: LockIcon,
-    label: "Only people invited by email",
-    description: "Only people you explicitly invite can access",
+    label: "Email invites only",
+    description: "Only people you invite by email can view this",
     value: "emails_only",
   },
   {
     icon: UserGroupIcon,
-    label: "Workspace + people invited by email",
-    description: "All workspace members and people you invite can access",
+    label: "Workspace members and email invites",
+    description: "Everyone in your workspace, plus anyone you invite by email",
     value: "workspace_and_emails",
   },
   {
@@ -183,11 +188,8 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {/* Who has access */}
                 <div className="flex flex-col gap-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                    Who has access
-                  </h3>
+                  <Label htmlFor="share-scope">Who has access</Label>
                   <div className="flex flex-col gap-1">
                     {SCOPE_OPTIONS.map((option) => {
                       const isSelected = option.value === currentScope;
@@ -201,7 +203,11 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                           }`}
                           onClick={() => doShare(option.value)}
                         >
-                          <option.icon className="h-4 w-4 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                          <Icon
+                            visual={option.icon}
+                            size="sm"
+                            className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+                          />
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-primary dark:text-primary-night">
                               {option.label}
@@ -216,16 +222,14 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                   </div>
                 </div>
 
-                {/* Email invite + grants list */}
                 {showEmailSection && (
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                        Invite by email
-                      </h3>
+                      <Label htmlFor="email-invite">Invite by email</Label>
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
                           <Input
+                            id="email-invite"
                             placeholder="Add comma separated emails to invite"
                             value={emailInput}
                             onChange={(e) => {
@@ -248,7 +252,6 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                       </div>
                     </div>
 
-                    {/* Grants list */}
                     {isGrantsLoading ? (
                       <div className="flex items-center justify-center py-4">
                         <Spinner size="sm" />
@@ -285,20 +288,21 @@ interface GrantRowProps {
 }
 
 function GrantRow({ grant, onRevoke }: GrantRowProps) {
+  const now = new Date();
   const invitedBy = grant.grantedBy?.fullName ?? grant.grantedBy?.email;
-  const grantedAgo = timeAgoFrom(new Date(grant.grantedAt).getTime());
+  const grantedAgo = intlFormatDistance(new Date(grant.grantedAt), now);
   const invitedLabel = invitedBy
-    ? `Invited by ${invitedBy} ${grantedAgo} ago`
-    : `Invited ${grantedAgo} ago`;
+    ? `Invited by ${invitedBy} ${grantedAgo}`
+    : `Invited ${grantedAgo}`;
 
   const viewedLabel = grant.lastViewedAt
-    ? `Viewed ${timeAgoFrom(new Date(grant.lastViewedAt).getTime())} ago`
+    ? `Viewed ${intlFormatDistance(new Date(grant.lastViewedAt), now)}`
     : "Never viewed";
 
   return (
     <ContextItem
       title={grant.email}
-      visual={<Avatar size="sm" name={grant.email} isRounded />}
+      visual={<Avatar size="xs" name={grant.email} isRounded />}
       hasSeparator={false}
       action={
         <IconButton
