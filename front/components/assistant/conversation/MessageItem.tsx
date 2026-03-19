@@ -122,10 +122,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       data.user?.sId !== undefined &&
       data.user.sId === nextData.user?.sId;
 
-    const isDeleted = isUserMessage(data) && data.visibility === "deleted";
-    const hasReactions =
-      isUserMessage(data) && (data.reactions ?? []).length > 0;
-
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
         const parentMessageId = data.parentMessageId;
@@ -158,18 +154,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto min-w-60 max-w-4xl",
-            // Extra bottom margin to make room for the action menu that appears below the bubble.
-            // Deleted messages have no action menu, so use tight grouped spacing.
-            // With reactions: menu is always below the bubble → mb-8 at all sizes.
-            // Without reactions: menu is below on mobile (mb-8) but floats to the side on
-            // larger screens where less space is needed (@sm/conversation:mb-1).
-            isNextMessageSameSender
-              ? isDeleted
-                ? "mb-1"
-                : hasReactions
-                  ? "mb-8"
-                  : "mb-8 @sm/conversation:mb-1"
-              : "mb-4"
+            // Sender grouping spacing. Button-related margin is handled inside UserMessage.
+            isNextMessageSameSender && "mb-1" 
           )}
         >
           {isUserMessage(data) && (

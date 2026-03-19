@@ -258,6 +258,12 @@ export function UserMessage({
   // Otherwise, show it to the side of the message.
   const showBottomActionMenu = !isDeleted && hasReactions;
   const showSideActionMenu = !isDeleted && !hasReactions;
+  // With reactions the button is always below; without, CSS container query floats it to the side.
+  const actionMenuBottomMargin = !isDeleted
+    ? hasReactions
+      ? "mb-6"
+      : "mb-6 @sm/conversation:mb-1"
+    : undefined;
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -284,7 +290,8 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative min-w-60 max-w-3xl @sm/conversation:max-w-[85%] @md/conversation:max-w-[80%]"
+            "relative min-w-60 max-w-3xl @sm/conversation:max-w-[85%] @md/conversation:max-w-[80%]",
+            actionMenuBottomMargin
           )}
           ref={userMessageHoveredRef}
         >
