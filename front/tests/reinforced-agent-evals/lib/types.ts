@@ -20,7 +20,6 @@ export type ReinforcedSuggestionType =
   | AgentToolsSuggestionType
   | AgentSkillsSuggestionType;
 
-
 export interface WorkspaceContext {
   tools: AvailableTool[];
   skills: AvailableSkill[];
@@ -69,7 +68,6 @@ export function buildToolsAndSkillsContextFromWorkspace(
     .filter(Boolean)
     .join("\n\n");
 }
-
 
 export interface MockFeedback {
   direction: AgentMessageFeedbackDirection;
@@ -136,7 +134,6 @@ export function buildConversationText(
     { feedbackByMessageId }
   );
 }
-
 
 export interface MockAgentConfig {
   name: string;

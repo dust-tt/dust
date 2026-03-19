@@ -23,7 +23,6 @@ import {
 } from "@app/tests/reinforced-agent-evals/lib/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
-
 function makeAction(input: {
   name: string;
   sId: string;
@@ -79,7 +78,6 @@ function makeAgentConfig(input: MockAgentConfig): AgentConfigurationType {
   };
 }
 
-
 function buildPromptForTestCase(testCase: TestCase): {
   systemPrompt: string;
   userMessage: string;
@@ -107,7 +105,6 @@ function buildPromptForTestCase(testCase: TestCase): {
     agentSkills
   );
 }
-
 
 function extractFromEvents(events: LLMEvent[]): ExecutionResult {
   const toolCalls: ToolCall[] = [];
@@ -137,7 +134,6 @@ function extractFromEvents(events: LLMEvent[]): ExecutionResult {
   return { toolCalls, responseText };
 }
 
-
 async function getLLMInstance(auth: Authenticator): Promise<LLM> {
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
@@ -155,7 +151,6 @@ async function getLLMInstance(auth: Authenticator): Promise<LLM> {
   return llm;
 }
 
-
 export async function executeReinforced(
   auth: Authenticator,
   testCase: TestCase
@@ -171,7 +166,6 @@ export async function executeReinforced(
 
   return extractFromEvents(events);
 }
-
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
