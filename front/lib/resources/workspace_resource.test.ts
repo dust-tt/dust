@@ -267,6 +267,7 @@ describe("WorkspaceResource", () => {
       const resource = await WorkspaceResource.fetchById(workspace.sId);
 
       expect(resource?.canShareInteractiveContentPublicly).toBe(true);
+      expect(resource?.sharingPolicy).toBe("all_scopes");
     });
 
     it("should return false when metadata.allowContentCreationFileSharing is false", async () => {
@@ -277,6 +278,7 @@ describe("WorkspaceResource", () => {
       const resource = await WorkspaceResource.fetchById(workspace.sId);
 
       expect(resource?.canShareInteractiveContentPublicly).toBe(false);
+      expect(resource?.sharingPolicy).toBe("workspace_and_emails");
     });
 
     it("should return true when metadata.allowContentCreationFileSharing is true", async () => {
@@ -287,6 +289,20 @@ describe("WorkspaceResource", () => {
       const resource = await WorkspaceResource.fetchById(workspace.sId);
 
       expect(resource?.canShareInteractiveContentPublicly).toBe(true);
+      expect(resource?.sharingPolicy).toBe("all_scopes");
+    });
+
+    it("should not change sharingPolicy when updating unrelated metadata", async () => {
+      await WorkspaceResource.updateMetadata(workspace.id, {
+        allowContentCreationFileSharing: false,
+      });
+      await WorkspaceResource.updateMetadata(workspace.id, {
+        allowVoiceTranscription: true,
+      });
+
+      const resource = await WorkspaceResource.fetchById(workspace.sId);
+
+      expect(resource?.sharingPolicy).toBe("workspace_and_emails");
     });
   });
 
