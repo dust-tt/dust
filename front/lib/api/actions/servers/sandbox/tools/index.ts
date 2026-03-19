@@ -22,12 +22,13 @@ import {
 import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DEFAULT_WORKING_DIRECTORY = "/home/user";
+const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
@@ -111,6 +112,10 @@ export function createSandboxTools(
       const imageResult = getSandboxImage(auth);
       if (imageResult.isOk()) {
         const image = imageResult.value;
+
+        void startTelemetry(auth, sandbox, conversation).catch((err) =>
+          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+        );
 
         if (freshlyCreated || wokeFromSleep) {
           void mountConversationFiles(auth, sandbox, conversation, image).catch(
