@@ -29,7 +29,7 @@ export async function generateFrameOtpChallenge({
   shareToken: string;
 }): Promise<Result<{ code: string }, "rate_limited">> {
   // Rate limit by email: max 5 OTP requests per hour.
-  // TODO: Should we consider limiting per IP/share token?
+  // TODO(2026-03-19 FRAME SHARING): Should we consider limiting per IP/email.
   const remaining = await rateLimiter({
     key: `frame_otp:rate:${email}`,
     maxPerTimeframe: OTP_RATE_LIMIT_MAX_PER_HOUR,
