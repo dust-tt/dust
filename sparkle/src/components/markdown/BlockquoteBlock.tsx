@@ -1,11 +1,12 @@
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import {
   type MarkdownNode,
   sameNodePosition,
 } from "@sparkle/components/markdown/utils";
 import { cva } from "class-variance-authority";
-import React, { memo } from "react";
+import React, { memo, useContext, useMemo } from "react";
 
 export const blockquoteVariants = cva(
   [
@@ -38,25 +39,28 @@ interface BlockquoteBlockProps {
 }
 
 export const BlockquoteBlock = memo(
-  ({ children, variant = "surface" }: BlockquoteBlockProps) => {
+  ({ children, variant = "surface", node }: BlockquoteBlockProps) => {
     const { canCopyQuotes } = useMarkdownStyle();
+    const { content } = useContext(MarkdownContentContext);
     const buttonDisplay = canCopyQuotes ? "inside" : null;
 
-    const elementAt1 = React.Children.toArray(children)[1];
-    const childrenContent =
-      elementAt1 && React.isValidElement(elementAt1)
-        ? elementAt1.props.children
-        : null;
+    const clipboardContent = useMemo(() => {
+      if (!node?.position) {
+        return undefined;
+      }
+      const lines = content.split("\n");
+      // hast positions are 1-indexed; end.line is the last line (inclusive).
+      const blockquoteLines = lines.slice(
+        node.position.start.line - 1,
+        node.position.end.line
+      );
+      // Strip the leading "> " blockquote markers to get the raw content.
+      const stripped = blockquoteLines
+        .map((line) => line.replace(/^>\s?/, ""))
+        .join("\n");
 
-    // Convert array content to string if necessary
-    const contentAsString = Array.isArray(childrenContent)
-      ? childrenContent.filter((c) => typeof c === "string").join("")
-      : childrenContent;
-
-    // Only pass content if it exists
-    const clipboardContent = contentAsString
-      ? { "text/plain": contentAsString }
-      : undefined;
+      return stripped ? { "text/plain": stripped } : undefined;
+    }, [content, node]);
 
     return (
       <ContentBlockWrapper
