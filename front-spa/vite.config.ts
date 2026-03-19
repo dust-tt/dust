@@ -1,9 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { createRequire } from "module";
 import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
-import { visualizer } from "rollup-plugin-visualizer";
 
 const require = createRequire(import.meta.url);
 
@@ -263,12 +263,13 @@ export default defineConfig(({ mode }) => {
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
   const enableAnalyzer = env.ANALYZE === "true";
-  const analyzerTemplate = (env.ANALYZE_TEMPLATE ?? "treemap") as
-    | "treemap"
-    | "sunburst"
-    | "network"
-    | "raw-data"
-    | "list";
+  type AnalyzerTemplate = "treemap" | "sunburst" | "network" | "raw-data" | "list";
+  const isAnalyzerTemplate = (value: string): value is AnalyzerTemplate =>
+    ["treemap", "sunburst", "network", "raw-data", "list"].includes(value);
+  const templateValue = env.ANALYZE_TEMPLATE ?? "treemap";
+  const analyzerTemplate: AnalyzerTemplate = isAnalyzerTemplate(templateValue)
+    ? templateValue
+    : "treemap";
 
   return {
     cacheDir: path.resolve(__dirname, ".vite"),
