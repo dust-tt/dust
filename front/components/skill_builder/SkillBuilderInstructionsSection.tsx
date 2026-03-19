@@ -65,6 +65,7 @@ export function SkillBuilderInstructionsSection() {
         LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD && (
         <ContentMessage
           variant="info"
+          icon={InformationCircleIcon}
           size="lg"
           title="This skill is noticeably large"
         >
