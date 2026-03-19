@@ -27,12 +27,9 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
-import type { InboxNotification } from "@app/hooks/useInboxNotifications";
-import { useInboxNotifications } from "@app/hooks/useInboxNotifications";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useNotificationClickHandler } from "@app/hooks/useNotificationClickHandler";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -431,12 +428,6 @@ export function AgentSidebarMenu({
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  const { notifications: inboxNotifications, markAsRead } =
-    useInboxNotifications();
-
-  const { handleNotificationClick, loadingNotificationId } =
-    useNotificationClickHandler({ owner, markAsRead });
-
   const {
     conversations,
     isConversationsError,
@@ -753,9 +744,6 @@ export function AgentSidebarMenu({
         hasMore={hasMore}
         loadMore={loadMore}
         isLoadingMore={isLoadingMore}
-        inboxNotifications={inboxNotifications}
-        onNotificationClick={handleNotificationClick}
-        loadingNotificationId={loadingNotificationId}
       />
     );
   }, [
@@ -776,9 +764,6 @@ export function AgentSidebarMenu({
     hasMore,
     loadMore,
     isLoadingMore,
-    inboxNotifications,
-    handleNotificationClick,
-    loadingNotificationId,
   ]);
 
   return (
@@ -1098,17 +1083,10 @@ const ConversationListContainer = ({
 };
 
 interface InboxSectionProps
-  extends Omit<InboxConversationListProps, "dateLabel"> {
-  inboxNotifications: InboxNotification[];
-  onNotificationClick: (notification: InboxNotification) => Promise<void>;
-  loadingNotificationId: string | null;
-}
+  extends Omit<InboxConversationListProps, "dateLabel"> {}
 
 function InboxSection({
   inboxConversations,
-  inboxNotifications,
-  onNotificationClick,
-  loadingNotificationId,
   isMultiSelect,
   isMarkingAllAsRead,
   titleFilter,
@@ -1118,7 +1096,7 @@ function InboxSection({
   activeConversationId,
   owner,
 }: InboxSectionProps) {
-  const totalCount = inboxConversations.length + inboxNotifications.length;
+  const totalCount = inboxConversations.length;
 
   const shouldShowMarkAllAsReadButton =
     totalCount > 0 && titleFilter.length === 0 && !isMultiSelect;
@@ -1144,18 +1122,6 @@ function InboxSection({
         ) : null
       }
     >
-      {inboxNotifications.map((notification) => (
-        <NavigationListItem
-          key={notification.id}
-          status="unread"
-          icon={RobotIcon}
-          label={notification.subject ?? "New notification"}
-          onClick={() => void onNotificationClick(notification)}
-          className={cn(
-            loadingNotificationId === notification.id && "opacity-50"
-          )}
-        />
-      ))}
       {inboxConversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
@@ -1352,9 +1318,6 @@ interface NavigationListWithInboxProps {
   hasMore: boolean;
   loadMore: () => void;
   isLoadingMore: boolean;
-  inboxNotifications: InboxNotification[];
-  onNotificationClick: (notification: InboxNotification) => Promise<void>;
-  loadingNotificationId: string | null;
 }
 
 function NavigationListWithInbox({
@@ -1375,9 +1338,6 @@ function NavigationListWithInbox({
   hasMore,
   loadMore,
   isLoadingMore,
-  inboxNotifications,
-  onNotificationClick,
-  loadingNotificationId,
 }: NavigationListWithInboxProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { readConversations, inboxConversations } = useMemo(() => {
@@ -1431,12 +1391,9 @@ function NavigationListWithInbox({
       ref={scrollContainerRef}
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
-      {(inboxConversations.length > 0 || inboxNotifications.length > 0) && (
+      {inboxConversations.length > 0 && (
         <InboxSection
           inboxConversations={inboxConversations}
-          inboxNotifications={inboxNotifications}
-          onNotificationClick={onNotificationClick}
-          loadingNotificationId={loadingNotificationId}
           isMultiSelect={isMultiSelect}
           isMarkingAllAsRead={isMarkingAllAsRead}
           titleFilter={titleFilter}

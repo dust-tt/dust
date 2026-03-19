@@ -53,7 +53,7 @@ export const agentSuggestionsReadyWorkflow = workflow(
   }
 );
 
-export const triggerAgentSuggestionsReadyNotifications = async (
+const triggerAgentSuggestionsReadyNotifications = async (
   auth: Authenticator,
   {
     agentConfiguration,
