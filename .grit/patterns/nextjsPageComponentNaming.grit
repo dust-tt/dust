@@ -8,11 +8,16 @@ language js
 // Note: GritQL cannot fully validate that the returned JSX matches the
 // expected xxxPage pattern derived from the export name. This rule only
 // checks that default exports in pages/ files end with 'NextJS'.
-`export default function $name($params) { $body }` as $export where {
-    $filename <: r".*/pages/.*",
-    $name <: not r".*NextJS$",
+pattern non_nextjs_page_export() {
+    `export default function $name($params) { $body }` as $export where {
+        $filename <: r".*/pages/.*",
+        $name <: not r".*NextJS$"
+    }
+}
+
+non_nextjs_page_export() as $export where {
     register_diagnostic(
-        span = $name,
+        span = $export,
         message = "NextJS page default export should be named with 'NextJS' suffix.",
         severity = "error"
     )

@@ -37,9 +37,7 @@ jobs:
       - name: Install Biome
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install Grit CLI
-        run: |
-          curl -fsSL https://docs.grit.io/install | bash
-          echo "$HOME/.grit/bin" >> $GITHUB_PATH
+        run: npm install --location=global @getgrit/cli
       - name: Format Check
         run: npm run biome
       - name: GritQL Plugin Tests

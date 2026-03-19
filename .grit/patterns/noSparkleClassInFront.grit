@@ -7,7 +7,11 @@ language js
 // Due to GritQL limitations with JSX attribute matching, this matches
 // any string literal with s- prefixed class names. In practice these
 // only appear in className attributes.
-r"\"(?:s-|[^\"]*\ss-)[^\"]*\"" as $val where {
+pattern sparkle_class_in_front() {
+    r"\"(?:s-|[^\"]*\ss-)[^\"]*\""
+}
+
+sparkle_class_in_front() as $val where {
     register_diagnostic(
         span = $val,
         message = "className values with 's-' prefix are not allowed in front. These are reserved for sparkle components.",

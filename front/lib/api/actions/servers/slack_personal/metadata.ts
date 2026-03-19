@@ -466,6 +466,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
 
 // Server metadata for external consumption (e.g., by SDK).
 export const SLACK_PERSONAL_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "slack",
     version: "1.0.0",
@@ -477,11 +478,7 @@ export const SLACK_PERSONAL_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-
     instructions:
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
       "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
       "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",

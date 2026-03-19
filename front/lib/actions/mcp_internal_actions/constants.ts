@@ -535,10 +535,9 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: {
       ...SLIDESHOW_SERVER,
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       serverInfo: {
         ...SLIDESHOW_SERVER.serverInfo,
-        // TBD if turned into a global skill or not.
-        // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
         instructions: SLIDESHOW_INSTRUCTIONS,
       },
     },

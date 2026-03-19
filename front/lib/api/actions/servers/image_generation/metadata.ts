@@ -87,6 +87,7 @@ const IMAGE_GENERATION_SERVER_INSTRUCTIONS =
   "- Aspect ratios: 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9";
 
 export const IMAGE_GENERATION_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "image_generation",
     version: "1.0.0",
@@ -95,9 +96,6 @@ export const IMAGE_GENERATION_SERVER = {
     authorization: null,
     icon: "ActionImageIcon",
     documentationUrl: null,
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: IMAGE_GENERATION_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => ({

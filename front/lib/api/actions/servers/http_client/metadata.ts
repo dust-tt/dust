@@ -102,6 +102,7 @@ const ALL_HTTP_CLIENT_TOOLS_METADATA = {
 };
 
 export const HTTP_CLIENT_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: HTTP_CLIENT_TOOL_NAME,
     version: "1.0.0",
@@ -110,9 +111,6 @@ export const HTTP_CLIENT_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: HTTP_CLIENT_INSTRUCTIONS,
     developerSecretSelection: "optional" as const,
     developerSecretSelectionDescription:
