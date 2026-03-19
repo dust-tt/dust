@@ -544,8 +544,8 @@ function ActionMenu({
       ]
     : [];
 
-  // On larger screens, side mode buttons float beside the bubble — fade in/out on hover.
-  // On mobile (and in bottom mode), buttons sit below the bubble — always visible.
+  // In a wide conversation container, side mode buttons float beside the bubble — fade in/out on hover.
+  // In a narrow container (and in bottom mode), buttons sit below the bubble — always visible.
   const sideItemVisibilityClass = cn(
     "transition-opacity duration-300",
     mode === "side" && shouldHideActions && "@sm/conversation:opacity-0"
@@ -563,37 +563,37 @@ function ActionMenu({
         />
       )}
       {!isDeleted && (
-        <MessageEmojiPicker
-          key="emoji-picker"
-          onEmojiSelect={onReactionToggle}
-          className={sideItemVisibilityClass}
-        />
-      )}
-      {!isDeleted && actions && actions.length > 0 && (
-        <DropdownMenu
-          open={isMenuOpen}
-          onOpenChange={(open) => setIsMenuOpen(open)}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={MoreIcon}
-              size="icon-xs"
-              variant="outline"
-              aria-label="Message actions"
-              className={sideItemVisibilityClass}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {actions.map((action, index) => (
-              <DropdownMenuItem
-                key={index}
-                icon={action.icon}
-                label={action.label}
-                onClick={action.onClick}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className={cn("flex items-center gap-1", sideItemVisibilityClass)}>
+          <MessageEmojiPicker
+            key="emoji-picker"
+            onEmojiSelect={onReactionToggle}
+          />
+          {actions.length > 0 && (
+            <DropdownMenu
+              open={isMenuOpen}
+              onOpenChange={(open) => setIsMenuOpen(open)}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  icon={MoreIcon}
+                  size="icon-xs"
+                  variant="outline"
+                  aria-label="Message actions"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {actions.map((action, index) => (
+                  <DropdownMenuItem
+                    key={index}
+                    icon={action.icon}
+                    label={action.label}
+                    onClick={action.onClick}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       )}
     </div>
   );
