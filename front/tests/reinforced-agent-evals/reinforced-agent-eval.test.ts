@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { validateToolCallAssertion } from "@app/tests/reinforced-agent-evals/lib/assertions";
 import {
   BATCH_TIMEOUT_MS,
   FILTER_CATEGORY,
@@ -157,19 +158,15 @@ describe.skipIf(!RUN_REINFORCED_EVAL)(
                 JUDGE_RUNS
               );
 
-              const actualToolNames = toolCalls.map((t) => t.name);
-              const missingTools = (testCase.expectedToolCalls ?? []).filter(
-                (expected) => !actualToolNames.includes(expected)
-              );
               const passedJudge = judgeResult.finalScore >= PASS_THRESHOLD;
-
               const toolCallsSummary = formatToolCalls(toolCalls);
 
-              for (const missing of missingTools) {
+              for (const assertion of testCase.expectedToolCalls ?? []) {
+                const result = validateToolCallAssertion(assertion, toolCalls);
                 expect(
-                  actualToolNames,
-                  `Expected tool "${missing}" not called. Tools called: [${toolCallsSummary}]\n\nResponse:\n${responseText}`
-                ).toContain(missing);
+                  result.success,
+                  `${!result.success ? result.error : ""}\n\nTool calls: [${toolCallsSummary}]\nResponse:\n${responseText}`
+                ).toBe(true);
               }
 
               expect(

@@ -1,7 +1,10 @@
 import {
   mockSkill,
   mockTool,
+  promptSuggestion,
+  skillSuggestion,
   type TestSuite,
+  toolSuggestion,
   type WorkspaceContext,
 } from "@app/tests/reinforced-agent-evals/lib/types";
 
@@ -56,7 +59,7 @@ export const analyzeConversationSuite: TestSuite = {
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: ["suggest_prompt_edits"],
+      expectedToolCalls: [promptSuggestion()],
       judgeCriteria: `The reinforced agent MUST call suggest_prompt_edits with a suggestion that adds
 a section about tone and communication style to the agent's instructions. The suggestion should:
 - Include guidance about being friendly, warm, and empathetic
@@ -107,7 +110,7 @@ Score 3 if the suggestion provides clear, specific tone guidance that would prev
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: ["suggest_skills"],
+      expectedToolCalls: [skillSuggestion("skill_web_search")],
       judgeCriteria: `The reinforced agent MUST call suggest_skills to suggest adding the web search
 skill (skill_web_search). The suggestion should:
 - Recommend adding web search (ID: skill_web_search) with action "add"
@@ -155,7 +158,7 @@ Score 3 if the correct skill is suggested with a clear, well-reasoned analysis.`
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: ["suggest_tools"],
+      expectedToolCalls: [toolSuggestion("mcp_jira")],
       judgeCriteria: `The reinforced agent MUST call suggest_tools to suggest adding the JIRA tool
 (mcp_jira). The suggestion should:
 - Recommend adding JIRA (ID: mcp_jira) with action "add"
