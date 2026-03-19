@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
@@ -304,8 +303,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           ...createConfig,
           envVars: {
             ...createConfig.envVars,
-            DD_API_KEY: config.getDatadogApiKey() ?? "",
-            DD_HOST: "http-intake.logs.datadoghq.eu",
             CONVERSATION_ID: conversation.sId,
             WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
           },
@@ -319,17 +316,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           providerId: createResult.value.providerId,
           status: "running",
         });
-
-        const startTelemetry = await provider.exec(
-          createResult.value.providerId,
-          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &"
-        );
-        if (startTelemetry.isErr()) {
-          logger.warn(
-            { error: startTelemetry.error.message },
-            "Failed to start fluent-bit telemetry"
-          );
-        }
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -380,8 +366,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             ...createConfig,
             envVars: {
               ...createConfig.envVars,
-              DD_API_KEY: config.getDatadogApiKey() ?? "",
-              DD_HOST: "http-intake.logs.datadoghq.eu",
               CONVERSATION_ID: conversation.sId,
               WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
             },
@@ -391,17 +375,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
-
-          const startTelemetry = await provider.exec(
-            createResult.value.providerId,
-            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &"
-          );
-          if (startTelemetry.isErr()) {
-            logger.warn(
-              { error: startTelemetry.error.message },
-              "Failed to start fluent-bit telemetry"
-            );
-          }
 
           logger.info(
             {
