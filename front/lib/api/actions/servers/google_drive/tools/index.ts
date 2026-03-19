@@ -1186,7 +1186,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     ]);
   },
 
-  unshare_file: async (
+  revoke_file_sharing: async (
     { fileId, permissionId, capabilities },
     { authInfo, agentLoopContext }
   ) => {

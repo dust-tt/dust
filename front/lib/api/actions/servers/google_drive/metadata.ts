@@ -556,7 +556,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Update file permission",
     },
   },
-  unshare_file: {
+  revoke_file_sharing: {
     description:
       "Remove access to a Google Drive file for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
     schema: {

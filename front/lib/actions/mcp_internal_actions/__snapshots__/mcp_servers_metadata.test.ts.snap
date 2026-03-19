@@ -208,7 +208,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_file_permissions": "never_ask",
     "search_files": "never_ask",
     "share_file": "medium",
-    "unshare_file": "medium",
+    "revoke_file_sharing": "medium",
     "update_document": "medium",
     "update_file_permission": "medium",
     "update_presentation": "medium",
