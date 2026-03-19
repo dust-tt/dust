@@ -18,14 +18,22 @@ interface SpaceConversationListItemProps {
   owner: WorkspaceType;
 }
 
+function isVisibleMessage(
+  m: LightConversationType["content"][number]
+): boolean {
+  return (
+    m.visibility !== "deleted" &&
+    !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m))
+  );
+}
+
 export function SpaceConversationListItem({
   conversation,
   owner,
 }: SpaceConversationListItemProps) {
   const router = useAppRouter();
-  const firstUserMessage = conversation.content.find(
-    isUserMessageTypeWithContentFragments
-  );
+
+  const firstVisibleMessage = conversation.content.find(isVisibleMessage);
 
   // Compute the reply section avatars.
   const avatars = useMemo(() => {
@@ -57,8 +65,7 @@ export function SpaceConversationListItem({
     }).length;
   }, [conversation.content, conversation.lastReadMs]);
 
-  // TODO(conversations-groups) Are we sure we want to require a user message?
-  if (!firstUserMessage) {
+  if (!firstVisibleMessage) {
     return null;
   }
 
@@ -72,37 +79,21 @@ export function SpaceConversationListItem({
 
   const replyCount = conversation.content.length - 1;
 
-  let firstMessageForDescription: LightConversationType["content"][number] =
-    firstUserMessage;
-  if (isHiddenMessage(firstUserMessage)) {
-    const firstNonHiddenMessage = conversation.content.find((message) => {
-      if (!isUserMessageTypeWithContentFragments(message)) {
-        return true;
-      }
-      return !isHiddenMessage(message);
-    });
-
-    if (firstNonHiddenMessage) {
-      firstMessageForDescription = firstNonHiddenMessage;
-    }
-  }
-
   let creatorName = "Unknown";
-  let creatorVisual: string | undefined = undefined;
+  let creatorVisual: string | undefined;
 
-  if (isUserMessageTypeWithContentFragments(firstMessageForDescription)) {
+  if (isUserMessageTypeWithContentFragments(firstVisibleMessage)) {
     creatorName =
-      firstMessageForDescription.user?.fullName ??
-      firstMessageForDescription.context?.fullName ??
+      firstVisibleMessage.user?.fullName ??
+      firstVisibleMessage.context?.fullName ??
       "Unknown";
     creatorVisual =
-      firstMessageForDescription.user?.image ??
-      firstMessageForDescription.context?.profilePictureUrl ??
+      firstVisibleMessage.user?.image ??
+      firstVisibleMessage.context?.profilePictureUrl ??
       undefined;
   } else {
-    creatorName = `@${firstMessageForDescription.configuration.name}`;
-    creatorVisual =
-      firstMessageForDescription.configuration.pictureUrl || undefined;
+    creatorName = `@${firstVisibleMessage.configuration.name}`;
+    creatorVisual = firstVisibleMessage.configuration.pictureUrl || undefined;
   }
 
   return (
@@ -112,7 +103,7 @@ export function SpaceConversationListItem({
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
-          description: stripMarkdown(firstMessageForDescription.content ?? ""),
+          description: stripMarkdown(firstVisibleMessage.content ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
         creator={{
