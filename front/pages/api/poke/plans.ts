@@ -57,6 +57,7 @@ export const PlanTypeSchema = t.type({
   }),
   trialPeriodDays: t.number,
   isByok: t.boolean,
+  isAuditLogsAllowed: t.boolean,
 });
 
 export type UpsertPokePlanResponseBody = {
@@ -146,6 +147,7 @@ async function handler(
         isManagedSalesforceAllowed: body.limits.connections.isSalesforceAllowed,
         isSSOAllowed: body.limits.users.isSSOAllowed,
         isSCIMAllowed: body.limits.users.isSCIMAllowed,
+        isAuditLogsAllowed: body.isAuditLogsAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
