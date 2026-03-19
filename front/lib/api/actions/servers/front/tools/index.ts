@@ -3,13 +3,13 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   convertMarkdownToHTML,
-  type FrontDraft,
   findChannelAddress,
   formatConversationForLLM,
   formatDraftsForLLM,
   formatMessagesForLLM,
   getFrontAPITokenFromExtra,
   makeFrontAPIRequest,
+  parseFrontDraftsResponse,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
 import { Err, Ok } from "@app/types/shared/result";
@@ -373,13 +373,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     try {
       const apiToken = await getFrontAPITokenFromExtra(extra);
 
-      const data = (await makeFrontAPIRequest({
+      const data = await makeFrontAPIRequest({
         method: "GET",
         endpoint: `conversations/${conversation_id}/drafts`,
         apiToken,
-      })) as FrontListResponse;
+      });
 
-      const drafts = (data._results ?? []) as FrontDraft[];
+      const drafts = parseFrontDraftsResponse(data);
       const formatted = formatDraftsForLLM(drafts, conversation_id);
 
       return new Ok([
@@ -521,7 +521,15 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
       ]);
     } catch (error) {
       if (error instanceof MCPError) {
-        if (error.message.includes("Version conflict")) {
+        if (error.code === 404) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Draft ${draft_id} already deleted or not found.`,
+            },
+          ]);
+        }
+        if (error.code === 409) {
           return new Err(
             new MCPError(
               "Draft has been modified. Use get_conversation_drafts to get the latest version."
