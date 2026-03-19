@@ -202,14 +202,13 @@ const authState: {
  * Authenticate the user using WorkOS.
  */
 const authenticate = async (
-  getRedirectUrl: () => string,
   { organizationId }: AuthBackgroundMessage,
   sendResponse: (
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
-  const expectedRedirectUrl = getRedirectUrl();
+  const expectedRedirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
@@ -471,13 +470,7 @@ function capture(sendResponse: (x: CaptureResponse) => void) {
   });
 }
 
-export const registerMessageListener = ({
-  platform,
-  getAuthenticateRedirectUrl,
-}: {
-  platform: PlatformService;
-  getAuthenticateRedirectUrl: () => string;
-}) => {
+export const registerMessageListener = (platform: PlatformService) => {
   chrome.runtime.onMessage.addListener(
     (
       message:
@@ -509,7 +502,7 @@ export const registerMessageListener = ({
     ): boolean | undefined => {
       switch (message.type) {
         case "AUTHENTICATE":
-          void authenticate(getAuthenticateRedirectUrl, message, sendResponse);
+          void authenticate(message, sendResponse);
           return true; // Keep the message channel open for async response.
 
         case "REFRESH_TOKEN":
