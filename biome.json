@@ -10,7 +10,8 @@
     "./.grit/patterns/enforceClientTypesInPublicApi.grit",
     "./.grit/patterns/nextjsPageComponentNaming.grit",
     "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit",
-    "./.grit/patterns/tooLongIndexName.grit"
+    "./.grit/patterns/tooLongIndexName.grit",
+    "./.grit/patterns/noClientDeepImports.grit"
   ],
   "vcs": {
     "enabled": true,
