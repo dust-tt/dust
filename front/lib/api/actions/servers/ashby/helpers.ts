@@ -48,7 +48,7 @@ export async function findHiredApplication(
     if (appInfoResult.value.results.status === "Hired") {
       return new Ok({
         applicationId,
-        jobId: appInfoResult.value.results.jobId,
+        jobId: appInfoResult.value.results.job?.id,
       });
     }
   }
