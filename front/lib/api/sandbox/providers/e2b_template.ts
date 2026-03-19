@@ -117,12 +117,18 @@ class E2BTemplateBuilder {
   private applyOperation(op: Operation): void {
     switch (op.type) {
       case "run":
-        this.builder = this.builder.runCmd(op.command);
+        if (op.user) {
+          this.builder = this.builder.runCmd(op.command, { user: op.user });
+        } else {
+          this.builder = this.builder.runCmd(op.command);
+        }
         break;
 
       case "copy":
         if (op.src.type === "path") {
-          this.builder = this.builder.copy(op.src.path, op.dest);
+          this.builder = this.builder.copy(op.src.path, op.dest, {
+            user: op.user,
+          });
         } else {
           // E2B copy works with directories, so we create a temp dir containing
           // a file with the destination's filename, then copy to dest's parent.
@@ -131,12 +137,16 @@ class E2BTemplateBuilder {
             op.dest
           );
           const destDir = path.dirname(op.dest);
-          this.builder = this.builder.copy(tempDir, destDir);
+          this.builder = this.builder.copy(tempDir, destDir, { user: op.user });
         }
         break;
 
       case "workdir":
         this.builder = this.builder.setWorkdir(op.path);
+        break;
+
+      case "user":
+        this.builder = this.builder.setUser(op.user);
         break;
 
       case "env":
