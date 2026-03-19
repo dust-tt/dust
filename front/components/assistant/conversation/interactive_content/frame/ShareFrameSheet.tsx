@@ -4,10 +4,9 @@ import {
   useSharingGrants,
 } from "@app/lib/swr/files";
 import { isEmailValid } from "@app/lib/utils";
-import { intlFormatDistance } from "date-fns";
 import {
-  MAX_EMAILS_PER_INVITE,
   type FileShareScope,
+  MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -35,6 +34,7 @@ import {
   useCopyToClipboard,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { intlFormatDistance } from "date-fns";
 import type React from "react";
 import { useState } from "react";
 
