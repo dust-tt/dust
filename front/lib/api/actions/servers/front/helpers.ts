@@ -94,6 +94,10 @@ export const makeFrontAPIRequest = async (
       );
     } else if (response.status === 404) {
       throw new MCPError(`Resource not found: ${endpoint}`);
+    } else if (response.status === 409) {
+      throw new MCPError(
+        "Version conflict: the resource has been modified. Retrieve the latest version and retry."
+      );
     } else if (response.status === 429) {
       throw new MCPError(
         "Front API rate limit exceeded after retries. Please try again later."
@@ -229,6 +233,53 @@ export function formatMessagesForLLM(messages: FrontMessage[]): string {
   </conversation_timeline>\n\n`;
 
   return metadata + timeline;
+}
+
+export interface FrontDraft {
+  id: string;
+  version: string;
+  author?: { email?: string; username?: string };
+  body?: string;
+  text?: string;
+  subject?: string;
+  created_at: number;
+  updated_at?: number;
+  attachments?: Array<{ filename: string }>;
+}
+
+export function formatDraftsForLLM(
+  drafts: FrontDraft[],
+  conversationId: string
+): string {
+  if (drafts.length === 0) {
+    return `No drafts found in conversation ${conversationId}`;
+  }
+
+  const formatted = drafts
+    .map((draft) => {
+      const author = draft.author?.email ?? draft.author?.username ?? "Unknown";
+      const createdAt = new Date(draft.created_at * 1000).toISOString();
+      const updatedAt = draft.updated_at
+        ? new Date(draft.updated_at * 1000).toISOString()
+        : createdAt;
+      const attachmentCount = draft.attachments?.length ?? 0;
+
+      return `<draft id="${draft.id}" version="${draft.version}">
+  AUTHOR: ${author}
+  CREATED: ${createdAt}
+  UPDATED: ${updatedAt}
+  SUBJECT: ${draft.subject ?? "(No subject)"}
+  BODY: ${draft.text ?? draft.body ?? ""}
+  ATTACHMENTS: ${attachmentCount}
+  </draft>`;
+    })
+    .join("\n\n");
+
+  return (
+    `Found ${drafts.length} draft(s) in conversation ${conversationId}` +
+    "\n\n" +
+    formatted
+  );
 }
 
 interface FrontMessagesResponse {
