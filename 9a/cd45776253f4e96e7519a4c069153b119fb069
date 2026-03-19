@@ -1,0 +1,31 @@
+front/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule.ts
+  fc6bafbfa4016eec 36-54
+front/lib/swr/agent_triggers.ts
+  fc6bafbfa4016eec 133,138-139,145-147,155,166,179-180,187-189,201
+front/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator.ts
+  fc6bafbfa4016eec 37-53
+front/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule.test.ts
+  fc6bafbfa4016eec 1-115
+front/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator.test.ts
+  fc6bafbfa4016eec 1-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "9acd45776253f4e96e7519a4c069153b119fb069",
+  "prompts": {
+    "fc6bafbfa4016eec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d66e5-8bcf-436e-bba2-168c74b829d7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 304,
+      "total_deletions": 35,
+      "accepted_lines": 287,
+      "overriden_lines": 0
+    }
+  }
+}
