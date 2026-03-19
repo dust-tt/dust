@@ -97,6 +97,11 @@ import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
+  ProjectTodoConversationModel,
+  ProjectTodoModel,
+  ProjectTodoSourceModel,
+} from "@app/lib/resources/storage/models/project_todo";
+import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
@@ -215,6 +220,9 @@ export function loadAllModels() {
     SandboxModel,
     ConversationButlerSuggestionModel,
     ConversationBranchModel,
+    ProjectTodoModel,
+    ProjectTodoConversationModel,
+    ProjectTodoSourceModel,
   ];
 }
 
