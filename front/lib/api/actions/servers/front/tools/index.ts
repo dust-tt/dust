@@ -532,7 +532,8 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         if (error.code === 409) {
           return new Err(
             new MCPError(
-              "Draft has been modified. Use get_conversation_drafts to get the latest version."
+              "Draft has been modified. Use get_conversation_drafts to get the latest version.",
+              { code: 409 }
             )
           );
         }
