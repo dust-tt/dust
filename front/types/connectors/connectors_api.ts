@@ -1,8 +1,6 @@
-import type { ConnectorsAPIError } from "@dust-tt/client";
-
-import { isConnectorsAPIError } from "@dust-tt/client";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { type ConnectorsAPIError, isConnectorsAPIError } from "@dust-tt/client";
 import * as t from "io-ts";
-
 import type { ContentNodeType } from "../core/content_node";
 import type { ConnectorProvider, DataSourceType } from "../data_source";
 import type { LoggerInterface } from "../shared/logger";
@@ -67,6 +65,7 @@ export const CONNECTORS_ERROR_TYPES = [
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
+
 export function isConnectorError(val: string): val is ConnectorErrorType {
   return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
 }
