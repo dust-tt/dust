@@ -150,10 +150,8 @@ import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -162,13 +160,21 @@ import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: LightAgentConfigurationType[];
-};
-export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: LightAgentConfigurationType;
-};
+export const GetAgentConfigurationsResponseBodySchema = z.object({
+  agentConfigurations: z.array(LightAgentConfigurationSchema),
+});
+export type GetAgentConfigurationsResponseBody = z.infer<
+  typeof GetAgentConfigurationsResponseBodySchema
+>;
+
+export const PostAgentConfigurationResponseBodySchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+});
+export type PostAgentConfigurationResponseBody = z.infer<
+  typeof PostAgentConfigurationResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

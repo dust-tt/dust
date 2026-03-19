@@ -6,14 +6,20 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export interface GetAgentMemoriesResponseBody {
-  memories: Array<{
-    sId: string;
-    lastUpdated: Date;
-    content: string;
-  }>;
-}
+export const GetAgentMemoriesResponseBodySchema = z.object({
+  memories: z.array(
+    z.object({
+      sId: z.string(),
+      lastUpdated: z.date(),
+      content: z.string(),
+    })
+  ),
+});
+export type GetAgentMemoriesResponseBody = z.infer<
+  typeof GetAgentMemoriesResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

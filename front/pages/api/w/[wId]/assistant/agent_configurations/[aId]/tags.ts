@@ -6,7 +6,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { TagType } from "@app/types/tag";
+import { TagSchema } from "@app/types/tag";
 import { isBuilder } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -29,9 +29,12 @@ export type PatchAgentTagsRequestBody = z.infer<
   typeof PatchAgentTagsRequestBodySchema
 >;
 
-export interface PatchAgentTagsResponseBody {
-  tags: TagType[];
-}
+export const PatchAgentTagsResponseBodySchema = z.object({
+  tags: z.array(TagSchema),
+});
+export type PatchAgentTagsResponseBody = z.infer<
+  typeof PatchAgentTagsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

@@ -9,10 +9,14 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type RestoreAgentConfigurationResponseBody = {
-  success: true;
-};
+export const RestoreAgentConfigurationResponseBodySchema = z.object({
+  success: z.literal(true),
+});
+export type RestoreAgentConfigurationResponseBody = z.infer<
+  typeof RestoreAgentConfigurationResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

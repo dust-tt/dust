@@ -12,9 +12,12 @@ import {
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type PostWebhookFilterGeneratorResponseBody = {
-  filter: string;
-};
+export const PostWebhookFilterGeneratorResponseBodySchema = z.object({
+  filter: z.string(),
+});
+export type PostWebhookFilterGeneratorResponseBody = z.infer<
+  typeof PostWebhookFilterGeneratorResponseBodySchema
+>;
 
 const PostWebhookFilterGeneratorRequestBodySchema = z.object({
   naturalDescription: z.string(),

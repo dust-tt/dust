@@ -13,10 +13,13 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type PostTextAsCronRuleResponseBody = {
-  cronRule: string;
-  timezone: string;
-};
+export const PostTextAsCronRuleResponseBodySchema = z.object({
+  cronRule: z.string(),
+  timezone: z.string(),
+});
+export type PostTextAsCronRuleResponseBody = z.infer<
+  typeof PostTextAsCronRuleResponseBodySchema
+>;
 
 const PostTextAsCronRuleRequestBodySchema = z.object({
   naturalDescription: z.string(),
