@@ -5,7 +5,7 @@ import logger from "@app/logger/logger";
 import { isDustWorkspace } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@dust-tt/client/src/error_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Runs the three security gates required by every poke tool, then emits the
