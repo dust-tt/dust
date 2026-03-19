@@ -98,12 +98,6 @@ export const SidekickPanelProvider = ({
       return;
     }
 
-    // Wait for the client-side MCP server to be registered before starting
-    // the conversation. Without this, the sidekick won't have access to
-    // agent_builder_sidekick_client tools like get_agent_config.
-    if (clientSideMCPServerIds.length === 0) {
-      return;
-    }
     hasStartedRef.current = true;
 
     setIsCreatingConversation(true);
@@ -126,7 +120,7 @@ export const SidekickPanelProvider = ({
         mentions: [{ configurationId: GLOBAL_AGENTS_SID.SIDEKICK }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_sidekick",
-        // Don't pass clientSideMCPServerIds on the initial greeting - it doesn't use MCP tools,
+        // Sidekick does not need the client-side MCP server on the first message it doesn't use MCP tools
         // and doing so races with SSE setup.
         clientSideMCPServerIds: [],
       },
@@ -156,7 +150,6 @@ export const SidekickPanelProvider = ({
 
     setIsCreatingConversation(false);
   }, [
-    clientSideMCPServerIds,
     createConversationWithMessage,
     getFirstMessage,
     useCase,
