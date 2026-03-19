@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js API response type needed for cookie setting.
 import config from "@app/lib/api/config";
 import { ExternalViewerSessionModel } from "@app/lib/resources/storage/models/files";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";

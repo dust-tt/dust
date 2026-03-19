@@ -137,7 +137,9 @@ describe("GET /api/v1/public/frames/[token]", () => {
 
       // Grant exists for their email, but they can't prove email ownership
       // without workspace membership — they must go through OTP.
-      await file.addSharingGrants(auth, { emails: ["other-workspace-user@example.com"] });
+      await file.addSharingGrants(auth, {
+        emails: ["other-workspace-user@example.com"],
+      });
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method: "GET",
