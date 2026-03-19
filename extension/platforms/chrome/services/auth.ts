@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -14,8 +15,6 @@ import {
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
-
-const log = console.error;
 
 export class ChromeAuthService extends AuthService {
   constructor(storage: StorageService) {
@@ -35,13 +34,11 @@ export class ChromeAuthService extends AuthService {
       }
       const response = await sendRefreshTokenMessage(this, tokens.refreshToken);
       if (!response.success) {
-        datadogLogs.logger.error("Refresh token failed", {
-          response: response.error,
-        });
+        logger.error({ response: response.error }, "Refresh token failed");
         return new Err(new AuthError("not_authenticated", response.error));
       }
       if (!response?.accessToken) {
-        datadogLogs.logger.error("Refresh failed: No access token received");
+        logger.error("Refresh failed: No access token received");
 
         return new Err(
           new AuthError("not_authenticated", "No access token received")
@@ -69,11 +66,11 @@ export class ChromeAuthService extends AuthService {
     try {
       const response = await sendAuthMessage(forcedConnection, organizationId);
       if (!response.success) {
-        log(`Authentication error: ${response.error}`);
+        logger.error({ error: response.error }, "Authentication error");
         throw new Error(response.error);
       }
       if (!response.accessToken) {
-        datadogLogs.logger.error("Login failed: No access token received");
+        logger.error("Login failed: No access token received");
         throw new Error("No access token received.");
       }
       const tokens = await this.saveTokens(response);
@@ -101,11 +98,14 @@ export class ChromeAuthService extends AuthService {
 
       return true;
     } catch (error) {
-      log("Logout failed: Unknown error.", error);
+      logger.error({ err: error }, "Logout failed: Unknown error.");
       return false;
     } finally {
       datadogLogs.clearUser();
-      datadogLogs.setGlobalContext({});
+      datadogLogs.setGlobalContext({
+        extensionVersion: process.env.DUST_EXTENSION_VERSION,
+        commitHash: process.env.COMMIT_HASH,
+      });
       await this.storage.clear();
     }
   }
