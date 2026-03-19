@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { removeNulls } from "./shared/utils/general";
+import type { UserType } from "./user";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
@@ -47,9 +48,25 @@ export function isConversationFileUseCase(
   return ["conversation", "tool_output"].includes(useCase);
 }
 
-export const fileShareScopeSchema = z.enum(["workspace", "public"]);
+export const MAX_EMAILS_PER_INVITE = 50;
+
+export const fileShareScopeSchema = z.enum([
+  "emails_only",
+  "public",
+  "workspace_and_emails",
+  "workspace",
+]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
+
+export interface SharingGrantType {
+  id: number;
+  email: string;
+  grantedAt: Date;
+  grantedBy: UserType | null;
+  expiresAt: Date | null;
+  lastViewedAt: Date | null;
+}
 
 export interface FileType {
   contentType: AllSupportedFileContentType;

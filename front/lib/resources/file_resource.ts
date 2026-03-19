@@ -20,9 +20,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   FileModel,
   ShareableFileModel,
+  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -34,6 +36,7 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
+  SharingGrantType,
 } from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
@@ -319,17 +322,20 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Delete sharing grants before shareable files (FK constraint).
+    await SharingGrantModel.destroy({
+      where: { workspaceId },
+    });
+
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
 
     return this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
   }
 
@@ -383,6 +389,19 @@ export class FileResource extends BaseResource<FileModel> {
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
+
+        // Delete sharing grants before shareable file (FK constraint).
+        const shareableFile = await FileResource.shareableFileModel.findOne({
+          where: { fileId: this.id, workspaceId: this.workspaceId },
+        });
+        if (shareableFile) {
+          await SharingGrantModel.destroy({
+            where: {
+              shareableFileId: shareableFile.id,
+              workspaceId: this.workspaceId,
+            },
+          });
+        }
 
         // Delete the shareable file record.
         await FileResource.shareableFileModel.destroy({
@@ -1096,6 +1115,122 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  // Sharing grants logic.
+
+  private async getShareableFileId(): Promise<ModelId> {
+    assert(
+      this.isInteractiveContent,
+      `Sharing grants are only supported for interactive content files (file: ${this.sId})`
+    );
+
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+
+    assert(
+      shareableFile,
+      `ShareableFileModel record not found for file ${this.sId}`
+    );
+
+    return shareableFile.id;
+  }
+
+  async addSharingGrants(
+    auth: Authenticator,
+    { emails }: { emails: string[] }
+  ): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "addSharingGrants requires interactive content file"
+    );
+    const user = auth.getNonNullableUser();
+    const shareableFileId = await this.getShareableFileId();
+
+    const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
+
+    // Find existing active grants for these emails.
+    const existingGrants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email: { [Op.in]: normalizedEmails },
+        revokedAt: null,
+      },
+    });
+
+    const existingEmails = new Set(existingGrants.map((g) => g.email));
+
+    const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
+
+    if (newEmails.length > 0) {
+      await SharingGrantModel.bulkCreate(
+        newEmails.map((email) => ({
+          workspaceId: this.workspaceId,
+          shareableFileId,
+          email,
+          grantedBy: user.id,
+          grantedAt: new Date(),
+        }))
+      );
+    }
+
+    return this.listActiveSharingGrants();
+  }
+
+  async revokeSharingGrant({
+    grantId,
+  }: {
+    grantId: ModelId;
+  }): Promise<Result<undefined, DustError>> {
+    assert(
+      this.isInteractiveContent,
+      "revokeSharingGrant requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        id: grantId,
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return new Err(
+        new DustError("file_not_found", "Sharing grant not found")
+      );
+    }
+
+    await grant.update({ revokedAt: new Date() });
+
+    return new Ok(undefined);
+  }
+
+  async listActiveSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listActiveSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
+  }
+
   // Serialization logic.
 
   toJSON(auth?: Authenticator): FileType {
@@ -1242,4 +1377,20 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(normalizeError(error));
     }
   }
+}
+
+function renderSharingGrant(
+  grant: SharingGrantModel,
+  usersById: Map<ModelId, UserResource>
+): SharingGrantType {
+  const user = grant.grantedBy ? usersById.get(grant.grantedBy) : null;
+
+  return {
+    id: grant.id,
+    email: grant.email,
+    grantedAt: grant.grantedAt,
+    grantedBy: user?.toJSON() ?? null,
+    expiresAt: grant.expiresAt,
+    lastViewedAt: grant.lastViewedAt,
+  };
 }

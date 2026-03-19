@@ -11,6 +11,7 @@ import {
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -30,7 +31,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { fileId } = req.query;
-  if (typeof fileId !== "string") {
+  if (!isString(fileId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
