@@ -8,6 +8,7 @@ import {
   enforcePokeSecurityGates,
   getTargetAuth,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
+import { workspaceHandlers } from "@app/lib/api/actions/servers/poke/tools/workspace";
 import { Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
@@ -55,6 +56,8 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
       },
     ]);
   },
+
+  ...workspaceHandlers,
 };
 
 export const TOOLS = buildTools(POKE_TOOLS_METADATA, handlers);
