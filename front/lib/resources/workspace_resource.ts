@@ -238,6 +238,18 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     blob: Partial<Attributes<WorkspaceModel>>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
+    // Dual write: keep sharingPolicy in sync when metadata.allowContentCreationFileSharing changes.
+    // TODO(2026-03-19: Frame sharing) Remove dual write once reads switch to sharingPolicy.
+    if (blob.metadata && "allowContentCreationFileSharing" in blob.metadata) {
+      const newPolicy =
+        blob.metadata.allowContentCreationFileSharing === false
+          ? "workspace_and_emails"
+          : "all_scopes";
+      if (newPolicy !== this.sharingPolicy) {
+        blob.sharingPolicy = newPolicy;
+      }
+    }
+
     const result = await super.update(blob, transaction);
     const sId = this.sId;
     invalidateCacheAfterCommit(transaction, () =>
