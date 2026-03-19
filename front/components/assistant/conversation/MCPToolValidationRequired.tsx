@@ -37,6 +37,13 @@ const MCP_TOOL_OVERRIDES: Partial<
         "Allow all the interactions with this tab",
     },
   },
+  "dust-firefox-extension": {
+    interact_with_page: {
+      title: (agentName, inputs) =>
+        `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
+      alwaysAllowLabel: () => "Allow all the interactions with this tab",
+    },
+  },
 };
 
 interface MCPToolValidationRequiredProps {
