@@ -6,26 +6,25 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
+import { initDatadogLogs } from "@app/logger/datadogLogger";
 import { datadogLogs } from "@datadog/browser-logs";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ChromeApp } from "./ChromeApp";
 
 if (process.env.DATADOG_CLIENT_TOKEN) {
-  datadogLogs.init({
+  initDatadogLogs({
     clientToken: process.env.DATADOG_CLIENT_TOKEN,
-    site: "datadoghq.eu",
     service: "dust-chrome-extension",
     env: process.env.DATADOG_ENV,
     version: process.env.DUST_EXTENSION_VERSION,
     forwardConsoleLogs: ["error"],
-    forwardErrorsToLogs: true,
-    sessionSampleRate: 100,
+  });
+  datadogLogs.setGlobalContext({
+    extensionVersion: process.env.DUST_EXTENSION_VERSION,
+    commitHash: process.env.COMMIT_HASH,
   });
 }
-
-const logger = datadogLogs.logger;
-logger.info("Dust extension loaded");
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
