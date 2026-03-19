@@ -79,7 +79,7 @@ function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
 }
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:jd-slope") // 1.2.0
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.2.0")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
   .runCmd(
@@ -291,7 +291,7 @@ SHELLEOF`)
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "jd-slope", // 0.5.0
+    tag: "0.6.0",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
