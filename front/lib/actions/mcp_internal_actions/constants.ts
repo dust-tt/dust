@@ -1,14 +1,9 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import {
-  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
-import type {
-  ClientToolMeta,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -41,6 +36,7 @@ import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/m
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
+import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
@@ -50,6 +46,7 @@ import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
@@ -165,6 +162,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "interactive_content",
   "slideshow",
   "jira",
+  "luma",
   "microsoft_drive",
   "microsoft_excel",
   "microsoft_teams",
@@ -202,6 +200,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_manager",
+  "poke",
   "project_conversation",
   "sandbox",
 ] as const;
@@ -832,6 +831,20 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: STATUSPAGE_SERVER,
   },
+  luma: {
+    id: 51,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("luma_tool");
+    },
+    isPreview: true,
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: LUMA_SERVER,
+  },
   fathom: {
     id: 50,
     availability: "manual",
@@ -1025,9 +1038,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_builder_copilot");
-    },
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1038,9 +1049,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_builder_copilot");
-    },
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1048,7 +1057,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   sandbox: {
     id: 1024,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
@@ -1083,19 +1092,20 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: USER_MENTIONS_SERVER,
   },
+  poke: {
+    id: 1027,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("poke_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: POKE_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
-};
-
-// Hardcoded stakes per client-side server (keyed by base server ID)
-export const CLIENT_SIDE_MCP_TOOL_METADATA: Record<
-  string,
-  Record<string, ClientToolMeta>
-> = {
-  "mcp-client-side:chrome_extension_client": Object.fromEntries(
-    Object.entries(CHROME_TOOLS_METADATA).map(([name, meta]) => [name, meta])
-  ),
 };
 
 type InternalMCPServerEntryCommon = {
@@ -1272,39 +1282,6 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
-}
-
-export function getClientSideToolStake(
-  serverId: string,
-  toolName: string
-): MCPToolStakeLevelType {
-  const toolStake = CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]?.stake;
-  if (toolStake) {
-    return toolStake;
-  }
-  return DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL;
-}
-
-export function getClientSideToolArgumentsRequiringApproval(
-  serverId: string,
-  toolName: string
-): string[] | undefined {
-  const toolArgsRequiringApproval =
-    CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]
-      .argumentsRequiringApproval;
-  return toolArgsRequiringApproval;
-}
-
-export function getClientSideToolDisplayLabels(
-  serverId: string,
-  toolName: string
-): ToolDisplayLabels | null {
-  const toolDisplayLabels =
-    CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]?.displayLabels;
-  if (toolDisplayLabels) {
-    return toolDisplayLabels;
-  }
-  return null;
 }
 
 // TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.

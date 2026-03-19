@@ -1,5 +1,5 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   usePokeCheckHistory,
@@ -492,7 +492,7 @@ function ProductionCheckCard({
 }
 
 export function ProductionChecksPage() {
-  useSetPokePageTitle("Production Checks");
+  useDocumentTitle("Poke - Production Checks");
 
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();

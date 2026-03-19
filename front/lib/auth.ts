@@ -17,6 +17,7 @@ import {
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -27,6 +28,7 @@ import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
   PermissionType,
   ResourcePermission,
@@ -104,6 +106,7 @@ export class Authenticator {
   _groupModelIds: ModelId[];
   _workspace: WorkspaceResource | null;
   _authMethod: AuthMethodType;
+  _providersHealth: ProvidersHealth | null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -114,6 +117,7 @@ export class Authenticator {
     authMethod,
     subscription,
     key,
+    providersHealth,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -122,6 +126,7 @@ export class Authenticator {
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
+    providersHealth?: ProvidersHealth | null;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -133,6 +138,7 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
+    this._providersHealth = providersHealth ?? null;
     if (user) {
       tracer.setUser({
         id: user?.sId,
@@ -257,6 +263,11 @@ export class Authenticator {
         subscription = authData.subscription;
       }
 
+      const providersHealth = await this.fetchByokProvidersHealth(
+        workspace,
+        subscription
+      );
+
       return new Authenticator({
         authMethod:
           session?.authenticationMethod === "bearer" ? "oauth" : "session",
@@ -265,6 +276,7 @@ export class Authenticator {
         role,
         groupModelIds,
         subscription,
+        providersHealth,
       });
     });
   }
@@ -274,6 +286,18 @@ export class Authenticator {
    */
   static isMember(role: RoleType): boolean {
     return role !== "none";
+  }
+
+  private static async fetchByokProvidersHealth(
+    workspace: WorkspaceResource | null | undefined,
+    subscription: SubscriptionResource | null
+  ): Promise<ProvidersHealth | null> {
+    if (!workspace || !subscription?.getPlan().isByok) {
+      return null;
+    }
+    return ProviderCredentialResource.fetchProvidersHealthByWorkspaceId(
+      workspace.id
+    );
   }
 
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
@@ -360,6 +384,11 @@ export class Authenticator {
       subscription = authData.subscription;
     }
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
     return new Authenticator({
       authMethod: "internal",
       workspace,
@@ -367,6 +396,7 @@ export class Authenticator {
       role,
       groupModelIds,
       subscription,
+      providersHealth,
     });
   }
 
@@ -399,6 +429,11 @@ export class Authenticator {
       workspace,
     });
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      authData.subscription
+    );
+
     return new Ok(
       new Authenticator({
         authMethod: "oauth",
@@ -407,6 +442,7 @@ export class Authenticator {
         user,
         role: authData.role,
         subscription: authData.subscription,
+        providersHealth,
       })
     );
   }
@@ -473,6 +509,11 @@ export class Authenticator {
       workspace.id
     );
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      authData.subscription
+    );
+
     return new Ok(
       new Authenticator({
         authMethod: SANDBOX_TOKEN_AUTH_METHOD,
@@ -481,6 +522,7 @@ export class Authenticator {
         role: authData.role,
         groupModelIds,
         subscription: authData.subscription,
+        providersHealth,
       })
     );
   }
@@ -611,6 +653,11 @@ export class Authenticator {
     }
     const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
 
+    const workspaceProvidersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      workspaceSubscription
+    );
+
     return {
       workspaceAuth: new Authenticator({
         authMethod: key.isSystem ? "system_api_key" : "api_key",
@@ -620,6 +667,7 @@ export class Authenticator {
         role,
         subscription: workspaceSubscription,
         workspace,
+        providersHealth: workspaceProvidersHealth,
       }),
       keyAuth: new Authenticator({
         authMethod: key.isSystem ? "system_api_key" : "api_key",
@@ -699,12 +747,18 @@ export class Authenticator {
       SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
     ]);
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
     return new Authenticator({
       authMethod: "internal",
       workspace,
       role: "builder",
       groupModelIds: globalGroup ? [globalGroup.id] : [],
       subscription,
+      providersHealth,
     });
   }
 
@@ -736,12 +790,18 @@ export class Authenticator {
       SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
     ]);
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
     return new Authenticator({
       authMethod: "internal",
       workspace,
       role: "admin",
       groupModelIds: groups.map((g) => g.id),
       subscription,
+      providersHealth,
     });
   }
 
@@ -834,6 +894,10 @@ export class Authenticator {
       subscription: this._subscription,
       workspace: this._workspace,
     });
+  }
+
+  providersHealth(): ProvidersHealth | null {
+    return this._providersHealth;
   }
 
   role(): RoleType {
@@ -1153,6 +1217,11 @@ export class Authenticator {
       authType.groupIds.map((sId) => getResourceIdFromSId(sId))
     );
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
     return new Ok(
       new Authenticator({
         authMethod: authType.authMethod,
@@ -1162,6 +1231,7 @@ export class Authenticator {
         groupModelIds: groupIds,
         subscription,
         key: authType.key,
+        providersHealth,
       })
     );
   }
@@ -1414,34 +1484,64 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-export const getFeatureFlags = memoizer.sync({
-  load: async (
-    workspace: LightWorkspaceType
-  ): Promise<WhitelistableFeature[]> => {
+// Use memoizer's callback-based API so the LRU cache stores the resolved value, not a Promise.
+// memoizer.sync with an async load caches the Promise itself, which retains Node async context and
+// causes memory growth.
+const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
+  load: (workspace, callback) => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      return [...WHITELISTABLE_FEATURES];
-    } else {
-      const flags = await FeatureFlagResource.listForWorkspace(workspace);
-      return flags.map((flag) => flag.name);
+      callback(null, [...WHITELISTABLE_FEATURES]);
+      return;
     }
+
+    FeatureFlagResource.listForWorkspace(workspace)
+      .then((flags) =>
+        callback(
+          null,
+          flags.map((flag) => flag.name)
+        )
+      )
+      .catch((err: Error) => callback(err));
   },
 
-  hash: function (workspace: LightWorkspaceType) {
-    return `feature_flags_${workspace.id}`;
-  },
+  hash: (workspace: LightWorkspaceType) => `feature_flags_${workspace.id}`,
 
-  itemMaxAge: () => 3000,
+  max: 100,
+  ttl: 3000,
 });
 
-export async function isRestrictedFromAgentCreation(
-  owner: LightWorkspaceType
-): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(owner);
+export function getFeatureFlags(
+  auth: Authenticator
+): Promise<WhitelistableFeature[]> {
+  const workspace = auth.getNonNullableWorkspace();
 
-  return (
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner)
-  );
+  return new Promise((resolve, reject) => {
+    _getFeatureFlags(workspace, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result ?? []);
+      }
+    });
+  });
+}
+
+export async function hasFeatureFlag(
+  auth: Authenticator,
+  flag: WhitelistableFeature
+): Promise<boolean> {
+  const flags = await getFeatureFlags(auth);
+  return flags.includes(flag);
+}
+
+export function invalidateFeatureFlagsCache(
+  authOrWorkspace: Authenticator | LightWorkspaceType
+): void {
+  const workspace =
+    authOrWorkspace instanceof Authenticator
+      ? authOrWorkspace.getNonNullableWorkspace()
+      : authOrWorkspace;
+  _getFeatureFlags.del(workspace);
 }
 
 export function getApiKeyNameFromHeaders(headers: {

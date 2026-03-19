@@ -330,7 +330,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
         ),
     },
     stake: "low",
@@ -350,7 +350,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
         ),
     },
     stake: "low",
@@ -374,7 +374,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
         ),
       requests: GoogleDocsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
@@ -400,7 +400,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
         ),
       range: z
         .string()
@@ -446,7 +446,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
         ),
       requests: GoogleSheetsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the spreadsheet. Include multiple operations in a single call to minimize requests. " +
@@ -475,7 +475,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
+          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
         ),
       requests: GoogleSlidesRequestsArraySchema.describe(
         "An array of batch update requests to apply to the presentation. Include multiple operations in a single call to minimize requests. " +
@@ -488,6 +488,60 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Updating Google presentation",
       done: "Update Google presentation",
+    },
+  },
+  share_file: {
+    description:
+      "Share a Google Drive file with a specific person by email, or with everyone in a Google Workspace domain.",
+    schema: {
+      fileId: z.string().describe("The ID of the Google Drive file to share."),
+      type: z
+        .enum(["user", "group", "domain"])
+        .describe(
+          "'user' to share with a specific person, 'group' to share with a Google Group, 'domain' to share with an entire Google Workspace domain."
+        ),
+      role: z
+        .enum(["writer", "commenter", "reader"])
+        .describe("The access level to grant."),
+      emailAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the person or Google Group to share with. Required when type is 'user' or 'group'."
+        ),
+      domain: z
+        .string()
+        .optional()
+        .describe(
+          'The Google Workspace domain to share with (e.g. "dust.tt"). Required when type is "domain".'
+        ),
+      allowFileDiscovery: z
+        .boolean()
+        .optional()
+        .describe(
+          "Only applies when type is 'domain'. If true, the file appears in search results for domain members. If false (default), the file is only accessible via direct link."
+        ),
+      sendNotificationEmail: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to send a notification email. Only applies when type is 'user' or 'group'. Defaults to true."
+        ),
+      emailMessage: z
+        .string()
+        .optional()
+        .describe("A custom message to include in the notification email."),
+      canShare: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether the user has sharing access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canShare field."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Sharing Google Drive file",
+      done: "Share Google Drive file",
     },
   },
 });

@@ -111,7 +111,9 @@ export async function getTemporalClientForAgentNamespace() {
 }
 
 export async function getTemporalClientForFrontNamespace() {
-  return getTemporalClientForNamespace("front");
+  return getTemporalClientForNamespace("front", [
+    new OpenTelemetryWorkflowClientInterceptor(),
+  ]);
 }
 
 export async function getTemporalClientForConnectorsNamespace() {

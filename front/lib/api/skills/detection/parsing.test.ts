@@ -68,9 +68,9 @@ Some instructions.`;
 describe("findSkillDirectories", () => {
   test("finds SKILL.md in subdirectories", () => {
     const entries: FileEntry[] = [
-      { path: "skills/foo/SKILL.md", isFile: true, sizeBytes: 100 },
-      { path: "skills/bar/skill.md", isFile: true, sizeBytes: 200 },
-      { path: "skills/baz/README.md", isFile: true, sizeBytes: 50 },
+      { path: "skills/foo/SKILL.md", sizeBytes: 100 },
+      { path: "skills/bar/skill.md", sizeBytes: 200 },
+      { path: "skills/baz/README.md", sizeBytes: 50 },
     ];
 
     const dirs = findSkillDirectories(entries);
@@ -87,8 +87,8 @@ describe("findSkillDirectories", () => {
 
   test("skips SKILL.md at the root", () => {
     const entries: FileEntry[] = [
-      { path: "SKILL.md", isFile: true, sizeBytes: 100 },
-      { path: "sub/SKILL.md", isFile: true, sizeBytes: 100 },
+      { path: "SKILL.md", sizeBytes: 100 },
+      { path: "sub/SKILL.md", sizeBytes: 100 },
     ];
 
     const dirs = findSkillDirectories(entries);
@@ -98,18 +98,8 @@ describe("findSkillDirectories", () => {
 
   test("deduplicates directories with both skill.md and SKILL.md", () => {
     const entries: FileEntry[] = [
-      { path: "skills/foo/SKILL.md", isFile: true, sizeBytes: 100 },
-      { path: "skills/foo/skill.md", isFile: true, sizeBytes: 100 },
-    ];
-
-    const dirs = findSkillDirectories(entries);
-    expect(dirs).toHaveLength(1);
-  });
-
-  test("skips directory entries", () => {
-    const entries: FileEntry[] = [
-      { path: "skills/foo", isFile: false, sizeBytes: 0 },
-      { path: "skills/foo/SKILL.md", isFile: true, sizeBytes: 100 },
+      { path: "skills/foo/SKILL.md", sizeBytes: 100 },
+      { path: "skills/foo/skill.md", sizeBytes: 100 },
     ];
 
     const dirs = findSkillDirectories(entries);
@@ -119,11 +109,11 @@ describe("findSkillDirectories", () => {
 
 describe("collectAttachments", () => {
   const entries: FileEntry[] = [
-    { path: "skills/foo/SKILL.md", isFile: true, sizeBytes: 100 },
-    { path: "skills/foo/helper.py", isFile: true, sizeBytes: 500 },
-    { path: "skills/foo/data/config.json", isFile: true, sizeBytes: 200 },
-    { path: "skills/bar/SKILL.md", isFile: true, sizeBytes: 100 },
-    { path: "other/file.txt", isFile: true, sizeBytes: 50 },
+    { path: "skills/foo/SKILL.md", sizeBytes: 100 },
+    { path: "skills/foo/helper.py", sizeBytes: 500 },
+    { path: "skills/foo/data/config.json", sizeBytes: 200 },
+    { path: "skills/bar/SKILL.md", sizeBytes: 100 },
+    { path: "other/file.txt", sizeBytes: 50 },
   ];
 
   test("collects files in the skill directory excluding SKILL.md", () => {
@@ -133,8 +123,16 @@ describe("collectAttachments", () => {
     });
 
     expect(attachments).toEqual([
-      { path: "helper.py", sizeBytes: 500 },
-      { path: "data/config.json", sizeBytes: 200 },
+      {
+        path: "skills/foo/helper.py",
+        sizeBytes: 500,
+        contentType: "text/x-python",
+      },
+      {
+        path: "skills/foo/data/config.json",
+        sizeBytes: 200,
+        contentType: "application/json",
+      },
     ]);
   });
 

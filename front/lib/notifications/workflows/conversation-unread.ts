@@ -4,6 +4,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import config from "@app/lib/api/config";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
@@ -21,7 +22,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   UserMessageOrigin,
@@ -77,6 +77,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_butler":
+    case "reinforced_agent_notification":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -199,8 +200,8 @@ const getConversationDetails = async ({
     .flat()
     .find((msg) => msg.sId === payload.messageId);
   if (!message) {
-    // Message doesn't exist at all - unexpected.
-    throw new Error(`Message not found: ${payload.messageId}`);
+    // Message doesn't exist at all - could be true if it's in a branch.
+    return new Err(new ConversationError("message_not_found"));
   }
   if (message.visibility === "deleted") {
     // Message was deleted during workflow delay - expected.
@@ -412,7 +413,7 @@ const generateUnreadMessagesSummary = async ({
 
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = await getSmallWhitelistedModel(auth);
 
   if (!model) {
     return new Err(

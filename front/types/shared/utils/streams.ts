@@ -12,3 +12,9 @@ export function readableStreamToReadable<T = unknown>(
 ): Readable {
   return Readable.fromWeb(webStream as NodeReadableStream<T>);
 }
+
+export function readableToReadableStream<T = unknown>(
+  readable: Readable
+): ReadableStream<T> {
+  return Readable.toWeb(readable) as ReadableStream<T>;
+}

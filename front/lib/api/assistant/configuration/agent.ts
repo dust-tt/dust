@@ -1253,7 +1253,9 @@ export async function archiveAgentConfiguration(
 export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<Result<{ restored: boolean }, Error>> {
+): Promise<
+  Result<{ restored: boolean }, DustError<"name_conflict" | "internal_error">>
+> {
   const owner = auth.getNonNullableWorkspace();
 
   const latestConfig = await AgentConfigurationModel.findOne({
@@ -1265,10 +1267,32 @@ export async function restoreAgentConfiguration(
     limit: 1,
   });
   if (!latestConfig) {
-    return new Err(new Error("Could not find agent configuration"));
+    return new Err(
+      new DustError("internal_error", "Could not find agent configuration")
+    );
   }
   if (latestConfig.status !== "archived") {
-    return new Err(new Error("Agent configuration is not archived"));
+    return new Err(
+      new DustError("internal_error", "Agent configuration is not archived")
+    );
+  }
+
+  // Check for an active agent with the same name to avoid a unique constraint violation on
+  // (workspaceId, name) during the update.
+  const existingActive = await AgentConfigurationModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      name: latestConfig.name,
+      status: "active",
+    },
+  });
+  if (existingActive) {
+    return new Err(
+      new DustError(
+        "name_conflict",
+        `Cannot restore: an active agent named "${latestConfig.name}" already exists.`
+      )
+    );
   }
 
   const updated = await AgentConfigurationModel.update(
@@ -1591,7 +1615,7 @@ async function canPublishAgent(auth: Authenticator): Promise<{
   canPublish: boolean;
   message: string | null;
 }> {
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
   const level = getPublishingRestrictionLevel(featureFlags);
   if (!level || canPublishForAuth(auth, level)) {
     return { canPublish: true, message: null };

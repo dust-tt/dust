@@ -44,11 +44,9 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "GET":
-      const feature_flags = await getFeatureFlags(owner);
+      const feature_flags = await getFeatureFlags(auth);
       return res.status(200).json({ feature_flags });
 
     default:

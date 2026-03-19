@@ -243,7 +243,7 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
 
   // Checking that the provider is allowed for the workspace plan
   const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(

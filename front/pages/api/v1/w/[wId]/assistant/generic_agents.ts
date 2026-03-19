@@ -4,10 +4,10 @@ import {
 } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
@@ -87,8 +87,7 @@ async function handler(
         });
       }
 
-      const workspace = auth.getNonNullableWorkspace();
-      const flags = await getFeatureFlags(workspace);
+      const flags = await getFeatureFlags(auth);
       if (!flags.includes("agent_management_tool")) {
         return apiError(req, res, {
           status_code: 403,
@@ -177,7 +176,7 @@ async function handler(
         }
       }
 
-      const model = getLargeWhitelistedModel(owner);
+      const model = await getLargeWhitelistedModel(auth);
       if (!model) {
         return apiError(req, res, {
           status_code: 400,

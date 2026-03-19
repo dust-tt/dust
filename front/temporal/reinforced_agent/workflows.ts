@@ -1,5 +1,11 @@
 import type * as activities from "@app/temporal/reinforced_agent/activities";
 import {
+  OpenTelemetryInboundInterceptor,
+  OpenTelemetryInternalsInterceptor,
+  OpenTelemetryOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/workflow";
+import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
+import {
   ApplicationFailure,
   ParentClosePolicy,
   proxyActivities,
@@ -8,7 +14,15 @@ import {
   startChild,
 } from "@temporalio/workflow";
 import { concurrentExecutor } from "../utils";
+
 import { runSignal } from "./signals";
+
+// Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
+export const interceptors: WorkflowInterceptorsFactory = () => ({
+  inbound: [new OpenTelemetryInboundInterceptor()],
+  outbound: [new OpenTelemetryOutboundInterceptor()],
+  internals: [new OpenTelemetryInternalsInterceptor()],
+});
 
 const { getFlaggedWorkspacesActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -161,14 +175,19 @@ export async function reinforcedAgentForAgentWorkflow({
   workspaceId,
   agentConfigurationId,
   useBatchMode,
+  conversationLookbackDays = 1,
+  disableNotifications = false,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   useBatchMode: boolean;
+  conversationLookbackDays?: number;
+  disableNotifications?: boolean;
 }): Promise<void> {
   const conversationIds = await getRecentConversationsForAgentActivity({
     workspaceId,
     agentConfigurationId,
+    conversationLookbackDays,
   });
 
   if (useBatchMode) {
@@ -204,6 +223,7 @@ export async function reinforcedAgentForAgentWorkflow({
         workspaceId,
         agentConfigurationId,
         batchId: aggregationBatchId,
+        disableNotifications,
       });
     }
   } else {
@@ -223,6 +243,7 @@ export async function reinforcedAgentForAgentWorkflow({
     await aggregateSuggestionsActivity({
       workspaceId,
       agentConfigurationId,
+      disableNotifications,
     });
   }
 }

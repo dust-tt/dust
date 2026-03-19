@@ -1,7 +1,8 @@
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { Head, useRequiredPathParam } from "@app/lib/platform";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
@@ -16,6 +17,8 @@ export function EditSkillPage() {
     skillId,
     withRelations: true,
   });
+
+  useDocumentTitle(skill ? `Dust - ${skill.name}` : "Dust - Skill");
 
   const isNotFound =
     isSkillError ||
@@ -36,9 +39,6 @@ export function EditSkillPage() {
 
   return (
     <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
-      <Head>
-        <title>{`Dust - ${skill.name}`}</title>
-      </Head>
       <SkillBuilder
         skill={skill}
         extendedSkill={skill.relations?.extendedSkill ?? undefined}

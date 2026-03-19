@@ -247,6 +247,75 @@ async function ensureWriteAccess(
   return null;
 }
 
+/**
+ * Pre-flight check to verify sharing access to a file.
+ *
+ * Uses the drive.readonly scope (present on the token) to read file capabilities —
+ * this works for any file the user can see, regardless of file picker authorization.
+ *
+ * Returns { canShare, fileName } if capabilities could be determined, or null if the
+ * file is inaccessible or the check fails — in both cases the caller should proceed
+ * and let the existing error flow handle it.
+ */
+async function checkShareAccess(
+  drive: NonNullable<Awaited<ReturnType<typeof getDriveClient>>>,
+  fileId: string
+): Promise<{ canShare: boolean; fileName: string } | null> {
+  try {
+    const res = await drive.files.get({
+      fileId,
+      supportsAllDrives: true,
+      fields: "capabilities(canShare),name",
+    });
+    const { capabilities, name } = res.data;
+    if (!capabilities) {
+      return null;
+    }
+    return {
+      canShare: capabilities.canShare ?? true,
+      fileName: name ?? fileId,
+    };
+  } catch {
+    // File inaccessible or unexpected error — proceed and let the existing error flow handle it.
+    return null;
+  }
+}
+
+/**
+ * Checks whether the caller can change sharing settings on a file before attempting
+ * to modify permissions.
+ * Returns an early Ok result with a no-share message when access is denied, or null to proceed.
+ */
+async function ensureShareAccess(
+  canShare: boolean | undefined,
+  fileId: string,
+  authInfo: ToolHandlerExtra["authInfo"]
+): Promise<ToolHandlerResult | null> {
+  if (canShare === false) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: "You don't have permission to change sharing settings on this file. Only the file owner can modify access. You could ask the file owner to grant you sharing privileges, or ask them to share the file directly.",
+      },
+    ]);
+  }
+  if (canShare === undefined) {
+    const drive = await getDriveClient(authInfo);
+    if (drive) {
+      const accessCheck = await checkShareAccess(drive, fileId);
+      if (accessCheck !== null && !accessCheck.canShare) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `You don't have permission to change sharing settings on "${accessCheck.fileName}". Only the file owner can modify access. You could ask the file owner to grant you sharing privileges, or ask them to share the file directly.`,
+          },
+        ]);
+      }
+    }
+  }
+  return null;
+}
+
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   list_drives: async ({ pageToken }, { authInfo }) => {
     const drive = await getDriveClient(authInfo);
@@ -296,7 +365,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         pageToken,
         pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
         fields:
-          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared, capabilities(canEdit))",
+          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared, capabilities(canEdit,canShare))",
         orderBy,
       };
 
@@ -343,7 +412,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       const fileMetadata = await drive.files.get({
         fileId,
         supportsAllDrives: true,
-        fields: "id, name, mimeType, size, capabilities(canEdit)",
+        fields: "id, name, mimeType, size, capabilities(canEdit,canShare)",
       });
       const file = fileMetadata.data;
 
@@ -429,6 +498,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
               fileName: file.name,
               mimeType: file.mimeType,
               canEdit: file.capabilities?.canEdit ?? null,
+              canShare: file.capabilities?.canShare ?? null,
               content: truncatedContent,
               returnedContentLength: truncatedContent.length,
               totalContentLength,
@@ -999,6 +1069,74 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         }
       );
     }
+  },
+
+  share_file: async (
+    {
+      fileId,
+      type,
+      role,
+      emailAddress,
+      domain,
+      allowFileDiscovery,
+      sendNotificationEmail,
+      emailMessage,
+      canShare,
+    },
+    { authInfo, agentLoopContext }
+  ) => {
+    const shareError = await ensureShareAccess(canShare, fileId, authInfo);
+    if (shareError) {
+      return shareError;
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    let res;
+    try {
+      res = await drive.permissions.create({
+        fileId,
+        supportsAllDrives: true,
+        sendNotificationEmail,
+        emailMessage,
+        requestBody: {
+          type,
+          role,
+          ...(["user", "group"].includes(type) && { emailAddress }),
+          ...(type === "domain" && {
+            domain,
+            allowFileDiscovery: allowFileDiscovery ?? false,
+          }),
+        },
+      });
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    const sharedWith =
+      type === "domain" ? `everyone in ${domain}` : emailAddress;
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            sharedWith,
+            role,
+            permissionId: res.data.id,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
   },
 };
 

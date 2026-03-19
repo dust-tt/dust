@@ -33,10 +33,11 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
+import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import { isModelAvailable } from "@app/lib/assistant";
+import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -107,7 +108,6 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -292,6 +292,16 @@ export async function getConversationMessageType(
 
   if (!message) {
     return null;
+  }
+
+  if (message.branchSId) {
+    const branch = await ConversationBranchResource.fetchById(
+      auth,
+      message.branchSId
+    );
+    if (!branch || !branch.canRead(auth)) {
+      return null;
+    }
   }
 
   if (message.userMessageId) {
@@ -503,6 +513,7 @@ export function isUserMessageContextValid(
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_kickoff":
+    case "reinforced_agent_notification":
     case "web":
       return false;
     default:
@@ -556,7 +567,7 @@ export async function postUserMessage(
     });
   }
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   const isPartOfProject = isProjectConversation(conversation);
 
   if (isPartOfProject) {
@@ -627,7 +638,11 @@ export async function postUserMessage(
       });
     }
 
-    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
+    const isProviderEnabled = isProviderWhitelisted(
+      auth,
+      agentConfig.model.providerId
+    );
+    if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
       return new Err({
         status_code: 400,
@@ -674,6 +689,8 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
+    let nextMessageRank: number | undefined;
+
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
     // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
     // - Message has user mentions, we don't support multiple users in a branch yet.
@@ -692,27 +709,32 @@ export async function postUserMessage(
         logger.info(
           "Conversation has no content, cannot create branch as the start of the conversation."
         );
-      } else if (
-        conversation.content[conversation.content.length - 1].length === 0
-      ) {
-        logger.error(
-          "Last message in conversation has no content, cannot create branch."
-        );
       } else {
-        const branch = await ConversationBranchResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            previousMessageId:
-              conversation.content[conversation.content.length - 1].at(-1)!.id,
-            state: "open",
-            userId: user.id,
-          },
-          t
-        );
+        // Get the last message in the conversation.
+        const previousMessage =
+          conversation.content[conversation.content.length - 1].at(-1);
+        if (!previousMessage) {
+          logger.error(
+            "Last message in conversation has no content, cannot create branch."
+          );
+        } else {
+          // Create a new branch for the conversation.
+          const branch = await ConversationBranchResource.makeNew(
+            auth,
+            {
+              conversationId: conversation.id,
+              previousMessageId: previousMessage.id,
+              state: "open",
+              userId: user.id,
+            },
+            t
+          );
 
-        // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
-        conversation.branchId = branch.sId;
+          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+          conversation.branchId = branch.sId;
+          // Set the next message rank to the rank of the previous message plus one.
+          nextMessageRank = previousMessage.rank + 1;
+        }
       }
     }
 
@@ -727,7 +749,7 @@ export async function postUserMessage(
       );
     }
 
-    let nextMessageRank =
+    nextMessageRank ??=
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
           workspaceId: owner.id,
@@ -997,7 +1019,11 @@ export async function editUserMessage(
       });
     }
 
-    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
+    const isProviderEnabled = isProviderWhitelisted(
+      auth,
+      agentConfig.model.providerId
+    );
+    if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
       return new Err({
         status_code: 400,
@@ -1200,7 +1226,7 @@ export async function editUserMessage(
     agentMessages
   );
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (
     featureFlags.includes("conversation_butler") &&
     isProjectConversation(conversation)
@@ -1284,8 +1310,6 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
-  const owner = auth.getNonNullableWorkspace();
-
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1474,6 +1498,7 @@ export async function retryAgentMessage(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
+      conversationBranchId: conversation.branchId,
       userMessageId: userMessage.sId,
       userMessageVersion: userMessage.version,
       userMessageOrigin: userMessage.context.origin,
@@ -1481,7 +1506,7 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (
     featureFlags.includes("conversation_butler") &&
     isProjectConversation(conversation)
@@ -1641,7 +1666,7 @@ export async function postNewContentFragment(
     message: messageRow,
   });
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (
     featureFlags.includes("conversation_butler") &&
     isProjectConversation(conversation)
@@ -2100,4 +2125,36 @@ async function isMessagesLimitReached(
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
+}
+
+export async function isConversationEventAllowedForAuth(
+  auth: Authenticator,
+  {
+    event,
+  }: {
+    event: ConversationEvents;
+  }
+): Promise<boolean> {
+  const type = event.type;
+  switch (type) {
+    case "user_message_new":
+    case "agent_message_new":
+      if (event.message.branchId) {
+        // It's okay to fetch the branch here because theses events are only sent once per message.
+        const branch = await ConversationBranchResource.fetchById(
+          auth,
+          event.message.branchId
+        );
+        return !!branch && branch.canRead(auth);
+      }
+      return true;
+    case "agent_message_done":
+    case "butler_suggestion_created":
+    case "butler_done":
+    case "butler_thinking":
+    case "conversation_title":
+      return true;
+    default:
+      assertNever(type);
+  }
 }

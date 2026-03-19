@@ -12,11 +12,11 @@ import parseArgs from "minimist";
 
 function usage() {
   console.error(`Usage:
-  start                                                              Start the cron workflow
-  stop                                                               Stop the cron workflow
-  run-now                                                            Trigger the top-level workflow immediately
-  run-workspace --workspace-id <sId> [--batch]                       Run for a specific workspace (--batch defaults to false)
-  run-agent --workspace-id <sId> --agent-id <sId> [--batch]         Run for a specific agent (--batch defaults to false)`);
+  start                                                                          Start the cron workflow
+  stop                                                                           Stop the cron workflow
+  run-now                                                                        Trigger the top-level workflow immediately
+  run-workspace --workspace-id <sId> [--batch]                                  Run for a specific workspace (--batch defaults to false)
+  run-agent --workspace-id <sId> --agent-id <sId> [--batch] [--days <n>]       Run for a specific agent (--batch defaults to false, --days defaults to 1)`);
 }
 
 const main = async () => {
@@ -66,10 +66,13 @@ const main = async () => {
         usage();
         process.exit(1);
       }
+      const conversationLookbackDays =
+        argv["days"] !== undefined ? Number(argv["days"]) : 1;
       await startReinforcedAgentForAgentWorkflow({
         workspaceId,
         agentConfigurationId: agentId,
         useBatchMode: argv["batch"],
+        conversationLookbackDays,
       });
       return;
     }

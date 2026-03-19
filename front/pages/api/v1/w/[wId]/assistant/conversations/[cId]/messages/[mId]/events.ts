@@ -7,11 +7,11 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { AgentMessageEventType } from "@dust-tt/client";
@@ -154,12 +154,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      });
-      res.flushHeaders();
+      initSSEResponse(res);
 
       // Create an AbortController to handle client disconnection
       const controller = new AbortController();

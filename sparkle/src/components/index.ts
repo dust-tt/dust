@@ -240,6 +240,10 @@ export {
   TooltipTrigger,
 } from "./Tooltip";
 export { Tree } from "./Tree";
+export {
+  TruncatedContent,
+  type TruncatedContentProps,
+} from "./TruncatedContent";
 export { TypingAnimation } from "./TypingAnimation";
 export type { UniversalSearchItemProps } from "./UniversalSearchItem";
 export { UniversalSearchItem } from "./UniversalSearchItem";

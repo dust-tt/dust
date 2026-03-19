@@ -1,4 +1,3 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
   PokeTableBody,
@@ -7,6 +6,7 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -15,7 +15,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function WebhookSourceDetailsPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Webhook Source`);
+  useDocumentTitle(`Poke - ${owner.name} - Webhook Source`);
 
   const webhookSourceId = useRequiredPathParam("wsId");
   const {

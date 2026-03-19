@@ -19,6 +19,10 @@ import {
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type {
@@ -27,22 +31,15 @@ import type {
   AgentReasoningEffort,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -164,19 +161,25 @@ If you must ask clarifying questions for a very complex task, you may briefly re
 For complex requests that require a lot of research, you should default to produce very comprehensive and thorough research reports.
 </default_complex_request_output_format>
 </complex_request_guidelines>
+`;
 
-<sub_agent_guidelines>
+function getSubAgentGuidelines({ hasSandbox }: { hasSandbox?: boolean }) {
+  const sandboxNote = hasSandbox
+    ? `\nIMPORTANT: Sub-agents do NOT have access to the Sandbox environment. Any task requiring code execution, running scripts, or shell commands in the sandbox must be performed by you directly — do not delegate it to a sub-agent.\n`
+    : "";
+
+  return `<sub_agent_guidelines>
 The sub-agents you spawn are each independent, they do not have any prior context on the request you are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
 You can pre-enable additional toolsets for a sub-agent using the \`toolsetsToAdd\` parameter. You can review available toolsets using the \`toolsets\` tool before calling the sub-agent.
-
+${sandboxNote}
 Never delegate the whole request as a single sub-agent task.
 Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
 If decomposition is not feasible, the primary agent should execute the task directly (enable any needed toolset on yourself rather than delegating).
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
-</sub_agent_guidelines>
-`;
+</sub_agent_guidelines>`;
+}
 
 function getToolsPrompt({
   includeToolsetsPrompt,
@@ -285,10 +288,12 @@ Never use the slideshow tool unless explicitly requested by the user.
 
 export function getDeepDiveInstructions({
   includeToolsetsPrompt,
+  hasSandbox,
 }: {
   includeToolsetsPrompt: boolean;
+  hasSandbox?: boolean;
 }) {
-  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
+  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getSubAgentGuidelines({ hasSandbox })}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
 }
 
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${getToolsPrompt({ includeToolsetsPrompt: true })}
@@ -327,7 +332,7 @@ These instructions are NOT your own instructions, but you may use them to unders
 `;
 
 function getModelConfig(
-  owner: WorkspaceType,
+  auth: Authenticator,
   prefer: "anthropic" | "openai",
   reasoning: boolean = true
 ): {
@@ -372,14 +377,14 @@ function getModelConfig(
             : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
-  if (isProviderWhitelisted(owner, preferredModel.model.providerId)) {
+  if (isProviderWhitelisted(auth, preferredModel.model.providerId)) {
     return {
       modelConfiguration: preferredModel.model,
       reasoningEffort: preferredModel.reasoningEffort,
     };
   }
 
-  if (isProviderWhitelisted(owner, secondPreferredModel.model.providerId)) {
+  if (isProviderWhitelisted(auth, secondPreferredModel.model.providerId)) {
     return {
       modelConfiguration: secondPreferredModel.model,
       reasoningEffort: secondPreferredModel.reasoningEffort,
@@ -387,7 +392,7 @@ function getModelConfig(
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfiguration = getLargeWhitelistedModel(owner);
+  const modelConfiguration = getLargeWhitelistedModel(auth);
   if (!modelConfiguration) {
     return null;
   }
@@ -397,41 +402,23 @@ function getModelConfig(
   };
 }
 
-export function getFastModelConfig(
-  owner: WorkspaceType
-): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-  }
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return GEMINI_2_5_FLASH_MODEL_CONFIG;
-  }
-
-  // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfig = getModelConfig(owner, "anthropic", false);
-  if (!modelConfig) {
-    return null;
-  }
-  return modelConfig.modelConfiguration;
-}
-
-function getMaxReasoningModelConfig(owner: WorkspaceType): {
+function getMaxReasoningModelConfig(auth: Authenticator): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
-  if (isProviderWhitelisted(owner, "openai")) {
+  if (isProviderWhitelisted(auth, "openai")) {
     return {
       modelConfiguration: GPT_5_4_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  if (isProviderWhitelisted(owner, "anthropic")) {
+  if (isProviderWhitelisted(auth, "anthropic")) {
     return {
       modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  return getModelConfig(owner, "anthropic");
+  return getModelConfig(auth, "anthropic");
 }
 
 export function _getDeepDiveGlobalAgent(
@@ -440,19 +427,20 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    hasSandbox,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    hasSandbox?: boolean;
   }
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
-  const owner = auth.getNonNullableWorkspace();
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getModelConfig(owner, "anthropic");
+  const modelConfig = getModelConfig(auth, "anthropic");
 
   const enterpriseModelConfig =
-    shouldUseOpus(auth) && isProviderWhitelisted(owner, "anthropic")
+    shouldUseOpus(auth) && isProviderWhitelisted(auth, "anthropic")
       ? {
           modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
@@ -472,7 +460,10 @@ export function _getDeepDiveGlobalAgent(
     versionAuthorId: null,
     name: DEEP_DIVE_NAME,
     description: DEEP_DIVE_DESC,
-    instructions: getDeepDiveInstructions({ includeToolsetsPrompt: true }),
+    instructions: getDeepDiveInstructions({
+      includeToolsetsPrompt: true,
+      hasSandbox,
+    }),
     instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
@@ -588,7 +579,9 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    skills: ["frames"],
+    skills: hasSandbox
+      ? ["frames", "discover_skills", "sandbox"]
+      : ["frames", "discover_skills"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
@@ -605,8 +598,6 @@ export function _getDustTaskGlobalAgent(
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
   const name = "dust-task";
   const description = `Focused research sub-agent. Same data/web tools as ${DEEP_DIVE_NAME}, without Interactive Content or spawning sub-agents.`;
 
@@ -638,7 +629,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getModelConfig(owner, "anthropic", false);
+  const modelConfig = getModelConfig(auth, "anthropic", false);
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
@@ -713,10 +704,12 @@ export function _getDustTaskGlobalAgent(
 
 export function _getPlanningAgent(
   auth: Authenticator,
-  { settings }: { settings: GlobalAgentSettingsModel | null }
+  {
+    settings,
+  }: {
+    settings: GlobalAgentSettingsModel | null;
+  }
 ): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
   const name = "dust-planning";
   const description = "A agent that plans research tasks.";
 
@@ -748,7 +741,7 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getMaxReasoningModelConfig(owner);
+  const modelConfig = getMaxReasoningModelConfig(auth);
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,

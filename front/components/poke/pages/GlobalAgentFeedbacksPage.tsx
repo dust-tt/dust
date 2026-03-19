@@ -1,6 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { usePokeGlobalAgentFeedbacks } from "@app/hooks/usePokeGlobalAgentFeedbacks";
 import type { GlobalAgentFeedbackItem } from "@app/pages/api/poke/global-agent-feedbacks";
 import { Button, Chip, LinkWrapper, Spinner } from "@dust-tt/sparkle";
@@ -116,7 +116,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
 }
 
 export function GlobalAgentFeedbacksPage() {
-  useSetPokePageTitle("Global Agent Feedbacks");
+  useDocumentTitle("Poke - Global Agent Feedbacks");
 
   const [includeEmpty, setIncludeEmpty] = useState(false);
   const [pages, setPages] = useState<number[]>([]);
@@ -151,7 +151,7 @@ export function GlobalAgentFeedbacksPage() {
       <div className="py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground-night">
-            Global Agent Feedbacks
+            Global Agent Feedback
           </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
             User feedback on global agents across all workspaces.

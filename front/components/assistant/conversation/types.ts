@@ -65,6 +65,7 @@ export type VirtuosoMessage =
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
+  isOnboardingConversation: boolean;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -96,6 +97,19 @@ export type VirtuosoMessageListContext = {
   projectSpaceName?: string;
 };
 
+export const areSameRankAndBranch = (
+  a: VirtuosoMessage,
+  b: VirtuosoMessage
+): boolean => {
+  return a.rank === b.rank && a.branchId === b.branchId;
+};
+
+export const getPredicateForRankAndBranch = (
+  m: VirtuosoMessage
+): ((m: VirtuosoMessage) => boolean) => {
+  return (m2: VirtuosoMessage) => areSameRankAndBranch(m, m2);
+};
+
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   return (
     origin && (origin === "triggered" || origin === "triggered_programmatic")
@@ -109,6 +123,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
         message.context.origin === "project_kickoff" ||
+        message.context.origin === "reinforced_agent_notification" ||
         isSidekickBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );

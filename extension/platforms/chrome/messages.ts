@@ -45,7 +45,6 @@ export type TabInfo = {
 
 export type TabActionMessage =
   | { type: "LIST_TABS" }
-  | { type: "GET_CURRENT_TAB_INFO" }
   | { type: "ACTIVATE_TAB"; tabId: number }
   | { type: "CLOSE_TAB"; tabId: number }
   | { type: "OPEN_TAB"; url: string }
@@ -226,7 +225,7 @@ export const sendRefreshTokenMessage = (
         if (
           !response.accessToken ||
           !response.refreshToken ||
-          !response.expiresIn
+          !response.expirationDate
         ) {
           return reject(new Error("Invalid response received."));
         }
@@ -265,12 +264,6 @@ export const sendGetActiveTabMessage = (params: CaptureOptions) => {
 export const sendListTabsMessage = () => {
   return sendMessage<TabActionMessage, TabActionResponse>({
     type: "LIST_TABS",
-  });
-};
-
-export const sendGetCurrentTabInfoMessage = () => {
-  return sendMessage<TabActionMessage, TabActionResponse>({
-    type: "GET_CURRENT_TAB_INFO",
   });
 };
 

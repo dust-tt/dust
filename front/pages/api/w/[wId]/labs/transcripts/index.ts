@@ -92,7 +92,7 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   if (!flags.includes("labs_transcripts")) {

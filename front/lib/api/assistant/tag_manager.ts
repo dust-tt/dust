@@ -1,7 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isLeft } from "fp-ts/lib/Either";
@@ -118,7 +118,7 @@ export async function getWorkspaceTagSuggestions(
 ): Promise<Result<{ suggestions?: WorkspaceTagSuggestion[] | null }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getLargeWhitelistedModel(owner);
+  const model = await getLargeWhitelistedModel(auth);
   if (!model) {
     return new Err(
       new Error(

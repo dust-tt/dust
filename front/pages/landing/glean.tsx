@@ -9,7 +9,7 @@ import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import { Image } from "@app/lib/platform";
+import Image from "next/image";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {

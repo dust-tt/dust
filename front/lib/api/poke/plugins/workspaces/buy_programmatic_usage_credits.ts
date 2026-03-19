@@ -30,6 +30,10 @@ const BuyCreditPurchaseArgsSchema = z
         `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
       )
       .finite("Discount must be a valid number"),
+    purchaseOrderId: z
+      .string()
+      .max(140, "Purchase Order ID cannot exceed 140 characters")
+      .optional(),
     confirm: z.boolean(),
     confirmFreeCredit: z.boolean(),
     confirmProOverride: z.boolean(),
@@ -95,6 +99,13 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         async: true,
         label: "Expiration Date",
         description: "When the credits expire.",
+      },
+      purchaseOrderId: {
+        type: "string",
+        variant: "text",
+        label: "Purchase Order ID (optional)",
+        description: "Customer's PO number to include on the Stripe invoice.",
+        dependsOn: { field: "isFreeCredit", value: false },
       },
       confirm: {
         type: "boolean",
@@ -230,6 +241,9 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       discountPercent,
       startDate,
       expirationDate,
+      customerFacingInfo: validatedArgs.purchaseOrderId
+        ? { purchaseOrderId: validatedArgs.purchaseOrderId }
+        : undefined,
     });
 
     if (result.isErr()) {

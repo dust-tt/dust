@@ -41,7 +41,8 @@ export const agentSuggestionsReadyWorkflow = workflow(
           },
         },
         data: {
-          autoDelete: true,
+          agentConfigurationId: payload.agentConfigurationId,
+          agentName: payload.agentName,
         },
       };
     });

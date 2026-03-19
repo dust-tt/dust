@@ -4,6 +4,10 @@ import {
   removeWorkOSOrganizationDomainFromOrganization,
 } from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  CONVERSATIONS_RETENTION_MIN_DAYS,
+  isValidConversationsRetentionDays,
+} from "@app/lib/conversations_retention";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -831,6 +835,21 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     id: ModelId,
     updateValues: Partial<Attributes<WorkspaceModel>>
   ): Promise<Result<void, Error>> {
+    if (updateValues.conversationsRetentionDays !== undefined) {
+      const retentionDays = updateValues.conversationsRetentionDays;
+
+      if (
+        retentionDays !== null &&
+        !isValidConversationsRetentionDays(retentionDays)
+      ) {
+        return new Err(
+          new Error(
+            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
+          )
+        );
+      }
+    }
+
     const workspace = await this.model.findOne({
       where: { id },
     });

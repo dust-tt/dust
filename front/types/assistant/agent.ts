@@ -130,6 +130,10 @@ export type AgentFetchVariant = "light" | "full" | "extra_light";
 export type GlobalAgentContext = {
   userMessageRank: number;
   sidekickIsNewAgentFromScratch?: boolean;
+  reinforcedAgentNotification?: {
+    agentName: string;
+    agentConfigurationId: string;
+  };
 };
 
 /**
@@ -188,6 +192,8 @@ export type LightAgentConfigurationType = {
 
   canRead: boolean;
   canEdit: boolean;
+  // TODO (Pierre): Remove after omitted thinking evals
+  omittedThinking?: boolean;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

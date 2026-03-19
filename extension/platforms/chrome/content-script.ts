@@ -202,6 +202,7 @@ function createSidebar(): void {
   // Mark the URL so PortProvider knows it is embedded in a content-script
   // sidebar (Arc, etc.) rather than running as a native side panel.
   iframeElement.src = chrome.runtime.getURL("main.html") + "?embedded=1";
+  iframeElement.allow = "clipboard-write";
   iframeElement.style.cssText = `
     flex: 1;
     width: 100%;

@@ -1,4 +1,3 @@
-import localLogger from "@app/logger/logger";
 import { datadogLogs } from "@datadog/browser-logs";
 
 // Keep the exported Logger type for compatibility with existing imports.
@@ -56,18 +55,16 @@ function makeLogger(baseBindings?: LogContext) {
 
     try {
       if (IS_DEV) {
-        // In dev, use the local pino logger so logs appear locally and pretty-printed.
+        // In dev, log to the browser console.
+        const consoleLevel =
+          level === "trace" || level === "debug" ? "debug" : level;
         const hasCtx = Object.keys(mergedContext).length > 0;
-        // Pino signature: logger[level](obj?, msg?)
         if (hasCtx && message !== undefined) {
-          // Prefer structured + message
-          localLogger[level](mergedContext, message);
+          console[consoleLevel](message, mergedContext);
         } else if (hasCtx) {
-          localLogger[level](mergedContext);
+          console[consoleLevel](mergedContext);
         } else if (message !== undefined) {
-          localLogger[level](message);
-        } else {
-          localLogger[level]("");
+          console[consoleLevel](message);
         }
         return;
       }

@@ -206,6 +206,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_comments": "never_ask",
     "list_drives": "never_ask",
     "search_files": "never_ask",
+    "share_file": "low",
     "update_document": "medium",
     "update_presentation": "medium",
     "update_spreadsheet": "medium",
@@ -304,6 +305,20 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "jit_testing": {
     "jit_all_optionals_and_defaults": "high",
+  },
+  "luma": {
+    "add_guests": "low",
+    "create_event": "high",
+    "get_authenticated_user": "never_ask",
+    "get_event": "never_ask",
+    "get_event_insights": "never_ask",
+    "get_guest": "never_ask",
+    "list_events": "never_ask",
+    "list_guests": "never_ask",
+    "search_guests": "never_ask",
+    "send_invites": "medium",
+    "update_event": "medium",
+    "update_guest_status": "medium",
   },
   "microsoft_drive": {
     "copy_file": "never_ask",
@@ -409,6 +424,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_events": "never_ask",
     "update_event": "low",
   },
+  "poke": {
+    "get_workspace_metadata": "high",
+  },
   "primitive_types_debugger": {
     "pass_through": "high",
     "tool_without_user_config": "high",
@@ -457,7 +475,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "sandbox": {
     "bash": "never_ask",
-    "describe_environment": "never_ask",
+    "describe_toolset": "never_ask",
   },
   "schedules_management": {
     "create_schedule": "high",

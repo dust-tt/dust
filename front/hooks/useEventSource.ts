@@ -47,7 +47,7 @@ const stableEventSourceManager = {
    * @param uniqueId A unique identifier for this EventSource instance
    * @returns The newly created EventSource instance
    */
-  create(url: string, uniqueId: string) {
+  async create(url: string, uniqueId: string) {
     const urlWithCommitHash = new URL(url, document.baseURI);
     urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
 
@@ -57,7 +57,7 @@ const stableEventSourceManager = {
       urlWithCommitHash.search +
       urlWithCommitHash.hash;
 
-    const newSource = clientEventSource(pathWithQueryAndHash, {
+    const newSource = await clientEventSource(pathWithQueryAndHash, {
       heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
     });
     this.sources.set(uniqueId, newSource);
@@ -108,84 +108,100 @@ export function useEventSource(
   const sourceManager = stableEventSourceManager;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const connect = useCallback(() => {
-    const url = buildURL(lastEvent.current);
-    if (!url) {
-      // If the url is empty, it means streaming is done.
-      // Close any previous connections for this uniqueId and remove it from the manager.
-      sourceManager.remove(uniqueId);
+  const connect = useCallback(
+    async (signal: AbortSignal) => {
+      const url = buildURL(lastEvent.current);
+      if (!url) {
+        // If the url is empty, it means streaming is done.
+        // Close any previous connections for this uniqueId and remove it from the manager.
+        sourceManager.remove(uniqueId);
 
-      return null;
-    }
-
-    let source = sourceManager.get(uniqueId);
-    // If the source is closed or doesn't exist, create a new one.
-    if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
-      source = sourceManager.create(url, uniqueId);
-    }
-
-    source.onopen = () => {
-      // If connected, reset the reconnect attempts and clear the reconnect timeout.
-      reconnectAttempts.current = 0;
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+        return null;
       }
-    };
 
-    source.onmessage = (event: PolyfillMessageEvent) => {
-      if (event.data === "done") {
+      let source = sourceManager.get(uniqueId);
+      // If the source is closed or doesn't exist, create a new one.
+      if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
+        source = await sourceManager.create(url, uniqueId);
+      }
+
+      // If the effect was cleaned up while we were awaiting, discard the connection.
+      // Only close our local source — don't call sourceManager.remove() because a
+      // newer connect() call may have already stored its own source in the manager.
+      if (signal.aborted) {
+        source.close();
+        return null;
+      }
+
+      source.onopen = () => {
+        // If connected, reset the reconnect attempts and clear the reconnect timeout.
+        reconnectAttempts.current = 0;
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+      };
+
+      source.onmessage = (event: PolyfillMessageEvent) => {
+        if (event.data === "done") {
+          source.close();
+
+          // Reconnect to the stream right away.
+          setReconnectCounter((c) => c + 1);
+          return;
+        }
+
+        onEventCallback(event.data);
+        lastEvent.current = event.data;
+      };
+
+      source.onerror = (event: PolyfillEvent) => {
+        console.error("EventSource error", event);
         source.close();
 
-        // Reconnect to the stream right away.
-        setReconnectCounter((c) => c + 1);
-        return;
-      }
+        reconnectAttempts.current++;
 
-      onEventCallback(event.data);
-      lastEvent.current = event.data;
-    };
+        if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+          console.log(
+            "Too many errors, not reconnecting. Please refresh the page."
+          );
+          setIsError(new Error("Too many errors, closing connection."));
 
-    source.onerror = (event: PolyfillEvent) => {
-      console.error("EventSource error", event);
-      source.close();
+          return;
+        }
 
-      reconnectAttempts.current++;
+        // Add jitter to prevent synchronized reconnection bursts during deployment.
+        const reconnectDelayMs =
+          RECONNECT_DELAY_BASE_MS + Math.random() * RECONNECT_DELAY_JITTER_MS;
 
-      if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
-        console.log(
-          "Too many errors, not reconnecting. Please refresh the page."
+        console.error(
+          `Connection error. Attempting to reconnect in ${Math.round(reconnectDelayMs)}ms`
         );
-        setIsError(new Error("Too many errors, closing connection."));
 
-        return;
-      }
+        // Set timeout to reconnect after a jittered delay.
+        reconnectTimeoutRef.current = setTimeout(() => {
+          setReconnectCounter((c) => c + 1);
+        }, reconnectDelayMs);
+      };
 
-      // Add jitter to prevent synchronized reconnection bursts during deployment.
-      const reconnectDelayMs =
-        RECONNECT_DELAY_BASE_MS + Math.random() * RECONNECT_DELAY_JITTER_MS;
+      return source;
+    },
+    [buildURL, onEventCallback, uniqueId, sourceManager]
+  );
 
-      console.error(
-        `Connection error. Attempting to reconnect in ${Math.round(reconnectDelayMs)}ms`
-      );
-
-      // Set timeout to reconnect after a jittered delay.
-      reconnectTimeoutRef.current = setTimeout(() => {
-        setReconnectCounter((c) => c + 1);
-      }, reconnectDelayMs);
-    };
-
-    return source;
-  }, [buildURL, onEventCallback, uniqueId, sourceManager]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `connect` is intentionally excluded — its identity may change every render if callers don't memoize buildURL/onEventCallback, which would abort in-flight connections.
   useEffect(() => {
     if (!isReadyToConsumeStream || isError) {
       return;
     }
 
-    connect();
+    // AbortController lets us detect when React strict mode (or any unmount)
+    // cleans up the effect while the async connect() is still in flight.
+    // Without this, both mounts would resolve and register duplicate EventSources.
+    const abortController = new AbortController();
+    connect(abortController.signal);
 
     return () => {
+      abortController.abort();
       sourceManager.remove(uniqueId);
 
       if (reconnectTimeoutRef.current) {
@@ -194,7 +210,6 @@ export function useEventSource(
     };
   }, [
     isReadyToConsumeStream,
-    connect,
     reconnectCounter,
     sourceManager,
     uniqueId,

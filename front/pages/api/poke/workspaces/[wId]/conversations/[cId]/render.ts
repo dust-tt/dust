@@ -193,6 +193,7 @@ async function handler(
         sId: generateRandomModelSId("msg"),
         version: 0,
         rank: 0,
+        branchId: null,
         created: Date.now(),
         completedTs: null,
         parentMessageId: userMessage.sId,

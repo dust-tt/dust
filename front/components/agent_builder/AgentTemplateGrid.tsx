@@ -8,19 +8,15 @@ import { CardGrid, CompactAssistantCard, ContextItem } from "@dust-tt/sparkle";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
-  openTemplateModal: (templateId: string) => void;
   templateTagsMapping: TemplateTagsType;
   selectedTags: TemplateTagCodeType[];
-  hasSidekick: boolean;
   onTemplateClick: (templateId: string) => void;
 }
 
 export function AgentTemplateGrid({
   templates,
-  openTemplateModal,
   templateTagsMapping,
   selectedTags,
-  hasSidekick,
   onTemplateClick,
 }: AgentTemplateGridProps) {
   if (!templates.length) {
@@ -55,11 +51,7 @@ export function AgentTemplateGrid({
                     title={template.handle}
                     pictureUrl={template.pictureUrl}
                     description={template.userFacingDescription ?? ""}
-                    onClick={() =>
-                      hasSidekick
-                        ? onTemplateClick(template.sId)
-                        : openTemplateModal(template.sId)
-                    }
+                    onClick={() => onTemplateClick(template.sId)}
                   />
                 ))}
               </CardGrid>

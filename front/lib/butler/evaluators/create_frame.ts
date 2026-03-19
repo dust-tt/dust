@@ -13,6 +13,7 @@ const CONFIDENCE_THRESHOLD = 70;
 const FrameResult = z.object({
   frame_confidence: z.number(),
   frame_prompt: z.string(),
+  frame_rationale: z.string().optional(),
 });
 
 export const createFrameEvaluator: ButlerEvaluator = {
@@ -63,8 +64,13 @@ export const createFrameEvaluator: ButlerEvaluator = {
             description:
               "A prompt describing the Frame to create, or empty string if none.",
           },
+          frame_rationale: {
+            type: "string",
+            description:
+              "A brief one-sentence explanation of why a Frame would benefit this conversation, or empty string if none.",
+          },
         },
-        required: ["frame_confidence", "frame_prompt"],
+        required: ["frame_confidence", "frame_prompt", "frame_rationale"],
       },
     };
 
@@ -80,7 +86,7 @@ export const createFrameEvaluator: ButlerEvaluator = {
       return null;
     }
 
-    const { frame_confidence, frame_prompt } = parsed.data;
+    const { frame_confidence, frame_prompt, frame_rationale } = parsed.data;
 
     if (frame_confidence < CONFIDENCE_THRESHOLD || !frame_prompt) {
       return null;
@@ -95,6 +101,7 @@ export const createFrameEvaluator: ButlerEvaluator = {
         agentSId: GLOBAL_AGENTS_SID.DUST,
         agentName: "Dust",
         prompt: frame_prompt,
+        rationale: frame_rationale || undefined,
       },
     };
   },

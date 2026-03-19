@@ -31,7 +31,10 @@ describe("toMessage", () => {
         throw new Error("No user message found in test fixtures");
       }
 
-      const result = toMessage(userMessage, { isLast: false });
+      const result = toMessage(userMessage, {
+        isLast: false,
+        omittedThinking: false,
+      });
 
       // Verify no cache_control is present
       if (Array.isArray(result.content)) {
@@ -49,7 +52,10 @@ describe("toMessage", () => {
         throw new Error("No user message found in test fixtures");
       }
 
-      const result = toMessage(userMessage, { isLast: true });
+      const result = toMessage(userMessage, {
+        isLast: true,
+        omittedThinking: false,
+      });
 
       // Verify cache_control is added to the last content block
       if (Array.isArray(result.content) && result.content.length > 0) {
@@ -69,7 +75,10 @@ describe("toMessage", () => {
         throw new Error("No assistant message found in test fixtures");
       }
 
-      const result = toMessage(assistantMessage, { isLast: true });
+      const result = toMessage(assistantMessage, {
+        isLast: true,
+        omittedThinking: false,
+      });
 
       // Assistant messages should not have cache_control even if isLast is true
       if (Array.isArray(result.content)) {

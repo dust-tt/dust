@@ -1,0 +1,74 @@
+name: Release sandbox tool
+
+on:
+  workflow_dispatch:
+    inputs:
+      codex_tag:
+        description: "openai/codex release tag to build from (e.g. rust-v0.115.0)"
+        required: true
+        default: "rust-v0.115.0"
+      apply_patch_version:
+        description: "apply_patch release version (e.g. 0.1.0)"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: release_sandbox_tool
+  cancel-in-progress: false
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout codex repo at pinned tag
+        uses: actions/checkout@v4
+        with:
+          repository: openai/codex
+          ref: ${{ inputs.codex_tag }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build with cross
+        working-directory: codex-rs
+        run: cross build --release --target x86_64-unknown-linux-musl -p codex-apply-patch
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p artifacts
+          cp codex-rs/target/x86_64-unknown-linux-musl/release/apply_patch artifacts/apply_patch-linux-x86_64
+          cd artifacts
+          sha256sum apply_patch-linux-x86_64 > checksums-sha256.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+        with:
+          tag_name: apply-patch-v${{ inputs.apply_patch_version }}
+          name: apply_patch v${{ inputs.apply_patch_version }}
+          body: |
+            Built from [openai/codex](https://github.com/openai/codex) at tag `${{ inputs.codex_tag }}` (Apache-2.0).
+
+            ### Download
+
+            | Platform | Architecture | Binary |
+            |----------|--------------|--------|
+            | Linux    | x86_64       | `apply_patch-linux-x86_64` |
+
+            ### Verify checksum
+
+            ```bash
+            sha256sum -c checksums-sha256.txt
+            ```
+          files: |
+            artifacts/apply_patch-linux-x86_64
+            artifacts/checksums-sha256.txt
+          fail_on_unmatched_files: true

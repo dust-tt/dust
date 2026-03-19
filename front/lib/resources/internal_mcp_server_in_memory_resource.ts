@@ -2,13 +2,13 @@ import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
 } from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,

@@ -1,6 +1,7 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   editUserMessage,
+  isConversationEventAllowedForAuth,
   postNewContentFragment,
   postUserMessage,
   retryAgentMessage,
@@ -33,6 +34,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageNewEvent,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -153,7 +155,42 @@ describe("retryAgentMessage", () => {
           userMessageId: userMessage!.sId,
           userMessageVersion: userMessage!.version,
           userMessageOrigin: userMessage!.context.origin,
+          conversationBranchId: conversation.branchId,
         },
+        startStep: 0,
+      });
+    }
+  });
+
+  it("should pass non-null conversation branchId when retrying in a branch", async () => {
+    const branchId = "branch-test-id";
+
+    const userMessage = conversation.content
+      .flat()
+      .filter(isUserMessageType)
+      .find((m) => m.sId === agentMessage.parentMessageId);
+
+    expect(userMessage).toBeDefined();
+
+    const branchedConversation: ConversationType = {
+      ...conversation,
+      branchId,
+    };
+
+    const result = await retryAgentMessage(auth, {
+      conversation: branchedConversation,
+      message: agentMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+    if (result.isOk()) {
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledWith({
+        auth,
+        agentLoopArgs: expect.objectContaining({
+          conversationBranchId: branchId,
+        }),
         startStep: 0,
       });
     }
@@ -2607,5 +2644,228 @@ describe("postNewContentFragment", () => {
       // Verify getContentFragmentBlob was not called since the data source view check failed first
       expect(getContentFragmentBlob).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("isConversationEventAllowedForAuth", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let otherAuth: Authenticator;
+  let branchSId: string;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    const user = setup.user;
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      title: "Branch test conversation",
+      requestedSpaceIds: [],
+    });
+
+    const baseUserMessage = await UserMessageModel.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      content: "Base message",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "web",
+      clientSideMCPServerIds: [],
+    });
+
+    const baseMessage = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: baseUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+    });
+
+    const branch = await ConversationBranchModel.create({
+      workspaceId: workspace.id,
+      state: "open",
+      previousMessageId: baseMessage.id,
+      conversationId: conversation.id,
+      userId: user.id,
+    });
+    branchSId = makeSId("conversation_branch", {
+      id: branch.id,
+      workspaceId: workspace.id,
+    });
+  });
+
+  it("returns true for agent_message_done event", async () => {
+    const event = {
+      type: "agent_message_done" as const,
+      created: Date.now(),
+      conversationId: "conv-1",
+      configurationId: "config-1",
+      messageId: "msg-1",
+      status: "success" as const,
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for butler_suggestion_created event", async () => {
+    const event = {
+      type: "butler_suggestion_created" as const,
+      created: Date.now(),
+      suggestion: {
+        sId: "suggestion-1",
+        createdAt: 1,
+        updatedAt: 1,
+        sourceMessageSId: "msg-1",
+        resultMessageSId: null,
+        status: "pending" as const,
+        suggestionType: "rename_title" as const,
+        metadata: { suggestedTitle: "New title" },
+      },
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for butler_done event", async () => {
+    const event = {
+      type: "butler_done" as const,
+      created: Date.now(),
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for butler_thinking event", async () => {
+    const event = {
+      type: "butler_thinking" as const,
+      created: Date.now(),
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for conversation_title event", async () => {
+    const event = {
+      type: "conversation_title" as const,
+      created: Date.now(),
+      title: "New title",
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for user_message_new when message has no branchId", async () => {
+    const event: UserMessageNewEvent = {
+      type: "user_message_new",
+      created: Date.now(),
+      messageId: "msg-1",
+      message: {
+        branchId: null,
+        contentFragments: [],
+      } as unknown as UserMessageNewEvent["message"],
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for user_message_new when branch exists and auth can read it", async () => {
+    const event: UserMessageNewEvent = {
+      type: "user_message_new",
+      created: Date.now(),
+      messageId: "msg-1",
+      message: {
+        branchId: branchSId,
+        contentFragments: [],
+      } as unknown as UserMessageNewEvent["message"],
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns false for user_message_new when branch exists but auth cannot read it", async () => {
+    const event: UserMessageNewEvent = {
+      type: "user_message_new",
+      created: Date.now(),
+      messageId: "msg-1",
+      message: {
+        branchId: branchSId,
+        contentFragments: [],
+      } as unknown as UserMessageNewEvent["message"],
+    };
+    const result = await isConversationEventAllowedForAuth(otherAuth, {
+      event,
+    });
+    expect(result).toBe(false);
+  });
+
+  it("returns false for user_message_new when branchId does not exist", async () => {
+    const event: UserMessageNewEvent = {
+      type: "user_message_new",
+      created: Date.now(),
+      messageId: "msg-1",
+      message: {
+        branchId: makeSId("conversation_branch", {
+          id: 999999,
+          workspaceId: workspace.id,
+        }),
+        contentFragments: [],
+      } as unknown as UserMessageNewEvent["message"],
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(false);
+  });
+
+  it("returns true for agent_message_new when message has no branchId", async () => {
+    const event = {
+      type: "agent_message_new" as const,
+      created: Date.now(),
+      configurationId: "config-1",
+      messageId: "msg-1",
+      message: { branchId: null } as AgentMessageType,
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns true for agent_message_new when branch exists and auth can read it", async () => {
+    const event = {
+      type: "agent_message_new" as const,
+      created: Date.now(),
+      configurationId: "config-1",
+      messageId: "msg-1",
+      message: { branchId: branchSId } as AgentMessageType,
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
+  it("returns false for agent_message_new when branch exists but auth cannot read it", async () => {
+    const event = {
+      type: "agent_message_new" as const,
+      created: Date.now(),
+      configurationId: "config-1",
+      messageId: "msg-1",
+      message: { branchId: branchSId } as AgentMessageType,
+    };
+    const result = await isConversationEventAllowedForAuth(otherAuth, {
+      event,
+    });
+    expect(result).toBe(false);
   });
 });

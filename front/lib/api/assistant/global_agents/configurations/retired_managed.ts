@@ -6,6 +6,10 @@ import type {
   PrefetchedDataSourcesType,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -13,11 +17,7 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConnectorProvider } from "@app/types/data_source";
 
 function _getManagedDataSourceAgent(
@@ -44,11 +44,9 @@ function _getManagedDataSourceAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(owner)
-    : getSmallWhitelistedModel(owner);
+    ? getLargeWhitelistedModel(auth)
+    : getSmallWhitelistedModel(auth);
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {

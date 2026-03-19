@@ -34,6 +34,7 @@ import { default as includeDataServer } from "@app/lib/api/actions/servers/inclu
 import { default as interactiveContentServer } from "@app/lib/api/actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
+import { default as lumaServer } from "@app/lib/api/actions/servers/luma";
 import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
 import { default as microsoftTeamsServer } from "@app/lib/api/actions/servers/microsoft_teams";
@@ -43,6 +44,7 @@ import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
+import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectConversationServer } from "@app/lib/api/actions/servers/project_conversation";
@@ -184,6 +186,8 @@ export async function getInternalMCPServer(
       return databricksServer(auth, agentLoopContext);
     case "jira":
       return jiraServer(auth, agentLoopContext);
+    case "luma":
+      return lumaServer(auth, agentLoopContext);
     case "microsoft_drive":
       return microsoftDriveServer(auth, agentLoopContext);
     case "microsoft_excel":
@@ -236,6 +240,8 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_manager":
       return projectManagerServer(auth, agentLoopContext);
+    case "poke":
+      return pokeServer(auth, agentLoopContext);
     case "project_conversation":
       return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":

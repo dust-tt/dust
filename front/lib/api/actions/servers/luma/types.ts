@@ -1,0 +1,194 @@
+import { z } from "zod";
+
+export const LumaVisibilitySchema = z.enum([
+  "public",
+  "members-only",
+  "private",
+]);
+
+export type LumaVisibility = z.infer<typeof LumaVisibilitySchema>;
+
+export const LumaApprovalStatusSchema = z.enum([
+  "approved",
+  "pending_approval",
+  "waitlist",
+  "declined",
+  "invited",
+]);
+
+export type LumaApprovalStatus = z.infer<typeof LumaApprovalStatusSchema>;
+
+export const LumaEventSchema = z
+  .object({
+    api_id: z.string(),
+    name: z.string(),
+    start_at: z.string(),
+    end_at: z.string().nullable().optional(),
+    timezone: z.string().optional(),
+    visibility: z.string().nullable().optional(),
+    max_capacity: z.number().nullable().optional(),
+    slug: z.string().nullable().optional(),
+    meeting_url: z.string().nullable().optional(),
+    cover_url: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+    geo_address_info: z
+      .object({
+        full_address: z.string().nullable(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .passthrough();
+
+export type LumaEvent = z.infer<typeof LumaEventSchema>;
+
+export const LumaGuestSchema = z
+  .object({
+    api_id: z.string(),
+    name: z.string().nullable(),
+    email: z.string().nullable(),
+    approval_status: LumaApprovalStatusSchema,
+    registered_at: z.string().nullable(),
+    checked_in_at: z.string().nullable(),
+  })
+  .passthrough();
+
+export type LumaGuest = z.infer<typeof LumaGuestSchema>;
+
+export const LumaTicketTypeSchema = z
+  .object({
+    api_id: z.string(),
+    name: z.string(),
+    type: z.string(),
+    cents: z.number().nullable(),
+    currency: z.string().nullable(),
+    is_hidden: z.boolean().optional(),
+    max_capacity: z.number().nullable().optional(),
+  })
+  .passthrough();
+
+export type LumaTicketType = z.infer<typeof LumaTicketTypeSchema>;
+
+export const LumaUserSchema = z
+  .object({
+    api_id: z.string(),
+    name: z.string().nullable(),
+    email: z.string().nullable(),
+  })
+  .passthrough();
+
+export type LumaUser = z.infer<typeof LumaUserSchema>;
+
+export const LumaUserResponseSchema = z
+  .object({
+    user: LumaUserSchema,
+  })
+  .passthrough();
+
+export const LumaEventResponseSchema = z
+  .object({
+    event: LumaEventSchema,
+  })
+  .passthrough();
+
+export const LumaGuestResponseSchema = z
+  .object({
+    guest: LumaGuestSchema,
+  })
+  .passthrough();
+
+export const LumaEventEntrySchema = z
+  .object({
+    api_id: z.string(),
+    event: LumaEventSchema,
+  })
+  .passthrough();
+
+export const LumaEventListResponseSchema = z
+  .object({
+    entries: z.array(LumaEventEntrySchema),
+    has_more: z.boolean(),
+    next_cursor: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const LumaGuestEntrySchema = z
+  .object({
+    api_id: z.string(),
+    guest: LumaGuestSchema,
+  })
+  .passthrough();
+
+export const LumaGuestListResponseSchema = z
+  .object({
+    entries: z.array(LumaGuestEntrySchema),
+    has_more: z.boolean(),
+    next_cursor: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const LumaTicketTypeListResponseSchema = z
+  .object({
+    ticket_types: z.array(LumaTicketTypeSchema),
+  })
+  .passthrough();
+
+export interface ListEventsParams {
+  after?: string;
+  before?: string;
+}
+
+export interface ListGuestsParams {
+  approval_status?: LumaApprovalStatus;
+  sort_column?: string;
+  sort_direction?: string;
+  pagination_cursor?: string;
+  pagination_limit?: number;
+}
+
+export interface CreateEventParams {
+  name: string;
+  start_at: string;
+  end_at?: string;
+  timezone?: string;
+  max_capacity?: number;
+  visibility?: LumaVisibility;
+  description?: string;
+  cover_url?: string;
+  location_place_id?: string;
+  slug?: string;
+}
+
+export interface UpdateEventParams {
+  name?: string;
+  start_at?: string;
+  end_at?: string;
+  timezone?: string;
+  max_capacity?: number;
+  visibility?: LumaVisibility;
+  description?: string;
+  cover_url?: string;
+  location_place_id?: string;
+  slug?: string;
+  suppress_notifications?: boolean;
+}
+
+export type LumaGuestStatusAction = "approved" | "declined";
+
+export const LumaGuestStatusActionSchema = z.enum(["approved", "declined"]);
+
+export interface UpdateGuestStatusParams {
+  guest_api_id_or_email: string;
+  status: LumaGuestStatusAction;
+  should_refund?: boolean;
+}
+
+export interface GuestInput {
+  email: string;
+  name?: string;
+}
+
+export interface SendInvitesParams {
+  emails: string[];
+}

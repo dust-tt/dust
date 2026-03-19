@@ -6,7 +6,7 @@ import {
   CONFIG_ENV_PATH,
   DUST_HIVE_ENVS,
   DUST_HIVE_HOME,
-  DUST_HIVE_WORKTREES,
+  HIVES_DIR,
   findRepoRoot,
   getDockerOverridePath,
   getEnvDir,
@@ -31,8 +31,8 @@ describe("paths", () => {
       expect(DUST_HIVE_ENVS).toBe(join(home, ".dust-hive", "envs"));
     });
 
-    it("sets DUST_HIVE_WORKTREES to ~/dust-hive", () => {
-      expect(DUST_HIVE_WORKTREES).toBe(join(home, "dust-hive"));
+    it("sets HIVES_DIR to .hives", () => {
+      expect(HIVES_DIR).toBe(".hives");
     });
 
     it("sets CONFIG_ENV_PATH to ~/.dust-hive/config.env", () => {
@@ -51,12 +51,12 @@ describe("paths", () => {
   });
 
   describe("getWorktreeDir", () => {
-    it("returns correct worktree path", () => {
-      expect(getWorktreeDir("test")).toBe(join(home, "dust-hive", "test"));
+    it("returns correct worktree path under repo root", () => {
+      expect(getWorktreeDir("test", "/path/to/repo")).toBe("/path/to/repo/.hives/test");
     });
 
     it("handles environment names with hyphens", () => {
-      expect(getWorktreeDir("auth-v2")).toBe(join(home, "dust-hive", "auth-v2"));
+      expect(getWorktreeDir("auth-v2", "/path/to/repo")).toBe("/path/to/repo/.hives/auth-v2");
     });
   });
 

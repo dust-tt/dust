@@ -1,8 +1,14 @@
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getFastModelConfig } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
+import {
+  getSmallWhitelistedModel,
+  getWhitelistedProviders,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -28,10 +34,9 @@ export async function summarizeWithLLM({
   content: string;
   agentLoopRunContext: AgentLoopRunContextType;
 }): Promise<Result<string, Error>> {
-  const owner = auth.getNonNullableWorkspace();
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
-  const model = getFastModelConfig(owner);
+  const model = await getFastModelConfigForSummarization(auth);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate summary")
@@ -71,7 +76,7 @@ export async function summarizeWithLLM({
       context: {
         operationType: "web_content_summarization",
         userId: auth.user()?.sId,
-        workspaceId: owner.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
         ...(agentLoopRunContext && {
           conversationId: agentLoopRunContext.conversation.sId,
         }),
@@ -89,4 +94,18 @@ export async function summarizeWithLLM({
   }
 
   return new Ok(summary);
+}
+
+async function getFastModelConfigForSummarization(
+  auth: Authenticator
+): Promise<ModelConfigurationType | null> {
+  const providers = getWhitelistedProviders(auth);
+
+  if (providers.has("anthropic")) {
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+  }
+  if (providers.has("google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+  }
+  return getSmallWhitelistedModel(auth);
 }

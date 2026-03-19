@@ -140,6 +140,7 @@ export class ConversationFactory {
 
     const userMessage: UserMessageType = {
       id: messageRow.id,
+      branchId: messageRow.branchSId,
       created: userMessageRow.createdAt.getTime(),
       sId: messageRow.sId,
       type: "user_message",
@@ -315,6 +316,7 @@ export class ConversationFactory {
       modelInteractionDurationMs: null,
       completionDurationMs: null,
       rank: messageRow.rank,
+      branchId: messageRow.branchSId,
       richMentions: [],
     };
 

@@ -1,5 +1,4 @@
 import { useURLSheet } from "@app/hooks/useURLSheet";
-import { Image } from "@app/lib/platform";
 import {
   CloudArrowLeftRightIcon,
   FolderIcon,
@@ -45,7 +44,7 @@ export function QuickStartGuide() {
                 time or chain them in one conversation.
               </p>
             </div>
-            <Image
+            <img
               src="/static/quick_start_guide_input_bar.png"
               className="col-span-3"
               width={400}

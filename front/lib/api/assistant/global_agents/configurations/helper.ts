@@ -7,17 +7,17 @@ import {
   _getDefaultWebActionsForGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export function _getHelperGlobalAgent({
   auth,
@@ -61,11 +61,9 @@ The user you're interacting with is granted with the role ${role}. Their name is
 </user_context>`;
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(owner)
-    : getSmallWhitelistedModel(owner);
+    ? getLargeWhitelistedModel(auth)
+    : getSmallWhitelistedModel(auth);
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {

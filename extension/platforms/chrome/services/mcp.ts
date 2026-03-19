@@ -66,7 +66,7 @@ export class ChromeMcpService extends McpService {
 
       const transport = new BrowserMCPTransport(
         owner.sId,
-        "chrome-extension-client",
+        "dust-chrome-extension",
         (serverId) => {
           this.serverId = serverId;
           onServerIdReceived(serverId);

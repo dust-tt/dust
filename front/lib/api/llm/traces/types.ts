@@ -106,7 +106,7 @@ interface LLMTraceMetadata {
   capturedBytes?: number;
   durationMs: number;
   endTimestamp?: string;
-  modelId: ModelIdType;
+  modelId: ModelIdType | "unknown";
   startTimestamp: string;
   timeToFirstEventMs?: number;
   /** Reason for truncation if applicable */
@@ -120,7 +120,7 @@ export interface LLMTrace {
   /** Unique identifier for this trace (format: llm_${uuid}) */
   context: LLMTraceContext;
   error?: LLMTraceError;
-  input: LLMTraceInput;
+  input?: LLMTraceInput;
   metadata: LLMTraceMetadata;
   output?: LLMTraceOutput;
   traceId: string;

@@ -1,9 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
-import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/sidekick/SuggestionBubbleMenu";
@@ -175,7 +173,6 @@ export function AgentBuilderInstructionsEditor({
   children,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
-  const hasSidekick = useIsAgentBuilderSidekickEnabled();
 
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -501,14 +498,8 @@ export function AgentBuilderInstructionsEditor({
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
     >
       <EditorContent editor={editor} />
-      {editor && hasSidekick && (
+      {editor && (
         <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
-      )}
-      {!hasSidekick && (
-        // TODO(sidekick): Remove the whole InstructionTipsPopover and endpoint when sidekick is released.
-        <div className="absolute bottom-2 right-2">
-          <InstructionTipsPopover owner={owner} />
-        </div>
       )}
     </div>
   );
@@ -522,9 +513,7 @@ export function AgentBuilderInstructionsEditor({
             editor={editor}
             onAcceptAll={handleAcceptAll}
             onRejectAll={handleRejectAll}
-            showSuggestionActions={
-              hasSidekick && hasPendingInstructionSuggestions
-            }
+            showSuggestionActions={hasPendingInstructionSuggestions}
             toolbarExtra={toolbarExtra}
           />
         }

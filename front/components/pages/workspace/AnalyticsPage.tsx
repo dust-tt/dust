@@ -9,16 +9,18 @@ import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/Wor
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
 import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
+import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { BarChartIcon, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
+  const { hasFeature } = useFeatureFlags();
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
   const [period, setPeriod] =
@@ -49,6 +51,11 @@ export function AnalyticsPage() {
       );
 
       if (!response.ok) {
+        const responseBody = await response.json().catch(() => null);
+        if (isAPIErrorResponse(responseBody)) {
+          throw new Error(responseBody.error.message);
+        }
+
         throw new Error(`Error: ${response.status}`);
       }
 
@@ -99,7 +106,7 @@ export function AnalyticsPage() {
         },
         "[Analytics] Failed to download activity data"
       );
-      alert("Failed to download activity data.");
+      window.alert(normalizedError.message);
     } finally {
       setDownloadingMonth(null);
     }
@@ -163,19 +170,23 @@ export function AnalyticsPage() {
         workspaceId={owner.sId}
         period={period}
       />
-      <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
-      <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
-      <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
-      <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
-      <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
-      <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
-      <ActivityReport
-        downloadingMonth={downloadingMonth}
-        monthOptions={monthOptions}
-        handleDownload={handleDownload}
-        includeInactive={includeInactive}
-        onIncludeInactiveChange={setIncludeInactive}
-      />
+      <div className="flex flex-col pb-8 gap-8">
+        <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
+        <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
+        <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
+        <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
+        <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
+        <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
+        {!hasFeature("analytics_csv_export") && (
+          <ActivityReport
+            downloadingMonth={downloadingMonth}
+            monthOptions={monthOptions}
+            handleDownload={handleDownload}
+            includeInactive={includeInactive}
+            onIncludeInactiveChange={setIncludeInactive}
+          />
+        )}
+      </div>
     </Page.Vertical>
   );
 }

@@ -6,13 +6,14 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import config from "@app/lib/api/config";
 import { sendEmail, sendEmailToRecipients } from "@app/lib/api/email";
 import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -27,7 +28,6 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
-import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
@@ -186,9 +186,7 @@ export async function deleteEmailReplyContext(
   await redis.del(key);
 }
 
-export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
-  ? "dev.dust.help"
-  : "dust.team";
+export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 
 export type EmailAttachment = {
   filepath: string; // Temp file path from formidable
@@ -256,6 +254,11 @@ function deduplicateEmailAddresses(emails: string[]): string[] {
 function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
 }
+
+// Cap on total reply recipients (to + cc combined). To/Cc are sourced from raw email headers,
+// which a sender can freely forge to list arbitrary addresses. The cap prevents using the agent
+// as a bulk relay while leaving no impact on legitimate threads (nobody CCs 15+ people normally).
+export const MAX_REPLY_RECIPIENTS = 15;
 
 function buildReferencesHeaderValue({
   inReplyTo,
@@ -327,7 +330,17 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
     })
   );
 
-  return { to, cc };
+  // Enforce recipient cap: sender (envelope.from) is always kept, extras are dropped from cc first.
+  const total = to.length + cc.length;
+  if (total <= MAX_REPLY_RECIPIENTS) {
+    return { to, cc };
+  }
+  const cappedCc = cc.slice(0, Math.max(0, MAX_REPLY_RECIPIENTS - to.length));
+  logger.warn(
+    { totalRecipients: total, cappedTo: to.length, cappedCc: cappedCc.length },
+    "[email] Reply recipient list truncated to MAX_REPLY_RECIPIENTS."
+  );
+  return { to, cc: cappedCc };
 }
 export async function userAndWorkspaceFromEmail({
   email,
@@ -349,7 +362,7 @@ export async function userAndWorkspaceFromEmail({
       type: "user_not_found",
       message:
         `Failed to match a valid Dust user for email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
+        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
     });
   }
   const workspaceModels = await WorkspaceModel.findAll({
@@ -380,8 +393,15 @@ export async function userAndWorkspaceFromEmail({
   const eligibleWorkspaceModels: typeof workspaceModels = [];
   for (const w of workspaceModels) {
     const lightWorkspace = renderLightWorkspaceType({ workspace: w });
-    const flags = await getFeatureFlags(lightWorkspace);
-    if (flags.includes("email_agents")) {
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      lightWorkspace.sId
+    );
+    const flags = await getFeatureFlags(auth);
+    if (
+      flags.includes("email_agents") &&
+      lightWorkspace.metadata?.allowEmailAgents === true
+    ) {
       eligibleWorkspaceModels.push(w);
     }
   }

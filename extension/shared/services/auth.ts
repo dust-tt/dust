@@ -13,7 +13,7 @@ export type OAuthAuthorizeResponse = {
   success: true;
   accessToken: string;
   refreshToken: string;
-  expiresIn: number;
+  expirationDate: number;
   authentication_method?: string;
 };
 
@@ -51,7 +51,7 @@ export abstract class AuthService {
     const tokens: StoredTokens = {
       accessToken: rawTokens.accessToken,
       refreshToken: rawTokens.refreshToken,
-      expiresAt: Date.now() + rawTokens.expiresIn * 1000,
+      expiresAt: rawTokens.expirationDate,
     };
 
     for (const [key, value] of Object.entries(tokens)) {

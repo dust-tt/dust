@@ -998,6 +998,39 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   },
   */
   {
+    id: 10014,
+    name: "Hex",
+    description: "Hex tools for data analytics and project search.",
+    url: "https://app.hex.tech/mcp",
+    icon: "HexLogo",
+    documentationUrl: "https://learn.hex.tech/docs/administration/mcp-server",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_projects: "never_ask",
+      get_thread: "never_ask",
+      create_thread: "low",
+      continue_thread: "low",
+    },
+    toolDisplayLabels: {
+      search_projects: {
+        running: "Searching projects on Hex",
+        done: "Search projects on Hex",
+      },
+      get_thread: {
+        running: "Retrieving thread on Hex",
+        done: "Retrieve thread on Hex",
+      },
+      create_thread: {
+        running: "Creating thread on Hex",
+        done: "Create thread on Hex",
+      },
+      continue_thread: {
+        running: "Continuing thread on Hex",
+        done: "Continue thread on Hex",
+      },
+    },
+  },
+  {
     id: 10006,
     name: "Canva",
     description: "Canva tools for design capabilities.",

@@ -27,7 +27,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 export function NewAgentPage() {
   const owner = useWorkspace();
   const { user, isAdmin, isBuilder } = useAuth();
-  const { featureFlags, hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
 
   const flowParam = useSearchParam("flow");
   const flow: BuilderFlow =
@@ -50,10 +50,7 @@ export function NewAgentPage() {
     disabled: !duplicateAgentId,
   });
 
-  const hasSidekick =
-    hasFeature("agent_builder_copilot") &&
-    (isAdmin || (hasFeature("agent_builder_copilot_builders") && isBuilder));
-  const shouldPassConversationId = hasSidekick && agentConfiguration === null;
+  const shouldPassConversationId = agentConfiguration === null;
 
   const {
     assistantTemplate,

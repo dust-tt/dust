@@ -1,4 +1,5 @@
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import assert from "@app/lib/utils/assert";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type {
@@ -14,7 +15,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
-import assert from "assert";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`

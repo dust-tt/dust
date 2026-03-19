@@ -2,6 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   aggregateSyntheticSuggestions,
   buildAggregationBatchMap,
@@ -18,9 +19,8 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { updateActiveTrace } from "@langfuse/tracing";
 import { ApplicationFailure } from "@temporalio/common";
-
-const HOURS_LOOKBACK = 24;
 
 async function getAuthForWorkspace(
   workspaceId: string
@@ -43,7 +43,7 @@ export async function getFlaggedWorkspacesActivity(): Promise<string[]> {
 
   for (const workspace of allWorkspaces) {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("reinforced_agents")) {
       flaggedIds.push(workspace.sId);
     }
@@ -79,14 +79,23 @@ export async function getAgentConfigurationsActivity({
 export async function getRecentConversationsForAgentActivity({
   workspaceId,
   agentConfigurationId,
+  conversationLookbackDays = 1,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  conversationLookbackDays?: number;
 }): Promise<string[]> {
+  updateActiveTrace({
+    name: "Reinforced Agent Workflow",
+    metadata: { agentConfigurationId },
+  });
+
   const auth = await getAuthForWorkspace(workspaceId);
 
   const updatedSince = new Date();
-  updatedSince.setHours(updatedSince.getHours() - HOURS_LOOKBACK);
+  updatedSince.setHours(
+    updatedSince.getHours() - conversationLookbackDays * 24
+  );
 
   return ConversationResource.listRecentConversationsForAgent(auth, {
     agentConfigurationId,
@@ -120,13 +129,19 @@ export async function analyzeConversationActivity({
 export async function aggregateSuggestionsActivity({
   workspaceId,
   agentConfigurationId,
+  disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  await aggregateSyntheticSuggestions(auth, agentConfigurationId);
+  await aggregateSyntheticSuggestions(
+    auth,
+    agentConfigurationId,
+    disableNotifications
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +171,10 @@ export async function startConversationAnalysisBatchActivity({
     return null;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_analyze_conversation"
+  );
   if (!llm) {
     return null;
   }
@@ -188,7 +206,10 @@ export async function checkBatchStatusActivity({
 }): Promise<BatchStatus> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_analyze_conversation"
+  );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
       "ReinforcedAgent: no LLM available for batch status check"
@@ -224,12 +245,23 @@ export async function processConversationAnalysisBatchResultActivity({
     return;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_analyze_conversation"
+  );
   if (!llm) {
     return;
   }
 
   const results = await llm.getBatchResult(batchId);
+
+  // Resolve conversation sIds to resources for FK storage.
+  const conversationIds = [...results.keys()];
+  const conversations = await ConversationResource.fetchByIds(
+    auth,
+    conversationIds
+  );
+  const conversationById = new Map(conversations.map((c) => [c.sId, c]));
 
   let totalCreated = 0;
   for (const [conversationId, events] of results) {
@@ -240,6 +272,7 @@ export async function processConversationAnalysisBatchResultActivity({
       source: "synthetic",
       operationType: "reinforced_agent_analyze_conversation",
       contextId: conversationId,
+      conversation: conversationById.get(conversationId),
     });
     totalCreated += createdCount;
   }
@@ -273,7 +306,10 @@ export async function startAggregationBatchActivity({
     return null;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_aggregate_suggestions"
+  );
   if (!llm) {
     return null;
   }
@@ -299,10 +335,12 @@ export async function processAggregationBatchResultActivity({
   workspaceId,
   agentConfigurationId,
   batchId,
+  disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   batchId: string;
+  disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -318,7 +356,10 @@ export async function processAggregationBatchResultActivity({
     return;
   }
 
-  const llm = await getReinforcedLLM(auth);
+  const llm = await getReinforcedLLM(
+    auth,
+    "reinforced_agent_aggregate_suggestions"
+  );
   if (!llm) {
     return;
   }
@@ -335,6 +376,13 @@ export async function processAggregationBatchResultActivity({
       source: "reinforcement",
       operationType: "reinforced_agent_aggregate_suggestions",
       contextId: "n/a",
+    });
+  }
+
+  if (createdCount > 0 && !disableNotifications) {
+    notifyAgentSuggestionsReady(auth, {
+      agentConfiguration: agentConfig,
+      suggestionCount: createdCount,
     });
   }
 

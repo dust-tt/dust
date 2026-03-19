@@ -1,7 +1,9 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
-import { Chip } from "@dust-tt/sparkle";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const MAX_ANALYSIS_LENGTH = 80;
@@ -16,7 +18,44 @@ function truncate(text: string | null, maxLength: number): string {
   return text.slice(0, maxLength) + "...";
 }
 
-export function makeColumnsForSuggestions(): ColumnDef<AgentSuggestionType>[] {
+async function deleteSuggestion(
+  owner: LightWorkspaceType,
+  agentId: string,
+  suggestion: AgentSuggestionType,
+  onSuggestionDeleted: () => Promise<void>
+) {
+  if (
+    !window.confirm(
+      `Are you sure you want to delete suggestion "${suggestion.sId}"?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const r = await clientFetch(
+      `/api/poke/workspaces/${owner.sId}/assistants/${agentId}/suggestions?sId=${suggestion.sId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!r.ok) {
+      throw new Error("Failed to delete suggestion.");
+    }
+    await onSuggestionDeleted();
+  } catch (_e) {
+    window.alert("An error occurred while deleting the suggestion.");
+  }
+}
+
+export function makeColumnsForSuggestions(
+  owner: LightWorkspaceType,
+  agentId: string,
+  onSuggestionDeleted: () => Promise<void>
+): ColumnDef<AgentSuggestionType>[] {
   return [
     {
       accessorKey: "sId",
@@ -73,6 +112,26 @@ export function makeColumnsForSuggestions(): ColumnDef<AgentSuggestionType>[] {
       ),
     },
     {
+      accessorKey: "conversationId",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Conversation" />
+      ),
+      cell: ({ row }) => {
+        const conversationId = row.original.conversationId;
+        if (!conversationId) {
+          return "-";
+        }
+        return (
+          <a
+            href={`/${owner.sId}/conversation/${conversationId}`}
+            className="text-action-500 hover:underline"
+          >
+            {conversationId}
+          </a>
+        );
+      },
+    },
+    {
       accessorKey: "analysis",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Analysis" />
@@ -97,6 +156,27 @@ export function makeColumnsForSuggestions(): ColumnDef<AgentSuggestionType>[] {
       ),
       cell: ({ row }) => {
         return formatTimestampToFriendlyDate(row.original.updatedAt);
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const suggestion = row.original;
+        return (
+          <IconButton
+            icon={TrashIcon}
+            size="xs"
+            variant="outline"
+            onClick={async () => {
+              await deleteSuggestion(
+                owner,
+                agentId,
+                suggestion,
+                onSuggestionDeleted
+              );
+            }}
+          />
+        );
       },
     },
   ];

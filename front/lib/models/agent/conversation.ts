@@ -8,6 +8,7 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { makeSId } from "@app/lib/resources/string_ids";
 import type {
   AgentMessageStatus,
   ConversationMetadata,
@@ -683,6 +684,15 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
 
   declare conversation?: NonAttribute<ConversationModel>;
   declare branch?: NonAttribute<ConversationBranchModel>;
+
+  get branchSId(): string | null {
+    return this.branchId
+      ? makeSId("conversation_branch", {
+          id: this.branchId,
+          workspaceId: this.workspaceId,
+        })
+      : null;
+  }
 }
 
 MessageModel.init(

@@ -2,6 +2,10 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import {
+  getSmallWhitelistedModel,
+  getWhitelistedProviders,
+} from "@app/lib/assistant";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -11,7 +15,6 @@ import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
   UserMessageType,
@@ -20,11 +23,9 @@ import { ConversationError } from "@app/types/assistant/conversation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { WorkspaceType } from "@app/types/user";
 
 export async function updateConversationTitle(
   auth: Authenticator,
@@ -163,7 +164,7 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getFastModelConfig(owner);
+  const model = await getFastModelConfig(auth);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
@@ -242,18 +243,20 @@ async function generateConversationTitle(
   return new Err(new Error("No title found in LLM response"));
 }
 
-function getFastModelConfig(
-  owner: WorkspaceType
-): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "openai")) {
+async function getFastModelConfig(
+  auth: Authenticator
+): Promise<ModelConfigurationType | null> {
+  const providers = getWhitelistedProviders(auth);
+
+  if (providers.has("openai")) {
     return GPT_5_1_MODEL_CONFIG;
   }
-  if (isProviderWhitelisted(owner, "anthropic")) {
+  if (providers.has("anthropic")) {
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+  if (providers.has("google_ai_studio")) {
     return GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
 
-  return getSmallWhitelistedModel(owner);
+  return getSmallWhitelistedModel(auth);
 }

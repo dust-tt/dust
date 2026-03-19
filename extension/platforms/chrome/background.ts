@@ -25,6 +25,7 @@ import type { PendingUpdate } from "@extension/platforms/chrome/services/platfor
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
+import { htmlToMarkdown } from "@extension/shared/lib/html_to_markdown";
 import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
@@ -38,7 +39,6 @@ import {
 } from "./interactWithPage";
 
 const log = console.error;
-const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
 function isGoogleChrome(): boolean {
   const brands =
@@ -594,12 +594,12 @@ chrome.runtime.onMessage.addListener(
                 });
                 content = execution?.result ?? "no content.";
               } else {
-                // TODO - handle non-HTML content. For now we just extract the page content.
                 const [execution] = await chrome.scripting.executeScript({
                   target: { tabId: tab.id },
-                  func: extractPage(tab.url || ""),
+                  func: extractPage(),
                 });
-                content = execution?.result ?? "no content.";
+                const html = execution?.result;
+                content = html ? htmlToMarkdown(html) : "no content.";
               }
             }
             sendResponse({
@@ -627,26 +627,6 @@ chrome.runtime.onMessage.addListener(
       case "LIST_TABS":
         void (async () => {
           const tabs = await chrome.tabs.query({ currentWindow: true });
-          sendResponse({
-            success: true,
-            tabs: tabs
-              .filter((t) => t.id !== undefined && t.url)
-              .map((t) => ({
-                tabId: t.id!,
-                title: t.title || "",
-                url: t.url || "",
-                active: t.active,
-              })),
-          });
-        })();
-        return true;
-
-      case "GET_CURRENT_TAB_INFO":
-        void (async () => {
-          const tabs = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
-          });
           sendResponse({
             success: true,
             tabs: tabs
@@ -1047,11 +1027,11 @@ const authenticate = async (
   ) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
-  const redirectUrl = chrome.identity.getRedirectURL();
+  const expectedRedirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
-    redirect_uri: redirectUrl,
+    redirect_uri: expectedRedirectUrl,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
     ...(organizationId ? { organizationId } : {}),
@@ -1061,56 +1041,70 @@ const authenticate = async (
 
   const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
-  chrome.identity.launchWebAuthFlow(
-    { url: authUrl, interactive: true },
-    async (redirectUrl) => {
-      if (chrome.runtime.lastError) {
-        log(`WebAuthFlow error: ${chrome.runtime.lastError.message}`);
-        sendResponse({
-          success: false,
-          error: `WebAuthFlow error: ${chrome.runtime.lastError.message}`,
-        });
-        return;
-      }
-      if (!redirectUrl || redirectUrl.includes("error")) {
-        log(`Error in redirect URL: ${redirectUrl}`);
-        sendResponse({
-          success: false,
-          error: `Error in redirect URL: ${redirectUrl}`,
-        });
-        return;
-      }
+  // Open auth flow in a regular tab instead of chrome.identity.launchWebAuthFlow
+  // to avoid "Authorization page could not be loaded" errors when Google's OAuth
+  // pages are slow and users double-click.
+  const tab = await chrome.tabs.create({ url: authUrl });
+  const tabId = tab.id;
+  if (!tabId) {
+    sendResponse({ success: false, error: "Failed to open auth tab." });
+    return;
+  }
 
-      const url = new URL(redirectUrl);
-      const queryParams = new URLSearchParams(url.search);
-      const authorizationCode = queryParams.get("code");
+  const cleanup = () => {
+    chrome.tabs.onUpdated.removeListener(onUpdated);
+    chrome.tabs.onRemoved.removeListener(onRemoved);
+  };
 
-      const error = queryParams.get("error");
-
-      if (error) {
-        log(`Authentication error: ${error}`);
-        sendResponse({
-          success: false,
-          error: `Authentication error: ${error}`,
-        });
-        return;
-      }
-
-      if (authorizationCode) {
-        const data = await exchangeCodeForTokens(
-          authorizationCode,
-          codeVerifier
-        );
-        sendResponse(data);
-      } else {
-        log(`Missing authorization code: ${redirectUrl}`);
-        sendResponse({
-          success: false,
-          error: `Missing authorization code`,
-        });
-      }
+  const onUpdated = async (
+    updatedTabId: number,
+    _changeInfo: chrome.tabs.TabChangeInfo,
+    updatedTab: chrome.tabs.Tab
+  ) => {
+    if (updatedTabId !== tabId || !updatedTab.url) {
+      return;
     }
-  );
+
+    if (!updatedTab.url.startsWith(expectedRedirectUrl)) {
+      return;
+    }
+
+    cleanup();
+    void chrome.tabs.remove(tabId);
+
+    const url = new URL(updatedTab.url);
+    const queryParams = new URLSearchParams(url.search);
+
+    if (url.href.includes("error")) {
+      const error = queryParams.get("error") || "Unknown error";
+      log(`Authentication error: ${error}`);
+      sendResponse({ success: false, error: `Authentication error: ${error}` });
+      return;
+    }
+
+    const authorizationCode = queryParams.get("code");
+    if (authorizationCode) {
+      const data = await exchangeCodeForTokens(authorizationCode, codeVerifier);
+      sendResponse(data);
+    } else {
+      log(`Missing authorization code: ${updatedTab.url}`);
+      sendResponse({ success: false, error: "Missing authorization code" });
+    }
+  };
+
+  const onRemoved = (removedTabId: number) => {
+    if (removedTabId !== tabId) {
+      return;
+    }
+    cleanup();
+    sendResponse({
+      success: false,
+      error: "Authentication cancelled: tab was closed.",
+    });
+  };
+
+  chrome.tabs.onUpdated.addListener(onUpdated);
+  chrome.tabs.onRemoved.addListener(onRemoved);
 };
 
 /**
@@ -1170,7 +1164,7 @@ const refreshToken = async (
           success: true,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken || refreshToken,
-          expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          expirationDate: data.expirationDate,
           authentication_method: data.authenticationMethod,
         });
       });
@@ -1222,7 +1216,7 @@ const exchangeCodeForTokens = async (
       success: true,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
-      expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      expirationDate: data.expirationDate,
       authentication_method: data.authenticationMethod,
     };
   } catch (error) {

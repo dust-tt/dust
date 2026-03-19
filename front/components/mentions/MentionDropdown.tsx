@@ -17,7 +17,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleBottomCenterPlusIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -70,7 +70,7 @@ export const MentionDropdown = React.forwardRef<
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
             onClick={handleAgentStartConversation}
-            icon={ChatBubbleBottomCenterTextIcon}
+            icon={ChatBubbleBottomCenterPlusIcon}
             label={`New conversation with @${mention.label}`}
           />
           <DropdownMenuItem

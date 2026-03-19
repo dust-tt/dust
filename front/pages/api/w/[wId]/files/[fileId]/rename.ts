@@ -43,7 +43,7 @@ async function handler(
 
   // Check feature flag for project_context files
   if (file.useCase === "project_context") {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("projects")) {
       return apiError(req, res, {
         status_code: 500,

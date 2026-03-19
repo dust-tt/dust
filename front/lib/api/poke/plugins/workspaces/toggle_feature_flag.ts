@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { getFeatureFlags } from "@app/lib/auth";
+import { invalidateFeatureFlagsCache } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -81,7 +81,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
     // requests hitting it immediately reflect the updated flags. Other pods
     // will pick up the change once their 3s memoizer TTL expires.
     if (toAdd.length > 0 || toRemove.length > 0) {
-      getFeatureFlags.del(workspace);
+      invalidateFeatureFlagsCache(workspace);
     }
 
     const actions: string[] = [];

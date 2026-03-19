@@ -7,7 +7,6 @@ import {
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import {
-  AgentMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -26,7 +25,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
-  ConversationWithoutContentType,
   LegacyLightMessageType,
   LightAgentMessageType,
   LightMessageType,
@@ -274,6 +272,7 @@ async function batchRenderUserMessages(
       visibility: message.visibility,
       version: message.version,
       rank: message.rank,
+      branchId: message.branchSId,
       created: message.createdAt.getTime(),
       user: user ?? null,
       mentions,
@@ -583,6 +582,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
+        branchId: message.branchSId,
         parentMessageId: parentMessage.sId,
         parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
@@ -784,33 +784,5 @@ export async function fetchConversationMessages<V extends MessageVariant>(
       : V extends "light"
         ? LightMessageType[]
         : never,
-  });
-}
-
-export async function fetchMessageInConversation(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  messageId: string,
-  version?: number
-) {
-  return MessageModel.findOne({
-    where: {
-      conversationId: conversation.id,
-      sId: messageId,
-      workspaceId: auth.getNonNullableWorkspace()?.id,
-      ...(version ? { version } : {}),
-    },
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: false,
-      },
-    ],
   });
 }

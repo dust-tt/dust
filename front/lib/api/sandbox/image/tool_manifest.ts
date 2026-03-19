@@ -15,10 +15,14 @@ export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
   };
 
   for (const tool of tools) {
-    toolsByRuntime[tool.runtime].push({
+    const entry: ManifestToolEntry = {
       name: tool.name,
+      ...(tool.version && { version: tool.version }),
       description: tool.description,
-    });
+      ...(tool.usage && { usage: tool.usage }),
+      ...(tool.returns && { returns: tool.returns }),
+    };
+    toolsByRuntime[tool.runtime].push(entry);
   }
 
   const filteredTools: Partial<

@@ -3,7 +3,7 @@ import type {
   SelectedEmojiType,
 } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
-import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
+import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
 import {
   Avatar,
   avatarUtils,
@@ -111,9 +111,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
           <PopoverContent mountPortal={false} className="w-fit">
             <ColorPicker
               selectedColor={selectedBgColor}
-              colors={
-                generateTailwindBackgroundColors() as avatarUtils.AvatarBackgroundColorType[]
-              }
+              colors={TAILWIND_BACKGROUND_COLORS}
               onColorSelect={(color) => {
                 setSelectedBgColor(color as `bg-${string}`);
                 // We only mark as stale if an emoji has been selected.

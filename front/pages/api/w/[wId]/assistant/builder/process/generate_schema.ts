@@ -1,13 +1,13 @@
 /** @ignoreswagger */
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+} from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
+import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { JSONSchema7 } from "json-schema";
@@ -22,8 +22,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "POST":
       const bodyRes = ioTsParsePayload(
@@ -41,8 +39,8 @@ async function handler(
       }
 
       const model = !auth.isUpgraded()
-        ? getSmallWhitelistedModel(owner)
-        : getLargeWhitelistedModel(owner);
+        ? await getSmallWhitelistedModel(auth)
+        : await getLargeWhitelistedModel(auth);
       if (!model) {
         return apiError(req, res, {
           status_code: 400,

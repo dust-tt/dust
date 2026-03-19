@@ -2,6 +2,8 @@
 import "@dust-tt/front/styles/global.css";
 // Use sparkle styles, override local globals
 import "@dust-tt/sparkle/dist/sparkle.css";
+// Local tailwind components override sparkle styles
+import "@dust-tt/front/styles/components.css";
 // Local index.css for any app-specific overrides
 import "@spa/index.css";
 

@@ -1,6 +1,5 @@
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import {
@@ -8,6 +7,7 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -885,7 +885,7 @@ const ConfigToggle = ({
 
 export function DataSourcePage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Data Source`);
+  useDocumentTitle(`Poke - ${owner.name} - Data Source`);
 
   const dsId = useRequiredPathParam("dsId");
   const router = useAppRouter();

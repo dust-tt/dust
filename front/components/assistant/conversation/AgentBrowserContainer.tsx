@@ -1,4 +1,4 @@
-import { AgentBrowser } from "@app/components/assistant/AgentBrowser";
+import { AgentBrowser } from "@app/components/assistant/conversation/agent_browser/AgentBrowser";
 import { useClientType } from "@app/lib/context/clientType";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";

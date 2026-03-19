@@ -64,6 +64,10 @@ const whitelistedCommands = [
     command: "check-channel",
   },
   {
+    majorCommand: "slack",
+    command: "delete-conversation",
+  },
+  {
     majorCommand: "connectors",
     command: "set-error",
   },

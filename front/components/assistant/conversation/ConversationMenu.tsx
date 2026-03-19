@@ -13,6 +13,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -145,16 +146,21 @@ export function ConversationMenu({
   openDetailsInNewTab,
 }: ConversationMenuProps) {
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
+  const { hasFeature, featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
+
+  const clientType = useClientType();
 
   const router = useAppRouter();
 
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
   const canTurnIntoAgent =
-    hasFeature("agent_builder_shrink_wrap") &&
     !!conversation &&
     !!user &&
-    isBuilder(owner);
+    !isRestrictedFromAgentCreation &&
+    clientType !== "extension";
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");

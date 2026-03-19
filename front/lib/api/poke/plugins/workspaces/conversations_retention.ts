@@ -1,4 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import {
+  CONVERSATIONS_RETENTION_MIN_DAYS,
+  isValidConversationsRetentionDays,
+} from "@app/lib/conversations_retention";
 import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,8 +17,7 @@ export const conversationsRetentionPlugin = createPlugin({
       retentionDays: {
         type: "number",
         label: "Retention Days",
-        description:
-          "Number of days to retain conversations (-1 for unlimited)",
+        description: `Number of days to retain conversations (${CONVERSATIONS_RETENTION_MIN_DAYS}+ days, or -1 for unlimited)`,
         async: true,
       },
     },
@@ -29,10 +32,13 @@ export const conversationsRetentionPlugin = createPlugin({
   execute: async (auth, _, args) => {
     const retentionDays = args.retentionDays ?? -1;
 
-    if (retentionDays !== -1 && retentionDays < 1) {
+    if (
+      retentionDays !== -1 &&
+      !isValidConversationsRetentionDays(retentionDays)
+    ) {
       return new Err(
         new Error(
-          "Set -1 to remove the retention rule, or a number > 0 to set the retention rule."
+          `Set -1 to remove the retention rule, or a number >= ${CONVERSATIONS_RETENTION_MIN_DAYS} to set the retention rule.`
         )
       );
     }
