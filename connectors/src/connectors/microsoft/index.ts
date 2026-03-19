@@ -724,8 +724,24 @@ export async function getMicrosoftConnectionData(connectionId: string) {
     connectionId,
   });
 
+  // AuthProvider is called on every Graph API request. We fetch the token
+  // inside the callback (rather than closing over tokenData.access_token) so
+  // that long-running operations like delta sync get a refreshed token when
+  // the original one expires. The underlying call is backed by a 5min
+  // in-memory cache, so this doesn't cause extra network requests.
   const client = Client.init({
-    authProvider: (done) => done(null, tokenData.access_token),
+    authProvider: async (done) => {
+      try {
+        const { access_token } = await getOAuthConnectionAccessTokenWithThrow({
+          logger,
+          provider: "microsoft",
+          connectionId,
+        });
+        done(null, access_token);
+      } catch (e) {
+        done(e, null);
+      }
+    },
   });
 
   return {
