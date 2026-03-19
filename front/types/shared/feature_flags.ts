@@ -13,6 +13,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  audit_logs: {
+    description: "Enable audit log emission via WorkOS",
+    stage: "dust_only",
+  },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
     stage: "dust_only",
