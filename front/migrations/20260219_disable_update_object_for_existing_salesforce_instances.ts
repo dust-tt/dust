@@ -11,7 +11,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Logger } from "@app/logger/logger";
 
-const DEPLOYMENT_CUTOFF_DATE = new Date("2026-02-24T00:00:00Z");
+const DEPLOYMENT_CUTOFF_DATE = new Date("2026-03-19T00:00:00Z");
 const TOOL_NAME = "update_object";
 const INTERNAL_MCP_SERVER_NAME = "salesforce";
 const PERMISSION_LEVEL = "medium";
