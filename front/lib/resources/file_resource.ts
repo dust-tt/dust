@@ -322,17 +322,20 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Delete sharing grants before shareable files (FK constraint).
+    await SharingGrantModel.destroy({
+      where: { workspaceId },
+    });
+
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
 
     return this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
   }
 
@@ -386,6 +389,19 @@ export class FileResource extends BaseResource<FileModel> {
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
+
+        // Delete sharing grants before shareable file (FK constraint).
+        const shareableFile = await FileResource.shareableFileModel.findOne({
+          where: { fileId: this.id, workspaceId: this.workspaceId },
+        });
+        if (shareableFile) {
+          await SharingGrantModel.destroy({
+            where: {
+              shareableFileId: shareableFile.id,
+              workspaceId: this.workspaceId,
+            },
+          });
+        }
 
         // Delete the shareable file record.
         await FileResource.shareableFileModel.destroy({
