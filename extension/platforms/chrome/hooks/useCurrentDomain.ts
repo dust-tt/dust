@@ -27,7 +27,7 @@ export const useCurrentUrlAndDomain = () => {
     };
 
     // Update domain when active tab changes.
-    const handleTabActivated = (activeInfo: chrome.tabs.TabActiveInfo) => {
+    const handleTabActivated = (activeInfo: chrome.tabs.OnActivatedInfo) => {
       chrome.tabs.get(activeInfo.tabId, (tab) => {
         updateDomainFromTab(tab);
       });
@@ -36,7 +36,7 @@ export const useCurrentUrlAndDomain = () => {
     // Update domain when tab URL changes.
     const handleTabUpdated = (
       tabId: number,
-      changeInfo: chrome.tabs.TabChangeInfo,
+      changeInfo: chrome.tabs.OnUpdatedInfo,
       tab: chrome.tabs.Tab
     ) => {
       if (changeInfo.status === "complete") {

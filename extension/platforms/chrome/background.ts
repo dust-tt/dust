@@ -1058,7 +1058,7 @@ const authenticate = async (
 
   const onUpdated = async (
     updatedTabId: number,
-    _changeInfo: chrome.tabs.TabChangeInfo,
+    _changeInfo: chrome.tabs.OnUpdatedInfo,
     updatedTab: chrome.tabs.Tab
   ) => {
     if (updatedTabId !== tabId || !updatedTab.url) {
