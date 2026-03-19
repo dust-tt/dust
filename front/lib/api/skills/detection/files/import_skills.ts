@@ -64,6 +64,7 @@ export async function importSkillsFromFiles(
 
     const readerResult = createZipAttachmentReader(buffer);
     if (readerResult.isErr()) {
+      await cleanupTempFiles(uploadedFiles);
       return new Err(readerResult.error);
     }
     const reader = readerResult.value;
