@@ -16,13 +16,16 @@ export type PatchAgentMemoryRequestBody = z.infer<
   typeof PatchAgentMemoryRequestBodySchema
 >;
 
-export interface PatchAgentMemoryResponseBody {
-  memory: {
-    sId: string;
-    lastUpdated: Date;
-    content: string;
-  };
-}
+export const PatchAgentMemoryResponseBodySchema = z.object({
+  memory: z.object({
+    sId: z.string(),
+    lastUpdated: z.date(),
+    content: z.string(),
+  }),
+});
+export type PatchAgentMemoryResponseBody = z.infer<
+  typeof PatchAgentMemoryResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
