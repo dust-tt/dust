@@ -64,7 +64,7 @@ export function SkillBuilderInstructionsSection() {
       {(currentInstructions?.length ?? 0) >
         LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD && (
         <ContentMessage
-          variant="warning"
+          variant="info"
           size="lg"
           title="This skill is noticeably large"
         >
