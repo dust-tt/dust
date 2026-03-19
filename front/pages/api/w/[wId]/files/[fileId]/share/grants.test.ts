@@ -11,12 +11,7 @@ import handler from "./grants";
 describe("sharing grants endpoint", () => {
   describe("without email_restricted_sharing feature flag", () => {
     it("should return 403", async () => {
-      const {
-        req,
-        res,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
       });
@@ -38,18 +33,12 @@ describe("sharing grants endpoint", () => {
 
   describe("with email_restricted_sharing feature flag", () => {
     it("should return 400 for non-interactive-content files", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: "application/pdf",
@@ -67,18 +56,12 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should return empty grants list for a new frame", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -96,18 +79,12 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should add grants for multiple emails", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -131,18 +108,12 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should populate grantedBy with the granting user", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -165,18 +136,13 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should be idempotent when adding the same email twice", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+      const { req, res, auth, workspace, user } =
+        await createPrivateApiMockRequest({
+          method: "POST",
+          role: "user",
+        });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -213,18 +179,12 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should normalize email to lowercase", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -243,18 +203,13 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should revoke a grant and no longer list it", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "user",
-      });
+      const { req, res, workspace, auth, user } =
+        await createPrivateApiMockRequest({
+          method: "POST",
+          role: "user",
+        });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -300,18 +255,12 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should return 404 when revoking a non-existent grant", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "DELETE",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -329,18 +278,12 @@ describe("sharing grants endpoint", () => {
     });
 
     it("should reject invalid email addresses", async () => {
-      const {
-        req,
-        res,
-        workspace,
-        authenticator: auth,
-        user,
-      } = await createPrivateApiMockRequest({
+      const { req, res, auth, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
 
-      await FeatureFlagFactory.basic("email_restricted_sharing", workspace);
+      await FeatureFlagFactory.basic(auth, "email_restricted_sharing");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
