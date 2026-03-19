@@ -642,49 +642,29 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
 
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
-  create_document: async ({ title }, { authInfo }) => {
-    const docs = await getDocsClient(authInfo);
-    if (!docs) {
-      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+  create_document: async ({ title, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
     try {
-      const res = await docs.documents.create({ requestBody: { title } });
-      return new Ok([
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            {
-              documentId: res.data.documentId,
-              title: res.data.title,
-              url: `https://docs.google.com/document/d/${res.data.documentId}/edit`,
-            },
-            null,
-            2
-          ),
+      const res = await drive.files.create({
+        requestBody: {
+          name: title,
+          mimeType: "application/vnd.google-apps.document",
+          ...(parentId ? { parents: [parentId] } : {}),
         },
-      ]);
-    } catch (err) {
-      return handleDriveAccessError(err);
-    }
-  },
-
-  create_spreadsheet: async ({ title }, { authInfo }) => {
-    const sheets = await getSheetsClient(authInfo);
-    if (!sheets) {
-      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
-    }
-    try {
-      const res = await sheets.spreadsheets.create({
-        requestBody: { properties: { title } },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
       });
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              spreadsheetId: res.data.spreadsheetId,
-              title: res.data.properties?.title,
-              url: res.data.spreadsheetUrl,
+              documentId: res.data.id,
+              title: res.data.name,
+              url: res.data.webViewLink,
             },
             null,
             2
@@ -696,21 +676,63 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  create_presentation: async ({ title }, { authInfo }) => {
-    const slides = await getSlidesClient(authInfo);
-    if (!slides) {
-      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+  create_spreadsheet: async ({ title, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
     try {
-      const res = await slides.presentations.create({ requestBody: { title } });
+      const res = await drive.files.create({
+        requestBody: {
+          name: title,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
+      });
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              presentationId: res.data.presentationId,
-              title: res.data.title,
-              url: `https://docs.google.com/presentation/d/${res.data.presentationId}/edit`,
+              spreadsheetId: res.data.id,
+              title: res.data.name,
+              url: res.data.webViewLink,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return handleDriveAccessError(err);
+    }
+  },
+
+  create_presentation: async ({ title, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+    try {
+      const res = await drive.files.create({
+        requestBody: {
+          name: title,
+          mimeType: "application/vnd.google-apps.presentation",
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              presentationId: res.data.id,
+              title: res.data.name,
+              url: res.data.webViewLink,
             },
             null,
             2

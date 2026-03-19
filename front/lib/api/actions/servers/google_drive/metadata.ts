@@ -263,9 +263,16 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
 
 export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   create_document: {
-    description: "Create a new Google Docs document in the user's Drive.",
+    description:
+      "Create a new Google Docs document. Optionally specify a folder to create it in.",
     schema: {
       title: z.string().describe("The title of the new document."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -274,9 +281,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_spreadsheet: {
-    description: "Create a new Google Sheets spreadsheet in the user's Drive.",
+    description:
+      "Create a new Google Sheets spreadsheet. Optionally specify a folder to create it in.",
     schema: {
       title: z.string().describe("The title of the new spreadsheet."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -285,9 +299,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_presentation: {
-    description: "Create a new Google Slides presentation in the user's Drive.",
+    description:
+      "Create a new Google Slides presentation. Optionally specify a folder to create it in.",
     schema: {
       title: z.string().describe("The title of the new presentation."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
     },
     stake: "low",
     displayLabels: {
