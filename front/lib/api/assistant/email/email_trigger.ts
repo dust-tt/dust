@@ -409,31 +409,51 @@ export function buildEmailUserMessage({
   );
   const toRecipients = deduplicateEmailAddresses(email.envelope.to);
   const ccRecipients = deduplicateEmailAddresses(email.envelope.cc);
-  const availableContextLine = buildAvailableEmailContextLine({
+  const additionalContext = buildEmailAdditionalContext({
     hasThreadHistory,
     attachmentCount,
   });
 
   return [
-    "You received the following email through Dust.",
+    "I sent the following email:",
     "",
-    `Dust agent recipients: ${formatEmailRecipients(assistantRecipients)}`,
-    `Subject: ${email.subject}`,
-    `To: ${formatEmailRecipients(toRecipients)}`,
+    "<email_message>",
+    `  <email_from>${escapeTagContent(
+      formatEmailHeaderValue(email.envelope.full)
+    )}</email_from>`,
+    `  <email_subject>${escapeTagContent(
+      formatEmailHeaderValue(email.subject)
+    )}</email_subject>`,
+    `  <email_to>${escapeTagContent(
+      formatEmailRecipients(toRecipients)
+    )}</email_to>`,
     ...(ccRecipients.length > 0
-      ? [`Cc: ${formatEmailRecipients(ccRecipients)}`]
+      ? [
+          `  <email_cc>${escapeTagContent(
+            formatEmailRecipients(ccRecipients)
+          )}</email_cc>`,
+        ]
       : []),
-    "",
-    "Body:",
-    "---",
-    userMessage,
-    "---",
-    ...(availableContextLine ? ["", availableContextLine] : []),
-    "If you respond, your response will be emailed back as-is to:",
-    `To: ${formatEmailRecipients(replyRecipients.to)}`,
+    `  <dust_agent_recipients>${escapeTagContent(
+      formatEmailRecipients(assistantRecipients)
+    )}</dust_agent_recipients>`,
+    "  <email_body>",
+    escapeTagContent(userMessage),
+    "  </email_body>",
+    ...additionalContext.map((line) => `  ${line}`),
+    `  <email_response_to>${escapeTagContent(
+      formatEmailRecipients(replyRecipients.to)
+    )}</email_response_to>`,
     ...(replyRecipients.cc.length > 0
-      ? [`Cc: ${formatEmailRecipients(replyRecipients.cc)}`]
+      ? [
+          `  <email_response_cc>${escapeTagContent(
+            formatEmailRecipients(replyRecipients.cc)
+          )}</email_response_cc>`,
+        ]
       : []),
+    "</email_message>",
+    "",
+    "You are in the recipients. Answer appropriately. Your response will be emailed back as-is to me and any other to/cc recipients.",
   ].join("\n");
 }
 export async function userAndWorkspaceFromEmail({

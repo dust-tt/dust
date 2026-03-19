@@ -235,7 +235,7 @@ describe("buildEmailUserMessage", () => {
       `To: agent@${ASSISTANT_EMAIL_SUBDOMAIN}, teammate@dust.tt`
     );
     expect(message).toContain("Cc: observer@dust.tt");
-    expect(message).toContain("Body:\n---\nCan you take a look?\n---");
+    expect(message).toContain("Body:\n> Can you take a look?");
     expect(message).toContain(
       "If you respond, your response will be emailed back as-is to:"
     );
@@ -272,7 +272,7 @@ describe("buildEmailUserMessage", () => {
     });
 
     expect(message).toContain(
-      "The email thread history and 2 attachments are available below in this conversation."
+      "The email thread history may also be available in this conversation. The email included 2 attachments, which may also be available in this conversation."
     );
   });
 });
