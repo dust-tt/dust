@@ -113,6 +113,7 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "connector_update_error"
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
+  | "connector_oauth_user_missing_rights"
   | "connector_oauth_error"
   | "slack_channel_not_found"
   | "connector_rate_limit_error"
