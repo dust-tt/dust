@@ -144,7 +144,7 @@ export function MCPToolValidationRequired({
     <ContentMessage
       title={title}
       variant="primary"
-      className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
+      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
       icon={icon}
     >
       {isTriggeredByCurrentUser ? (
@@ -155,7 +155,7 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="mt-3 flex flex-row items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:mt-3">
             {(blockedAction.stake === "low" ||
               blockedAction.stake === "medium") && (
               <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
@@ -170,25 +170,27 @@ export function MCPToolValidationRequired({
                 </span>
               </Label>
             )}
-            <div className="flex-grow" />
-            <Button
-              label="Decline"
-              variant="outline"
-              size="xs"
-              icon={XMarkIcon}
-              disabled={isValidating}
-              isPulsing={isPulsing}
-              onClick={() => void handleValidation("rejected")}
-            />
-            <Button
-              label="Allow"
-              variant="highlight"
-              size="xs"
-              icon={CheckIcon}
-              disabled={isValidating}
-              isPulsing={isPulsing}
-              onClick={() => void handleValidation("approved")}
-            />
+            <div className="hidden sm:block sm:flex-grow" />
+            <div className="flex flex-row gap-3">
+              <Button
+                label="Decline"
+                variant="outline"
+                size="xs"
+                icon={XMarkIcon}
+                disabled={isValidating}
+                isPulsing={isPulsing}
+                onClick={() => void handleValidation("rejected")}
+              />
+              <Button
+                label="Allow"
+                variant="highlight"
+                size="xs"
+                icon={CheckIcon}
+                disabled={isValidating}
+                isPulsing={isPulsing}
+                onClick={() => void handleValidation("approved")}
+              />
+            </div>
           </div>
         </>
       ) : (
