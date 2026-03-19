@@ -205,7 +205,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                       const isSelected = option.value === currentScope;
                       const inputId = `share-scope-${option.value}`;
                       return (
-                        <label
+                        <Label
                           key={option.value}
                           htmlFor={inputId}
                           className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
@@ -236,7 +236,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                               {option.description}
                             </span>
                           </div>
-                        </label>
+                        </Label>
                       );
                     })}
                   </div>
