@@ -154,8 +154,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto min-w-60 max-w-4xl",
-            // Sender grouping spacing. Button-related margin is handled inside UserMessage.
-            isNextMessageSameSender ? "mb-1" : "mb-4"
+            !isNextMessageSameSender && "mb-4"
           )}
         >
           {isUserMessage(data) && (
