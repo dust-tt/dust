@@ -263,7 +263,12 @@ export default defineConfig(({ mode }) => {
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
   const enableAnalyzer = env.ANALYZE === "true";
-  type AnalyzerTemplate = "treemap" | "sunburst" | "network" | "raw-data" | "list";
+  type AnalyzerTemplate =
+    | "treemap"
+    | "sunburst"
+    | "network"
+    | "raw-data"
+    | "list";
   const isAnalyzerTemplate = (value: string): value is AnalyzerTemplate =>
     ["treemap", "sunburst", "network", "raw-data", "list"].includes(value);
   const templateValue = env.ANALYZE_TEMPLATE ?? "treemap";
