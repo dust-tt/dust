@@ -18,7 +18,9 @@ import {
 import {
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
+  _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
+  _getDustAntMediumOmittedGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
   _getDustGlmHighGlobalAgent,
@@ -26,6 +28,8 @@ import {
   _getDustGlobalAgent,
   _getDustGoogGlobalAgent,
   _getDustGoogMediumGlobalAgent,
+  _getDustHighGlobalAgent,
+  _getDustHighOmittedGlobalAgent,
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
@@ -38,6 +42,7 @@ import {
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
+  _getDustOmittedGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -119,6 +124,24 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_EDGE]: {
     injectsMemory: true,
     injectsToolsets: true,
@@ -180,6 +203,18 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -503,6 +538,7 @@ function getGlobalAgent({
   mcpServerViews,
   sidekickContext,
   hasDeepDive,
+  hasSandbox,
   globalAgentContext,
 }: {
   auth: Authenticator;
@@ -512,6 +548,7 @@ function getGlobalAgent({
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
+  hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
 }): AgentConfigurationType | null {
   const settings =
@@ -720,6 +757,33 @@ function getGlobalAgent({
         globalAgentContext,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_HIGH:
+      agentConfiguration = _getDustHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OMITTED:
+      agentConfiguration = _getDustOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED:
+      agentConfiguration = _getDustHighOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:
       agentConfiguration = _getDustEdgeGlobalAgent(auth, {
         settings,
@@ -746,6 +810,22 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
       agentConfiguration = _getDustAntHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
+      agentConfiguration = _getDustAntMediumOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
+      agentConfiguration = _getDustAntHighOmittedGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
@@ -909,6 +989,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        hasSandbox,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -1042,9 +1123,14 @@ export async function getGlobalAgents(
     );
   }
   const DUST_INTERNAL_AGENTS = [
+    GLOBAL_AGENTS_SID.DUST_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT,
     GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
+    GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
@@ -1098,6 +1184,7 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
+      hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
     })
   );

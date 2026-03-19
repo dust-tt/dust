@@ -13,7 +13,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator, globalSpace, systemSpace } =
+  const { req, res, workspace, auth, globalSpace, systemSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -22,7 +22,7 @@ async function setupTest(
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, globalSpace, systemSpace, auth: authenticator };
+  return { req, res, workspace, globalSpace, systemSpace, auth };
 }
 
 describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
@@ -202,7 +202,7 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
     );
 
     // Create an internal MCP server
-    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
       name: "primitive_types_debugger",
       useCase: null,

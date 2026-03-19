@@ -26,10 +26,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
   },
-  agent_to_yaml: {
-    description: "Export and Import agents to/from YAML format",
-    stage: "dust_only",
-  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
@@ -259,6 +255,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
+    stage: "dust_only",
+  },
+  poke_mcp: {
+    description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

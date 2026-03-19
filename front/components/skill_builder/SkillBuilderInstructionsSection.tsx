@@ -6,11 +6,12 @@ import {
   BookOpenIcon,
   Button,
   ContentMessage,
+  InformationCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 10_000;
+const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
@@ -64,7 +65,8 @@ export function SkillBuilderInstructionsSection() {
       {(currentInstructions?.length ?? 0) >
         LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD && (
         <ContentMessage
-          variant="warning"
+          variant="info"
+          icon={InformationCircleIcon}
           size="lg"
           title="This skill is noticeably large"
         >

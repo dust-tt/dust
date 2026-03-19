@@ -25,8 +25,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
 
   return (
     <ContentMessage
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      title={`${error.metadata?.errorTitle || "Agent error"}`}
+      title={`${error.metadata?.errorTitle ?? "Something went wrong"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
       icon={InformationCircleIcon}

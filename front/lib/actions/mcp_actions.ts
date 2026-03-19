@@ -27,7 +27,10 @@ import {
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isMcpTimeoutError,
+} from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
@@ -97,7 +100,6 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   CallToolResultSchema,
-  McpError,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -603,8 +605,7 @@ export async function* tryCallMCPTool(
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    const isMCPTimeoutError =
-      error instanceof McpError && error.code === -32001;
+    const isMCPTimeoutError = isMcpTimeoutError(error);
 
     if (isMCPTimeoutError) {
       // If the tool should not be retried on interrupt, the error is returned

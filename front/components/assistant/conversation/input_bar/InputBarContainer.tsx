@@ -875,9 +875,10 @@ const InputBarContainer = ({
                       }}
                       agents={allAgents}
                       showDropdownArrow={false}
-                      showFooterButtons={actions.includes(
-                        "agents-list-with-actions"
-                      )}
+                      showFooterButtons={
+                        actions.includes("agents-list-with-actions") &&
+                        clientType !== "extension"
+                      }
                       disabled={disableInput}
                     />
                   )}

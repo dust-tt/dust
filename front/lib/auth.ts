@@ -1534,13 +1534,8 @@ export async function hasFeatureFlag(
   return flags.includes(flag);
 }
 
-export function invalidateFeatureFlagsCache(
-  authOrWorkspace: Authenticator | LightWorkspaceType
-): void {
-  const workspace =
-    authOrWorkspace instanceof Authenticator
-      ? authOrWorkspace.getNonNullableWorkspace()
-      : authOrWorkspace;
+export function invalidateFeatureFlagsCache(auth: Authenticator): void {
+  const workspace = auth.getNonNullableWorkspace();
   _getFeatureFlags.del(workspace);
 }
 

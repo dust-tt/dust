@@ -33,8 +33,14 @@ describe("MCPServerViewResource", () => {
 
       // Create internals servers for each workspace
 
-      await FeatureFlagFactory.basic("dev_mcp_actions", workspace1);
-      await FeatureFlagFactory.basic("dev_mcp_actions", workspace2);
+      await FeatureFlagFactory.basic(
+        await Authenticator.internalAdminForWorkspace(workspace1.sId),
+        "dev_mcp_actions"
+      );
+      await FeatureFlagFactory.basic(
+        await Authenticator.internalAdminForWorkspace(workspace2.sId),
+        "dev_mcp_actions"
+      );
 
       // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
       // so that the test passes even if we edit the server config.
@@ -136,7 +142,7 @@ describe("MCPServerViewResource", () => {
       const restrictedSpace = await SpaceFactory.regular(workspace);
 
       // Create feature flag to enable MCP actions
-      await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
 
       // Mock the INTERNAL_MCP_SERVERS config
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
@@ -227,7 +233,7 @@ describe("MCPServerViewResource", () => {
       const space2 = await SpaceFactory.regular(workspace);
 
       // Create feature flag to enable MCP actions
-      await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
 
       // Mock the INTERNAL_MCP_SERVERS config
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
@@ -295,7 +301,7 @@ describe("MCPServerViewResource", () => {
       const space2 = await SpaceFactory.regular(workspace);
 
       // Create feature flag to enable MCP actions
-      await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
 
       // Mock the INTERNAL_MCP_SERVERS config
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
@@ -418,7 +424,7 @@ describe("MCPServerViewResource", () => {
       workspace = await WorkspaceFactory.basic();
       adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await SpaceFactory.defaults(adminAuth);
-      await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
+      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
     });
 
     it("should populate toolsMetadata for internal server views", async () => {

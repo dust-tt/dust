@@ -22,16 +22,14 @@ describe("GET /api/poke/workspaces/[wId]/assistants/[aId]/suggestions", () => {
   });
 
   it("returns suggestions for a given agent", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        isSuperUser: true,
-        role: "admin",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+      isSuperUser: true,
+      role: "admin",
+    });
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    await AgentSuggestionFactory.createInstructions(authenticator, agent);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await AgentSuggestionFactory.createInstructions(auth, agent);
 
     req.query = { wId: workspace.sId, aId: agent.sId };
 
@@ -80,17 +78,15 @@ describe("DELETE /api/poke/workspaces/[wId]/assistants/[aId]/suggestions", () =>
   });
 
   it("deletes the suggestion and returns 204", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "DELETE",
-        isSuperUser: true,
-        role: "admin",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      isSuperUser: true,
+      role: "admin",
+    });
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent
     );
 
@@ -106,7 +102,7 @@ describe("DELETE /api/poke/workspaces/[wId]/assistants/[aId]/suggestions", () =>
 
     // Verify the suggestion is actually deleted.
     const deleted = await AgentSuggestionResource.fetchById(
-      authenticator,
+      auth,
       suggestion.sId
     );
     expect(deleted).toBeNull();

@@ -17,32 +17,32 @@ vi.mock("@app/lib/api/assistant/recent_authors", () => ({
 }));
 
 async function setupTest(method: RequestMethod = "PATCH") {
-  const { req, res, workspace, user, authenticator } =
-    await createPrivateApiMockRequest({
+  const { req, res, workspace, user, auth } = await createPrivateApiMockRequest(
+    {
       role: "admin",
       method,
-    });
+    }
+  );
 
-  await SpaceFactory.defaults(authenticator);
+  await SpaceFactory.defaults(auth);
 
   return {
     req,
     res,
     workspace,
     user,
-    authenticator,
+    auth,
   };
 }
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with restricted spaces", () => {
   it("should include skill's requestedSpaceIds when updating agent with skill", async () => {
-    const { req, res, workspace, user, authenticator } = await setupTest();
+    const { req, res, workspace, user, auth } = await setupTest();
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const restrictedSpace = await SpaceFactory.regular(workspace);
-    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
-    const skill = await SkillFactory.create(authenticator, {
+    await restrictedSpace.addMembers(auth, { userIds: [user.sId] });
+    const skill = await SkillFactory.create(auth, {
       name: "Skill with restricted space",
       requestedSpaceIds: [restrictedSpace.id],
     });
@@ -83,16 +83,15 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - additionalRequestedSpaceIds", () => {
   it("should include additionalRequestedSpaceIds when updating agent", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         role: "admin",
         method: "PATCH",
       });
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     // Create an open space (with global group) that the user has access to
     const openSpace = await SpaceFactory.regular(workspace);
@@ -146,13 +145,12 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - additionalRe
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - pending agent", () => {
   it("should convert a pending agent to active with version 0", async () => {
-    const { req, res, workspace, user, authenticator } = await setupTest();
+    const { req, res, workspace, user, auth } = await setupTest();
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
 
     // Create a pending agent using the helper function
-    const { sId: pendingSId } =
-      await createPendingAgentConfiguration(authenticator);
+    const { sId: pendingSId } = await createPendingAgentConfiguration(auth);
 
     req.query = { ...req.query, wId: workspace.sId, aId: pendingSId };
     req.body = {

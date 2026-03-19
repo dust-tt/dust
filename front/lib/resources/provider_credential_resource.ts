@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
+import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -274,6 +275,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     await this.invalidateProviderCredentialCache(workspace.id);
 
+    notifyProviderCredentialsHealthUpdated(auth);
+
     return new ProviderCredentialResource(
       ProviderCredentialModel,
       model.get(),
@@ -351,6 +354,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       workspace.id
     );
 
+    notifyProviderCredentialsHealthUpdated(auth);
+
     return this;
   }
 
@@ -413,6 +418,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     if (affectedCount > 0) {
       await this.invalidateProviderCredentialCache(workspace.id);
+      notifyProviderCredentialsHealthUpdated(auth);
     }
   }
 
@@ -443,6 +449,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
         await ProviderCredentialResource.invalidateProviderCredentialCache(
           workspace.id
         );
+
+        notifyProviderCredentialsHealthUpdated(auth);
       }
 
       return new Ok(affectedCount);

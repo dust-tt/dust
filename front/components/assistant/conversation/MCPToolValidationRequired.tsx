@@ -17,6 +17,28 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+type ToolOverride = {
+  title?: (agentName: string, inputs: Record<string, unknown>) => string;
+  alwaysAllowLabel?: (
+    agentName: string,
+    inputs: Record<string, unknown>
+  ) => string;
+};
+
+/** Overrides title and alwaysAllowLabel for specific MCP tools */
+const MCP_TOOL_OVERRIDES: Partial<
+  Record<string, Partial<Record<string, ToolOverride>>>
+> = {
+  "dust-chrome-extension": {
+    interact_with_page: {
+      title: (agentName, inputs) =>
+        `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
+      alwaysAllowLabel: (agentName, inputs) =>
+        "Allow all the interactions with this tab",
+    },
+  },
+};
+
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
@@ -76,46 +98,53 @@ export function MCPToolValidationRequired({
     setNeverAskAgain(false);
   };
 
-  const title = useMemo(() => {
-    if (isTriggeredByCurrentUser) {
-      return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
-    } else {
+  const toolOverride =
+    MCP_TOOL_OVERRIDES[blockedAction.metadata.mcpServerName]?.[
+      blockedAction.metadata.toolName
+    ];
+
+  function getTitle() {
+    if (!isTriggeredByCurrentUser) {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
-  }, [
-    blockedAction.metadata.mcpServerName,
-    blockedAction.metadata.toolName,
-    isTriggeredByCurrentUser,
-  ]);
+    if (toolOverride?.title) {
+      return toolOverride.title(
+        blockedAction.metadata.agentName,
+        blockedAction.inputs
+      );
+    }
+    return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
+  }
 
-  const alwaysAllowLabel = useMemo(() => {
+  function getAlwaysAllowLabel() {
     if (blockedAction.stake !== "medium") {
       return "Always allow";
     }
-
+    if (toolOverride?.alwaysAllowLabel) {
+      return toolOverride.alwaysAllowLabel(
+        blockedAction.metadata.agentName,
+        blockedAction.inputs
+      );
+    }
     const args = blockedAction.argumentsRequiringApproval ?? [];
     const argValues = args
       .filter((arg) => blockedAction.inputs[arg] != null)
       .map((arg) => JSON.stringify(blockedAction.inputs[arg]));
-
     return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0
         ? ` for the following parameters: ${argValues.join(", ")}`
         : ""
     }`;
-  }, [
-    blockedAction.stake,
-    blockedAction.argumentsRequiringApproval,
-    blockedAction.inputs,
-    blockedAction.metadata.agentName,
-    blockedAction.metadata.toolName,
-  ]);
+  }
+
+  const title = getTitle();
+  const alwaysAllowLabel = getAlwaysAllowLabel();
 
   return (
     <ContentMessage
       title={title}
       variant="primary"
-      className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
+      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
       icon={icon}
     >
       {isTriggeredByCurrentUser ? (
@@ -126,7 +155,7 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="mt-3 flex flex-row items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:mt-3">
             {(blockedAction.stake === "low" ||
               blockedAction.stake === "medium") && (
               <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
@@ -141,25 +170,27 @@ export function MCPToolValidationRequired({
                 </span>
               </Label>
             )}
-            <div className="flex-grow" />
-            <Button
-              label="Decline"
-              variant="outline"
-              size="xs"
-              icon={XMarkIcon}
-              disabled={isValidating}
-              isPulsing={isPulsing}
-              onClick={() => void handleValidation("rejected")}
-            />
-            <Button
-              label="Allow"
-              variant="highlight"
-              size="xs"
-              icon={CheckIcon}
-              disabled={isValidating}
-              isPulsing={isPulsing}
-              onClick={() => void handleValidation("approved")}
-            />
+            <div className="hidden sm:block sm:flex-grow" />
+            <div className="flex flex-row gap-3">
+              <Button
+                label="Decline"
+                variant="outline"
+                size="xs"
+                icon={XMarkIcon}
+                disabled={isValidating}
+                isPulsing={isPulsing}
+                onClick={() => void handleValidation("rejected")}
+              />
+              <Button
+                label="Allow"
+                variant="highlight"
+                size="xs"
+                icon={CheckIcon}
+                disabled={isValidating}
+                isPulsing={isPulsing}
+                onClick={() => void handleValidation("approved")}
+              />
+            </div>
           </div>
         </>
       ) : (

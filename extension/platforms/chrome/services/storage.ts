@@ -6,7 +6,7 @@ export class ChromeStorageService implements StorageService {
   async get<T>(key: string): Promise<T | undefined> {
     const result = await this.storage.get([key]);
 
-    return result[key];
+    return result[key] as T | undefined;
   }
 
   async set<T>(key: string, value: T): Promise<void> {

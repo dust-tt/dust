@@ -37,7 +37,7 @@
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
+    "@anthropic-ai/sdk": "^0.79.0",
     "@contentful/rich-text-react-renderer": "^16.1.6",
     "@contentful/rich-text-types": "^17.2.5",
     "@datadog/browser-logs": "^6.13.0",
@@ -59,7 +59,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "^1.27.0",
-    "@notionhq/client": "^2.3.0",
+    "@notionhq/client": "^5.13.0",
     "@novu/api": "^3.13.0",
     "@novu/framework": "^2.9.0",
     "@novu/js": "^3.13.0",
@@ -211,7 +211,7 @@
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "turndown": "^7.2.2",
     "twilio": "^5.11.1",
-    "undici": "^7.8.0",
+    "undici": "^7.24.0",
     "unist-util-visit": "^4.1.2",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2",

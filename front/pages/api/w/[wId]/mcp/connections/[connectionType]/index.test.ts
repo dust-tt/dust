@@ -8,22 +8,17 @@ import handler from "./index";
 
 describe("MCP Connections API Handler", () => {
   it("should return personal connections filtered by user ID", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
     req.query.connectionType = "personal";
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     // Create two connections for the same server, one newer than the other
-    await MCPServerConnectionFactory.remote(
-      authenticator,
-      remoteServer,
-      "personal"
-    );
+    await MCPServerConnectionFactory.remote(auth, remoteServer, "personal");
     const connection2 = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "personal"
     );
@@ -37,11 +32,10 @@ describe("MCP Connections API Handler", () => {
   });
 
   it("should return workspace connections", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
     req.query.connectionType = "workspace";
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
@@ -49,13 +43,13 @@ describe("MCP Connections API Handler", () => {
 
     // Create two workspace connections for the same server.
     await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "workspace",
       new Date(now.getTime() - 60000) // 1 min ago.
     );
     const connection2 = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer,
       "workspace",
       now
@@ -70,10 +64,9 @@ describe("MCP Connections API Handler", () => {
   });
 
   it("should handle different server IDs correctly", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
     req.query.connectionType = "personal";
 
     const remoteServer1 = await RemoteMCPServerFactory.create(workspace);
@@ -81,12 +74,12 @@ describe("MCP Connections API Handler", () => {
 
     // Create connections for different servers.
     const connection1 = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer1,
       "personal"
     );
     const connection2 = await MCPServerConnectionFactory.remote(
-      authenticator,
+      auth,
       remoteServer2,
       "personal"
     );
@@ -102,7 +95,7 @@ describe("MCP Connections API Handler", () => {
   });
 
   it("should handle internal server connections", async () => {
-    const { req, res, authenticator } = await createPrivateApiMockRequest({
+    const { req, res, auth } = await createPrivateApiMockRequest({
       method: "GET",
     });
     req.query.connectionType = "personal";
@@ -111,13 +104,13 @@ describe("MCP Connections API Handler", () => {
 
     // Create two internal connections for the same server.
     await MCPServerConnectionFactory.internal(
-      authenticator,
+      auth,
       "internal_server_1",
       "personal",
       new Date(now.getTime() - 60000) // 1 min ago.
     );
     const connection2 = await MCPServerConnectionFactory.internal(
-      authenticator,
+      auth,
       "internal_server_1",
       "personal",
       now
@@ -150,7 +143,7 @@ describe("MCP Connections API Handler", () => {
 
   it("should not leak personal connections across workspaces", async () => {
     // Create first workspace and its connections.
-    const { workspace: workspace1, authenticator: authenticator1 } =
+    const { workspace: workspace1, auth: authenticator1 } =
       await createPrivateApiMockRequest({
         method: "GET",
       });
@@ -167,7 +160,7 @@ describe("MCP Connections API Handler", () => {
       req,
       res,
       workspace: workspace2,
-      authenticator: authenticator2,
+      auth: authenticator2,
     } = await createPrivateApiMockRequest({
       method: "GET",
     });
@@ -192,7 +185,7 @@ describe("MCP Connections API Handler", () => {
 
   it("should not leak workspace connections across workspaces", async () => {
     // Create first workspace and its connections.
-    const { workspace: workspace1, authenticator: authenticator1 } =
+    const { workspace: workspace1, auth: authenticator1 } =
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -209,7 +202,7 @@ describe("MCP Connections API Handler", () => {
       req,
       res,
       workspace: workspace2,
-      authenticator: authenticator2,
+      auth: authenticator2,
     } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",

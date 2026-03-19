@@ -25,6 +25,7 @@ import type { PendingUpdate } from "@extension/platforms/chrome/services/platfor
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
+import { htmlToMarkdown } from "@extension/shared/lib/html_to_markdown";
 import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
@@ -593,12 +594,12 @@ chrome.runtime.onMessage.addListener(
                 });
                 content = execution?.result ?? "no content.";
               } else {
-                // TODO - handle non-HTML content. For now we just extract the page content.
                 const [execution] = await chrome.scripting.executeScript({
                   target: { tabId: tab.id },
-                  func: extractPage(tab.url || ""),
+                  func: extractPage(),
                 });
-                content = execution?.result ?? "no content.";
+                const html = execution?.result;
+                content = html ? htmlToMarkdown(html) : "no content.";
               }
             }
             sendResponse({
@@ -1057,7 +1058,7 @@ const authenticate = async (
 
   const onUpdated = async (
     updatedTabId: number,
-    _changeInfo: chrome.tabs.TabChangeInfo,
+    _changeInfo: chrome.tabs.OnUpdatedInfo,
     updatedTab: chrome.tabs.Tab
   ) => {
     if (updatedTabId !== tabId || !updatedTab.url) {

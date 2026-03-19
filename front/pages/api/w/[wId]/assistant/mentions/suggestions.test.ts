@@ -27,19 +27,15 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 });
 
 async function setupTest(method: RequestMethod = "GET") {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role: "builder",
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role: "builder",
+    method,
+  });
 
-  const agentConfig = await AgentConfigurationFactory.createTestAgent(
-    authenticator,
-    {
-      name: "Test Agent",
-      description: "Test Agent Description",
-    }
-  );
+  const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+    name: "Test Agent",
+    description: "Test Agent Description",
+  });
 
   req.query.wId = workspace.sId;
 
@@ -47,7 +43,7 @@ async function setupTest(method: RequestMethod = "GET") {
     req,
     res,
     workspace,
-    auth: authenticator,
+    auth: auth,
     agentConfig,
   };
 }

@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import {
   WEBHOOK_PRESETS,
   WEBHOOK_PROVIDERS,
@@ -34,10 +35,26 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST": {
+      let { body } = req;
+
+      // String check for retro-compatibility w.r.t. old clients.
+      // TODO(2026-03-18 aubin): remove this once we do not get calls from clients that predate the front-end change.
+      if (isString(body)) {
+        try {
+          body = JSON.parse(body);
+        } catch {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid request body, expected JSON.",
+            },
+          });
+        }
+      }
+
       const bodyValidation =
-        PostWebhookFilterGeneratorRequestBodySchema.safeParse(
-          JSON.parse(req.body)
-        );
+        PostWebhookFilterGeneratorRequestBodySchema.safeParse(body);
 
       if (!bodyValidation.success) {
         return apiError(req, res, {

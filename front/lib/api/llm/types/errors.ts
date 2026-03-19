@@ -294,7 +294,7 @@ export const getUserFacingLLMErrorMessage = (
       return "The request timed out. Please try again.";
     }
     case "server_error": {
-      return `${userFacingProvider} encountered an internal error. Please try again.`;
+      return `The AI provider (${userFacingProvider}) ran into an issue. Please try again in a moment.`;
     }
     case "stream_error": {
       return `Connection interrupted while receiving the response. Please try again.`;

@@ -45,18 +45,17 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
 });
 
 async function setupTest() {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role: "admin",
-      method: "GET",
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role: "admin",
+    method: "GET",
+  });
 
   // Create system space
-  await SpaceFactory.defaults(authenticator);
+  await SpaceFactory.defaults(auth);
 
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
@@ -65,7 +64,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
   });
 
   it("should successfully fetch GitHub service data", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
     const mockConnectionId = "conn_123456";
     const mockAccessToken = "gho_mockToken123";
@@ -102,7 +101,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
           provider: "github",
           metadata: {
             workspace_id: workspace.sId,
-            user_id: authenticator.user()?.sId,
+            user_id: auth.user()?.sId,
           },
         },
       } as any)
@@ -184,7 +183,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
   });
 
   it("should return 403 when connection does not belong to workspace", async () => {
-    const { req, res, authenticator } = await setupTest();
+    const { req, res, auth } = await setupTest();
 
     // Mock getAccessToken to return a connection with different workspace_id
     // This will make checkConnectionOwnership fail
@@ -196,7 +195,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
           provider: "github",
           metadata: {
             workspace_id: "different_workspace_id_not_matching",
-            user_id: authenticator.user()?.sId,
+            user_id: auth.user()?.sId,
           },
         },
       } as any)
@@ -308,13 +307,12 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
   });
 
   it("should return 405 for non-GET methods", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        role: "admin",
-        method: "POST",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
     req.query.wId = workspace.sId;
     req.query.connectionId = "conn_123456";
     req.query.provider = "github";

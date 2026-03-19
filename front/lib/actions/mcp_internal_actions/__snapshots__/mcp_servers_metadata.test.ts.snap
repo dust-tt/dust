@@ -424,6 +424,14 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_events": "never_ask",
     "update_event": "low",
   },
+  "poke": {
+    "get_workspace_credits": "high",
+    "get_workspace_feature_flags": "high",
+    "get_workspace_members": "high",
+    "get_workspace_metadata": "high",
+    "get_workspace_plan_and_subscription": "high",
+    "get_workspace_spaces": "high",
+  },
   "primitive_types_debugger": {
     "pass_through": "high",
     "tool_without_user_config": "high",

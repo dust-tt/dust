@@ -34,7 +34,7 @@ async function setupTest(
 
   // Create workspace, requesting user and auth based on requestUserRole
   const {
-    authenticator: auth,
+    auth,
     req,
     res,
     workspace,
@@ -560,14 +560,14 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
 
 describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
   it("should update file attachments when sandbox_tools is enabled", async () => {
-    const { auth, req, res, skill, workspace, requestUser, requestUserAuth } =
+    const { auth, req, res, skill, requestUser, requestUserAuth } =
       await setupTest({
         skillOwnerRole: "builder",
         requestUserRole: "builder",
         method: "PATCH",
       });
 
-    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, requestUser, {
       contentType: "text/plain",
@@ -659,7 +659,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
         method: "PATCH",
       });
 
-    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     // Add a file attachment via the resource directly.
     const file = await FileFactory.create(auth, requestUser, {

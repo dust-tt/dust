@@ -85,8 +85,24 @@ async function handler(
     });
   }
 
-  const parsedQuery = GetMentionSuggestionsRequestQuerySchema.parse(req.query);
-  const { query, select: selectParam, current } = parsedQuery;
+  const parsedQuery = GetMentionSuggestionsRequestQuerySchema.safeParse(
+    req.query
+  );
+  if (!parsedQuery.success) {
+    const errorMessages = parsedQuery.error.errors
+      .map((e) => `${e.path.join(".")}: ${e.message}`)
+      .join(", ");
+
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid query parameters: ${errorMessages}`,
+      },
+    });
+  }
+
+  const { query, select: selectParam, current } = parsedQuery.data;
 
   // Parse select parameter: can be "agents", "users", ["agents", "users"], or undefined.
   const select = (() => {

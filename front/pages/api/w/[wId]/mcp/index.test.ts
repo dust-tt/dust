@@ -36,19 +36,18 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role,
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
 
   // Create a system space to hold the Remote MCP servers
-  await SpaceFactory.defaults(authenticator);
+  await SpaceFactory.defaults(auth);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
@@ -139,7 +138,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
 
 describe("POST /api/w/[wId]/mcp/", () => {
   it("should create an internal MCP server", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "POST");
+    const { req, res, auth } = await setupTest("admin", "POST");
 
     req.body = {
       name: "agent_memory" as InternalMCPServerNameType,
@@ -157,13 +156,13 @@ describe("POST /api/w/[wId]/mcp/", () => {
       }),
     });
 
-    expect(
-      await MCPServerViewResource.listForSystemSpace(authenticator)
-    ).toHaveLength(1);
+    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
+      1
+    );
   });
 
   it("should fail to create an internal MCP server if it already exists", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "POST");
+    const { req, res, auth } = await setupTest("admin", "POST");
 
     // Make sure we can only create one instance of this internal MCP server.
     expect(
@@ -172,7 +171,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
 
     // Create the first instance.
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
-      authenticator,
+      auth,
       {
         name: "agent_memory",
         useCase: null,
@@ -181,9 +180,9 @@ describe("POST /api/w/[wId]/mcp/", () => {
 
     expect(internalServer).toBeDefined();
 
-    expect(
-      await MCPServerViewResource.listForSystemSpace(authenticator)
-    ).toHaveLength(1);
+    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
+      1
+    );
 
     req.body = {
       name: "agent_memory" as InternalMCPServerNameType,
@@ -204,7 +203,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
   });
 
   it("should  create an internal MCP server if it already exists but multiple instances are allowed", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "POST");
+    const { req, res, auth } = await setupTest("admin", "POST");
 
     const originalConfig = INTERNAL_MCP_SERVERS["agent_memory"];
     Object.defineProperty(INTERNAL_MCP_SERVERS, "agent_memory", {
@@ -224,7 +223,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
 
     // Create the first instance.
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
-      authenticator,
+      auth,
       {
         name: "agent_memory",
         useCase: null,
@@ -233,9 +232,9 @@ describe("POST /api/w/[wId]/mcp/", () => {
 
     expect(internalServer).toBeDefined();
 
-    expect(
-      await MCPServerViewResource.listForSystemSpace(authenticator)
-    ).toHaveLength(1);
+    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
+      1
+    );
 
     req.body = {
       name: "agent_memory" as InternalMCPServerNameType,
@@ -262,7 +261,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
   });
 
   it("should create an internal MCP server with bearer token credentials", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "POST");
+    const { req, res, auth } = await setupTest("admin", "POST");
 
     const sharedSecret = "test-secret-123";
 
@@ -296,7 +295,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
     const server = responseData.server;
     const credentials =
       await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
-        authenticator,
+        auth,
         server.sId
       );
 
@@ -312,25 +311,21 @@ describe("POST /api/w/[wId]/mcp/", () => {
 
 describe("POST /api/w/[wId]/mcp/ - name conflict", () => {
   it("should return 400 when creating a remote server with includeGlobal and name conflicts in global space", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "POST"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "POST");
 
     // Create a remote server and add its view to the global space.
     const existingServer = await RemoteMCPServerFactory.create(workspace, {
       name: "Test Server",
       url: "https://existing.example.com",
     });
-    const globalSpace =
-      await SpaceResource.fetchWorkspaceGlobalSpace(authenticator);
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        authenticator,
+        auth,
         existingServer.sId
       );
     expect(systemView).not.toBeNull();
-    await MCPServerViewResource.create(authenticator, {
+    await MCPServerViewResource.create(auth, {
       systemView: systemView!,
       space: globalSpace,
     });

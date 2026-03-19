@@ -160,10 +160,10 @@ describe("GET /api/w/[wId]/skills", () => {
   });
 
   it("should not return skills with requestedSpaceIds user cannot access", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
     // Create a skill in global space (user has access)
-    await SkillFactory.create(authenticator, {
+    await SkillFactory.create(auth, {
       name: "Accessible Skill",
     });
 
@@ -171,7 +171,7 @@ describe("GET /api/w/[wId]/skills", () => {
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
     // Create a skill with requestedSpaceIds set to the restricted space
-    await SkillFactory.create(authenticator, {
+    await SkillFactory.create(auth, {
       name: "Restricted Skill",
       requestedSpaceIds: [restrictedSpace.id],
     });
@@ -187,20 +187,17 @@ describe("GET /api/w/[wId]/skills", () => {
   });
 
   it("should return skills when user has access to requestedSpaceIds", async () => {
-    const { req, res, workspace, user, authenticator } = await setupTest(
-      "GET",
-      "admin"
-    );
+    const { req, res, workspace, user, auth } = await setupTest("GET", "admin");
 
     // Required for proper group/space structure in permission checks.
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
 
     // Create a restricted space and add user to it
     const restrictedSpace = await SpaceFactory.regular(workspace);
-    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
+    await restrictedSpace.addMembers(auth, { userIds: [user.sId] });
 
     // Create a skill with requestedSpaceIds set to the restricted space
-    await SkillFactory.create(authenticator, {
+    await SkillFactory.create(auth, {
       name: "Skill In Restricted Space",
       requestedSpaceIds: [restrictedSpace.id],
     });
@@ -456,8 +453,10 @@ describe("POST /api/w/[wId]/skills", () => {
   });
 
   it("creates a skill configuration with 2 tools", async () => {
-    const { req, res, workspace, authenticator, user, globalSpace } =
-      await setupTest("POST", "admin");
+    const { req, res, workspace, auth, user, globalSpace } = await setupTest(
+      "POST",
+      "admin"
+    );
 
     const server1 = await RemoteMCPServerFactory.create(workspace, {
       name: "Server 1",
@@ -530,14 +529,8 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(toolConfigurations).toHaveLength(2);
 
     const serverViewIds = toolConfigurations.map((t) => t.mcpServerViewId);
-    const view1 = await MCPServerViewResource.fetchById(
-      authenticator,
-      serverView1.sId
-    );
-    const view2 = await MCPServerViewResource.fetchById(
-      authenticator,
-      serverView2.sId
-    );
+    const view1 = await MCPServerViewResource.fetchById(auth, serverView1.sId);
+    const view2 = await MCPServerViewResource.fetchById(auth, serverView2.sId);
     expect(serverViewIds).toContain(view1!.id);
     expect(serverViewIds).toContain(view2!.id);
   });
@@ -589,8 +582,10 @@ describe("POST /api/w/[wId]/skills", () => {
   });
 
   it("creates a skill with attached knowledge", async () => {
-    const { req, res, authenticator, workspace, user, globalSpace } =
-      await setupTest("POST", "admin");
+    const { req, res, auth, workspace, user, globalSpace } = await setupTest(
+      "POST",
+      "admin"
+    );
 
     const dataSourceView = await DataSourceViewFactory.folder(
       workspace,
@@ -636,7 +631,7 @@ describe("POST /api/w/[wId]/skills", () => {
     const skillId = res._getJSONData().skill.sId;
 
     // Verify persistence by fetching the skill again.
-    const createdSkill = await SkillResource.fetchById(authenticator, skillId);
+    const createdSkill = await SkillResource.fetchById(auth, skillId);
     expect(createdSkill).not.toBeNull();
     expect(createdSkill!.dataSourceConfigurations).toHaveLength(2);
   });
@@ -699,16 +694,9 @@ describe("POST /api/w/[wId]/skills", () => {
 
 describe("POST /api/w/[wId]/skills - file attachments", () => {
   it("creates a skill with file attachments when sandbox_tools is enabled", async () => {
-    const {
-      authenticator: auth,
-      req,
-      res,
-      workspace,
-      user,
-      authenticator,
-    } = await setupTest("POST", "builder");
+    const { auth, req, res, user } = await setupTest("POST", "builder");
 
-    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file1 = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -750,21 +738,13 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
     expect(fileNames).toContain("schema.json");
 
     // Verify persistence.
-    const createdSkill = await SkillResource.fetchById(
-      authenticator,
-      data.skill.sId
-    );
+    const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
     expect(createdSkill).not.toBeNull();
-    expect(createdSkill!.toJSON(authenticator).fileAttachments).toHaveLength(2);
+    expect(createdSkill!.toJSON(auth).fileAttachments).toHaveLength(2);
   });
 
   it("rejects file attachments when sandbox_tools is not enabled", async () => {
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-    } = await setupTest("POST", "admin");
+    const { req, res, auth: auth, user } = await setupTest("POST", "admin");
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -814,14 +794,14 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
 
   it("rejects file attachments with wrong use case", async () => {
     const {
-      authenticator: auth,
+      auth,
       req,
       res,
-      workspace,
+
       user,
     } = await setupTest("POST", "admin");
 
-    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",

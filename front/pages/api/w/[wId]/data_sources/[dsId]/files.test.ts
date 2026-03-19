@@ -123,7 +123,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
   it("returns 400 on unsupported use-cases", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       workspace,
@@ -161,7 +161,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
   it("returns 403 if not authorized to write in the data source (admin)", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       workspace,
@@ -200,7 +200,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
   it("returns 403 if not authorized to write in the data source (user)", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       workspace,
@@ -239,7 +239,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
 
   it("successfully upserts file to data source with the right arguments", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       workspace,

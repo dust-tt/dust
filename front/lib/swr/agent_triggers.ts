@@ -139,10 +139,13 @@ export function useTextAsCronRule({
           `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
           {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
               naturalDescription,
               defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            } as PostTextAsCronRuleRequestBody),
+            } satisfies PostTextAsCronRuleRequestBody),
             signal,
           }
         );
@@ -180,6 +183,9 @@ export function useWebhookFilterGenerator({
         `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             naturalDescription,
             event,
@@ -422,7 +428,7 @@ export function useTriggerEstimation({
   );
 
   return {
-    estimation: (data as GetTriggerEstimationResponseBody | undefined) ?? null,
+    estimation: data ?? null,
     isEstimationLoading: !!webhookSourceId && !error && !data,
     isEstimationError: error,
     isEstimationValidating: isValidating,

@@ -1,40 +1,21 @@
-import { datadogLogs } from "@datadog/browser-logs";
-
-// Benign errors filtered from Datadog Logs.
-// See: https://github.com/DataDog/browser-sdk/issues/1616
-const IGNORED_LOG_MESSAGES = [
-  "ResizeObserver loop completed with undelivered notifications",
-  "ResizeObserver loop limit exceeded",
-];
+import { initDatadogLogs } from "@app/logger/datadogLogger";
 
 /**
  * Initialize Datadog Logs so that `datadogLogger` calls from front components
  * are forwarded to Datadog instead of being silently swallowed.
  */
-export function initDatadogLogs() {
+export function initDatadogForSpa() {
   const clientToken = import.meta.env?.VITE_DATADOG_CLIENT_TOKEN;
 
   if (!clientToken) {
     return;
   }
 
-  datadogLogs.init({
+  initDatadogLogs({
     clientToken,
-    site: "datadoghq.eu",
     service: `${import.meta.env?.VITE_DATADOG_SERVICE || "front"}-browser`,
     env: import.meta.env?.MODE === "production" ? "prod" : "dev",
     version: import.meta.env?.VITE_COMMIT_HASH || "",
-    forwardErrorsToLogs: true,
-    sessionSampleRate: 100,
-    beforeSend: (log) => {
-      if (
-        typeof log.message === "string" &&
-        IGNORED_LOG_MESSAGES.some((m) => log.message.includes(m))
-      ) {
-        return false;
-      }
-      return true;
-    },
   });
 }
 

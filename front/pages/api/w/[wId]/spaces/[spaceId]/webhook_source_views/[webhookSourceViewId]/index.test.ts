@@ -12,7 +12,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace, user, authenticator, globalSpace } =
+  const { req, res, workspace, user, auth, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -24,12 +24,12 @@ async function setupTest(
   req.query.wId = workspace.sId;
   req.query.spaceId = space.sId;
 
-  return { req, res, workspace, space, user, authenticator, globalSpace };
+  return { req, res, workspace, space, user, auth, globalSpace };
 }
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSourceViewId]", () => {
   it("should successfully delete a webhook source view", async () => {
-    const { req, res, workspace, space, authenticator } = await setupTest(
+    const { req, res, workspace, space, auth } = await setupTest(
       "admin",
       "DELETE"
     );
@@ -48,7 +48,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
 
     // Verify the webhook source view was actually deleted
     const deletedWebhookSourceView = await WebhookSourcesViewResource.fetchById(
-      authenticator,
+      auth,
       webhookSourceView.sId
     );
 
@@ -56,7 +56,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
   });
 
   it("should successfully delete a webhook source view from global space", async () => {
-    const { req, res, workspace, authenticator, globalSpace } = await setupTest(
+    const { req, res, workspace, auth, globalSpace } = await setupTest(
       "admin",
       "DELETE"
     );
@@ -77,7 +77,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
 
     // Verify the webhook source view was actually deleted
     const deletedWebhookSourceView = await WebhookSourcesViewResource.fetchById(
-      authenticator,
+      auth,
       webhookSourceView.sId
     );
 
@@ -85,13 +85,13 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
   });
 
   it("should return 403 when user is not admin", async () => {
-    const { req, res, workspace, user, authenticator } = await setupTest(
+    const { req, res, workspace, user, auth } = await setupTest(
       "builder",
       "DELETE"
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    await regularSpace.groups[0].dangerouslyAddMember(authenticator, {
+    await regularSpace.groups[0].dangerouslyAddMember(auth, {
       user: user.toJSON(),
     });
 
