@@ -171,7 +171,14 @@ async function handler(
           ...previousMetadata,
           allowContentCreationFileSharing: body.allowContentCreationFileSharing,
         };
-        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        // TODO(2026-03-19: Frame sharing) Remove Dual write.
+        const sharingPolicy = body.allowContentCreationFileSharing
+          ? "all_scopes"
+          : "workspace_and_emails";
+        await workspace.updateWorkspaceSettings({
+          metadata: newMetadata,
+          sharingPolicy,
+        });
         owner.metadata = newMetadata;
 
         // if public sharing is disabled, downgrade share scope of all public files to workspace

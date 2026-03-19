@@ -32,7 +32,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isStringArray } from "@app/types/shared/utils/general";
-import type { WorkspaceSegmentationType } from "@app/types/user";
+import type {
+  WorkspaceSegmentationType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
   Attributes,
@@ -64,6 +67,7 @@ type CachedWorkspaceData = {
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   metadata: Record<string, string | number | boolean | object> | null;
+  sharingPolicy: WorkspaceSharingPolicy;
   conversationsRetentionDays: number | null;
   createdAt: number;
   updatedAt: number;
@@ -191,6 +195,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
       metadata: workspace.metadata,
+      sharingPolicy: workspace.sharingPolicy,
       conversationsRetentionDays: workspace.conversationsRetentionDays,
       createdAt: workspace.createdAt.getTime(),
       updatedAt: workspace.updatedAt.getTime(),
@@ -221,6 +226,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
       metadata: data.metadata,
+      sharingPolicy: data.sharingPolicy,
       conversationsRetentionDays: data.conversationsRetentionDays,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
@@ -421,6 +427,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "defaultEmbeddingProvider"
         | "workOSOrganizationId"
         | "metadata"
+        | "sharingPolicy"
       >
     >
   ) {
