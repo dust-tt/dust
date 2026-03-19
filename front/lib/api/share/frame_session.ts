@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import { ExternalViewerSessionModel } from "@app/lib/resources/storage/models/files";
-import { isDevelopment } from "@app/types/shared/env";
-import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isDevelopment, isTest } from "@app/types/shared/env";
 import type { LightWorkspaceType } from "@app/types/user";
 import crypto from "crypto";
 import type { NextApiResponse } from "next";
@@ -29,8 +29,9 @@ export async function createFrameSession(
     workspaceId: workspace.id,
   });
 
-  const domain = config.getWorkOSSessionCookieDomain();
-  const secureFlag = isDevelopment() ? "" : "; Secure";
+  const isLocal = isDevelopment() || isTest();
+  const domain = isLocal ? undefined : config.getWorkOSSessionCookieDomain();
+  const secureFlag = isLocal ? "" : "; Secure";
   const cookieValue = `${FRAME_SESSION_COOKIE_NAME}=${sessionToken}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=${SESSION_DURATION_SECONDS}`;
 
   if (domain) {
@@ -44,17 +45,18 @@ export async function createFrameSession(
  * Look up a valid (non-expired) external viewer session from the cookie value.
  * Returns the session's verified email, or null if invalid/expired.
  */
-export async function getFrameSessionEmail({
-  sessionToken,
-  workspaceId,
-}: {
-  sessionToken: string;
-  workspaceId: ModelId;
-}): Promise<string | null> {
+export async function getFrameSessionEmail(
+  workspace: WorkspaceResource,
+  {
+    token,
+  }: {
+    token: string;
+  }
+): Promise<string | null> {
   const session = await ExternalViewerSessionModel.findOne({
     where: {
-      sessionToken,
-      workspaceId,
+      sessionToken: token,
+      workspaceId: workspace.id,
       expiresAt: { [Op.gt]: new Date() },
     },
   });

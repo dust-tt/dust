@@ -79,21 +79,8 @@ async function handler(
     });
   }
 
-  // At this point, the user already received a code, so we can reveal grant status.
-  const hasGrant = await FileResource.getActiveGrantForEmail(workspace, {
-    email,
-    shareableFileId,
-  });
-  if (!hasGrant) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "You do not have access to this shared content.",
-      },
-    });
-  }
-
+  // Validate OTP before checking grants. This prevents enumeration: an attacker calling this
+  // endpoint directly (without going through verify-email) gets an OTP error, not a grant error.
   const otpResult = await validateFrameOtpChallenge({
     shareToken: token,
     email,
@@ -130,6 +117,23 @@ async function handler(
       default:
         assertNever(otpError);
     }
+  }
+
+  // OTP is valid. Now check the grant — it may have been revoked between code request and
+  // submission. A valid OTP proves the user went through verify-email (which requires a grant),
+  // so revealing "no access" here doesn't enable enumeration.
+  const hasGrant = await FileResource.getActiveGrantForEmail(workspace, {
+    email,
+    shareableFileId,
+  });
+  if (!hasGrant) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "You do not have access to this shared content.",
+      },
+    });
   }
 
   await createFrameSession(res, workspace, { email });

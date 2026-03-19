@@ -102,9 +102,9 @@ export async function validateFrameOtpChallenge({
 
       // Increment attempts.
       data.attempts += 1;
-      const ttl = await redis.ttl(key);
-      if (ttl > 0) {
-        await redis.set(key, JSON.stringify(data), { EX: ttl });
+      const ttlSeconds = await redis.ttl(key);
+      if (ttlSeconds > 0) {
+        await redis.set(key, JSON.stringify(data), { EX: ttlSeconds });
       }
 
       // Timing-safe comparison.

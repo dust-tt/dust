@@ -271,6 +271,9 @@ export class FileResource extends BaseResource<FileModel> {
       shareableFileId: ModelId;
     }
   ): Promise<SharingGrantType | null> {
+    // Note: expiresAt is not enforced here because it cannot be set yet.
+    // When grant expiration is implemented, add query clause + index
+    // expiresAt: { [Op.or]: [null, { [Op.gt]: new Date() }] }
     const grant = await SharingGrantModel.findOne({
       where: {
         workspaceId: workspace.id,

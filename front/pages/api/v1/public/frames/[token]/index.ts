@@ -130,49 +130,43 @@ async function handler(
 
   // Handle email-based share scopes.
   if (shareScope === "emails_only" || shareScope === "workspace_and_emails") {
-    let emailAuthorized = false;
-
     // For workspace_and_emails: workspace members are authorized directly.
-    if (shareScope === "workspace_and_emails" && auth) {
-      emailAuthorized = true;
-    }
+    const isWorkspaceMemberWithAccess =
+      shareScope === "workspace_and_emails" && auth;
 
-    // If not authorized via Dust session, check external viewer session cookie.
-    if (!emailAuthorized) {
-      const sessionToken = req.cookies[FRAME_SESSION_COOKIE_NAME];
-      if (sessionToken) {
-        const sessionEmail = await getFrameSessionEmail({
-          sessionToken,
-          workspaceId: workspace.id,
-        });
-
-        if (sessionEmail) {
-          const hasGrant = await FileResource.getActiveGrantForEmail(
-            workspace,
-            {
-              email: sessionEmail,
-              shareableFileId,
-            }
-          );
-          if (hasGrant) {
-            emailAuthorized = true;
-
-            await FileResource.recordGrantView(workspace, {
-              email: sessionEmail,
-              shareableFileId,
-            });
-          }
+    if (!isWorkspaceMemberWithAccess) {
+      // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.
+      let verifiedEmail: string | null = auth?.user()?.email ?? null;
+      if (!verifiedEmail) {
+        const sessionToken = req.cookies[FRAME_SESSION_COOKIE_NAME];
+        if (sessionToken) {
+          verifiedEmail = await getFrameSessionEmail(workspace, {
+            token: sessionToken,
+          });
         }
       }
-    }
 
-    if (!emailAuthorized) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
+      // Check if the verified email has an active grant for this frame.
+      const hasGrant =
+        verifiedEmail &&
+        (await FileResource.getActiveGrantForEmail(workspace, {
+          email: verifiedEmail,
+          shareableFileId,
+        }));
+
+      if (!hasGrant) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      }
+
+      await FileResource.recordGrantView(workspace, {
+        email: verifiedEmail!,
+        shareableFileId,
       });
     }
   }
