@@ -3,6 +3,7 @@ import { createRequire } from "module";
 import path from "path";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const require = createRequire(import.meta.url);
 
@@ -261,6 +262,14 @@ export default defineConfig(({ mode }) => {
   const enableReactScan =
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
+  const enableAnalyzer = env.ANALYZE === "true";
+  const analyzerTemplate = (env.ANALYZE_TEMPLATE ?? "treemap") as
+    | "treemap"
+    | "sunburst"
+    | "network"
+    | "raw-data"
+    | "list";
+
   return {
     cacheDir: path.resolve(__dirname, ".vite"),
     base: basePath,
@@ -272,6 +281,14 @@ export default defineConfig(({ mode }) => {
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
       react(),
+      enableAnalyzer &&
+        visualizer({
+          open: true,
+          filename: `dist/${appName}/stats.html`,
+          template: analyzerTemplate,
+          gzipSize: true,
+          brotliSize: true,
+        }),
     ].flat() as PluginOption[],
     define: {
       ...envVarDefines,
