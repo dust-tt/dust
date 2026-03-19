@@ -261,12 +261,12 @@ async function handler(
     }
 
     case "POST": {
-      if (!agentConfiguration.canEdit) {
+      if (!agentConfiguration.canRead && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Only editors can create triggers for this agent.",
+            message: "You need access to this agent to create triggers.",
           },
         });
       }
