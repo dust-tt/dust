@@ -253,27 +253,32 @@ export async function sendEmailToRecipients({
   cc?: string[];
   message: any;
 }) {
-  const recipients = [...to, ...(cc ?? [])];
-  const msg = {
-    ...message,
-    to,
-    ...(cc && cc.length > 0 ? { cc } : {}),
-  };
-
-  // In dev we want to make sure we don't send emails to real users.
-  // We prevent sending emails if any recipient is not in @dust.tt.
+  // In dev, filter out external recipients and warn rather than blocking the send entirely.
+  let filteredTo = to;
+  let filteredCc = cc;
   if (isDevelopment()) {
-    const externalRecipients = recipients.filter(
-      (recipient) => !recipient.endsWith("@dust.tt")
+    const isInternal = (r: string) => r.endsWith("@dust.tt");
+    filteredTo = to.filter(isInternal);
+    filteredCc = cc?.filter(isInternal);
+    const externalRecipients = [...to, ...(cc ?? [])].filter(
+      (r) => !isInternal(r)
     );
     if (externalRecipients.length > 0) {
-      logger.error(
+      logger.warn(
         { externalRecipients, subject: message.subject },
-        "Prevented sending email in development mode to external recipients."
+        "Dropping external recipients in development mode."
       );
+    }
+    if (filteredTo.length === 0) {
       return;
     }
   }
+
+  const msg = {
+    ...message,
+    to: filteredTo,
+    ...(filteredCc && filteredCc.length > 0 ? { cc: filteredCc } : {}),
+  };
 
   try {
     await getSgMailClient().send(msg);
