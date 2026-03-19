@@ -2782,6 +2782,27 @@ export type GetWorkspaceUsageResponseType = z.infer<
   typeof GetWorkspaceUsageResponseSchema
 >;
 
+const AnalyticsExportTableSchema = z.enum([
+  "usage_metrics",
+  "active_users",
+  "source",
+  "agents",
+  "users",
+  "skill_usage",
+  "tool_usage",
+]);
+
+export const GetAnalyticsExportRequestSchema = z.object({
+  table: AnalyticsExportTableSchema,
+  startDate: z.string(),
+  endDate: z.string(),
+  timezone: z.string().optional(),
+});
+
+export type GetAnalyticsExportRequestType = z.infer<
+  typeof GetAnalyticsExportRequestSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
