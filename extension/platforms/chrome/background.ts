@@ -179,9 +179,4 @@ chrome.runtime.onMessageExternal.addListener((request) => {
   return true;
 });
 
-const getAuthenticateRedirectUrl = () => chrome.identity.getRedirectURL();
-
-registerMessageListener({
-  platform,
-  getAuthenticateRedirectUrl,
-});
+registerMessageListener(platform);

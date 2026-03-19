@@ -1,5 +1,5 @@
 // Firefox background script.
-// Uses `browser.*` for Firefox-specific APIs (sidebarAction, identity).
+// Uses `browser.*` for Firefox-specific APIs (sidebarAction).
 // All other `chrome.*` APIs work via Firefox's Chrome compatibility layer.
 
 import { FirefoxPlatformService } from "@extension/platforms/firefox/services/platform";
@@ -67,9 +67,4 @@ chrome.contextMenus.onClicked.addListener(async (event) => {
   }
 });
 
-const getAuthenticateRedirectUrl = () => browser.identity.getRedirectURL();
-
-registerMessageListener({
-  platform,
-  getAuthenticateRedirectUrl,
-});
+registerMessageListener(platform);
