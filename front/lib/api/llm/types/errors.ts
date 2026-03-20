@@ -65,7 +65,10 @@ export function categorizeLLMError(
       ? error.status
       : undefined;
 
-  if (errorMessage.toLowerCase().startsWith("terminated")) {
+  if (
+    errorMessage.includes("terminated") ||
+    errorMessage.includes("other side closed")
+  ) {
     return {
       type: "terminated_error",
       message: `Terminated error for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
