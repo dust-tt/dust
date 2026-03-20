@@ -10,6 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
+import path from "path";
 
 async function handler(
   req: NextApiRequest,
@@ -55,13 +56,14 @@ async function handler(
   }
 
   // Validate the requested path is within this conversation's files directory.
-  // Reject path traversal attempts (e.g. "../../other-convo/files/secret.txt").
+  // Normalize first to collapse any ".." or "." segments, then verify the prefix.
   const owner = auth.getNonNullableWorkspace();
   const expectedPrefix = getConversationFilesBasePath({
     workspaceId: owner.sId,
     conversationId: cId,
   });
-  if (filePath.includes("..") || !filePath.startsWith(expectedPrefix)) {
+  const normalizedPath = path.posix.normalize(filePath);
+  if (!normalizedPath.startsWith(expectedPrefix)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -74,7 +76,7 @@ async function handler(
   const bucket = getPrivateUploadBucket();
 
   try {
-    const contentType = await bucket.getFileContentType(filePath);
+    const contentType = await bucket.getFileContentType(normalizedPath);
     if (contentType) {
       res.setHeader("Content-Type", contentType);
     }
@@ -88,10 +90,10 @@ async function handler(
     });
   }
 
-  const readStream = bucket.file(filePath).createReadStream();
+  const readStream = bucket.file(normalizedPath).createReadStream();
 
   readStream.on("error", (err) => {
-    logger.error({ err, filePath }, "Error streaming sandbox file");
+    logger.error({ err, filePath: normalizedPath }, "Error streaming sandbox file");
     readStream.destroy();
     res.end();
   });
