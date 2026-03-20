@@ -147,6 +147,14 @@ export default withPublicAPIAuthentication(handler);
 // Table export helpers
 // ---------------------------------------------------------------------------
 
+// Sanitize CSV cells to prevent formula injection when opened in spreadsheets.
+function sanitizeCsvCell(value: string | number): string | number {
+  if (typeof value === "string" && /^[=+\-@]/.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
 async function exportTable({
   table,
   startDate,
@@ -289,7 +297,11 @@ async function exportSource({
   });
 
   const headers = ["date", "source", "messageCount"];
-  const csvData = rows.map((row) => [row.date, row.origin, row.messageCount]);
+  const csvData = rows.map((row) => [
+    row.date,
+    sanitizeCsvCell(row.origin),
+    row.messageCount,
+  ]);
 
   return new Ok(stringify([headers, ...csvData], { header: false }));
 }
@@ -318,7 +330,7 @@ async function exportAgents({
   }
 
   const csvData = result.value.map((row) =>
-    AGENT_EXPORT_HEADERS.map((h) => row[h])
+    AGENT_EXPORT_HEADERS.map((h) => sanitizeCsvCell(row[h]))
   );
 
   return new Ok(
@@ -358,7 +370,7 @@ async function exportUsers({
   }
 
   const csvData = result.value.map((row) =>
-    USER_EXPORT_HEADERS.map((h) => row[h])
+    USER_EXPORT_HEADERS.map((h) => sanitizeCsvCell(row[h]))
   );
 
   return new Ok(
@@ -436,7 +448,9 @@ async function exportSkillUsage({
     "executions",
     "uniqueUsers",
   ];
-  const csvData = rows.map((row) => headers.map((h) => row[h]));
+  const csvData = rows.map((row) =>
+    headers.map((h) => sanitizeCsvCell(row[h]))
+  );
 
   return new Ok(stringify([headers, ...csvData], { header: false }));
 }
@@ -508,7 +522,9 @@ async function exportToolUsage({
     "executions",
     "uniqueUsers",
   ];
-  const csvData = rows.map((row) => headers.map((h) => row[h]));
+  const csvData = rows.map((row) =>
+    headers.map((h) => sanitizeCsvCell(row[h]))
+  );
 
   return new Ok(stringify([headers, ...csvData], { header: false }));
 }
