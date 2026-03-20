@@ -1,6 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { untrustedFetch } from "@app/lib/egress/server";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
+  AshbyAPIErrorInfo,
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
   AshbyCandidateCreateNoteRequest,
@@ -22,6 +24,8 @@ import type {
   AshbyUserSearchRequest,
 } from "@app/lib/api/actions/servers/ashby/types";
 import {
+  AshbyAPIErrorResponseSchema,
+  AshbyJobSchema,
   AshbyApplicationFeedbackListResponseSchema,
   AshbyApplicationInfoResponseSchema,
   AshbyCandidateCreateNoteResponseSchema,
@@ -29,7 +33,6 @@ import {
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyJobInfoResponseSchema,
-  AshbyJobListResponseSchema,
   AshbyJobPostingInfoResponseSchema,
   AshbyJobPostingListResponseSchema,
   AshbyJobPostingUpdateResponseSchema,
@@ -43,9 +46,37 @@ import {
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { z } from "zod";
+import { z } from "zod";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
+
+export class AshbyAPIError extends Error {
+  readonly errorInfo: AshbyAPIErrorInfo | undefined;
+  readonly errors: string[] | undefined;
+
+  constructor({
+    errorInfo,
+    errors,
+  }: {
+    errorInfo?: AshbyAPIErrorInfo;
+    errors?: string[];
+  }) {
+    const parts: string[] = [];
+    if (errorInfo?.code) {
+      parts.push(errorInfo.code);
+    }
+    if (errorInfo?.message) {
+      parts.push(errorInfo.message);
+    } else if (errors?.length) {
+      parts.push(errors.join(", "));
+    }
+    super(
+      `Ashby API error: ${parts.length > 0 ? parts.join(": ") : "unknown error"}`
+    );
+    this.errorInfo = errorInfo;
+    this.errors = errors;
+  }
+}
 
 export function getAshbyClient(
   extra: ToolHandlerExtra
@@ -80,10 +111,9 @@ export class AshbyClient {
   private async postRequest<T extends z.Schema>(
     endpoint: string,
     data: unknown,
-    schema: T
+    resultsSchema: T
   ): Promise<Result<z.infer<T>, Error>> {
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
+    const response = await untrustedFetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -102,14 +132,24 @@ export class AshbyClient {
     }
 
     const rawData = await response.json();
-    const parseResult = schema.safeParse(rawData);
+
+    const errorCheck = AshbyAPIErrorResponseSchema.safeParse(rawData);
+    if (errorCheck.success) {
+      return new Err(
+        new AshbyAPIError({
+          errorInfo: errorCheck.data.errorInfo,
+          errors: errorCheck.data.errors,
+        })
+      );
+    }
+
+    const parseResult = z
+      .object({ success: z.literal(true), results: resultsSchema })
+      .safeParse(rawData);
 
     if (!parseResult.success) {
       logger.error(
-        {
-          endpoint,
-          error: parseResult.error.message,
-        },
+        { endpoint, error: parseResult.error.message },
         "[Ashby] Invalid API response format"
       );
       return new Err(
@@ -119,7 +159,71 @@ export class AshbyClient {
       );
     }
 
-    return new Ok(parseResult.data);
+    return new Ok(parseResult.data.results);
+  }
+
+  private async postPaginatedRequest<T extends z.ZodTypeAny>(
+    endpoint: string,
+    data: unknown,
+    resultsSchema: T
+  ): Promise<
+    Result<
+      { results: z.infer<T>; moreDataAvailable?: boolean; nextCursor?: string },
+      Error
+    >
+  > {
+    const response = await untrustedFetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Err(
+        new Error(
+          `Ashby API error (${response.status}): ${errorText || response.statusText}`
+        )
+      );
+    }
+
+    const rawData = await response.json();
+
+    const errorCheck = AshbyAPIErrorResponseSchema.safeParse(rawData);
+    if (errorCheck.success) {
+      return new Err(
+        new AshbyAPIError({
+          errorInfo: errorCheck.data.errorInfo,
+          errors: errorCheck.data.errors,
+        })
+      );
+    }
+
+    const parseResult = z
+      .object({
+        success: z.literal(true),
+        results: resultsSchema,
+        moreDataAvailable: z.boolean().optional(),
+        nextCursor: z.string().optional(),
+      })
+      .safeParse(rawData);
+    if (!parseResult.success) {
+      logger.error(
+        { endpoint, error: parseResult.error.message },
+        "[Ashby] Invalid API response format"
+      );
+      return new Err(
+        new Error(
+          `Invalid Ashby API response format: ${parseResult.error.message}`
+        )
+      );
+    }
+
+    const { results, moreDataAvailable, nextCursor } = parseResult.data;
+    return new Ok({ results, moreDataAvailable, nextCursor });
   }
 
   async getReportData(request: AshbyReportSynchronousRequest) {
@@ -141,16 +245,11 @@ export class AshbyClient {
   async listApplicationFeedback(
     request: AshbyApplicationFeedbackListRequest
   ): Promise<Result<AshbyFeedbackSubmission[], Error>> {
-    const response = await this.postRequest(
+    return this.postRequest(
       "applicationFeedback.list",
       request,
       AshbyApplicationFeedbackListResponseSchema
     );
-    if (response.isErr()) {
-      return response;
-    }
-
-    return new Ok(response.value.results);
   }
 
   async createCandidateNote(request: AshbyCandidateCreateNoteRequest) {
@@ -172,16 +271,11 @@ export class AshbyClient {
   async listCandidateNotes(
     request: AshbyCandidateListNotesRequest
   ): Promise<Result<AshbyCandidateNote[], Error>> {
-    const response = await this.postRequest(
+    return this.postRequest(
       "candidate.listNotes",
       request,
       AshbyCandidateListNotesResponseSchema
     );
-    if (response.isErr()) {
-      return response;
-    }
-
-    return new Ok(response.value.results);
   }
 
   async searchUser(request: AshbyUserSearchRequest) {
@@ -251,16 +345,11 @@ export class AshbyClient {
   async listOffers(
     request: AshbyOfferListRequest
   ): Promise<Result<AshbyOffer[], Error>> {
-    const response = await this.postRequest(
+    return this.postRequest(
       "offer.list",
       request,
       AshbyOfferListResponseSchema
     );
-    if (response.isErr()) {
-      return response;
-    }
-
-    return new Ok(response.value.results);
   }
 
   async getJobInfo(request: AshbyJobInfoRequest) {
@@ -272,19 +361,16 @@ export class AshbyClient {
     let cursor: string | undefined;
 
     do {
-      const response = await this.postRequest(
+      const response = await this.postPaginatedRequest(
         "job.list",
         { cursor },
-        AshbyJobListResponseSchema
+        z.array(AshbyJobSchema)
       );
       if (response.isErr()) {
         return response;
       }
-
       allJobs.push(...response.value.results);
-      cursor = response.value.moreDataAvailable
-        ? response.value.nextCursor
-        : undefined;
+      cursor = response.value.moreDataAvailable ? response.value.nextCursor : undefined;
     } while (cursor);
 
     return new Ok(allJobs);
