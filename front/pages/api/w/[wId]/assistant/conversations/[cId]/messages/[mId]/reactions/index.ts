@@ -28,13 +28,11 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export const MessageReactionRequestBodySchema = t.type({
-  reaction: t.string,
+export const MessageReactionRequestBodySchema = z.object({
+  reaction: z.string(),
 });
 
 async function handler(
@@ -97,14 +95,13 @@ async function handler(
   }
 
   const messageId = req.query.mId;
-  const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = MessageReactionRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${bodyValidation.error.message}`,
       },
     });
   }
@@ -130,7 +127,7 @@ async function handler(
           username: user.username,
           fullName: user.fullName(),
         },
-        reaction: bodyValidation.right.reaction,
+        reaction: bodyValidation.data.reaction,
       });
 
       if (created) {
@@ -155,7 +152,7 @@ async function handler(
           username: user.username,
           fullName: user.fullName(),
         },
-        reaction: bodyValidation.right.reaction,
+        reaction: bodyValidation.data.reaction,
       });
 
       if (deleted) {
