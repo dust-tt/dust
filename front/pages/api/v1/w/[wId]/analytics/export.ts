@@ -110,10 +110,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(handler);
 
-// ---------------------------------------------------------------------------
-// Table export helpers
-// ---------------------------------------------------------------------------
-
 interface SkillUsageExportRow {
   date: string;
   skillName: string;
