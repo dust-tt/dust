@@ -455,14 +455,11 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     }
 
     // Pick the latest offer by latestVersion.createdAt.
-    const latestOffer = offersResult.value.reduce(
-      (latest, offer) => {
-        const latestCreatedAt = latest?.latestVersion?.createdAt ?? "";
-        const offerCreatedAt = offer.latestVersion?.createdAt ?? "";
-        return offerCreatedAt > latestCreatedAt ? offer : latest;
-      },
-      offersResult.value[0] ?? null
-    );
+    const latestOffer = offersResult.value.reduce((latest, offer) => {
+      const latestCreatedAt = latest?.latestVersion?.createdAt ?? "";
+      const offerCreatedAt = offer.latestVersion?.createdAt ?? "";
+      return offerCreatedAt > latestCreatedAt ? offer : latest;
+    }, offersResult.value[0] ?? null);
 
     // Fetch detailed offer info for the latest offer.
     let offerInfo = null;
