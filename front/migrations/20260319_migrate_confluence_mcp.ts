@@ -13,7 +13,10 @@ import { isString } from "@app/types/shared/utils/general";
 
 function loadAgentIds(agentsFile: string): string[] {
   const agentIds: unknown = JSON.parse(fs.readFileSync(agentsFile, "utf-8"));
-  assert(Array.isArray(agentIds) && agentIds.every((id) => isString(id)), "agentsFile must contain a JSON array of agent IDs");
+  assert(
+    Array.isArray(agentIds) && agentIds.every((id) => isString(id)),
+    "agentsFile must contain a JSON array of agent IDs"
+  );
 
   return agentIds;
 }
@@ -49,23 +52,28 @@ makeScript(
     originRemoteServerId: {
       type: "string",
       demandOption: true,
-      description:
-        "The mcpServerId of the remote MCP server to migrate from",
+      description: "The mcpServerId of the remote MCP server to migrate from",
     },
     destinationInternalServerId: {
       type: "string",
       demandOption: true,
-      description:
-        "The mcpServerId of the internal MCP server to migrate to",
+      description: "The mcpServerId of the internal MCP server to migrate to",
     },
     agentsFile: {
       type: "string",
       demandOption: true,
-      description: "Path to a JSON file containing an array of agent IDs to migrate",
+      description:
+        "Path to a JSON file containing an array of agent IDs to migrate",
     },
   },
   async (
-    { workspaceId, originRemoteServerId, destinationInternalServerId, agentsFile, execute },
+    {
+      workspaceId,
+      originRemoteServerId,
+      destinationInternalServerId,
+      agentsFile,
+      execute,
+    },
     logger
   ) => {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -73,15 +81,36 @@ makeScript(
 
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-    const originView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(auth, originRemoteServerId);
-    assert(originView, `No remote MCP server view found for: ${originRemoteServerId}`);
+    const originView =
+      await MCPServerViewResource.getMCPServerViewForGlobalSpace(
+        auth,
+        originRemoteServerId
+      );
+    assert(
+      originView,
+      `No remote MCP server view found for: ${originRemoteServerId}`
+    );
 
-    const destinationView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(auth, destinationInternalServerId);
-    assert(destinationView, `No internal MCP server view found for: ${destinationInternalServerId}`);
+    const destinationView =
+      await MCPServerViewResource.getMCPServerViewForGlobalSpace(
+        auth,
+        destinationInternalServerId
+      );
+    assert(
+      destinationView,
+      `No internal MCP server view found for: ${destinationInternalServerId}`
+    );
 
     const agentIds = loadAgentIds(agentsFile);
 
-    logger.info({ originView: originView.toJSON(), destinationView: destinationView.toJSON(), count: agentIds.length }, "Loaded MCP server views and agent IDs.");
+    logger.info(
+      {
+        originView: originView.toJSON(),
+        destinationView: destinationView.toJSON(),
+        count: agentIds.length,
+      },
+      "Loaded MCP server views and agent IDs."
+    );
 
     const agentConfigs = await findAgentMCPConfigs(auth, agentIds, originView);
 
@@ -105,7 +134,9 @@ makeScript(
 
         if (execute) {
           const internalMCPServerId =
-            config.internalMCPServerId !== null ? `'${config.internalMCPServerId}'` : "NULL";
+            config.internalMCPServerId !== null
+              ? `'${config.internalMCPServerId}'`
+              : "NULL";
           revertSql += `UPDATE agent_mcp_server_configurations SET "mcpServerViewId" = ${config.mcpServerViewId}, "internalMCPServerId" = ${internalMCPServerId} WHERE id = ${config.id};\n`;
           await config.update({
             mcpServerViewId: destinationView.id,
