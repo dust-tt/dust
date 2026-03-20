@@ -1,3 +1,4 @@
+import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -37,6 +38,8 @@ interface ConversationSidePanelContextType {
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
+  setVirtuosoMsg: (msg: MessageTemporaryState) => void;
+  virtuosoMsg: MessageTemporaryState | null;
   data: string | undefined;
 }
 
@@ -68,6 +71,8 @@ export function ConversationSidePanelProvider({
   );
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const [virtuosoMsg, setVirtuosoMsg] =
+    React.useState<MessageTemporaryState | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setPanelRef = useCallback(
@@ -155,9 +160,19 @@ export function ConversationSidePanelProvider({
       onPanelClosed,
       setPanelRef,
       panelRef,
+      setVirtuosoMsg,
+      virtuosoMsg,
       data,
     }),
-    [currentPanel, openPanel, closePanel, onPanelClosed, setPanelRef, data]
+    [
+      currentPanel,
+      openPanel,
+      closePanel,
+      onPanelClosed,
+      setPanelRef,
+      virtuosoMsg,
+      data,
+    ]
   );
 
   return (
