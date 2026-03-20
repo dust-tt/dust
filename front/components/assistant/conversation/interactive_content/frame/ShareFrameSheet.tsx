@@ -216,7 +216,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
             ) : (
               <div className="flex flex-col gap-6">
                 <fieldset className="flex flex-col gap-2 border-none p-0">
-                  <legend className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  <legend className="text-sm font-semibold text-foreground dark:text-foreground-night mb-2">
                     Who has access
                   </legend>
                   <div className="flex flex-col gap-1">
@@ -227,10 +227,10 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                         <Label
                           key={option.value}
                           htmlFor={inputId}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                             isSelected
-                              ? "bg-muted-background dark:bg-muted-background-night"
-                              : "hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
+                              ? "border-highlight-300 bg-muted-background dark:border-highlight-300-night dark:bg-muted-background-night"
+                              : "border-transparent hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
                           }`}
                         >
                           <input
@@ -251,7 +251,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                             <span className="text-sm font-medium text-primary dark:text-primary-night">
                               {option.label}
                             </span>
-                            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            <span className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
                               {option.description}
                             </span>
                           </div>
