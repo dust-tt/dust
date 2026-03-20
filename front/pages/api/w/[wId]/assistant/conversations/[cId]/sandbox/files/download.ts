@@ -93,7 +93,10 @@ async function handler(
   const readStream = bucket.file(normalizedPath).createReadStream();
 
   readStream.on("error", (err) => {
-    logger.error({ err, filePath: normalizedPath }, "Error streaming sandbox file");
+    logger.error(
+      { err, filePath: normalizedPath },
+      "Error streaming sandbox file"
+    );
     readStream.destroy();
     res.end();
   });
