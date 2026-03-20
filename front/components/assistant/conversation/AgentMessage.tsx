@@ -3,6 +3,7 @@ import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle"
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -51,6 +52,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -963,6 +965,7 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
+  const isInlineActivityEnabled = isDevInlineActivityEnabled();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -1180,12 +1183,20 @@ function AgentMessageContent({
 
   return (
     <div className="flex flex-col gap-y-4">
-      <AgentMessageActions
-        agentMessage={agentMessage}
-        lastAgentStateClassification={agentMessage.streaming.agentState}
-        actionProgress={agentMessage.streaming.actionProgress}
-        owner={owner}
-      />
+      {isInlineActivityEnabled ? (
+        <InlineActivitySteps
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+          completedSteps={agentMessage.streaming.inlineActivitySteps}
+        />
+      ) : (
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+          actionProgress={agentMessage.streaming.actionProgress}
+          owner={owner}
+        />
+      )}
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
       {completedImages.length > 0 && (
         <InteractiveImageGrid
