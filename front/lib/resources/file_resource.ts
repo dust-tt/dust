@@ -2,13 +2,13 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
-import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
 import {
   disambiguateFileName,
   getConversationFilePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
 import { hasProcessedVersion } from "@app/lib/api/files/processing";
+import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -1235,11 +1235,14 @@ export class FileResource extends BaseResource<FileModel> {
               shareToken,
             }).catch(() => {
               // Silently ignore, email failures should not affect grant creation.
-              logger.info({
-                email,
-                fileId: this.sId,
-                workspaceId: this.workspaceId,
-              }, "Failed to send sharing notification email");
+              logger.info(
+                {
+                  email,
+                  fileId: this.sId,
+                  workspaceId: this.workspaceId,
+                },
+                "Failed to send sharing notification email"
+              );
             })
           )
         );
