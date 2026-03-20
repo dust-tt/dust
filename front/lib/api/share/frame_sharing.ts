@@ -93,7 +93,7 @@ export async function sendFrameSharedEmail({
 }): Promise<void> {
   // Rate limit to 1 notification per recipient per frame per 24 hours to prevent spam.
   const remaining = await rateLimiter({
-    key: `frame_share_nodtifidcation:${shareToken}:${to}`,
+    key: `frame_share_notification:${shareToken}:${to}`,
     maxPerTimeframe: SHARE_NOTIFICATION_MAX_PER_DAY,
     timeframeSeconds: SHARE_NOTIFICATION_TIMEFRAME_SECONDS,
     logger,
