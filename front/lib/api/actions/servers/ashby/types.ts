@@ -765,7 +765,8 @@ export const AshbyOfferSchema = z
   .object({
     id: z.string(),
     applicationId: z.string().optional(),
-    status: z.string().optional(),
+    acceptanceStatus: z.string().optional(),
+    offerStatus: z.string().optional(),
     decidedAt: z.string().nullish(),
     latestVersion: AshbyOfferVersionSchema.nullish(),
   })
