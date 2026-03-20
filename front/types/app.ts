@@ -1,7 +1,5 @@
-import { z } from "zod";
 import type { BlockType } from "./run";
 import type { ModelId } from "./shared/model_id";
-import { DbModelIdSchema } from "./shared/model_id";
 import type { SpaceType } from "./space";
 
 export type AppVisibility = "private" | "deleted";
@@ -35,17 +33,16 @@ export type SpecificationBlockType = {
 
 export type SpecificationType = Array<SpecificationBlockType>;
 
-export const DustAppRunConfigurationSchema = z.object({
-  id: DbModelIdSchema,
-  sId: z.string(),
-  type: z.literal("dust_app_run_configuration"),
-  appWorkspaceId: z.string(),
-  appId: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-});
-
 // TODO Daph refactor this we could simplify this.
-export type DustAppRunConfigurationType = z.infer<
-  typeof DustAppRunConfigurationSchema
->;
+export type DustAppRunConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "dust_app_run_configuration";
+
+  appWorkspaceId: string;
+  appId: string;
+
+  name: string;
+  description: string | null;
+};
