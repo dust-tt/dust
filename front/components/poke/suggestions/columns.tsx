@@ -3,14 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  IconButton,
-  TrashIcon,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
+import { Chip, IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const MAX_ANALYSIS_LENGTH = 80;
@@ -24,23 +17,6 @@ function truncate(text: string | null, maxLength: number): string {
     return text;
   }
   return text.slice(0, maxLength) + "...";
-}
-
-interface CopySuggestionButtonProps {
-  suggestion: AgentSuggestionType;
-}
-
-function CopySuggestionButton({ suggestion }: CopySuggestionButtonProps) {
-  const [isCopied, copy] = useCopyToClipboard();
-  return (
-    <IconButton
-      icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-      size="xs"
-      variant="outline"
-      tooltip={isCopied ? "Copied!" : "Copy content"}
-      onClick={() => copy(JSON.stringify(suggestion.suggestion, null, 2))}
-    />
-  );
 }
 
 function ClickableCell({
@@ -222,22 +198,19 @@ export function makeColumnsForSuggestions(
       cell: ({ row }) => {
         const suggestion = row.original;
         return (
-          <div className="flex items-center gap-1">
-            <CopySuggestionButton suggestion={suggestion} />
-            <IconButton
-              icon={TrashIcon}
-              size="xs"
-              variant="outline"
-              onClick={async () => {
-                await deleteSuggestion(
-                  owner,
-                  agentId,
-                  suggestion,
-                  onSuggestionDeleted
-                );
-              }}
-            />
-          </div>
+          <IconButton
+            icon={TrashIcon}
+            size="xs"
+            variant="outline"
+            onClick={async () => {
+              await deleteSuggestion(
+                owner,
+                agentId,
+                suggestion,
+                onSuggestionDeleted
+              );
+            }}
+          />
         );
       },
     },
