@@ -242,7 +242,8 @@ async function exportActiveUsers({
 }): Promise<Result<string, Error>> {
   const result = await fetchActiveUsersMetrics(
     owner,
-    { startDate, endDate },
+    startDate,
+    endDate,
     timezone
   );
 

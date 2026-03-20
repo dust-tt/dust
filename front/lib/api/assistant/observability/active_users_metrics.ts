@@ -71,57 +71,25 @@ function computeRollingActiveUsers(
  *
  * This approach is efficient (single ES query) and accurate for typical workspace sizes.
  */
-interface ActiveUsersRelativeRange {
-  days: number;
-}
-
-interface ActiveUsersAbsoluteRange {
-  startDate: string;
-  endDate: string;
-}
-
-export type ActiveUsersDateRange =
-  | ActiveUsersRelativeRange
-  | ActiveUsersAbsoluteRange;
-
-function isAbsoluteRange(
-  range: ActiveUsersDateRange
-): range is ActiveUsersAbsoluteRange {
-  return "startDate" in range;
-}
-
 export async function fetchActiveUsersMetrics(
   workspace: LightWorkspaceType,
-  dateRange: ActiveUsersDateRange,
+  startDate: string,
+  endDate: string,
   timezone: string = "UTC"
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
 
-  // Build the ES range filter depending on whether we have days or absolute dates.
-  // Extend the range by MAU_WINDOW_DAYS - 1 for rolling window calculations.
-  let rangeFilter: estypes.QueryDslQueryContainer;
-  let cutoffTimestamp: number;
-
-  if (isAbsoluteRange(dateRange)) {
-    const extendedStart = moment
-      .tz(dateRange.startDate, timezone)
-      .subtract(MAU_WINDOW_DAYS - 1, "days")
-      .format("YYYY-MM-DD");
-    rangeFilter = {
-      range: { timestamp: { gte: extendedStart, lte: dateRange.endDate } },
-    };
-    cutoffTimestamp = moment
-      .tz(dateRange.startDate, timezone)
-      .startOf("day")
-      .valueOf();
-  } else {
-    const extendedDays = dateRange.days + MAU_WINDOW_DAYS - 1;
-    rangeFilter = {
-      range: { timestamp: { gte: `now-${extendedDays}d/d` } },
-    };
-    const startOfToday = moment.tz(timezone).startOf("day").valueOf();
-    cutoffTimestamp = startOfToday - (dateRange.days - 1) * MS_PER_DAY;
-  }
+  const extendedStart = moment
+    .tz(startDate, timezone)
+    .subtract(MAU_WINDOW_DAYS - 1, "days")
+    .format("YYYY-MM-DD");
+  const rangeFilter: estypes.QueryDslQueryContainer = {
+    range: { timestamp: { gte: extendedStart, lte: endDate } },
+  };
+  const cutoffTimestamp = moment
+    .tz(startDate, timezone)
+    .startOf("day")
+    .valueOf();
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {

@@ -1,7 +1,10 @@
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import { timezoneSchema } from "@app/lib/api/assistant/observability/utils";
+import {
+  daysToDateRange,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -66,7 +69,13 @@ async function handler(
 
       const { days, timezone } = q.data;
 
-      const result = await fetchActiveUsersMetrics(owner, { days }, timezone);
+      const { startDate, endDate } = daysToDateRange(days, timezone);
+      const result = await fetchActiveUsersMetrics(
+        owner,
+        startDate,
+        endDate,
+        timezone
+      );
 
       if (result.isErr()) {
         return apiError(req, res, {
