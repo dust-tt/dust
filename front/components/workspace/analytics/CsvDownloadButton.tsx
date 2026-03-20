@@ -1,5 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
-import { DownloadIcon } from "lucide-react";
+import { ArrowDownOnSquareIcon, Button } from "@dust-tt/sparkle";
 
 interface CsvDownloadButtonProps {
   showExport: boolean;
@@ -20,7 +19,7 @@ export function CsvDownloadButton({
 
   return (
     <Button
-      icon={DownloadIcon}
+      icon={ArrowDownOnSquareIcon}
       variant="outline"
       size="xs"
       tooltip="Download CSV"
