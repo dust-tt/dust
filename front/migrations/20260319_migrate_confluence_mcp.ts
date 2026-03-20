@@ -1,4 +1,5 @@
 import assert from "assert";
+import { format } from "date-fns";
 import fs from "fs";
 import { Op } from "sequelize";
 
@@ -8,6 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { isString } from "@app/types/shared/utils/general";
 
 function loadAgentIds(agentsFile: string): string[] {
   const agentIds: unknown = JSON.parse(fs.readFileSync(agentsFile, "utf-8"));
@@ -44,17 +46,17 @@ makeScript(
       type: "string",
       demandOption: true,
     },
-    remoteServerId: {
+    originRemoteServerId: {
       type: "string",
       demandOption: true,
       description:
-        "The mcpServerId of the remote (open-source) Confluence view (rms_...)",
+        "The mcpServerId of the remote MCP server to migrate from",
     },
-    internalServerId: {
+    destinationInternalServerId: {
       type: "string",
       demandOption: true,
       description:
-        "The mcpServerId of the internal Confluence view to migrate to (ims_...)",
+        "The mcpServerId of the internal MCP server to migrate to",
     },
     agentsFile: {
       type: "string",
@@ -63,7 +65,7 @@ makeScript(
     },
   },
   async (
-    { workspaceId, remoteServerId, internalServerId, agentsFile, execute },
+    { workspaceId, originRemoteServerId, destinationInternalServerId, agentsFile, execute },
     logger
   ) => {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -71,17 +73,17 @@ makeScript(
 
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-    const oldView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(auth, remoteServerId);
-    assert(oldView, `No remote Confluence MCP server view found for: ${remoteServerId}`);
+    const originView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(auth, originRemoteServerId);
+    assert(originView, `No remote MCP server view found for: ${originRemoteServerId}`);
 
-    const newView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(auth, internalServerId);
-    assert(newView, `No internal Confluence MCP server view found for: ${internalServerId}`);
+    const destinationView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(auth, destinationInternalServerId);
+    assert(destinationView, `No internal MCP server view found for: ${destinationInternalServerId}`);
 
     const agentIds = loadAgentIds(agentsFile);
 
-    logger.info({ oldView: oldView.toJSON(), newView: newView.toJSON(), count: agentIds.length }, "Loaded MCP server views and agent IDs.");
+    logger.info({ originView: originView.toJSON(), destinationView: destinationView.toJSON(), count: agentIds.length }, "Loaded MCP server views and agent IDs.");
 
-    const agentConfigs = await findAgentMCPConfigs(auth, agentIds, oldView);
+    const agentConfigs = await findAgentMCPConfigs(auth, agentIds, originView);
 
     logger.info(
       { count: agentConfigs.length },
@@ -90,22 +92,36 @@ makeScript(
         : "Would migrate agent MCP server configurations (dry run)"
     );
 
-    for (const config of agentConfigs) {
-      logger.info(
-        { configId: config.sId, oldViewId: config.mcpServerViewId, newViewId: newView.id },
-        execute ? "Updating agent config" : "Would update agent config"
-      );
+    const now = format(new Date(), "yyyy-MM-dd");
+    const revertFile = `${now}_migrate_mcp_revert.sql`;
+    let revertSql = "";
 
-      if (execute) {
-        await config.update({
-          mcpServerViewId: newView.id,
-          internalMCPServerId: internalServerId,
-        });
+    try {
+      for (const config of agentConfigs) {
+        logger.info(
+          { configId: config.sId, oldViewId: config.mcpServerViewId, newViewId: destinationView.id },
+          execute ? "Updating agent config" : "Would update agent config"
+        );
+
+        if (execute) {
+          const internalMCPServerId =
+            config.internalMCPServerId !== null ? `'${config.internalMCPServerId}'` : "NULL";
+          revertSql += `UPDATE agent_mcp_server_configurations SET "mcpServerViewId" = ${config.mcpServerViewId}, "internalMCPServerId" = ${internalMCPServerId} WHERE id = ${config.id};\n`;
+          await config.update({
+            mcpServerViewId: destinationView.id,
+            internalMCPServerId: destinationInternalServerId,
+          });
+        }
+      }
+    } finally {
+      if (execute && revertSql.length > 0) {
+        fs.writeFileSync(revertFile, revertSql);
+        logger.info({ revertFile }, "Revert SQL written");
       }
     }
 
     logger.info(
-      { migratedCount: agentConfigs.length, execute },
+      { migratedCount: agentConfigs.length },
       execute ? "Migration complete" : "Dry run complete"
     );
   }
