@@ -123,23 +123,25 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
 
 interface CodeStepFormProps {
   email: string;
-  onResend: () => void;
   onVerified: () => void;
   shareToken: string;
 }
 
 function CodeStepForm({
   email,
-  onResend,
   onVerified,
   shareToken,
 }: CodeStepFormProps) {
+  const doSendOtp = useSendOtpVerification({ shareToken });
   const doVerifyCode = useVerifyOtpCode({ shareToken });
+  const [isResending, setIsResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const {
     register,
     handleSubmit,
     setError,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<CodeFormValues>({
     resolver: zodResolver(codeFormSchema),
@@ -157,6 +159,23 @@ function CodeStepForm({
       });
     }
   };
+
+  const handleResend = useCallback(async () => {
+    setIsResending(true);
+    setResent(false);
+    reset();
+
+    const result = await doSendOtp(email);
+    setIsResending(false);
+
+    if (result.success) {
+      setResent(true);
+    } else {
+      setError("code", {
+        message: result.error ?? "Failed to resend code. Please try again.",
+      });
+    }
+  }, [doSendOtp, email, reset, setError]);
 
   return (
     <VerificationLayout
@@ -188,9 +207,9 @@ function CodeStepForm({
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            label="Resend code"
-            onClick={onResend}
-            disabled={isSubmitting}
+            label={resent ? "Code sent!" : "Resend code"}
+            onClick={handleResend}
+            disabled={isSubmitting || isResending}
           />
           <Button
             variant="primary"
@@ -221,16 +240,11 @@ export function EmailVerificationFlow({
     setStep("code");
   }, []);
 
-  const handleResend = useCallback(() => {
-    setStep("email");
-  }, []);
-
   return step === "email" ? (
     <EmailStepForm onCodeSent={handleCodeSent} shareToken={shareToken} />
   ) : (
     <CodeStepForm
       email={email}
-      onResend={handleResend}
       onVerified={onVerified}
       shareToken={shareToken}
     />

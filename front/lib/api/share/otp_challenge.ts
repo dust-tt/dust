@@ -6,6 +6,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import crypto from "crypto";
+import { escape } from "html-escaper";
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.
 const OTP_MAX_ATTEMPTS = 5;
