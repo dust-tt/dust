@@ -86,7 +86,7 @@ export function TruncatedContent({
             label={isCollapsed ? expandLabel : collapseLabel}
             icon={isCollapsed ? ChevronDownIcon : ChevronUpIcon}
             onClick={handleToggle}
-            className="!s-text-muted-foreground"
+            className="!s-text-muted-foreground dark:!s-text-muted-foreground-night"
           />
         )}
         {footer}
