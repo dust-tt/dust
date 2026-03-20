@@ -26,6 +26,7 @@ export interface TruncatedContentProps {
   collapseLabel?: string;
   footer?: React.ReactNode;
   className?: string;
+  buttonClassName?: string;
 }
 
 export function TruncatedContent({
@@ -39,6 +40,7 @@ export function TruncatedContent({
   collapseLabel = "Show less",
   footer,
   className,
+  buttonClassName,
 }: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [exceedsThreshold, setExceedsThreshold] = useState(false);
@@ -78,7 +80,7 @@ export function TruncatedContent({
           <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night" />
         )}
       </div>
-      <div className="s-flex s-flex-row s-items-center s-gap-2">
+      <div className="s-flex s-flex-row s-items-center s-gap-3">
         {shouldShowToggle && (
           <Button
             variant="outline"
@@ -86,7 +88,7 @@ export function TruncatedContent({
             label={isCollapsed ? expandLabel : collapseLabel}
             icon={isCollapsed ? ChevronDownIcon : ChevronUpIcon}
             onClick={handleToggle}
-            className="!s-text-muted-foreground dark:!s-text-primary-night"
+            className={buttonClassName}
           />
         )}
         {footer}
