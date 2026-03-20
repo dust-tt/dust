@@ -33,7 +33,16 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
 
   const value: SkillsContextType = useMemo(() => {
     return {
-      skills: skills.toSorted((a, b) => a.name.localeCompare(b.name)),
+      // Dust-managed non-default skills are displayed first: these are the baseline Discover capabilities.
+      // Default skills are the ones that are discoverable.
+      skills: skills.toSorted((a, b) => {
+        const aIsDiscover = a.editedBy === null && !a.isDefault;
+        const bIsDiscover = b.editedBy === null && !b.isDefault;
+        if (aIsDiscover !== bIsDiscover) {
+          return aIsDiscover ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      }),
       isSkillsLoading,
       isSkillsError,
     };
