@@ -174,15 +174,15 @@ async function exportTable({
     case "active_users":
       return exportActiveUsers({ startDate, endDate, timezone, owner });
     case "source":
-      return exportSource({ startDate, endDate, owner });
+      return exportSource({ startDate, endDate, timezone, owner });
     case "agents":
       return exportAgents({ startDate, endDate, owner });
     case "users":
       return exportUsers({ startDate, endDate, timezone, owner });
     case "skill_usage":
-      return exportSkillUsage({ startDate, endDate, owner });
+      return exportSkillUsage({ startDate, endDate, timezone, owner });
     case "tool_usage":
-      return exportToolUsage({ startDate, endDate, owner });
+      return exportToolUsage({ startDate, endDate, timezone, owner });
     default:
       assertNever(table);
   }
@@ -273,6 +273,7 @@ async function exportSource({
 }: {
   startDate: string;
   endDate: string;
+  timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<string, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -382,10 +383,12 @@ async function exportUsers({
 async function exportSkillUsage({
   startDate,
   endDate,
+  timezone,
   owner,
 }: {
   startDate: string;
   endDate: string;
+  timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<string, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -415,7 +418,8 @@ async function exportSkillUsage({
   for (const skill of skillsResult.value) {
     const usageResult = await fetchSkillUsageMetrics(
       baseQuery,
-      skill.skillName
+      skill.skillName,
+      timezone
     );
     if (usageResult.isErr()) {
       return new Err(
@@ -459,10 +463,12 @@ async function exportSkillUsage({
 async function exportToolUsage({
   startDate,
   endDate,
+  timezone,
   owner,
 }: {
   startDate: string;
   endDate: string;
+  timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<string, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -490,7 +496,11 @@ async function exportToolUsage({
   const rows: ToolUsageExportRow[] = [];
 
   for (const tool of toolsResult.value) {
-    const usageResult = await fetchToolUsageMetrics(baseQuery, tool.serverName);
+    const usageResult = await fetchToolUsageMetrics(
+      baseQuery,
+      tool.serverName,
+      timezone
+    );
     if (usageResult.isErr()) {
       return new Err(
         new Error(
