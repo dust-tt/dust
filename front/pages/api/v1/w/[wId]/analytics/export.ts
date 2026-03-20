@@ -34,7 +34,6 @@ import type { GetAnalyticsExportRequestType } from "@dust-tt/client";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { stringify } from "csv-stringify/sync";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
 
 async function handler(
   req: NextApiRequest,
@@ -42,7 +41,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const flags = await getFeatureFlags(auth);
-  if (!flags.includes("usage_data_api")) {
+  if (!flags.includes("analytics_csv_export")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -67,17 +66,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: fromError(q.error).toString(),
-          },
-        });
-      }
-
-      if (q.data.startDate > q.data.endDate) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "startDate must be before or equal to endDate.",
+            message: `Invalid query parameters: ${q.error.message}`,
           },
         });
       }

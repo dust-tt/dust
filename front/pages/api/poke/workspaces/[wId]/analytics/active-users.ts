@@ -53,6 +53,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { days: queryDays, timezone: queryTimezone } = req.query;
+
       const q = QuerySchema.safeParse({
         days: queryDays,
         timezone: queryTimezone,
