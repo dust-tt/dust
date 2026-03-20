@@ -107,7 +107,7 @@ describe("verify-email endpoint", () => {
     expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
   });
 
-  it("returns 400 for scope that does not require email verification (workspace)", async () => {
+  it("returns 200 for scope that does not require email verification (anti-enumeration)", async () => {
     const { token } = await createFrameWithScope(auth, user, "workspace");
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
@@ -118,8 +118,8 @@ describe("verify-email endpoint", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+    expect(res._getStatusCode()).toBe(200);
+    expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
   });
 
   it("returns 400 for missing email in request body", async () => {

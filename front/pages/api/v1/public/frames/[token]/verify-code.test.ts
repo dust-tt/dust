@@ -149,7 +149,7 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     expect(res._getStatusCode()).toBe(404);
   });
 
-  it("returns 400 for scope that does not require email verification", async () => {
+  it("returns 404 for scope that does not require email verification (anti-enumeration)", async () => {
     // Change scope via the Resource method.
     await file.setShareScope(auth, "public");
 
@@ -161,7 +161,7 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
+    expect(res._getStatusCode()).toBe(404);
   });
 
   it("returns 400 for invalid body (missing code)", async () => {

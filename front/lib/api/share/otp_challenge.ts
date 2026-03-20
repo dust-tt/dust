@@ -42,7 +42,7 @@ export async function generateFrameOtpChallenge({
     return new Err("rate_limited");
   }
 
-  const code = crypto.randomInt(100000, 999999).toString();
+  const code = crypto.randomInt(100000, 1000000).toString();
 
   await runOnRedis({ origin: "otp_challenge" }, async (redis) => {
     const key = frameOtpChallengeKey(shareToken, email);

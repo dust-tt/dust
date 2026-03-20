@@ -11,7 +11,10 @@ import { z } from "zod";
 
 const VerifyCodeRequestBodySchema = z.object({
   email: z.string().email(),
-  code: z.string().length(6),
+  code: z
+    .string()
+    .length(6, "Code must be 6 digits")
+    .regex(/^\d+$/, "Code must be numeric"),
 });
 
 interface VerifyCodeResponseBody {
@@ -69,12 +72,13 @@ async function handler(
   }
 
   const { shareScope, shareableFileId, workspace } = result.value;
+  // Only email-based scopes require OTP — return 404 to prevent scope enumeration.
   if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 404,
       api_error: {
-        type: "invalid_request_error",
-        message: "This share link does not require email verification.",
+        type: "file_not_found",
+        message: "Share not found.",
       },
     });
   }

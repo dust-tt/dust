@@ -12,7 +12,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetShareFrameMetadataResponseBody {
   requiresEmailVerification: boolean;
-  shareScope: string;
   shareUrl: string;
   title: string;
   vizUrl: string;
@@ -127,10 +126,9 @@ async function handler(
     requiresEmailVerification,
     shareUrl,
     title: file.fileName,
-    workspaceName: workspace.name,
-    workspaceId: workspace.sId,
     vizUrl: config.getVizPublicUrl(),
-    shareScope,
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
   });
 }
 

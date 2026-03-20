@@ -4,7 +4,7 @@ import {
   sendFrameOtpEmail,
 } from "@app/lib/api/share/otp_challenge";
 import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
+import { auditLog } from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -66,15 +66,9 @@ async function handler(
 
   const { shareScope, shareableFileId, workspace } = result.value;
 
-  // Only email-based scopes require OTP.
+  // Only email-based scopes require OTP — return 200 to prevent scope enumeration.
   if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "This share link does not require email verification.",
-      },
-    });
+    return res.status(200).json({ success: true });
   }
 
   // Check if grant exists. If not, return 200 to prevent enumeration but don't send email.
@@ -83,8 +77,8 @@ async function handler(
     shareableFileId,
   });
   if (!activeGrant) {
-    logger.info(
-      { email, shareToken: token },
+    auditLog(
+      { author: "no-author", email, shareToken: token },
       "Frame OTP requested for email without active grant"
     );
     return res.status(200).json({ success: true });
