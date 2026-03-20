@@ -1,5 +1,4 @@
 import {
-  getProcessedContentType,
   hasProcessedVersion,
   isUploadSupportedForContentType,
   processAndStoreFile,
@@ -69,34 +68,6 @@ describe("hasProcessedVersion", () => {
 
   it("should return true for audio files (transcription)", () => {
     expect(hasProcessedVersion("audio/mpeg")).toBe(true);
-  });
-});
-
-describe("getProcessedContentType", () => {
-  it("should return undefined for content types without processing", () => {
-    expect(getProcessedContentType("text/plain")).toBeUndefined();
-    expect(getProcessedContentType("application/json")).toBeUndefined();
-  });
-
-  it("should return text/plain for PDFs", () => {
-    expect(getProcessedContentType("application/pdf")).toBe("text/plain");
-  });
-
-  it("should return text/plain for Word documents", () => {
-    expect(
-      getProcessedContentType(
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      )
-    ).toBe("text/plain");
-  });
-
-  it("should return text/plain for audio files", () => {
-    expect(getProcessedContentType("audio/mpeg")).toBe("text/plain");
-  });
-
-  it("should return the same content type for images", () => {
-    expect(getProcessedContentType("image/png")).toBe("image/png");
-    expect(getProcessedContentType("image/jpeg")).toBe("image/jpeg");
   });
 });
 

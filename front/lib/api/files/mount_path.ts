@@ -1,8 +1,6 @@
 // Pure path helpers for conversation file mount paths (gcsfuse sandbox mounting).
 
 import type { FileResource } from "@app/lib/resources/file_resource";
-import type { AllSupportedFileContentType } from "@app/types/files";
-import { extensionsForContentType } from "@app/types/files";
 
 export function getBaseMountPathForWorkspace({
   workspaceId,
@@ -37,19 +35,9 @@ export function getConversationFilePath({
 /**
  * Given a mount file path like "w/.../files/report.pdf",
  * returns "w/.../files/report.processed.pdf".
- * For files without extension: "w/.../files/Makefile" -> "w/.../files/Makefile.processed".
- *
- * When processedContentType is provided and differs from the original extension, the extension is
- * swapped to match the processed content type:
- *   "report.pdf" + "text/plain" -> "report.processed.txt"
+ * For files without extension: "w/.../files/Makefile" → "w/.../files/Makefile.processed".
  */
-export function makeProcessedMountFileName({
-  mountFilePath,
-  processedContentType,
-}: {
-  mountFilePath: string;
-  processedContentType?: AllSupportedFileContentType;
-}): string {
+export function makeProcessedMountFileName(mountFilePath: string): string {
   const lastSlash = mountFilePath.lastIndexOf("/");
   const dirPart = mountFilePath.substring(0, lastSlash + 1);
   const fileName = mountFilePath.substring(lastSlash + 1);
@@ -60,10 +48,7 @@ export function makeProcessedMountFileName({
   }
 
   const basename = fileName.substring(0, lastDot);
-  const ext = processedContentType
-    ? (extensionsForContentType(processedContentType)[0] ?? fileName.substring(lastDot))
-    : fileName.substring(lastDot);
-
+  const ext = fileName.substring(lastDot);
   return `${dirPart}${basename}.processed${ext}`;
 }
 
