@@ -51,7 +51,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -189,6 +189,9 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const { hasFeature } = useFeatureFlags();
+  const isCollapsibleEnabled = hasFeature("collapsible_messages");
+
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
 
@@ -860,7 +863,7 @@ export function AgentMessage({
     );
 
   const renderMessageContent = () => {
-    if (!shouldStream) {
+    if (isCollapsibleEnabled && !shouldStream) {
       return (
         <TruncatedContent
           className="flex flex-col gap-5"
