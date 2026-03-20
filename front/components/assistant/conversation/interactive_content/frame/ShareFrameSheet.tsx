@@ -9,7 +9,10 @@ import {
   MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
-import type { LightWorkspaceType, WorkspaceSharingPolicy } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
@@ -67,7 +70,10 @@ const SCOPE_OPTIONS: {
 ];
 
 // Scopes allowed by each workspace sharing policy.
-const ALLOWED_SCOPES_BY_POLICY: Record<WorkspaceSharingPolicy, FileShareScope[]> = {
+const ALLOWED_SCOPES_BY_POLICY: Record<
+  WorkspaceSharingPolicy,
+  FileShareScope[]
+> = {
   emails_only: ["emails_only"],
   workspace_and_emails: ["emails_only", "workspace_and_emails"],
   all_scopes: ["emails_only", "workspace_and_emails", "public"],
@@ -135,7 +141,8 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
     reValidateMode: "onSubmit",
   });
 
-  const currentScope: FileShareScope = fileShare?.scope ?? "workspace_and_emails";
+  const currentScope: FileShareScope =
+    fileShare?.scope ?? "workspace_and_emails";
   const shareURL = fileShare?.shareUrl ?? "";
 
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
