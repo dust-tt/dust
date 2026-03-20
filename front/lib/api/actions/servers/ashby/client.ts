@@ -61,18 +61,9 @@ export class AshbyAPIError extends Error {
     errorInfo?: AshbyAPIErrorInfo;
     errors?: string[];
   }) {
-    const parts: string[] = [];
-    if (errorInfo?.code) {
-      parts.push(errorInfo.code);
-    }
-    if (errorInfo?.message) {
-      parts.push(errorInfo.message);
-    } else if (errors?.length) {
-      parts.push(errors.join(", "));
-    }
-    super(
-      `Ashby API error: ${parts.length > 0 ? parts.join(": ") : "unknown error"}`
-    );
+    const detail =
+      errorInfo?.message ?? errors?.join(", ") ?? errorInfo?.code;
+    super(`Ashby API error: ${detail ?? "unknown error"}`);
     this.errorInfo = errorInfo;
     this.errors = errors;
   }
