@@ -7,7 +7,11 @@ import {
   getConversationFilePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
-import { hasProcessedVersion } from "@app/lib/api/files/processing";
+import {
+  getProcessedContentType,
+  hasProcessedVersion,
+} from "@app/lib/api/files/processing";
+import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -982,7 +986,10 @@ export class FileResource extends BaseResource<FileModel> {
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
-      const processedMountPath = makeProcessedMountFileName(mountFilePath);
+      const processedMountPath = makeProcessedMountFileName({
+        mountFilePath,
+        processedContentType: getProcessedContentType(this.contentType),
+      });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
     }
 
@@ -1006,7 +1013,10 @@ export class FileResource extends BaseResource<FileModel> {
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
     // Only delete processed mount file if this file type has real processing.
-    const processedMountPath = makeProcessedMountFileName(this.mountFilePath);
+    const processedMountPath = makeProcessedMountFileName({
+      mountFilePath: this.mountFilePath,
+      processedContentType: getProcessedContentType(this.contentType),
+    });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
   }
 
@@ -1217,6 +1227,37 @@ export class FileResource extends BaseResource<FileModel> {
           grantedAt: new Date(),
         }))
       );
+
+      const shareInfo = await this.getShareInfo();
+      if (shareInfo) {
+        const sharedByName = user.toJSON().fullName;
+        const frameUrl = shareInfo.shareUrl;
+        const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+        // Fire-and-forget: don't block grant creation on email delivery.
+        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
+        // parallelism and improve reliability/retry handling.
+        void Promise.all(
+          newEmails.map((email) =>
+            sendFrameSharedEmail({
+              to: email,
+              sharedByName,
+              frameUrl,
+              shareToken,
+            }).catch(() => {
+              // Silently ignore, email failures should not affect grant creation.
+              logger.info(
+                {
+                  email,
+                  fileId: this.sId,
+                  workspaceId: this.workspaceId,
+                },
+                "Failed to send sharing notification email"
+              );
+            })
+          )
+        );
+      }
     }
 
     return this.listActiveSharingGrants();
