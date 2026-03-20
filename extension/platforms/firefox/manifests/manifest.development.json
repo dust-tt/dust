@@ -16,7 +16,7 @@
     "default_title": "Dust",
     "open_at_install": true,
     "default_icon": {
-      "16": "images/dust32green.png",
+      "16": "images/dust16green.png",
       "32": "images/dust32green.png"
     }
   },
