@@ -26,6 +26,7 @@ const mockWorkspace: WorkspaceType = {
   whiteListedProviders: null,
   defaultEmbeddingProvider: null,
   metadata: {},
+  sharingPolicy: "all_scopes",
 };
 
 // Helper function to create a basic MCP tool configuration

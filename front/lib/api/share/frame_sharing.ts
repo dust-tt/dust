@@ -3,10 +3,27 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { runOnRedis } from "@app/lib/api/redis";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { FileShareScope } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
 import { escape } from "html-escaper";
+
+export function getDefaultFrameShareScope(
+  sharingPolicy: WorkspaceSharingPolicy
+): FileShareScope {
+  switch (sharingPolicy) {
+    case "emails_only":
+      return "emails_only";
+    case "workspace_and_emails":
+    case "all_scopes":
+      return "workspace_and_emails";
+    default:
+      assertNever(sharingPolicy);
+  }
+}
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.
 const OTP_MAX_ATTEMPTS = 5;

@@ -59,7 +59,7 @@ export type LightWorkspaceType = {
   metadata?: {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
-  sharingPolicy?: WorkspaceSharingPolicy;
+  sharingPolicy: WorkspaceSharingPolicy;
   workOSOrganizationId?: string | null;
   groups?: string[];
 };

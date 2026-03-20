@@ -9,7 +9,10 @@ import {
   MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
@@ -65,6 +68,16 @@ const SCOPE_OPTIONS: {
     value: "public",
   },
 ];
+
+// Scopes allowed by each workspace sharing policy.
+const ALLOWED_SCOPES_BY_POLICY: Record<
+  WorkspaceSharingPolicy,
+  FileShareScope[]
+> = {
+  emails_only: ["emails_only"],
+  workspace_and_emails: ["emails_only", "workspace_and_emails"],
+  all_scopes: ["emails_only", "workspace_and_emails", "public"],
+};
 
 const inviteFormSchema = z.object({
   emailsRaw: z
@@ -128,8 +141,14 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
     reValidateMode: "onSubmit",
   });
 
-  const currentScope = fileShare?.scope ?? "workspace";
+  const currentScope: FileShareScope =
+    fileShare?.scope ?? "workspace_and_emails";
   const shareURL = fileShare?.shareUrl ?? "";
+
+  const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
+  const availableScopeOptions = SCOPE_OPTIONS.filter((o) =>
+    allowedScopes.includes(o.value)
+  );
 
   const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
@@ -201,7 +220,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                     Who has access
                   </legend>
                   <div className="flex flex-col gap-1">
-                    {SCOPE_OPTIONS.map((option) => {
+                    {availableScopeOptions.map((option) => {
                       const isSelected = option.value === currentScope;
                       const inputId = `share-scope-${option.value}`;
                       return (

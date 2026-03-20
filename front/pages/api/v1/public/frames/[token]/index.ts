@@ -115,24 +115,16 @@ async function handler(
     workspace.sId
   );
 
-  // For workspace sharing, check authentication.
-  if (shareScope === "workspace") {
-    if (!auth) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
-  }
-
-  // Handle email-based share scopes.
-  if (shareScope === "emails_only" || shareScope === "workspace_and_emails") {
-    // For workspace_and_emails: workspace members are authorized directly.
+  // Handle email-based share scopes (treat legacy "workspace" as "workspace_and_emails").
+  if (
+    shareScope === "emails_only" ||
+    shareScope === "workspace_and_emails" ||
+    shareScope === "workspace"
+  ) {
+    // For workspace_and_emails (and legacy "workspace"): workspace members are authorized directly.
     const isWorkspaceMemberWithAccess =
-      shareScope === "workspace_and_emails" && auth;
+      (shareScope === "workspace_and_emails" || shareScope === "workspace") &&
+      auth;
 
     if (!isWorkspaceMemberWithAccess) {
       // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.

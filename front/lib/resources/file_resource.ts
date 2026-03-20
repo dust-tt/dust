@@ -11,7 +11,10 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
-import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
+import {
+  getDefaultFrameShareScope,
+  sendFrameSharedEmail,
+} from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -53,7 +56,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import type { File } from "@google-cloud/storage";
 import assert from "assert";
 import type {
@@ -509,11 +516,15 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Interactive Content conversation files, automatically create a ShareableFileModel with
-    // default workspace scope.
+    // a default scope based on the workspace sharing policy.
     if (this.isInteractiveContent) {
+      const defaultScope = getDefaultFrameShareScope(
+        auth.getNonNullableWorkspace().sharingPolicy
+      );
+
       await FileResource.shareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "workspace",
+        shareScope: defaultScope,
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
@@ -1155,15 +1166,19 @@ export class FileResource extends BaseResource<FileModel> {
     return null;
   }
 
-  static async revokePublicSharingInWorkspace(auth: Authenticator) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+  static async revokePublicSharingInWorkspace(
+    auth: Authenticator,
+    { newPolicy }: { newPolicy: WorkspaceSharingPolicy }
+  ) {
+    const fallbackScope = getDefaultFrameShareScope(newPolicy);
+
     return FileResource.shareableFileModel.update(
       {
-        shareScope: "workspace",
+        shareScope: fallbackScope,
       },
       {
         where: {
-          workspaceId,
+          workspaceId: auth.getNonNullableWorkspace().id,
           shareScope: "public",
         },
       }

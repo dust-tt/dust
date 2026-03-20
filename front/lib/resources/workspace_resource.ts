@@ -822,7 +822,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
    */
 
   get canShareInteractiveContentPublicly(): boolean {
-    return this.blob.metadata?.allowContentCreationFileSharing !== false;
+    return this.sharingPolicy === "all_scopes";
   }
 
   async delete(

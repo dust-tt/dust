@@ -51,6 +51,7 @@ function makeWorkspace(
     workOSOrganizationId: "org_123",
     metadata: null,
     role: "admin",
+    sharingPolicy: "all_scopes",
     ...overrides,
   };
 }
