@@ -61,7 +61,8 @@ export default function ConversationSidePanelContainer({
           !currentPanel && "hidden w-0 md:block",
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",
-          currentPanel && "absolute inset-0 md:relative md:inset-auto"
+          currentPanel &&
+            "absolute inset-0 bg-background dark:bg-background-night md:relative md:inset-auto"
         )}
       >
         {currentPanel && conversation && (
