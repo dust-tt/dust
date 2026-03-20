@@ -286,9 +286,8 @@ async function createAgentSuggestionsConversations(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType
 ) {
-  const user = auth.user();
-
-  if (!user) {
+  const editors = await getEditors(auth, agentConfiguration);
+  if (editors.length === 0) {
     return;
   }
 
@@ -341,16 +340,19 @@ async function createAgentSuggestionsConversations(
     return;
   }
 
+  // Use the first editor as the message author.
+  const author = editors[0];
+
   const messageRes = await postUserMessage(auth, {
     conversation,
     content: `Here are ${pendingSuggestions.length} pending improvement${pluralize(pendingSuggestions.length)} suggestions for the @${agentConfiguration.name} agent.`,
     mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-      username: user.username,
-      fullName: user.fullName(),
-      email: user.email,
-      profilePictureUrl: user.imageUrl,
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
       origin: "reinforced_agent_notification",
     },
     skipToolsValidation: true,
@@ -367,7 +369,6 @@ async function createAgentSuggestionsConversations(
     return;
   }
 
-  const editors = await getEditors(auth, agentConfiguration);
   for (const editor of editors) {
     await ConversationResource.upsertParticipation(auth, {
       conversation,
