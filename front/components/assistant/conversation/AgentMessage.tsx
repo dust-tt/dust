@@ -844,7 +844,7 @@ export function AgentMessage({
         {alwaysVisibleButtons}
         {hoverButtons.length > 0 && (
           <div
-            className={`flex gap-2 transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+            className={`flex gap-2 transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "@xs:opacity-0 @xs:group-hover:opacity-100"}`}
           >
             {hoverButtons}
           </div>
