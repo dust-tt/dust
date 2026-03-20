@@ -8,6 +8,7 @@ import {
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
 import { hasProcessedVersion } from "@app/lib/api/files/processing";
+import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -1217,6 +1218,37 @@ export class FileResource extends BaseResource<FileModel> {
           grantedAt: new Date(),
         }))
       );
+
+      const shareInfo = await this.getShareInfo();
+      if (shareInfo) {
+        const sharedByName = user.toJSON().fullName;
+        const frameUrl = shareInfo.shareUrl;
+        const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+        // Fire-and-forget: don't block grant creation on email delivery.
+        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
+        // parallelism and improve reliability/retry handling.
+        void Promise.all(
+          newEmails.map((email) =>
+            sendFrameSharedEmail({
+              to: email,
+              sharedByName,
+              frameUrl,
+              shareToken,
+            }).catch(() => {
+              // Silently ignore, email failures should not affect grant creation.
+              logger.info(
+                {
+                  email,
+                  fileId: this.sId,
+                  workspaceId: this.workspaceId,
+                },
+                "Failed to send sharing notification email"
+              );
+            })
+          )
+        );
+      }
     }
 
     return this.listActiveSharingGrants();

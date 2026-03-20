@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import { createFrameSession } from "@app/lib/api/share/frame_session";
-import { validateFrameOtpChallenge } from "@app/lib/api/share/otp_challenge";
+import { validateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";

@@ -308,6 +308,9 @@ interface sendEmailWithTemplateParams {
   replyTo?: string;
   subject: string;
   body: string;
+  // Optional CTA button — rendered by the SendGrid template if both are provided.
+  buttonLabel?: string;
+  buttonUrl?: string;
 }
 
 // This function sends an email using a predefined template. Note: The salutation and footer are
@@ -318,6 +321,8 @@ export async function sendEmailWithTemplate({
   replyTo,
   subject,
   body,
+  buttonLabel,
+  buttonUrl,
 }: sendEmailWithTemplateParams): Promise<Result<void, Error>> {
   const templateId = config.getGenericEmailTemplate();
   const message = {
@@ -328,6 +333,7 @@ export async function sendEmailWithTemplate({
     dynamic_template_data: {
       subject,
       body,
+      ...(buttonLabel && buttonUrl ? { buttonLabel, buttonUrl } : {}),
     },
   };
 
