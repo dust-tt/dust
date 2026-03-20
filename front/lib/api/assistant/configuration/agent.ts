@@ -524,6 +524,7 @@ export async function createAgentConfiguration(
               "authorId",
               "workspaceId",
               "createdAt",
+              "reinforcement",
             ],
             order: [["version", "DESC"]],
             transaction: t,
