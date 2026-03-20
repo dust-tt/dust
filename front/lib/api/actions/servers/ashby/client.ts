@@ -98,67 +98,32 @@ export class AshbyClient {
     return `Basic ${credentials}`;
   }
 
-  private async postRequest<T extends z.Schema>(
+  private async postRequest<T extends z.ZodTypeAny>(
     endpoint: string,
     data: unknown,
-    resultsSchema: T
-  ): Promise<Result<z.infer<T>, Error>> {
-    const response = await untrustedFetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: this.getAuthHeader(),
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Err(
-        new Error(
-          `Ashby API error (${response.status}): ${errorText || response.statusText}`
-        )
-      );
-    }
-
-    const rawData = await response.json();
-
-    const errorCheck = AshbyAPIErrorResponseSchema.safeParse(rawData);
-    if (errorCheck.success) {
-      return new Err(
-        new AshbyAPIError({
-          errorInfo: errorCheck.data.errorInfo,
-          errors: errorCheck.data.errors,
-        })
-      );
-    }
-
-    const parseResult = z
-      .object({ success: z.literal(true), results: resultsSchema })
-      .safeParse(rawData);
-
-    if (!parseResult.success) {
-      logger.error(
-        { endpoint, error: parseResult.error.message },
-        "[Ashby] Invalid API response format"
-      );
-      return new Err(
-        new Error(
-          `Invalid Ashby API response format: ${parseResult.error.message}`
-        )
-      );
-    }
-
-    return new Ok(parseResult.data.results);
-  }
-
-  private async postPaginatedRequest<T extends z.ZodTypeAny>(
-    endpoint: string,
-    data: unknown,
-    resultsSchema: T
+    resultsSchema: T,
+    options: { isPaginated: true }
   ): Promise<
     Result<
       { results: z.infer<T>; moreDataAvailable?: boolean; nextCursor?: string },
+      Error
+    >
+  >;
+  private async postRequest<T extends z.ZodTypeAny>(
+    endpoint: string,
+    data: unknown,
+    resultsSchema: T,
+    options?: { isPaginated?: false }
+  ): Promise<Result<z.infer<T>, Error>>;
+  private async postRequest<T extends z.ZodTypeAny>(
+    endpoint: string,
+    data: unknown,
+    resultsSchema: T,
+    options?: { isPaginated?: boolean }
+  ): Promise<
+    Result<
+      | z.infer<T>
+      | { results: z.infer<T>; moreDataAvailable?: boolean; nextCursor?: string },
       Error
     >
   > {
@@ -192,13 +157,33 @@ export class AshbyClient {
       );
     }
 
+    if (options?.isPaginated) {
+      const parseResult = z
+        .object({
+          success: z.literal(true),
+          results: resultsSchema,
+          moreDataAvailable: z.boolean().optional(),
+          nextCursor: z.string().optional(),
+        })
+        .safeParse(rawData);
+      if (!parseResult.success) {
+        logger.error(
+          { endpoint, error: parseResult.error.message },
+          "[Ashby] Invalid API response format"
+        );
+        return new Err(
+          new Error(
+            `Invalid Ashby API response format: ${parseResult.error.message}`
+          )
+        );
+      }
+      const { results, moreDataAvailable, nextCursor } = parseResult.data;
+
+      return new Ok({ results, moreDataAvailable, nextCursor });
+    }
+
     const parseResult = z
-      .object({
-        success: z.literal(true),
-        results: resultsSchema,
-        moreDataAvailable: z.boolean().optional(),
-        nextCursor: z.string().optional(),
-      })
+      .object({ success: z.literal(true), results: resultsSchema })
       .safeParse(rawData);
     if (!parseResult.success) {
       logger.error(
@@ -212,8 +197,7 @@ export class AshbyClient {
       );
     }
 
-    const { results, moreDataAvailable, nextCursor } = parseResult.data;
-    return new Ok({ results, moreDataAvailable, nextCursor });
+    return new Ok(parseResult.data.results);
   }
 
   async getReportData(request: AshbyReportSynchronousRequest) {
@@ -351,10 +335,11 @@ export class AshbyClient {
     let cursor: string | undefined;
 
     do {
-      const response = await this.postPaginatedRequest(
+      const response = await this.postRequest(
         "job.list",
         { cursor },
-        z.array(AshbyJobSchema)
+        z.array(AshbyJobSchema),
+        { isPaginated: true }
       );
       if (response.isErr()) {
         return response;
