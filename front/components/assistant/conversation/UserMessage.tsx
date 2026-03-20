@@ -252,12 +252,13 @@ export function UserMessage({
     editorService.setContent(message.content);
   };
 
+  const isMobile = useIsMobile();
   const showActions = !isDeleted && !shouldShowEditor;
   const hasReactions = (message.reactions ?? []).length > 0;
-  // When there are reactions, show the action menu below the message.
+  // On mobile or when there are reactions, show the action menu below the message.
   // Otherwise, show it to the side of the message.
-  const showBottomActionMenu = !isDeleted && hasReactions;
-  const showSideActionMenu = !isDeleted && !hasReactions;
+  const showBottomActionMenu = !isDeleted && (hasReactions || isMobile);
+  const showSideActionMenu = !isDeleted && !hasReactions && !isMobile;
   // With reactions the button is always below; without, CSS container query floats it to the side.
   // Deleted messages have no action menu → tight spacing.
   const actionMenuBottomMargin = isDeleted
@@ -291,7 +292,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative min-w-60 max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[75%]  @xs/conversation:max-w-[80%]",
+            "relative min-w-60 max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
             actionMenuBottomMargin
           )}
           ref={userMessageHoveredRef}
@@ -442,13 +443,9 @@ const actionMenuContainerVariants = cva(
     variants: {
       mode: {
         side: "",
-        bottom: "",
+        bottom: "translate-y-[calc(100%+2px)]",
       },
       isCurrentUser: {
-        true: "",
-        false: "",
-      },
-      hasReactions: {
         true: "",
         false: "",
       },
@@ -463,11 +460,6 @@ const actionMenuContainerVariants = cva(
         mode: "side",
         isCurrentUser: false,
         className: "left-auto right-0 translate-x-full pl-2",
-      },
-      {
-        mode: "bottom",
-        hasReactions: true,
-        className: "translate-y-[calc(100%+2px)]",
       },
     ],
   }
@@ -508,11 +500,10 @@ function ActionMenu({
   const sendNotification = useSendNotification();
   const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
     useHover();
-  // Keep buttons visible when there are existing reactions, the message is hovered,
-  // the reactions area is hovered, or the dropdown menu is open.
-  const hasReactions = (message.reactions ?? []).length > 0;
+  // In bottom mode (reactions or mobile), buttons are always visible.
+  // In side mode, buttons fade in/out on hover.
   const shouldHideActions =
-    !hasReactions &&
+    mode === "side" &&
     !isUserMessageHovered &&
     !isReactionsHovered &&
     !isMenuOpen;
@@ -568,7 +559,7 @@ function ActionMenu({
 
   return (
     <div
-      className={actionMenuContainerVariants({ mode, isCurrentUser, hasReactions })}
+      className={actionMenuContainerVariants({ mode, isCurrentUser })}
       ref={isReactionsHoveredRef}
     >
       {mode === "bottom" && (
