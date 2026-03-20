@@ -7,17 +7,15 @@ import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import uniqueId from "lodash/uniqueId";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const PostAgentConfigurationFromYAMLRequestBodySchema = t.type({
-  yamlContent: t.string,
+const PostAgentConfigurationFromYAMLRequestBodySchema = z.object({
+  yamlContent: z.string(),
 });
 
-export type PostAgentConfigurationFromYAMLRequestBody = t.TypeOf<
+export type PostAgentConfigurationFromYAMLRequestBody = z.infer<
   typeof PostAgentConfigurationFromYAMLRequestBodySchema
 >;
 
@@ -58,21 +56,19 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostAgentConfigurationFromYAMLRequestBodySchema.decode(
-    req.body
-  );
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation =
+    PostAgentConfigurationFromYAMLRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${bodyValidation.error.message}`,
       },
     });
   }
 
-  const { yamlContent } = bodyValidation.right;
+  const { yamlContent } = bodyValidation.data;
 
   const yamlConfigResult = AgentYAMLConverter.fromYAMLString(yamlContent);
   if (yamlConfigResult.isErr()) {
