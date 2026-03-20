@@ -206,12 +206,17 @@ export type InboundEmail = {
   text: string;
   auth: { SPF: string; dkim: string };
   threadingHeaders: EmailThreadingHeaders;
+  // Human-visible RFC 5322 From header.
+  sender: {
+    email: string;
+    full: string;
+  };
+  // SMTP envelope sender (MAIL FROM / return-path).
   envelope: {
     to: string[];
     cc: string[];
     bcc: string[];
     from: string;
-    full: string;
   };
   attachments: EmailAttachment[];
 };
@@ -315,7 +320,7 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
   cc: string[];
 } {
   const to = deduplicateEmailAddresses(
-    [email.envelope.from, ...email.envelope.to].filter(
+    [email.sender.email, ...email.envelope.to].filter(
       (recipient) => !isAssistantRecipient(recipient)
     )
   );
@@ -759,8 +764,8 @@ export async function triggerFromEmail({
       await storeEmailReplyContext(agentMessage.sId, {
         subject: email.subject,
         originalText: email.text,
-        fromEmail: email.envelope.from,
-        fromFull: email.envelope.full,
+        fromEmail: email.sender.email,
+        fromFull: email.sender.full,
         replyTo: successReplyRecipients.to,
         replyCc: successReplyRecipients.cc,
         threadingMessageId: email.threadingHeaders.messageId,
@@ -879,7 +884,7 @@ export async function sendToolValidationEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.sender.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +
@@ -899,7 +904,7 @@ export async function sendToolValidationEmail({
   };
 
   try {
-    await sendEmail(email.envelope.from, msg);
+    await sendEmail(email.sender.email, msg);
     localLogger.info(
       { actionsCount: blockedActions.length },
       "[email] Sent tool validation email."
@@ -951,7 +956,7 @@ export async function replyToEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.sender.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +
