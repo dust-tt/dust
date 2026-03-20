@@ -11,11 +11,12 @@ import { isInteractiveContentType } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetShareFrameMetadataResponseBody {
+  requiresEmailVerification: boolean;
   shareUrl: string;
   title: string;
-  workspaceName: string;
-  workspaceId: string;
   vizUrl: string;
+  workspaceId: string;
+  workspaceName: string;
 }
 
 async function handler(
@@ -118,12 +119,16 @@ async function handler(
 
   const shareUrl = `${config.getAppUrl()}/share/frame/${token}`;
 
+  const requiresEmailVerification =
+    shareScope === "emails_only" || shareScope === "workspace_and_emails";
+
   res.status(200).json({
+    requiresEmailVerification,
     shareUrl,
     title: file.fileName,
-    workspaceName: workspace.name,
-    workspaceId: workspace.sId,
     vizUrl: config.getVizPublicUrl(),
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
   });
 }
 

@@ -292,3 +292,52 @@ UserModel.hasMany(SharingGrantModel, {
 SharingGrantModel.belongsTo(UserModel, {
   foreignKey: { name: "grantedBy", allowNull: true },
 });
+
+/**
+ * External viewer sessions: cookie-based sessions for email-verified external viewers.
+ * Scoped to a workspace. One session covers all frames shared with that email in the workspace.
+ */
+
+export class ExternalViewerSessionModel extends WorkspaceAwareModel<ExternalViewerSessionModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare sessionToken: string;
+  declare email: string;
+  declare expiresAt: Date;
+}
+
+ExternalViewerSessionModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sessionToken: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "external_viewer_sessions",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["sessionToken"], unique: true },
+      { fields: ["workspaceId", "email"] },
+    ],
+  }
+);

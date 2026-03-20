@@ -1,5 +1,9 @@
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import {
+  FRAME_SESSION_COOKIE_NAME,
+  getFrameSessionEmail,
+} from "@app/lib/api/share/frame_session";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -42,8 +46,8 @@ async function handler(
     });
   }
 
-  const result = await FileResource.fetchByShareTokenWithContent(token);
-  if (!result) {
+  const result = await FileResource.fetchByShareToken(token);
+  if (result.isErr()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -53,9 +57,9 @@ async function handler(
     });
   }
 
-  const workspace = await WorkspaceResource.fetchByModelId(
-    result.file.workspaceId
-  );
+  const { file, shareScope, shareableFileId } = result.value;
+  // TODO: Refactor FileResource.fetchByShareToken to return the WorkspaceResource directly to avoid this extra query.
+  const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
   if (!workspace) {
     return apiError(req, res, {
       status_code: 404,
@@ -65,8 +69,6 @@ async function handler(
       },
     });
   }
-
-  const { file, shareScope } = result;
 
   // Only allow conversation Frame files.
   if (
@@ -122,6 +124,49 @@ async function handler(
           type: "file_not_found",
           message: "File not found.",
         },
+      });
+    }
+  }
+
+  // Handle email-based share scopes.
+  if (shareScope === "emails_only" || shareScope === "workspace_and_emails") {
+    // For workspace_and_emails: workspace members are authorized directly.
+    const isWorkspaceMemberWithAccess =
+      shareScope === "workspace_and_emails" && auth;
+
+    if (!isWorkspaceMemberWithAccess) {
+      // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.
+      let verifiedEmail: string | null = auth?.user()?.email ?? null;
+      if (!verifiedEmail) {
+        const sessionToken = req.cookies[FRAME_SESSION_COOKIE_NAME];
+        if (sessionToken) {
+          verifiedEmail = await getFrameSessionEmail(workspace, {
+            token: sessionToken,
+          });
+        }
+      }
+
+      // Check if the verified email has an active grant for this frame.
+      const hasGrant =
+        verifiedEmail &&
+        (await FileResource.getActiveGrantForEmail(workspace, {
+          email: verifiedEmail,
+          shareableFileId,
+        }));
+
+      if (!hasGrant) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      }
+
+      await FileResource.recordGrantView(workspace, {
+        email: verifiedEmail!,
+        shareableFileId,
       });
     }
   }

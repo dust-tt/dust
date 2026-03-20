@@ -76,6 +76,7 @@ import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
+  ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
   SharingGrantModel,
@@ -139,6 +140,7 @@ export function loadAllModels() {
     FileModel,
     ShareableFileModel,
     SharingGrantModel,
+    ExternalViewerSessionModel,
     DustAppSecretModel,
     GroupSpaceModel,
     WebhookSourceModel,

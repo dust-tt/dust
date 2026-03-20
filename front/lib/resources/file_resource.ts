@@ -18,6 +18,7 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
+  ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
   SharingGrantModel,
@@ -185,6 +186,7 @@ export class FileResource extends BaseResource<FileModel> {
       {
         file: FileResource;
         shareScope: FileShareScope;
+        shareableFileId: ModelId;
         workspace: LightWorkspaceType;
       },
       DustError
@@ -255,7 +257,45 @@ export class FileResource extends BaseResource<FileModel> {
       file: fileRes,
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
+      shareableFileId: shareableFile.id,
     });
+  }
+
+  static async getActiveGrantForEmail(
+    workspace: LightWorkspaceType | WorkspaceResource,
+    {
+      email,
+      shareableFileId,
+    }: {
+      email: string;
+      shareableFileId: ModelId;
+    }
+  ): Promise<SharingGrantType | null> {
+    // Note: expiresAt is not enforced here because it cannot be set yet.
+    // When grant expiration is implemented, add query clause + index
+    // expiresAt: { [Op.or]: [null, { [Op.gt]: new Date() }] }
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        shareableFileId,
+        email: email.toLowerCase(),
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return null;
+    }
+
+    const usersById: Map<ModelId, UserResource> = new Map();
+    if (grant?.grantedBy) {
+      const user = await UserResource.fetchByModelId(grant.grantedBy);
+      if (user) {
+        usersById.set(grant.grantedBy, user);
+      }
+    }
+
+    return renderSharingGrant(grant, usersById);
   }
 
   static async unsafeFetchByIdInWorkspace(
@@ -323,6 +363,11 @@ export class FileResource extends BaseResource<FileModel> {
 
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Delete external viewer sessions before shareable files (FK constraint).
+    await ExternalViewerSessionModel.destroy({
+      where: { workspaceId },
+    });
 
     // Delete sharing grants before shareable files (FK constraint).
     await SharingGrantModel.destroy({
@@ -1206,6 +1251,29 @@ export class FileResource extends BaseResource<FileModel> {
     await grant.update({ revokedAt: new Date() });
 
     return new Ok(undefined);
+  }
+
+  static async recordGrantView(
+    workspace: WorkspaceResource,
+    {
+      email,
+      shareableFileId,
+    }: {
+      email: string;
+      shareableFileId: ModelId;
+    }
+  ): Promise<void> {
+    await SharingGrantModel.update(
+      { lastViewedAt: new Date() },
+      {
+        where: {
+          shareableFileId,
+          email: email.toLowerCase(),
+          revokedAt: null,
+          workspaceId: workspace.id,
+        },
+      }
+    );
   }
 
   async listActiveSharingGrants(): Promise<SharingGrantType[]> {

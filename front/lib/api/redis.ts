@@ -39,6 +39,7 @@ export type RedisUsageTagsType =
   | "conversation_events"
   | "daily_usage_tracking"
   | "email_context"
+  | "otp_challenge"
   | "force_reload_commits"
   | "key_usage_tracking"
   | "lock"
