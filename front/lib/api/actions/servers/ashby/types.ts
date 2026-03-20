@@ -731,11 +731,31 @@ export type AshbyOfferFormFieldValue = z.infer<
   typeof AshbyOfferFormFieldValueSchema
 >;
 
+export const AshbyOfferCustomFieldSchema = z
+  .object({
+    id: z.string().optional(),
+    isPrivate: z.boolean().optional(),
+    title: z.string().optional(),
+    value: z.unknown().optional(),
+    valueLabel: z.string().optional(),
+  })
+  .passthrough();
+
+export type AshbyOfferCustomField = z.infer<typeof AshbyOfferCustomFieldSchema>;
+
 export const AshbyOfferVersionSchema = z
   .object({
     id: z.string().optional(),
+    createdAt: z.string().nullish(),
     startDate: z.string().nullish(),
+    salary: z
+      .object({
+        value: z.number(),
+        currencyCode: z.string(),
+      })
+      .optional(),
     formFieldValues: z.array(AshbyOfferFormFieldValueSchema).optional(),
+    customFields: z.array(AshbyOfferCustomFieldSchema).optional(),
   })
   .passthrough();
 
@@ -768,6 +788,36 @@ export const AshbyOfferListResponseSchema = z.object({
 
 export type AshbyOfferListResponse = z.infer<
   typeof AshbyOfferListResponseSchema
+>;
+
+// Offer info
+
+export const AshbyOfferInfoRequestSchema = z.object({
+  offerId: z.string(),
+});
+
+export type AshbyOfferInfoRequest = z.infer<typeof AshbyOfferInfoRequestSchema>;
+
+export const AshbyOfferInfoSchema = z
+  .object({
+    id: z.string(),
+    decidedAt: z.string().nullish(),
+    applicationId: z.string().optional(),
+    acceptanceStatus: z.string().optional(),
+    offerStatus: z.string().optional(),
+    latestVersion: AshbyOfferVersionSchema.nullish(),
+  })
+  .passthrough();
+
+export type AshbyOfferInfo = z.infer<typeof AshbyOfferInfoSchema>;
+
+export const AshbyOfferInfoResponseSchema = z.object({
+  success: z.boolean(),
+  results: AshbyOfferInfoSchema.optional(),
+});
+
+export type AshbyOfferInfoResponse = z.infer<
+  typeof AshbyOfferInfoResponseSchema
 >;
 
 // Job info (detailed)

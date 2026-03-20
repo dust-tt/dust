@@ -6,7 +6,7 @@ import type {
   AshbyJob,
   AshbyJobInfo,
   AshbyJobPosting,
-  AshbyOffer,
+  AshbyOfferInfo,
   AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
@@ -304,12 +304,12 @@ function formatFieldValue(value: unknown): string {
 
 export function renderHireData({
   candidateInfo,
-  offers,
+  offerInfo,
   jobInfo,
   applicationId,
 }: {
   candidateInfo: AshbyCandidateInfo;
-  offers: AshbyOffer[];
+  offerInfo: AshbyOfferInfo | null;
   jobInfo: AshbyJobInfo | null;
   applicationId: string;
 }): string {
@@ -397,39 +397,41 @@ export function renderHireData({
   lines.push("## Offer Details");
   lines.push("");
 
-  if (offers.length === 0) {
+  if (!offerInfo) {
     lines.push("*No offers found for this application.*");
   } else {
-    for (const offer of offers) {
-      lines.push(`**Offer ID:** ${offer.id}`);
-      if (offer.status) {
-        lines.push(`**Offer Status:** ${offer.status}`);
+    lines.push(`**Offer ID:** ${offerInfo.id}`);
+    if (offerInfo.offerStatus) {
+      lines.push(`**Offer Status:** ${offerInfo.offerStatus}`);
+    }
+    if (offerInfo.acceptanceStatus) {
+      lines.push(`**Acceptance Status:** ${offerInfo.acceptanceStatus}`);
+    }
+    if (offerInfo.decidedAt) {
+      lines.push(`**Decided At:** ${offerInfo.decidedAt}`);
+    }
+
+    const version = offerInfo.latestVersion;
+    if (version) {
+      if (version.startDate) {
+        lines.push(`**Start Date:** ${version.startDate}`);
       }
-      if (offer.decidedAt) {
-        lines.push(`**Decided At:** ${offer.decidedAt}`);
+      if (version.salary) {
+        lines.push(
+          `**Salary:** ${version.salary.value} ${version.salary.currencyCode}`
+        );
       }
 
-      const version = offer.latestVersion;
-      if (version) {
-        if (version.startDate) {
-          lines.push(`**Start Date:** ${version.startDate}`);
+      if (version.customFields && version.customFields.length > 0) {
+        lines.push("");
+        lines.push("### Offer Custom Fields");
+        lines.push("");
+        for (const field of version.customFields) {
+          const title = field.title ?? field.id ?? "Unknown Field";
+          const displayValue = field.valueLabel ?? field.value;
+          lines.push(`**${title}:** ${formatFieldValue(displayValue)}`);
         }
-
-        if (version.formFieldValues && version.formFieldValues.length > 0) {
-          lines.push("");
-          lines.push("### Offer Form Fields");
-          lines.push(
-            "*Includes both standard and custom fields from the offer form.*"
-          );
-          lines.push("");
-          for (const field of version.formFieldValues) {
-            const title = field.title ?? "Unknown Field";
-            lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
-          }
-        }
       }
-
-      lines.push("");
     }
   }
 
