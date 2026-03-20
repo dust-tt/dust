@@ -453,7 +453,30 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         })
       );
     }
-    const offers = offersResult.value;
+
+    // Pick the latest offer by latestVersion.createdAt.
+    const latestOffer = offersResult.value.reduce((latest, offer) => {
+      const latestCreatedAt = latest?.latestVersion?.createdAt ?? "";
+      const offerCreatedAt = offer.latestVersion?.createdAt ?? "";
+      return offerCreatedAt > latestCreatedAt ? offer : latest;
+    }, offersResult.value[0] ?? null);
+
+    // Fetch detailed offer info for the latest offer.
+    let offerInfo = null;
+    if (latestOffer) {
+      const offerInfoResult = await client.getOfferInfo({
+        offerId: latestOffer.id,
+      });
+      if (offerInfoResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to get offer info for offer ${latestOffer.id}: ${offerInfoResult.error.message}`,
+            { cause: offerInfoResult.error }
+          )
+        );
+      }
+      offerInfo = offerInfoResult.value.results ?? null;
+    }
 
     // Fetch job info if we have a jobId.
     let jobInfo = null;
@@ -474,7 +497,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const text = renderHireData({
       candidateInfo,
-      offers,
+      offerInfo,
       jobInfo,
       applicationId,
     });

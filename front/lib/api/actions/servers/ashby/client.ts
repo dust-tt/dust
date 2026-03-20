@@ -15,6 +15,7 @@ import type {
   AshbyJobPostingListRequest,
   AshbyJobPostingUpdateRequest,
   AshbyOffer,
+  AshbyOfferInfoRequest,
   AshbyOfferListRequest,
   AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
@@ -32,6 +33,7 @@ import {
   AshbyJobPostingInfoResponseSchema,
   AshbyJobPostingListResponseSchema,
   AshbyJobPostingUpdateResponseSchema,
+  AshbyOfferInfoResponseSchema,
   AshbyOfferListResponseSchema,
   AshbyReferralCreateResponseSchema,
   AshbyReferralFormInfoResponseSchema,
@@ -235,6 +237,14 @@ export class AshbyClient {
       "candidate.info",
       request,
       AshbyCandidateInfoResponseSchema
+    );
+  }
+
+  async getOfferInfo(request: AshbyOfferInfoRequest) {
+    return this.postRequest(
+      "offer.info",
+      request,
+      AshbyOfferInfoResponseSchema
     );
   }
 
