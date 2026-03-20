@@ -1,6 +1,7 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
+  postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -340,8 +341,30 @@ async function createAgentSuggestionsConversations(
     return;
   }
 
-  // Use the first editor as the message author.
   const author = editors[0];
+
+  const contentFragmentPostRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentRes.value,
+    {
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+    }
+  );
+
+  if (contentFragmentPostRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: contentFragmentPostRes.error.message,
+      },
+      "ReinforcedAgent: failed to post content fragment for suggestions conversation"
+    );
+    return;
+  }
 
   const messageRes = await postUserMessage(auth, {
     conversation,
