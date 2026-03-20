@@ -1,5 +1,6 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { SHARED_PROMPT_SECTIONS } from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
 import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,39 +17,99 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
+const ASSEMBLY_ORDER = [
+  "primary",
+  "analysis_workflow",
+  "conversation_analysis",
+  "instructions_guidance",
+  "skills_tools_guidance",
+  "instruction_suggestion_formatting",
+] as const;
+
+type SectionKey = (typeof ASSEMBLY_ORDER)[number];
+
+export const REINFORCED_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
+  primary: `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
+
+You have access to the following tools to suggest improvements to the agent: suggest_prompt_edits, suggest_tools, and suggest_skills.
+
+You MUST follow <analysis_workflow>. These steps are enirely focused on identifying potential agent improvements and calling the suggestion tools as an end result. You MUST call at least one tool. If after <analysis_workflow> you have determined no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
+
+The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.`,
+
+  analysis_workflow: `Follow this process for every conversation you analyze:
+
+Step 1: Review the <agent_context> from the user message to understand the agent configuration.
+
+Step 2: Analyze the conversation and identify improvement areas for the agent configuration.
+The conversation is in <conversation>. See <conversation_analysis> for guidance on how to analyze the conversation.
+
+Step 3: Build a plan. Based on the identified areas of improvement, determine specific suggestions to modify the agent configuration. Dimensions you MUST consider:
+- Review instructions to determine if the agent is meeting the user intent and properly utilizing the configured capabilities: <instructions_guidance>.
+- If the agent references or requires external actions or knowledges, then tools and/or skills are required. See <skills_tools_guidance>.
+
+You can NOT suggest other types of agent configuration changes (i.e. knowledge). Only suggest instructions, skills, and tools.
+
+Step 4: For each suggestion, you MUST include an "analysis" field explaining why this change would improve the agent.
+This MUST include the signal that was discovered in <conversation_analysis> that led to the suggestion.
+Subsequently, an aggregation workflow will use this analysis to determine which suggestions are most impactful.
+
+Step 5: Make suggestions. You MUST refer to <instruction_suggestion_formatting> for instruction suggestions.
+ONLY make suggestions that will effect the agent behavior. NEVER suggest cosmetic-only fixes.
+`,
+
+  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or
+agent name), actions, and content. Here are key signals for potential improvements in order of importance:
+
+1. If the user provided feedback, it will be included with each message in the form of thumbs up/down and comments
+This is the MOST important signal as it is directly provided by the user and an explicit signal.
+
+2. User response to an agent message. Any user indication of confusion, disagreement, or correction is a signal of dissatisfaction. A user follow-up question or request could mean the initial agent response was useful, but the agent could be improved in terms of proactively providing that information or performing the action without user intervention.
+
+3. You should look for tool calls that indicate the agent is unsure how to perform an action (and is actively exploring options) or receiving unexpected results. A general principle is that you want to suggest improvements that increase the chances that the agent can replicate a successful workflow in the future. You will need to assess the tool call pattern and make a subjective judgement.
+
+Example: The user asks, "Create a Gmail draft replying to Thread X". The agent calls gmail__search_messages 4 times with different vague queries, then tries gmail__create_reply_draft twice with different ID fields (Message-ID header, then thread id) and finally succeeds only after trial-and-error.
+This pattern suggests instruction gaps (which identifier to pass, and the expected call chain).
+
+4. Missing capabilities the agent should have. Look at <tools_and_skills_context>. Determine if more information or actions could have been provided to the user to improve satisfaction and increase user productivity. When making these types of suggestions, you MUST ensure that they are inline with the goal/role of the agent.
+
+A key consideration is that conversations can be user-specific, but agents are usually shared. You MUST ensure that the suggestions are useful for all users of the agent.`,
+
+  instructions_guidance: SHARED_PROMPT_SECTIONS.instructionsGuidance,
+
+  skills_tools_guidance: SHARED_PROMPT_SECTIONS.skillsToolsGuidance,
+
+  instruction_suggestion_formatting:
+    SHARED_PROMPT_SECTIONS.instructionSuggestionFormatting,
+};
+
+function buildAnalysisSystemPrompt(): string {
+  return ASSEMBLY_ORDER.map((key) => {
+    const body = REINFORCED_ANALYSIS_SECTIONS[key].trim();
+    return `<${key}>\n${body}\n</${key}>`;
+  }).join("\n\n");
+}
+
 export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
   conversationText: string,
   toolsAndSkillsContext: string,
   agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
-  const systemPrompt = `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
+  const systemPrompt = buildAnalysisSystemPrompt();
 
-## Your task
-Analyze the conversation and identify areas where the agent's instructions could be improved. Pay special attention to any user feedback (thumbs up/down and comments) as direct signals of satisfaction or dissatisfaction. Focus on:
-- Cases where the agent misunderstood the user's intent
-- Missing tools and skills the agent should have. Prioritize those over instruction changes when you detect a clear need for a tool or skill.
-- Tone or style improvements based on user reactions and feedback
-- Specific instructions that could prevent repeated mistakes
+  const userMessage = `<agent_context>
+${formatAgentContext(agentConfig, agentSkills)}
+</agent_context>
 
-For each suggestion, always include an 'analysis' field explaining why this change would improve the agent.
-
-You have three tools available:
-- suggest_prompt_edits: For instruction changes. Use targetBlockId 'instructions-root' for top-level instruction changes, and the actual block ID for nested instructions. The content must contain exactly what should go in the instructions block, with no explanation about why it should be there (that belongs in the analysis). It is in HTML format, so make sure to preserve any HTML tags from the original instructions.
-- suggest_tools: For suggesting tools to add or remove from the agent. Use the tool's sId as toolId.
-- suggest_skills: For suggesting skills to add or remove from the agent. Use the skill's sId as skillId.
-
-You MUST call at least one tool. If no improvements are needed, call suggest_prompt_edits with an empty suggestions array.`;
-
-  const userMessage = `${formatAgentContext(agentConfig, agentSkills)}
-
+<tools_and_skills_context>
 ${toolsAndSkillsContext}
-
-## Conversation to analyze
+</tools_and_skills_context>
 
 <conversation>
 ${conversationText}
-</conversation>`;
+</conversation>
+`;
 
   return { systemPrompt, userMessage };
 }

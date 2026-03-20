@@ -88,7 +88,7 @@ const WORKSPACE_CONTEXT: WorkspaceContext = {
   tools: [
     mockTool("Slack", "Read and send Slack messages"),
     mockTool("Notion", "Search Notion workspace"),
-    mockTool("GitHub", "Access GitHub repositories"),
+    mockTool("GitHub", "Access GitHub repositories and pull requests"),
     mockTool("JIRA", "Search and manage JIRA issues and projects"),
   ],
 };
@@ -281,6 +281,96 @@ suggestion already targeting instructions-root. The agent must not duplicate it.
 Score 0 if it creates a suggestion similar to the existing pending one (tone/warmth/friendliness).
 Score 1 if it creates an unrelated suggestion.
 Score 3 if no suggestion is created.`,
+    },
+    {
+      scenarioId: "no-duplicate-of-pending-tool-suggestion",
+      type: "aggregation",
+      agentConfig: { name: "Team Comms Bot" },
+      syntheticSuggestions: [
+        makeToolSuggestion({
+          id: 1,
+          sId: "sug-1",
+          analysis:
+            "User wanted the agent to post a summary directly to Slack after a meeting but the agent could not. Adding the Slack tool would enable direct posting.",
+          suggestion: { action: "add", toolId: "mcp_slack" },
+        }),
+      ],
+      existingSuggestions: {
+        pending: [
+          makeToolSuggestion({
+            id: 100,
+            sId: "existing-pending-1",
+            analysis:
+              "A previous conversation showed the agent could not send Slack messages. The Slack tool would allow the agent to post updates and summaries directly.",
+            source: "reinforcement",
+            suggestion: { action: "add", toolId: "mcp_slack" },
+          }),
+        ],
+        rejected: [],
+      },
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [noSuggestion()],
+      judgeCriteria: `The synthetic suggestion recommends adding the Slack tool (mcp_slack), but an identical
+suggestion is already pending. The agent must not duplicate it.
+
+Score 0 if it creates a new suggest_tools call for mcp_slack.
+Score 3 if no suggestion is created.`,
+    },
+    {
+      scenarioId: "no-suggest-on-single-minor-synthetic",
+      type: "aggregation",
+      agentConfig: { name: "Writing Assistant" },
+      syntheticSuggestions: [
+        makeInstructionSuggestion({
+          id: 1,
+          sId: "sug-1",
+          analysis:
+            "User found the agent's responses slightly long. The agent tends to include one or two unnecessary filler sentences at the end of responses.",
+          suggestion: {
+            content:
+              "<p>Keep responses concise. Avoid unnecessary filler sentences at the end.</p>",
+            targetBlockId: "instructions-root",
+            type: "replace",
+          },
+        }),
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [noSuggestion()],
+      judgeCriteria: `There is only one synthetic suggestion from a single conversation, and the issue is minor
+(slight verbosity / filler sentences — a style preference). According to prioritisation rules,
+low-severity issues from a single conversation should be dropped.
+
+Score 0 if it creates any suggestion based on this single minor synthetic input.
+Score 3 if no suggestion is created (correct: single low-severity conversation is insufficient evidence).`,
+    },
+    {
+      scenarioId: "suggest-on-single-major-synthetic",
+      type: "aggregation",
+      agentConfig: { name: "GitHub Assistant" },
+      syntheticSuggestions: [
+        makeInstructionSuggestion({
+          id: 1,
+          sId: "sug-1",
+          analysis:
+            "The agent called github__get_pull_request with the PR title as the pull_number parameter, receiving a 422 validation error. It retried twice with the same mistake before giving up. The instructions must clarify that pull_number is a numeric ID (e.g. 1234), not the PR title string.",
+          suggestion: {
+            content:
+              "<p>When calling github__get_pull_request, always use the numeric pull request ID for the pull_number parameter, not the PR title or branch name.</p>",
+            targetBlockId: "instructions-root",
+            type: "replace",
+          },
+        }),
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [promptSuggestion()],
+      judgeCriteria: `There is only one synthetic suggestion but it describes a critical issue: a repeated tool
+failure caused by passing the wrong parameter type, resulting in 422 errors. Critical issues
+(tool failures, wrong parameter format) must be surfaced even from a single conversation.
+
+Score 0 if no suggest_prompt_edits call is made.
+Score 1 if a suggestion is made but doesn't address the wrong parameter type for pull_number.
+Score 2 if the suggestion is correct but the analysis doesn't reference the tool failure as the reason for acting on a single conversation.
+Score 3 if the suggestion targets the tool call instruction and the analysis clearly cites the critical tool failure.`,
     },
     {
       scenarioId: "no-duplicate-of-rejected-prompt-suggestion",
