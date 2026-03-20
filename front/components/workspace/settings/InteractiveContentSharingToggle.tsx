@@ -2,6 +2,7 @@ import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
   ActionFrameIcon,
+  Button,
   ContextItem,
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
   GlobeAltIcon,
   LockIcon,
   UserGroupIcon,
-  Button,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -36,7 +36,8 @@ const SHARING_POLICY_OPTIONS: {
   {
     icon: UserGroupIcon,
     label: "Members + email invites",
-    description: "Frames are visible to all members and anyone invited by email",
+    description:
+      "Frames are visible to all members and anyone invited by email",
     value: "workspace_and_emails",
   },
   {

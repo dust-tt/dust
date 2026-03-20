@@ -8,7 +8,10 @@ import {
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
 import { hasProcessedVersion } from "@app/lib/api/files/processing";
-import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
+import {
+  getDefaultFrameShareScope,
+  sendFrameSharedEmail,
+} from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -506,11 +509,15 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Interactive Content conversation files, automatically create a ShareableFileModel with
-    // default workspace scope.
+    // a default scope based on the workspace sharing policy.
     if (this.isInteractiveContent) {
+      const defaultScope = getDefaultFrameShareScope(
+        auth.getNonNullableWorkspace().sharingPolicy
+      );
+
       await FileResource.shareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "workspace",
+        shareScope: defaultScope,
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
