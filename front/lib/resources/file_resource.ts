@@ -1219,7 +1219,6 @@ export class FileResource extends BaseResource<FileModel> {
         }))
       );
 
-      // Send notification emails to newly granted recipients.
       const shareInfo = await this.getShareInfo();
       if (shareInfo) {
         const sharedByName = user.toJSON().fullName;
@@ -1234,6 +1233,13 @@ export class FileResource extends BaseResource<FileModel> {
               sharedByName,
               frameUrl,
               shareToken,
+            }).catch(() => {
+              // Silently ignore, email failures should not affect grant creation.
+              logger.info({
+                email,
+                fileId: this.sId,
+                workspaceId: this.workspaceId,
+              }, "Failed to send sharing notification email");
             })
           )
         );
