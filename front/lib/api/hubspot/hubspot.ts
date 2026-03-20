@@ -147,13 +147,14 @@ export async function submitToHubSpotPartnerForm(params: {
   addField("hs_linkedin_url", formData.hs_linkedin_url);
   addField("partner_business_model", formData.partner_business_model);
 
-  // Step 2 fields (conditional)
-  addField("headquarters_region", formData.headquarters_region);
-  addField("company_industry", formData.company_industry);
-  addField("partner_customer_sizes", formData.partner_customer_sizes);
-  addField("partner_project_duration", formData.partner_project_duration);
-  addField("technical_staff", formData.technical_staff);
-  addField("partner_ai_proficiency", formData.partner_ai_proficiency);
+  // Step 2 fields (conditional — defaults for when step is skipped, since
+  // HubSpot requires these fields on the form definition)
+  addField("headquarters_region", formData.headquarters_region || "N/A");
+  addField("company_industry", formData.company_industry || "N/A");
+  addField("partner_customer_sizes", formData.partner_customer_sizes || "N/A");
+  addField("partner_project_duration", formData.partner_project_duration || "N/A");
+  addField("technical_staff", formData.technical_staff || "0");
+  addField("partner_ai_proficiency", formData.partner_ai_proficiency || "N/A");
 
   // Step 3 fields
   addField("partner_dust_usage_duration", formData.partner_dust_usage_duration);

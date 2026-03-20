@@ -57,33 +57,18 @@ export interface ContactSubmitResponse {
     regenerateCommand: "npm run generate:hubspot-forms",
     // Extra Zod fields to add to the schema (not in HubSpot)
     extraSchemaFields: [],
-    // Extra code to add before the field definitions (step constants for multi-step wizard)
-    preOptionsCode: `
-// Step 1 fields: "Become a Partner"
-export const STEP_1_FIELDS = [
-  "firstname",
-  "lastname",
-  "email",
-  "company",
-  "company_size",
-  "headquarters_region",
-] as const;
-
-// Step 2 fields: "About a partnership"
-export const STEP_2_FIELDS = [
-  "partner_type",
-  "partner_services",
-  "partner_is_dust_user",
-  "partner_additionnal_details",
-] as const;
-
-// Step 3 fields: "About your customers"
-export const STEP_3_FIELDS = [
-  "partner_customer_sizes",
-  "enterprise_tool_stack",
-  "any_existing_lead_to_share_",
-] as const;
-`,
+    preOptionsCode: "",
+    // Business profile fields are conditionally shown based on
+    // partner_business_model. HubSpot V4 forms don't expose this
+    // conditional logic via the API, so we override here.
+    optionalFieldOverrides: [
+      "headquarters_region",
+      "company_industry",
+      "partner_customer_sizes",
+      "partner_project_duration",
+      "technical_staff",
+      "partner_ai_proficiency",
+    ],
     // Extra code to add after the type definition
     extraCode: `
 // Response from the partner submit API
@@ -149,6 +134,10 @@ interface FormConfig {
   extraSchemaFields: ExtraSchemaField[];
   preOptionsCode: string;
   extraCode: string;
+  // Fields to treat as optional even if HubSpot marks them required.
+  // Used for conditional steps whose visibility logic isn't exposed via
+  // the HubSpot v3 API.
+  optionalFieldOverrides?: string[];
 }
 
 // Map HubSpot field types to our input types
@@ -167,14 +156,24 @@ function mapFieldType(hubspotType: string): string {
   return typeMap[hubspotType] || "text";
 }
 
+// Sanitize a HubSpot label for use inside a JS string literal.
+function sanitizeLabel(label: string): string {
+  return label.replace(/[\n\r]+/g, " ").replace(/"/g, '\\"').trim();
+}
+
 // Generate Zod validation for a field
-function generateZodValidation(field: HubSpotFormField): string {
-  const { name, fieldType, required } = field;
+function generateZodValidation(
+  field: HubSpotFormField,
+  optionalOverrides: Set<string>
+): string {
+  const { name, fieldType } = field;
+  const label = sanitizeLabel(field.label);
+  const required = field.required && !optionalOverrides.has(name);
 
   // Handle checkbox (multi-select) fields
   if (fieldType === "checkbox") {
     if (required) {
-      return `z.array(z.string()).min(1, "${field.label} is required")`;
+      return `z.array(z.string()).min(1, "${label} is required")`;
     }
     return `z.array(z.string()).optional()`;
   }
@@ -182,7 +181,7 @@ function generateZodValidation(field: HubSpotFormField): string {
   // Handle boolean checkbox fields
   if (fieldType === "booleancheckbox") {
     if (required) {
-      return `z.boolean().refine(val => val === true, { message: "${field.label} is required" })`;
+      return `z.boolean().refine(val => val === true, { message: "${label} is required" })`;
     }
     return `z.boolean().optional()`;
   }
@@ -191,7 +190,7 @@ function generateZodValidation(field: HubSpotFormField): string {
 
   if (fieldType === "email") {
     if (required) {
-      validation = `z.string().min(1, "${field.label} is required").email("Please enter a valid email address")`;
+      validation = `z.string().min(1, "${label} is required").email("Please enter a valid email address")`;
     } else {
       validation = `z.string().email("Please enter a valid email address").optional()`;
     }
@@ -202,7 +201,7 @@ function generateZodValidation(field: HubSpotFormField): string {
       company_headcount_form: "Company headcount is required",
       partner_type: "Partner type is required",
     };
-    const errorMsg = labelMap[name] || `${field.label} is required`;
+    const errorMsg = labelMap[name] || `${label} is required`;
     validation = `z.string().min(1, "${errorMsg}")`;
   } else {
     validation = "z.string().optional()";
@@ -326,9 +325,11 @@ function generateCode(
     })
     .join(",\n");
 
+  const optionalOverrides = new Set(config.optionalFieldOverrides ?? []);
+
   // Generate Zod schema
   const zodFieldsFromHubSpot = fields.map((field) => {
-    return `  ${field.name}: ${generateZodValidation(field)}`;
+    return `  ${field.name}: ${generateZodValidation(field, optionalOverrides)}`;
   });
 
   // Add extra schema fields if configured

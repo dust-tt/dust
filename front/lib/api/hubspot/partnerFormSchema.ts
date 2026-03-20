@@ -8,7 +8,7 @@
  * To regenerate, run: npm run generate:hubspot-forms
  * Requires HUBSPOT_PRIVATE_APP_TOKEN in .env.local
  *
- * Generated at: 2026-03-20T09:02:19.066Z
+ * Generated at: 2026-03-20T16:50:42.731Z
  */
 
 import { z } from "zod";
@@ -69,31 +69,6 @@ export const PARTNER_DUST_USAGE_DURATION_OPTIONS = [
 ] as const;
 
 
-// Step 1 fields: "Become a Partner"
-export const STEP_1_FIELDS = [
-  "firstname",
-  "lastname",
-  "email",
-  "company",
-  "company_size",
-  "headquarters_region",
-] as const;
-
-// Step 2 fields: "About a partnership"
-export const STEP_2_FIELDS = [
-  "partner_type",
-  "partner_services",
-  "partner_is_dust_user",
-  "partner_additionnal_details",
-] as const;
-
-// Step 3 fields: "About your customers"
-export const STEP_3_FIELDS = [
-  "partner_customer_sizes",
-  "enterprise_tool_stack",
-  "any_existing_lead_to_share_",
-] as const;
-
 // Field definitions for dynamic form rendering
 export const PARTNER_FIELD_DEFINITIONS = [
   {
@@ -128,7 +103,7 @@ export const PARTNER_FIELD_DEFINITIONS = [
   },
   {
     name: "partner_business_model",
-    label: "What is your main business model?\n",
+    label: "What is your main business model?",
     type: "dropdown",
     required: true,
     options: PARTNER_BUSINESS_MODEL_OPTIONS,
@@ -220,12 +195,12 @@ export const PartnerFormSchema = z.object({
   company: z.string().min(1, "Company Name is required"),
   hs_linkedin_url: z.string().min(1, "LinkedIn URL is required"),
   partner_business_model: z.string().min(1, "What is your main business model? is required"),
-  headquarters_region: z.string().min(1, "What's your regional focus? is required"),
-  company_industry: z.string().min(1, "What industry do you specialize in? is required"),
-  partner_customer_sizes: z.string().min(1, "What's the typical size of your client companies?  is required"),
-  partner_project_duration: z.string().min(1, "What is your average project duration? is required"),
-  technical_staff: z.string().min(1, "How many technical staff do you have dedicated to implementations? is required"),
-  partner_ai_proficiency: z.string().min(1, "What’s the current level of your team on AI? is required"),
+  headquarters_region: z.string().optional(),
+  company_industry: z.string().optional(),
+  partner_customer_sizes: z.string().optional(),
+  partner_project_duration: z.string().optional(),
+  technical_staff: z.string().optional(),
+  partner_ai_proficiency: z.string().optional(),
   partner_dust_usage_duration: z.string().min(1, "How long have you been using Dust? is required"),
   partner_agent_example: z.string().min(1, "Share your favorite Dust Agent you’ve built is required"),
   partner_dust_clients: z.string().min(1, "How many Dust clients do you currently have? is required"),

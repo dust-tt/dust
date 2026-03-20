@@ -8,7 +8,7 @@
  * To regenerate, run: npm run generate:hubspot-forms
  * Requires HUBSPOT_PRIVATE_APP_TOKEN in .env.local
  *
- * Generated at: 2026-03-20T09:02:18.873Z
+ * Generated at: 2026-03-20T16:50:42.547Z
  */
 
 import { z } from "zod";

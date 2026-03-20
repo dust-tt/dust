@@ -29,9 +29,34 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { z } from "zod";
 import { useState } from "react";
 import { useController, useForm } from "react-hook-form";
+import { z } from "zod";
+
+const PARTNER_FORM_FIELDS = new Set<string>([
+  "firstname",
+  "lastname",
+  "email",
+  "company",
+  "hs_linkedin_url",
+  "partner_business_model",
+  "headquarters_region",
+  "company_industry",
+  "partner_customer_sizes",
+  "partner_project_duration",
+  "technical_staff",
+  "partner_ai_proficiency",
+  "partner_dust_usage_duration",
+  "partner_agent_example",
+  "partner_dust_clients",
+  "any_existing_lead_to_share_",
+  "partner_additionnal_details",
+  "partner_other_partnerhips",
+]);
+
+function isPartnerFormField(value: unknown): value is keyof PartnerFormData {
+  return typeof value === "string" && PARTNER_FORM_FIELDS.has(value);
+}
 
 // Business models that trigger the conditional Business Profile step
 const BUSINESS_PROFILE_MODELS = new Set([
@@ -54,7 +79,10 @@ const PARTNER_CUSTOMER_SIZE_OPTIONS = [
 const Step1Schema = z.object({
   firstname: z.string().min(1, "First Name is required"),
   lastname: z.string().min(1, "Last Name is required"),
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
   company: z.string().min(1, "Company Name is required"),
   hs_linkedin_url: z.string().min(1, "LinkedIn URL is required"),
   partner_business_model: z.string().min(1, "Please select a business model"),
@@ -64,17 +92,33 @@ const BusinessProfileSchema = z.object({
   headquarters_region: z.string().min(1, "Please select a region"),
   company_industry: z.string().min(1, "Please select an industry"),
   partner_customer_sizes: z.string().min(1, "Please select at least one size"),
-  partner_project_duration: z.string().min(1, "Please select a project duration"),
-  technical_staff: z.string().min(1, "Please enter your technical staff count").regex(/^\d+$/, "Please enter a valid number"),
-  partner_ai_proficiency: z.string().min(1, "Please select your AI proficiency level"),
+  partner_project_duration: z
+    .string()
+    .min(1, "Please select a project duration"),
+  technical_staff: z
+    .string()
+    .min(1, "Please enter your technical staff count")
+    .regex(/^\d+$/, "Please enter a valid number"),
+  partner_ai_proficiency: z
+    .string()
+    .min(1, "Please select your AI proficiency level"),
 });
 
 const LastStepSchema = z.object({
   partner_dust_usage_duration: z.string().min(1, "Please select a duration"),
-  partner_agent_example: z.string().min(1, "Please share your favorite Dust Agent"),
-  partner_dust_clients: z.string().min(1, "Please enter the number of Dust clients").regex(/^\d+$/, "Please enter a valid number"),
-  any_existing_lead_to_share_: z.string().min(1, "Please describe a first opportunity"),
-  partner_additionnal_details: z.string().min(1, "Please describe how you envision a partnership"),
+  partner_agent_example: z
+    .string()
+    .min(1, "Please share your favorite Dust Agent"),
+  partner_dust_clients: z
+    .string()
+    .min(1, "Please enter the number of Dust clients")
+    .regex(/^\d+$/, "Please enter a valid number"),
+  any_existing_lead_to_share_: z
+    .string()
+    .min(1, "Please describe a first opportunity"),
+  partner_additionnal_details: z
+    .string()
+    .min(1, "Please describe how you envision a partnership"),
 });
 
 const STEP_SCHEMAS = {
@@ -82,7 +126,6 @@ const STEP_SCHEMAS = {
   businessProfile: BusinessProfileSchema,
   lastStep: LastStepSchema,
 } as const;
-
 
 const STEP_TITLES = [
   "Become a Partner",
@@ -146,8 +189,6 @@ function usePartnerFormSubmit() {
         object: "partner_form",
         action: "submit_success",
       });
-
-      window.scrollTo({ top: 0, behavior: "smooth" });
 
       setSubmitResult(result);
     } catch (err) {
@@ -260,9 +301,7 @@ function CheckboxGroupField({
   const { field, fieldState } = useController<PartnerFormData>({ name });
   // Store as semicolon-separated string (HubSpot multi-select format)
   const fieldValue = typeof field.value === "string" ? field.value : "";
-  const selectedValues: string[] = fieldValue
-    ? fieldValue.split(";")
-    : [];
+  const selectedValues: string[] = fieldValue ? fieldValue.split(";") : [];
 
   const handleToggle = (value: string) => {
     const newValues = selectedValues.includes(value)
@@ -362,17 +401,25 @@ export function PartnerForm() {
     const result = schema.safeParse(values);
     if (!result.success) {
       for (const issue of result.error.issues) {
-        const field = issue.path[0] as keyof PartnerFormData;
-        form.setError(field, { message: issue.message });
+        const field = issue.path[0];
+        if (isPartnerFormField(field)) {
+          form.setError(field, { message: issue.message });
+        }
       }
       return;
     }
 
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+    document
+      .getElementById("dust-partner-form")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleBack = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
+    document
+      .getElementById("dust-partner-form")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
   const renderStep1Fields = () => (
@@ -645,8 +692,10 @@ export function PartnerForm() {
     const result = schema.safeParse(values);
     if (!result.success) {
       for (const issue of result.error.issues) {
-        const field = issue.path[0] as keyof PartnerFormData;
-        form.setError(field, { message: issue.message });
+        const field = issue.path[0];
+        if (isPartnerFormField(field)) {
+          form.setError(field, { message: issue.message });
+        }
       }
       return;
     }

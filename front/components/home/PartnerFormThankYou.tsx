@@ -20,7 +20,9 @@ export function PartnerFormThankYou() {
       </div>
 
       <p className="text-lg text-muted-foreground">
-        At the moment, we are gradually onboarding new partners to ensure high-quality support and co-selling. We&apos;ll let you know as soon as you&apos;re next.
+        At the moment, we are gradually onboarding new partners to ensure
+        high-quality support and co-selling. We&apos;ll let you know as soon as
+        you&apos;re next.
       </p>
 
       <p className="text-muted-foreground">
