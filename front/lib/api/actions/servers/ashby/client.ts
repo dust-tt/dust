@@ -123,7 +123,11 @@ export class AshbyClient {
   ): Promise<
     Result<
       | z.infer<T>
-      | { results: z.infer<T>; moreDataAvailable?: boolean; nextCursor?: string },
+      | {
+          results: z.infer<T>;
+          moreDataAvailable?: boolean;
+          nextCursor?: string;
+        },
       Error
     >
   > {
