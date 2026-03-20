@@ -2,7 +2,10 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { ActiveUsersMetricsPoint } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import { timezoneSchema } from "@app/lib/api/assistant/observability/utils";
+import {
+  daysToDateRange,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -54,7 +57,13 @@ async function handler(
       const { days, timezone } = q.data;
       const owner = auth.getNonNullableWorkspace();
 
-      const result = await fetchActiveUsersMetrics(owner, { days }, timezone);
+      const { startDate, endDate } = daysToDateRange(days, timezone);
+      const result = await fetchActiveUsersMetrics(
+        owner,
+        startDate,
+        endDate,
+        timezone
+      );
 
       if (result.isErr()) {
         return apiError(req, res, {
