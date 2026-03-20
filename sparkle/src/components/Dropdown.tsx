@@ -11,6 +11,10 @@ import {
   LinkWrapper,
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
+import {
+  radioIndicatorStyles,
+  radioStyles,
+} from "@sparkle/components/RadioGroup";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import {
   SearchInput,
@@ -18,7 +22,6 @@ import {
 } from "@sparkle/components/SearchInput";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
-import { radioIndicatorStyles, radioStyles } from "@sparkle/components/RadioGroup";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -596,12 +599,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     )}
     {...props}
   >
-    <span
-      className={cn(
-        "s-absolute s-left-2",
-        radioStyles({ size: "xs" }),
-      )}
-    >
+    <span className={cn("s-absolute s-left-2", radioStyles({ size: "xs" }))}>
       <DropdownMenuPrimitive.ItemIndicator>
         <div className={radioIndicatorStyles({ size: "xs" })} />
       </DropdownMenuPrimitive.ItemIndicator>
