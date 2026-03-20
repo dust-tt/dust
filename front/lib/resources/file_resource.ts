@@ -1226,6 +1226,8 @@ export class FileResource extends BaseResource<FileModel> {
         const shareToken = frameUrl.split("/").at(-1) ?? "";
 
         // Fire-and-forget: don't block grant creation on email delivery.
+        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
+        // parallelism and improve reliability/retry handling.
         void Promise.all(
           newEmails.map((email) =>
             sendFrameSharedEmail({
