@@ -73,7 +73,7 @@ export async function sendFrameOtpEmail({
     // TODO(2026-03-19 FRAME SHARING): Consider sending from another email address.
     from: config.getSupportEmailAddress(),
     subject: "Your Dust login code",
-    body: `<p>${escape(sharedByName)} shared a Frame with you on Dust.</p>
+    body: `<p>${escape(sharedByName)} shared a frame with you on Dust.</p>
       <p>Your login code:</p>
       <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; margin-block: 20px;">${escape(code)}</p>
       <p>Expires in ${Math.floor(OTP_TTL_SECONDS / 60)} minutes. Didn't request this? Ignore this email.</p>`,
@@ -93,7 +93,7 @@ export async function sendFrameSharedEmail({
 }): Promise<void> {
   // Rate limit to 1 notification per recipient per frame per 24 hours to prevent spam.
   const remaining = await rateLimiter({
-    key: `frame_share_nodtifidcation:${shareToken}:${to}`,
+    key: `frame_share_notification:${shareToken}:${to}`,
     maxPerTimeframe: SHARE_NOTIFICATION_MAX_PER_DAY,
     timeframeSeconds: SHARE_NOTIFICATION_TIMEFRAME_SECONDS,
     logger,
@@ -105,9 +105,9 @@ export async function sendFrameSharedEmail({
   await sendEmailWithTemplate({
     to,
     from: config.getSupportEmailAddress(),
-    subject: `${sharedByName} shared a Frame with you`,
-    body: `<p>${escape(sharedByName)} is sharing a Frame with you on Dust.</p>`,
-    buttonLabel: "Open Frame",
+    subject: `${sharedByName} shared a frame with you`,
+    body: `<p>${escape(sharedByName)} is sharing a frame with you on Dust.</p>`,
+    buttonLabel: "View frame",
     buttonUrl: frameUrl,
   });
 }
