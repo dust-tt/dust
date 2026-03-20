@@ -6,7 +6,7 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { SandboxFileEntry } from "@app/lib/api/sandbox/files";
+import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import {
   frameSlideshowContentType,
   isInteractiveContentType,
@@ -149,7 +149,7 @@ export function conversationAttachmentToRow(
  * tree paths start at the sandbox working directory root.
  */
 export function buildSandboxTree(
-  entries: SandboxFileEntry[]
+  entries: GCSMountFileEntry[]
 ): SandboxTreeNode[] {
   const root: SandboxTreeNode[] = [];
   const nodeMap = new Map<string, SandboxTreeNode>();
