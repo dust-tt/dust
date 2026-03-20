@@ -607,7 +607,8 @@ export async function createAgentConfiguration(
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
-            reinforcement: reinforcement ?? "auto",
+            reinforcement:
+              reinforcement ?? existingAgent.reinforcement ?? "auto",
           },
           {
             where: {
@@ -652,7 +653,8 @@ export async function createAgentConfiguration(
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
-            reinforcement: reinforcement ?? "auto",
+            reinforcement:
+              reinforcement ?? existingAgent?.reinforcement ?? "auto",
           },
           {
             transaction: t,
