@@ -34,7 +34,7 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
                 disabled={!viewLogsLink}
                 onClick={() => {
                   if (viewLogsLink) {
-                    window.open(viewLogsLink, "_blank");
+                    window.open(viewLogsLink, "_blank", "noopener,noreferrer");
                   }
                 }}
               />
@@ -45,7 +45,11 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
                 disabled={!configureExportLink}
                 onClick={() => {
                   if (configureExportLink) {
-                    window.open(configureExportLink, "_blank");
+                    window.open(
+                      configureExportLink,
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
                   }
                 }}
               />

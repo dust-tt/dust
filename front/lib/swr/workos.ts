@@ -273,7 +273,7 @@ export function useAuditLogsStatus({
   return {
     viewLogsLink: data?.viewLogsLink,
     configureExportLink: data?.configureExportLink,
-    isLoading,
+    isLoading: !disabled && isLoading,
     error,
   };
 }

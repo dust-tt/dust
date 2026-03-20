@@ -9,9 +9,13 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+// Audit actions will be added here as event emission is implemented per tier.
+// Using a union type ensures compile-time safety for action strings.
+type AuditAction = never;
+
 export type EmitAuditLogEventParams = {
   auth: Authenticator;
-  action: string;
+  action: AuditAction;
   targets: AuditLogTarget[];
   context?: AuditLogContext;
   metadata?: Record<string, string | number | boolean>;
@@ -63,7 +67,13 @@ export async function emitAuditLogEvent({
       },
     });
   } catch (error) {
-    logger.error(normalizeError(error), "Failed to emit audit log event");
+    logger.error(
+      {
+        ...normalizeError(error),
+        auditEvent: { action, targets, metadata },
+      },
+      "Failed to emit audit log event"
+    );
   }
 }
 
