@@ -68,6 +68,7 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
+  // TODO(reinforced agent): for now, we only process those that are on, because we have not yet implemented 'auto' mode
   return agents
     .filter((a) => a.id > 0 && a.reinforcement === "on")
     .map((a) => a.sId);
