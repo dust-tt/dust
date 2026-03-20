@@ -105,8 +105,7 @@ export function ShareFramePopover({
   const [selectedScope, setSelectedScope] =
     React.useState<FileShareScope>("workspace");
 
-  const isPublicSharingForbidden =
-    owner.metadata?.allowContentCreationFileSharing === false;
+  const isPublicSharingForbidden = owner.sharingPolicy !== "all_scopes";
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
     useShareInteractiveContentFile({
