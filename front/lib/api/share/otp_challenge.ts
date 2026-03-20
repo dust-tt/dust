@@ -13,6 +13,9 @@ const OTP_MAX_ATTEMPTS = 5;
 const OTP_RATE_LIMIT_MAX_PER_HOUR = 5;
 const OTP_RATE_LIMIT_TIMEFRAME_SECONDS = 3600; // 1 hour.
 
+const OTP_VERIFY_MAX_ATTEMPTS = 10;
+const OTP_VERIFY_TIMEFRAME_SECONDS = 15 * 60; // 15 minutes.
+
 function frameOtpChallengeKey(shareToken: string, email: string): string {
   return `frame_otp_challenge:${shareToken}:${email}`;
 }
@@ -74,7 +77,11 @@ export async function sendFrameOtpEmail({
   });
 }
 
-type ValidateOtpError = "expired" | "max_attempts" | "invalid_code";
+type ValidateOtpError =
+  | "expired"
+  | "invalid_code"
+  | "max_attempts"
+  | "rate_limited";
 
 export async function validateFrameOtpChallenge({
   email,
@@ -85,6 +92,20 @@ export async function validateFrameOtpChallenge({
   shareToken: string;
   submittedCode: string;
 }): Promise<Result<void, ValidateOtpError>> {
+  // Primary brute-force protection: atomic rate limiter via Redis Lua script.
+  const remaining = await rateLimiter({
+    key: `frame_otp:verify:${shareToken}:${email}`,
+    maxPerTimeframe: OTP_VERIFY_MAX_ATTEMPTS,
+    timeframeSeconds: OTP_VERIFY_TIMEFRAME_SECONDS,
+    logger,
+  });
+  if (remaining <= 0) {
+    return new Err("rate_limited");
+  }
+
+  // Secondary defense-in-depth: per-challenge attempt counter.
+  // Note: not atomic (read-check-increment across multiple Redis calls), but the rate limiter
+  // above is the primary protection.
   return runOnRedis(
     { origin: "otp_challenge" },
     async (redis): Promise<Result<void, ValidateOtpError>> => {

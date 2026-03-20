@@ -149,6 +149,28 @@ describe("validateFrameOtpChallenge", () => {
     }
   });
 
+  it("returns Err('rate_limited') when verify rate limiter is exhausted", async () => {
+    await generateFrameOtpChallenge({
+      email: EMAIL,
+      shareToken: SHARE_TOKEN,
+    });
+
+    // The rateLimiter is called by both generate and validate.
+    // Mock it to return 0 on the next call (which will be validate's rate limiter).
+    vi.mocked(rateLimiter).mockResolvedValueOnce(0);
+
+    const result = await validateFrameOtpChallenge({
+      email: EMAIL,
+      shareToken: SHARE_TOKEN,
+      submittedCode: "123456",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBe("rate_limited");
+    }
+  });
+
   it("deletes the challenge after successful validation", async () => {
     const genResult = await generateFrameOtpChallenge({
       email: EMAIL,

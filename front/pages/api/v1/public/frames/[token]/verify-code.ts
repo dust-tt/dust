@@ -103,11 +103,12 @@ async function handler(
           },
         });
       case "max_attempts":
+      case "rate_limited":
         return apiError(req, res, {
           status_code: 429,
           api_error: {
             type: "rate_limit_error",
-            message: "Too many incorrect attempts. Please request a new code.",
+            message: "Too many attempts. Please request a new code.",
           },
         });
       case "invalid_code":
