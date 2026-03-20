@@ -1,13 +1,13 @@
-import type { FileShareScope } from "@app/types/files";
-import type { WorkspaceSharingPolicy } from "@app/types/user";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { runOnRedis } from "@app/lib/api/redis";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { FileShareScope } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
 import { escape } from "html-escaper";
 
