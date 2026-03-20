@@ -16,12 +16,16 @@ export function buildAgentAnalyticsBaseQuery({
   workspaceId,
   agentId,
   days,
+  startDate,
+  endDate,
   version,
   feedbackNestedQuery,
 }: {
   workspaceId: string;
   agentId?: string;
   days?: number;
+  startDate?: string;
+  endDate?: string;
   version?: string;
   feedbackNestedQuery?: estypes.QueryDslQueryContainer;
 }): estypes.QueryDslQueryContainer {
@@ -30,7 +34,11 @@ export function buildAgentAnalyticsBaseQuery({
     ...(agentId ? [{ term: { agent_id: agentId } }] : []),
   ];
 
-  if (days) {
+  if (startDate && endDate) {
+    filters.push({
+      range: { timestamp: { gte: startDate, lte: endDate } },
+    });
+  } else if (days) {
     filters.push({ range: { timestamp: { gte: `now-${days}d/d` } } });
   }
   if (version) {
