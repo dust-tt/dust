@@ -869,7 +869,7 @@ export function AgentMessage({
           className="flex flex-col gap-5"
           defaultCollapsed={!isLastMessage}
           footer={footerButtons}
-          buttonClassName="text-muted-foreground dark:text-muted-foreground-night"
+          buttonClassName="text-muted-foreground"
         >
           {messageContent}
         </TruncatedContent>
