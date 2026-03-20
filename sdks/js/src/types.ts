@@ -2789,11 +2789,18 @@ const AnalyticsExportTableSchema = z.enum([
   "tool_usage",
 ]);
 
+const AnalyticsDateSchema = z
+  .string()
+  .refine(
+    (s): s is string => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s),
+    { message: "Date must be in YYYY-MM-DD format" }
+  );
+
 export const GetAnalyticsExportRequestSchema = z.object({
   table: AnalyticsExportTableSchema,
-  startDate: z.string(),
-  endDate: z.string(),
-  timezone: z.string().optional(),
+  startDate: AnalyticsDateSchema,
+  endDate: AnalyticsDateSchema,
+  timezone: Timezone.optional(),
 });
 
 export type GetAnalyticsExportRequestType = z.infer<
