@@ -737,7 +737,7 @@ export const AshbyOfferCustomFieldSchema = z
     isPrivate: z.boolean().optional(),
     title: z.string().optional(),
     value: z.unknown().optional(),
-    valueLabel: z.string().optional(),
+    valueLabel: z.union([z.string(), z.array(z.string())]).optional(),
   })
   .passthrough();
 

@@ -428,7 +428,9 @@ export function renderHireData({
         lines.push("");
         for (const field of version.customFields) {
           const title = field.title ?? field.id ?? "Unknown Field";
-          const displayValue = field.valueLabel ?? field.value;
+          const displayValue = Array.isArray(field.valueLabel)
+            ? field.valueLabel.join(", ")
+            : (field.valueLabel ?? field.value);
           lines.push(`**${title}:** ${formatFieldValue(displayValue)}`);
         }
       }
