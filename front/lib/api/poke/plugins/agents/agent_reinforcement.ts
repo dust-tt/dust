@@ -1,5 +1,5 @@
+import { updateAgentReinforcementMode } from "@app/lib/api/assistant/configuration/agent";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { AgentReinforcementMode } from "@app/types/assistant/agent";
 import { AGENT_REINFORCEMENT_MODES } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
@@ -52,16 +52,7 @@ export const agentReinforcementPlugin = createPlugin({
       return new Err(new Error("Invalid reinforcement mode"));
     }
 
-    await AgentConfigurationModel.update(
-      { reinforcement },
-      {
-        where: {
-          sId: resource.sId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "active",
-        },
-      }
-    );
+    await updateAgentReinforcementMode(auth, resource.sId, reinforcement);
 
     return new Ok({
       display: "text",

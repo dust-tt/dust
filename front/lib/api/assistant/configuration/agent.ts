@@ -1735,3 +1735,20 @@ export async function filterAgentsByRequestedSpaces(
 
   return allowedBySpaceIds;
 }
+
+export async function updateAgentReinforcementMode(
+  auth: Authenticator,
+  agentSId: string,
+  reinforcement: AgentReinforcementMode
+): Promise<void> {
+  await AgentConfigurationModel.update(
+    { reinforcement },
+    {
+      where: {
+        sId: agentSId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+      },
+    }
+  );
+}
