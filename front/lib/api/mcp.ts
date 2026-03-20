@@ -1,26 +1,32 @@
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import {
+  CUSTOM_RESOURCE_ALLOWED,
+  type CustomResourceIconType,
+  INTERNAL_ALLOWED_ICONS,
+  type InternalAllowedIconType,
+} from "@app/components/resources/resources_icon_names";
+import {
+  MCP_TOOL_STAKE_LEVELS,
+  type MCPToolStakeLevelType,
+} from "@app/lib/actions/constants";
 import type {
   LightMCPToolConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type {
-  InternalMCPServerNameType,
-  MCPServerAvailability,
+import {
+  type InternalMCPServerNameType,
+  MCP_SERVER_AVAILABILITY,
+  type MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import {
   isLightClientSideMCPToolConfiguration,
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
-import type { ModelId } from "@app/types/shared/model_id";
-import type { EditedByUser } from "@app/types/user";
+import { OAUTH_PROVIDERS } from "@app/types/oauth/lib";
+import { DbModelIdSchema } from "@app/types/shared/model_id";
+import { EditedByUserSchema } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;
@@ -42,19 +48,23 @@ export function getRetryPolicyFromToolConfiguration(
       DEFAULT_MCP_TOOL_RETRY_POLICY;
 }
 
-export type ToolDisplayLabels = {
-  running: string; // e.g. "Searching data"
-  done: string; // e.g. "Search data"
-};
+const MCP_OAUTH_USE_CASES = ["platform_actions", "personal_actions"] as const;
 
-export type MCPToolType = {
-  name: string;
-  description: string;
-  inputSchema?: JSONSchema;
-  // Optional for remote MCP servers (external sources may not have this).
-  // Mandatory for internal MCP servers (enforced via ServerMetadata type).
-  displayLabels?: ToolDisplayLabels;
-};
+export const ToolDisplayLabelsSchema = z.object({
+  running: z.string(),
+  done: z.string(),
+});
+
+export type ToolDisplayLabels = z.infer<typeof ToolDisplayLabelsSchema>;
+
+export const MCPToolSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  inputSchema: z.custom<JSONSchema>().optional(),
+  displayLabels: ToolDisplayLabelsSchema.optional(),
+});
+
+export type MCPToolType = z.infer<typeof MCPToolSchema>;
 
 export type MCPToolWithAvailabilityType = MCPToolType & {
   availability: MCPServerAvailability;
@@ -76,25 +86,39 @@ export type ClientSideMCPToolTypeWithStakeLevel =
     argumentsRequiringApproval?: string[];
   };
 
-export type MCPServerType = {
-  // This will be part of the MCP server metadata at the protocol level.
-  name: string;
-  version: string;
-  description: string;
+const AuthorizationInfoSchema = z.object({
+  provider: z.enum(OAUTH_PROVIDERS),
+  supported_use_cases: z.array(z.enum(MCP_OAUTH_USE_CASES)),
+  scope: z.string().optional(),
+  workspace_connection: z
+    .object({
+      required: z.boolean(),
+      satisfied: z.boolean(),
+    })
+    .optional(),
+});
 
-  // Everything below is only internal.
-  sId: string;
-  icon: CustomResourceIconType | InternalAllowedIconType;
-  authorization: AuthorizationInfo | null;
-  tools: MCPToolType[];
-  availability: MCPServerAvailability;
-  allowMultipleInstances: boolean;
-  documentationUrl: string | null;
-  developerSecretSelection?: DeveloperSecretSelectionType | null;
-  developerSecretSelectionDescription?: string | null;
-  sharedSecret?: string | null;
-  customHeaders?: Record<string, string> | null;
-};
+export const MCPServerSchema = z.object({
+  name: z.string(),
+  version: z.string(),
+  description: z.string(),
+  sId: z.string(),
+  icon: z.enum([...CUSTOM_RESOURCE_ALLOWED, ...INTERNAL_ALLOWED_ICONS]),
+  authorization: AuthorizationInfoSchema.nullable(),
+  tools: z.array(MCPToolSchema),
+  availability: z.enum(MCP_SERVER_AVAILABILITY),
+  allowMultipleInstances: z.boolean(),
+  documentationUrl: z.string().nullable(),
+  developerSecretSelection: z
+    .enum(["required", "optional"])
+    .nullable()
+    .optional(),
+  developerSecretSelectionDescription: z.string().nullable().optional(),
+  sharedSecret: z.string().nullable().optional(),
+  customHeaders: z.record(z.string(), z.string()).nullable().optional(),
+});
+
+export type MCPServerType = z.infer<typeof MCPServerSchema>;
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
@@ -106,26 +130,28 @@ export type RemoteMCPServerType = MCPServerType & {
   allowMultipleInstances: true;
 };
 
-export type MCPServerViewTypeType = "remote" | "internal";
+const ToolsMetadataSchema = z.object({
+  toolName: z.string(),
+  permission: z.enum(MCP_TOOL_STAKE_LEVELS),
+  enabled: z.boolean(),
+});
 
-export interface MCPServerViewType {
-  id: ModelId;
-  sId: string;
-  name: string | null; // Can be null if the user did not set a custom name.
-  description: string | null; // Can be null if the user did not set a custom description.
-  createdAt: number;
-  updatedAt: number;
-  spaceId: string;
-  serverType: MCPServerViewTypeType;
-  server: MCPServerType;
-  oAuthUseCase: MCPOAuthUseCase | null;
-  editedByUser: EditedByUser | null;
-  toolsMetadata?: {
-    toolName: string;
-    permission: MCPToolStakeLevelType;
-    enabled: boolean;
-  }[];
-}
+export const MCPServerViewSchema = z.object({
+  id: DbModelIdSchema,
+  sId: z.string(),
+  name: z.string().nullable(),
+  description: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  serverType: z.enum(["remote", "internal"]),
+  server: MCPServerSchema,
+  oAuthUseCase: z.enum(MCP_OAUTH_USE_CASES).nullable(),
+  editedByUser: EditedByUserSchema.nullable(),
+  toolsMetadata: z.array(ToolsMetadataSchema).optional(),
+});
+
+export type MCPServerViewType = z.infer<typeof MCPServerViewSchema>;
 
 export type MCPServerDefinitionType = Omit<
   MCPServerType,
