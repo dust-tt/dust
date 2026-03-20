@@ -27,7 +27,10 @@ import type {
 } from "@app/types/core/content_node";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { SupportedFileContentType } from "@app/types/files";
+import type {
+  AllSupportedFileContentType,
+  SupportedFileContentType,
+} from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -65,11 +68,13 @@ export async function toFileContentFragment(
 ): Promise<
   Result<ContentFragmentInputWithFileIdType, ProcessAndStoreFileError>
 > {
+  // Safe cast: contentType is validated by the zod schema (getSupportedInlinedContentType).
+  const validatedContentType =
+    contentFragment.contentType as AllSupportedFileContentType;
   const file = await FileResource.makeNew({
-    contentType: contentFragment.contentType,
+    contentType: validatedContentType,
     fileName:
-      fileName ??
-      "content" + extensionsForContentType(contentFragment.contentType)[0],
+      fileName ?? "content" + extensionsForContentType(validatedContentType)[0],
     fileSize: contentFragment.content.length,
     userId: auth.user()?.id,
     workspaceId: auth.getNonNullableWorkspace().id,

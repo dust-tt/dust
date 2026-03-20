@@ -131,24 +131,16 @@ import {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const PatchConversationsRequestBodySchema = t.union([
-  t.type({
-    title: t.string,
-  }),
-  t.type({
-    read: t.literal(true),
-  }),
-  t.type({
-    spaceId: t.string,
-  }),
+const PatchConversationsRequestBodySchema = z.union([
+  z.object({ title: z.string() }),
+  z.object({ read: z.literal(true) }),
+  z.object({ spaceId: z.string() }),
 ]);
 
-export type PatchConversationsRequestBody = t.TypeOf<
+export type PatchConversationsRequestBody = z.infer<
   typeof PatchConversationsRequestBodySchema
 >;
 
@@ -224,28 +216,24 @@ async function handler(
         }
 
         const conversation = conversationRes.value;
-        const bodyValidation = PatchConversationsRequestBodySchema.decode(
+        const bodyValidation = PatchConversationsRequestBodySchema.safeParse(
           req.body
         );
 
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
-
+        if (!bodyValidation.success) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid request body: ${pathError}`,
+              message: `Invalid request body: ${bodyValidation.error.message}`,
             },
           });
         }
 
-        if ("title" in bodyValidation.right) {
+        if ("title" in bodyValidation.data) {
           const result = await updateConversationTitle(auth, {
             conversationId: conversation.sId,
-            title: bodyValidation.right.title,
+            title: bodyValidation.data.title,
           });
           await ConversationResource.markAsReadForAuthUser(auth, {
             conversation,
@@ -255,16 +243,16 @@ async function handler(
             return apiErrorForConversation(req, res, result.error);
           }
           return res.status(200).json({ success: true });
-        } else if ("read" in bodyValidation.right) {
+        } else if ("read" in bodyValidation.data) {
           await ConversationResource.markAsReadForAuthUser(auth, {
             conversation,
           });
 
           return res.status(200).json({ success: true });
-        } else if ("spaceId" in bodyValidation.right) {
+        } else if ("spaceId" in bodyValidation.data) {
           const r = await moveConversationToProject(auth, {
             conversation,
-            spaceId: bodyValidation.right.spaceId,
+            spaceId: bodyValidation.data.spaceId,
           });
           if (r.isOk()) {
             return res.status(200).json({ success: true });

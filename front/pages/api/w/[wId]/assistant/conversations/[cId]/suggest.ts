@@ -8,16 +8,15 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type SuggestResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
 };
 
-const SuggestQuerySchema = t.type({
-  cId: t.string,
+const SuggestQuerySchema = z.object({
+  cId: z.string(),
 });
 
 async function handler(
@@ -35,8 +34,8 @@ async function handler(
     });
   }
 
-  const queryValidation = SuggestQuerySchema.decode(req.query);
-  if (isLeft(queryValidation)) {
+  const queryValidation = SuggestQuerySchema.safeParse(req.query);
+  if (!queryValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -46,7 +45,7 @@ async function handler(
     });
   }
 
-  const { cId } = queryValidation.right;
+  const { cId } = queryValidation.data;
 
   // Get the conversation.
   const conversationRes =

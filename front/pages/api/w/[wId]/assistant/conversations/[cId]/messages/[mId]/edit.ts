@@ -66,22 +66,20 @@ import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const AgentMentionSchema = t.type({
-  configurationId: t.string,
+const AgentMentionSchema = z.object({
+  configurationId: z.string(),
 });
-const UserMentionSchema = t.type({
-  type: t.literal("user"),
-  userId: t.string,
+const UserMentionSchema = z.object({
+  type: z.literal("user"),
+  userId: z.string(),
 });
 
-const PostEditRequestBodySchema = t.type({
-  content: t.string,
-  mentions: t.array(t.union([AgentMentionSchema, UserMentionSchema])),
+const PostEditRequestBodySchema = z.object({
+  content: z.string(),
+  mentions: z.array(z.union([AgentMentionSchema, UserMentionSchema])),
 });
 
 async function handler(
@@ -156,16 +154,14 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostEditRequestBodySchema.decode(req.body);
+      const bodyValidation = PostEditRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
@@ -183,7 +179,7 @@ async function handler(
           },
         });
       }
-      const { content, mentions } = bodyValidation.right;
+      const { content, mentions } = bodyValidation.data;
 
       const editedMessageRes = await editUserMessage(auth, {
         conversation,

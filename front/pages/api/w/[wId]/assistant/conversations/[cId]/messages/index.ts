@@ -143,8 +143,6 @@ import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostMessagesResponseBody = {
@@ -249,24 +247,22 @@ async function handler(
       break;
 
     case "POST":
-      const bodyValidation = InternalPostMessagesRequestBodySchema.decode(
+      const bodyValidation = InternalPostMessagesRequestBodySchema.safeParse(
         req.body
       );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
       const { content, context, mentions, skipToolsValidation } =
-        bodyValidation.right;
+        bodyValidation.data;
 
       if (context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(

@@ -8,7 +8,6 @@ import type { ModelConversationTypeMultiActions } from "@app/types/assistant/gen
 import { GPT_3_5_TURBO_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isLeft } from "fp-ts/lib/Either";
 
 const FUNCTION_NAME = "send_suggestions";
 
@@ -116,11 +115,12 @@ export async function getBuilderEmojiSuggestions(
   }
 
   if (res.value.actions?.[0]?.arguments?.suggestions) {
-    const suggestionsResult = BuilderEmojiSuggestionsResponseBodySchema.decode(
-      res.value.actions[0].arguments
-    );
+    const suggestionsResult =
+      BuilderEmojiSuggestionsResponseBodySchema.safeParse(
+        res.value.actions[0].arguments
+      );
 
-    if (isLeft(suggestionsResult)) {
+    if (!suggestionsResult.success) {
       return new Err(
         new Error(
           `Error retrieving suggestions from arguments: ${res.value.actions[0].arguments}`
@@ -130,7 +130,7 @@ export async function getBuilderEmojiSuggestions(
 
     return new Ok({
       status: "ok",
-      ...suggestionsResult.right,
+      ...suggestionsResult.data,
     });
   }
 
