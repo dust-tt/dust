@@ -453,7 +453,7 @@ export function buildEmailUserMessage({
       : []),
     "</email_message>",
     "",
-    "You are in the recipients. Answer appropriately. Your response will be emailed automatically to the recipients listed above (and me).",
+    "You are in the recipients. Answer appropriately. Your full response will be emailed automatically as-is to the recipients listed above (and me).",
   ].join("\n");
 }
 export async function userAndWorkspaceFromEmail({
