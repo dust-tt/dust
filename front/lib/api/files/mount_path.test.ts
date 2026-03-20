@@ -44,26 +44,28 @@ describe("mount_path helpers", () => {
   describe("makeProcessedMountFileName", () => {
     it("should insert .processed before extension", () => {
       expect(
-        makeProcessedMountFileName({ mountFilePath: "w/ws1/conversations/c1/files/report.pdf" })
+        makeProcessedMountFileName({
+          mountFilePath: "w/ws1/conversations/c1/files/report.pdf",
+        })
       ).toBe("w/ws1/conversations/c1/files/report.processed.pdf");
     });
 
     it("should handle multiple dots in filename", () => {
-      expect(makeProcessedMountFileName({ mountFilePath: "dir/my.file.name.txt" })).toBe(
-        "dir/my.file.name.processed.txt"
-      );
+      expect(
+        makeProcessedMountFileName({ mountFilePath: "dir/my.file.name.txt" })
+      ).toBe("dir/my.file.name.processed.txt");
     });
 
     it("should append .processed for files without extension", () => {
-      expect(makeProcessedMountFileName({ mountFilePath: "dir/Makefile" })).toBe(
-        "dir/Makefile.processed"
-      );
+      expect(
+        makeProcessedMountFileName({ mountFilePath: "dir/Makefile" })
+      ).toBe("dir/Makefile.processed");
     });
 
     it("should handle dotfiles (leading dot) as no extension", () => {
-      expect(makeProcessedMountFileName({ mountFilePath: "dir/.gitignore" })).toBe(
-        "dir/.gitignore.processed"
-      );
+      expect(
+        makeProcessedMountFileName({ mountFilePath: "dir/.gitignore" })
+      ).toBe("dir/.gitignore.processed");
     });
 
     it("should swap extension when processedContentType is provided", () => {
@@ -72,7 +74,6 @@ describe("mount_path helpers", () => {
           mountFilePath: "w/ws1/conversations/c1/files/report.pdf",
           processedContentType: "text/plain",
         })
-
       ).toBe("w/ws1/conversations/c1/files/report.processed.txt");
     });
 

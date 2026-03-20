@@ -61,7 +61,8 @@ export function makeProcessedMountFileName({
 
   const basename = fileName.substring(0, lastDot);
   const ext = processedContentType
-    ? (extensionsForContentType(processedContentType)[0] ?? fileName.substring(lastDot))
+    ? (extensionsForContentType(processedContentType)[0] ??
+      fileName.substring(lastDot))
     : fileName.substring(lastDot);
 
   return `${dirPart}${basename}.processed${ext}`;
