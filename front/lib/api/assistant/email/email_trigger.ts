@@ -260,6 +260,49 @@ function isAssistantRecipient(email: string): boolean {
 // as a bulk relay while leaving no impact on legitimate threads (nobody CCs 15+ people normally).
 export const MAX_REPLY_RECIPIENTS = 15;
 
+function formatEmailRecipients(recipients: string[]): string {
+  return recipients.length > 0 ? recipients.join(", ") : "(none)";
+}
+
+function formatEmailHeaderValue(value: string): string {
+  return value.replace(/\s*\n+\s*/g, " ").trim();
+}
+
+function escapeTagContent(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function buildEmailAdditionalContext({
+  hasThreadHistory,
+  attachmentCount,
+}: {
+  hasThreadHistory: boolean;
+  attachmentCount: number;
+}): string[] {
+  const additionalContext: string[] = [];
+
+  if (!hasThreadHistory && attachmentCount === 0) {
+    return additionalContext;
+  }
+
+  if (hasThreadHistory) {
+    additionalContext.push(
+      "<email_thread_history_may_be_available_in_conversation>true</email_thread_history_may_be_available_in_conversation>"
+    );
+  }
+
+  if (attachmentCount > 0) {
+    additionalContext.push(
+      `<email_attachment_count_may_be_available_in_conversation>${attachmentCount}</email_attachment_count_may_be_available_in_conversation>`
+    );
+  }
+
+  return additionalContext;
+}
+
 function buildReferencesHeaderValue({
   inReplyTo,
   references,
@@ -341,6 +384,77 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
     "[email] Reply recipient list truncated to MAX_REPLY_RECIPIENTS."
   );
   return { to, cc: cappedCc };
+}
+
+export function buildEmailUserMessage({
+  email,
+  userMessage,
+  replyRecipients,
+  hasThreadHistory,
+  attachmentCount,
+}: {
+  email: InboundEmail;
+  userMessage: string;
+  replyRecipients: {
+    to: string[];
+    cc: string[];
+  };
+  hasThreadHistory: boolean;
+  attachmentCount: number;
+}): string {
+  const assistantRecipients = deduplicateEmailAddresses(
+    [...email.envelope.to, ...email.envelope.cc, ...email.envelope.bcc].filter(
+      isAssistantRecipient
+    )
+  );
+  const toRecipients = deduplicateEmailAddresses(email.envelope.to);
+  const ccRecipients = deduplicateEmailAddresses(email.envelope.cc);
+  const additionalContext = buildEmailAdditionalContext({
+    hasThreadHistory,
+    attachmentCount,
+  });
+
+  return [
+    "I sent the following email:",
+    "",
+    "<email_message>",
+    `  <email_from>${escapeTagContent(
+      formatEmailHeaderValue(email.envelope.full)
+    )}</email_from>`,
+    `  <email_subject>${escapeTagContent(
+      formatEmailHeaderValue(email.subject)
+    )}</email_subject>`,
+    `  <email_to>${escapeTagContent(
+      formatEmailRecipients(toRecipients)
+    )}</email_to>`,
+    ...(ccRecipients.length > 0
+      ? [
+          `  <email_cc>${escapeTagContent(
+            formatEmailRecipients(ccRecipients)
+          )}</email_cc>`,
+        ]
+      : []),
+    `  <dust_agent_recipients>${escapeTagContent(
+      formatEmailRecipients(assistantRecipients)
+    )}</dust_agent_recipients>`,
+    "  <email_body>",
+    escapeTagContent(userMessage),
+    "  </email_body>",
+    ...additionalContext.map((line) => `  ${line}`),
+    `  <email_response_to>${escapeTagContent(
+      formatEmailRecipients(replyRecipients.to)
+    )}</email_response_to>`,
+    ...(replyRecipients.cc.length > 0
+      ? [
+          `  <email_response_cc>${escapeTagContent(
+            formatEmailRecipients(replyRecipients.cc)
+          )}</email_response_cc>`,
+        ]
+      : []),
+    "</email_message>",
+    "",
+    "You are in the recipients. Answer appropriately. Your response will be emailed automatically to the recipients listed above (and me).",
+  ].join("\n");
 }
 export async function userAndWorkspaceFromEmail({
   email,
@@ -621,6 +735,7 @@ export async function triggerFromEmail({
   }
 
   // Process email attachments as content fragments.
+  let attachedContentCount = 0;
   for (const attachment of email.attachments) {
     try {
       const file = await FileResource.makeNew({
@@ -680,6 +795,7 @@ export async function triggerFromEmail({
         continue;
       }
 
+      attachedContentCount += 1;
       localLogger.info(
         { filename: attachment.filename },
         "[email] Added attachment as content fragment."
@@ -706,6 +822,7 @@ export async function triggerFromEmail({
     }
   }
 
+  const successReplyRecipients = buildSuccessReplyRecipients(email);
   const content =
     agentConfigurations
       .map((agent) => {
@@ -713,7 +830,13 @@ export async function triggerFromEmail({
       })
       .join(" ") +
     " " +
-    userMessage;
+    buildEmailUserMessage({
+      email,
+      userMessage,
+      replyRecipients: successReplyRecipients,
+      hasThreadHistory: restOfThread.length > 0,
+      attachmentCount: attachedContentCount,
+    });
 
   const mentions = agentConfigurations.map((agent) => {
     return { configurationId: agent.sId };
@@ -746,7 +869,6 @@ export async function triggerFromEmail({
   }
 
   const { agentMessages } = messageRes.value;
-  const successReplyRecipients = buildSuccessReplyRecipients(email);
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
