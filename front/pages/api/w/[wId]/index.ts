@@ -174,9 +174,11 @@ async function handler(
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
 
-        // if public sharing is disabled, downgrade share scope of all public files to workspace
+        // if public sharing is disabled, downgrade share scope of all public files
         if (!body.allowContentCreationFileSharing) {
-          await FileResource.revokePublicSharingInWorkspace(auth);
+          await FileResource.revokePublicSharingInWorkspace(auth, {
+            newPolicy: "workspace_and_emails",
+          });
         }
       } else if ("allowVoiceTranscription" in body) {
         const previousMetadata = owner.metadata ?? {};
