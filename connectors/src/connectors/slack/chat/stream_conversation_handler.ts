@@ -9,6 +9,7 @@ import {
   makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
   makeToolAuthenticationBlock,
+  makeToolFileAuthorizationBlock,
   makeToolValidationBlock,
   type SlackMessageUpdate,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
@@ -355,6 +356,50 @@ async function streamAgentAnswerToSlack(
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
               text: "Agent is waiting for authentication…",
+              assistantName,
+              agentConfigurations,
+            },
+            ...conversationData,
+            canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+            },
+          });
+        }
+        break;
+      }
+
+      case "tool_file_auth_required": {
+        const conversationUrl = makeConversationUrl(
+          connector.workspaceId,
+          conversation.sId
+        );
+
+        if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "File authorization required",
+            blocks: makeToolFileAuthorizationBlock({
+              agentName: event.metadata.agentName,
+              fileName: event.fileAuthError.fileName,
+              conversationUrl,
+              value: JSON.stringify({
+                workspaceId: connector.workspaceId,
+                messageId: event.messageId,
+              }),
+            }),
+            thread_ts: slackMessageTs,
+          });
+        }
+
+        if (streamHandler) {
+          await streamHandler.startTask("Waiting for file authorization…");
+        } else {
+          await throttledPostSlackMessageUpdate({
+            messageUpdate: {
+              text: "Agent is waiting for file authorization…",
               assistantName,
               agentConfigurations,
             },
