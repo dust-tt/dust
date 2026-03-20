@@ -1,18 +1,18 @@
 /** @ignoreswagger */
-import {getLightConversation} from "@app/lib/api/assistant/conversation/fetch";
-import {apiErrorForConversation} from "@app/lib/api/assistant/conversation/helper";
-import {withSessionAuthenticationForWorkspace} from "@app/lib/api/auth_wrappers";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   listSandboxFiles,
   type SandboxFileEntry,
 } from "@app/lib/api/sandbox/files";
-import type {Authenticator} from "@app/lib/auth";
-import {apiError} from "@app/logger/withlogging";
-import type {WithAPIErrorResponse} from "@app/types/error";
-import {isString} from "@app/types/shared/utils/general";
-import type {NextApiRequest, NextApiResponse} from "next";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
-export type {SandboxFileEntry};
+export type { SandboxFileEntry };
 
 export type GetConversationSandboxFilesResponseBody = {
   files: SandboxFileEntry[];
@@ -35,7 +35,7 @@ async function handler(
     });
   }
 
-  const {cId} = req.query;
+  const { cId } = req.query;
   if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
@@ -53,7 +53,7 @@ async function handler(
 
   const files = await listSandboxFiles(auth, cId);
 
-  return res.status(200).json({files});
+  return res.status(200).json({ files });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

@@ -1,15 +1,15 @@
 /** @ignoreswagger */
-import {getLightConversation} from "@app/lib/api/assistant/conversation/fetch";
-import {apiErrorForConversation} from "@app/lib/api/assistant/conversation/helper";
-import {withSessionAuthenticationForWorkspace} from "@app/lib/api/auth_wrappers";
-import {getConversationFilesBasePath} from "@app/lib/api/files/mount_path";
-import type {Authenticator} from "@app/lib/auth";
-import {getPrivateUploadBucket} from "@app/lib/file_storage";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
-import {apiError} from "@app/logger/withlogging";
-import type {WithAPIErrorResponse} from "@app/types/error";
-import {isString} from "@app/types/shared/utils/general";
-import type {NextApiRequest, NextApiResponse} from "next";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
@@ -26,7 +26,7 @@ async function handler(
     });
   }
 
-  const {cId} = req.query;
+  const { cId } = req.query;
   if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
@@ -37,7 +37,7 @@ async function handler(
     });
   }
 
-  const {filePath} = req.body;
+  const { filePath } = req.body;
   if (!isString(filePath)) {
     return apiError(req, res, {
       status_code: 400,
@@ -91,7 +91,7 @@ async function handler(
   const readStream = bucket.file(filePath).createReadStream();
 
   readStream.on("error", (err) => {
-    logger.error({err, filePath}, "Error streaming sandbox file");
+    logger.error({ err, filePath }, "Error streaming sandbox file");
     readStream.destroy();
     res.end();
   });
