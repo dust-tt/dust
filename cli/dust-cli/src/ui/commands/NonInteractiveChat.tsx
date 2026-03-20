@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import { useFileSystemServer } from "../../mcp/servers/fsServer.js";
 import {
   fetchAgentMessageFromConversation,
   sendNonInteractiveMessage,
@@ -18,6 +19,7 @@ interface NonInteractiveChatProps {
   details?: boolean;
   projectName?: string;
   projectId?: string;
+  withTools?: boolean;
 }
 
 const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
@@ -28,6 +30,7 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
   details,
   projectName,
   projectId,
+  withTools,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
@@ -135,6 +138,23 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           }
         }
 
+        // Initialize file system MCP server if requested
+        let fileSystemServerId: string | undefined;
+        if (withTools) {
+          const fsResult = await useFileSystemServer(
+            dustClient,
+            (serverId) => {
+              fileSystemServerId = serverId;
+            }
+          );
+          if (fsResult.isErr()) {
+            setError(
+              `Failed to initialize file system tools: ${fsResult.error.message}`
+            );
+            return;
+          }
+        }
+
         // Call the standalone function
         await sendNonInteractiveMessage(
           message,
@@ -144,7 +164,8 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           details,
           projectName,
           projectId,
-          setError
+          setError,
+          fileSystemServerId
         );
       } catch (error) {
         setError(`Unexpected error: ${normalizeError(error).message}`);
@@ -160,6 +181,7 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
     details,
     projectName,
     projectId,
+    withTools,
   ]);
 
   if (error) {
