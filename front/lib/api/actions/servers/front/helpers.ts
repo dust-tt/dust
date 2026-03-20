@@ -276,7 +276,7 @@ export function parseFrontDraftsResponse(data: unknown): FrontDraft[] {
       "Invalid response format from Front API drafts endpoint"
     );
   }
-  return (parsed.data._results ?? []) as FrontDraft[];
+  return parsed.data._results ?? [];
 }
 
 export function formatDraftsForLLM(
