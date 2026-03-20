@@ -14,7 +14,7 @@ import { useConversationSandboxStatus } from "@app/hooks/conversations/useConver
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { downloadSandboxFile } from "@app/lib/swr/files";
-import type { SandboxFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
+import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -88,7 +88,7 @@ export function ConversationFilesPanel({
   );
 
   const handleSandboxFileClick = useCallback(
-    async (entry: SandboxFileEntry) => {
+    async (entry: GCSMountFileEntry) => {
       if (entry.fileId) {
         openFile({
           fileId: entry.fileId,

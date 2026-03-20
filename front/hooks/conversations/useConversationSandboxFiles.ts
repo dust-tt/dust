@@ -1,7 +1,7 @@
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
+  GCSMountFileEntry,
   GetConversationSandboxFilesResponseBody,
-  SandboxFileEntry,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -30,7 +30,7 @@ export function useConversationSandboxFiles({
   const disabled = options?.disabled;
 
   return {
-    sandboxFiles: data?.files ?? emptyArray<SandboxFileEntry>(),
+    sandboxFiles: data?.files ?? emptyArray<GCSMountFileEntry>(),
     isSandboxFilesLoading: !disabled && !error && !data,
     isSandboxFilesError: error,
     mutateSandboxFiles: mutate,

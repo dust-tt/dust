@@ -8,7 +8,7 @@ import { useConversationSandboxFiles } from "@app/hooks/conversations/useConvers
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { downloadSandboxFile, getFileProcessedUrl } from "@app/lib/swr/files";
-import type { SandboxFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
+import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Card,
@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 interface SandboxImageCardProps {
   owner: LightWorkspaceType;
   conversationId: string;
-  entry: SandboxFileEntry;
+  entry: GCSMountFileEntry;
   onClick: () => void;
 }
 
@@ -116,7 +116,7 @@ interface SandboxTabProps {
   conversationId: string;
   disabled?: boolean;
   owner: LightWorkspaceType;
-  onFileClick: (entry: SandboxFileEntry) => void;
+  onFileClick: (entry: GCSMountFileEntry) => void;
 }
 
 export function SandboxTab({
@@ -155,7 +155,7 @@ export function SandboxTab({
   }, [files, debouncedSearch]);
 
   const groupedByCategory = useMemo(() => {
-    const groups = new Map<FilePanelCategory, SandboxFileEntry[]>();
+    const groups = new Map<FilePanelCategory, GCSMountFileEntry[]>();
     for (const file of filteredFiles) {
       const category = getCategoryFromContentType(file.contentType);
       const existing = groups.get(category);
