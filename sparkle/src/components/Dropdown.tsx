@@ -17,7 +17,8 @@ import {
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
+import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { radioIndicatorStyles, radioStyles } from "@sparkle/components/RadioGroup";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -590,13 +591,19 @@ const DropdownMenuRadioItem = React.forwardRef<
     className={cn(
       menuStyleClasses.item({ variant: "default" }),
       menuStyleClasses.inset,
+      "s-group/dropdown-radio",
       className
     )}
     {...props}
   >
-    <span className={menuStyleClasses.subTrigger.span}>
+    <span
+      className={cn(
+        "s-absolute s-left-2",
+        radioStyles({ size: "xs" }),
+      )}
+    >
       <DropdownMenuPrimitive.ItemIndicator>
-        <Icon size="xs" visual={CircleIcon} />
+        <div className={radioIndicatorStyles({ size: "xs" })} />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     <ItemWithLabelIconAndDescription
