@@ -2796,12 +2796,16 @@ const AnalyticsDateSchema = z
     { message: "Date must be in YYYY-MM-DD format" }
   );
 
-export const GetAnalyticsExportRequestSchema = z.object({
-  table: AnalyticsExportTableSchema,
-  startDate: AnalyticsDateSchema,
-  endDate: AnalyticsDateSchema,
-  timezone: Timezone.optional(),
-});
+export const GetAnalyticsExportRequestSchema = z
+  .object({
+    table: AnalyticsExportTableSchema,
+    startDate: AnalyticsDateSchema,
+    endDate: AnalyticsDateSchema,
+    timezone: Timezone.optional(),
+  })
+  .refine((d) => d.startDate <= d.endDate, {
+    message: "startDate must be before or equal to endDate",
+  });
 
 export type GetAnalyticsExportRequestType = z.infer<
   typeof GetAnalyticsExportRequestSchema
