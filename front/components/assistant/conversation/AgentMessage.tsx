@@ -103,7 +103,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import  { type ReactElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  type ReactElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -384,7 +391,7 @@ export function AgentMessage({
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
-  
+
   useEffect(() => {
     if (shouldStream) {
       generationContext.addGeneratingMessage({
