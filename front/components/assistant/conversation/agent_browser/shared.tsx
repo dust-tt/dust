@@ -221,12 +221,22 @@ export function SearchDropdownContent({
   }
   return (
     <>
-      {filteredTags.length > 0 && <DropdownMenuLabel label="Tags" />}
-      {filteredTags.map((tag) => (
-        <DropdownMenuItem key={tag.sId} onClick={() => onTagClick(tag.sId)}>
-          <Chip label={tag.name} color="golden" size="xs" />
-        </DropdownMenuItem>
-      ))}
+      {filteredTags.length > 0 && (
+        <>
+          <DropdownMenuLabel label="Tags" />
+          <div className="flex flex-wrap gap-1 px-2 py-1">
+            {filteredTags.map((tag) => (
+              <Chip
+                key={tag.sId}
+                label={tag.name}
+                color="golden"
+                size="xs"
+                onClick={() => onTagClick(tag.sId)}
+              />
+            ))}
+          </div>
+        </>
+      )}
       {filteredAgents.length > 0 && <DropdownMenuLabel label="Agents" />}
       {filteredAgents.map((agent) => (
         <DropdownMenuItem
