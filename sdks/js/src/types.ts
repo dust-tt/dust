@@ -1393,6 +1393,33 @@ export type ToolPersonalAuthRequiredEvent = z.infer<
   typeof ToolPersonalAuthRequiredEventSchema
 >;
 
+const FileAuthErrorSchema = z.object({
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType: z.string(),
+  toolName: z.string(),
+  message: z.string(),
+});
+
+const ToolFileAuthRequiredEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_file_auth_required"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  fileAuthError: FileAuthErrorSchema,
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+  metadata: MCPValidationMetadataSchema.extend({
+    mcpServerDisplayName: z.string(),
+    mcpServerId: z.string(),
+  }),
+});
+
+export type ToolFileAuthRequiredEvent = z.infer<
+  typeof ToolFileAuthRequiredEventSchema
+>;
+
 const ToolErrorEventSchema = z.object({
   type: z.literal("tool_error"),
   created: z.number(),
@@ -1436,6 +1463,7 @@ const AgentActionSpecificEventSchema = z.union([
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
   ToolPersonalAuthRequiredEventSchema,
+  ToolFileAuthRequiredEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

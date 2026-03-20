@@ -553,6 +553,19 @@ const runAgent = async (
           );
           return await finalizeAndReturn(new Ok(blockedResponse.content));
         }
+      } else if (event.type === "tool_file_auth_required") {
+        collectedBlockingEvents.push(event);
+
+        if (event.isLastBlockingEventForStep) {
+          const blockedResponse = makeToolBlockedAwaitingInputResponse(
+            collectedBlockingEvents,
+            {
+              conversationId: conversation.sId,
+              userMessageId,
+            }
+          );
+          return await finalizeAndReturn(new Ok(blockedResponse.content));
+        }
       }
     }
   } catch (streamError) {
