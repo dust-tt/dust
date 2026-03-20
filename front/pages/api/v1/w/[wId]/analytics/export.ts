@@ -19,10 +19,7 @@ import {
   fetchAvailableTools,
   fetchToolUsageMetrics,
 } from "@app/lib/api/assistant/observability/tool_usage";
-import {
-  buildAgentAnalyticsBaseQuery,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -33,35 +30,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import type { GetAnalyticsExportRequestType } from "@dust-tt/client";
+import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { stringify } from "csv-stringify/sync";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const YYYY_MM_DD = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
-
-const AnalyticsTableSchema = z.enum([
-  "usage_metrics",
-  "active_users",
-  "source",
-  "agents",
-  "users",
-  "skill_usage",
-  "tool_usage",
-]);
-
-type AnalyticsTable = z.infer<typeof AnalyticsTableSchema>;
-
-const QuerySchema = z.object({
-  table: AnalyticsTableSchema,
-  startDate: z.string().refine((s) => YYYY_MM_DD.test(s), {
-    message: "startDate must be in YYYY-MM-DD format",
-  }),
-  endDate: z.string().refine((s) => YYYY_MM_DD.test(s), {
-    message: "endDate must be in YYYY-MM-DD format",
-  }),
-  timezone: timezoneSchema,
-});
 
 async function handler(
   req: NextApiRequest,
@@ -83,7 +56,12 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { table, startDate, endDate, timezone } = req.query;
-      const q = QuerySchema.safeParse({ table, startDate, endDate, timezone });
+      const q = GetAnalyticsExportRequestSchema.safeParse({
+        table,
+        startDate,
+        endDate,
+        timezone,
+      });
       if (!q.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -109,7 +87,7 @@ async function handler(
         table: q.data.table,
         startDate: q.data.startDate,
         endDate: q.data.endDate,
-        timezone: q.data.timezone,
+        timezone: q.data.timezone ?? "UTC",
         owner,
       });
 
@@ -176,7 +154,7 @@ async function exportTable({
   timezone,
   owner,
 }: {
-  table: AnalyticsTable;
+  table: GetAnalyticsExportRequestType["table"];
   startDate: string;
   endDate: string;
   timezone: string;
