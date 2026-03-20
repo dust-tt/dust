@@ -24,6 +24,7 @@ export default defineConfig(() => {
         JUDGE_RUNS: process.env.JUDGE_RUNS ?? "3",
         PASS_THRESHOLD: process.env.PASS_THRESHOLD ?? "2",
         // Model override for the reinforced agent LLM.
+        VERBOSE: process.env.VERBOSE ?? "false",
         REINFORCED_MODEL_ID: process.env.REINFORCED_MODEL_ID ?? "",
         // API keys forwarded from the shell environment.
         DUST_MANAGED_ANTHROPIC_API_KEY:

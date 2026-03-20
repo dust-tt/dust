@@ -9,6 +9,7 @@ export const JUDGE_RUNS = parseInt(process.env.JUDGE_RUNS ?? "3", 10);
 export const PASS_THRESHOLD = parseInt(process.env.PASS_THRESHOLD ?? "2", 10);
 export const FILTER_CATEGORY = process.env.FILTER_CATEGORY;
 export const FILTER_SCENARIO = process.env.FILTER_SCENARIO;
+export const VERBOSE = process.env.VERBOSE === "true";
 
 /** Model used for the reinforced agent LLM calls. */
 function resolveModelId(): ModelIdType {

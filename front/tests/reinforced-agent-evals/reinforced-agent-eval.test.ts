@@ -10,6 +10,7 @@ import {
   RUN_REINFORCED_EVAL,
   TIMEOUT_MS,
   USE_BATCH,
+  VERBOSE,
 } from "@app/tests/reinforced-agent-evals/lib/config";
 import { evaluateWithJudge } from "@app/tests/reinforced-agent-evals/lib/judge";
 import {
@@ -149,6 +150,14 @@ describe.skipIf(!RUN_REINFORCED_EVAL)(
                 : await executeReinforced(auth, testCase);
 
               const { responseText, toolCalls } = result;
+
+              if (VERBOSE) {
+                console.log(
+                  `[${scenarioId}] Tool calls:`,
+                  JSON.stringify(toolCalls, null, 2)
+                );
+                console.log(`[${scenarioId}] Response:`, responseText);
+              }
 
               const judgeResult = await evaluateWithJudge(
                 auth,
