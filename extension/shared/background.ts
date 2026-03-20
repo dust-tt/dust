@@ -40,6 +40,26 @@ import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
 
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timeout);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    );
+  });
+}
+
 // Mutex to serialize tab capture operations. captureVisibleTab only captures
 // the currently visible tab, so concurrent captures would produce duplicates.
 let tabOpMutex: Promise<void> = Promise.resolve();
@@ -462,8 +482,11 @@ const logout = async (
   }
 };
 
-function capture(sendResponse: (x: CaptureResponse) => void) {
-  return chrome.tabs.captureVisibleTab(function (dataURI) {
+function capture(
+  platform: PlatformService,
+  sendResponse: (x: CaptureResponse) => void
+) {
+  void platform.captureVisibleTab().then((dataURI) => {
     if (dataURI) {
       sendResponse({ dataURI });
     }
@@ -524,7 +547,7 @@ export const registerMessageListener = (platform: PlatformService) => {
           return true;
 
         case "CAPTURE":
-          capture(sendResponse);
+          capture(platform, sendResponse);
           return true;
 
         case "GET_ACTIVE_TAB":
@@ -732,33 +755,20 @@ export const registerMessageListener = (platform: PlatformService) => {
                           fetchError
                         );
                         resultCaptures = [
-                          await new Promise<string>((resolve, reject) => {
-                            const timeout = setTimeout(() => {
-                              reject(
-                                new Error("Timeout waiting for page screenshot")
-                              );
-                            }, 2000);
-                            chrome.tabs.captureVisibleTab((res) => {
-                              clearTimeout(timeout);
-                              resolve(res);
-                            });
-                          }),
+                          await withTimeout(
+                            platform.captureVisibleTab(),
+                            2000,
+                            "Timeout waiting for page screenshot"
+                          ),
                         ];
                       }
                     } else {
                       resultCaptures = [
-                        await new Promise<string>((resolve, reject) => {
-                          const timeout = setTimeout(() => {
-                            console.error("Timeout waiting for capture");
-                            reject(
-                              new Error("Timeout waiting for page screenshot")
-                            );
-                          }, 2000);
-                          chrome.tabs.captureVisibleTab((res) => {
-                            clearTimeout(timeout);
-                            resolve(res);
-                          });
-                        }),
+                        await withTimeout(
+                          platform.captureVisibleTab(),
+                          2000,
+                          "Timeout waiting for page screenshot"
+                        ),
                       ];
                     }
                   } finally {

@@ -57,6 +57,8 @@ export abstract class PlatformService {
     this.mcp = mcp;
   }
 
+  abstract captureVisibleTab(): Promise<string>;
+
   async clearStoredData(): Promise<void> {
     await Promise.all([
       this.storage.delete("accessToken"),
