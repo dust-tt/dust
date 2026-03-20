@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
@@ -135,7 +136,7 @@ export function useDustAppSecrets(owner: LightWorkspaceType | null) {
   return {
     secrets: data?.secrets ?? emptyArray(),
     isSecretsLoading: !error && !data && !!owner,
-    isSecretsError: error,
+    isSecretsError: error ? normalizeError(error) : undefined,
   };
 }
 
