@@ -43,6 +43,28 @@ function CopySuggestionButton({ suggestion }: CopySuggestionButtonProps) {
   );
 }
 
+function ClickableCell({
+  text,
+  maxLength,
+  onClick,
+}: {
+  text: string | null;
+  maxLength: number;
+  onClick: () => void;
+}) {
+  const truncated = truncate(text, maxLength);
+  const isTruncated = text && text.length > maxLength;
+  return (
+    <span
+      onClick={isTruncated ? onClick : undefined}
+      className={isTruncated ? "cursor-pointer hover:underline" : ""}
+      title={isTruncated ? "Click to see full content" : undefined}
+    >
+      {truncated}
+    </span>
+  );
+}
+
 async function deleteSuggestion(
   owner: LightWorkspaceType,
   agentId: string,
@@ -79,7 +101,8 @@ async function deleteSuggestion(
 export function makeColumnsForSuggestions(
   owner: LightWorkspaceType,
   agentId: string,
-  onSuggestionDeleted: () => Promise<void>
+  onSuggestionDeleted: () => Promise<void>,
+  onSuggestionClick: (suggestion: AgentSuggestionType) => void
 ): ColumnDef<AgentSuggestionType>[] {
   return [
     {
@@ -162,7 +185,13 @@ export function makeColumnsForSuggestions(
         <PokeColumnSortableHeader column={column} label="Analysis" />
       ),
       cell: ({ row }) => {
-        return truncate(row.original.analysis, MAX_ANALYSIS_LENGTH);
+        return (
+          <ClickableCell
+            text={row.original.analysis}
+            maxLength={MAX_ANALYSIS_LENGTH}
+            onClick={() => onSuggestionClick(row.original)}
+          />
+        );
       },
     },
     {
@@ -178,9 +207,13 @@ export function makeColumnsForSuggestions(
       id: "content",
       header: "Content",
       cell: ({ row }) => {
-        return truncate(
-          JSON.stringify(row.original.suggestion),
-          MAX_CONTENT_LENGTH
+        const content = JSON.stringify(row.original.suggestion);
+        return (
+          <ClickableCell
+            text={content}
+            maxLength={MAX_CONTENT_LENGTH}
+            onClick={() => onSuggestionClick(row.original)}
+          />
         );
       },
     },
