@@ -32,6 +32,7 @@ NODE_ENV=test \
 | `PASS_THRESHOLD` | `2` | Minimum judge score (0-3) required to pass. |
 | `FILTER_CATEGORY` | _(all)_ | Run only tests in the given category (suite name). |
 | `FILTER_SCENARIO` | _(all)_ | Run only the test with the given scenario ID. |
+| `VERBOSE` | `false` | Set to `true` to log full tool call arguments and response text for each scenario. |
 | `DUST_MANAGED_ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude models). |
 | `DUST_MANAGED_OPENAI_API_KEY` | — | OpenAI API key (required for GPT judge model). |
 
