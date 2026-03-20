@@ -147,6 +147,20 @@ export default withPublicAPIAuthentication(handler);
 // Table export helpers
 // ---------------------------------------------------------------------------
 
+interface SkillUsageExportRow {
+  date: string;
+  skillName: string;
+  executions: number;
+  uniqueUsers: number;
+}
+
+interface ToolUsageExportRow {
+  date: string;
+  toolName: string;
+  executions: number;
+  uniqueUsers: number;
+}
+
 // Sanitize CSV cells to prevent formula injection when opened in spreadsheets.
 function sanitizeCsvCell(value: string | number): string | number {
   if (typeof value === "string" && /^[=+\-@]/.test(value)) {
@@ -406,13 +420,6 @@ async function exportSkillUsage({
     );
   }
 
-  interface SkillUsageExportRow {
-    date: string;
-    skillName: string;
-    executions: number;
-    uniqueUsers: number;
-  }
-
   const rows: SkillUsageExportRow[] = [];
 
   for (const skill of skillsResult.value) {
@@ -484,13 +491,6 @@ async function exportToolUsage({
         `Failed to retrieve available tools: ${toolsResult.error.message}`
       )
     );
-  }
-
-  interface ToolUsageExportRow {
-    date: string;
-    toolName: string;
-    executions: number;
-    uniqueUsers: number;
   }
 
   const rows: ToolUsageExportRow[] = [];
