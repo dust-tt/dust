@@ -78,15 +78,15 @@ export function TruncatedContent({
           <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night" />
         )}
       </div>
-      <div className="s-flex s-flex-col s-items-start s-gap-3">
+      <div className="s-flex s-flex-row s-items-center s-gap-2">
         {shouldShowToggle && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="xs"
             label={isCollapsed ? expandLabel : collapseLabel}
             icon={isCollapsed ? ChevronDownIcon : ChevronUpIcon}
             onClick={handleToggle}
-            className="!s-text-muted-foreground"
+            className="s-text-muted-foreground"
           />
         )}
         {footer}

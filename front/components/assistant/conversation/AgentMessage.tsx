@@ -51,7 +51,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -182,9 +182,6 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
-  const { hasFeature } = useFeatureFlags();
-  const isCollapsibleEnabled = hasFeature("collapsible_messages");
-
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
 
@@ -482,7 +479,8 @@ export function AgentMessage({
     conversationId,
   });
 
-  const messageButtons: React.ReactElement[] = [];
+  const alwaysVisibleButtons: React.ReactElement[] = [];
+  const hoverButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.getConversationGeneratingMessages(conversationId).length >
@@ -490,7 +488,7 @@ export function AgentMessage({
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
-    messageButtons.push(
+    alwaysVisibleButtons.push(
       <Button
         key="stop-msg-button"
         label="Stop agent"
@@ -612,9 +610,9 @@ export function AgentMessage({
     [retryMessage]
   );
 
-  // Add feedback buttons first
+  // Add feedback buttons (always visible)
   if (shouldShowFeedback) {
-    messageButtons.push(
+    alwaysVisibleButtons.push(
       <FeedbackSelector
         key="feedback-selector"
         {...messageFeedback}
@@ -626,7 +624,7 @@ export function AgentMessage({
     );
   }
 
-  // Add copy button or split button with dropdown
+  // Add copy button or split button with dropdown (hover only)
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
@@ -660,7 +658,7 @@ export function AgentMessage({
       });
     }
 
-    messageButtons.push(
+    hoverButtons.push(
       <ButtonGroup key="split-button-group">
         <Button
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -686,7 +684,7 @@ export function AgentMessage({
     );
   } else {
     if (shouldShowCopy) {
-      messageButtons.push(
+      hoverButtons.push(
         <Button
           key="copy-msg-button"
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -698,7 +696,7 @@ export function AgentMessage({
         />
       );
 
-      messageButtons.push(
+      hoverButtons.push(
         <Button
           key="copy-msg-link-button"
           tooltip="Copy message link"
@@ -712,7 +710,7 @@ export function AgentMessage({
     }
 
     if (shouldShowRetry) {
-      messageButtons.push(
+      hoverButtons.push(
         <Button
           key="retry-msg-button"
           tooltip="Retry"
@@ -837,12 +835,20 @@ export function AgentMessage({
     </ConversationMessageContent>
   );
 
-  const footerButtons = !isCancelledOrDeleted && messageButtons.length > 0 && (
-    <div className="flex justify-start gap-3 mt-1">{messageButtons}</div>
-  );
+  const footerButtons = !isCancelledOrDeleted &&
+    (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
+      <div className="flex items-center gap-2">
+        {alwaysVisibleButtons}
+        {hoverButtons.length > 0 && (
+          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {hoverButtons}
+          </div>
+        )}
+      </div>
+    );
 
   const renderMessageContent = () => {
-    if (isCollapsibleEnabled && !shouldStream) {
+    if (!shouldStream) {
       return (
         <TruncatedContent
           className="flex flex-col gap-5"
@@ -896,7 +902,7 @@ export function AgentMessage({
         type="agent"
       />
 
-      <div className="flex w-full min-w-0 flex-col gap-2">
+      <div className="group flex w-full min-w-0 flex-col gap-2">
         <ConversationMessageTitle
           className="hidden @xs:flex"
           name={agentConfiguration.name}
