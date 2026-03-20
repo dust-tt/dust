@@ -58,6 +58,7 @@ export const agentReinforcementPlugin = createPlugin({
         where: {
           sId: resource.sId,
           workspaceId: auth.getNonNullableWorkspace().id,
+          status: "active",
         },
       }
     );
