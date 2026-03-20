@@ -11,15 +11,11 @@ import {
 } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ClipboardCheckIcon,
-  ClipboardIcon,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  IconButton,
-  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -28,30 +24,10 @@ interface SuggestionDetailsDialogProps {
   suggestion: AgentSuggestionType;
 }
 
-interface CopyButtonProps {
-  text: string;
-}
-
-function CopyButton({ text }: CopyButtonProps) {
-  const [isCopied, copy] = useCopyToClipboard();
-  return (
-    <IconButton
-      icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-      size="xs"
-      variant="outline"
-      tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-      onClick={() => copy(text)}
-    />
-  );
-}
-
 function SuggestionDetailsDialog({
   suggestion,
   onClose,
 }: SuggestionDetailsDialogProps) {
-  const analysisText = suggestion.analysis ?? "No analysis";
-  const contentText = JSON.stringify(suggestion.suggestion, null, 2);
-
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
@@ -61,24 +37,18 @@ function SuggestionDetailsDialog({
         <DialogContainer>
           <div className="space-y-6">
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Analysis</h3>
-                <CopyButton text={analysisText} />
-              </div>
+              <h3 className="mb-2 text-sm font-semibold">Analysis</h3>
               <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
                 <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
-                  {analysisText}
+                  {suggestion.analysis ?? "No analysis"}
                 </pre>
               </div>
             </div>
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Content</h3>
-                <CopyButton text={contentText} />
-              </div>
+              <h3 className="mb-2 text-sm font-semibold">Content</h3>
               <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
                 <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
-                  {contentText}
+                  {JSON.stringify(suggestion.suggestion, null, 2)}
                 </pre>
               </div>
             </div>
