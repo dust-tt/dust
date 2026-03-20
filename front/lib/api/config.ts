@@ -498,6 +498,22 @@ const config = {
   getGoogleCloudProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
   },
+  // Metronome billing.
+  getMetronomeApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("METRONOME_API_KEY");
+  },
+  isMetronomeEnabled: (): boolean => {
+    const isEnabled =
+      EnvironmentConfig.getOptionalEnvVariable(
+        "METRONOME_ENABLED"
+      )?.toLowerCase() === "true";
+
+    if (isEnabled) {
+      EnvironmentConfig.getEnvVariable("METRONOME_API_KEY");
+    }
+
+    return isEnabled;
+  },
   // Novu notifications.
   getNovuSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("NOVU_SECRET_KEY");
