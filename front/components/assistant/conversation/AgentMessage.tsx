@@ -103,7 +103,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback, useContext, useMemo } from "react";
+import  { type ReactElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -183,12 +183,13 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
-    React.useState<boolean>(false);
+    useState<boolean>(false);
 
-  const [activeReferences, setActiveReferences] = React.useState<
+  const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -377,13 +378,14 @@ export function AgentMessage({
   );
 
   // GenerationContext: to know if we are generating or not.
-  const generationContext = React.useContext(GenerationContext);
+  const generationContext = useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
-  React.useEffect(() => {
+  
+  useEffect(() => {
     if (shouldStream) {
       generationContext.addGeneratingMessage({
         messageId: sId,
@@ -479,8 +481,8 @@ export function AgentMessage({
     conversationId,
   });
 
-  const alwaysVisibleButtons: React.ReactElement[] = [];
-  const hoverButtons: React.ReactElement[] = [];
+  const alwaysVisibleButtons: ReactElement[] = [];
+  const hoverButtons: ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.getConversationGeneratingMessages(conversationId).length >
@@ -679,6 +681,7 @@ export function AgentMessage({
           }
           items={dropdownItems}
           align="end"
+          onOpenChange={setIsMenuOpen}
         />
       </ButtonGroup>
     );
@@ -732,12 +735,12 @@ export function AgentMessage({
 
   const { configuration: agentConfiguration } = agentMessage;
 
-  const citations = React.useMemo(
+  const citations = useMemo(
     () => getCitations({ activeReferences, owner, conversationId }),
     [activeReferences, conversationId, owner]
   );
 
-  const handleQuickReply = React.useCallback(
+  const handleQuickReply = useCallback(
     async (reply: string) => {
       const mention: RichAgentMention = {
         id: agentMessage.configuration.sId,
@@ -840,7 +843,9 @@ export function AgentMessage({
       <div className="flex items-center gap-2">
         {alwaysVisibleButtons}
         {hoverButtons.length > 0 && (
-          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <div
+            className={`flex gap-2 transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          >
             {hoverButtons}
           </div>
         )}
@@ -1038,14 +1043,14 @@ function AgentMessageContent({
     [references, updateActiveReferences]
   );
 
-  const handleToolSetupComplete = React.useCallback(
+  const handleToolSetupComplete = useCallback(
     (toolId: string) => {
       void postFollowUp(toolId);
     },
     [postFollowUp]
   );
 
-  const additionalMarkdownComponents: Components = React.useMemo(
+  const additionalMarkdownComponents: Components = useMemo(
     () => ({
       visualization: getVisualizationPlugin(
         owner,
