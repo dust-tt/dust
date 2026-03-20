@@ -71,21 +71,63 @@ function computeRollingActiveUsers(
  *
  * This approach is efficient (single ES query) and accurate for typical workspace sizes.
  */
+interface ActiveUsersRelativeRange {
+  days: number;
+}
+
+interface ActiveUsersAbsoluteRange {
+  startDate: string;
+  endDate: string;
+}
+
+export type ActiveUsersDateRange =
+  | ActiveUsersRelativeRange
+  | ActiveUsersAbsoluteRange;
+
+function isAbsoluteRange(
+  range: ActiveUsersDateRange
+): range is ActiveUsersAbsoluteRange {
+  return "startDate" in range;
+}
+
 export async function fetchActiveUsersMetrics(
   workspace: LightWorkspaceType,
-  days: number,
+  dateRange: ActiveUsersDateRange,
   timezone: string = "UTC"
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
-  // Extend the query range to include extra days for rolling window calculations
-  // We need MAU_WINDOW_DAYS - 1 extra days before the start to calculate MAU for day 1
-  const extendedDays = days + MAU_WINDOW_DAYS - 1;
+
+  // Build the ES range filter depending on whether we have days or absolute dates.
+  // Extend the range by MAU_WINDOW_DAYS - 1 for rolling window calculations.
+  let rangeFilter: estypes.QueryDslQueryContainer;
+  let cutoffTimestamp: number;
+
+  if (isAbsoluteRange(dateRange)) {
+    const extendedStart = moment
+      .tz(dateRange.startDate, timezone)
+      .subtract(MAU_WINDOW_DAYS - 1, "days")
+      .format("YYYY-MM-DD");
+    rangeFilter = {
+      range: { timestamp: { gte: extendedStart, lte: dateRange.endDate } },
+    };
+    cutoffTimestamp = moment
+      .tz(dateRange.startDate, timezone)
+      .startOf("day")
+      .valueOf();
+  } else {
+    const extendedDays = dateRange.days + MAU_WINDOW_DAYS - 1;
+    rangeFilter = {
+      range: { timestamp: { gte: `now-${extendedDays}d/d` } },
+    };
+    const startOfToday = moment.tz(timezone).startOf("day").valueOf();
+    cutoffTimestamp = startOfToday - (dateRange.days - 1) * MS_PER_DAY;
+  }
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         { term: { workspace_id: workspaceId } },
-        { range: { timestamp: { gte: `now-${extendedDays}d/d` } } },
+        rangeFilter,
         { bool: { must_not: { term: { user_id: "unknown" } } } }, // Exclude programmatic usage
       ],
     },
@@ -132,10 +174,6 @@ export async function fetchActiveUsersMetrics(
   }
 
   sortedTimestamps.sort((a, b) => a - b);
-
-  // Determine the cutoff timestamp - we only return points for the requested range
-  const startOfToday = moment.tz(timezone).startOf("day").valueOf();
-  const cutoffTimestamp = startOfToday - (days - 1) * MS_PER_DAY;
 
   // Collect timestamps in the requested range for membership counting.
   const requestedTimestamps = sortedTimestamps.filter(

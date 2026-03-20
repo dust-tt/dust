@@ -44,7 +44,9 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const result = await fetchActiveUsersMetrics(owner, q.data.days);
+      const result = await fetchActiveUsersMetrics(owner, {
+        days: q.data.days,
+      });
 
       if (result.isErr()) {
         return apiError(req, res, {

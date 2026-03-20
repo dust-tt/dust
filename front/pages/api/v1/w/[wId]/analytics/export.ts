@@ -33,7 +33,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import type { estypes } from "@elastic/elasticsearch";
 import { stringify } from "csv-stringify/sync";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -367,48 +366,14 @@ async function exportUsers({
   );
 }
 
-interface UsageExportRow {
-  date: string;
-  name: string;
-  executions: number;
-  uniqueUsers: number;
-}
-
-const USAGE_EXPORT_HEADERS: (keyof UsageExportRow)[] = [
-  "date",
-  "name",
-  "executions",
-  "uniqueUsers",
-];
-
-/**
- * Shared helper for skill_usage and tool_usage exports. Both follow the same
- * pattern: list available items, fetch per-item daily metrics, flatten into rows.
- */
-async function exportItemUsage({
+async function exportSkillUsage({
   startDate,
   endDate,
   owner,
-  fetchItems,
-  fetchUsage,
-  label,
 }: {
   startDate: string;
   endDate: string;
   owner: WorkspaceType;
-  fetchItems: (
-    q: estypes.QueryDslQueryContainer
-  ) => Promise<Result<{ name: string }[], Error>>;
-  fetchUsage: (
-    q: estypes.QueryDslQueryContainer,
-    name: string
-  ) => Promise<
-    Result<
-      { date: string; executionCount: number; uniqueUsers: number }[],
-      Error
-    >
-  >;
-  label: string;
 }): Promise<Result<string, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
@@ -416,23 +381,33 @@ async function exportItemUsage({
     endDate,
   });
 
-  const itemsResult = await fetchItems(baseQuery);
-  if (itemsResult.isErr()) {
+  const skillsResult = await fetchAvailableSkills(baseQuery);
+  if (skillsResult.isErr()) {
     return new Err(
       new Error(
-        `Failed to retrieve available ${label}s: ${itemsResult.error.message}`
+        `Failed to retrieve available skills: ${skillsResult.error.message}`
       )
     );
   }
 
-  const rows: UsageExportRow[] = [];
+  interface SkillUsageExportRow {
+    date: string;
+    skillName: string;
+    executions: number;
+    uniqueUsers: number;
+  }
 
-  for (const item of itemsResult.value) {
-    const usageResult = await fetchUsage(baseQuery, item.name);
+  const rows: SkillUsageExportRow[] = [];
+
+  for (const skill of skillsResult.value) {
+    const usageResult = await fetchSkillUsageMetrics(
+      baseQuery,
+      skill.skillName
+    );
     if (usageResult.isErr()) {
       return new Err(
         new Error(
-          `Failed to retrieve ${label} usage for ${item.name}: ${usageResult.error.message}`
+          `Failed to retrieve skill usage for ${skill.skillName}: ${usageResult.error.message}`
         )
       );
     }
@@ -440,7 +415,7 @@ async function exportItemUsage({
     for (const point of usageResult.value) {
       rows.push({
         date: point.date,
-        name: item.name,
+        skillName: skill.skillName,
         executions: point.executionCount,
         uniqueUsers: point.uniqueUsers,
       });
@@ -452,36 +427,18 @@ async function exportItemUsage({
     if (dateCompare !== 0) {
       return dateCompare;
     }
-    return a.name.localeCompare(b.name);
+    return a.skillName.localeCompare(b.skillName);
   });
 
-  const csvData = rows.map((row) => USAGE_EXPORT_HEADERS.map((h) => row[h]));
+  const headers: (keyof SkillUsageExportRow)[] = [
+    "date",
+    "skillName",
+    "executions",
+    "uniqueUsers",
+  ];
+  const csvData = rows.map((row) => headers.map((h) => row[h]));
 
-  return new Ok(
-    stringify([USAGE_EXPORT_HEADERS, ...csvData], { header: false })
-  );
-}
-
-async function exportSkillUsage({
-  startDate,
-  endDate,
-  owner,
-}: {
-  startDate: string;
-  endDate: string;
-  owner: WorkspaceType;
-}): Promise<Result<string, Error>> {
-  return exportItemUsage({
-    startDate,
-    endDate,
-    owner,
-    fetchItems: async (q) => {
-      const r = await fetchAvailableSkills(q);
-      return r.isOk() ? new Ok(r.value.map((s) => ({ name: s.skillName }))) : r;
-    },
-    fetchUsage: fetchSkillUsageMetrics,
-    label: "skill",
-  });
+  return new Ok(stringify([headers, ...csvData], { header: false }));
 }
 
 async function exportToolUsage({
@@ -493,17 +450,65 @@ async function exportToolUsage({
   endDate: string;
   owner: WorkspaceType;
 }): Promise<Result<string, Error>> {
-  return exportItemUsage({
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
     startDate,
     endDate,
-    owner,
-    fetchItems: async (q) => {
-      const r = await fetchAvailableTools(q);
-      return r.isOk()
-        ? new Ok(r.value.map((t) => ({ name: t.serverName })))
-        : r;
-    },
-    fetchUsage: fetchToolUsageMetrics,
-    label: "tool",
   });
+
+  const toolsResult = await fetchAvailableTools(baseQuery);
+  if (toolsResult.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to retrieve available tools: ${toolsResult.error.message}`
+      )
+    );
+  }
+
+  interface ToolUsageExportRow {
+    date: string;
+    toolName: string;
+    executions: number;
+    uniqueUsers: number;
+  }
+
+  const rows: ToolUsageExportRow[] = [];
+
+  for (const tool of toolsResult.value) {
+    const usageResult = await fetchToolUsageMetrics(baseQuery, tool.serverName);
+    if (usageResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to retrieve tool usage for ${tool.serverName}: ${usageResult.error.message}`
+        )
+      );
+    }
+
+    for (const point of usageResult.value) {
+      rows.push({
+        date: point.date,
+        toolName: tool.serverName,
+        executions: point.executionCount,
+        uniqueUsers: point.uniqueUsers,
+      });
+    }
+  }
+
+  rows.sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) {
+      return dateCompare;
+    }
+    return a.toolName.localeCompare(b.toolName);
+  });
+
+  const headers: (keyof ToolUsageExportRow)[] = [
+    "date",
+    "toolName",
+    "executions",
+    "uniqueUsers",
+  ];
+  const csvData = rows.map((row) => headers.map((h) => row[h]));
+
+  return new Ok(stringify([headers, ...csvData], { header: false }));
 }
