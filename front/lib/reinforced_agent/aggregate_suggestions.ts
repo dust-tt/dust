@@ -1,4 +1,11 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import {
+  createConversation,
+  postNewContentFragment,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getEditors } from "@app/lib/api/assistant/editors";
 import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,9 +19,12 @@ import {
   runReinforcedAnalysis,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
   AgentInstructionsSuggestionType,
   AgentSkillsSuggestionType,
@@ -254,6 +264,7 @@ export async function aggregateSyntheticSuggestions(
       agentConfiguration: agentConfig,
       suggestionCount: createdCount,
     });
+    await createAgentSuggestionsConversations(auth, agentConfig);
   }
 
   await AgentSuggestionResource.bulkUpdateState(
@@ -270,4 +281,123 @@ export async function aggregateSyntheticSuggestions(
     },
     "ReinforcedAgent: aggregated synthetic suggestions into pending"
   );
+}
+
+async function createAgentSuggestionsConversations(
+  auth: Authenticator,
+  agentConfiguration: AgentConfigurationType
+) {
+  const editors = await getEditors(auth, agentConfiguration);
+  if (editors.length === 0) {
+    return;
+  }
+
+  const pendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfiguration.sId,
+      { sources: ["reinforcement"], states: ["pending"] }
+    );
+
+  if (pendingSuggestions.length === 0) {
+    return;
+  }
+
+  const formattedSuggestions = formatSuggestions(
+    toReinforcedSuggestions(pendingSuggestions)
+  );
+
+  const conversationTitle = `Reinforced suggestions for @${agentConfiguration.name}`;
+  const conversation = await createConversation(auth, {
+    title: conversationTitle,
+    visibility: "unlisted",
+    spaceId: null,
+    metadata: {
+      reinforcedAgentNotification: {
+        agentName: agentConfiguration.name,
+        agentConfigurationId: agentConfiguration.sId,
+      },
+    },
+  });
+
+  const contentFragmentRes = await toFileContentFragment(auth, {
+    contentFragment: {
+      title: `${pendingSuggestions.length} pending suggestions for @${agentConfiguration.name}`,
+      content: formattedSuggestions,
+      contentType: "text/plain",
+      url: null,
+    },
+    fileName: "suggestions.txt",
+  });
+
+  if (contentFragmentRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: contentFragmentRes.error.message,
+      },
+      "Failed to create content fragment for suggestions conversation"
+    );
+    return;
+  }
+
+  const author = editors[0];
+
+  const contentFragmentPostRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentRes.value,
+    {
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+    }
+  );
+
+  if (contentFragmentPostRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: contentFragmentPostRes.error.message,
+      },
+      "ReinforcedAgent: failed to post content fragment for suggestions conversation"
+    );
+    return;
+  }
+
+  const messageRes = await postUserMessage(auth, {
+    conversation,
+    content: `Here are ${pendingSuggestions.length} pending improvement${pluralize(pendingSuggestions.length)} suggestions for the @${agentConfiguration.name} agent.`,
+    mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+      origin: "reinforced_agent_notification",
+    },
+    skipToolsValidation: true,
+  });
+
+  if (messageRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: messageRes.error.api_error.message,
+      },
+      "ReinforcedAgent: failed to post user message for suggestions conversation"
+    );
+    return;
+  }
+
+  for (const editor of editors) {
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: editor,
+      lastReadAt: null,
+    });
+  }
 }
