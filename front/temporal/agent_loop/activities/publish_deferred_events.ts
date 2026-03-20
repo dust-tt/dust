@@ -99,6 +99,7 @@ export async function publishDeferredEventsActivity(
         // Similar to tool_personal_auth_required but for file-specific authorization.
         eventToPublish = {
           ...event,
+          isLastBlockingEventForStep: isLastEvent,
           metadata: {
             ...event.metadata,
             // Override the message id to root the event to the right channel.
@@ -110,6 +111,7 @@ export async function publishDeferredEventsActivity(
       case "tool_approve_execution":
         eventToPublish = {
           ...event,
+          isLastBlockingEventForStep: isLastEvent,
           metadata: {
             ...event.metadata,
             // Override the message id to root the event to the right channel.

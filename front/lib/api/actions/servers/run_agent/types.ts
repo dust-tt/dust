@@ -1,4 +1,7 @@
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  ToolFileAuthRequiredEvent,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   BlockedAwaitingInputOutputResourceType,
   SingleResourceToolOutput,
@@ -35,7 +38,8 @@ export function isRunAgentResumeState(
 
 export type RunAgentBlockingEvent =
   | MCPApproveExecutionEvent
-  | ToolPersonalAuthRequiredEvent;
+  | ToolPersonalAuthRequiredEvent
+  | ToolFileAuthRequiredEvent;
 
 /**
  * Make a tool blocked awaiting input response.
