@@ -29,7 +29,11 @@ async function findAgentMCPConfigs(
   const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   const agentConfigurations = await AgentConfigurationModel.findAll({
-    where: { workspaceId: workspaceModelId, sId: { [Op.in]: agentIds }, status: "active" },
+    where: {
+      workspaceId: workspaceModelId,
+      sId: { [Op.in]: agentIds },
+      status: "active",
+    },
   });
 
   const agentConfigurationModelIds = agentConfigurations.map((a) => a.id);
