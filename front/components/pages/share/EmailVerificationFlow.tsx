@@ -35,7 +35,7 @@ function VerificationLayout({
             <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
               {title}
             </h1>
-            <p className="text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-muted-foreground dark:text-muted-foreground-night text-sm">
               {description}
             </p>
           </div>
@@ -92,7 +92,7 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
   return (
     <VerificationLayout
       title="Verify your identity"
-      description="We'll send a one-time code to your email to access the page shared with you."
+      description="We’ll send a one-time code to your email to access the page shared with you."
     >
       <form
         className="flex w-full max-w-xl flex-col gap-4"
@@ -127,11 +127,7 @@ interface CodeStepFormProps {
   shareToken: string;
 }
 
-function CodeStepForm({
-  email,
-  onVerified,
-  shareToken,
-}: CodeStepFormProps) {
+function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
   const doSendOtp = useSendOtpVerification({ shareToken });
   const doVerifyCode = useVerifyOtpCode({ shareToken });
   const [isResending, setIsResending] = useState(false);
@@ -183,9 +179,7 @@ function CodeStepForm({
       description={
         <>
           A verification code has been sent to{" "}
-          <span className="font-medium text-foreground dark:text-foreground-night">
-            {email}
-          </span>
+          <span className="font-medium">{email}</span>
         </>
       }
     >
@@ -197,6 +191,7 @@ function CodeStepForm({
           <Label htmlFor="otp-code">Verification code</Label>
           <Input
             id="otp-code"
+            type="number"
             placeholder="000000"
             maxLength={6}
             {...register("code")}
@@ -235,10 +230,10 @@ export function EmailVerificationFlow({
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
 
-  const handleCodeSent = useCallback((sentEmail: string) => {
+  const handleCodeSent = (sentEmail: string) => {
     setEmail(sentEmail);
     setStep("code");
-  }, []);
+  };
 
   return step === "email" ? (
     <EmailStepForm onCodeSent={handleCodeSent} shareToken={shareToken} />

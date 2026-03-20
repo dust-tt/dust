@@ -119,15 +119,11 @@ export function SharedFramePage() {
     };
   }, [shareMetadata, humanFriendlyTitle]);
 
-  const handleVerified = useCallback(() => {
+  const handleVerified = () => {
     setIsVerified(true);
     // Refetch the frame now that the cookie is set.
     void mutateFrame();
-  }, [mutateFrame]);
-
-  if (!token) {
-    return <Custom404 />;
-  }
+  };
 
   if (isShareMetadataLoading) {
     return (
@@ -137,7 +133,7 @@ export function SharedFramePage() {
     );
   }
 
-  if (shareMetadataError || !shareMetadata) {
+  if (!token || shareMetadataError || !shareMetadata) {
     return <Custom404 />;
   }
 

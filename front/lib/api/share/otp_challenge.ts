@@ -69,7 +69,7 @@ export async function sendFrameOtpEmail({
     subject: "Your Dust login code",
     body: `<p>${escape(sharedByName)} shared a Frame with you on Dust.</p>
       <p>Your login code:</p>
-      <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${escape(code)}</p>
+      <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; margin-block: 20px;">${escape(code)}</p>
       <p>Expires in ${Math.floor(OTP_TTL_SECONDS / 60)} minutes. Didn't request this? Ignore this email.</p>`,
   });
 }
