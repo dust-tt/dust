@@ -25,22 +25,28 @@ async function findAgentMCPConfigs(
   auth: Authenticator,
   agentIds: string[],
   oldView: MCPServerViewResource
-): Promise<AgentMCPServerConfigurationModel[]> {
+): Promise<{
+  configs: AgentMCPServerConfigurationModel[];
+  matchedAgentIds: Set<string>;
+}> {
   const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   const agentConfigurations = await AgentConfigurationModel.findAll({
-    where: { workspaceId: workspaceModelId, sId: { [Op.in]: agentIds } },
+    where: { workspaceId: workspaceModelId, sId: { [Op.in]: agentIds }, status: "active" },
   });
 
+  const matchedAgentIds = new Set(agentConfigurations.map((a) => a.sId));
   const agentConfigurationModelIds = agentConfigurations.map((a) => a.id);
 
-  return AgentMCPServerConfigurationModel.findAll({
+  const configs = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId: workspaceModelId,
       agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
       mcpServerViewId: oldView.id,
     },
   });
+
+  return { configs, matchedAgentIds };
 }
 
 makeScript(
@@ -112,7 +118,19 @@ makeScript(
       "Loaded MCP server views and agent IDs."
     );
 
-    const agentConfigs = await findAgentMCPConfigs(auth, agentIds, originView);
+    const { configs: agentConfigs, matchedAgentIds } = await findAgentMCPConfigs(
+      auth,
+      agentIds,
+      originView
+    );
+
+    const unmatchedAgentIds = agentIds.filter((id) => !matchedAgentIds.has(id));
+    if (unmatchedAgentIds.length > 0) {
+      logger.warn(
+        { unmatchedAgentIds, count: unmatchedAgentIds.length },
+        "Some agent IDs from the file had no matching MCP config for the origin view"
+      );
+    }
 
     logger.info(
       { count: agentConfigs.length },
