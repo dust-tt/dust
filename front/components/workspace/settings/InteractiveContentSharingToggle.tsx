@@ -47,11 +47,13 @@ const SHARING_POLICY_OPTIONS: {
   },
 ];
 
+interface InteractiveContentSharingToggleProps {
+  owner: WorkspaceType;
+}
+
 export function InteractiveContentSharingToggle({
   owner,
-}: {
-  owner: WorkspaceType;
-}) {
+}: InteractiveContentSharingToggleProps) {
   const { isChanging, sharingPolicy, doUpdateSharingPolicy } =
     useFrameSharingToggle({ owner });
   const [pendingPolicy, setPendingPolicy] =
