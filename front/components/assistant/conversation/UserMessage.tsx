@@ -437,7 +437,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 // When the conversation container is narrow, the action menu sits below the message bubble.
 // When the conversation container is wider, it floats to the left (current user) or right (other user).
 const actionMenuContainerVariants = cva(
-  "flex items-center gap-1 absolute left-0 bottom-0 translate-y-[calc(100%+2px)]",
+  "flex items-center gap-1 absolute left-0 bottom-0",
   {
     variants: {
       mode: {
@@ -448,19 +448,26 @@ const actionMenuContainerVariants = cva(
         true: "",
         false: "",
       },
+      hasReactions: {
+        true: "",
+        false: "",
+      },
     },
     compoundVariants: [
       {
         mode: "side",
         isCurrentUser: true,
-        className:
-          "@sm/conversation:translate-y-0 @sm/conversation:-translate-x-full @sm/conversation:pr-2",
+        className: "-translate-x-full pr-2",
       },
       {
         mode: "side",
         isCurrentUser: false,
-        className:
-          "@sm/conversation:left-auto @sm/conversation:right-0 @sm/conversation:translate-y-0 @sm/conversation:translate-x-full @sm/conversation:pl-2",
+        className: "left-auto right-0 translate-x-full pl-2",
+      },
+      {
+        mode: "bottom",
+        hasReactions: true,
+        className: "translate-y-[calc(100%+2px)]",
       },
     ],
   }
@@ -561,7 +568,7 @@ function ActionMenu({
 
   return (
     <div
-      className={actionMenuContainerVariants({ mode, isCurrentUser })}
+      className={actionMenuContainerVariants({ mode, isCurrentUser, hasReactions })}
       ref={isReactionsHoveredRef}
     >
       {mode === "bottom" && (
