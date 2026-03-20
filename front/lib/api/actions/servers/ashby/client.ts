@@ -1,5 +1,4 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { untrustedFetch } from "@app/lib/egress/server";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   AshbyAPIErrorInfo,
@@ -25,7 +24,6 @@ import type {
 } from "@app/lib/api/actions/servers/ashby/types";
 import {
   AshbyAPIErrorResponseSchema,
-  AshbyJobSchema,
   AshbyApplicationFeedbackListResponseSchema,
   AshbyApplicationInfoResponseSchema,
   AshbyCandidateCreateNoteResponseSchema,
@@ -36,6 +34,7 @@ import {
   AshbyJobPostingInfoResponseSchema,
   AshbyJobPostingListResponseSchema,
   AshbyJobPostingUpdateResponseSchema,
+  AshbyJobSchema,
   AshbyOfferInfoResponseSchema,
   AshbyOfferListResponseSchema,
   AshbyReferralCreateResponseSchema,
@@ -43,6 +42,7 @@ import {
   AshbyReportSynchronousResponseSchema,
   AshbyUserSearchResponseSchema,
 } from "@app/lib/api/actions/servers/ashby/types";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -370,7 +370,9 @@ export class AshbyClient {
         return response;
       }
       allJobs.push(...response.value.results);
-      cursor = response.value.moreDataAvailable ? response.value.nextCursor : undefined;
+      cursor = response.value.moreDataAvailable
+        ? response.value.nextCursor
+        : undefined;
     } while (cursor);
 
     return new Ok(allJobs);

@@ -97,7 +97,9 @@ export type AshbyCandidateSearchRequest = z.infer<
   typeof AshbyCandidateSearchRequestSchema
 >;
 
-export const AshbyCandidateSearchResponseSchema = z.array(AshbyCandidateSchema).optional();
+export const AshbyCandidateSearchResponseSchema = z
+  .array(AshbyCandidateSchema)
+  .optional();
 
 export type AshbyCandidateSearchResponse = z.infer<
   typeof AshbyCandidateSearchResponseSchema
@@ -168,7 +170,9 @@ export type AshbyFeedbackSubmission = z.infer<
   typeof AshbyFeedbackSubmissionSchema
 >;
 
-export const AshbyApplicationFeedbackListResponseSchema = z.array(AshbyFeedbackSubmissionSchema);
+export const AshbyApplicationFeedbackListResponseSchema = z.array(
+  AshbyFeedbackSubmissionSchema
+);
 
 export type AshbyApplicationFeedbackListResponse = z.infer<
   typeof AshbyApplicationFeedbackListResponseSchema
@@ -186,7 +190,9 @@ export type AshbyCandidateCreateNoteRequest = z.infer<
   typeof AshbyCandidateCreateNoteRequestSchema
 >;
 
-export const AshbyCandidateCreateNoteResponseSchema = z.object({ id: z.string() }).passthrough();
+export const AshbyCandidateCreateNoteResponseSchema = z
+  .object({ id: z.string() })
+  .passthrough();
 
 export type AshbyCandidateCreateNoteResponse = z.infer<
   typeof AshbyCandidateCreateNoteResponseSchema
@@ -219,7 +225,9 @@ export const AshbyCandidateNoteSchema = z
 
 export type AshbyCandidateNote = z.infer<typeof AshbyCandidateNoteSchema>;
 
-export const AshbyCandidateListNotesResponseSchema = z.array(AshbyCandidateNoteSchema);
+export const AshbyCandidateListNotesResponseSchema = z.array(
+  AshbyCandidateNoteSchema
+);
 
 export type AshbyCandidateListNotesResponse = z.infer<
   typeof AshbyCandidateListNotesResponseSchema
@@ -510,7 +518,8 @@ export const AshbyJobPostingInfoSchema = z
 
 export type AshbyJobPostingInfo = z.infer<typeof AshbyJobPostingInfoSchema>;
 
-export const AshbyJobPostingInfoResponseSchema = AshbyJobPostingInfoSchema.optional();
+export const AshbyJobPostingInfoResponseSchema =
+  AshbyJobPostingInfoSchema.optional();
 
 export type AshbyJobPostingInfoResponse = z.infer<
   typeof AshbyJobPostingInfoResponseSchema
@@ -662,7 +671,8 @@ export const AshbyCandidateInfoSchema = z
 
 export type AshbyCandidateInfo = z.infer<typeof AshbyCandidateInfoSchema>;
 
-export const AshbyCandidateInfoResponseSchema = AshbyCandidateInfoSchema.optional();
+export const AshbyCandidateInfoResponseSchema =
+  AshbyCandidateInfoSchema.optional();
 
 export type AshbyCandidateInfoResponse = z.infer<
   typeof AshbyCandidateInfoResponseSchema

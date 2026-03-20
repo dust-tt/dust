@@ -30,7 +30,10 @@ export function renderCandidateList(candidates: AshbyCandidate[]): string {
 }
 
 export async function renderReport(
-  responseResults: Extract<NonNullable<AshbyReportSynchronousResponse>, { status: "complete" }>,
+  responseResults: Extract<
+    NonNullable<AshbyReportSynchronousResponse>,
+    { status: "complete" }
+  >,
   { reportId }: { reportId: string }
 ): Promise<CallToolResult["content"]> {
   const { reportData } = responseResults;
