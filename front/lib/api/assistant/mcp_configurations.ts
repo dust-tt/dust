@@ -1,16 +1,11 @@
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { Op } from "sequelize";
-import { z } from "zod";
 
-export const AgentMcpConfigurationSummarySchema = z.object({
-  sId: z.string(),
-  name: z.string().nullable(),
-});
-
-export type AgentMcpConfigurationSummary = z.infer<
-  typeof AgentMcpConfigurationSummarySchema
->;
+export type AgentMcpConfigurationSummary = {
+  sId: string;
+  name: string | null;
+};
 
 export async function listAgentMcpConfigurationsForAgent(params: {
   workspaceId: number;

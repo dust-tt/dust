@@ -7,30 +7,25 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
-import { z } from "zod";
 
 /**
  * We retrieve the feedbacks for a whole conversation, not just a single message.
  */
 
-export const AgentMessageFeedbackSchema = z.object({
-  id: z.number(),
-  sId: z.string(),
-  messageId: z.string(),
-  agentMessageId: z.number(),
-  userId: z.number(),
-  thumbDirection: z.enum(["up", "down"]),
-  content: z.string().nullable(),
-  createdAt: z.date(),
-  agentConfigurationId: z.string(),
-  agentConfigurationVersion: z.number(),
-  isConversationShared: z.boolean(),
-  dismissed: z.boolean(),
-});
-
-export type AgentMessageFeedbackType = z.infer<
-  typeof AgentMessageFeedbackSchema
->;
+export type AgentMessageFeedbackType = {
+  id: number;
+  sId: string;
+  messageId: string;
+  agentMessageId: number;
+  userId: number;
+  thumbDirection: AgentMessageFeedbackDirection;
+  content: string | null;
+  createdAt: Date;
+  agentConfigurationId: string;
+  agentConfigurationVersion: number;
+  isConversationShared: boolean;
+  dismissed: boolean;
+};
 
 export type FeedbackUserInfo = {
   userName: string;

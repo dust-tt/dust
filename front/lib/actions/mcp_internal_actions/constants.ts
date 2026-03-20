@@ -212,7 +212,8 @@ export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
 
 // Whether the server is available by default in the global space.
 // Hidden servers are available by default in the global space but are not visible in the assistant builder.
-export const MCP_SERVER_AVAILABILITY = [
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const MCP_SERVER_AVAILABILITY = [
   "manual",
   "auto",
   "auto_hidden_builder",
