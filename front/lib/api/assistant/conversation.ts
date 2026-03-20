@@ -514,6 +514,7 @@ export function isUserMessageContextValid(
     case "agent_sidekick":
     case "project_kickoff":
     case "reinforced_agent_notification":
+    case "reinforcement":
     case "web":
       return false;
     default:

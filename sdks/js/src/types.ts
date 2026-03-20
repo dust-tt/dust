@@ -342,6 +342,7 @@ const USER_MESSAGE_ORIGINS = [
   "project_butler",
   "project_kickoff",
   "reinforced_agent_notification",
+  "reinforcement",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);

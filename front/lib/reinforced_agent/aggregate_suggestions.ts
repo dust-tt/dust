@@ -256,7 +256,7 @@ export async function aggregateSyntheticSuggestions(
     prompt,
     source: "reinforcement",
     operationType: "reinforced_agent_aggregate_suggestions",
-    contextId: "n/a",
+    contextId: agentConfigurationId,
   });
 
   if (createdCount > 0 && !disableNotifications) {

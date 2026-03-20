@@ -1,5 +1,10 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
+import {
+  downloadBatchResultFromLlm,
+  sendBatchCallToLlm,
+} from "@app/lib/api/llm/batch_llm";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
@@ -14,6 +19,8 @@ import {
 import {
   getReinforcedLLM,
   processReinforcedEvents,
+  REINFORCEMENT_DEFAULTS,
+  reinforcementConversationTitle,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -151,22 +158,28 @@ export async function aggregateSuggestionsActivity({
 
 /**
  * Build analysis prompts for all conversations and submit them as a batch.
- * Returns the batch ID, or null if no conversations could be prepared.
+ * Returns the batch ID, reinforced agent conversation sIds, and the original
+ * conversation sIds being analyzed (to map results back).
+ * Returns null if no conversations could be prepared.
  */
 export async function startConversationAnalysisBatchActivity({
   workspaceId,
   agentConfigurationId,
-  conversationIds,
+  analysedConversationIds,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
-  conversationIds: string[];
-}): Promise<string | null> {
+  analysedConversationIds: string[];
+}): Promise<{
+  batchId: string;
+  reinforcementConversationIds: string[];
+  analysedConversationIds: string[];
+} | null> {
   const auth = await getAuthForWorkspace(workspaceId);
 
   const batchMap = await buildConversationAnalysisBatchMap(auth, {
     agentConfigurationId,
-    conversationIds,
+    conversationIds: analysedConversationIds,
   });
   if (!batchMap) {
     return null;
@@ -180,19 +193,42 @@ export async function startConversationAnalysisBatchActivity({
     return null;
   }
 
-  const batchId = await llm.sendBatchProcessing(batchMap);
+  const batchConversations: LlmConversationOptions[] = [];
+  const orderedAnalysedConversationIds: string[] = [];
+  for (const [conversationId, llmParams] of batchMap) {
+    const { conversation, ...llmParamsWithoutConversation } = llmParams;
+    batchConversations.push({
+      newMessages: conversation.messages,
+      title: reinforcementConversationTitle(
+        "reinforced_agent_analyze_conversation",
+        conversationId
+      ),
+      ...llmParamsWithoutConversation,
+      ...REINFORCEMENT_DEFAULTS,
+    });
+    orderedAnalysedConversationIds.push(conversationId);
+  }
+
+  const result = await sendBatchCallToLlm(auth, llm, batchConversations);
+  if (result.isErr()) {
+    throw result.error;
+  }
 
   logger.info(
     {
       agentConfigurationId,
       workspaceId,
-      batchId,
+      batchId: result.value.batchId,
       conversationCount: batchMap.size,
     },
     "ReinforcedAgent: started conversation analysis batch"
   );
 
-  return batchId;
+  return {
+    batchId: result.value.batchId,
+    reinforcementConversationIds: result.value.conversationIds,
+    analysedConversationIds: orderedAnalysedConversationIds,
+  };
 }
 
 /**
@@ -222,15 +258,20 @@ export async function checkBatchStatusActivity({
 
 /**
  * Download batch results for conversation analysis and create suggestions.
+ * Also stores agent messages in the reinforced agent conversations.
  */
 export async function processConversationAnalysisBatchResultActivity({
   workspaceId,
   agentConfigurationId,
   batchId,
+  reinforcementConversationIds,
+  analysedConversationIds,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   batchId: string;
+  reinforcementConversationIds: string[];
+  analysedConversationIds: string[];
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -254,26 +295,45 @@ export async function processConversationAnalysisBatchResultActivity({
     return;
   }
 
-  const results = await llm.getBatchResult(batchId);
-
-  // Resolve conversation sIds to resources for FK storage.
-  const conversationIds = [...results.keys()];
-  const conversations = await ConversationResource.fetchByIds(
+  // Download results and store agent messages in reinforcement conversations.
+  const results = await downloadBatchResultFromLlm(
     auth,
-    conversationIds
+    llm,
+    batchId,
+    reinforcementConversationIds,
+    REINFORCEMENT_DEFAULTS.agentConfigurationId
   );
-  const conversationById = new Map(conversations.map((c) => [c.sId, c]));
+
+  // Build mapping from reinforcement conversation sIds back to the analysed conversation sIds.
+  const reinforcementToAnalysed = new Map<string, string>();
+  for (let i = 0; i < reinforcementConversationIds.length; i++) {
+    reinforcementToAnalysed.set(
+      reinforcementConversationIds[i],
+      analysedConversationIds[i]
+    );
+  }
+
+  // Resolve analysed conversations for FK storage.
+  const analysedConversations = await ConversationResource.fetchByIds(
+    auth,
+    analysedConversationIds
+  );
+  const conversationById = new Map(
+    analysedConversations.map((c) => [c.sId, c])
+  );
 
   let totalCreated = 0;
-  for (const [conversationId, events] of results) {
+  for (const [reinforcementConvId, events] of results) {
+    const analysedConvId =
+      reinforcementToAnalysed.get(reinforcementConvId) ?? reinforcementConvId;
     const createdCount = await processReinforcedEvents({
       auth,
       agentConfig,
       events,
       source: "synthetic",
       operationType: "reinforced_agent_analyze_conversation",
-      contextId: conversationId,
-      conversation: conversationById.get(conversationId),
+      contextId: analysedConvId,
+      conversation: conversationById.get(analysedConvId),
     });
     totalCreated += createdCount;
   }
@@ -291,7 +351,8 @@ export async function processConversationAnalysisBatchResultActivity({
 
 /**
  * Build aggregation prompt and submit it as a batch.
- * Returns the batch ID, or null if there are no suggestions to aggregate.
+ * Returns the batch ID and reinforced agent conversation sIds,
+ * or null if there are no suggestions to aggregate.
  */
 export async function startAggregationBatchActivity({
   workspaceId,
@@ -299,7 +360,10 @@ export async function startAggregationBatchActivity({
 }: {
   workspaceId: string;
   agentConfigurationId: string;
-}): Promise<string | null> {
+}): Promise<{
+  batchId: string;
+  reinforcementConversationIds: string[];
+} | null> {
   const auth = await getAuthForWorkspace(workspaceId);
 
   const batchMap = await buildAggregationBatchMap(auth, agentConfigurationId);
@@ -315,7 +379,25 @@ export async function startAggregationBatchActivity({
     return null;
   }
 
-  const batchId = await llm.sendBatchProcessing(batchMap);
+  const batchConversations: LlmConversationOptions[] = [];
+  for (const [, llmParams] of batchMap) {
+    const { conversation, ...llmParamsWithoutConversation } = llmParams;
+    batchConversations.push({
+      newMessages: conversation.messages,
+      title: reinforcementConversationTitle(
+        "reinforced_agent_aggregate_suggestions",
+        agentConfigurationId
+      ),
+      ...llmParamsWithoutConversation,
+      ...REINFORCEMENT_DEFAULTS,
+    });
+  }
+
+  const sendResult = await sendBatchCallToLlm(auth, llm, batchConversations);
+  if (sendResult.isErr()) {
+    throw sendResult.error;
+  }
+  const { batchId, conversationIds } = sendResult.value;
 
   logger.info(
     {
@@ -326,21 +408,24 @@ export async function startAggregationBatchActivity({
     "ReinforcedAgent: started aggregation batch"
   );
 
-  return batchId;
+  return { batchId, reinforcementConversationIds: conversationIds };
 }
 
 /**
  * Download aggregation batch results, create suggestions, and mark synthetic ones as approved.
+ * Also stores agent messages in the reinforced agent conversations.
  */
 export async function processAggregationBatchResultActivity({
   workspaceId,
   agentConfigurationId,
   batchId,
+  reinforcementConversationIds,
   disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   batchId: string;
+  reinforcementConversationIds: string[];
   disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
@@ -365,8 +450,17 @@ export async function processAggregationBatchResultActivity({
     return;
   }
 
-  const results = await llm.getBatchResult(batchId);
-  const events = results.get("aggregation");
+  // Download results and store agent messages in reinforcement conversations.
+  const results = await downloadBatchResultFromLlm(
+    auth,
+    llm,
+    batchId,
+    reinforcementConversationIds,
+    REINFORCEMENT_DEFAULTS.agentConfigurationId
+  );
+
+  // The aggregation batch has a single entry — get the first result.
+  const events = results.values().next().value;
 
   let createdCount = 0;
   if (events) {

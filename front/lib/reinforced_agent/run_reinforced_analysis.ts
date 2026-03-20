@@ -6,6 +6,10 @@ import {
   createToolsSuggestions,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/tools";
 import { getLLM } from "@app/lib/api/llm";
+import {
+  storeLlmResult,
+  writeBatchUserMessages,
+} from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
@@ -15,6 +19,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -52,6 +57,32 @@ function buildSpecifications(): AgentActionSpecification[] {
 type ReinforcedOperationType =
   | "reinforced_agent_analyze_conversation"
   | "reinforced_agent_aggregate_suggestions";
+
+export const REINFORCEMENT_DEFAULTS = {
+  visibility: "test" as const,
+  metadata: { reinforcedAgentBatch: true },
+  userContextUsername: "reinforced_agent",
+  userContextOrigin: "reinforcement" as const,
+  agentConfigurationId: "sidekick",
+};
+
+/**
+ * Generate a human-readable title for a reinforcement conversation based on
+ * the operation type and context (e.g. the analysed conversation sId).
+ */
+export function reinforcementConversationTitle(
+  operationType: ReinforcedOperationType,
+  contextId: string
+): string {
+  switch (operationType) {
+    case "reinforced_agent_analyze_conversation":
+      return `Reinforced agent analysis of ${contextId}`;
+    case "reinforced_agent_aggregate_suggestions":
+      return `Reinforced agent aggregation for ${contextId}`;
+    default:
+      assertNever(operationType);
+  }
+}
 
 /**
  * Build LLMStreamParameters for a reinforced analysis prompt.
@@ -332,10 +363,34 @@ export async function runReinforcedAnalysis({
     return 0;
   }
 
+  const llmParams = buildReinforcedLLMParams(prompt);
+
+  // Store user message in a reinforcement conversation.
+  const { conversation: llmConversation, ...llmParamsWithoutConversation } =
+    llmParams;
+  const writeResult = await writeBatchUserMessages(auth, {
+    newMessages: llmConversation.messages,
+    title: reinforcementConversationTitle(operationType, contextId),
+    ...llmParamsWithoutConversation,
+    ...REINFORCEMENT_DEFAULTS,
+  });
+  if (writeResult.isErr()) {
+    throw writeResult.error;
+  }
+  const reinforcementConversation = writeResult.value;
+
   const events: LLMEvent[] = [];
-  for await (const event of llm.stream(buildReinforcedLLMParams(prompt))) {
+  for await (const event of llm.stream(llmParams)) {
     events.push(event);
   }
+
+  // Store agent response in the reinforcement conversation.
+  await storeLlmResult(
+    auth,
+    reinforcementConversation,
+    events,
+    REINFORCEMENT_DEFAULTS.agentConfigurationId
+  );
 
   return processReinforcedEvents({
     auth,

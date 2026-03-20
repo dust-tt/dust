@@ -107,7 +107,9 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for the butler in projects
-  | "project_butler";
+  | "project_butler"
+  // for internal use, for reinforced agent batch LLM operations
+  | "reinforcement";
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
