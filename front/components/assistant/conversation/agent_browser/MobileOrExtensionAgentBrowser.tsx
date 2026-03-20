@@ -92,6 +92,7 @@ export function MobileOrExtensionAgentBrowser({
           setDisplayedAssistantId={setDisplayedAssistantId}
           owner={owner}
           showTagHeadings={false}
+          canGetMore={false}
         />
       ) : (
         viewTab && (
