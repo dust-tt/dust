@@ -6,6 +6,7 @@ import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { getClientIp } from "@app/lib/utils/request";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
@@ -55,6 +56,10 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   let auth = await Authenticator.fromSuperUserSession(session, null);
+  const ip = getClientIp(req);
+  if (ip !== "internal") {
+    auth.setClientIp(ip);
+  }
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
@@ -94,6 +99,9 @@ async function handler(
       // If the run targets a specific workspace, use a workspace-scoped authenticator.
       if (workspaceId) {
         auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+        if (ip !== "internal") {
+          auth.setClientIp(ip);
+        }
       }
 
       const plugin = pluginManager.getPluginById(pluginId);
