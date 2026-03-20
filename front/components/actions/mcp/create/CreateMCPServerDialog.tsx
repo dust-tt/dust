@@ -201,6 +201,16 @@ export function CreateMCPServerDialog({
     }
   }, [internalMCPServer, isOpen]);
 
+  // Initialize authorization for oauth-static remote servers when dialog opens.
+  useEffect(() => {
+    if (defaultServerConfig?.authMethod === "oauth-static" && isOpen) {
+      setAuthorization({
+        provider: "mcp_static",
+        supported_use_cases: defaultServerConfig.supportedOAuthUseCases ?? [],
+      });
+    }
+  }, [defaultServerConfig, isOpen]);
+
   const resetState = () => {
     setIsLoading(false);
     setExternalIsLoading(false);
@@ -443,7 +453,9 @@ export function CreateMCPServerDialog({
                   toolName={toolName}
                   authorization={authorization}
                   documentationUrl={
-                    internalMCPServer?.documentationUrl ?? undefined
+                    internalMCPServer?.documentationUrl ??
+                    defaultServerConfig?.documentationUrl ??
+                    undefined
                   }
                   staticCredentialConfig={staticCredentialConfig}
                 />
