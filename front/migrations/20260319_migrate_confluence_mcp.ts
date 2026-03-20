@@ -99,7 +99,7 @@ makeScript(
     try {
       for (const config of agentConfigs) {
         logger.info(
-          { configId: config.sId, oldViewId: config.mcpServerViewId, newViewId: destinationView.id },
+          { configId: config.sId, configModelId: config.id },
           execute ? "Updating agent config" : "Would update agent config"
         );
 
