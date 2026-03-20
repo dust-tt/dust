@@ -54,6 +54,7 @@ export const TRACKING_AREAS = {
   MENTIONS: "mentions",
   SKILLS: "skills",
   SIDEKICK: "sidekick",
+  EXTENSION: "extension",
 } as const;
 
 export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];
