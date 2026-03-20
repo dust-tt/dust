@@ -2,9 +2,10 @@ import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 
-export type SandboxFileEntry = {
+export type GCSMountFileEntry = {
   fileName: string;
   path: string;
   sizeBytes: number;
@@ -13,18 +14,31 @@ export type SandboxFileEntry = {
   fileId: string | null;
 };
 
+type GCSMountPoint = {
+  useCase: "conversation";
+  conversationId: string;
+};
+
 /**
- * List sandbox files from GCS (mounted bucket as source of truth).
+ * List files from a GCS mount point (mounted bucket as source of truth).
  */
-export async function listSandboxFiles(
+export async function listGCSMountFiles(
   auth: Authenticator,
-  conversationId: string
-): Promise<SandboxFileEntry[]> {
+  scope: GCSMountPoint
+): Promise<GCSMountFileEntry[]> {
   const owner = auth.getNonNullableWorkspace();
-  const prefix = getConversationFilesBasePath({
-    workspaceId: owner.sId,
-    conversationId,
-  });
+
+  let prefix: string;
+  switch (scope.useCase) {
+    case "conversation":
+      prefix = getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId: scope.conversationId,
+      });
+      break;
+    default:
+      assertNever(scope.useCase);
+  }
 
   const bucket = getPrivateUploadBucket();
   const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
