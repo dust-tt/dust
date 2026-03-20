@@ -69,7 +69,7 @@ export async function getAgentConfigurationsActivity({
   });
 
   return agents
-    .filter((a) => a.id > 0 && a.reinforcement !== "off")
+    .filter((a) => a.id > 0 && a.reinforcement === "on")
     .map((a) => a.sId);
 }
 
