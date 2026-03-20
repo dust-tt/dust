@@ -18,6 +18,7 @@ describe("buildEditorExtensions", () => {
           whiteListedProviders: null,
           defaultEmbeddingProvider: null,
           metadata: null,
+          sharingPolicy: "all_scopes",
         } satisfies WorkspaceType,
         conversationId: "cId",
         onInlineText: () => {},
