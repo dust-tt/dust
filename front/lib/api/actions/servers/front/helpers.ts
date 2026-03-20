@@ -4,6 +4,7 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
+import { z } from "zod";
 
 export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
@@ -86,20 +87,30 @@ export const makeFrontAPIRequest = async (
     const errorBody = await response.text();
     if (response.status === 401) {
       throw new MCPError(
-        "Invalid Front API token. Please check your API token configuration."
+        "Invalid Front API token. Please check your API token configuration.",
+        { code: 401 }
       );
     } else if (response.status === 403) {
       throw new MCPError(
-        "Insufficient permissions. Please check your Front API token permissions."
+        "Insufficient permissions. Please check your Front API token permissions.",
+        { code: 403 }
       );
     } else if (response.status === 404) {
-      throw new MCPError(`Resource not found: ${endpoint}`);
+      throw new MCPError(`Resource not found: ${endpoint}`, { code: 404 });
+    } else if (response.status === 409) {
+      throw new MCPError(
+        "Version conflict: the resource has been modified. Retrieve the latest version and retry.",
+        { code: 409 }
+      );
     } else if (response.status === 429) {
       throw new MCPError(
-        "Front API rate limit exceeded after retries. Please try again later."
+        "Front API rate limit exceeded after retries. Please try again later.",
+        { code: 429 }
       );
     }
-    throw new MCPError(`Front API error (${response.status}): ${errorBody}`);
+    throw new MCPError(`Front API error (${response.status}): ${errorBody}`, {
+      code: response.status,
+    });
   }
 
   if (
@@ -229,6 +240,78 @@ export function formatMessagesForLLM(messages: FrontMessage[]): string {
   </conversation_timeline>\n\n`;
 
   return metadata + timeline;
+}
+
+const FrontDraftSchema = z.object({
+  id: z.string(),
+  version: z.string(),
+  author: z
+    .object({
+      email: z.string().optional(),
+      username: z.string().optional(),
+    })
+    .optional(),
+  body: z.string().optional(),
+  text: z.string().optional(),
+  subject: z.string().optional(),
+  created_at: z.number(),
+  updated_at: z.number().optional(),
+  attachments: z.array(z.object({ filename: z.string() })).optional(),
+});
+
+export type FrontDraft = z.infer<typeof FrontDraftSchema>;
+
+const FrontDraftsResponseSchema = z.object({
+  _results: z.array(FrontDraftSchema.passthrough()).optional(),
+});
+
+export function parseFrontDraftsResponse(data: unknown): FrontDraft[] {
+  const parsed = FrontDraftsResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    logger.error(
+      { error: parsed.error.message },
+      "[FrontMCP] Invalid drafts response format"
+    );
+    throw new MCPError(
+      "Invalid response format from Front API drafts endpoint"
+    );
+  }
+  return parsed.data._results ?? [];
+}
+
+export function formatDraftsForLLM(
+  drafts: FrontDraft[],
+  conversationId: string
+): string {
+  if (drafts.length === 0) {
+    return `No drafts found in conversation ${conversationId}`;
+  }
+
+  const formatted = drafts
+    .map((draft) => {
+      const author = draft.author?.email ?? draft.author?.username ?? "Unknown";
+      const createdAt = new Date(draft.created_at * 1000).toISOString();
+      const updatedAt = draft.updated_at
+        ? new Date(draft.updated_at * 1000).toISOString()
+        : createdAt;
+      const attachmentCount = draft.attachments?.length ?? 0;
+
+      return `<draft id="${draft.id}" version="${draft.version}">
+  AUTHOR: ${author}
+  CREATED: ${createdAt}
+  UPDATED: ${updatedAt}
+  SUBJECT: ${draft.subject ?? "(No subject)"}
+  BODY: ${draft.text ?? draft.body ?? ""}
+  ATTACHMENTS: ${attachmentCount}
+  </draft>`;
+    })
+    .join("\n\n");
+
+  return (
+    `Found ${drafts.length} draft(s) in conversation ${conversationId}` +
+    "\n\n" +
+    formatted
+  );
 }
 
 interface FrontMessagesResponse {
