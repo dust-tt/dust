@@ -54,8 +54,17 @@ const WorkspaceWorkOSUpdateBodySchema = t.type({
   workOSOrganizationId: t.union([t.string, t.null]),
 });
 
+// TODO(2026-03-20 FRAME SHARING): Remove once all clients have refreshed.
 const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
   allowContentCreationFileSharing: t.boolean,
+});
+
+const WorkspaceSharingPolicyUpdateBodySchema = t.type({
+  sharingPolicy: t.union([
+    t.literal("all_scopes"),
+    t.literal("emails_only"),
+    t.literal("workspace_and_emails"),
+  ]),
 });
 
 const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
@@ -74,6 +83,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
+  WorkspaceSharingPolicyUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
   WorkspaceEmailAgentsUpdateBodySchema,
 ]);
@@ -176,6 +186,15 @@ async function handler(
 
         // if public sharing is disabled, downgrade share scope of all public files to workspace
         if (!body.allowContentCreationFileSharing) {
+          await FileResource.revokePublicSharingInWorkspace(auth);
+        }
+      } else if ("sharingPolicy" in body) {
+        await workspace.updateWorkspaceSettings({
+          sharingPolicy: body.sharingPolicy,
+        });
+
+        // If the new policy restricts public sharing, downgrade existing public frames.
+        if (body.sharingPolicy !== "all_scopes") {
           await FileResource.revokePublicSharingInWorkspace(auth);
         }
       } else if ("allowVoiceTranscription" in body) {

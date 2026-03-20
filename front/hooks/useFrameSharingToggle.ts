@@ -1,7 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { LightWorkspaceType } from "@app/types/user";
-import { useEffect, useState } from "react";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
+import { useCallback, useEffect, useState } from "react";
 
 interface UseFrameSharingToggleProps {
   owner: LightWorkspaceType;
@@ -9,49 +12,46 @@ interface UseFrameSharingToggleProps {
 
 export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
-  const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.allowContentCreationFileSharing !== false
+  const [sharingPolicy, setSharingPolicy] = useState<WorkspaceSharingPolicy>(
+    owner.sharingPolicy ?? "all_scopes"
   );
   const sendNotification = useSendNotification();
 
   useEffect(() => {
-    setIsEnabled(owner.metadata?.allowContentCreationFileSharing !== false);
-  }, [owner.metadata?.allowContentCreationFileSharing]);
+    setSharingPolicy(owner.sharingPolicy ?? "all_scopes");
+  }, [owner.sharingPolicy]);
 
-  const doToggleInteractiveContentSharing = async () => {
-    setIsChanging(true);
-    try {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          allowContentCreationFileSharing: !isEnabled,
-        }),
-      });
+  const doUpdateSharingPolicy = useCallback(
+    async (newPolicy: WorkspaceSharingPolicy) => {
+      setIsChanging(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sharingPolicy: newPolicy }),
+        });
 
-      if (!res.ok) {
-        throw new Error("Failed to update Frame sharing setting");
+        if (!res.ok) {
+          throw new Error("Failed to update Frame sharing setting");
+        }
+
+        setSharingPolicy(newPolicy);
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to update Frame sharing setting",
+          description: "Could not update the Frame sharing policy.",
+        });
+      } finally {
+        setIsChanging(false);
       }
-
-      setIsChanging(false);
-      setIsEnabled((prev) => !prev);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update Frame sharing setting",
-        description: "Could not update the Frame file sharing setting.",
-      });
-      setIsChanging(false);
-    }
-  };
+    },
+    [owner.sId, sendNotification]
+  );
 
   return {
-    isEnabled,
     isChanging,
-    doToggleInteractiveContentSharing,
+    sharingPolicy,
+    doUpdateSharingPolicy,
   };
 }
