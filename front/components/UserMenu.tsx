@@ -6,8 +6,10 @@ import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   forceUserRole,
+  isInlineActivityEnabled,
   sendOnboardingConversation,
   showDebugTools,
+  toggleInlineActivity,
 } from "@app/lib/development";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
@@ -40,7 +42,7 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -54,6 +56,16 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();
+  const [inlineActivity, setInlineActivity] = useState(isInlineActivityEnabled);
+  const handleToggleInlineActivity = useCallback(() => {
+    const next = toggleInlineActivity();
+    setInlineActivity(next);
+    sendNotification({
+      title: `Inline activity ${next ? "enabled" : "disabled"}`,
+      description: "Reload the page to apply.",
+      type: "success",
+    });
+  }, [sendNotification]);
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
@@ -262,6 +274,11 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                     label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
                     onClick={privacyMask.toggle}
                     icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
+                  />
+                  <DropdownMenuItem
+                    label={`${inlineActivity ? "Disable" : "Enable"} Inline Activity`}
+                    onClick={handleToggleInlineActivity}
+                    icon={TestTubeIcon}
                   />
                   {owner.role === "admin" && (
                     <DropdownMenuItem
