@@ -109,6 +109,23 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/sandbox/files/download
     expect(res._getJSONData().error.type).toBe("workspace_auth_error");
   });
 
+  it("should normalize triple slashes before GCS access", async () => {
+    const { req, res } = await setupTest();
+    // Triple slashes pass the old startsWith check and don't contain "..",
+    // but without normalization the raw path is sent to GCS as-is which could
+    // resolve to an unintended object.
+    req.body = {
+      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files///report.pdf`,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(mockGetFileContentType).toHaveBeenCalledWith(
+      `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/report.pdf`
+    );
+  });
+
   it("should succeed for a valid file path", async () => {
     const { req, res } = await setupTest();
     req.body = {
