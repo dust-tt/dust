@@ -2,7 +2,7 @@
 import {
   generateFrameOtpChallenge,
   sendFrameOtpEmail,
-} from "@app/lib/api/share/otp_challenge";
+} from "@app/lib/api/share/frame_sharing";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { auditLog } from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";

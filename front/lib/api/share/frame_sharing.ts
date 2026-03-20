@@ -16,6 +16,9 @@ const OTP_RATE_LIMIT_TIMEFRAME_SECONDS = 3600; // 1 hour.
 const OTP_VERIFY_MAX_ATTEMPTS = 10;
 const OTP_VERIFY_TIMEFRAME_SECONDS = 15 * 60; // 15 minutes.
 
+const SHARE_NOTIFICATION_MAX_PER_DAY = 1;
+const SHARE_NOTIFICATION_TIMEFRAME_SECONDS = 24 * 60 * 60; // 24 hours.
+
 function frameOtpChallengeKey(shareToken: string, email: string): string {
   return `frame_otp_challenge:${shareToken}:${email}`;
 }
@@ -74,6 +77,38 @@ export async function sendFrameOtpEmail({
       <p>Your login code:</p>
       <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; margin-block: 20px;">${escape(code)}</p>
       <p>Expires in ${Math.floor(OTP_TTL_SECONDS / 60)} minutes. Didn't request this? Ignore this email.</p>`,
+  });
+}
+
+export async function sendFrameSharedEmail({
+  frameUrl,
+  sharedByName,
+  shareToken,
+  to,
+}: {
+  frameUrl: string;
+  sharedByName: string;
+  shareToken: string;
+  to: string;
+}): Promise<void> {
+  // Rate limit to 1 notification per recipient per frame per 24 hours to prevent spam.
+  const remaining = await rateLimiter({
+    key: `frame_share_nodtifidcation:${shareToken}:${to}`,
+    maxPerTimeframe: SHARE_NOTIFICATION_MAX_PER_DAY,
+    timeframeSeconds: SHARE_NOTIFICATION_TIMEFRAME_SECONDS,
+    logger,
+  });
+  if (remaining <= 0) {
+    return;
+  }
+
+  await sendEmailWithTemplate({
+    to,
+    from: config.getSupportEmailAddress(),
+    subject: `${sharedByName} shared a Frame with you`,
+    body: `<p>${escape(sharedByName)} is sharing a Frame with you on Dust.</p>`,
+    buttonLabel: "Open Frame",
+    buttonUrl: frameUrl,
   });
 }
 

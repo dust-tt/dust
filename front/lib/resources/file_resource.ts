@@ -2,6 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
+import { sendFrameSharedEmail } from "@app/lib/api/share/frame_sharing";
 import {
   disambiguateFileName,
   getConversationFilePath,
@@ -1217,6 +1218,26 @@ export class FileResource extends BaseResource<FileModel> {
           grantedAt: new Date(),
         }))
       );
+
+      // Send notification emails to newly granted recipients.
+      const shareInfo = await this.getShareInfo();
+      if (shareInfo) {
+        const sharedByName = user.toJSON().fullName;
+        const frameUrl = shareInfo.shareUrl;
+        const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+        // Fire-and-forget: don't block grant creation on email delivery.
+        void Promise.all(
+          newEmails.map((email) =>
+            sendFrameSharedEmail({
+              to: email,
+              sharedByName,
+              frameUrl,
+              shareToken,
+            })
+          )
+        );
+      }
     }
 
     return this.listActiveSharingGrants();

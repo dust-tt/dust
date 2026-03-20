@@ -64,6 +64,9 @@ describe("verify-email endpoint", () => {
 
     await file.addSharingGrants(auth, { emails: ["test@example.com"] });
 
+    // Clear mock after grant creation (which fires a share notification email).
+    vi.mocked(sendEmailWithTemplate).mockClear();
+
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "POST",
       query: { token },
@@ -172,6 +175,9 @@ describe("verify-email endpoint", () => {
     );
 
     await file.addSharingGrants(auth, { emails: ["test@example.com"] });
+
+    // Clear mock after grant creation (which fires a share notification email).
+    vi.mocked(sendEmailWithTemplate).mockClear();
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "POST",

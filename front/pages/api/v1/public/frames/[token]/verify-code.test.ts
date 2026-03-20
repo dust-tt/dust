@@ -1,4 +1,4 @@
-import { generateFrameOtpChallenge } from "@app/lib/api/share/otp_challenge";
+import { generateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import {

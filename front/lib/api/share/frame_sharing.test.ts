@@ -3,7 +3,7 @@ import {
   generateFrameOtpChallenge,
   sendFrameOtpEmail,
   validateFrameOtpChallenge,
-} from "@app/lib/api/share/otp_challenge";
+} from "@app/lib/api/share/frame_sharing";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { describe, expect, it, vi } from "vitest";
 
