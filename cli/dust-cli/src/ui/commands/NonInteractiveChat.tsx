@@ -141,12 +141,9 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         // Initialize file system MCP server if requested
         let fileSystemServerId: string | undefined;
         if (withTools) {
-          const fsResult = await useFileSystemServer(
-            dustClient,
-            (serverId) => {
-              fileSystemServerId = serverId;
-            }
-          );
+          const fsResult = await useFileSystemServer(dustClient, (serverId) => {
+            fileSystemServerId = serverId;
+          });
           if (fsResult.isErr()) {
             setError(
               `Failed to initialize file system tools: ${fsResult.error.message}`
