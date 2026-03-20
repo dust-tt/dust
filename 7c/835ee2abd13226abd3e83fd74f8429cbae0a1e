@@ -1,0 +1,23 @@
+connectors/src/connectors/snowflake/temporal/cast_known_errors.ts
+  7ec04e867589b872 153-170,190-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "7c835ee2abd13226abd3e83fd74f8429cbae0a1e",
+  "prompts": {
+    "7ec04e867589b872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "041d14d8-0cc9-4111-aaa4-b7166007a59f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 24,
+      "total_deletions": 5,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}
