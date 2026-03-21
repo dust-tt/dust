@@ -38,6 +38,7 @@ import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { toFileContentFragment } from "../conversation/content_fragment";
+import type { InboundEmailDkimResult } from "./inbound_auth";
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
@@ -204,7 +205,7 @@ export type EmailThreadingHeaders = {
 export type InboundEmail = {
   subject: string;
   text: string;
-  auth: { SPF: string; dkim: string };
+  auth: { SPF: string; dkim: InboundEmailDkimResult[]; dkimRaw: string };
   threadingHeaders: EmailThreadingHeaders;
   // Human-visible RFC 5322 From header.
   sender: {

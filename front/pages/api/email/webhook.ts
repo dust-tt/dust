@@ -16,7 +16,10 @@ import {
   extractSingleEmailAddressFromHeader,
   parseHeaderValue,
 } from "@app/lib/api/assistant/email/header_parsing";
-import { isAuthenticatedInboundSender } from "@app/lib/api/assistant/email/inbound_auth";
+import {
+  isAuthenticatedInboundSender,
+  parseSendgridDkimResults,
+} from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -70,6 +73,8 @@ const parseSendgridWebhookContent = async (
       ? JSON.parse(fields["envelope"][0])
       : null;
 
+    const dkimRaw = isString(dkim) ? dkim : "";
+
     if (!envelope) {
       return new Err(new Error("Failed to parse envelope"));
     }
@@ -118,7 +123,11 @@ const parseSendgridWebhookContent = async (
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       text: text || "",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      auth: { SPF: SPF || "", dkim: dkim || "" },
+      auth: {
+        SPF: SPF || "",
+        dkim: parseSendgridDkimResults(dkimRaw),
+        dkimRaw,
+      },
       threadingHeaders: parseThreadingHeaders(
         isString(rawHeaders) ? rawHeaders : null
       ),

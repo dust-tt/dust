@@ -6,12 +6,14 @@ import {
 } from "@app/lib/api/assistant/email/email_trigger";
 import { describe, expect, it } from "vitest";
 
+const TEST_EMAIL_AUTH = { SPF: "pass", dkim: [], dkimRaw: "" };
+
 describe("buildSuccessReplyRecipients", () => {
   it("returns sender-only recipients when no human to/cc recipients exist", () => {
     const recipients = buildSuccessReplyRecipients({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: null,
         inReplyTo: null,
@@ -40,7 +42,7 @@ describe("buildSuccessReplyRecipients", () => {
     const recipients = buildSuccessReplyRecipients({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: null,
         inReplyTo: null,
@@ -69,7 +71,7 @@ describe("buildSuccessReplyRecipients", () => {
     const recipients = buildSuccessReplyRecipients({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: null,
         inReplyTo: null,
@@ -102,7 +104,7 @@ describe("buildSuccessReplyRecipients", () => {
     const recipients = buildSuccessReplyRecipients({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: null,
         inReplyTo: null,
@@ -134,7 +136,7 @@ describe("buildReplyThreadingHeaders", () => {
     const threadingHeaders = buildReplyThreadingHeaders({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: "<incoming-message-id@dust.tt>",
         inReplyTo: null,
@@ -163,7 +165,7 @@ describe("buildReplyThreadingHeaders", () => {
     const threadingHeaders = buildReplyThreadingHeaders({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: "<incoming-message-id@dust.tt>",
         inReplyTo: null,
@@ -192,7 +194,7 @@ describe("buildReplyThreadingHeaders", () => {
     const threadingHeaders = buildReplyThreadingHeaders({
       subject: "Test",
       text: "Hello",
-      auth: { SPF: "pass", dkim: "pass" },
+      auth: TEST_EMAIL_AUTH,
       threadingHeaders: {
         messageId: "<incoming-message-id@dust.tt>",
         inReplyTo: null,
