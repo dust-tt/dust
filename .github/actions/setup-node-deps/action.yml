@@ -25,9 +25,9 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Enable Corepack
+    - name: Install correct npm version
       shell: bash
-      run: corepack enable && corepack install
+      run: npm install -g npm@11.11.0
 
     - name: Cache node_modules
       id: cache-node-modules

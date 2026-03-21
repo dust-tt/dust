@@ -51,8 +51,8 @@ jobs:
           node-version: '22.22.0'
           registry-url: "https://registry.npmjs.org"
 
-      - name: Enable Corepack
-        run: corepack enable && corepack install
+      - name: Install correct npm version
+        run: npm install -g npm@11.11.0
 
       - name: Configure git
         run: |
@@ -89,8 +89,8 @@ jobs:
           node-version: '22.22.0'
           registry-url: "https://registry.npmjs.org"
 
-      - name: Enable Corepack
-        run: corepack enable && corepack install
+      - name: Install correct npm version
+        run: npm install -g npm@11.11.0
 
       - name: Generate RC version
         working-directory: sparkle
