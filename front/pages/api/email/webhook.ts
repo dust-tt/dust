@@ -244,27 +244,36 @@ async function handler(
 
       const authDecision = evaluateInboundAuth(email);
 
-      logger.info(
-        {
-          authenticated: authDecision.authenticated,
-          reason: authDecision.reason,
-          headerFromDomain: authDecision.headerFromDomain,
-          spfResult: authDecision.spfResult,
-          spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
-          dkimEntries: authDecision.dkimEntries,
-          senderEmail: email.sender.email,
-        },
-        "[email] Inbound sender auth decision"
-      );
-
       if (!authDecision.authenticated) {
-        await replyToError(email, {
-          type: "unauthenticated_error",
-          message:
-            "Failed to authenticate your email (SPF/DKIM validation failed).",
-        });
+        // Do not reply to unauthenticated mail — the sender may be spoofed,
+        // and replying would cause backscatter.
+        logger.warn(
+          {
+            reason: authDecision.reason,
+            headerFromDomain: authDecision.headerFromDomain,
+            spfResult: authDecision.spfResult,
+            spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
+            dkimEntries: authDecision.dkimEntries,
+            senderEmail: email.sender.email,
+            targetEmails: [
+              ...(email.envelope.to ?? []),
+              ...(email.envelope.cc ?? []),
+              ...(email.envelope.bcc ?? []),
+            ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`)),
+          },
+          "[email] Dropping unauthenticated inbound mail (SPF/DKIM failure)"
+        );
         return;
       }
+
+      logger.info(
+        {
+          reason: authDecision.reason,
+          headerFromDomain: authDecision.headerFromDomain,
+          senderEmail: email.sender.email,
+        },
+        "[email] Inbound sender authenticated"
+      );
 
       const userRes = await userAndWorkspaceFromEmail({
         email: email.sender.email,
