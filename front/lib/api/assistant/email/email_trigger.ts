@@ -425,7 +425,7 @@ export function buildEmailUserMessage({
     "",
     "<email_message>",
     `  <email_from>${escapeTagContent(
-      formatEmailHeaderValue(email.envelope.full)
+      formatEmailHeaderValue(email.sender.full)
     )}</email_from>`,
     `  <email_subject>${escapeTagContent(
       formatEmailHeaderValue(email.subject)
