@@ -33,7 +33,7 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
   return {
     subject: context.subject,
     text: context.originalText,
-    auth: { SPF: "", dkim: "" },
+    auth: { SPF: "", dkim: [], dkimRaw: "" },
     threadingHeaders: {
       messageId: context.threadingMessageId,
       inReplyTo: context.threadingInReplyTo,

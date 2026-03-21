@@ -7,7 +7,8 @@ describe("isAuthenticatedInboundSender", () => {
       isAuthenticatedInboundSender({
         auth: {
           SPF: "pass",
-          dkim: "{@company.com : pass}",
+          dkim: [{ domain: "company.com", result: "pass" }],
+          dkimRaw: "{@company.com : pass}",
         },
         sender: {
           email: "alice@company.com",
@@ -28,7 +29,8 @@ describe("isAuthenticatedInboundSender", () => {
       isAuthenticatedInboundSender({
         auth: {
           SPF: "pass",
-          dkim: "{@company.com : pass}",
+          dkim: [{ domain: "company.com", result: "pass" }],
+          dkimRaw: "{@company.com : pass}",
         },
         sender: {
           email: "alice@other-company.com",
@@ -42,5 +44,32 @@ describe("isAuthenticatedInboundSender", () => {
         },
       })
     ).toBe(false);
+  });
+
+  it("accepts an aligned passing DKIM signature when other signatures fail", () => {
+    expect(
+      isAuthenticatedInboundSender({
+        auth: {
+          SPF: "pass",
+          dkim: [
+            { domain: "sendgrid.com", result: "pass" },
+            { domain: "company.com", result: "fail" },
+            { domain: "company.com", result: "pass" },
+          ],
+          dkimRaw:
+            "{@sendgrid.com : pass, @company.com : fail, @company.com : pass}",
+        },
+        sender: {
+          email: "alice@company.com",
+          full: "Alice <alice@company.com>",
+        },
+        envelope: {
+          from: "bounce@company.com",
+          to: [],
+          cc: [],
+          bcc: [],
+        },
+      })
+    ).toBe(true);
   });
 });

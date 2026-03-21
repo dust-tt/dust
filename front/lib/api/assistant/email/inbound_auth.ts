@@ -19,6 +19,8 @@ export function isAuthenticatedInboundSender(
   return (
     email.auth.SPF === "pass" &&
     senderDomain === envelopeDomain &&
-    email.auth.dkim === `{@${envelopeDomain} : pass}`
+    email.auth.dkim.some(
+      ({ domain, result }) => domain === envelopeDomain && result === "pass"
+    )
   );
 }
