@@ -17,9 +17,12 @@ describe("buildSuccessReplyRecipients", () => {
         inReplyTo: null,
         references: null,
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: [`agent@${ASSISTANT_EMAIL_SUBDOMAIN}`],
         cc: [],
         bcc: ["hidden@dust.tt"],
@@ -43,9 +46,12 @@ describe("buildSuccessReplyRecipients", () => {
         inReplyTo: null,
         references: null,
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: [`agent@${ASSISTANT_EMAIL_SUBDOMAIN}`, "teammate@dust.tt"],
         cc: [`other-agent@${ASSISTANT_EMAIL_SUBDOMAIN}`, "observer@dust.tt"],
         bcc: ["hidden@dust.tt"],
@@ -69,9 +75,12 @@ describe("buildSuccessReplyRecipients", () => {
         inReplyTo: null,
         references: null,
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: ["Sender@dust.tt", "teammate@dust.tt", "teammate@dust.tt"],
         cc: ["teammate@dust.tt", "observer@dust.tt", "observer@dust.tt"],
         bcc: [],
@@ -99,9 +108,12 @@ describe("buildSuccessReplyRecipients", () => {
         inReplyTo: null,
         references: null,
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: ["teammate@dust.tt"],
         cc: manyCC,
         bcc: [],
@@ -128,9 +140,12 @@ describe("buildReplyThreadingHeaders", () => {
         inReplyTo: null,
         references: null,
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: [],
         cc: [],
         bcc: [],
@@ -154,9 +169,12 @@ describe("buildReplyThreadingHeaders", () => {
         inReplyTo: null,
         references: "<older-message-id@dust.tt>",
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: [],
         cc: [],
         bcc: [],
@@ -180,9 +198,12 @@ describe("buildReplyThreadingHeaders", () => {
         inReplyTo: null,
         references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: [],
         cc: [],
         bcc: [],

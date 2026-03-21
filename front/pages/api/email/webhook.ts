@@ -11,6 +11,12 @@ import {
   triggerFromEmail,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
+import {
+  extractEmailAddressesFromHeader,
+  extractSingleEmailAddressFromHeader,
+  parseHeaderValue,
+} from "@app/lib/api/assistant/email/header_parsing";
+import { isAuthenticatedInboundSender } from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -29,66 +35,6 @@ export const config = {
     bodyParser: false,
   },
 };
-
-function extractEmailAddressesFromHeader(headerValue: string | null): string[] {
-  if (!headerValue) {
-    return [];
-  }
-  const addresses: string[] = [];
-  const seen = new Set<string>();
-
-  const addEmail = (raw: string) => {
-    const email = raw.trim().toLowerCase();
-    if (!seen.has(email)) {
-      seen.add(email);
-      addresses.push(email);
-    }
-  };
-
-  // First pass: extract addresses inside angle brackets (e.g., "Name <email@domain.com>").
-  // This correctly handles display names with special characters (apostrophes, quotes, etc.)
-  // and ensures case-insensitive matching by lowercasing here.
-  const anglePattern = /<([^>]+)>/g;
-  let match;
-  while ((match = anglePattern.exec(headerValue)) !== null) {
-    const content = match[1].trim();
-    // Basic validation: must contain exactly one "@" and no spaces.
-    if (content.includes("@") && !content.includes(" ")) {
-      addEmail(content);
-    }
-  }
-
-  // Second pass: extract bare email addresses from parts without angle brackets.
-  const remaining = headerValue.replace(/<[^>]*>/g, " ");
-  const barePattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  while ((match = barePattern.exec(remaining)) !== null) {
-    addEmail(match[0]);
-  }
-
-  return addresses;
-}
-
-function parseHeaderValue(
-  rawHeaders: string,
-  headerName: string
-): string | null {
-  const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Match the header name at line start, capture the first line value then any
-  // RFC 5322 folded continuation lines (lines starting with whitespace).
-  const headerPattern = new RegExp(
-    `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
-    "im"
-  );
-  const match = rawHeaders.match(headerPattern);
-  if (!match) {
-    return null;
-  }
-
-  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
-  const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
-
-  return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
-}
 
 function parseThreadingHeaders(rawHeaders: string | null) {
   if (!rawHeaders) {
@@ -116,7 +62,7 @@ const parseSendgridWebhookContent = async (
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
     const text = fields["text"] ? fields["text"][0] : null;
-    const full = fields["from"] ? fields["from"][0] : null;
+    const senderFull = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
     const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
@@ -133,8 +79,19 @@ const parseSendgridWebhookContent = async (
     if (!from || typeof from !== "string") {
       return new Err(new Error("Failed to parse envelope.from"));
     }
-    if (!full || typeof full !== "string") {
+    if (!senderFull || typeof senderFull !== "string") {
       return new Err(new Error("Failed to parse from"));
+    }
+
+    const senderHeaderValue =
+      (isString(rawHeaders) ? parseHeaderValue(rawHeaders, "From") : null) ??
+      senderFull;
+    const senderRes = extractSingleEmailAddressFromHeader(
+      "From",
+      senderHeaderValue
+    );
+    if (senderRes.isErr()) {
+      return senderRes;
     }
 
     // Extract attachments from files, filtering to supported content types.
@@ -165,6 +122,10 @@ const parseSendgridWebhookContent = async (
       threadingHeaders: parseThreadingHeaders(
         isString(rawHeaders) ? rawHeaders : null
       ),
+      sender: {
+        email: senderRes.value,
+        full: senderHeaderValue,
+      },
       envelope: {
         // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
         // contains addresses matching the inbound-parse domain, omitting human recipients.
@@ -183,7 +144,6 @@ const parseSendgridWebhookContent = async (
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         bcc: envelope.bcc || [],
         from,
-        full,
       },
       attachments,
     });
@@ -209,7 +169,7 @@ const replyToError = async (
     email,
     htmlContent,
     recipients: {
-      to: [email.envelope.from],
+      to: [email.sender.email],
       cc: [],
     },
   });
@@ -273,11 +233,7 @@ async function handler(
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
 
-      // Check SPF is pass.
-      if (
-        email.auth.SPF !== "pass" ||
-        email.auth.dkim !== `{@${email.envelope.from.split("@")[1]} : pass}`
-      ) {
+      if (!isAuthenticatedInboundSender(email)) {
         await replyToError(email, {
           type: "unauthenticated_error",
           message:
@@ -287,7 +243,7 @@ async function handler(
       }
 
       const userRes = await userAndWorkspaceFromEmail({
-        email: email.envelope.from,
+        email: email.sender.email,
       });
       if (userRes.isErr()) {
         await replyToError(email, userRes.error);

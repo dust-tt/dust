@@ -39,12 +39,15 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
       inReplyTo: context.threadingInReplyTo,
       references: context.threadingReferences,
     },
+    sender: {
+      email: context.fromEmail,
+      full: context.fromFull,
+    },
     envelope: {
       to: [],
       cc: [],
       bcc: [],
       from: context.fromEmail,
-      full: context.fromFull,
     },
     attachments: [],
   };
