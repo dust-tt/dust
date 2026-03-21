@@ -22,6 +22,7 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
+import { createMetronomeCustomer } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -311,6 +312,21 @@ async function handler(
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
               workspaceId,
             });
+
+            // Provision the Metronome customer at subscription time so usage
+            // events are matched. Stripe Checkout remains the entry point for
+            // payment method capture even after full Metronome migration.
+            const stripeCustomerIdForMetronome =
+              typeof session.customer === "string"
+                ? session.customer
+                : session.customer?.id;
+            if (stripeCustomerIdForMetronome) {
+              await createMetronomeCustomer({
+                workspaceSId: workspace.sId,
+                workspaceName: workspace.name,
+                stripeCustomerId: stripeCustomerIdForMetronome,
+              });
+            }
 
             return res.status(200).json({ success: true });
           } catch (error) {
