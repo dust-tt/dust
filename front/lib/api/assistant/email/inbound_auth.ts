@@ -8,6 +8,16 @@ export type InboundEmailDkimResult = {
   result: string;
 };
 
+export type InboundAuthDecision = {
+  authenticated: boolean;
+  // Which path granted authentication (undefined when rejected).
+  reason?: "aligned_dkim" | "aligned_spf";
+  headerFromDomain: string;
+  spfResult: string;
+  spfEnvelopeDomain: string;
+  dkimEntries: InboundEmailDkimResult[];
+};
+
 export function parseSendgridDkimResults(
   rawDkim: string | null
 ): InboundEmailDkimResult[] {
@@ -51,20 +61,66 @@ function getEmailDomain(email: string): string {
     throw new Error(`Invalid email address: ${email}`);
   }
 
-  return domain;
+  return domain.toLowerCase();
 }
 
-export function isAuthenticatedInboundSender(
+/**
+ * Relaxed domain alignment per DMARC RFC 7489 §3.1.
+ * Two domains are aligned when they share the same organizational domain,
+ * i.e. one is a subdomain of the other or they are equal.
+ *
+ * Limitation: this is suffix-based, not PSL-aware — domains under public
+ * suffixes like co.uk could incorrectly align (e.g. a.co.uk / b.co.uk).
+ * A PSL-aware check should replace this if false positives arise.
+ */
+export function domainsAlign(a: string, b: string): boolean {
+  const la = a.toLowerCase();
+  const lb = b.toLowerCase();
+
+  if (la === lb) {
+    return true;
+  }
+
+  // One is a subdomain of the other: "mail.example.com" aligns with "example.com".
+  return la.endsWith(`.${lb}`) || lb.endsWith(`.${la}`);
+}
+
+/**
+ * DMARC-style inbound sender authentication against the header From: domain.
+ * Accepts if:
+ * - At least one DKIM signature passes for a domain aligned with the From: domain, OR
+ * - SPF passes and the envelope-from domain aligns with the From: domain.
+ */
+export function evaluateInboundAuth(
   email: Pick<InboundEmail, "auth" | "sender" | "envelope">
-): boolean {
-  const senderDomain = getEmailDomain(email.sender.email);
+): InboundAuthDecision {
+  const headerFromDomain = getEmailDomain(email.sender.email);
   const envelopeDomain = getEmailDomain(email.envelope.from);
 
-  return (
-    email.auth.SPF === "pass" &&
-    senderDomain === envelopeDomain &&
-    email.auth.dkim.some(
-      ({ domain, result }) => domain === envelopeDomain && result === "pass"
-    )
+  const base = {
+    headerFromDomain,
+    spfResult: email.auth.SPF,
+    spfEnvelopeDomain: envelopeDomain,
+    dkimEntries: email.auth.dkim,
+  };
+
+  // Path 1: aligned DKIM pass.
+  const hasAlignedPassingDkim = email.auth.dkim.some(
+    (entry) =>
+      entry.result === "pass" && domainsAlign(entry.domain, headerFromDomain)
   );
+
+  if (hasAlignedPassingDkim) {
+    return { ...base, authenticated: true, reason: "aligned_dkim" };
+  }
+
+  // Path 2: SPF pass with aligned envelope domain.
+  const spfPasses = email.auth.SPF === "pass";
+  const spfDomainAligns = domainsAlign(envelopeDomain, headerFromDomain);
+
+  if (spfPasses && spfDomainAligns) {
+    return { ...base, authenticated: true, reason: "aligned_spf" };
+  }
+
+  return { ...base, authenticated: false };
 }
