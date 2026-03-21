@@ -38,7 +38,7 @@ import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { toFileContentFragment } from "../conversation/content_fragment";
-import type { InboundEmailDkimResult } from "./sendgrid_dkim";
+import type { InboundEmailDkimResult } from "./inbound_auth";
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";

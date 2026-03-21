@@ -16,8 +16,10 @@ import {
   extractSingleEmailAddressFromHeader,
   parseHeaderValue,
 } from "@app/lib/api/assistant/email/header_parsing";
-import { isAuthenticatedInboundSender } from "@app/lib/api/assistant/email/inbound_auth";
-import { parseSendgridDkimResults } from "@app/lib/api/assistant/email/sendgrid_dkim";
+import {
+  isAuthenticatedInboundSender,
+  parseSendgridDkimResults,
+} from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
