@@ -16,6 +16,7 @@ import {
   extractSingleEmailAddressFromHeader,
   parseHeaderValue,
 } from "@app/lib/api/assistant/email/header_parsing";
+import { isAuthenticatedInboundSender } from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -232,11 +233,7 @@ async function handler(
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
 
-      // Check SPF is pass.
-      if (
-        email.auth.SPF !== "pass" ||
-        email.auth.dkim !== `{@${email.envelope.from.split("@")[1]} : pass}`
-      ) {
+      if (!isAuthenticatedInboundSender(email)) {
         await replyToError(email, {
           type: "unauthenticated_error",
           message:
