@@ -2,6 +2,7 @@
 
 import { cac } from "cac";
 import { cacheCommand } from "./commands/cache";
+import { cdCommand } from "./commands/cd";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
@@ -270,6 +271,12 @@ cli
 cli.command("url [name]", "Print front URL").action(async (name: string | undefined) => {
   await prepareAndRun(urlCommand(name));
 });
+
+cli
+  .command("cd [name]", "Print worktree path (use with: cd $(dust-hive cd <env>))")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(cdCommand(name));
+  });
 
 cli
   .command("setup", "Check prerequisites and guide initial setup (run this first!)")

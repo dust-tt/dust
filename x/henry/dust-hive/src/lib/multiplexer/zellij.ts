@@ -237,6 +237,7 @@ export class ZellijAdapter implements MultiplexerAdapter {
       // Single unified logs tab using dust-hive logs -i
       logsTabs = `    tab name="logs" {
         pane {
+            cwd "${kdlEscape(worktreePath)}"
             command "dust-hive"
             args "logs" "${kdlEscape(envName)}" "-i"
             start_suspended true
@@ -244,9 +245,9 @@ export class ZellijAdapter implements MultiplexerAdapter {
     }`;
     } else {
       // Individual service tabs (default)
-      logsTabs = ALL_SERVICES.map((service) => this.generateServiceTab(envName, service)).join(
-        "\n\n"
-      );
+      logsTabs = ALL_SERVICES.map((service) =>
+        this.generateServiceTab(envName, service, worktreePath)
+      ).join("\n\n");
     }
 
     // When compact mode is enabled, use bottom bar; otherwise use top bar
@@ -296,10 +297,11 @@ ${tabTemplate}
 `;
   }
 
-  private generateServiceTab(envName: string, service: ServiceName): string {
+  private generateServiceTab(envName: string, service: ServiceName, worktreePath: string): string {
     const tabName = TAB_NAMES[service];
     return `    tab name="${tabName}" {
         pane {
+            cwd "${kdlEscape(worktreePath)}"
             command "dust-hive"
             args "logs" "${kdlEscape(envName)}" "${kdlEscape(service)}" "-f"
             start_suspended true
