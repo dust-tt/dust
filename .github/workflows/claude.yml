@@ -40,6 +40,9 @@ jobs:
         with:
           node-version: 22.22.0
 
+      - name: Enable Corepack
+        run: corepack enable && corepack install
+
       # Setup Rust for core project
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

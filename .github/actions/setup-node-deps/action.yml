@@ -25,6 +25,10 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable && corepack install
+
     - name: Cache node_modules
       id: cache-node-modules
       uses: actions/cache@v3

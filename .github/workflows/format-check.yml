@@ -34,6 +34,8 @@ jobs:
           node-version: 22.22.0
           cache: "npm"
           cache-dependency-path: ./package-lock.json
+      - name: Enable Corepack
+        run: corepack enable && corepack install
       - name: Install Biome
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install Grit CLI
