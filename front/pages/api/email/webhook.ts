@@ -234,11 +234,20 @@ async function handler(
       res.status(200).json({ success: true });
 
       if (!isAuthenticatedInboundSender(email)) {
-        await replyToError(email, {
-          type: "unauthenticated_error",
-          message:
-            "Failed to authenticate your email (SPF/dkim validation failed).",
-        });
+        logger.warn(
+          {
+            senderEmail: email.sender.email,
+            envelopeFrom: email.envelope.from,
+            SPF: email.auth.SPF,
+            dkim: email.auth.dkim,
+            targetEmails: [
+              ...(email.envelope.to ?? []),
+              ...(email.envelope.cc ?? []),
+              ...(email.envelope.bcc ?? []),
+            ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`)),
+          },
+          "[email] Dropping unauthenticated inbound mail (SPF/DKIM failure)"
+        );
         return;
       }
 
