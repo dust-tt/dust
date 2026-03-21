@@ -108,9 +108,12 @@ describe("buildSuccessReplyRecipients", () => {
         inReplyTo: null,
         references: null,
       },
-      envelope: {
-        from: "sender@dust.tt",
+      sender: {
+        email: "sender@dust.tt",
         full: "Sender <sender@dust.tt>",
+      },
+      envelope: {
+        from: "bounce@mailer.dust.tt",
         to: ["teammate@dust.tt"],
         cc: manyCC,
         bcc: [],

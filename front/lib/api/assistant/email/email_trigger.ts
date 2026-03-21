@@ -335,7 +335,8 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
     })
   );
 
-  // Enforce recipient cap: sender (envelope.from) is always kept, extras are dropped from cc first.
+  // Enforce recipient cap: the authenticated sender is always kept, extras are dropped from cc
+  // first.
   const total = to.length + cc.length;
   if (total <= MAX_REPLY_RECIPIENTS) {
     return { to, cc };
