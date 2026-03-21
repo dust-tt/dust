@@ -1,8 +1,37 @@
+import type { InboundEmail } from "@app/lib/api/assistant/email/email_trigger";
 import {
-  isAuthenticatedInboundSender,
+  domainsAlign,
+  evaluateInboundAuth,
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
 import { describe, expect, it } from "vitest";
+
+function makeEmail(
+  overrides: Partial<{
+    senderEmail: string;
+    envelopeFrom: string;
+    SPF: string;
+    dkim: { domain: string; result: string }[];
+  }> = {}
+): Pick<InboundEmail, "auth" | "sender" | "envelope"> {
+  return {
+    auth: {
+      SPF: overrides.SPF ?? "pass",
+      dkim: overrides.dkim ?? [{ domain: "company.com", result: "pass" }],
+      dkimRaw: "",
+    },
+    sender: {
+      email: overrides.senderEmail ?? "alice@company.com",
+      full: `Alice <${overrides.senderEmail ?? "alice@company.com"}>`,
+    },
+    envelope: {
+      from: overrides.envelopeFrom ?? "bounce@company.com",
+      to: [],
+      cc: [],
+      bcc: [],
+    },
+  };
+}
 
 describe("parseSendgridDkimResults", () => {
   it("parses a single passing signature", () => {
@@ -44,75 +73,161 @@ describe("parseSendgridDkimResults", () => {
   });
 });
 
-describe("isAuthenticatedInboundSender", () => {
-  it("accepts aligned sender and envelope domains when SPF and DKIM pass", () => {
-    expect(
-      isAuthenticatedInboundSender({
-        auth: {
-          SPF: "pass",
-          dkim: [{ domain: "company.com", result: "pass" }],
-          dkimRaw: "{@company.com : pass}",
-        },
-        sender: {
-          email: "alice@company.com",
-          full: "Alice <alice@company.com>",
-        },
-        envelope: {
-          from: "bounce@company.com",
-          to: [],
-          cc: [],
-          bcc: [],
-        },
-      })
-    ).toBe(true);
+describe("domainsAlign", () => {
+  it("returns true for identical domains", () => {
+    expect(domainsAlign("company.com", "company.com")).toBe(true);
   });
 
-  it("rejects a sender whose domain does not align with the authenticated envelope", () => {
-    expect(
-      isAuthenticatedInboundSender({
-        auth: {
-          SPF: "pass",
-          dkim: [{ domain: "company.com", result: "pass" }],
-          dkimRaw: "{@company.com : pass}",
-        },
-        sender: {
-          email: "alice@other-company.com",
-          full: "Alice <alice@other-company.com>",
-        },
-        envelope: {
-          from: "bounce@company.com",
-          to: [],
-          cc: [],
-          bcc: [],
-        },
+  it("returns true when one is a subdomain of the other", () => {
+    expect(domainsAlign("mail.company.com", "company.com")).toBe(true);
+    expect(domainsAlign("company.com", "mail.company.com")).toBe(true);
+  });
+
+  it("returns false for unrelated domains", () => {
+    expect(domainsAlign("company.com", "other.com")).toBe(false);
+  });
+
+  it("is case-insensitive", () => {
+    expect(domainsAlign("Company.COM", "company.com")).toBe(true);
+  });
+
+  it("does not align on partial suffix matches", () => {
+    // "evilcompany.com" should not align with "company.com".
+    expect(domainsAlign("evilcompany.com", "company.com")).toBe(false);
+  });
+});
+
+describe("evaluateInboundAuth", () => {
+  it("accepts when aligned DKIM passes, even if SPF fails", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        dkim: [{ domain: "company.com", result: "pass" }],
+        SPF: "fail",
       })
-    ).toBe(false);
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_dkim");
+  });
+
+  it("accepts when SPF passes with aligned envelope domain and no passing DKIM", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "bounce@company.com",
+        SPF: "pass",
+        dkim: [{ domain: "company.com", result: "fail" }],
+      })
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_spf");
+  });
+
+  it("rejects when DKIM passes for a non-aligned domain", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        dkim: [{ domain: "other.com", result: "pass" }],
+        SPF: "fail",
+        envelopeFrom: "bounce@other.com",
+      })
+    );
+
+    expect(decision.authenticated).toBe(false);
+    expect(decision.reason).toBeUndefined();
+  });
+
+  it("rejects when SPF passes for a non-aligned envelope domain", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "bounce@other.com",
+        SPF: "pass",
+        dkim: [],
+      })
+    );
+
+    expect(decision.authenticated).toBe(false);
+  });
+
+  it("accepts forwarded mail where SPF fails but aligned DKIM survives", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "forwarder@relay.net",
+        SPF: "fail",
+        dkim: [
+          { domain: "relay.net", result: "pass" },
+          { domain: "company.com", result: "pass" },
+        ],
+      })
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_dkim");
+  });
+
+  it("accepts when DKIM passes on a subdomain of the From: domain (relaxed alignment)", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        dkim: [{ domain: "mail.company.com", result: "pass" }],
+        SPF: "fail",
+      })
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_dkim");
+  });
+
+  it("accepts when envelope-from is a subdomain of the From: domain (relaxed SPF alignment)", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "bounce@mail.company.com",
+        SPF: "pass",
+        dkim: [],
+      })
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_spf");
   });
 
   it("accepts an aligned passing DKIM signature when other signatures fail", () => {
-    expect(
-      isAuthenticatedInboundSender({
-        auth: {
-          SPF: "pass",
-          dkim: [
-            { domain: "sendgrid.com", result: "pass" },
-            { domain: "company.com", result: "fail" },
-            { domain: "company.com", result: "pass" },
-          ],
-          dkimRaw:
-            "{@sendgrid.com : pass, @company.com : fail, @company.com : pass}",
-        },
-        sender: {
-          email: "alice@company.com",
-          full: "Alice <alice@company.com>",
-        },
-        envelope: {
-          from: "bounce@company.com",
-          to: [],
-          cc: [],
-          bcc: [],
-        },
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "bounce@company.com",
+        SPF: "pass",
+        dkim: [
+          { domain: "sendgrid.com", result: "pass" },
+          { domain: "company.com", result: "fail" },
+          { domain: "company.com", result: "pass" },
+        ],
       })
-    ).toBe(true);
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_dkim");
+  });
+
+  it("populates the decision with raw signals for debugging", () => {
+    const dkim = [{ domain: "company.com", result: "pass" }];
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "bounce@company.com",
+        SPF: "pass",
+        dkim,
+      })
+    );
+
+    expect(decision.headerFromDomain).toBe("company.com");
+    expect(decision.spfResult).toBe("pass");
+    expect(decision.spfEnvelopeDomain).toBe("company.com");
+    expect(decision.dkimEntries).toEqual(dkim);
   });
 });

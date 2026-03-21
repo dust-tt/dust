@@ -17,7 +17,7 @@ import {
   parseHeaderValue,
 } from "@app/lib/api/assistant/email/header_parsing";
 import {
-  isAuthenticatedInboundSender,
+  evaluateInboundAuth,
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
@@ -242,13 +242,19 @@ async function handler(
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
 
-      if (!isAuthenticatedInboundSender(email)) {
+      const authDecision = evaluateInboundAuth(email);
+
+      if (!authDecision.authenticated) {
+        // Do not reply to unauthenticated mail — the sender may be spoofed,
+        // and replying would cause backscatter.
         logger.warn(
           {
+            reason: authDecision.reason,
+            headerFromDomain: authDecision.headerFromDomain,
+            spfResult: authDecision.spfResult,
+            spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
+            dkimEntries: authDecision.dkimEntries,
             senderEmail: email.sender.email,
-            envelopeFrom: email.envelope.from,
-            SPF: email.auth.SPF,
-            dkim: email.auth.dkim,
             targetEmails: [
               ...(email.envelope.to ?? []),
               ...(email.envelope.cc ?? []),
@@ -259,6 +265,15 @@ async function handler(
         );
         return;
       }
+
+      logger.info(
+        {
+          reason: authDecision.reason,
+          headerFromDomain: authDecision.headerFromDomain,
+          senderEmail: email.sender.email,
+        },
+        "[email] Inbound sender authenticated"
+      );
 
       const userRes = await userAndWorkspaceFromEmail({
         email: email.sender.email,
