@@ -18,15 +18,20 @@ export function extractEmailAddressesFromHeader(
     }
   };
 
+  // First pass: extract addresses inside angle brackets (e.g., "Name <email@domain.com>").
+  // This correctly handles display names with special characters (apostrophes, quotes, etc.)
+  // and ensures case-insensitive matching by lowercasing here.
   const anglePattern = /<([^>]+)>/g;
   let match;
   while ((match = anglePattern.exec(headerValue)) !== null) {
     const content = match[1].trim();
+    // Basic validation: must contain exactly one "@" and no spaces.
     if (content.includes("@") && !content.includes(" ")) {
       addEmail(content);
     }
   }
 
+  // Second pass: extract bare email addresses from parts without angle brackets.
   const remaining = headerValue.replace(/<[^>]*>/g, " ");
   const barePattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   while ((match = barePattern.exec(remaining)) !== null) {
@@ -56,6 +61,8 @@ export function parseHeaderValue(
   headerName: string
 ): string | null {
   const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Match the header name at line start, capture the first line value then any
+  // RFC 5322 folded continuation lines (lines starting with whitespace).
   const headerPattern = new RegExp(
     `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
     "im"
@@ -65,6 +72,7 @@ export function parseHeaderValue(
     return null;
   }
 
+  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
   const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
 
   return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
