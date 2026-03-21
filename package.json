@@ -46,6 +46,7 @@
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@types/node": "^22.19.11",
     "dd-trace": "^5.87.0",
-    "esbuild": "^0.27.3"
+    "esbuild": "^0.27.3",
+    "undici": "^7.24.0"
   }
 }
