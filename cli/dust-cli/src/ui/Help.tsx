@@ -33,7 +33,7 @@ const Help: FC = () => {
       <Box marginLeft={2}>
         <Text>
           <Text bold>skill:init</Text> Install the dust skill for coding CLIs
-          (Claude Code, Codex)
+          (Claude Code, Codex, Obsidian)
         </Text>
       </Box>
       <Box marginLeft={2}>

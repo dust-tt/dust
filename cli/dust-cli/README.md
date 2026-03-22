@@ -40,7 +40,7 @@ When no command is provided, the `chat` command will be used by default.
   - `dust status`
 - **`logout`**: Log out from your Dust account.
   - `dust logout`
-- **`skill:init`**: Install the dust skill for coding CLIs (Claude Code, Codex).
+- **`skill:init`**: Install the dust skill for coding CLIs (Claude Code, Codex, Obsidian CLI).
   - `dust skill:init`
 - **`chat`**: Chat with a Dust agent (default command).
   - `dust chat` or simply `dust`
