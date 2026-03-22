@@ -84,11 +84,6 @@ const CLI_TARGETS = [
     label: "Copilot (GitHub)",
     dir: path.join(os.homedir(), ".copilot", "skills", SKILL_NAME),
   },
-  {
-    id: "obsidian",
-    label: "Obsidian CLI",
-    dir: path.join(os.homedir(), ".obsidian", "skills", SKILL_NAME),
-  },
 ];
 
 const ITEMS = CLI_TARGETS.map((t) => ({
