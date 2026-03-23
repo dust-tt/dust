@@ -160,7 +160,12 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
     }
   ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
-      const { mcp_server_id, ...restConfig } = extraConfig;
+      const {
+        mcp_server_id,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we always remove client_secret from persisted extra config.
+        client_secret,
+        ...restConfig
+      } = extraConfig;
 
       if (mcp_server_id) {
         const oauthConnectionIdRes =
