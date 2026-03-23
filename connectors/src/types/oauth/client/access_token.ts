@@ -39,6 +39,8 @@ export async function getOAuthConnectionAccessToken({
     OAuthAPIError
   >
 > {
+  clearExpiredEntries();
+
   const cached = CACHE.get(connectionId);
 
   if (cached && cached.local_expiry > Date.now()) {
@@ -60,4 +62,13 @@ export async function getOAuthConnectionAccessToken({
   });
 
   return res;
+}
+
+function clearExpiredEntries() {
+  const nowMs = Date.now();
+  for (const [key, entry] of CACHE.entries()) {
+    if (entry.local_expiry < nowMs) {
+      CACHE.delete(key);
+    }
+  }
 }
