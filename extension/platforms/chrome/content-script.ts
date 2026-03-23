@@ -13,11 +13,73 @@ const SIDEBAR_MARGIN = 8;
 const STORAGE_KEY_VISIBLE = "dustSidebarVisible";
 const STORAGE_KEY_WIDTH = "dustSidebarWidth";
 
-// Slide animation: sidebar translates off-screen to the right when hidden.
-const TRANSITION_DURATION_MS = 300; // ms
-const SIDEBAR_TRANSITION = `transform ${TRANSITION_DURATION_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
 // Must exceed SIDEBAR_MARGIN so the rounded edge is fully out of view.
 const SIDEBAR_SLIDE_OUT = `translateX(calc(100% + ${SIDEBAR_MARGIN * 2}px))`;
+
+// Dark mode detection and color scheme.
+const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+interface ColorScheme {
+  sidebarBg: string;
+  border: string;
+  shadow: string;
+  backdropBg: string;
+  closeBg: string;
+  closeBgHover: string;
+  closeColor: string;
+  closeColorHover: string;
+}
+
+function getColorScheme(): ColorScheme {
+  if (darkModeQuery.matches) {
+    return {
+      sidebarBg: "#1f2937",
+      border: "#374151",
+      shadow: "rgba(0, 0, 0, 0.4)",
+      backdropBg: "#1f2937",
+      closeBg: "rgba(255, 255, 255, 0.08)",
+      closeBgHover: "rgba(255, 255, 255, 0.16)",
+      closeColor: "#9ca3af",
+      closeColorHover: "#f3f4f6",
+    };
+  }
+  return {
+    sidebarBg: "white",
+    border: "#e5e7eb",
+    shadow: "rgba(0, 0, 0, 0.15)",
+    backdropBg: "white",
+    closeBg: "rgba(0, 0, 0, 0.06)",
+    closeBgHover: "rgba(0, 0, 0, 0.12)",
+    closeColor: "#6b7280",
+    closeColorHover: "#111827",
+  };
+}
+
+function applyColorScheme(): void {
+  const colors = getColorScheme();
+
+  if (sidebarElement) {
+    sidebarElement.style.background = colors.sidebarBg;
+    sidebarElement.style.border = `1px solid ${colors.border}`;
+    sidebarElement.style.boxShadow = `0 4px 24px ${colors.shadow}`;
+  }
+
+  if (backdropElement) {
+    backdropElement.style.background = colors.backdropBg;
+  }
+
+  const header = sidebarElement?.querySelector<HTMLDivElement>(`#${HEADER_ID}`);
+  if (header) {
+    header.style.borderBottom = `1px solid ${colors.border}`;
+  }
+
+  if (closeButton) {
+    closeButton.style.background = colors.closeBg;
+    closeButton.style.color = colors.closeColor;
+  }
+}
+
+darkModeQuery.addEventListener("change", applyColorScheme);
 
 // Track sidebar state
 let sidebarVisible = false;
@@ -28,8 +90,6 @@ let iframeElement: HTMLIFrameElement | null = null;
 let resizeHandle: HTMLDivElement | null = null;
 let closeButton: HTMLButtonElement | null = null;
 let isResizing = false;
-// Deferred cleanup when hiding: resets backdrop + body margin after slide-out.
-let hideTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 function updateSidebarWidth(width: number): void {
   const clampedWidth = Math.max(
@@ -96,6 +156,8 @@ function createSidebar(): void {
     return;
   }
 
+  const colors = getColorScheme();
+
   // Create sidebar container
   sidebarElement = document.createElement("div");
   sidebarElement.id = SIDEBAR_ID;
@@ -106,15 +168,14 @@ function createSidebar(): void {
     width: ${sidebarWidth}px;
     height: calc(100vh - ${SIDEBAR_MARGIN * 2}px);
     z-index: 2147483647;
-    background: white;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e5e7eb;
+    background: ${colors.sidebarBg};
+    box-shadow: 0 4px 24px ${colors.shadow};
+    border: 1px solid ${colors.border};
     border-radius: 12px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     transform: ${SIDEBAR_SLIDE_OUT};
-    transition: ${SIDEBAR_TRANSITION};
     pointer-events: none;
   `;
 
@@ -159,7 +220,7 @@ function createSidebar(): void {
     align-items: center;
     justify-content: flex-end;
     padding: 0 8px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid ${colors.border};
   `;
 
   closeButton = document.createElement("button");
@@ -170,8 +231,8 @@ function createSidebar(): void {
     height: 24px;
     border: none;
     border-radius: 4px;
-    background: rgba(0, 0, 0, 0.06);
-    color: #6b7280;
+    background: ${colors.closeBg};
+    color: ${colors.closeColor};
     font-size: 12px;
     line-height: 1;
     cursor: pointer;
@@ -183,14 +244,16 @@ function createSidebar(): void {
   `;
   closeButton.addEventListener("mouseenter", () => {
     if (closeButton) {
-      closeButton.style.background = "rgba(0, 0, 0, 0.12)";
-      closeButton.style.color = "#111827";
+      const c = getColorScheme();
+      closeButton.style.background = c.closeBgHover;
+      closeButton.style.color = c.closeColorHover;
     }
   });
   closeButton.addEventListener("mouseleave", () => {
     if (closeButton) {
-      closeButton.style.background = "rgba(0, 0, 0, 0.06)";
-      closeButton.style.color = "#6b7280";
+      const c = getColorScheme();
+      closeButton.style.background = c.closeBg;
+      closeButton.style.color = c.closeColor;
     }
   });
   closeButton.addEventListener("click", hideSidebar);
@@ -212,7 +275,7 @@ function createSidebar(): void {
     min-height: 0;
   `;
 
-  // Create white backdrop covering the full reserved strip
+  // Create backdrop covering the full reserved strip
   backdropElement = document.createElement("div");
   backdropElement.style.cssText = `
     position: fixed;
@@ -221,7 +284,7 @@ function createSidebar(): void {
     width: ${sidebarWidth + SIDEBAR_MARGIN * 2}px;
     height: 100vh;
     z-index: 2147483646;
-    background: white;
+    background: ${colors.backdropBg};
     display: none;
   `;
 
@@ -242,20 +305,13 @@ function showSidebar(): void {
   }
 
   if (sidebarElement) {
-    // Cancel any deferred cleanup from a previous hide.
-    if (hideTimeoutId !== undefined) {
-      clearTimeout(hideTimeoutId);
-      hideTimeoutId = undefined;
-    }
-
     if (backdropElement) {
       backdropElement.style.display = "block";
     }
     document.body.style.marginRight = `${sidebarWidth + SIDEBAR_MARGIN * 2}px`;
     sidebarElement.style.pointerEvents = "all";
-    // Force a reflow so the off-screen transform is committed before we
-    // change it, ensuring the CSS transition fires.
-    void sidebarElement.offsetWidth;
+    // Show immediately — no slide-in animation.
+    sidebarElement.style.transition = "none";
     sidebarElement.style.transform = "translateX(0)";
     sidebarVisible = true;
 
@@ -277,19 +333,15 @@ function showSidebar(): void {
 
 function hideSidebar(): void {
   if (sidebarElement) {
+    sidebarElement.style.transition = "none";
     sidebarElement.style.transform = SIDEBAR_SLIDE_OUT;
     sidebarElement.style.pointerEvents = "none";
     sidebarVisible = false;
 
-    // Defer the layout cleanup until after the slide-out animation so the
-    // page content doesn't snap back before the panel has fully left.
-    hideTimeoutId = setTimeout(() => {
-      hideTimeoutId = undefined;
-      if (backdropElement) {
-        backdropElement.style.display = "none";
-      }
-      document.body.style.marginRight = "0";
-    }, TRANSITION_DURATION_MS);
+    if (backdropElement) {
+      backdropElement.style.display = "none";
+    }
+    document.body.style.marginRight = "0";
 
     // Save state
     chrome.storage.local
@@ -309,11 +361,6 @@ function toggleSidebar(): void {
 // Unlike hideSidebar (animated slide-out), this immediately destroys the DOM
 // elements and removes global event listeners. Used on page unload.
 function removeSidebar(): void {
-  if (hideTimeoutId !== undefined) {
-    clearTimeout(hideTimeoutId);
-    hideTimeoutId = undefined;
-  }
-
   if (sidebarElement) {
     sidebarElement.remove();
     sidebarElement = null;
