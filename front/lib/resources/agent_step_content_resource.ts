@@ -387,18 +387,18 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
   }
 
-  static async createNewVersion({
-    agentMessageId,
-    workspaceId,
-    step,
-    index,
-    type,
-    value,
-  }: Omit<
-    CreationAttributes<AgentStepContentModel>,
-    "version"
-  >): Promise<AgentStepContentResource> {
-    return withTransaction(async (transaction: Transaction) => {
+  static async createNewVersion(
+    {
+      agentMessageId,
+      workspaceId,
+      step,
+      index,
+      type,
+      value,
+    }: Omit<CreationAttributes<AgentStepContentModel>, "version">,
+    transaction?: Transaction
+  ): Promise<AgentStepContentResource> {
+    return withTransaction(async (t: Transaction) => {
       const existingContent = await this.model.findAll({
         where: {
           agentMessageId,
@@ -409,7 +409,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         order: [["version", "DESC"]],
         attributes: ["version"],
         limit: 1,
-        transaction,
+        transaction: t,
       });
 
       const currentMaxVersion =
@@ -425,9 +425,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           type,
           value,
         },
-        transaction
+        t
       );
-    });
+    }, transaction);
   }
 
   get sId(): string {

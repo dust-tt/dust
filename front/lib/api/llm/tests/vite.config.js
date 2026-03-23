@@ -38,7 +38,11 @@ export default defineConfig(() => {
 
   // Merge with the base config and explicitly override globalSetup
   const merged = mergeConfig(baseConfig, testConfig);
-  merged.test.globalSetup = []; // Force override the globalSetup
+  // By default, skip DB setup (globalSetup/setupFiles). Set RUN_LLM_TEST_WITH_DB=true
+  // to keep them (needed for tests that store LLM results in the database).
+  if (process.env.RUN_LLM_TEST_WITH_DB !== "true") {
+    merged.test.globalSetup = [];
+  }
   merged.test.environment = "node"; // LLM tests need Node.js env for stream uploads
   return merged;
 });
