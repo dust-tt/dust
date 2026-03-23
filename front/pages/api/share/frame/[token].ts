@@ -119,8 +119,14 @@ async function handler(
 
   const shareUrl = `${config.getAppUrl()}/share/frame/${token}`;
 
-  const requiresEmailVerification =
+  // Only show the email verification form if the scope supports email invites AND there are active
+  // grants.
+  const isEmailScope =
     shareScope === "emails_only" || shareScope === "workspace_and_emails";
+  const hasActiveGrants = isEmailScope
+    ? (await file.listActiveSharingGrants()).length > 0
+    : false;
+  const requiresEmailVerification = isEmailScope && hasActiveGrants;
 
   res.status(200).json({
     requiresEmailVerification,

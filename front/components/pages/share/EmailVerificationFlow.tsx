@@ -92,7 +92,7 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
   return (
     <VerificationLayout
       title="Verify your identity"
-      description="We’ll send a one-time code to your email to access the page shared with you."
+      description="If your email has access to this frame, we'll send you a one-time code."
     >
       <form
         className="flex w-full max-w-xl flex-col gap-4"
@@ -178,8 +178,8 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
       title="Enter verification code"
       description={
         <>
-          A verification code has been sent to{" "}
-          <span className="font-medium">{email}</span>
+          If <span className="font-medium">{email}</span> has access to this
+          frame, a code is on its way.
         </>
       }
     >
