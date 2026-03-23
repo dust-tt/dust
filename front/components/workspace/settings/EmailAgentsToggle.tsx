@@ -4,6 +4,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ActionMailAiIcon,
   BookOpenIcon,
+  Button,
   Chip,
   ContextItem,
   Dialog,
@@ -99,16 +100,20 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
               disabled: isChanging,
               variant: "outline",
             }}
-            rightButtonProps={{
-              label: confirmButtonLabel,
-              disabled: isChanging,
-              variant: nextIsEnabled ? "primary" : "warning",
-              onClick: async () => {
-                await doToggleEmailAgents();
-                setIsConfirmOpen(false);
-              },
-            }}
-          />
+          >
+            <Button
+              label={confirmButtonLabel}
+              disabled={isChanging}
+              variant={nextIsEnabled ? "primary" : "warning"}
+              onClick={async () => {
+                const isSuccess = await doToggleEmailAgents();
+
+                if (isSuccess) {
+                  setIsConfirmOpen(false);
+                }
+              }}
+            />
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
