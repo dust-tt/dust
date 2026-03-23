@@ -1,11 +1,12 @@
 import type { LoggerInterface, Result } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
-
+import throttle from "lodash/throttle";
 import type { OAuthConnectionType, OAuthProvider } from "../../oauth/lib";
 import type { OAuthAPIError } from "../../oauth/oauth_api";
 import { OAuthAPI } from "../../oauth/oauth_api";
 
 const OAUTH_ACCESS_TOKEN_CACHE_TTL = 1000 * 60 * 5;
+const CACHE_CLEAR_INTERVAL = 1000 * 60;
 
 const CACHE = new Map<
   string,
@@ -39,7 +40,7 @@ export async function getOAuthConnectionAccessToken({
     OAuthAPIError
   >
 > {
-  clearExpiredEntries();
+  throttle(clearExpiredEntries, CACHE_CLEAR_INTERVAL);
 
   const cached = CACHE.get(connectionId);
 
