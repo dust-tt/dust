@@ -69,7 +69,7 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
         .default(false)
         .describe("If true, all updates must succeed or all fail"),
     },
-    stake: "high",
+    stake: "medium",
     displayLabels: {
       running: "Updating Salesforce records",
       done: "Update Salesforce records",
