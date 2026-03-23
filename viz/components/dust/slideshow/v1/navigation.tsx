@@ -36,7 +36,9 @@ export function SlideshowNavigation({
     <div
       className={cn(
         "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300",
-        isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        isVisible ? "opacity-100" : "opacity-0 pointer-events-none",
+        // Always visible on touch devices (no hover available)
+        "[@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto"
       )}
     >
       <div
