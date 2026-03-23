@@ -46,8 +46,7 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const spaceIds = req.query.spaceIds;
-      const availabilities = req.query.availabilities;
+      const { spaceIds, availabilities } = req.query;
 
       if (!isString(spaceIds) || !isString(availabilities)) {
         return apiError(req, res, {
