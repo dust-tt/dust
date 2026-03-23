@@ -4,9 +4,15 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
+import { PlanModel } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { FreePlanUpgradeFormSchema } from "@app/types/plan";
@@ -91,6 +97,47 @@ async function handler(
 
       // Restore workspace functionality after subscription upgrade
       await restoreWorkspaceAfterSubscription(auth);
+
+      // If the new plan is Metronome-billed, ensure customer + contract exist.
+      const newPlan = await PlanModel.findOne({ where: { code: planCode } });
+      if (newPlan) {
+        const renderedPlan = renderPlanFromModel({ plan: newPlan });
+        if (renderedPlan.metronomePackageAlias) {
+          // Try to get Stripe customer ID from existing subscription for linking.
+          const subscription = auth.subscriptionResource();
+          let stripeCustomerId: string | null = null;
+          if (subscription?.stripeSubscriptionId) {
+            const stripeSubscription = await getStripeSubscription(
+              subscription.stripeSubscriptionId
+            );
+            if (stripeSubscription) {
+              stripeCustomerId = getCustomerId(stripeSubscription);
+            }
+          }
+
+          const result = await provisionMetronomeCustomerAndContract({
+            workspaceSId: owner.sId,
+            workspaceName: owner.name,
+            stripeCustomerId,
+            packageAlias: renderedPlan.metronomePackageAlias,
+          });
+
+          if (result.isOk()) {
+            await WorkspaceResource.updateMetronomeCustomerId(
+              owner.sId,
+              result.value.metronomeCustomerId
+            );
+          } else {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                error: result.error.message,
+              },
+              "[Metronome] Failed to provision during Poke upgrade"
+            );
+          }
+        }
+      }
 
       await pluginRun.recordResult({
         display: "text",
