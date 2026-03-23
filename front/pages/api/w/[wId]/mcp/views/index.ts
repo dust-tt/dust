@@ -8,8 +8,6 @@ import {
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -84,22 +82,13 @@ async function handler(
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
       }
 
-      const serverViews = await concurrentExecutor(
-        query.spaceIds,
-        async (spaceId) => {
-          const space = await SpaceResource.fetchById(auth, spaceId);
-          if (!space) {
-            return null;
-          }
-          const views = await MCPServerViewResource.listBySpace(auth, space);
-          return views.map((v) => v.toJSON());
-        },
-        { concurrency: 10 }
+      const views = await MCPServerViewResource.listBySpaceIds(
+        auth,
+        query.spaceIds
       );
 
-      const flattenedServerViews = serverViews
-        .flat()
-        .filter((v): v is MCPServerViewType => v !== null)
+      const flattenedServerViews = views
+        .map((v) => v.toJSON())
         .filter(
           (v) =>
             isAllowedAvailability(v.server.availability) &&
