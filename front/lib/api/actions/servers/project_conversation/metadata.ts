@@ -39,6 +39,7 @@ const PROJECT_CONVERSATION_INSTRUCTIONS =
   "Requires write permissions on the project space.";
 
 export const PROJECT_CONVERSATION_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "project_conversation",
     version: "1.0.0",
@@ -47,9 +48,6 @@ export const PROJECT_CONVERSATION_SERVER = {
     icon: "ActionMegaphoneIcon",
     authorization: null,
     documentationUrl: null,
-    // These instructions do not belong on the server, they should either be bundled on the
-    // instructions since always added programmatically or bundled in a skill.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PROJECT_CONVERSATION_INSTRUCTIONS,
   },
   tools: Object.values(PROJECT_CONVERSATION_TOOLS_METADATA).map((t) => ({

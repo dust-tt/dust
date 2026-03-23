@@ -93,6 +93,7 @@ function buildSystemBlocks(
 
 export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private client: Anthropic;
+  private omittedThinking: boolean;
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
@@ -101,6 +102,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     super(auth, ANTHROPIC_PROVIDER_ID, params);
     const { ANTHROPIC_API_KEY } = llmParameters.credentials;
     assert(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY credential is required");
+    this.omittedThinking = params.omittedThinking ?? false;
 
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
@@ -113,9 +115,13 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     prompt,
     specifications,
     forceToolCall,
+    omittedThinking = this.omittedThinking,
   }: LLMStreamParameters): MessageCreateParamsNonStreaming {
     const messages = conversation.messages.map((msg, index, array) =>
-      toMessage(msg, { isLast: index === array.length - 1 })
+      toMessage(msg, {
+        isLast: index === array.length - 1,
+        omittedThinking: this.omittedThinking,
+      })
     );
 
     // Build thinking config, use custom type if specified.
@@ -123,7 +129,8 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       this.modelConfig.customThinkingType === "auto"
         ? toAutoThinkingConfig(
             this.reasoningEffort,
-            this.modelConfig.useNativeLightReasoning
+            this.modelConfig.useNativeLightReasoning,
+            this.omittedThinking
           )
         : toThinkingConfig(
             this.reasoningEffort,
@@ -199,7 +206,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     }
   }
 
-  override async sendBatchProcessing(
+  protected override async internalSendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     const requests = Array.from(conversations.entries()).map(
@@ -218,7 +225,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     return batch.processing_status === "ended" ? "ready" : "computing";
   }
 
-  override async getBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const results = await this.client.messages.batches.results(batchId);
     const batchResult: BatchResult = new Map();
 

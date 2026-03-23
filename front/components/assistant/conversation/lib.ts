@@ -15,12 +15,14 @@ export function createPlaceholderUserMessage({
   mentions,
   user,
   rank,
+  branchId,
   contentFragments,
 }: {
   input: string;
   mentions: RichMention[];
   user: UserType;
   rank: number;
+  branchId: string | null;
   contentFragments?: ContentFragmentsType;
 }): UserMessageType & { contentFragments: ContentFragmentType[] } {
   const createdAt = new Date().getTime();
@@ -41,7 +43,8 @@ export function createPlaceholderUserMessage({
     type: "user_message",
     sId: `placeholder-user-message-${createdAt.toString()}`,
     version: 0,
-    rank: rank,
+    rank,
+    branchId,
     context: {
       email,
       fullName,
@@ -69,6 +72,7 @@ export function createPlaceholderUserMessage({
             visibility: "visible" as const,
             version: 0,
             rank,
+            branchId,
             sourceUrl: null,
             contentType: cf.contentType,
             context: {
@@ -113,6 +117,7 @@ export function createPlaceholderUserMessage({
             visibility: "visible" as const,
             version: 0,
             rank,
+            branchId,
             sourceUrl: null,
 
             context: {
@@ -134,15 +139,18 @@ export function createPlaceholderAgentMessage({
   userMessage,
   mention,
   rank,
+  branchId,
 }: {
   userMessage: UserMessageType;
   mention: RichMention & { pictureUrl: string };
   rank: number;
+  branchId: string | null;
 }): MessageTemporaryState {
   const createdAt = new Date().getTime();
   return {
     sId: `placeholder-agent-message-${createdAt.toString()}`,
-    rank: rank,
+    rank,
+    branchId,
     type: "agent_message",
     version: 0,
     created: createdAt,
@@ -170,6 +178,7 @@ export function createPlaceholderAgentMessage({
 
     streaming: {
       agentState: "placeholder",
+      inlineActivitySteps: [],
       isRetrying: false,
       lastUpdated: new Date(),
       actionProgress: new Map(),

@@ -8,8 +8,6 @@ import {
   useAgentMessageTools,
   useConversationMessage,
 } from "@app/hooks/conversations";
-import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -21,14 +19,16 @@ import {
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationWithoutContentType,
   ParsedContentItem,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, Spinner } from "@dust-tt/sparkle";
+
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AgentActionsPanelProps {
   conversation: ConversationWithoutContentType;
@@ -52,7 +52,11 @@ function AgentActionsPanelContent({
   closePanel,
   mutateMessage,
 }: AgentActionsPanelContentProps) {
+  const { virtuosoMsg } = useConversationSidePanelContext();
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
+  const [successActionIds, setSuccessActionIds] = useState<string[]>([]);
+  const [lastMessageStreamStatus, setLastMessageStreamStatus] =
+    useState<AgentMessageStatus | null>(null);
 
   const { skills, mutateSkills } = useAgentMessageSkills({
     conversation,
@@ -66,42 +70,63 @@ function AgentActionsPanelContent({
     agentConfigurationId: fullAgentMessage.configuration.sId,
   });
 
-  const { messageStreamState, shouldStream, isFreshMountWithContent } =
-    useAgentMessageStreamLegacy({
-      message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
-      conversationId: conversation?.sId ?? null,
-      owner,
-      mutateMessage,
-      onEventCallback: useCallback(
-        (eventStr: string) => {
-          const eventPayload = JSON.parse(eventStr);
+  // The message from Virtuoso doesn't contain the contents array and only actions if it's has been streamed.
+  // So if it's not in a "created" status, we focus on the fullAgentMessage from the backend call.
+  const rawMessageStreamState =
+    virtuosoMsg && virtuosoMsg.sId === messageId ? virtuosoMsg : null;
 
-          if (currentStreamingStep !== eventPayload.data.step + 1) {
-            setCurrentStreamingStep(eventPayload.data.step + 1);
-          }
-        },
-        [currentStreamingStep]
-      ),
-      streamId: `actions-panel-${messageId}`,
-      useFullChainOfThought: true,
-    });
+  // Make it null to ignore it in the rendering and consider only the fullAgentMessage from the backend call.
+  const messageStreamState =
+    rawMessageStreamState?.status === "created" ? rawMessageStreamState : null;
 
   useEffect(() => {
-    if (
-      fullAgentMessage.type !== "agent_message" ||
-      !fullAgentMessage.chainOfThought
-    ) {
+    if (!rawMessageStreamState) {
       return;
     }
 
-    if (fullAgentMessage.status === "created") {
-      // eslint-disable-next-line react-hooks/immutability
-      isFreshMountWithContent.current = true;
-    } else if (fullAgentMessage.status === "succeeded") {
-      void mutateSkills();
-      void mutateTools();
+    const currentMaxStep = Math.max(
+      currentStreamingStep,
+      Math.max(...rawMessageStreamState.actions.map((a) => a.step)) + 1
+    );
+
+    // Check if we moved to a new step.
+    if (currentMaxStep > currentStreamingStep) {
+      setCurrentStreamingStep(currentMaxStep);
     }
-  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills, mutateTools]);
+
+    // Check if any new actions have been completed.
+    const prevCompletedActionsCount = successActionIds.length;
+    const newCompletedActionsCount = rawMessageStreamState.actions.filter(
+      (a) => a.status === "succeeded"
+    ).length;
+    if (newCompletedActionsCount > prevCompletedActionsCount) {
+      setSuccessActionIds(
+        rawMessageStreamState.actions
+          .filter((a) => a.status === "succeeded")
+          .map((a) => a.sId)
+      );
+      mutateMessage();
+      return;
+    }
+
+    if (lastMessageStreamStatus === rawMessageStreamState.status) {
+      return;
+    }
+
+    // The message status changed, upate everything.
+    setLastMessageStreamStatus(rawMessageStreamState?.status ?? null);
+    void mutateMessage();
+    void mutateSkills();
+    void mutateTools();
+  }, [
+    rawMessageStreamState,
+    currentStreamingStep,
+    successActionIds,
+    lastMessageStreamStatus,
+    mutateMessage,
+    mutateSkills,
+    mutateTools,
+  ]);
 
   const [steps, setSteps] = useState<Record<number, ParsedContentItem[]>>({});
 
@@ -196,17 +221,16 @@ function AgentActionsPanelContent({
   });
 
   useEffect(() => {
-    if (messageStreamState.message?.chainOfThought) {
+    if (messageStreamState?.chainOfThought) {
       lastChainOfThoughtRef.current = {
         step: currentStreamingStep,
-        content: messageStreamState.message.chainOfThought,
+        content: messageStreamState.chainOfThought,
       };
     }
-  }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
+  }, [messageStreamState?.chainOfThought, currentStreamingStep]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    if (!shouldStream) {
+    if (!messageStreamState) {
       return;
     }
 
@@ -221,7 +245,7 @@ function AgentActionsPanelContent({
         behavior: "smooth",
       });
     }
-  }, [fullAgentMessage, messageStreamState, shouldStream]);
+  }, [messageStreamState]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -241,27 +265,8 @@ function AgentActionsPanelContent({
       el.scrollHeight - el.clientHeight <= el.scrollTop + threshold;
   };
 
-  const agentMessageToRender = (() => {
-    switch (fullAgentMessage.status) {
-      case "succeeded":
-      case "failed":
-        return fullAgentMessage;
-      case "cancelled":
-        if (messageStreamState.message.status === "created") {
-          return {
-            ...messageStreamState.message,
-            status: "cancelled" as const,
-          };
-        }
-        return messageStreamState.message;
-      case "created":
-        return messageStreamState.message;
-      default:
-        return fullAgentMessage;
-    }
-  })();
-
-  const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
+  const streamActionProgress =
+    messageStreamState?.streaming.actionProgress ?? new Map();
   return (
     <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
@@ -289,17 +294,13 @@ function AgentActionsPanelContent({
                   entries={entries}
                   streamActionProgress={streamActionProgress}
                   owner={owner}
-                  messageStatus={
-                    agentMessageToRender?.type === "agent_message"
-                      ? agentMessageToRender.status
-                      : "succeeded"
-                  }
+                  messageStatus={fullAgentMessage.status}
                 />
               );
             })}
           {/* Show current streaming step with live updates. */}
-          {shouldStream &&
-            messageStreamState.agentState !== "done" &&
+          {messageStreamState &&
+            messageStreamState.streaming.agentState !== "done" &&
             !steps[currentStreamingStep] && (
               <PanelAgentStep
                 stepNumber={currentStreamingStep}
@@ -308,10 +309,12 @@ function AgentActionsPanelContent({
                     ? lastChainOfThoughtRef.current.content
                     : "Thinking..."
                 }
-                isStreaming={messageStreamState.agentState === "thinking"}
+                isStreaming={
+                  messageStreamState.streaming.agentState === "thinking"
+                }
                 streamingActions={
-                  messageStreamState.agentState === "acting"
-                    ? messageStreamState.message.actions.filter((action) => {
+                  messageStreamState.streaming.agentState === "acting"
+                    ? messageStreamState.actions.filter((action) => {
                         // Only show actions not yet in any completed step.
                         return !Object.values(steps || {}).some(
                           (entries: ParsedContentItem[]) =>
@@ -330,9 +333,9 @@ function AgentActionsPanelContent({
                 messageStatus="created"
               />
             )}
-          {!shouldStream && (
+          {!messageStreamState && (
             <AgentActionSummary
-              agentMessageToRender={agentMessageToRender}
+              agentMessageToRender={fullAgentMessage}
               nbSteps={nbSteps}
             />
           )}

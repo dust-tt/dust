@@ -85,7 +85,7 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "GET",
@@ -124,7 +124,7 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "GET",
@@ -166,7 +166,7 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
       req,
       res,
       user,
-      authenticator: auth,
+      auth: auth,
     } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -205,7 +205,7 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       workspace,
       user,
     } = await createPrivateApiMockRequest({
@@ -248,7 +248,7 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({
@@ -289,7 +289,7 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({
@@ -322,7 +322,7 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({
@@ -356,7 +356,7 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       globalSpace,
     } = await createPrivateApiMockRequest({
       method: "DELETE",
@@ -395,7 +395,7 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
     } = await createPrivateApiMockRequest({
       method: "DELETE",
@@ -434,18 +434,12 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should allow builder to upload any file", async () => {
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-      authenticator,
-    } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "builder",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });
@@ -476,7 +470,7 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({
@@ -509,7 +503,7 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       globalSpace,
     } = await createPrivateApiMockRequest({
       method: "POST",
@@ -549,18 +543,12 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
       "@app/lib/api/files/upsert"
     );
 
-    const {
-      req,
-      res,
-      authenticator: auth,
-      user,
-      authenticator,
-    } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
-    const conversation = await ConversationFactory.create(authenticator, {
+    const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
       messagesCreatedAt: [new Date()],
     });

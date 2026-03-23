@@ -1,5 +1,3 @@
-import { CreateWebhookJiraConnection } from "@app/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection";
-import { WebhookSourceJiraDetails } from "@app/lib/triggers/built-in-webhooks/jira/components/WebhookSourceJiraDetails";
 import {
   issueCreatedExample,
   issueCreatedSchema,
@@ -61,8 +59,4 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
   filterGenerationInstructions: null,
   webhookPageUrl: `https://id.atlassian.com/manage-profile/security/api-tokens`,
   webhookService: new JiraWebhookService(),
-  components: {
-    detailsComponent: WebhookSourceJiraDetails,
-    createFormComponent: CreateWebhookJiraConnection,
-  },
 };

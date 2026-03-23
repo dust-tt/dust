@@ -81,7 +81,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
     });
 
     it("returns all project spaces when query is empty", async () => {
-      const { req, res, workspace, user, authenticator } =
+      const { req, res, workspace, user, auth } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -99,7 +99,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
         throw new Error("Failed to add user to project");
       }
 
-      await authenticator.refresh();
+      await auth.refresh();
 
       req.query.wId = workspace.sId;
 
@@ -111,7 +111,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
     });
 
     it("filters projects by name (case-insensitive)", async () => {
-      const { req, res, workspace, user, authenticator } =
+      const { req, res, workspace, user, auth } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -124,7 +124,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
       const project = await SpaceFactory.project(workspace);
       await project.addMembers(adminAuth, { userIds: [user.sId] });
 
-      await authenticator.refresh();
+      await auth.refresh();
 
       req.query.wId = workspace.sId;
       // Search for "project" which is part of the auto-generated name
@@ -143,7 +143,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
     });
 
     it("returns spaces sorted alphabetically", async () => {
-      const { req, res, workspace, user, authenticator } =
+      const { req, res, workspace, user, auth } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -158,7 +158,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
         await project.addMembers(adminAuth, { userIds: [user.sId] });
       }
 
-      await authenticator.refresh();
+      await auth.refresh();
 
       req.query.wId = workspace.sId;
 
@@ -171,7 +171,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
     });
 
     it("respects the limit parameter", async () => {
-      const { req, res, workspace, user, authenticator } =
+      const { req, res, workspace, user, auth } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -186,7 +186,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
         await project.addMembers(adminAuth, { userIds: [user.sId] });
       }
 
-      await authenticator.refresh();
+      await auth.refresh();
 
       req.query.wId = workspace.sId;
       req.query.limit = "2";
@@ -201,7 +201,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
     });
 
     it("paginates correctly using lastValue cursor", async () => {
-      const { req, res, workspace, user, authenticator } =
+      const { req, res, workspace, user, auth } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -216,7 +216,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
         await project.addMembers(adminAuth, { userIds: [user.sId] });
       }
 
-      await authenticator.refresh();
+      await auth.refresh();
 
       req.query.wId = workspace.sId;
       req.query.limit = "2";
@@ -260,7 +260,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
     });
 
     it("excludes project spaces user cannot read", async () => {
-      const { req, res, workspace, user, authenticator } =
+      const { req, res, workspace, user, auth } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "user",
@@ -275,7 +275,7 @@ describe("GET /api/w/[wId]/spaces/search_projects", () => {
 
       await permittedSpace.addMembers(adminAuth, { userIds: [user.sId] });
 
-      await authenticator.refresh();
+      await auth.refresh();
 
       req.query.wId = workspace.sId;
 

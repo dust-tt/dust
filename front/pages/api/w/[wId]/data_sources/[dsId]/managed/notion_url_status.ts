@@ -77,7 +77,7 @@ async function handler(
     });
   }
 
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
   if (!flags.includes("advanced_notion_management")) {
     return apiError(req, res, {
       status_code: 403,

@@ -1,46 +1,48 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  type AgentContextSkill,
+  formatAgentContext,
+} from "@app/lib/reinforced_agent/format_agent_context";
 import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
-  conversationText: string
+  conversationText: string,
+  toolsAndSkillsContext: string,
+  agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
-  const descriptionSection = agentConfig.description
-    ? `Description: ${agentConfig.description}`
-    : "";
-  const instructionsSection = agentConfig.instructionsHtml
-    ? `\n### Current instructions\n${agentConfig.instructionsHtml}`
-    : "";
-
   const systemPrompt = `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
 
 ## Your task
 Analyze the conversation and identify areas where the agent's instructions could be improved. Pay special attention to any user feedback (thumbs up/down and comments) as direct signals of satisfaction or dissatisfaction. Focus on:
 - Cases where the agent misunderstood the user's intent
-- Missing knowledge or capabilities the agent should have
+- Missing tools and skills the agent should have. Prioritize those over instruction changes when you detect a clear need for a tool or skill.
 - Tone or style improvements based on user reactions and feedback
 - Specific instructions that could prevent repeated mistakes
 
-Only suggest changes to the instructions (kind: 'instructions'). Use targetBlockId 'instructions-root' for top-level instruction changes,
-and the actual block ID for nested instructions.
+For each suggestion, always include an 'analysis' field explaining why this change would improve the agent.
 
-The content must contain exactly what should go in the instructions block, with no explanation about why it should be there (that belongs in the analysis).
-It is in HTML format, so make sure to preserve any HTML tags from the original instructions.
+You have three tools available:
+- suggest_prompt_edits: For instruction changes. Use targetBlockId 'instructions-root' for top-level instruction changes, and the actual block ID for nested instructions. The content must contain exactly what should go in the instructions block, with no explanation about why it should be there (that belongs in the analysis). It is in HTML format, so make sure to preserve any HTML tags from the original instructions.
+- suggest_tools: For suggesting tools to add or remove from the agent. Use the tool's sId as toolId.
+- suggest_skills: For suggesting skills to add or remove from the agent. Use the skill's sId as skillId.
 
-You MUST call the tool. Always call it. If no improvements are needed, return an empty suggestions array.`;
+You MUST call at least one tool. If no improvements are needed, call suggest_prompt_edits with an empty suggestions array.`;
 
-  const userMessage = `## Agent being analyzed
-Name: ${agentConfig.name}
-${descriptionSection}
-${instructionsSection}
+  const userMessage = `${formatAgentContext(agentConfig, agentSkills)}
+
+${toolsAndSkillsContext}
 
 ## Conversation to analyze
 
@@ -73,12 +75,18 @@ export async function buildConversationAnalysisBatchMap(
     return null;
   }
 
+  const [toolsAndSkillsContext, agentSkills] = await Promise.all([
+    buildToolsAndSkillsContext(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfig),
+  ]);
+
   const batchMap = new Map<string, LLMStreamParameters>();
 
   for (const conversationId of conversationIds) {
     const conversationRes = await getShrinkWrappedConversation(auth, {
       conversationId,
       includeFeedback: true,
+      includeActionDetails: true,
     });
     if (conversationRes.isErr()) {
       logger.warn(
@@ -88,7 +96,12 @@ export async function buildConversationAnalysisBatchMap(
       continue;
     }
 
-    const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+    const prompt = buildAnalysisPrompt(
+      agentConfig,
+      conversationRes.value.text,
+      toolsAndSkillsContext,
+      agentSkills
+    );
     batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
   }
 
@@ -126,19 +139,37 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  const conversationRes = await getShrinkWrappedConversation(auth, {
-    conversationId,
-    includeFeedback: true,
-  });
-  if (conversationRes.isErr()) {
+  const [
+    conversationRes,
+    conversationResource,
+    toolsAndSkillsContext,
+    agentSkills,
+  ] = await Promise.all([
+    getShrinkWrappedConversation(auth, {
+      conversationId,
+      includeFeedback: true,
+    }),
+    ConversationResource.fetchById(auth, conversationId),
+    buildToolsAndSkillsContext(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfig),
+  ]);
+  if (conversationRes.isErr() || !conversationResource) {
     logger.warn(
-      { conversationId, error: conversationRes.error },
+      {
+        conversationId,
+        error: conversationRes.isErr() && conversationRes.error,
+      },
       "ReinforcedAgent: conversation not found"
     );
     return;
   }
 
-  const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
+  const prompt = buildAnalysisPrompt(
+    agentConfig,
+    conversationRes.value.text,
+    toolsAndSkillsContext,
+    agentSkills
+  );
 
   const createdCount = await runReinforcedAnalysis({
     auth,
@@ -147,6 +178,7 @@ export async function analyzeConversationForReinforcement(
     source: "synthetic",
     operationType: "reinforced_agent_analyze_conversation",
     contextId: conversationId,
+    conversation: conversationResource,
   });
 
   if (createdCount > 0) {

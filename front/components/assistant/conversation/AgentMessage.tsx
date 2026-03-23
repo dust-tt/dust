@@ -3,6 +3,7 @@ import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle"
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -50,10 +51,10 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { ConversationAttachmentsUpdatedEvent } from "@app/lib/notifications/events";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import {
@@ -97,11 +98,19 @@ import {
   StopIcon,
   Tooltip,
   TrashIcon,
+  TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback, useContext, useMemo } from "react";
+import {
+  type ReactElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -156,6 +165,7 @@ interface AgentMessageProps {
   owner: WorkspaceType;
   user: UserType;
   triggeringUser: UserType | null;
+  isOnboardingConversation: boolean;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -173,19 +183,23 @@ export function AgentMessage({
   owner,
   user,
   triggeringUser,
+  isOnboardingConversation,
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const { hasFeature } = useFeatureFlags();
+  const isCollapsibleEnabled = hasFeature("collapsible_messages");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
-    React.useState<boolean>(false);
+    useState<boolean>(false);
 
-  const [activeReferences, setActiveReferences] = React.useState<
+  const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -312,7 +326,6 @@ export function AgentMessage({
           case "agent_action_success": {
             const action = eventPayload.data.action;
             if (action.generatedFiles.length > 0) {
-              window.dispatchEvent(new ConversationAttachmentsUpdatedEvent());
               void mutateConversationAttachments();
             }
             if (action.internalMCPServerName === "sandbox") {
@@ -375,13 +388,14 @@ export function AgentMessage({
   );
 
   // GenerationContext: to know if we are generating or not.
-  const generationContext = React.useContext(GenerationContext);
+  const generationContext = useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
-  React.useEffect(() => {
+
+  useEffect(() => {
     if (shouldStream) {
       generationContext.addGeneratingMessage({
         messageId: sId,
@@ -477,7 +491,8 @@ export function AgentMessage({
     conversationId,
   });
 
-  const messageButtons: React.ReactElement[] = [];
+  const alwaysVisibleButtons: ReactElement[] = [];
+  const hoverButtons: ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.getConversationGeneratingMessages(conversationId).length >
@@ -485,7 +500,7 @@ export function AgentMessage({
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
-    messageButtons.push(
+    alwaysVisibleButtons.push(
       <Button
         key="stop-msg-button"
         label="Stop agent"
@@ -576,6 +591,7 @@ export function AgentMessage({
 
   const shouldShowFeedback =
     !isDeleted &&
+    !isOnboardingConversation &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
     agentMessage.configuration.status !== "draft" &&
@@ -606,9 +622,9 @@ export function AgentMessage({
     [retryMessage]
   );
 
-  // Add feedback buttons first
+  // Add feedback buttons (always visible)
   if (shouldShowFeedback) {
-    messageButtons.push(
+    alwaysVisibleButtons.push(
       <FeedbackSelector
         key="feedback-selector"
         {...messageFeedback}
@@ -620,7 +636,7 @@ export function AgentMessage({
     );
   }
 
-  // Add copy button or split button with dropdown
+  // Add copy button or split button with dropdown (hover only)
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
@@ -654,7 +670,7 @@ export function AgentMessage({
       });
     }
 
-    messageButtons.push(
+    hoverButtons.push(
       <ButtonGroup key="split-button-group">
         <Button
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -675,12 +691,13 @@ export function AgentMessage({
           }
           items={dropdownItems}
           align="end"
+          onOpenChange={setIsMenuOpen}
         />
       </ButtonGroup>
     );
   } else {
     if (shouldShowCopy) {
-      messageButtons.push(
+      hoverButtons.push(
         <Button
           key="copy-msg-button"
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -692,7 +709,7 @@ export function AgentMessage({
         />
       );
 
-      messageButtons.push(
+      hoverButtons.push(
         <Button
           key="copy-msg-link-button"
           tooltip="Copy message link"
@@ -706,7 +723,7 @@ export function AgentMessage({
     }
 
     if (shouldShowRetry) {
-      messageButtons.push(
+      hoverButtons.push(
         <Button
           key="retry-msg-button"
           tooltip="Retry"
@@ -728,12 +745,12 @@ export function AgentMessage({
 
   const { configuration: agentConfiguration } = agentMessage;
 
-  const citations = React.useMemo(
+  const citations = useMemo(
     () => getCitations({ activeReferences, owner, conversationId }),
     [activeReferences, conversationId, owner]
   );
 
-  const handleQuickReply = React.useCallback(
+  const handleQuickReply = useCallback(
     async (reply: string) => {
       const mention: RichAgentMention = {
         id: agentMessage.configuration.sId,
@@ -800,6 +817,73 @@ export function AgentMessage({
     ? undefined
     : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
 
+  const messageContent = (
+    <ConversationMessageContent
+      citations={isDeleted ? undefined : citations}
+      type="agent"
+    >
+      {isDeleted ? (
+        <DeletedMessage />
+      ) : (
+        <AgentMessageContent
+          onQuickReplySend={handleQuickReply}
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isRetryHandlerProcessing={isRetryHandlerProcessing}
+          isLastMessage={isLastMessage}
+          agentMessage={agentMessage}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            agentMessage.streaming.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+          triggeringUser={triggeringUser}
+          additionalMarkdownComponents={additionalMarkdownComponents}
+          additionalMarkdownPlugins={additionalMarkdownPlugins}
+        />
+      )}
+    </ConversationMessageContent>
+  );
+
+  const footerButtons = !isCancelledOrDeleted &&
+    (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
+      <div className="flex items-center gap-2">
+        {alwaysVisibleButtons}
+        {hoverButtons.length > 0 && (
+          <div
+            className={`flex gap-2 transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "@xs:opacity-0 @xs:group-hover:opacity-100"}`}
+          >
+            {hoverButtons}
+          </div>
+        )}
+      </div>
+    );
+
+  const renderMessageContent = () => {
+    if (isCollapsibleEnabled && !shouldStream) {
+      return (
+        <TruncatedContent
+          className="flex flex-col gap-5"
+          defaultCollapsed={!isLastMessage}
+          footer={footerButtons}
+          buttonClassName="text-muted-foreground"
+        >
+          {messageContent}
+        </TruncatedContent>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-5">
+        {messageContent}
+        {footerButtons}
+      </div>
+    );
+  };
+
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
       <div className="inline-flex items-center gap-2 @xs:hidden">
@@ -834,7 +918,7 @@ export function AgentMessage({
         type="agent"
       />
 
-      <div className="flex w-full min-w-0 flex-col gap-3">
+      <div className="group flex w-full min-w-0 flex-col gap-2">
         <ConversationMessageTitle
           className="hidden @xs:flex"
           name={agentConfiguration.name}
@@ -849,41 +933,7 @@ export function AgentMessage({
           }
           renderName={renderName}
         />
-        <ConversationMessageContent
-          citations={isDeleted ? undefined : citations}
-          type="agent"
-        >
-          {isDeleted ? (
-            <DeletedMessage />
-          ) : (
-            <AgentMessageContent
-              onQuickReplySend={handleQuickReply}
-              owner={owner}
-              conversationId={conversationId}
-              retryHandler={retryHandler}
-              isRetryHandlerProcessing={isRetryHandlerProcessing}
-              isLastMessage={isLastMessage}
-              agentMessage={agentMessage}
-              references={references}
-              streaming={shouldStream}
-              lastTokenClassification={
-                agentMessage.streaming.agentState === "thinking"
-                  ? "tokens"
-                  : null
-              }
-              activeReferences={activeReferences}
-              setActiveReferences={setActiveReferences}
-              triggeringUser={triggeringUser}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
-          )}
-        </ConversationMessageContent>
-        {!isCancelledOrDeleted &&
-          messageButtons &&
-          messageButtons.length > 0 && (
-            <div className="flex justify-start gap-3">{messageButtons}</div>
-          )}
+        {renderMessageContent()}
       </div>
     </ConversationMessageContainer>
   );
@@ -937,6 +987,7 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
+  const isInlineActivityEnabled = isDevInlineActivityEnabled();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -1003,14 +1054,14 @@ function AgentMessageContent({
     [references, updateActiveReferences]
   );
 
-  const handleToolSetupComplete = React.useCallback(
+  const handleToolSetupComplete = useCallback(
     (toolId: string) => {
       void postFollowUp(toolId);
     },
     [postFollowUp]
   );
 
-  const additionalMarkdownComponents: Components = React.useMemo(
+  const additionalMarkdownComponents: Components = useMemo(
     () => ({
       visualization: getVisualizationPlugin(
         owner,
@@ -1154,12 +1205,20 @@ function AgentMessageContent({
 
   return (
     <div className="flex flex-col gap-y-4">
-      <AgentMessageActions
-        agentMessage={agentMessage}
-        lastAgentStateClassification={agentMessage.streaming.agentState}
-        actionProgress={agentMessage.streaming.actionProgress}
-        owner={owner}
-      />
+      {isInlineActivityEnabled ? (
+        <InlineActivitySteps
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+          completedSteps={agentMessage.streaming.inlineActivitySteps}
+        />
+      ) : (
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+          actionProgress={agentMessage.streaming.actionProgress}
+          owner={owner}
+        />
+      )}
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
       {completedImages.length > 0 && (
         <InteractiveImageGrid

@@ -164,7 +164,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
    * Note that Google does not use any custom IDs but preserve the order.
    * To keep the ids of the processed conversations we store them stringified in the batchId string.
    */
-  override async sendBatchProcessing(
+  protected override async internalSendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     const customIds = Array.from(conversations.keys());
@@ -234,7 +234,9 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     }
   }
 
-  override async getBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const { batchName, customIds } = GoogleLLM.decodeBatchId(batchId);
     const batch = await this.client.batches.get({ name: batchName });
     const inlinedResponses = batch.dest?.inlinedResponses ?? [];

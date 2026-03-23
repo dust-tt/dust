@@ -75,17 +75,8 @@ export class SandboxImage {
     });
   }
 
-  static fromSandbox(id: SandboxImageId): SandboxImage {
-    return new SandboxImage({
-      baseImage: { type: "sandbox", id },
-      operations: [],
-      tools: [],
-      resources: DEFAULT_RESOURCES,
-      network: DEFAULT_NETWORK,
-      workdir: "/home/user",
-      runEnv: {},
-      capabilities: new Set(),
-    });
+  static fromSandboxImage(image: SandboxImage): SandboxImage {
+    return image.clone({});
   }
 
   static fromDocker(imageRef: string): SandboxImage {

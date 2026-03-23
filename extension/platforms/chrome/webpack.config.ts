@@ -105,6 +105,10 @@ export const getConfig = async ({
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
+        "@app/logger/logger": path.resolve(
+          __dirname,
+          "../../../front/logger/datadogLogger.ts"
+        ),
         "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
         redis: false,
@@ -170,6 +174,8 @@ export const getConfig = async ({
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
         DUST_EXTENSION_VERSION: `chrome-${version}`,
         NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_DUST_CLIENT_FACING_URL:
+          process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL || "",
         NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
           process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",

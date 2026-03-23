@@ -23,7 +23,10 @@ import type {
   ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
-import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
+import type {
+  MCPToolRetryPolicyType,
+  ToolDisplayLabels,
+} from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { DustAppRunConfigurationType } from "@app/types/app";
@@ -109,6 +112,7 @@ export type ClientSideMCPToolType = Omit<
   // For "medium" stake tools: defines which arguments require per-agent approval.
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
+  displayLabels?: ToolDisplayLabels;
 };
 
 type WithToolNameMetadata<T> = T & {

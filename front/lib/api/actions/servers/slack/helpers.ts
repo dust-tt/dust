@@ -9,11 +9,21 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WebAPICallResult } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
-import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
-import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
+import type { Usergroup } from "@slack/web-api/dist/types/response/UsergroupsListResponse";
+import type { Member } from "@slack/web-api/dist/types/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
+
+// Untyped Canvas API responses (not covered by @slack/web-api types).
+interface CanvasSectionsLookupResult extends WebAPICallResult {
+  sections?: Array<{ id: string }>;
+}
+
+interface CanvasCreateResult extends WebAPICallResult {
+  canvas_id?: string;
+}
 
 // Constants for Slack API limits and pagination.
 export const MAX_CHANNEL_SEARCH_RESULTS = 20;
@@ -822,14 +832,19 @@ export async function executePostMessage(
 
     const filename = file.fileName ?? `upload_${file.sId}`;
 
-    const uploadResp = await slackClient.filesUploadV2({
+    const baseArgs = {
       channel_id: channelId,
       file: fileBuffer,
       filename,
       filetype: file.contentType,
       initial_comment: message,
-      thread_ts: threadTs,
-    });
+    };
+    const uploadResp = threadTs
+      ? await slackClient.filesUploadV2({
+          ...baseArgs,
+          thread_ts: threadTs,
+        })
+      : await slackClient.filesUploadV2(baseArgs);
 
     if (!uploadResp.ok) {
       return new Err(new MCPError(uploadResp.error ?? "Unknown error"));
@@ -1252,16 +1267,7 @@ export async function executeReadCanvas({
     );
   }
 
-  const rawSections = resp.sections;
-  const sections = Array.isArray(rawSections)
-    ? rawSections.filter(
-        (s): s is { id: string } =>
-          s !== null &&
-          typeof s === "object" &&
-          "id" in s &&
-          typeof s.id === "string"
-      )
-    : [];
+  const sections = (resp as CanvasSectionsLookupResult).sections ?? [];
 
   if (sections.length === 0) {
     return new Ok([
@@ -1322,8 +1328,7 @@ export async function executeWriteCanvas({
       );
     }
 
-    const newCanvasId =
-      typeof res.canvas_id === "string" ? res.canvas_id : undefined;
+    const newCanvasId = (res as CanvasCreateResult).canvas_id;
     return new Ok([
       {
         type: "text" as const,

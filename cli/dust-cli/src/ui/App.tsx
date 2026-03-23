@@ -79,6 +79,9 @@ interface AppProps {
     projectId: {
       type: "string";
     };
+    withTools: {
+      type: "boolean";
+    };
   }>;
 }
 
@@ -133,6 +136,7 @@ const App: FC<AppProps> = ({ cli }) => {
             details={flags.details}
             projectName={flags.projectName}
             projectId={flags.projectId}
+            withTools={flags.withTools}
           />
         );
       }

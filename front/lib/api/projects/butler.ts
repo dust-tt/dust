@@ -1,12 +1,12 @@
 import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 
 const DAYS_BACK = 30;
 const UNREAD_LIMIT = 20;
@@ -112,7 +112,7 @@ export async function generateUserProjectDigest(
   ].join("\n");
 
   // Call the LLM directly.
-  const model = getLargeWhitelistedModel(owner);
+  const model = await getLargeWhitelistedModel(auth);
   if (!model) {
     throw new Error("No whitelisted model available for project digest.");
   }

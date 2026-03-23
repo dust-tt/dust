@@ -90,7 +90,7 @@ async function _getConversation<V extends "light" | "full">(
 
   if (branchId) {
     const branch = await ConversationBranchResource.fetchById(auth, branchId);
-    if (!branch) {
+    if (!branch || !branch.canRead(auth)) {
       return new Err(new ConversationError("branch_not_found"));
     }
 

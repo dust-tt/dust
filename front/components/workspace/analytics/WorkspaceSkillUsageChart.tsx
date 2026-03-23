@@ -7,6 +7,8 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import {
   useWorkspaceSkills,
   useWorkspaceSkillUsage,
@@ -286,6 +288,12 @@ export function WorkspaceSkillUsageChart({
     </DropdownMenu>
   );
 
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/skill-usage-export?days=${period}`,
+    filename: `dust_skill_usage_last_${period}_days.csv`,
+    disabled: isSkillsLoading || hasError || data.length === 0,
+  });
+
   const modeSelector = (
     <ButtonsSwitchList defaultValue={displayMode} size="xs">
       <ButtonsSwitch
@@ -318,6 +326,7 @@ export function WorkspaceSkillUsageChart({
         <div className="flex items-center gap-2">
           {skillSelector}
           {modeSelector}
+          <CsvDownloadButton {...csvDownload} />
         </div>
       }
     >

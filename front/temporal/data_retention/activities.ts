@@ -63,6 +63,8 @@ export async function purgeConversationsBatchActivity({
       cutoffDate,
       {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+        // Retention is internal maintenance, so selection must ignore end-user space visibility.
+        dangerouslySkipPermissionFiltering: true,
         includeDeleted: true,
       }
     );
@@ -174,6 +176,8 @@ export async function purgeAgentConversationsBatchActivity({
         cutoffDate,
       },
       {
+        // Retention is internal maintenance, so selection must ignore end-user space visibility.
+        dangerouslySkipPermissionFiltering: true,
         includeDeleted: true,
       }
     );

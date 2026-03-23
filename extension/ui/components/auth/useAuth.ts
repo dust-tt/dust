@@ -1,8 +1,10 @@
 import { setDefaultInitResolver } from "@app/lib/api/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
+import logger from "@app/logger/logger";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { datadogLogs } from "@datadog/browser-logs";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
@@ -12,7 +14,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
-const log = console.error;
 
 export const useAuthHook = () => {
   const platform = usePlatform();
@@ -29,14 +30,21 @@ export const useAuthHook = () => {
 
   // Set default fetch init for the extension (overrides RegionContext's credentials: "include").
   // Must be declared before any fetch effects so it's active when they run.
+  // The resolver calls getAccessToken() on every request so expired tokens are
+  // transparently refreshed before each fetch / EventSource connection.
   useEffect(() => {
     if (tokens?.accessToken) {
-      setDefaultInitResolver(() => ({
-        credentials: "omit",
-        headers: { Authorization: `Bearer ${tokens.accessToken}` },
-      }));
+      setDefaultInitResolver(async (): Promise<RequestInit> => {
+        const accessToken = await platform.auth.getAccessToken();
+        return {
+          credentials: "omit",
+          headers: accessToken
+            ? { Authorization: `Bearer ${accessToken}` }
+            : {},
+        };
+      });
     } else {
-      setDefaultInitResolver(() => ({
+      setDefaultInitResolver(async () => ({
         credentials: "omit",
       }));
     }
@@ -44,7 +52,7 @@ export const useAuthHook = () => {
     return () => {
       setDefaultInitResolver(null);
     };
-  }, [tokens?.accessToken]);
+  }, [tokens?.accessToken, platform.auth]);
 
   const isAuthenticated = useMemo(
     () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
@@ -129,7 +137,7 @@ export const useAuthHook = () => {
   useEffect(() => {
     const unsub = platform.storage.onChanged((changes) => {
       if ("accessToken" in changes && !changes.accessToken) {
-        log("Access token removed from storage.");
+        logger.info("Access token removed from storage.");
         setTokens(null);
         setUser(null);
       }
@@ -151,6 +159,10 @@ export const useAuthHook = () => {
           const data = await res.json();
           const fetchedUser = data.user as UserTypeWithWorkspaces;
           setUser(fetchedUser);
+          datadogLogs.setUser({
+            id: fetchedUser.sId,
+            email: fetchedUser.email,
+          });
 
           const ws = fetchedUser.selectedWorkspace
             ? fetchedUser.workspaces.find(
@@ -159,6 +171,7 @@ export const useAuthHook = () => {
             : fetchedUser.workspaces[0];
           setWorkspace(ws);
           if (ws) {
+            datadogLogs.setGlobalContextProperty("workspaceSId", ws.sId);
             await platform.storage.set("selectedWorkspace", ws.sId);
           }
         }
@@ -218,7 +231,7 @@ export const useAuthHook = () => {
 
   const redirectToSSOLogin = useCallback(
     async (workspace: WorkspaceType) => {
-      log("Enforcing SSO for", workspace);
+      logger.info({ workspaceSId: workspace.sId }, "Enforcing SSO.");
       setAuthError(
         new AuthError(
           "sso_enforced",
@@ -250,9 +263,10 @@ export const useAuthHook = () => {
       setTokens(newTokens);
       setRegionInfo(newRegionInfo, { keepInStorage: true });
       setAuthError(null);
+      scheduleRefresh(newTokens.expiresAt);
       // isLoading stays true — the user fetch effect will clear it.
     },
-    [forcedConnection]
+    [forcedConnection, scheduleRefresh]
   );
 
   const handleSelectOrganization = useCallback(

@@ -8,26 +8,6 @@
     <title>Dust</title>
     <link rel="preload" href="/static/fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/static/fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
-    <script>
-      // Shim for Node.js Buffer API used by some dependencies
-      globalThis.Buffer = globalThis.Buffer || {
-        isBuffer: function () {
-          return false;
-        },
-        from: function (x) {
-          return new Uint8Array(
-            typeof x === "string"
-              ? Array.from(x).map(function (c) {
-                  return c.charCodeAt(0);
-                })
-              : x
-          );
-        },
-        alloc: function (n) {
-          return new Uint8Array(n);
-        },
-      };
-    </script>
     <!-- Datadog RUM (Real User Monitoring) -->
     <script>
       (function (h, o, u, n, d) {

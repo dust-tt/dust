@@ -1,5 +1,4 @@
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeForm,
   PokeFormControl,
@@ -9,12 +8,13 @@ import {
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
-import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
+import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type {
   CreateTemplateFormType,
@@ -429,7 +429,7 @@ function PreviewDialog({ form }: { form: any }) {
 }
 
 export function TemplateDetailPage() {
-  useSetPokePageTitle("Template");
+  useDocumentTitle("Poke - Template");
 
   const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -687,7 +687,7 @@ export function TemplateDetailPage() {
               picker={(handleSelect) => (
                 <ColorPicker
                   selectedColor={form.getValues("backgroundColor")}
-                  colors={generateTailwindBackgroundColors()}
+                  colors={TAILWIND_BACKGROUND_COLORS}
                   onColorSelect={(color) => {
                     handleSelect(color);
                   }}

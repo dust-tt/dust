@@ -224,7 +224,7 @@ declare global {
         if (callback) {
           callback(
             screenshots.map((screenshot) =>
-              screenshot.canvas.toDataURL("image/jpeg", 0.8)
+              screenshot.canvas.toDataURL("image/jpeg", 0.6)
             )
           );
         }

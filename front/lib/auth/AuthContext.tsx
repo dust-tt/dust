@@ -1,4 +1,5 @@
 import type { SubscriptionType } from "@app/types/plan";
+import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { createContext, useCallback, useContext } from "react";
@@ -13,6 +14,7 @@ export interface AuthContextValue {
   isBuilder: boolean;
   featureFlags: WhitelistableFeature[];
   vizUrl: string;
+  providersHealth: ProvidersHealth | null;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

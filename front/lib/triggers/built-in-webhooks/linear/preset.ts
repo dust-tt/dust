@@ -1,5 +1,3 @@
-import { CreateWebhookLinearConnection } from "@app/lib/triggers/built-in-webhooks/linear/components/CreateWebhookLinearConnection";
-import { WebhookSourceLinearDetails } from "@app/lib/triggers/built-in-webhooks/linear/components/WebhookSourceLinearDetails";
 import { issueSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/issue";
 import { projectSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/project";
 import { LinearWebhookService } from "@app/lib/triggers/built-in-webhooks/linear/service";
@@ -36,8 +34,4 @@ export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
   filterGenerationInstructions: null,
   webhookPageUrl: "https://linear.app/settings/api",
   webhookService: new LinearWebhookService(),
-  components: {
-    detailsComponent: WebhookSourceLinearDetails,
-    createFormComponent: CreateWebhookLinearConnection,
-  },
 };

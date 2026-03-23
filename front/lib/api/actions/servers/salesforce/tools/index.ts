@@ -17,7 +17,6 @@ import {
 } from "@app/lib/api/actions/servers/salesforce/helpers";
 import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesforce/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import type { DescribeSObjectResult } from "jsforce";
 
@@ -202,17 +201,6 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
     },
 
     update_object: async ({ objectName, records, allOrNone }, extra) => {
-      const owner = auth.getNonNullableWorkspace();
-      const featureFlags = await getFeatureFlags(owner);
-
-      if (!featureFlags.includes("salesforce_tool_write")) {
-        return new Err(
-          new MCPError(
-            "Salesforce write operations are not enabled for this workspace."
-          )
-        );
-      }
-
       return withAuth(extra, async (conn) => {
         try {
           const result = await conn.sobject(objectName).update(records, {

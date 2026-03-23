@@ -1,11 +1,6 @@
-export type ZipSkillDetectionError = {
-  type: "invalid_zip";
-  message: string;
-};
-
-export interface ZipEntry {
+export type ZipEntry = {
   path: string;
   originalEntryName: string;
   sizeBytes: number;
   isDirectory: boolean;
-}
+};

@@ -1,4 +1,5 @@
 import { buildDustAidCookieString } from "@app/lib/utils/anonymous_id";
+import { posthog } from "posthog-js";
 
 // Marketing and UTM parameter keys to track across the application.
 export const MARKETING_PARAMS = [
@@ -11,6 +12,7 @@ export const MARKETING_PARAMS = [
   "fbclid",
   "msclkid",
   "li_fat_id",
+  "posthog_id",
 ] as const;
 
 export type UTMParams = Partial<
@@ -176,6 +178,11 @@ export const appendUTMParams = (url: string, utmParams?: UTMParams): string => {
   }
 
   const params = utmParams ?? getStoredUTMParams();
+
+  const posthogId = posthog.get_distinct_id();
+  if (posthogId) {
+    params.posthog_id = posthogId;
+  }
 
   if (Object.keys(params).length === 0) {
     return url;

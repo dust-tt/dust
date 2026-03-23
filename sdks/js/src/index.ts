@@ -10,6 +10,7 @@ import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
+  AgentContextPrunedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
@@ -159,6 +160,7 @@ const DEFAULT_RECONNECT_DELAY = 5000;
 type AgentEvent =
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
+  | AgentContextPrunedEvent
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent

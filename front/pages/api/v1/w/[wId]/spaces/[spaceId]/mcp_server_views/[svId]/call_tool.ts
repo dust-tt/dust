@@ -23,9 +23,7 @@ async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("sandbox_tools")) {
     return apiError(req, res, {
       status_code: 400,

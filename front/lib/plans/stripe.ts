@@ -713,17 +713,23 @@ type InvoiceLineItem = {
   couponId?: string;
 };
 
+export type CustomerFacingInvoiceInfo = {
+  purchaseOrderId?: string;
+};
+
 async function makeInvoice({
   stripeSubscription,
   metadata,
   lineItem,
   idempotencyKey,
+  customerFacingInfo,
   ...collectionParams
 }: {
   stripeSubscription: Stripe.Subscription;
   metadata: Record<string, string>;
   lineItem: InvoiceLineItem;
   idempotencyKey?: string;
+  customerFacingInfo?: CustomerFacingInvoiceInfo;
 } & InvoiceCollectionParams): Promise<
   Result<
     Stripe.Invoice,
@@ -742,6 +748,9 @@ async function makeInvoice({
     automatic_tax: {
       enabled: true,
     },
+    custom_fields: customerFacingInfo?.purchaseOrderId
+      ? [{ name: "Purchase Order", value: customerFacingInfo.purchaseOrderId }]
+      : undefined,
   };
 
   switch (collectionParams.collectionMethod) {
@@ -908,11 +917,13 @@ export async function makeCreditPurchaseOneOffInvoice({
   stripeSubscriptionId,
   amountMicroUsd,
   couponId,
+  customerFacingInfo,
   ...collectionParams
 }: {
   stripeSubscriptionId: string;
   amountMicroUsd: number;
   couponId?: string;
+  customerFacingInfo?: CustomerFacingInvoiceInfo;
 } & InvoiceCollectionParams): Promise<
   Result<Stripe.Invoice, { error_message: string }>
 > {
@@ -938,6 +949,7 @@ export async function makeCreditPurchaseOneOffInvoice({
       description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
       couponId,
     },
+    customerFacingInfo,
     ...collectionParams,
   });
 }

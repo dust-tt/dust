@@ -150,6 +150,24 @@ function isSnowflakeInsufficientPrivilegesError(
   );
 }
 
+interface SnowflakeInvalidJwtError extends Error {
+  name: "OperationFailedError";
+}
+
+function isSnowflakeInvalidJwtError(
+  err: unknown
+): err is SnowflakeInvalidJwtError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("JWT token is invalid")
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -169,7 +187,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeRoleNotFoundError(err) ||
         isSnowflakeSuspendedError(err) ||
         isSnowflakeUserAccessDisabledError(err) ||
-        isSnowflakeInsufficientPrivilegesError(err)
+        isSnowflakeInsufficientPrivilegesError(err) ||
+        isSnowflakeInvalidJwtError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
       }

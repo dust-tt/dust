@@ -73,6 +73,9 @@
  *                 expiresIn:
  *                   type: integer
  *                   description: Token expiry in seconds
+ *                 expirationDate:
+ *                   type: integer
+ *                   description: Token expiry date in milliseconds
  *       400:
  *         description: Invalid request
  * /api/workos/revoke-session:
@@ -214,7 +217,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       : null;
     // Extract UTM params from query to preserve through OAuth flow
     const utmParams = extractUTMParams(req.query);
-
     const state = {
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
@@ -270,7 +272,15 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
           refreshToken: refresh_token,
           clientId: config.getWorkOSClientId(),
         });
-      return res.status(200).json(result);
+
+      const jwtPayload = JSON.parse(
+        Buffer.from(result.accessToken.split(".")[1], "base64").toString()
+      );
+
+      return res.status(200).json({
+        ...result,
+        expirationDate: jwtPayload.exp * 1000,
+      });
     } catch (error) {
       if (error instanceof OauthException) {
         return res
@@ -306,7 +316,11 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       ? jwtPayload.exp - Math.floor(Date.now() / 1000)
       : undefined;
 
-    return res.status(200).json({ ...authResult, expiresIn });
+    return res.status(200).json({
+      ...authResult,
+      expiresIn,
+      expirationDate: jwtPayload.exp * 1000,
+    });
   } catch (error) {
     if (error instanceof OauthException) {
       return res

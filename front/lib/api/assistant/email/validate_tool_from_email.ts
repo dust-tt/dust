@@ -342,6 +342,7 @@ export async function validateActionFromEmail(
       userMessageId: parentMessage.sId,
       userMessageVersion: parentMessage.version,
       userMessageOrigin: parentMessage.userMessage.userContextOrigin,
+      conversationBranchId: message.branchSId,
     },
     startStep: agentStepContent.step,
     waitForCompletion: true,

@@ -681,6 +681,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
 });
 
 export const FRESHSERVICE_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "freshservice",
     version: "1.0.0",
@@ -691,9 +692,6 @@ export const FRESHSERVICE_SERVER = {
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({

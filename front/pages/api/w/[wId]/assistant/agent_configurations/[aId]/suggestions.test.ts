@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -19,52 +18,25 @@ async function setupTest(
   const method = options.method ?? "PATCH";
   const role = options.role ?? "builder";
 
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role,
-      method,
-    });
-
-  await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
 
   // Create a test agent for the user
-  const agent = await AgentConfigurationFactory.createTestAgent(authenticator);
+  const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
   req.query = { wId: workspace.sId, aId: agent.sId };
 
-  return { req, res, workspace, authenticator, agent };
+  return { req, res, workspace, auth, agent };
 }
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", () => {
-  it("returns 403 when agent_builder_copilot feature flag is not enabled", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        role: "builder",
-        method: "PATCH",
-      });
-
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-
-    req.query = { wId: workspace.sId, aId: agent.sId };
-    req.body = {
-      suggestionIds: ["test-id"],
-      state: "approved",
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe("app_auth_error");
-  });
-
   it("returns 404 for non-existent agent", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       role: "builder",
       method: "PATCH",
     });
-
-    await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
 
     req.query = { wId: workspace.sId, aId: "non-existent-agent" };
     req.body = {
@@ -161,17 +133,16 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
   });
 
   it("returns 400 when suggestion belongs to a different agent", async () => {
-    const { req, res, authenticator, agent } = await setupTest();
+    const { req, res, auth, agent } = await setupTest();
 
     // Create another agent owned by the same user
-    const otherAgent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Other Agent" }
-    );
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Other Agent",
+    });
 
     // Create a suggestion for the other agent
     const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       otherAgent,
       { state: "pending" }
     );
@@ -208,10 +179,10 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     "rejected",
     "outdated",
   ])("updates suggestion state to %s", async (newState) => {
-    const { req, res, authenticator, agent } = await setupTest();
+    const { req, res, auth, agent } = await setupTest();
 
     const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       { state: "pending" }
     );
@@ -233,17 +204,17 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
     // Verify the state was persisted.
     const fetchedSuggestion = await AgentSuggestionResource.fetchById(
-      authenticator,
+      auth,
       suggestion.sId
     );
     expect(fetchedSuggestion?.state).toBe(newState);
   });
 
   it("returns the full suggestion object with all fields", async () => {
-    const { req, res, authenticator, agent } = await setupTest();
+    const { req, res, auth, agent } = await setupTest();
 
     const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       {
         suggestion: {
@@ -285,12 +256,12 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
   });
 
   it("admin can update suggestions in their workspace", async () => {
-    const { req, res, authenticator, agent } = await setupTest({
+    const { req, res, auth, agent } = await setupTest({
       role: "admin",
     });
 
     const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       { state: "pending" }
     );
@@ -343,15 +314,15 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
   });
 
   it("updates multiple suggestions in a single request", async () => {
-    const { req, res, authenticator, agent } = await setupTest();
+    const { req, res, auth, agent } = await setupTest();
 
     const suggestion1 = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       { state: "pending" }
     );
     const suggestion2 = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       { state: "pending" }
     );
@@ -375,11 +346,11 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
     // Verify both were persisted.
     const fetched1 = await AgentSuggestionResource.fetchById(
-      authenticator,
+      auth,
       suggestion1.sId
     );
     const fetched2 = await AgentSuggestionResource.fetchById(
-      authenticator,
+      auth,
       suggestion2.sId
     );
     expect(fetched1?.state).toBe("approved");
@@ -389,12 +360,12 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
 describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", () => {
   it("returns agent's suggestions", async () => {
-    const { req, res, authenticator, agent } = await setupTest({
+    const { req, res, auth, agent } = await setupTest({
       method: "GET",
     });
 
     const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       { state: "pending" }
     );
@@ -408,21 +379,20 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", ()
   });
 
   it("should not return other agent's suggestions", async () => {
-    const { req, res, authenticator, agent } = await setupTest({
+    const { req, res, auth, agent } = await setupTest({
       method: "GET",
     });
 
-    const agent2 = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Test Agent 2" }
-    );
+    const agent2 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent 2",
+    });
 
     const suggestion1 = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       { state: "pending" }
     );
-    await AgentSuggestionFactory.createInstructions(authenticator, agent2, {
+    await AgentSuggestionFactory.createInstructions(auth, agent2, {
       state: "pending",
     });
 
@@ -435,21 +405,21 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", ()
   });
 
   it("filters on kind and state correctly", async () => {
-    const { req, res, authenticator, agent } = await setupTest({
+    const { req, res, auth, agent } = await setupTest({
       method: "GET",
     });
 
     const matchingSuggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
+      auth,
       agent,
       {
         state: "pending",
       }
     );
-    await AgentSuggestionFactory.createTools(authenticator, agent, {
+    await AgentSuggestionFactory.createTools(auth, agent, {
       state: "pending",
     });
-    await AgentSuggestionFactory.createInstructions(authenticator, agent, {
+    await AgentSuggestionFactory.createInstructions(auth, agent, {
       state: "approved",
     });
 
@@ -470,17 +440,17 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", ()
   });
 
   it("limits the number of returned suggestions", async () => {
-    const { req, res, authenticator, agent } = await setupTest({
+    const { req, res, auth, agent } = await setupTest({
       method: "GET",
     });
 
-    await AgentSuggestionFactory.createInstructions(authenticator, agent, {
+    await AgentSuggestionFactory.createInstructions(auth, agent, {
       state: "pending",
     });
-    await AgentSuggestionFactory.createTools(authenticator, agent, {
+    await AgentSuggestionFactory.createTools(auth, agent, {
       state: "pending",
     });
-    await AgentSuggestionFactory.createSkills(authenticator, agent, {
+    await AgentSuggestionFactory.createSkills(auth, agent, {
       state: "pending",
     });
 

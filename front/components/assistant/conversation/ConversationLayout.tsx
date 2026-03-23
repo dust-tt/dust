@@ -9,7 +9,7 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -124,7 +124,7 @@ const ConversationLayoutContent = ({
 
   return (
     <BlockedActionsProvider owner={owner} conversation={conversation}>
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={agentSId}

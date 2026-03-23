@@ -74,8 +74,12 @@ const PostSkillRequestBodySchema = t.intersection([
       source: t.literal("github"),
       sourceMetadata: t.type({ repoUrl: t.string, filePath: t.string }),
     }),
+    t.type({
+      source: t.literal("local_file"),
+      sourceMetadata: t.union([t.type({ filePath: t.string }), t.null]),
+    }),
     t.partial({
-      source: t.union([t.literal("web_app"), t.literal("local_file")]),
+      source: t.literal("web_app"),
       sourceMetadata: t.null,
     }),
   ]),
@@ -98,7 +102,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status, globalSpaceOnly } = req.query;
+      const { withRelations, status, globalSpaceOnly, isDefault } = req.query;
 
       const statusValidation = SkillStatusSchema.decode(status);
       if (isLeft(statusValidation)) {
@@ -115,6 +119,7 @@ async function handler(
       const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
+        isDefault: isDefault === "true" ? true : undefined,
       });
 
       if (withRelations === "true") {
@@ -284,9 +289,7 @@ async function handler(
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
       if (fileAttachments) {
-        const featureFlags = await getFeatureFlags(
-          auth.getNonNullableWorkspace()
-        );
+        const featureFlags = await getFeatureFlags(auth);
         if (
           !featureFlags.includes("sandbox_tools") &&
           fileAttachments.length > 0

@@ -25,6 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import {
+  contentTypeFromFileName,
   isAllSupportedFileContentType,
   isSupportedFileContentType,
 } from "@app/types/files";
@@ -110,7 +111,8 @@ export function createProjectManagerTools(
           }
         } else if (content) {
           // Create file from direct content.
-          const finalContentType = contentType ?? "text/plain";
+          const finalContentType =
+            contentType ?? contentTypeFromFileName(fileName) ?? "text/plain";
 
           // Validate content type is text-based.
           if (!finalContentType.startsWith("text/")) {

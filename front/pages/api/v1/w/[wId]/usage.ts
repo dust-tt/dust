@@ -1,7 +1,9 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
+import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetWorkspaceUsageResponseType } from "@dust-tt/client";
@@ -36,7 +38,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
   if (!flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
@@ -62,12 +64,25 @@ async function handler(
       }
 
       const query = queryValidation.right;
+      const startDate = new Date(query.start_date);
+      const endDate = query.end_date ? new Date(query.end_date) : new Date();
+      const conversationsRetentionDays =
+        await getConversationsDataRetention(auth);
+      const retentionErrorMessage = getWorkspaceUsageRetentionErrorMessage({
+        startDate,
+        retentionDays: conversationsRetentionDays,
+      });
+      if (retentionErrorMessage) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: retentionErrorMessage,
+          },
+        });
+      }
 
-      const csvData = await unsafeGetUsageData(
-        new Date(query.start_date),
-        query.end_date ? new Date(query.end_date) : new Date(),
-        owner
-      );
+      const csvData = await unsafeGetUsageData(startDate, endDate, owner);
       res.setHeader("Content-Type", "text/csv");
       res.status(200).send(csvData);
       return;

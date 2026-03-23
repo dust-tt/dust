@@ -1,3 +1,4 @@
+import assert from "@app/lib/utils/assert";
 import type { GroupType } from "@app/types/groups";
 import {
   Button,
@@ -7,7 +8,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
-import assert from "assert";
 import { useMemo } from "react";
 
 type GroupRowData = {

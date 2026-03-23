@@ -29,6 +29,7 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   isManagedSalesforceAllowed: true,
   isSSOAllowed: true,
   isSCIMAllowed: false,
+  isAuditLogsAllowed: false,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,

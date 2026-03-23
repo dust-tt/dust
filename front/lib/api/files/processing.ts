@@ -369,55 +369,141 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 
 // Shared map: content type -> processing function. Only content types that produce a meaningful
 // "processed" version are listed here. Content types not in this map are used as-is (original).
+interface ProcessingEntry {
+  process: ProcessingFunction;
+  processedContentType: AllSupportedFileContentType;
+}
+
 const PROCESSING_BY_CONTENT_TYPE = new Map<
   AllSupportedFileContentType,
-  ProcessingFunction
+  ProcessingEntry
 >([
-  // Images (resized).
-  ["image/jpeg", resizeImage],
-  ["image/png", resizeImage],
-  ["image/gif", resizeImage],
-  ["image/webp", resizeImage],
-  ["image/bmp", resizeImage],
+  // Images (resized -> output keeps the original content type).
+  ["image/jpeg", { process: resizeImage, processedContentType: "image/jpeg" }],
+  ["image/png", { process: resizeImage, processedContentType: "image/png" }],
+  ["image/gif", { process: resizeImage, processedContentType: "image/gif" }],
+  ["image/webp", { process: resizeImage, processedContentType: "image/webp" }],
+  ["image/bmp", { process: resizeImage, processedContentType: "image/bmp" }],
 
-  // Audio (transcribed).
-  ["audio/mpeg", extractTextFromAudioAndUpload],
-  ["audio/wav", extractTextFromAudioAndUpload],
-  ["audio/x-wav", extractTextFromAudioAndUpload],
-  ["audio/webm", extractTextFromAudioAndUpload],
-  ["audio/ogg", extractTextFromAudioAndUpload],
-  ["audio/x-m4a", extractTextFromAudioAndUpload],
+  // Audio (transcribed -> plain text).
+  [
+    "audio/mpeg",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "audio/wav",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "audio/x-wav",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "audio/webm",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "audio/ogg",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "audio/x-m4a",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
 
-  // Documents (text extracted via Tika).
-  ["application/pdf", extractTextFromFileAndUpload],
-  ["application/msword", extractTextFromFileAndUpload],
+  // Documents (text extracted via Tika -> plain text).
+  [
+    "application/pdf",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "application/msword",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
   [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    extractTextFromFileAndUpload,
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
   ],
-  ["application/vnd.ms-powerpoint", extractTextFromFileAndUpload],
+  [
+    "application/vnd.ms-powerpoint",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
   [
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    extractTextFromFileAndUpload,
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
   ],
-  ["application/vnd.google-apps.document", extractTextFromFileAndUpload],
-  ["application/vnd.google-apps.presentation", extractTextFromFileAndUpload],
+  [
+    "application/vnd.google-apps.document",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
+  [
+    "application/vnd.google-apps.presentation",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
 
-  // Excel (text extracted via Tika → HTML table).
+  // Excel (text extracted via Tika -> HTML table).
   [
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    extractTextFromFileAndUpload,
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
   ],
-  ["application/vnd.ms-excel", extractTextFromFileAndUpload],
+  [
+    "application/vnd.ms-excel",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
 ]);
 
-// Returns the processing function that transforms the original file into a processed version (e.g.,
-// text extraction, image resize, audio transcription). Returns undefined when no transformation is
-// needed. The original file is used as-is. Processing is purely content-type-driven. Upload
-// support per use case is handled separately by the per-use-case files.
-function getProcessingFunction(
+// Returns the processing entry for a content type (processing function + output content type).
+// Returns undefined when no transformation is needed. The original file is used as-is. Processing
+// is purely content-type-driven. Upload support per use case is handled separately by the
+// per-use-case files.
+function getProcessingEntry(
   contentType: AllSupportedFileContentType
-): ProcessingFunction | undefined {
+): ProcessingEntry | undefined {
   return PROCESSING_BY_CONTENT_TYPE.get(contentType);
 }
 
@@ -460,21 +546,31 @@ export function isUploadSupportedForContentType({
 export function hasProcessedVersion(
   contentType: AllSupportedFileContentType
 ): boolean {
-  return getProcessingFunction(contentType) !== undefined;
+  return getProcessingEntry(contentType) !== undefined;
+}
+
+/**
+ * Returns the content type of the processed version for a given original content type.
+ * Returns undefined when there is no processed version.
+ */
+export function getProcessedContentType(
+  contentType: AllSupportedFileContentType
+): AllSupportedFileContentType | undefined {
+  return getProcessingEntry(contentType)?.processedContentType;
 }
 
 const maybeApplyProcessing = async (
   auth: Authenticator,
   file: FileResource
 ): Promise<Result<undefined, Error>> => {
-  const processing = getProcessingFunction(file.contentType);
-  if (!processing) {
+  const entry = getProcessingEntry(file.contentType);
+  if (!entry) {
     // No processing needed. The original file is used as-is.
     return new Ok(undefined);
   }
 
   const start = performance.now();
-  const res = await processing(auth, file);
+  const res = await entry.process(auth, file);
 
   const elapsed = performance.now() - start;
   logger.info(

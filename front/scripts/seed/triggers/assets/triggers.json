@@ -1,0 +1,70 @@
+[
+  {
+    "name": "Daily Haiku",
+    "kind": "schedule",
+    "agentName": "HaikuPoet",
+    "customPrompt": "Write a haiku about the current season and time of day.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 9 * * *",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Weekly City Report",
+    "kind": "schedule",
+    "agentName": "CityInfo",
+    "customPrompt": "Provide a summary of interesting facts about a random European capital city.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 10 * * 1",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Hourly Cat Check",
+    "kind": "schedule",
+    "agentName": "Soupinou",
+    "customPrompt": "Meow and tell me how you're feeling right now.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 * * * *",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "name": "PR Review Reminder",
+    "kind": "webhook",
+    "agentName": "HaikuPoet",
+    "webhookSourceName": "GitHub Notifications",
+    "customPrompt": "A pull request was opened. Write a haiku inspired by the PR title.",
+    "status": "disabled",
+    "configuration": {
+      "includePayload": true,
+      "event": "pull_request"
+    }
+  },
+  {
+    "name": "Issue Tracker",
+    "kind": "webhook",
+    "agentName": "CityInfo",
+    "webhookSourceName": "Linear Updates",
+    "customPrompt": "A Linear issue was updated. Summarize the change.",
+    "status": "disabled",
+    "configuration": {
+      "includePayload": true,
+      "event": "Issue"
+    }
+  },
+  {
+    "name": "Custom Event Handler",
+    "kind": "webhook",
+    "agentName": "Soupinou",
+    "webhookSourceName": "Custom Webhook",
+    "customPrompt": "React to this webhook event like a curious cat would.",
+    "status": "disabled",
+    "configuration": {
+      "includePayload": true
+    }
+  }
+]

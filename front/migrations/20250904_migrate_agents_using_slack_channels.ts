@@ -1,5 +1,5 @@
 import { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
 
 import config from "@app/lib/api/config";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";

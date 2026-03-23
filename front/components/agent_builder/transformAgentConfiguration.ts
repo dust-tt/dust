@@ -2,17 +2,17 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-} from "@app/types/assistant/models/anthropic";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_LARGE_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import { GROK_4_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
@@ -59,26 +59,55 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
+// TODO(BYOK): For BYOK workspaces, this should also check healthy provider credentials.
+// Needs a new endpoint + SWR hook to fetch BYOK-aware whitelisted providers.
+function isProviderWhitelistedSync(
+  owner: WorkspaceType,
+  providerId: ModelProviderIdType
+): boolean {
+  if (providerId === "noop") {
+    return true;
+  }
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  return whiteListedProviders.includes(providerId);
+}
+
+function getLargeWhitelistedModelSync(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelistedSync(owner, "anthropic")) {
+    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "openai")) {
+    return GPT_5_4_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "google_ai_studio")) {
+    return GEMINI_3_PRO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "mistral")) {
+    return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  if (isProviderWhitelistedSync(owner, "xai")) {
+    return GROK_4_MODEL_CONFIG;
+  }
+  return null;
+}
+
 export function getDefaultAgentFormData({
   user,
   owner,
-  hasSidekick,
 }: {
   user: UserType;
   owner: WorkspaceType;
-  hasSidekick?: boolean;
 }): AgentBuilderFormData {
-  const preferredModel = hasSidekick
-    ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-    : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = hasSidekick
-    ? getSmallWhitelistedModel(owner)
-    : getLargeWhitelistedModel(owner);
+  const preferredModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  const fallbackModel = getLargeWhitelistedModelSync(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
   // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
   const modelConfiguration =
-    !isProviderWhitelisted(owner, preferredModel.providerId) && fallbackModel
+    !isProviderWhitelistedSync(owner, preferredModel.providerId) &&
+    fallbackModel
       ? fallbackModel
       : preferredModel;
 
@@ -120,31 +149,17 @@ export function getDefaultAgentFormData({
 export function transformTemplateToFormData(
   template: FetchAgentTemplateResponse,
   user: UserType,
-  owner: WorkspaceType,
-  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
+  owner: WorkspaceType
 ): AgentBuilderFormData {
-  const hasSidekickAccess =
-    hasFeature("agent_builder_copilot") &&
-    (owner.role === "admin" ||
-      (hasFeature("agent_builder_copilot_builders") &&
-        owner.role === "builder"));
   const defaultFormData = getDefaultAgentFormData({
     user,
     owner,
-    hasSidekick: hasSidekickAccess,
   });
 
   return {
     ...defaultFormData,
-    // Don't constrain sidekick with preset instructions when the user has sidekick access.
-    instructions: hasSidekickAccess
-      ? defaultFormData.instructions
-      : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
-      name: hasSidekickAccess
-        ? defaultFormData.agentSettings.name
-        : (template.handle ?? defaultFormData.agentSettings.name),
       description:
         template.userFacingDescription ??
         defaultFormData.agentSettings.description,

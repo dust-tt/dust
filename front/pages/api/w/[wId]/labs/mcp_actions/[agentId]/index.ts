@@ -78,8 +78,7 @@ async function handler(
         }
       }
 
-      const owner = auth.getNonNullableWorkspace();
-      const flags = await getFeatureFlags(owner);
+      const flags = await getFeatureFlags(auth);
       if (!flags.includes("labs_mcp_actions_dashboard")) {
         return apiError(req, res, {
           status_code: 404,

@@ -21,7 +21,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
     try {
       const client = getElevenLabsClient();
 
-      const voiceId = resolveDefaultVoiceId({
+      const voiceId = await resolveDefaultVoiceId({
         language,
         useCase: use_case,
         gender,
@@ -30,7 +30,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
       const stream = await client.textToSpeech.convert(voiceId, {
         text,
         enableLogging: false,
-        modelId: "eleven_multilingual_v2",
+        modelId: "eleven_v3",
         outputFormat: "mp3_44100_128",
       });
 
@@ -66,13 +66,16 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
     try {
       const client = getElevenLabsClient();
 
-      const inputs = dialogues.map((d) => {
+      // resolveDefaultVoiceId is called once (cached after first call), so
+      // sequential resolution here avoids redundant API fetches on cold start.
+      const inputs: { text: string; voiceId: string }[] = [];
+      for (const d of dialogues) {
         const { gender, language, use_case: useCase } = d.speaker;
-        return {
+        inputs.push({
           text: d.text,
-          voiceId: resolveDefaultVoiceId({ gender, language, useCase }),
-        };
-      });
+          voiceId: await resolveDefaultVoiceId({ gender, language, useCase }),
+        });
+      }
 
       const stream = await client.textToDialogue.stream({
         inputs,

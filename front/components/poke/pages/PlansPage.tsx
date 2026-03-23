@@ -1,4 +1,3 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import type { EditingPlanType } from "@app/components/poke/plans/form";
 import {
   Field,
@@ -7,6 +6,7 @@ import {
   toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
@@ -26,7 +26,7 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 export function PlansPage() {
-  useSetPokePageTitle("Plans");
+  useDocumentTitle("Poke - Plans");
 
   const { mutate } = useSWRConfig();
 

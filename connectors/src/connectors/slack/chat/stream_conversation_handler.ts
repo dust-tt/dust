@@ -645,8 +645,9 @@ async function streamAgentAnswerToSlack(
         return new Ok(undefined);
       }
 
+      case "agent_context_pruned":
       case "agent_message_done":
-        // No-op, we handle completion in "agent_message_success"
+        // No-op.
         break;
 
       default:

@@ -24,7 +24,7 @@ vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
 
 describe("GET /api/poke/search - phone number", () => {
   it("returns workspace when searching by phone number in E.164 format", async () => {
-    const { req, res, authenticator } = await createPrivateApiMockRequest({
+    const { req, res, auth } = await createPrivateApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -33,7 +33,7 @@ describe("GET /api/poke/search - phone number", () => {
     const phoneHash =
       WorkspaceVerificationAttemptResource.hashPhoneNumber(phoneNumber);
 
-    await WorkspaceVerificationAttemptResource.makeVerified(authenticator, {
+    await WorkspaceVerificationAttemptResource.makeVerified(auth, {
       phoneNumberHash: phoneHash,
     });
 
@@ -53,7 +53,7 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns workspace when searching by phone number without +", async () => {
-    const { req, res, authenticator } = await createPrivateApiMockRequest({
+    const { req, res, auth } = await createPrivateApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -62,7 +62,7 @@ describe("GET /api/poke/search - phone number", () => {
     const phoneHash =
       WorkspaceVerificationAttemptResource.hashPhoneNumber(phoneNumber);
 
-    await WorkspaceVerificationAttemptResource.makeVerified(authenticator, {
+    await WorkspaceVerificationAttemptResource.makeVerified(auth, {
       phoneNumberHash: phoneHash,
     });
 
@@ -83,7 +83,7 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns no results for unverified phone numbers", async () => {
-    const { req, res, authenticator } = await createPrivateApiMockRequest({
+    const { req, res, auth } = await createPrivateApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -93,7 +93,7 @@ describe("GET /api/poke/search - phone number", () => {
       WorkspaceVerificationAttemptResource.hashPhoneNumber(phoneNumber);
 
     // Create an unverified attempt.
-    await WorkspaceVerificationAttemptResource.makeNew(authenticator, {
+    await WorkspaceVerificationAttemptResource.makeNew(auth, {
       phoneNumberHash: phoneHash,
       twilioVerificationSid: "VEtest123",
     });
@@ -111,11 +111,10 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns both workspace and phone trial when digits match both", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({
-        isSuperUser: true,
-        role: "admin",
-      });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+      role: "admin",
+    });
 
     // Use a phone number whose digits (without +) equal the workspace model ID.
     // Both the workspace-by-ID and the phone-trial search should return results.
@@ -123,7 +122,7 @@ describe("GET /api/poke/search - phone number", () => {
     const phoneHash =
       WorkspaceVerificationAttemptResource.hashPhoneNumber(phoneNumber);
 
-    await WorkspaceVerificationAttemptResource.makeVerified(authenticator, {
+    await WorkspaceVerificationAttemptResource.makeVerified(auth, {
       phoneNumberHash: phoneHash,
     });
 

@@ -1,11 +1,11 @@
 import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   isEntreprisePlanPrefix,
@@ -151,7 +151,7 @@ export function DashboardPage() {
  * SPA mode: Search workspaces across all regions.
  */
 function DashboardPageSPA() {
-  useSetPokePageTitle("Home");
+  useDocumentTitle("Poke - Home");
 
   const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();

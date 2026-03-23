@@ -1,6 +1,14 @@
-import { replaceContentNodeMarkdownWithQuotedTitle } from "@app/lib/content_nodes";
 import { replaceMentionsWithAt } from "@app/lib/mentions/format";
 import removeMarkdown from "remove-markdown";
+
+const CONTENT_NODE_MENTION_REGEX =
+  /:content_node_mention\[([^\]]+)](\{url=([^}]+)})?/;
+
+function replaceContentNodeMarkdownWithQuotedTitle(markdown: string) {
+  return markdown.replace(CONTENT_NODE_MENTION_REGEX, (_match, title) => {
+    return `"${title}"`;
+  });
+}
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode

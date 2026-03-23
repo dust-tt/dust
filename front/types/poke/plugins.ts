@@ -58,6 +58,7 @@ interface NumberArgDefinition extends BaseArgDefinition {
   type: "number";
   values?: never;
   variant?: "text" | "spinner";
+  default?: number;
 }
 
 interface TextArgDefinition extends BaseArgDefinition {
@@ -69,6 +70,7 @@ interface BooleanArgDefinition extends BaseArgDefinition {
   type: "boolean";
   values?: never;
   variant?: "checkbox" | "toggle";
+  default?: boolean;
   async?: false;
 }
 
@@ -76,6 +78,7 @@ interface AsyncBooleanArgDefinition extends BaseArgDefinition {
   type: "boolean";
   values?: never;
   variant?: "checkbox" | "toggle";
+  default?: boolean;
   async: true;
 }
 

@@ -10,15 +10,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "./search";
 
 async function createConversationWithTitle(
-  authenticator: Parameters<typeof ConversationFactory.create>[0],
+  auth: Parameters<typeof ConversationFactory.create>[0],
   options: Parameters<typeof ConversationFactory.create>[1],
   title: string,
   userId: number
 ) {
-  const conversation = await ConversationFactory.create(authenticator, options);
+  const conversation = await ConversationFactory.create(auth, options);
   await ConversationModel.update({ title }, { where: { id: conversation.id } });
 
-  const workspaceId = authenticator.getNonNullableWorkspace().id;
+  const workspaceId = auth.getNonNullableWorkspace().id;
   await ConversationParticipantModel.create({
     conversationId: conversation.id,
     userId,
@@ -122,14 +122,14 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
     });
 
     it("returns empty array when query does not match any title", async () => {
-      const { req, res, workspace, authenticator, user } =
+      const { req, res, workspace, auth, user } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
         });
 
       await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],
@@ -151,14 +151,14 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
 
   describe("Success Cases", () => {
     it("returns conversations matching the query in title", async () => {
-      const { req, res, workspace, authenticator, user } =
+      const { req, res, workspace, auth, user } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
         });
 
       const conv1 = await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],
@@ -168,7 +168,7 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
       );
 
       await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],
@@ -178,7 +178,7 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
       );
 
       const conv3 = await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],
@@ -202,14 +202,14 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
     });
 
     it("performs case-insensitive search", async () => {
-      const { req, res, workspace, authenticator, user } =
+      const { req, res, workspace, auth, user } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
         });
 
       const conv = await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],
@@ -230,14 +230,14 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
     });
 
     it("returns spaceName as null for all conversations", async () => {
-      const { req, res, workspace, authenticator, user } =
+      const { req, res, workspace, auth, user } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
         });
 
       await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],
@@ -260,7 +260,7 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
 
   describe("Pagination", () => {
     it("respects limit parameter", async () => {
-      const { req, res, workspace, authenticator, user } =
+      const { req, res, workspace, auth, user } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -268,7 +268,7 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
 
       for (let i = 0; i < 5; i++) {
         await createConversationWithTitle(
-          authenticator,
+          auth,
           {
             agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
             messagesCreatedAt: [new Date()],
@@ -292,14 +292,14 @@ describe("GET /api/w/[wId]/assistant/conversations/search", () => {
     });
 
     it("returns hasMore=false when all results fit in limit", async () => {
-      const { req, res, workspace, authenticator, user } =
+      const { req, res, workspace, auth, user } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
         });
 
       await createConversationWithTitle(
-        authenticator,
+        auth,
         {
           agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
           messagesCreatedAt: [new Date()],

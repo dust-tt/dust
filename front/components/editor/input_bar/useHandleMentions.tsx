@@ -9,7 +9,8 @@ const useHandleMentions = (
   editorService: EditorService,
   stickyMentions: RichMention[] | undefined,
   selectedAgent: RichAgentMention | null,
-  disableAutoFocus: boolean
+  disableAutoFocus: boolean,
+  pendingInputText?: string | null
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
 
@@ -46,10 +47,20 @@ const useHandleMentions = (
     if (selectedAgent) {
       if (!editorService.hasMention(selectedAgent)) {
         // Schedule insertion to avoid synchronous editor updates during React render/effects.
-        queueMicrotask(() => editorService.insertMention(selectedAgent));
+        queueMicrotask(() => {
+          editorService.insertMention(selectedAgent);
+          // If there's pending input text (e.g. from a butler suggestion), insert it after the mention.
+          if (pendingInputText) {
+            editorService.insertText(pendingInputText);
+          }
+        });
+      } else if (pendingInputText) {
+        queueMicrotask(() => editorService.insertText(pendingInputText));
       }
+    } else if (pendingInputText) {
+      queueMicrotask(() => editorService.insertText(pendingInputText));
     }
-  }, [selectedAgent, editorService]);
+  }, [selectedAgent, pendingInputText, editorService]);
 
   return { stickyMentionsTextContent };
 };

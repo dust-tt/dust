@@ -37,7 +37,7 @@ async function handler(
     });
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("projects")) {
     return apiError(req, res, {
       status_code: 403,

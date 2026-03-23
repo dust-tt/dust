@@ -45,6 +45,7 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
     ...authContext,
     featureFlags: [],
     vizUrl: "",
+    providersHealth: null,
   };
 
   return (

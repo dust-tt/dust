@@ -11,6 +11,15 @@ import {
   triggerFromEmail,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
+import {
+  extractEmailAddressesFromHeader,
+  extractSingleEmailAddressFromHeader,
+  parseHeaderValue,
+} from "@app/lib/api/assistant/email/header_parsing";
+import {
+  evaluateInboundAuth,
+  parseSendgridDkimResults,
+} from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -29,28 +38,6 @@ export const config = {
     bodyParser: false,
   },
 };
-
-function parseHeaderValue(
-  rawHeaders: string,
-  headerName: string
-): string | null {
-  const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Match the header name at line start, capture the first line value then any
-  // RFC 5322 folded continuation lines (lines starting with whitespace).
-  const headerPattern = new RegExp(
-    `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
-    "im"
-  );
-  const match = rawHeaders.match(headerPattern);
-  if (!match) {
-    return null;
-  }
-
-  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
-  const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
-
-  return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
-}
 
 function parseThreadingHeaders(rawHeaders: string | null) {
   if (!rawHeaders) {
@@ -78,13 +65,15 @@ const parseSendgridWebhookContent = async (
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
     const text = fields["text"] ? fields["text"][0] : null;
-    const full = fields["from"] ? fields["from"][0] : null;
+    const senderFull = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
     const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
     const envelope = fields["envelope"]
       ? JSON.parse(fields["envelope"][0])
       : null;
+
+    const dkimRaw = isString(dkim) ? dkim : "";
 
     if (!envelope) {
       return new Err(new Error("Failed to parse envelope"));
@@ -95,8 +84,19 @@ const parseSendgridWebhookContent = async (
     if (!from || typeof from !== "string") {
       return new Err(new Error("Failed to parse envelope.from"));
     }
-    if (!full || typeof full !== "string") {
+    if (!senderFull || typeof senderFull !== "string") {
       return new Err(new Error("Failed to parse from"));
+    }
+
+    const senderHeaderValue =
+      (isString(rawHeaders) ? parseHeaderValue(rawHeaders, "From") : null) ??
+      senderFull;
+    const senderRes = extractSingleEmailAddressFromHeader(
+      "From",
+      senderHeaderValue
+    );
+    if (senderRes.isErr()) {
+      return senderRes;
     }
 
     // Extract attachments from files, filtering to supported content types.
@@ -123,19 +123,36 @@ const parseSendgridWebhookContent = async (
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       text: text || "",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      auth: { SPF: SPF || "", dkim: dkim || "" },
+      auth: {
+        SPF: SPF || "",
+        dkim: parseSendgridDkimResults(dkimRaw),
+        dkimRaw,
+      },
       threadingHeaders: parseThreadingHeaders(
         isString(rawHeaders) ? rawHeaders : null
       ),
+      sender: {
+        email: senderRes.value,
+        full: senderHeaderValue,
+      },
       envelope: {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        to: envelope.to || [],
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        cc: envelope.cc || [],
+        // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
+        // contains addresses matching the inbound-parse domain, omitting human recipients.
+        // envelope.cc is not populated by Sendgrid at all.
+        // Fall back to envelope.to if headers are absent so agent routing still works.
+        to: (() => {
+          const fromHeaders = extractEmailAddressesFromHeader(
+            isString(rawHeaders) ? parseHeaderValue(rawHeaders, "To") : null
+          );
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          return fromHeaders.length > 0 ? fromHeaders : envelope.to || [];
+        })(),
+        cc: extractEmailAddressesFromHeader(
+          isString(rawHeaders) ? parseHeaderValue(rawHeaders, "Cc") : null
+        ),
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         bcc: envelope.bcc || [],
         from,
-        full,
       },
       attachments,
     });
@@ -161,7 +178,7 @@ const replyToError = async (
     email,
     htmlContent,
     recipients: {
-      to: [email.envelope.from],
+      to: [email.sender.email],
       cc: [],
     },
   });
@@ -225,21 +242,41 @@ async function handler(
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
 
-      // Check SPF is pass.
-      if (
-        email.auth.SPF !== "pass" ||
-        email.auth.dkim !== `{@${email.envelope.from.split("@")[1]} : pass}`
-      ) {
-        await replyToError(email, {
-          type: "unauthenticated_error",
-          message:
-            "Failed to authenticate your email (SPF/dkim validation failed).",
-        });
+      const authDecision = evaluateInboundAuth(email);
+
+      if (!authDecision.authenticated) {
+        // Do not reply to unauthenticated mail — the sender may be spoofed,
+        // and replying would cause backscatter.
+        logger.warn(
+          {
+            reason: authDecision.reason,
+            headerFromDomain: authDecision.headerFromDomain,
+            spfResult: authDecision.spfResult,
+            spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
+            dkimEntries: authDecision.dkimEntries,
+            senderEmail: email.sender.email,
+            targetEmails: [
+              ...(email.envelope.to ?? []),
+              ...(email.envelope.cc ?? []),
+              ...(email.envelope.bcc ?? []),
+            ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`)),
+          },
+          "[email] Dropping unauthenticated inbound mail (SPF/DKIM failure)"
+        );
         return;
       }
 
+      logger.info(
+        {
+          reason: authDecision.reason,
+          headerFromDomain: authDecision.headerFromDomain,
+          senderEmail: email.sender.email,
+        },
+        "[email] Inbound sender authenticated"
+      );
+
       const userRes = await userAndWorkspaceFromEmail({
-        email: email.envelope.from,
+        email: email.sender.email,
       });
       if (userRes.isErr()) {
         await replyToError(email, userRes.error);
@@ -271,8 +308,7 @@ async function handler(
         workspace.sId
       );
 
-      const featureFlagWorkspace = auth.getNonNullableWorkspace();
-      const featureFlags = await getFeatureFlags(featureFlagWorkspace);
+      const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("email_agents")) {
         await replyToError(email, {
           type: "invalid_email_error",

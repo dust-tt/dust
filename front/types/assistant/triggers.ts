@@ -1,7 +1,7 @@
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
-import * as t from "io-ts";
+import { z } from "zod";
 
 export type ScheduleConfig = {
   cron: string;
@@ -104,55 +104,38 @@ export function isScheduleTrigger(
   return trigger.kind === "schedule";
 }
 
-const ScheduleConfigSchema = t.type({
-  cron: t.string,
-  timezone: t.string,
+const ScheduleConfigSchema = z.object({
+  cron: z.string(),
+  timezone: z.string(),
 });
 
-const WebhookConfigSchema = t.intersection([
-  t.type({
-    includePayload: t.boolean,
-  }),
-  t.partial({
-    event: t.string,
-    filter: t.string,
-  }),
-]);
+const WebhookConfigSchema = z.object({
+  includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
+});
 
-const TriggerStatusSchema = t.union([
-  t.literal("enabled"),
-  t.literal("disabled"),
-  t.literal("relocating"),
-  t.literal("downgraded"),
-]);
+const TriggerStatusSchema = z.enum(TRIGGER_STATUSES);
 
-export const TriggerSchema = t.union([
-  t.intersection([
-    t.type({
-      name: t.string,
-      kind: t.literal("schedule"),
-      customPrompt: t.string,
-      naturalLanguageDescription: t.union([t.string, t.null]),
-      configuration: ScheduleConfigSchema,
-      editor: t.union([t.number, t.undefined]),
-    }),
-    t.partial({
-      status: TriggerStatusSchema,
-    }),
-  ]),
-  t.intersection([
-    t.type({
-      name: t.string,
-      kind: t.literal("webhook"),
-      customPrompt: t.string,
-      naturalLanguageDescription: t.union([t.string, t.null]),
-      configuration: WebhookConfigSchema,
-      webhookSourceViewSId: t.string,
-      executionPerDayLimitOverride: t.number,
-      editor: t.union([t.number, t.undefined]),
-    }),
-    t.partial({
-      status: TriggerStatusSchema,
-    }),
-  ]),
+export const TriggerSchema = z.discriminatedUnion("kind", [
+  z.object({
+    name: z.string(),
+    kind: z.literal("schedule"),
+    customPrompt: z.string(),
+    naturalLanguageDescription: z.string().nullable(),
+    configuration: ScheduleConfigSchema,
+    editor: z.number().optional(),
+    status: TriggerStatusSchema.optional(),
+  }),
+  z.object({
+    name: z.string(),
+    kind: z.literal("webhook"),
+    customPrompt: z.string(),
+    naturalLanguageDescription: z.string().nullable(),
+    configuration: WebhookConfigSchema,
+    webhookSourceViewSId: z.string(),
+    executionPerDayLimitOverride: z.number(),
+    editor: z.number().optional(),
+    status: TriggerStatusSchema.optional(),
+  }),
 ]);

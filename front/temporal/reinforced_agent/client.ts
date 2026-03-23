@@ -90,16 +90,28 @@ export async function startReinforcedAgentForAgentWorkflow({
   workspaceId,
   agentConfigurationId,
   useBatchMode,
+  conversationLookbackDays = 1,
+  disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   useBatchMode: boolean;
+  conversationLookbackDays?: number;
+  disableNotifications?: boolean;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = `reinforced-agent-${workspaceId}-${agentConfigurationId}-manual-${Date.now()}`;
 
   await client.workflow.start(reinforcedAgentForAgentWorkflow, {
-    args: [{ workspaceId, agentConfigurationId, useBatchMode }],
+    args: [
+      {
+        workspaceId,
+        agentConfigurationId,
+        useBatchMode,
+        conversationLookbackDays,
+        disableNotifications,
+      },
+    ],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

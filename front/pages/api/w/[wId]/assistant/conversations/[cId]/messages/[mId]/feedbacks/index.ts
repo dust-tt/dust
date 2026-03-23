@@ -96,7 +96,6 @@
  *         description: Unauthorized
  */
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   deleteMessageFeedback,
   upsertMessageFeedback,
@@ -140,19 +139,6 @@ async function handler(
     });
   }
 
-  const conversationId = req.query.cId;
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
@@ -164,6 +150,37 @@ async function handler(
   }
 
   const messageId = req.query.mId;
+  const conversationId = req.query.cId;
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversationResource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
+  }
+
+  const messageRes = await conversationResource.getMessageById(auth, messageId);
+
+  if (messageRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message:
+          "The message you're trying to give feedback to does not exist or is not accessible.",
+      },
+    });
+  }
+
+  const conversation = conversationResource.toJSON();
 
   switch (req.method) {
     case "POST":

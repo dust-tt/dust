@@ -14,6 +14,7 @@ const AgentResult = z.object({
   agent_confidence: z.number(),
   agent_name: z.string(),
   agent_prompt: z.string(),
+  agent_rationale: z.string().optional(),
 });
 
 export const callAgentEvaluator: ButlerEvaluator = {
@@ -88,8 +89,18 @@ export const callAgentEvaluator: ButlerEvaluator = {
             description:
               "A suggested message to send to the recommended agent, or empty string if none.",
           },
+          agent_rationale: {
+            type: "string",
+            description:
+              "A brief one-sentence explanation of why this agent would help (e.g. 'This agent can search your Jira board for the ticket you mentioned'), or empty string if none.",
+          },
         },
-        required: ["agent_confidence", "agent_name", "agent_prompt"],
+        required: [
+          "agent_confidence",
+          "agent_name",
+          "agent_prompt",
+          "agent_rationale",
+        ],
       },
     };
 
@@ -105,7 +116,8 @@ export const callAgentEvaluator: ButlerEvaluator = {
       return null;
     }
 
-    const { agent_confidence, agent_name, agent_prompt } = parsed.data;
+    const { agent_confidence, agent_name, agent_prompt, agent_rationale } =
+      parsed.data;
 
     if (
       agent_confidence < CONFIDENCE_THRESHOLD ||
@@ -130,6 +142,7 @@ export const callAgentEvaluator: ButlerEvaluator = {
         agentSId: matchedAgent.sId,
         agentName: matchedAgent.name,
         prompt: agent_prompt,
+        rationale: agent_rationale || undefined,
       },
     };
   },

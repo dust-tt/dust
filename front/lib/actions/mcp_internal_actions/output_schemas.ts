@@ -1,11 +1,7 @@
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
 import {
   CUSTOM_RESOURCE_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
-} from "@app/components/resources/resources_icons";
+} from "@app/components/resources/resources_icon_names";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -793,19 +789,9 @@ export function isInteractiveContentFileContentOutput(
   return output !== undefined && output.type === "interactive_content_file";
 }
 
-const InternalAllowedIconSchema = z.enum(
-  INTERNAL_ALLOWED_ICONS as [
-    InternalAllowedIconType,
-    ...InternalAllowedIconType[],
-  ]
-);
+const InternalAllowedIconSchema = z.enum([...INTERNAL_ALLOWED_ICONS]);
 
-const CustomResourceIconSchema = z.enum(
-  CUSTOM_RESOURCE_ALLOWED as [
-    CustomResourceIconType,
-    ...CustomResourceIconType[],
-  ]
-);
+const CustomResourceIconSchema = z.enum([...CUSTOM_RESOURCE_ALLOWED]);
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
 // This schema contains all the information that the MCP server runner

@@ -92,7 +92,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
   }
 
   const auth = authResult.value;
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
 
   let shouldSignalButler = false;
   if (featureFlags.includes("conversation_butler")) {

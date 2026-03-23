@@ -127,6 +127,7 @@ function createMockAuthenticator(): Authenticator {
     isAdmin: () => true,
     isBuilder: () => true,
     isUser: () => true,
+    isDustSuperUser: () => true,
     role: () => "admin",
     user: () => mockUser,
     groups: () => [],

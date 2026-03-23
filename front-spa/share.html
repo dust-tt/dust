@@ -17,26 +17,6 @@
       content="noindex, nofollow, noarchive, nosnippet, noimageindex"
     />
     <title>Dust - Shared Content</title>
-    <script>
-      // Shim for Node.js Buffer API used by some dependencies
-      globalThis.Buffer = globalThis.Buffer || {
-        isBuffer: function () {
-          return false;
-        },
-        from: function (x) {
-          return new Uint8Array(
-            typeof x === "string"
-              ? Array.from(x).map(function (c) {
-                  return c.charCodeAt(0);
-                })
-              : x
-          );
-        },
-        alloc: function (n) {
-          return new Uint8Array(n);
-        },
-      };
-    </script>
   </head>
   <body>
     <div id="root"></div>

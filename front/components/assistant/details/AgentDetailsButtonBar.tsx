@@ -17,7 +17,7 @@ import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BracesIcon,
   Button,
-  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleBottomCenterPlusIcon,
   ClipboardIcon,
   DocumentIcon,
   DropdownMenu,
@@ -108,7 +108,7 @@ export function AgentDetailsButtonBar({
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
         <Button
-          icon={ChatBubbleBottomCenterTextIcon}
+          icon={ChatBubbleBottomCenterPlusIcon}
           size="sm"
           variant="outline"
           tooltip="New conversation"
@@ -336,7 +336,7 @@ export function AgentDetailsDropdownMenu({
       ) : showTrigger ? (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="ghost" />
+            <Button icon={MoreIcon} size="sm" variant="outline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>

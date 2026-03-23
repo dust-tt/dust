@@ -140,9 +140,13 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const { success, results } = response;
 
     if (!success || !results) {
+      const fallbackReason =
+        "unknown error, the ID extracted from the URL may not map to an existing report. " +
+        "Dashboards and saved views are not supported.";
       return new Err(
         new MCPError(
-          `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
+          `Report retrieval failed: ${response.results?.failureReason ?? fallbackReason} ` +
+            `(status: ${response.results?.status ?? "unknown"})`
         )
       );
     }
@@ -449,7 +453,30 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         })
       );
     }
-    const offers = offersResult.value;
+
+    // Pick the latest offer by latestVersion.createdAt.
+    const latestOffer = offersResult.value.reduce((latest, offer) => {
+      const latestCreatedAt = latest?.latestVersion?.createdAt ?? "";
+      const offerCreatedAt = offer.latestVersion?.createdAt ?? "";
+      return offerCreatedAt > latestCreatedAt ? offer : latest;
+    }, offersResult.value[0] ?? null);
+
+    // Fetch detailed offer info for the latest offer.
+    let offerInfo = null;
+    if (latestOffer) {
+      const offerInfoResult = await client.getOfferInfo({
+        offerId: latestOffer.id,
+      });
+      if (offerInfoResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to get offer info for offer ${latestOffer.id}: ${offerInfoResult.error.message}`,
+            { cause: offerInfoResult.error }
+          )
+        );
+      }
+      offerInfo = offerInfoResult.value.results ?? null;
+    }
 
     // Fetch job info if we have a jobId.
     let jobInfo = null;
@@ -470,7 +497,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     const text = renderHireData({
       candidateInfo,
-      offers,
+      offerInfo,
       jobInfo,
       applicationId,
     });

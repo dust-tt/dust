@@ -17,8 +17,6 @@ const POPUP_CONFIG = {
   CHECK_INTERVAL_MS: 100,
 } as const;
 
-const DEFAULT_TOKEN_EXPIRY = 5 * 60; // 5 minutes in seconds
-
 interface PopupResult<T = void> {
   data?: T;
   error?: Error;
@@ -164,7 +162,7 @@ export class FrontAuthService extends AuthService {
         success: true,
         accessToken: data.accessToken,
         refreshToken: data.refreshToken || "",
-        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
+        expirationDate: data.expirationDate,
       });
 
       const claims = jwtDecode<Record<string, string>>(data.accessToken);
@@ -277,7 +275,7 @@ export class FrontAuthService extends AuthService {
         success: true,
         accessToken: data.accessToken,
         refreshToken: data.refreshToken || "",
-        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
+        expirationDate: data.expirationDate,
       });
       return new Ok(storedTokens);
     } catch (error) {

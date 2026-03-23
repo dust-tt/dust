@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
+import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
@@ -56,8 +56,7 @@ import {
   BoltOffIcon,
   BracesIcon,
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
+  ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   CheckDoubleIcon,
   cn,
@@ -318,7 +317,7 @@ function SearchResults({
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={ChatBubbleBottomCenterPlusIcon}
                 variant="ghost"
                 tooltip="New Conversation"
                 href={getConversationRoute(owner.sId)}
@@ -832,7 +831,7 @@ export function AgentSidebarMenu({
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterTextIcon}
+                    icon={ChatBubbleBottomCenterPlusIcon}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -881,26 +880,24 @@ export function AgentSidebarMenu({
                                       "create_from_template"
                                     )}
                                   />
-                                  {hasFeature("agent_to_yaml") && (
-                                    <DropdownMenuItem
-                                      icon={
-                                        isUploadingYAML ? (
-                                          <Spinner size="xs" />
-                                        ) : (
-                                          BracesIcon
-                                        )
-                                      }
-                                      label={
-                                        isUploadingYAML
-                                          ? "Uploading..."
-                                          : "From YAML"
-                                      }
-                                      disabled={isUploadingYAML}
-                                      onClick={triggerYAMLUpload}
-                                      data-gtm-label="yamlUploadButton"
-                                      data-gtm-location="sidebarMenu"
-                                    />
-                                  )}
+                                  <DropdownMenuItem
+                                    icon={
+                                      isUploadingYAML ? (
+                                        <Spinner size="xs" />
+                                      ) : (
+                                        BracesIcon
+                                      )
+                                    }
+                                    label={
+                                      isUploadingYAML
+                                        ? "Uploading..."
+                                        : "From YAML"
+                                    }
+                                    disabled={isUploadingYAML}
+                                    onClick={triggerYAMLUpload}
+                                    data-gtm-label="yamlUploadButton"
+                                    data-gtm-location="sidebarMenu"
+                                  />
                                 </DropdownMenuSubContent>
                               </DropdownMenuPortal>
                             </DropdownMenuSub>
@@ -1054,7 +1051,7 @@ export function AgentSidebarMenu({
               conversationsList
             )}
 
-            {!hideInAppBanner && <AcademyBanner />}
+            {!hideInAppBanner && <StackedInAppBanners owner={owner} />}
           </div>
         </div>
       </div>
@@ -1085,28 +1082,28 @@ const ConversationListContainer = ({
   return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
-const InboxConversationList = ({
+interface InboxSectionProps
+  extends Omit<InboxConversationListProps, "dateLabel"> {}
+
+function InboxSection({
   inboxConversations,
-  dateLabel,
   isMultiSelect,
   isMarkingAllAsRead,
   titleFilter,
   onMarkAllAsRead,
-  ...props
-}: InboxConversationListProps) => {
-  if (inboxConversations.length === 0) {
-    return null;
-  }
+  selectedConversations,
+  toggleConversationSelection,
+  activeConversationId,
+  owner,
+}: InboxSectionProps) {
+  const totalCount = inboxConversations.length;
 
   const shouldShowMarkAllAsReadButton =
-    inboxConversations.length > 0 &&
-    titleFilter.length === 0 &&
-    !isMultiSelect &&
-    onMarkAllAsRead;
+    totalCount > 0 && titleFilter.length === 0 && !isMultiSelect;
 
   return (
     <NavigationListCollapsibleSection
-      label={dateLabel}
+      label={`Inbox (${totalCount})`}
       className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
       defaultOpen
       actionOnHover={false}
@@ -1130,12 +1127,15 @@ const InboxConversationList = ({
           key={conversation.sId}
           conversation={conversation}
           isMultiSelect={isMultiSelect}
-          {...props}
+          selectedConversations={selectedConversations}
+          toggleConversationSelection={toggleConversationSelection}
+          activeConversationId={activeConversationId}
+          owner={owner}
         />
       ))}
     </NavigationListCollapsibleSection>
   );
-};
+}
 
 const ConversationList = ({
   conversations,
@@ -1392,9 +1392,8 @@ function NavigationListWithInbox({
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
       {inboxConversations.length > 0 && (
-        <InboxConversationList
+        <InboxSection
           inboxConversations={inboxConversations}
-          dateLabel={`Inbox (${inboxConversations.length})`}
           isMultiSelect={isMultiSelect}
           isMarkingAllAsRead={isMarkingAllAsRead}
           titleFilter={titleFilter}
@@ -1414,7 +1413,7 @@ function NavigationListWithInbox({
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={ChatBubbleBottomCenterPlusIcon}
                 variant="ghost"
                 aria-label="New Conversation"
                 tooltip="New Conversation"

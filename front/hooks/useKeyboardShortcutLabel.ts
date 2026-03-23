@@ -3,7 +3,7 @@ import { useMemo } from "react";
 /**
  * Detects if the user is on a Mac platform
  */
-function useIsMac(): boolean {
+export function useIsMac(): boolean {
   return useMemo(() => {
     if (typeof window === "undefined") {
       return false;

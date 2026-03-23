@@ -104,7 +104,7 @@ async function handler(
       return;
 
     case "POST":
-      const featureFlags = await getFeatureFlags(owner);
+      const featureFlags = await getFeatureFlags(auth);
       // Allow Dust Super User to force role for testing
       const allowForSuperUserTesting =
         showDebugTools(featureFlags) &&

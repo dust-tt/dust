@@ -22,6 +22,15 @@ function getRootCookieDomain(): string | null {
 }
 
 /**
+ * Returns the root cookie domain for PostHog cross-subdomain tracking.
+ * On production returns `.dust.tt`; on localhost/dev returns `undefined`.
+ */
+export function getPostHogCookieDomain(): string | undefined {
+  const domain = getRootCookieDomain();
+  return domain ?? undefined;
+}
+
+/**
  * Builds the cookie string for `_dust_aid` including the domain attribute
  * when applicable (production multi-subdomain setup).
  */

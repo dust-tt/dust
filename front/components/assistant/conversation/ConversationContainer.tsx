@@ -26,7 +26,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Card, LightbulbIcon, Page } from "@dust-tt/sparkle";
+import { Button, Card, LightbulbIcon, Page, XMarkIcon } from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -36,9 +36,11 @@ interface ConversationContainerProps {
   conversationId?: string | null;
   clientSideMCPServerIds?: string[];
   suggestion?: {
+    id: string;
     title: string;
     description: string;
   };
+  onDismissSuggestion?: (suggestionId: string) => void;
 }
 
 export function ConversationContainerVirtuoso({
@@ -48,6 +50,7 @@ export function ConversationContainerVirtuoso({
   conversationId: conversationIdProp,
   clientSideMCPServerIds,
   suggestion,
+  onDismissSuggestion,
 }: ConversationContainerProps) {
   const conversationIdFromRouter = useActiveConversationId();
   const activeConversationId =
@@ -198,11 +201,25 @@ export function ConversationContainerVirtuoso({
 
           {suggestion && (
             <div className="w-full max-w-3xl mt-1">
-              <Card variant="highlight" size="md" containerClassName="w-full">
+              <Card
+                variant="highlight"
+                size="md"
+                containerClassName="w-full group"
+              >
                 <div className="flex w-full flex-col gap-2 text-sm">
                   <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
-                    <LightbulbIcon className="text-highlight-600 h-5 w-5" />
+                    <LightbulbIcon className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
+                    <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon={XMarkIcon}
+                        tooltip="Dismiss"
+                        onClick={() => onDismissSuggestion?.(suggestion.id)}
+                        className="text-highlight-600 dark:text-highlight-400"
+                      />
+                    </div>
                   </div>
                   <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {suggestion.description}

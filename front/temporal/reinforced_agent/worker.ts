@@ -1,4 +1,7 @@
-import { initializeOpenTelemetryInstrumentation } from "@app/lib/api/instrumentation/init";
+import {
+  initializeOpenTelemetryInstrumentation,
+  resource,
+} from "@app/lib/api/instrumentation/init";
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -7,8 +10,12 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/reinforced_agent/activities";
+import { isDevelopment } from "@app/types/shared/env";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import type { Context } from "@temporalio/activity";
 import {
+  makeWorkflowExporter,
   OpenTelemetryActivityInboundInterceptor,
   OpenTelemetryActivityOutboundInterceptor,
 } from "@temporalio/interceptors-opentelemetry/lib/worker";
@@ -23,6 +30,8 @@ export async function runReinforcedAgentWorker() {
     serviceName: "dust-reinforced-agent",
   });
 
+  const spanExporter = new InMemorySpanExporter();
+
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "reinforced_agent",
@@ -35,6 +44,11 @@ export async function runReinforcedAgentWorker() {
     connection,
     namespace,
     interceptors: {
+      workflowModules: removeNulls([
+        !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"
+          ? null
+          : require.resolve("./workflows"),
+      ]),
       activity: [
         (ctx: Context) => {
           return {
@@ -46,6 +60,10 @@ export async function runReinforcedAgentWorker() {
           outbound: new OpenTelemetryActivityOutboundInterceptor(ctx),
         }),
       ],
+    },
+    sinks: {
+      // @ts-expect-error InMemorySpanExporter type mismatch.
+      exporter: makeWorkflowExporter(spanExporter, resource),
     },
   });
 

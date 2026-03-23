@@ -1,7 +1,4 @@
-import {
-  fetchMessageInConversation,
-  getCompletionDuration,
-} from "@app/lib/api/assistant/messages";
+import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
@@ -433,29 +430,28 @@ export async function notifyWorkflowError(
   const auth = authResult.value;
 
   // Use lighter fetchConversationWithoutContent
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-  if (conversationRes.isErr()) {
-    if (conversationRes.error.type === "conversation_not_found") {
-      return;
-    }
-
-    throw new Error(`Conversation not found: ${conversationId}`);
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return;
   }
-  const conversation = conversationRes.value;
 
   // Fetch the agent message using the proper API function
-  const messageRow = await fetchMessageInConversation(
+  const messageRes = await conversation.getMessageById(
     auth,
-    conversation,
     agentMessageId,
     agentMessageVersion
   );
 
-  if (!messageRow?.agentMessage) {
+  if (messageRes.isErr()) {
+    throw new Error(`Agent message not found: ${agentMessageId}`);
+  }
+
+  const messageRow = messageRes.value;
+
+  if (!messageRow.agentMessage) {
     throw new Error(`Agent message not found: ${agentMessageId}`);
   }
 
@@ -485,6 +481,7 @@ export async function notifyWorkflowError(
     completedTs: messageRow.agentMessage.completedAt?.getTime() ?? null,
     sId: messageRow.sId,
     type: "agent_message",
+    branchId: messageRow.branchSId,
     visibility: messageRow.visibility,
     version: messageRow.version,
 
@@ -515,7 +512,7 @@ export async function notifyWorkflowError(
   await updateResourceAndPublishEvent(auth, {
     event: errorEvent,
     agentMessage,
-    conversation,
+    conversation: conversation.toJSON(),
     step: 0, // Workflow-level error, not tied to a specific step
   });
 }

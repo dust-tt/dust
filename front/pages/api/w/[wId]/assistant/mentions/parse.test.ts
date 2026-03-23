@@ -6,19 +6,15 @@ import { describe, expect, it } from "vitest";
 import handler from "./parse";
 
 async function setupTest(method: RequestMethod = "POST") {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role: "builder",
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role: "builder",
+    method,
+  });
 
-  const agentConfig = await AgentConfigurationFactory.createTestAgent(
-    authenticator,
-    {
-      name: "Test Agent",
-      description: "Test Agent Description",
-    }
-  );
+  const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+    name: "Test Agent",
+    description: "Test Agent Description",
+  });
 
   req.query.wId = workspace.sId;
 
@@ -26,7 +22,7 @@ async function setupTest(method: RequestMethod = "POST") {
     req,
     res,
     workspace,
-    auth: authenticator,
+    auth: auth,
     agentConfig,
   };
 }

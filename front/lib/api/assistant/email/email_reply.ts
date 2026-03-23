@@ -33,18 +33,21 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
   return {
     subject: context.subject,
     text: context.originalText,
-    auth: { SPF: "", dkim: "" },
+    auth: { SPF: "", dkim: [], dkimRaw: "" },
     threadingHeaders: {
       messageId: context.threadingMessageId,
       inReplyTo: context.threadingInReplyTo,
       references: context.threadingReferences,
+    },
+    sender: {
+      email: context.fromEmail,
+      full: context.fromFull,
     },
     envelope: {
       to: [],
       cc: [],
       bcc: [],
       from: context.fromEmail,
-      full: context.fromFull,
     },
     attachments: [],
   };
@@ -65,8 +68,9 @@ async function isEmailAgentsEnabled(
     );
     return false;
   }
-  const workspace = authResult.value.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
+  const auth = authResult.value;
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("email_agents")) {
     logger.info(
       { workspaceId: authType.workspaceId },

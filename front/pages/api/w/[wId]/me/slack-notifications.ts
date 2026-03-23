@@ -28,9 +28,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
+      const featureFlags = await getFeatureFlags(auth);
 
       const isFeatureEnabled = featureFlags.includes(
         "conversations_slack_notifications"

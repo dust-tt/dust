@@ -63,6 +63,7 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
     OAuthAPI: vi.fn().mockImplementation(function () {
       return {
         getCredentials: mockGetCredentials,
+        deleteCredentials: vi.fn().mockResolvedValue(new Ok(undefined)),
       };
     }),
   };
@@ -79,6 +80,7 @@ function getCacheKey(workspaceId: number): string {
 
 describe("ProviderCredentialResource", () => {
   beforeEach(() => {
+    mockGetCredentials.mockClear();
     mockGetCredentials.mockResolvedValue(
       new Ok({ credential: { content: { api_key: "sk-test" } } })
     );
@@ -112,6 +114,9 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      // Authenticator init populates the cache (empty) via fetchByokProvidersHealth; clear it so
+      // credentials created below are visible on first listByWorkspace call.
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
       await ProviderCredentialFactory.basic(workspace, "anthropic");
@@ -134,6 +139,7 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
       await ProviderCredentialFactory.basic(workspace, "openai");
 
       const result =
@@ -160,6 +166,7 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
@@ -202,6 +209,7 @@ describe("ProviderCredentialResource", () => {
       });
       const workspace = authenticator.getNonNullableWorkspace();
       const cacheKey = getCacheKey(workspace.id);
+      inMemoryCache.clear();
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
 
@@ -216,6 +224,7 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
@@ -238,6 +247,7 @@ describe("ProviderCredentialResource", () => {
       });
       const workspace = authenticator.getNonNullableWorkspace();
       const cacheKey = getCacheKey(workspace.id);
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
@@ -275,6 +285,7 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 

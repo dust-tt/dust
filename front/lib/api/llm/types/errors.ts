@@ -65,7 +65,10 @@ export function categorizeLLMError(
       ? error.status
       : undefined;
 
-  if (errorMessage === "terminated") {
+  if (
+    errorMessage.includes("terminated") ||
+    errorMessage.includes("other side closed")
+  ) {
     return {
       type: "terminated_error",
       message: `Terminated error for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
@@ -294,7 +297,7 @@ export const getUserFacingLLMErrorMessage = (
       return "The request timed out. Please try again.";
     }
     case "server_error": {
-      return `${userFacingProvider} encountered an internal error. Please try again.`;
+      return `The AI provider (${userFacingProvider}) ran into an issue. Please try again in a moment.`;
     }
     case "stream_error": {
       return `Connection interrupted while receiving the response. Please try again.`;

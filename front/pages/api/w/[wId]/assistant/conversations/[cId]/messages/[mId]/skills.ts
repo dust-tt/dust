@@ -1,5 +1,4 @@
 /** @ignoreswagger */
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -55,13 +54,9 @@ async function handler(
         });
       }
 
-      const message = await fetchMessageInConversation(
-        auth,
-        conversation.toJSON(),
-        mId
-      );
+      const messageRes = await conversation.getMessageById(auth, mId);
 
-      if (!message) {
+      if (messageRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -71,7 +66,7 @@ async function handler(
         });
       }
 
-      if (!message.agentMessageId) {
+      if (!messageRes.value.agentMessageId) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -83,7 +78,7 @@ async function handler(
 
       const skills = await SkillResource.listByAgentMessageId(
         auth,
-        message.agentMessageId
+        messageRes.value.agentMessageId
       );
 
       res.status(200).json({

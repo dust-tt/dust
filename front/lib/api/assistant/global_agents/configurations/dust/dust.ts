@@ -24,6 +24,11 @@ import {
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
@@ -33,16 +38,14 @@ import {
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
+  GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
@@ -58,8 +61,8 @@ import {
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
+import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
@@ -70,6 +73,7 @@ interface DustLikeGlobalAgentArgs {
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
+  globalAgentContext?: GlobalAgentContext;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -295,6 +299,19 @@ function buildInstructions({
   return parts.join("\n\n");
 }
 
+function buildReinforcedAgentStaticResponse(
+  workspaceId: string,
+  agentName: string,
+  agentConfigurationId: string
+): string {
+  const builderUrl = getAgentBuilderRoute(workspaceId, agentConfigurationId);
+  return [
+    `Dust has analysed your workspace conversations with agent @${agentName} and found suggestions to improve it.`,
+    `You can view and apply these suggestions by going to the [agent builder](${builderUrl}).`,
+    "Let me know if you have further questions.",
+  ].join("\n");
+}
+
 function _getDustLikeGlobalAgent(
   auth: Authenticator,
   {
@@ -302,22 +319,24 @@ function _getDustLikeGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     hasDeepDive,
+    globalAgentContext,
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
+    omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
+    omittedThinking?: boolean;
   }
-): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
+): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
   const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
+  const owner = auth.getNonNullableWorkspace();
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
 - Find and analyze data across your company knowledge
@@ -325,39 +344,59 @@ function _getDustLikeGlobalAgent(
 - Create content like documents, presentations, images, and dashboards`;
   const pictureUrl = DUST_AVATAR_URL;
 
+  // Content fragments are posted before the user message and each gets its own
+  // rank, so the first user message may have rank > 0 (e.g. rank 1 when a file
+  // is attached). Use <= 1 to account for this.
+  const isFirstUserMessage =
+    globalAgentContext?.userMessageRank !== undefined &&
+    globalAgentContext.userMessageRank <= 1;
+  const isReinforcedAgentNotificationFirstTurn =
+    isFirstUserMessage && globalAgentContext?.reinforcedAgentNotification;
+
   let isPreferredModel = false;
 
   const modelConfiguration = (() => {
+    if (isReinforcedAgentNotificationFirstTurn) {
+      return NOOP_MODEL_CONFIG;
+    }
+
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(owner);
+      return getSmallWhitelistedModel(auth);
     }
 
-    if (preferredModelConfiguration) {
-      if (
-        isProviderWhitelisted(owner, preferredModelConfiguration.providerId)
-      ) {
-        isPreferredModel = true;
-        return preferredModelConfiguration;
-      }
+    if (
+      preferredModelConfiguration &&
+      isProviderWhitelisted(auth, preferredModelConfiguration.providerId)
+    ) {
+      isPreferredModel = true;
+      return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(owner);
+    return getLargeWhitelistedModel(auth);
   })();
 
-  let model: AgentModelConfigurationType;
-  if (modelConfiguration) {
-    model = {
-      providerId: modelConfiguration.providerId,
-      modelId: modelConfiguration.modelId,
-      temperature: 0.7,
-      reasoningEffort:
-        isPreferredModel && preferredReasoningEffort
-          ? preferredReasoningEffort
-          : modelConfiguration.defaultReasoningEffort,
-    };
-  } else {
-    model = dummyModelConfiguration;
-  }
+  const model: AgentModelConfigurationType = modelConfiguration
+    ? {
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
+        temperature: 0.7,
+        reasoningEffort:
+          isPreferredModel && preferredReasoningEffort
+            ? preferredReasoningEffort
+            : modelConfiguration.defaultReasoningEffort,
+        ...(isReinforcedAgentNotificationFirstTurn &&
+          globalAgentContext?.reinforcedAgentNotification && {
+            metaData: {
+              staticResponse: buildReinforcedAgentStaticResponse(
+                owner.sId,
+                globalAgentContext.reinforcedAgentNotification.agentName,
+                globalAgentContext.reinforcedAgentNotification
+                  .agentConfigurationId
+              ),
+            },
+          }),
+      }
+    : dummyModelConfiguration;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
 
@@ -482,8 +521,15 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
-    skills: ["discover_skills", "frames", "go-deep", "mention_users"],
+    skills: [
+      "discover_skills",
+      "frames",
+      "go-deep",
+      "mention_users",
+      "sandbox",
+    ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    omittedThinking: omittedThinking ?? false,
   };
 }
 
@@ -502,6 +548,44 @@ export function _getDustGlobalAgent(
     name: "dust",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HIGH,
+    name: "dust-high",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
+    name: "dust-high-omitted",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OMITTED,
+    name: "dust-omitted",
+    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    omittedThinking: true,
   });
 }
 
@@ -550,6 +634,32 @@ export function _getDustAntHighGlobalAgent(
     name: "dust-ant-high",
     preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustAntMediumOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    name: "dust-ant-medium-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustAntHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    name: "dust-ant-high-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+    omittedThinking: true,
   });
 }
 

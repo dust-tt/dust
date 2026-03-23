@@ -11,7 +11,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, user, authenticator, systemSpace, globalSpace } =
+  const { req, res, workspace, user, auth, systemSpace, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -31,7 +31,7 @@ async function setupTest(
     systemSpace,
     globalSpace,
     user,
-    authenticator,
+    auth,
   };
 }
 

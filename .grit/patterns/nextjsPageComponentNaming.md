@@ -7,36 +7,40 @@ level: error
 
 Ensures NextJS page default exports follow the naming pattern with `NextJS` suffix.
 
-Note: The original Biome plugin uses `$filename` filtering and negative regex on the
-function name. This test validates the core matching logic only.
-
 ```grit
 language js
 
-`export default function $name($params) { $body }` where {
-    $name <: not r".*NextJS$",
-    $name => `NEEDS_NEXTJS_SUFFIX`
-}
+non_nextjs_page_export() => `NEEDS_NEXTJS_SUFFIX`
 ```
 
-## Should flag export without NextJS suffix
+## Should flag export without NextJS suffix in pages
 
 ```typescript
+// @filename: front/pages/index.tsx
 export default function MyPage(props) {
   return <div />;
 }
 ```
 
 ```typescript
-export default function NEEDS_NEXTJS_SUFFIX(props) {
-  return <div />;
-}
+// @filename: front/pages/index.tsx
+NEEDS_NEXTJS_SUFFIX
 ```
 
 ## Should not flag export with NextJS suffix
 
 ```typescript
+// @filename: front/pages/index.tsx
 export default function MyPageNextJS(props) {
+  return <div />;
+}
+```
+
+## Should not flag export outside pages
+
+```typescript
+// @filename: front/components/MyComponent.tsx
+export default function MyPage(props) {
   return <div />;
 }
 ```

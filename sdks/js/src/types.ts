@@ -341,6 +341,7 @@ const USER_MESSAGE_ORIGINS = [
   "agent_sidekick",
   "project_butler",
   "project_kickoff",
+  "reinforced_agent_notification",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -672,10 +673,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
   | "agent_management_tool"
-  | "agent_to_yaml"
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
@@ -705,6 +706,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "luma_tool"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -713,6 +715,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
   | "reinforced_agents"
+  | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
   | "salesforce_synced_queries"
@@ -732,7 +735,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"
-  | "sidepanel_files"
+  | "collapsible_messages"
+  | "email_restricted_sharing"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1480,6 +1484,16 @@ export type AgentGenerationCancelledEvent = z.infer<
   typeof AgentGenerationCancelledEventSchema
 >;
 
+const AgentContextPrunedEventSchema = z.object({
+  type: z.literal("agent_context_pruned"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+});
+export type AgentContextPrunedEvent = z.infer<
+  typeof AgentContextPrunedEventSchema
+>;
+
 const UserMessageErrorEventSchema = z.object({
   type: z.literal("user_message_error"),
   created: z.number(),
@@ -1524,7 +1538,7 @@ const ConversationEventTypeSchema = z.object({
   data: z.union([
     UserMessageNewEventSchema,
     AgentMessageNewEventSchema,
-    AgentGenerationCancelledEventSchema,
+    AgentMessageDoneEventSchema,
     ConversationTitleEventSchema,
   ]),
 });
@@ -1537,6 +1551,7 @@ const AgentMessageEventTypeSchema = z.object({
     AgentErrorEventSchema,
     AgentActionSpecificEventSchema,
     AgentActionSuccessEventSchema,
+    AgentContextPrunedEventSchema,
     AgentGenerationCancelledEventSchema,
     GenerationTokensEventSchema,
   ]),
@@ -3036,10 +3051,12 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GoogleSpreadsheetLogo"
   | "GranolaLogo"
   | "GuruLogo"
+  | "HexLogo"
   | "HubspotLogo"
   | "IntercomLogo"
   | "JiraLogo"
   | "LinearLogo"
+  | "LumaLogo"
   | "MicrosoftExcelLogo"
   | "MicrosoftLogo"
   | "MicrosoftOutlookLogo"

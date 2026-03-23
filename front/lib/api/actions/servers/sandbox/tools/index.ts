@@ -19,6 +19,7 @@ import {
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
+import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -137,9 +138,16 @@ export function createSandboxTools(
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
-      const execResult = await sandbox.exec(auth, command, {
+      const providerId = agentConfiguration.model.providerId;
+      // Convert timeoutMs to seconds for shell wrapper
+      const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
+      const wrappedCommand = wrapCommand(command, providerId, {
+        timeoutSec,
+      });
+
+      // No timeout at E2B level - shell wrapper handles it
+      const execResult = await sandbox.exec(auth, wrappedCommand, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
-        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
           DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
@@ -153,7 +161,7 @@ export function createSandboxTools(
 
       return new Ok([{ type: "text" as const, text: output }]);
     },
-    describe_environment: async ({ format }, { auth, agentLoopContext }) => {
+    describe_toolset: async ({ format }, { auth, agentLoopContext }) => {
       const providerId =
         agentLoopContext?.runContext?.agentConfiguration.model.providerId;
       if (!providerId) {

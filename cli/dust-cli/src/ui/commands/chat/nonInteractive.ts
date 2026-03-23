@@ -113,7 +113,8 @@ export async function sendNonInteractiveMessage(
   showDetails?: boolean,
   projectName?: string,
   projectId?: string,
-  setError?: (error: string) => void
+  setError?: (error: string) => void,
+  fileSystemServerId?: string
 ): Promise<void> {
   const dustClientRes = await getDustClient();
   if (dustClientRes.isErr()) {
@@ -165,6 +166,9 @@ export async function sendNonInteractiveMessage(
             fullName: me.fullName,
             email: me.email,
             origin: "cli_programmatic",
+            clientSideMCPServerIds: fileSystemServerId
+              ? [fileSystemServerId]
+              : null,
           },
         },
       });
@@ -207,6 +211,9 @@ export async function sendNonInteractiveMessage(
             fullName: me.fullName,
             email: me.email,
             origin: "cli_programmatic",
+            clientSideMCPServerIds: fileSystemServerId
+              ? [fileSystemServerId]
+              : null,
           },
         },
         contentFragment: undefined,
@@ -282,6 +289,17 @@ export async function sendNonInteractiveMessage(
           return;
         }
         process.exit(1);
+      } else if (
+        event.type === "tool_approve_execution" &&
+        fileSystemServerId
+      ) {
+        // Auto-approve all tool executions: user explicitly opted in with --with-tools
+        await dustClient.validateAction({
+          conversationId: event.conversationId,
+          messageId: event.messageId,
+          actionId: event.actionId,
+          approved: "approved",
+        });
       } else if (event.type === "agent_generation_cancelled") {
         // Handle generation cancellation
         const output: NonInteractiveOutput = {

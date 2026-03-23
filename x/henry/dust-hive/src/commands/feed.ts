@@ -83,7 +83,7 @@ export async function feedCommand(
   }
 
   // Get front directory path
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const frontPath = path.join(worktreePath, "front");
 
   // Get list of available scenarios

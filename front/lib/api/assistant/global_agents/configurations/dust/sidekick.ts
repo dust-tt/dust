@@ -6,20 +6,20 @@ import type {
   PrefetchedDataSourcesType,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
 
@@ -43,7 +43,7 @@ Treat <agent_workflow> as your primary instruction set. Other sections after tha
 Follow this process for every interaction:
 
 Step 1: ALWAYS call \`get_agent_config\`. You risk outdated suggestions if you skip this even once.
-The ONLY exception is the first message of a conversation when it is a new agent. NEVER skip this step otherwise.
+The ONLY exception is the first message of a conversation. NEVER call it on the first message, but NEVER skip this step otherwise.
 
 Step 2: Understand the agent's workflow
 Reason about the agent based on the output of \`get_agent_config\`. Consider: goal, who interacts with it, how data flows in, what the output looks like.
@@ -446,7 +446,17 @@ export function buildSidekickInstructions(): string {
   return parts.join("\n\n");
 }
 
-const SIDEKICK_NEW_AGENT_STATIC_RESPONSE = "What should this agent do?";
+const SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
+  "Need a hand?\nTell me what you're building and I can help you write the instructions and get it set up.",
+  "Want help setting this up?\nDescribe what your agent should do and I'll help you draft the instructions.",
+  "Not sure where to start?\nTell me what you want your agent to do—I'll help you write the instructions and configure it.",
+];
+
+function getSidekickNewAgentStaticResponse(): string {
+  return SIDEKICK_NEW_AGENT_STATIC_RESPONSES[
+    Math.floor(Math.random() * SIDEKICK_NEW_AGENT_STATIC_RESPONSES.length)
+  ]!;
+}
 
 export function _getSidekickGlobalAgent(
   auth: Authenticator,
@@ -462,8 +472,6 @@ export function _getSidekickGlobalAgent(
     globalAgentContext?: GlobalAgentContext;
   }
 ): AgentConfigurationType {
-  const owner = auth.getNonNullableWorkspace();
-
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
     mcpServerViews
@@ -489,10 +497,10 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? isProviderWhitelisted(owner, "anthropic")
+      ? isProviderWhitelisted(auth, "anthropic")
         ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-        : getSmallWhitelistedModel(owner)
-      : getLargeWhitelistedModel(owner);
+        : getSmallWhitelistedModel(auth)
+      : getLargeWhitelistedModel(auth);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
@@ -500,7 +508,7 @@ export function _getSidekickGlobalAgent(
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
         ...(isNewAgentFromScratchFirstTurn && {
-          metaData: { staticResponse: SIDEKICK_NEW_AGENT_STATIC_RESPONSE },
+          metaData: { staticResponse: getSidekickNewAgentStaticResponse() },
         }),
       }
     : dummyModelConfiguration;

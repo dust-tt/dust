@@ -7,7 +7,14 @@ import {
   getConversationFilePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
-import { hasProcessedVersion } from "@app/lib/api/files/processing";
+import {
+  getProcessedContentType,
+  hasProcessedVersion,
+} from "@app/lib/api/files/processing";
+import {
+  getDefaultFrameShareScope,
+  sendFrameSharedEmail,
+} from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -18,11 +25,14 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
+  ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
+  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -34,6 +44,7 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
+  SharingGrantType,
 } from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
@@ -45,7 +56,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import type { File } from "@google-cloud/storage";
 import assert from "assert";
 import type {
@@ -182,6 +197,7 @@ export class FileResource extends BaseResource<FileModel> {
       {
         file: FileResource;
         shareScope: FileShareScope;
+        shareableFileId: ModelId;
         workspace: LightWorkspaceType;
       },
       DustError
@@ -252,7 +268,45 @@ export class FileResource extends BaseResource<FileModel> {
       file: fileRes,
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
+      shareableFileId: shareableFile.id,
     });
+  }
+
+  static async getActiveGrantForEmail(
+    workspace: LightWorkspaceType | WorkspaceResource,
+    {
+      email,
+      shareableFileId,
+    }: {
+      email: string;
+      shareableFileId: ModelId;
+    }
+  ): Promise<SharingGrantType | null> {
+    // Note: expiresAt is not enforced here because it cannot be set yet.
+    // When grant expiration is implemented, add query clause + index
+    // expiresAt: { [Op.or]: [null, { [Op.gt]: new Date() }] }
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        shareableFileId,
+        email: email.toLowerCase(),
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return null;
+    }
+
+    const usersById: Map<ModelId, UserResource> = new Map();
+    if (grant?.grantedBy) {
+      const user = await UserResource.fetchByModelId(grant.grantedBy);
+      if (user) {
+        usersById.set(grant.grantedBy, user);
+      }
+    }
+
+    return renderSharingGrant(grant, usersById);
   }
 
   static async unsafeFetchByIdInWorkspace(
@@ -319,17 +373,25 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Delete external viewer sessions before shareable files (FK constraint).
+    await ExternalViewerSessionModel.destroy({
+      where: { workspaceId },
+    });
+
+    // Delete sharing grants before shareable files (FK constraint).
+    await SharingGrantModel.destroy({
+      where: { workspaceId },
+    });
+
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
 
     return this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
   }
 
@@ -383,6 +445,19 @@ export class FileResource extends BaseResource<FileModel> {
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
+
+        // Delete sharing grants before shareable file (FK constraint).
+        const shareableFile = await FileResource.shareableFileModel.findOne({
+          where: { fileId: this.id, workspaceId: this.workspaceId },
+        });
+        if (shareableFile) {
+          await SharingGrantModel.destroy({
+            where: {
+              shareableFileId: shareableFile.id,
+              workspaceId: this.workspaceId,
+            },
+          });
+        }
 
         // Delete the shareable file record.
         await FileResource.shareableFileModel.destroy({
@@ -441,11 +516,15 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Interactive Content conversation files, automatically create a ShareableFileModel with
-    // default workspace scope.
+    // a default scope based on the workspace sharing policy.
     if (this.isInteractiveContent) {
+      const defaultScope = getDefaultFrameShareScope(
+        auth.getNonNullableWorkspace().sharingPolicy
+      );
+
       await FileResource.shareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "workspace",
+        shareScope: defaultScope,
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
@@ -918,7 +997,10 @@ export class FileResource extends BaseResource<FileModel> {
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
-      const processedMountPath = makeProcessedMountFileName(mountFilePath);
+      const processedMountPath = makeProcessedMountFileName({
+        mountFilePath,
+        processedContentType: getProcessedContentType(this.contentType),
+      });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
     }
 
@@ -942,7 +1024,10 @@ export class FileResource extends BaseResource<FileModel> {
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
     // Only delete processed mount file if this file type has real processing.
-    const processedMountPath = makeProcessedMountFileName(this.mountFilePath);
+    const processedMountPath = makeProcessedMountFileName({
+      mountFilePath: this.mountFilePath,
+      processedContentType: getProcessedContentType(this.contentType),
+    });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
   }
 
@@ -1081,19 +1166,193 @@ export class FileResource extends BaseResource<FileModel> {
     return null;
   }
 
-  static async revokePublicSharingInWorkspace(auth: Authenticator) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+  static async revokePublicSharingInWorkspace(
+    auth: Authenticator,
+    { newPolicy }: { newPolicy: WorkspaceSharingPolicy }
+  ) {
+    const fallbackScope = getDefaultFrameShareScope(newPolicy);
+
     return FileResource.shareableFileModel.update(
       {
-        shareScope: "workspace",
+        shareScope: fallbackScope,
       },
       {
         where: {
-          workspaceId,
+          workspaceId: auth.getNonNullableWorkspace().id,
           shareScope: "public",
         },
       }
     );
+  }
+
+  // Sharing grants logic.
+
+  private async getShareableFileId(): Promise<ModelId> {
+    assert(
+      this.isInteractiveContent,
+      `Sharing grants are only supported for interactive content files (file: ${this.sId})`
+    );
+
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+
+    assert(
+      shareableFile,
+      `ShareableFileModel record not found for file ${this.sId}`
+    );
+
+    return shareableFile.id;
+  }
+
+  async addSharingGrants(
+    auth: Authenticator,
+    { emails }: { emails: string[] }
+  ): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "addSharingGrants requires interactive content file"
+    );
+    const user = auth.getNonNullableUser();
+    const shareableFileId = await this.getShareableFileId();
+
+    const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
+
+    // Find existing active grants for these emails.
+    const existingGrants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email: { [Op.in]: normalizedEmails },
+        revokedAt: null,
+      },
+    });
+
+    const existingEmails = new Set(existingGrants.map((g) => g.email));
+
+    const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
+
+    if (newEmails.length > 0) {
+      await SharingGrantModel.bulkCreate(
+        newEmails.map((email) => ({
+          workspaceId: this.workspaceId,
+          shareableFileId,
+          email,
+          grantedBy: user.id,
+          grantedAt: new Date(),
+        }))
+      );
+
+      const shareInfo = await this.getShareInfo();
+      if (shareInfo) {
+        const sharedByName = user.toJSON().fullName;
+        const frameUrl = shareInfo.shareUrl;
+        const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+        // Fire-and-forget: don't block grant creation on email delivery.
+        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
+        // parallelism and improve reliability/retry handling.
+        void Promise.all(
+          newEmails.map((email) =>
+            sendFrameSharedEmail({
+              to: email,
+              sharedByName,
+              frameUrl,
+              shareToken,
+            }).catch(() => {
+              // Silently ignore, email failures should not affect grant creation.
+              logger.info(
+                {
+                  email,
+                  fileId: this.sId,
+                  workspaceId: this.workspaceId,
+                },
+                "Failed to send sharing notification email"
+              );
+            })
+          )
+        );
+      }
+    }
+
+    return this.listActiveSharingGrants();
+  }
+
+  async revokeSharingGrant({
+    grantId,
+  }: {
+    grantId: ModelId;
+  }): Promise<Result<undefined, DustError>> {
+    assert(
+      this.isInteractiveContent,
+      "revokeSharingGrant requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        id: grantId,
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return new Err(
+        new DustError("file_not_found", "Sharing grant not found")
+      );
+    }
+
+    await grant.update({ revokedAt: new Date() });
+
+    return new Ok(undefined);
+  }
+
+  static async recordGrantView(
+    workspace: WorkspaceResource,
+    {
+      email,
+      shareableFileId,
+    }: {
+      email: string;
+      shareableFileId: ModelId;
+    }
+  ): Promise<void> {
+    await SharingGrantModel.update(
+      { lastViewedAt: new Date() },
+      {
+        where: {
+          shareableFileId,
+          email: email.toLowerCase(),
+          revokedAt: null,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+  }
+
+  async listActiveSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listActiveSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
   }
 
   // Serialization logic.
@@ -1242,4 +1501,20 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(normalizeError(error));
     }
   }
+}
+
+function renderSharingGrant(
+  grant: SharingGrantModel,
+  usersById: Map<ModelId, UserResource>
+): SharingGrantType {
+  const user = grant.grantedBy ? usersById.get(grant.grantedBy) : null;
+
+  return {
+    id: grant.id,
+    email: grant.email,
+    grantedAt: grant.grantedAt,
+    grantedBy: user?.toJSON() ?? null,
+    expiresAt: grant.expiresAt,
+    lastViewedAt: grant.lastViewedAt,
+  };
 }

@@ -103,6 +103,7 @@ export interface InputBarContainerProps {
   onSkillSelect: (skill: SkillType) => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string) => void;
+  pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
   selectedSkills: SkillType[];
@@ -117,6 +118,7 @@ const InputBarContainer = ({
   conversation,
   space,
   selectedAgent,
+  pendingInputText,
   stickyMentions,
   actions,
   disableAutoFocus,
@@ -658,7 +660,8 @@ const InputBarContainer = ({
     editorService,
     stickyMentions,
     selectedAgent,
-    disableAutoFocus
+    disableAutoFocus,
+    pendingInputText
   );
 
   const buttonSize = useMemo(() => {
@@ -872,9 +875,10 @@ const InputBarContainer = ({
                       }}
                       agents={allAgents}
                       showDropdownArrow={false}
-                      showFooterButtons={actions.includes(
-                        "agents-list-with-actions"
-                      )}
+                      showFooterButtons={
+                        actions.includes("agents-list-with-actions") &&
+                        clientType !== "extension"
+                      }
                       disabled={disableInput}
                     />
                   )}

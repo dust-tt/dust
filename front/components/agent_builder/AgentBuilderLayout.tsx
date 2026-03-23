@@ -12,28 +12,18 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 
 const COLLAPSED_RIGHT_PANEL_SIZE = 3;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
-const DEFAULT_RIGHT_PANEL_SIZE = 30;
-const DEFAULT_LEFT_PANEL_SIZE = 70;
-const SIDEKICK_LEFT_PANEL_SIZE = 50;
-const SIDEKICK_RIGHT_PANEL_SIZE = 50;
+const LEFT_PANEL_SIZE = 50;
+const RIGHT_PANEL_SIZE = 50;
 
 interface AgentBuilderLayoutProps {
   leftPanel: React.ReactNode;
   rightPanel: React.ReactNode;
-  sidekickEnabled?: boolean;
 }
 
 export function AgentBuilderLayout({
   leftPanel,
   rightPanel,
-  sidekickEnabled = false,
 }: AgentBuilderLayoutProps) {
-  const leftPanelSize = sidekickEnabled
-    ? SIDEKICK_LEFT_PANEL_SIZE
-    : DEFAULT_LEFT_PANEL_SIZE;
-  const rightPanelSize = sidekickEnabled
-    ? SIDEKICK_RIGHT_PANEL_SIZE
-    : DEFAULT_RIGHT_PANEL_SIZE;
   const isMobile = useIsMobile();
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -84,7 +74,7 @@ export function AgentBuilderLayout({
                   direction="horizontal"
                   className="h-full w-full"
                 >
-                  <ResizablePanel defaultSize={leftPanelSize} minSize={30}>
+                  <ResizablePanel defaultSize={LEFT_PANEL_SIZE} minSize={30}>
                     <div className="h-full w-full overflow-y-auto">
                       {leftPanel}
                     </div>
@@ -99,7 +89,7 @@ export function AgentBuilderLayout({
                   <ResizablePanel
                     ref={previewPanelRef}
                     id="preview-panel"
-                    defaultSize={rightPanelSize}
+                    defaultSize={RIGHT_PANEL_SIZE}
                     minSize={
                       isPreviewPanelOpen
                         ? MIN_EXPANDED_RIGHT_PANEL_SIZE

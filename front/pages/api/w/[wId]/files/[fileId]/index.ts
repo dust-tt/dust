@@ -229,9 +229,7 @@ async function handler(
   let space: SpaceResource | null = null;
   if (file.useCaseMetadata?.spaceId) {
     if (file.useCase === "project_context") {
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
+      const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("projects")) {
         return apiError(req, res, {
           status_code: 500,

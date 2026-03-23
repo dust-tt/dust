@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
-import { ChevronDownIcon } from "lucide-react";
 import type { Control, FieldValues, Path } from "react-hook-form";
 
 interface SelectFieldOption {
@@ -26,11 +25,13 @@ export function SelectField<T extends FieldValues>({
   name,
   title,
   options,
+  mountPortalContainer,
 }: {
   control: Control<T>;
   name: Path<T>;
   title?: string;
   options: SelectFieldOption[];
+  mountPortalContainer?: HTMLElement;
 }) {
   return (
     <PokeFormField
@@ -49,14 +50,11 @@ export function SelectField<T extends FieldValues>({
             <PokeFormControl>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    label={displayLabel}
-                    icon={ChevronDownIcon}
-                    isSelect
-                  />
+                  <Button variant="outline" label={displayLabel} isSelect />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent
+                  mountPortalContainer={mountPortalContainer}
+                >
                   {options.map((option) => (
                     <DropdownMenuItem
                       key={option.value}

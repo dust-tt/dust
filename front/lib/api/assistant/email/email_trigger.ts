@@ -6,13 +6,14 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import config from "@app/lib/api/config";
 import { sendEmail, sendEmailToRecipients } from "@app/lib/api/email";
 import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -27,7 +28,6 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
-import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
@@ -38,6 +38,7 @@ import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { toFileContentFragment } from "../conversation/content_fragment";
+import type { InboundEmailDkimResult } from "./inbound_auth";
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
@@ -186,9 +187,7 @@ export async function deleteEmailReplyContext(
   await redis.del(key);
 }
 
-export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
-  ? "dev.dust.help"
-  : "dust.team";
+export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 
 export type EmailAttachment = {
   filepath: string; // Temp file path from formidable
@@ -206,14 +205,19 @@ export type EmailThreadingHeaders = {
 export type InboundEmail = {
   subject: string;
   text: string;
-  auth: { SPF: string; dkim: string };
+  auth: { SPF: string; dkim: InboundEmailDkimResult[]; dkimRaw: string };
   threadingHeaders: EmailThreadingHeaders;
+  // Human-visible RFC 5322 From header.
+  sender: {
+    email: string;
+    full: string;
+  };
+  // SMTP envelope sender (MAIL FROM / return-path).
   envelope: {
     to: string[];
     cc: string[];
     bcc: string[];
     from: string;
-    full: string;
   };
   attachments: EmailAttachment[];
 };
@@ -255,6 +259,54 @@ function deduplicateEmailAddresses(emails: string[]): string[] {
 
 function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
+}
+
+// Cap on total reply recipients (to + cc combined). To/Cc are sourced from raw email headers,
+// which a sender can freely forge to list arbitrary addresses. The cap prevents using the agent
+// as a bulk relay while leaving no impact on legitimate threads (nobody CCs 15+ people normally).
+export const MAX_REPLY_RECIPIENTS = 15;
+
+function formatEmailRecipients(recipients: string[]): string {
+  return recipients.length > 0 ? recipients.join(", ") : "(none)";
+}
+
+function formatEmailHeaderValue(value: string): string {
+  return value.replace(/\s*\n+\s*/g, " ").trim();
+}
+
+function escapeTagContent(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function buildEmailAdditionalContext({
+  hasThreadHistory,
+  attachmentCount,
+}: {
+  hasThreadHistory: boolean;
+  attachmentCount: number;
+}): string[] {
+  const additionalContext: string[] = [];
+
+  if (!hasThreadHistory && attachmentCount === 0) {
+    return additionalContext;
+  }
+
+  if (hasThreadHistory) {
+    additionalContext.push(
+      "<email_thread_history_may_be_available_in_conversation>true</email_thread_history_may_be_available_in_conversation>"
+    );
+  }
+
+  if (attachmentCount > 0) {
+    additionalContext.push(
+      `<email_attachment_count_may_be_available_in_conversation>${attachmentCount}</email_attachment_count_may_be_available_in_conversation>`
+    );
+  }
+
+  return additionalContext;
 }
 
 function buildReferencesHeaderValue({
@@ -312,7 +364,7 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
   cc: string[];
 } {
   const to = deduplicateEmailAddresses(
-    [email.envelope.from, ...email.envelope.to].filter(
+    [email.sender.email, ...email.envelope.to].filter(
       (recipient) => !isAssistantRecipient(recipient)
     )
   );
@@ -327,7 +379,89 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
     })
   );
 
-  return { to, cc };
+  // Enforce recipient cap: the authenticated sender is always kept, extras are dropped from cc
+  // first.
+  const total = to.length + cc.length;
+  if (total <= MAX_REPLY_RECIPIENTS) {
+    return { to, cc };
+  }
+  const cappedCc = cc.slice(0, Math.max(0, MAX_REPLY_RECIPIENTS - to.length));
+  logger.warn(
+    { totalRecipients: total, cappedTo: to.length, cappedCc: cappedCc.length },
+    "[email] Reply recipient list truncated to MAX_REPLY_RECIPIENTS."
+  );
+  return { to, cc: cappedCc };
+}
+
+export function buildEmailUserMessage({
+  email,
+  userMessage,
+  replyRecipients,
+  hasThreadHistory,
+  attachmentCount,
+}: {
+  email: InboundEmail;
+  userMessage: string;
+  replyRecipients: {
+    to: string[];
+    cc: string[];
+  };
+  hasThreadHistory: boolean;
+  attachmentCount: number;
+}): string {
+  const assistantRecipients = deduplicateEmailAddresses(
+    [...email.envelope.to, ...email.envelope.cc, ...email.envelope.bcc].filter(
+      isAssistantRecipient
+    )
+  );
+  const toRecipients = deduplicateEmailAddresses(email.envelope.to);
+  const ccRecipients = deduplicateEmailAddresses(email.envelope.cc);
+  const additionalContext = buildEmailAdditionalContext({
+    hasThreadHistory,
+    attachmentCount,
+  });
+
+  return [
+    "I sent the following email:",
+    "",
+    "<email_message>",
+    `  <email_from>${escapeTagContent(
+      formatEmailHeaderValue(email.sender.full)
+    )}</email_from>`,
+    `  <email_subject>${escapeTagContent(
+      formatEmailHeaderValue(email.subject)
+    )}</email_subject>`,
+    `  <email_to>${escapeTagContent(
+      formatEmailRecipients(toRecipients)
+    )}</email_to>`,
+    ...(ccRecipients.length > 0
+      ? [
+          `  <email_cc>${escapeTagContent(
+            formatEmailRecipients(ccRecipients)
+          )}</email_cc>`,
+        ]
+      : []),
+    `  <dust_agent_recipients>${escapeTagContent(
+      formatEmailRecipients(assistantRecipients)
+    )}</dust_agent_recipients>`,
+    "  <email_body>",
+    escapeTagContent(userMessage),
+    "  </email_body>",
+    ...additionalContext.map((line) => `  ${line}`),
+    `  <email_response_to>${escapeTagContent(
+      formatEmailRecipients(replyRecipients.to)
+    )}</email_response_to>`,
+    ...(replyRecipients.cc.length > 0
+      ? [
+          `  <email_response_cc>${escapeTagContent(
+            formatEmailRecipients(replyRecipients.cc)
+          )}</email_response_cc>`,
+        ]
+      : []),
+    "</email_message>",
+    "",
+    "You are in the recipients. Answer appropriately. Your full response will be emailed automatically as-is to the recipients listed above (and me).",
+  ].join("\n");
 }
 export async function userAndWorkspaceFromEmail({
   email,
@@ -349,7 +483,7 @@ export async function userAndWorkspaceFromEmail({
       type: "user_not_found",
       message:
         `Failed to match a valid Dust user for email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
+        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
     });
   }
   const workspaceModels = await WorkspaceModel.findAll({
@@ -380,7 +514,11 @@ export async function userAndWorkspaceFromEmail({
   const eligibleWorkspaceModels: typeof workspaceModels = [];
   for (const w of workspaceModels) {
     const lightWorkspace = renderLightWorkspaceType({ workspace: w });
-    const flags = await getFeatureFlags(lightWorkspace);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      lightWorkspace.sId
+    );
+    const flags = await getFeatureFlags(auth);
     if (
       flags.includes("email_agents") &&
       lightWorkspace.metadata?.allowEmailAgents === true
@@ -604,6 +742,7 @@ export async function triggerFromEmail({
   }
 
   // Process email attachments as content fragments.
+  let attachedContentCount = 0;
   for (const attachment of email.attachments) {
     try {
       const file = await FileResource.makeNew({
@@ -663,6 +802,7 @@ export async function triggerFromEmail({
         continue;
       }
 
+      attachedContentCount += 1;
       localLogger.info(
         { filename: attachment.filename },
         "[email] Added attachment as content fragment."
@@ -689,6 +829,7 @@ export async function triggerFromEmail({
     }
   }
 
+  const successReplyRecipients = buildSuccessReplyRecipients(email);
   const content =
     agentConfigurations
       .map((agent) => {
@@ -696,7 +837,13 @@ export async function triggerFromEmail({
       })
       .join(" ") +
     " " +
-    userMessage;
+    buildEmailUserMessage({
+      email,
+      userMessage,
+      replyRecipients: successReplyRecipients,
+      hasThreadHistory: restOfThread.length > 0,
+      attachmentCount: attachedContentCount,
+    });
 
   const mentions = agentConfigurations.map((agent) => {
     return { configurationId: agent.sId };
@@ -729,7 +876,6 @@ export async function triggerFromEmail({
   }
 
   const { agentMessages } = messageRes.value;
-  const successReplyRecipients = buildSuccessReplyRecipients(email);
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
@@ -742,8 +888,8 @@ export async function triggerFromEmail({
       await storeEmailReplyContext(agentMessage.sId, {
         subject: email.subject,
         originalText: email.text,
-        fromEmail: email.envelope.from,
-        fromFull: email.envelope.full,
+        fromEmail: email.sender.email,
+        fromFull: email.sender.full,
         replyTo: successReplyRecipients.to,
         replyCc: successReplyRecipients.cc,
         threadingMessageId: email.threadingHeaders.messageId,
@@ -862,7 +1008,7 @@ export async function sendToolValidationEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.sender.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +
@@ -882,7 +1028,7 @@ export async function sendToolValidationEmail({
   };
 
   try {
-    await sendEmail(email.envelope.from, msg);
+    await sendEmail(email.sender.email, msg);
     localLogger.info(
       { actionsCount: blockedActions.length },
       "[email] Sent tool validation email."
@@ -934,7 +1080,7 @@ export async function replyToEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.sender.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +

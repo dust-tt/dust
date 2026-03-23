@@ -8,6 +8,7 @@ import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { SubscriptionType } from "@app/types/plan";
+import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -22,6 +23,7 @@ export type GetWorkspaceAuthContextResponseType = {
   featureFlags: WhitelistableFeature[];
   isEligibleForTrial?: boolean;
   vizUrl: string;
+  providersHealth: ProvidersHealth | null;
 };
 
 async function handler(
@@ -85,7 +87,7 @@ async function handler(
     ? await isWorkspaceEligibleForTrial(auth)
     : false;
 
-  const featureFlags = await getFeatureFlags(workspace);
+  const featureFlags = await getFeatureFlags(auth);
 
   return res.status(200).json({
     user: user.toJSON(),
@@ -96,6 +98,7 @@ async function handler(
     featureFlags,
     ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
     vizUrl: config.getVizPublicUrl(),
+    providersHealth: auth.providersHealth(),
   });
 }
 

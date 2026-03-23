@@ -1,8 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering";
+import {
+  JOB_FIELD_PATH,
+  renderReferralForm,
+} from "@app/lib/api/actions/servers/ashby/rendering";
 import type {
   AshbyCandidate,
   AshbyFieldSubmission,
@@ -13,8 +15,6 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
-
-export const JOB_FIELD_PATH = "_systemfield.job";
 
 interface CandidateSearchParams {
   email?: string;
@@ -48,7 +48,7 @@ export async function findHiredApplication(
     if (appInfoResult.value.results.status === "Hired") {
       return new Ok({
         applicationId,
-        jobId: appInfoResult.value.results.jobId,
+        jobId: appInfoResult.value.results.job?.id,
       });
     }
   }

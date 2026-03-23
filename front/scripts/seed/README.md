@@ -12,6 +12,7 @@ npx tsx scripts/seed/<folder>/seed.ts --execute
 
 - `basics/` - Creates a custom agent with skills and sample conversations
 - `sidekick/` - Creates agents and conversations for testing the agent builder sidekick feature
+- `triggers/` - Creates schedule triggers for basics agents
 
 ## Shared Factories
 

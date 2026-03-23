@@ -14,19 +14,18 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role,
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
 
   // Create a system space to hold the Webhook sources
-  await SpaceFactory.defaults(authenticator);
+  await SpaceFactory.defaults(auth);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 async function createWebhookSource(workspace: WorkspaceType, name: string) {
@@ -36,10 +35,7 @@ async function createWebhookSource(workspace: WorkspaceType, name: string) {
 
 describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
   it("should successfully delete an existing webhook source", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "DELETE"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "DELETE");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -58,7 +54,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify the webhook source was actually deleted
     const deletedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
+      auth,
       webhookSource.sId
     );
     expect(deletedWebhookSource).toBeNull();
@@ -125,10 +121,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
   });
 
   it("should successfully delete a webhook source with associated webhook requests", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "DELETE"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "DELETE");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -155,7 +148,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify the webhook requests were created
     const webhookRequests = await WebhookRequestResource.fetchByWebhookSourceId(
-      authenticator,
+      auth,
       webhookSource.id
     );
     expect(webhookRequests.length).toBe(2);
@@ -171,7 +164,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify the webhook source was deleted
     const deletedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
+      auth,
       webhookSource.sId
     );
     expect(deletedWebhookSource).toBeNull();
@@ -179,7 +172,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Verify the webhook requests were also deleted
     const remainingWebhookRequests =
       await WebhookRequestResource.fetchByWebhookSourceId(
-        authenticator,
+        auth,
         webhookSource.id
       );
     expect(remainingWebhookRequests.length).toBe(0);
@@ -188,10 +181,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
 describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
   it("should successfully update remoteMetadata", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -213,7 +203,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify the webhook source was actually updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
+      auth,
       webhookSource.sId
     );
     expect(updatedWebhookSource?.remoteMetadata).toEqual({
@@ -223,10 +213,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
   });
 
   it("should successfully update oauthConnectionId", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -248,17 +235,14 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify the webhook source was actually updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
+      auth,
       webhookSource.sId
     );
     expect(updatedWebhookSource?.oauthConnectionId).toBe("connection-456");
   });
 
   it("should successfully update multiple fields at once", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -281,7 +265,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify all fields were updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
+      auth,
       webhookSource.sId
     );
     expect(updatedWebhookSource?.remoteMetadata).toEqual({
@@ -292,10 +276,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
   });
 
   it("should ignore invalid field types and only update valid fields", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -318,7 +299,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Verify only the valid field was updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
+      auth,
       webhookSource.sId
     );
     expect(updatedWebhookSource?.remoteMetadata).toBeNull();

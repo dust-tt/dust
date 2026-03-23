@@ -40,6 +40,11 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
+export type WorkspaceSharingPolicy =
+  | "emails_only"
+  | "workspace_and_emails"
+  | "all_scopes";
+
 /**
  * @swaggerschema Workspace (swagger_schemas.ts), PrivateWorkspace (swagger_private_schemas.ts)
  */
@@ -54,6 +59,7 @@ export type LightWorkspaceType = {
   metadata?: {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
+  sharingPolicy: WorkspaceSharingPolicy;
   workOSOrganizationId?: string | null;
   groups?: string[];
 };

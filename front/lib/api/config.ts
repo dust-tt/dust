@@ -17,13 +17,16 @@ export function getBaseUrl(): string {
 }
 
 // Pluggable default RequestInit resolver (e.g. credentials/headers per context).
-let defaultInitResolver: (() => RequestInit) | null = null;
+// The resolver may be async (e.g. to call getAccessToken() which refreshes expired tokens).
+let defaultInitResolver: (() => Promise<RequestInit>) | null = null;
 
-export function setDefaultInitResolver(fn: (() => RequestInit) | null): void {
+export function setDefaultInitResolver(
+  fn: (() => Promise<RequestInit>) | null
+): void {
   defaultInitResolver = fn;
 }
 
-export function getDefaultInit(): RequestInit | null {
+export function getDefaultInit(): Promise<RequestInit> | null {
   return defaultInitResolver?.() ?? null;
 }
 
@@ -494,6 +497,17 @@ const config = {
   },
   getGoogleCloudProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
+  },
+  // Novu notifications.
+  getNovuSecretKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("NOVU_SECRET_KEY");
+  },
+  getNovuApiUrl: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_NOVU_API_URL) {
+      throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_NOVU_API_URL;
   },
 };
 

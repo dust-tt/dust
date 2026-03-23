@@ -41,7 +41,8 @@ export const agentSuggestionsReadyWorkflow = workflow(
           },
         },
         data: {
-          autoDelete: true,
+          agentConfigurationId: payload.agentConfigurationId,
+          agentName: payload.agentName,
         },
       };
     });
@@ -52,7 +53,7 @@ export const agentSuggestionsReadyWorkflow = workflow(
   }
 );
 
-export const triggerAgentSuggestionsReadyNotifications = async (
+const triggerAgentSuggestionsReadyNotifications = async (
   auth: Authenticator,
   {
     agentConfiguration,

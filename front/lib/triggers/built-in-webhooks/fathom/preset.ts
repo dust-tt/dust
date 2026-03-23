@@ -1,5 +1,3 @@
-import { CreateWebhookFathomConnection } from "@app/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection";
-import { WebhookSourceFathomDetails } from "@app/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails";
 import {
   meetingContentReadyExample,
   meetingContentReadySchema,
@@ -30,8 +28,4 @@ export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   filterGenerationInstructions: null,
   webhookPageUrl: "https://app.fathom.video/settings/api",
   webhookService: new FathomWebhookService(),
-  components: {
-    detailsComponent: WebhookSourceFathomDetails,
-    createFormComponent: CreateWebhookFathomConnection,
-  },
 };

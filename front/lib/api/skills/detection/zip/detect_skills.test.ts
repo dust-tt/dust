@@ -56,8 +56,8 @@ describe("detectSkillsFromZip", () => {
     if (result.isOk()) {
       expect(result.value[0].attachments).toHaveLength(2);
       expect(result.value[0].attachments.map((a) => a.path).sort()).toEqual([
-        "data/config.json",
-        "helper.py",
+        "foo/data/config.json",
+        "foo/helper.py",
       ]);
     }
   });
@@ -129,7 +129,7 @@ describe("detectSkillsFromZip", () => {
     });
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe("invalid_zip");
+      expect(result.error.message).toContain("Failed to open ZIP");
     }
   });
 });

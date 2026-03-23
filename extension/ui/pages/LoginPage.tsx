@@ -188,7 +188,6 @@ export const LoginPage = () => {
     );
   }
 
-  // Should never happen.
   return (
     <div
       className={cn(
@@ -198,7 +197,7 @@ export const LoginPage = () => {
       )}
     >
       <div className="flex h-screen flex-col items-center justify-center text-center">
-        <Page.SectionHeader title="Something unexpected occured, please contact us at support@dust.tt!" />
+        <Page.SectionHeader title="Something unexpected occurred. Please try logging in again. If the problem persists, contact us at support@dust.tt." />
         <Button label="Logout" onClick={() => handleLogout()} />
       </div>
     </div>

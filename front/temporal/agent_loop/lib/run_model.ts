@@ -29,10 +29,7 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import {
-  fetchMessageInConversation,
-  getCompletionDuration,
-} from "@app/lib/api/assistant/messages";
+import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
   createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
@@ -53,7 +50,9 @@ import {
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -70,6 +69,7 @@ import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -505,6 +505,7 @@ export async function runModel(
     responseFormat: agentConfiguration.model.responseFormat,
     metaData: agentConfiguration.model.metaData,
     context: traceContext,
+    omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
       const lastUserMessage = conv.messages.findLast(
@@ -607,6 +608,16 @@ export async function runModel(
         const currentAttempt = Context.current().info.attempt;
         const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
 
+        if (
+          type === "authentication_error" &&
+          auth.getNonNullablePlan().isByok &&
+          isByokProviderId(model.providerId)
+        ) {
+          await ProviderCredentialResource.markAsUnhealthy(auth, {
+            providerId: model.providerId,
+          });
+        }
+
         if (!isRetryable || isLastAttempt) {
           // Non-retryable errors or last retry attempt: surface error to user.
           await publishAgentError(
@@ -641,13 +652,26 @@ export async function runModel(
   // It is possible that temporal requested activity cancellation but the
   // activity has not yet received the signal. In that case, the agent message
   // row would have status to cancelled (done via finalizeCancellationActivity).
-  const message = await fetchMessageInConversation(
+  const messageRes = await ConversationResource.getMessageByIdInConversation(
     auth,
     conversation,
     agentMessage.sId,
     agentMessage.version
   );
-  if (message?.agentMessage?.status === "cancelled") {
+
+  if (messageRes.isErr()) {
+    logger.info("Agent message not found, stopping");
+    return null;
+  }
+
+  const messageRow = messageRes.value;
+
+  if (!messageRow.agentMessage) {
+    logger.info("Agent message not found, stopping");
+    return null;
+  }
+
+  if (messageRow.agentMessage.status === "cancelled") {
     logger.info("Agent message cancelled, stopping");
     return null;
   }

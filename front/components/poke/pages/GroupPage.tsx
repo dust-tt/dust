@@ -1,6 +1,6 @@
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeGroupDetails } from "@app/poke/swr/group_details";
@@ -8,7 +8,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function GroupPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Group`);
+  useDocumentTitle(`Poke - ${owner.name} - Group`);
 
   const groupId = useRequiredPathParam("groupId");
   const {

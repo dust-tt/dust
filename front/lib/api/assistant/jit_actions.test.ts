@@ -90,6 +90,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -161,7 +162,7 @@ describe("getJITServers", () => {
   describe("projects feature", () => {
     it("should include project search server when feature flag is enabled and project context exists", async () => {
       // Enable projects feature flag.
-      await FeatureFlagFactory.basic("projects", workspace);
+      await FeatureFlagFactory.basic(auth, "projects");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const projectDatasourceView = await DataSourceViewFactory.fromConnector(
@@ -220,7 +221,7 @@ describe("getJITServers", () => {
 
     it("should include project_manager server when feature flag is enabled and conversation is in a project", async () => {
       // Enable projects feature flag.
-      await FeatureFlagFactory.basic("projects", workspace);
+      await FeatureFlagFactory.basic(auth, "projects");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const { servers: jitServers } = await getJITServers(auth, {
@@ -263,7 +264,7 @@ describe("getJITServers", () => {
 
     it("should not include project_manager server when conversation is not in a project", async () => {
       // Enable projects feature flag.
-      await FeatureFlagFactory.basic("projects", workspace);
+      await FeatureFlagFactory.basic(auth, "projects");
 
       const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
@@ -346,6 +347,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -399,6 +401,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: false,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -448,6 +451,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: false,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -488,6 +492,7 @@ describe("getJITServers", () => {
           isSearchable: false,
           isQueryable: true,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -531,6 +536,7 @@ describe("getJITServers", () => {
           isSearchable: false,
           isQueryable: true,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -582,6 +588,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 
@@ -661,6 +668,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          creator: null,
         },
       ];
 

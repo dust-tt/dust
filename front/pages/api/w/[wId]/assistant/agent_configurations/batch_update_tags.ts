@@ -6,15 +6,13 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const BatchUpdateAgentTagsRequestBodySchema = t.type({
-  agentIds: t.array(t.string),
-  addTagIds: t.union([t.array(t.string), t.undefined]),
-  removeTagIds: t.union([t.array(t.string), t.undefined]),
+const BatchUpdateAgentTagsRequestBodySchema = z.object({
+  agentIds: z.array(z.string()),
+  addTagIds: z.array(z.string()).optional(),
+  removeTagIds: z.array(z.string()).optional(),
 });
 
 type BatchUpdateAgentTagsResponseBody = {
@@ -36,19 +34,20 @@ async function handler(
     });
   }
 
-  const bodyValidation = BatchUpdateAgentTagsRequestBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.reporter(bodyValidation);
+  const bodyValidation = BatchUpdateAgentTagsRequestBodySchema.safeParse(
+    req.body
+  );
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError.join(", ")}`,
+        message: `Invalid request body: ${bodyValidation.error.message}`,
       },
     });
   }
 
-  const { agentIds, addTagIds = [], removeTagIds = [] } = bodyValidation.right;
+  const { agentIds, addTagIds = [], removeTagIds = [] } = bodyValidation.data;
 
   // Fetch all tags
   const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);

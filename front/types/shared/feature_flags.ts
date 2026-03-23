@@ -13,6 +13,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  audit_logs: {
+    description: "Enable audit log emission via WorkOS",
+    stage: "dust_only",
+  },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
     stage: "dust_only",
@@ -25,22 +29,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
-  },
-  agent_to_yaml: {
-    description: "Export and Import agents to/from YAML format",
-    stage: "dust_only",
-  },
-  agent_builder_copilot: {
-    description: "Enable Sidekick in Agent Builder (admins only by default)",
-    stage: "dust_only",
-  },
-  agent_builder_copilot_builders: {
-    description: "Allow workspace builders to use Sidekick in Agent Builder",
-    stage: "dust_only",
-  },
-  agent_builder_shrink_wrap: {
-    description: "Enable 'Turn into agent' button on agent messages",
-    stage: "dust_only",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
@@ -206,6 +194,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
   },
+  luma_tool: {
+    description: "Luma MCP tool for event management and guest tracking",
+    stage: "on_demand",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
@@ -265,8 +257,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable default skills discovery on global agents (do not enable for customers)",
     stage: "dust_only",
   },
-  sidepanel_files: {
-    description: "Show conversation files in a side panel instead of a popover",
+  collapsible_messages: {
+    description: "Enable collapsible messages in conversations",
+    stage: "dust_only",
+  },
+  email_restricted_sharing: {
+    description:
+      "Enable email-restricted sharing for interactive content (Frames)",
+    stage: "dust_only",
+  },
+  poke_mcp: {
+    description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

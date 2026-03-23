@@ -435,23 +435,34 @@ export async function githubRepoSyncWorkflow({
     }
   }
 
-  await executeChild(githubCodeSyncStatelessWorkflow, {
-    workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
-    searchAttributes: {
-      connectorId: [connectorId],
-    },
-    args: [
-      {
-        connectorId,
-        dataSourceConfig,
-        forceResync: forceCodeResync,
-        repoId,
-        repoLogin,
-        repoName,
+  try {
+    await executeChild(githubCodeSyncStatelessWorkflow, {
+      workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
+      searchAttributes: {
+        connectorId: [connectorId],
       },
-    ],
-    memo: workflowInfo().memo,
-  });
+      args: [
+        {
+          connectorId,
+          dataSourceConfig,
+          forceResync: forceCodeResync,
+          repoId,
+          repoLogin,
+          repoName,
+        },
+      ],
+      memo: workflowInfo().memo,
+    });
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.name === "WorkflowExecutionAlreadyStartedError"
+    ) {
+      // Workflow already running for this repo, it will be synced by that execution.
+      return;
+    }
+    throw err;
+  }
 }
 
 export async function githubCodeSyncWorkflow(
@@ -478,22 +489,33 @@ export async function githubCodeSyncWorkflow(
       continue;
     }
 
-    await executeChild(githubCodeSyncStatelessWorkflow, {
-      workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      args: [
-        {
-          connectorId,
-          dataSourceConfig,
-          repoId,
-          repoLogin,
-          repoName,
+    try {
+      await executeChild(githubCodeSyncStatelessWorkflow, {
+        workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
+        searchAttributes: {
+          connectorId: [connectorId],
         },
-      ],
-      memo: workflowInfo().memo,
-    });
+        args: [
+          {
+            connectorId,
+            dataSourceConfig,
+            repoId,
+            repoLogin,
+            repoName,
+          },
+        ],
+        memo: workflowInfo().memo,
+      });
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.name === "WorkflowExecutionAlreadyStartedError"
+      ) {
+        // Workflow already running for this repo, it will be synced by that execution.
+        return;
+      }
+      throw err;
+    }
   }
 }
 

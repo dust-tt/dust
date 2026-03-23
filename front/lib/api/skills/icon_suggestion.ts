@@ -1,8 +1,8 @@
 import type { InternalActionIcons } from "@app/components/resources/resources_icons";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -109,7 +109,7 @@ export async function getSkillIconSuggestion(
   inputs: SkillIconSuggestionInputs
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const model = getLargeWhitelistedModel(owner);
+  const model = await getLargeWhitelistedModel(auth);
 
   if (!model) {
     return new Err(

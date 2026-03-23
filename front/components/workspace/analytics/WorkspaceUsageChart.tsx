@@ -8,17 +8,16 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import {
   BROWSER_TIMEZONE,
   useWorkspaceActiveUsersMetrics,
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import { Button, ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { DownloadIcon } from "lucide-react";
-import { useCallback, useState } from "react";
+import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -232,35 +231,6 @@ export function WorkspaceUsageChart({
   period,
 }: WorkspaceUsageChartProps) {
   const [displayMode, setDisplayMode] = useState<UsageDisplayMode>("activity");
-  const { hasFeature } = useFeatureFlags();
-  const showExport = hasFeature("analytics_csv_export");
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = useCallback(async () => {
-    setIsDownloading(true);
-    try {
-      const endpoint =
-        displayMode === "activity"
-          ? `/api/w/${workspaceId}/analytics/usage-metrics-export?days=${period}`
-          : `/api/w/${workspaceId}/analytics/active-users-export?days=${period}`;
-      const response = await clientFetch(endpoint);
-      if (!response.ok) {
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download =
-        displayMode === "activity"
-          ? `dust_activity_last_${period}_days.csv`
-          : `dust_active_users_last_${period}_days.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [workspaceId, period, displayMode]);
 
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useWorkspaceUsageMetrics({
@@ -313,7 +283,17 @@ export function WorkspaceUsageChart({
 
   const description = getDescriptionForMode(displayMode, period);
 
-  const canDownload = !isLoading && !isError && data.length > 0;
+  const csvDownload = useDownloadCsv({
+    url:
+      displayMode === "activity"
+        ? `/api/w/${workspaceId}/analytics/usage-metrics-export?days=${period}`
+        : `/api/w/${workspaceId}/analytics/active-users-export?days=${period}`,
+    filename:
+      displayMode === "activity"
+        ? `dust_activity_last_${period}_days.csv`
+        : `dust_active_users_last_${period}_days.csv`,
+    disabled: isLoading || isError || data.length === 0,
+  });
 
   const controls = (
     <div className="flex items-center gap-2">
@@ -329,17 +309,7 @@ export function WorkspaceUsageChart({
           onClick={() => setDisplayMode("users")}
         />
       </ButtonsSwitchList>
-      {showExport && (
-        <Button
-          icon={DownloadIcon}
-          variant="outline"
-          size="xs"
-          tooltip="Download CSV"
-          onClick={handleDownload}
-          disabled={!canDownload || isDownloading}
-          isLoading={isDownloading}
-        />
-      )}
+      <CsvDownloadButton {...csvDownload} />
     </div>
   );
 

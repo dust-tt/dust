@@ -35,6 +35,7 @@ describe("AgentSuggestionResource", () => {
             type: "replace",
           },
           analysis: "Making the agent more helpful",
+          source: "reinforcement",
         }
       );
 

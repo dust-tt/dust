@@ -179,71 +179,58 @@ function addAgentAttribution(
 }
 
 /**
- * Pre-flight check to verify write access to a file the LLM already knows about.
- * Called when `canEdit` was not passed by the LLM, to catch view-only files before
- * triggering the auth loop.
- *
- * Uses the drive.readonly scope (present on the token) to read file capabilities —
- * this works for any file the user can see, regardless of file picker authorization.
- *
- * Returns { canEdit, fileName } if capabilities could be determined, or null if the
- * file is inaccessible or the check fails — in both cases the caller should proceed
- * and let the existing error flow handle it.
+ * Checks if the user has a specific capability on a file.
+ * If the capability value is passed from a previous tool call, uses that.
+ * If not provided (undefined), fetches it from the API.
+ * If the capability is false, returns an early Ok response with an error message.
+ * If the capability is true or confirmed via API, returns null to proceed.
  */
-async function checkWriteAccess(
-  drive: NonNullable<Awaited<ReturnType<typeof getDriveClient>>>,
-  fileId: string
-): Promise<{ canEdit: boolean; fileName: string } | null> {
-  try {
-    const res = await drive.files.get({
-      fileId,
-      fields: "capabilities(canEdit),name",
-    });
-    const { capabilities, name } = res.data;
-    if (!capabilities) {
-      return null;
-    }
-    return {
-      canEdit: capabilities.canEdit ?? true,
-      fileName: name ?? fileId,
-    };
-  } catch {
-    // File inaccessible or unexpected error — proceed and let the existing error flow handle it.
-    return null;
-  }
-}
-
-/**
- * Checks whether the caller has write access to a file before attempting a write operation.
- * Returns an early Ok result with a view-only message when access is denied, or null to proceed.
- */
-async function ensureWriteAccess(
-  canEdit: boolean | undefined,
+async function ensureCapability(
+  capabilityName: "canEdit" | "canComment" | "canShare" | "canCopy",
+  capabilityValue: boolean | undefined,
   fileId: string,
   authInfo: ToolHandlerExtra["authInfo"]
 ): Promise<ToolHandlerResult | null> {
-  if (canEdit === false) {
+  let hasCapability = capabilityValue;
+
+  // If not provided, fetch from API
+  if (hasCapability === undefined) {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+    try {
+      const res = await drive.files.get({
+        fileId,
+        supportsAllDrives: true,
+        fields: `capabilities/${capabilityName}`,
+      });
+      hasCapability = res.data.capabilities?.[capabilityName] ?? false;
+    } catch {
+      // If we can't check, proceed and let the actual API call handle the error
+      return null;
+    }
+  }
+
+  if (hasCapability === false) {
+    const messages: Record<string, string> = {
+      canEdit:
+        "You don't have edit access to this file. You need editor or owner permissions.",
+      canComment:
+        "You don't have comment access to this file. You need at least commenter permissions.",
+      canShare:
+        "You don't have permission to manage sharing for this file. The file owner may have restricted sharing to owners only.",
+      canCopy:
+        "You don't have permission to copy this file. The file owner may have restricted copying.",
+    };
     return new Ok([
       {
         type: "text" as const,
-        text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
+        text: JSON.stringify({ error: messages[capabilityName] }, null, 2),
       },
     ]);
   }
-  if (canEdit === undefined) {
-    const drive = await getDriveClient(authInfo);
-    if (drive) {
-      const accessCheck = await checkWriteAccess(drive, fileId);
-      if (accessCheck !== null && !accessCheck.canEdit) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
-          },
-        ]);
-      }
-    }
-  }
+
   return null;
 }
 
@@ -296,7 +283,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         pageToken,
         pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
         fields:
-          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared, capabilities(canEdit))",
+          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared, capabilities(canEdit,canComment,canShare,canCopy))",
         orderBy,
       };
 
@@ -343,7 +330,8 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       const fileMetadata = await drive.files.get({
         fileId,
         supportsAllDrives: true,
-        fields: "id, name, mimeType, size, capabilities(canEdit)",
+        fields:
+          "id, name, mimeType, size, capabilities(canEdit,canComment,canShare,canCopy)",
       });
       const file = fileMetadata.data;
 
@@ -428,7 +416,12 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
               fileId,
               fileName: file.name,
               mimeType: file.mimeType,
-              canEdit: file.capabilities?.canEdit ?? null,
+              capabilities: {
+                canEdit: file.capabilities?.canEdit ?? null,
+                canComment: file.capabilities?.canComment ?? null,
+                canShare: file.capabilities?.canShare ?? null,
+                canCopy: file.capabilities?.canCopy ?? null,
+              },
               content: truncatedContent,
               returnedContentLength: truncatedContent.length,
               totalContentLength,
@@ -567,54 +560,77 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleDriveAccessError(err);
     }
   },
-};
 
-const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
-
-const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
-  create_document: async ({ title }, { authInfo }) => {
-    const docs = await getDocsClient(authInfo);
-    if (!docs) {
-      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+  list_file_permissions: async ({ fileId, capabilities }, { authInfo }) => {
+    const shareError = await ensureCapability(
+      "canShare",
+      capabilities?.canShare,
+      fileId,
+      authInfo
+    );
+    if (shareError) {
+      return shareError;
     }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
     try {
-      const res = await docs.documents.create({ requestBody: { title } });
+      const res = await drive.permissions.list({
+        fileId,
+        supportsAllDrives: true,
+        fields: "permissions(id,type,role,emailAddress,domain,displayName)",
+      });
+
+      const permissions = (res.data.permissions ?? []).map((p) => ({
+        permissionId: p.id,
+        type: p.type,
+        role: p.role,
+        ...(p.emailAddress && { emailAddress: p.emailAddress }),
+        ...(p.displayName && { displayName: p.displayName }),
+        ...(p.domain && { domain: p.domain }),
+      }));
+
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              documentId: res.data.documentId,
-              title: res.data.title,
-              url: `https://docs.google.com/document/d/${res.data.documentId}/edit`,
-            },
-            null,
-            2
-          ),
+          text: JSON.stringify({ fileId, permissions }, null, 2),
         },
       ]);
     } catch (err) {
       return handleDriveAccessError(err);
     }
   },
+};
 
-  create_spreadsheet: async ({ title }, { authInfo }) => {
-    const sheets = await getSheetsClient(authInfo);
-    if (!sheets) {
-      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
+
+const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
+  create_document: async ({ title, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
     try {
-      const res = await sheets.spreadsheets.create({
-        requestBody: { properties: { title } },
+      const res = await drive.files.create({
+        requestBody: {
+          name: title,
+          mimeType: "application/vnd.google-apps.document",
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
       });
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              spreadsheetId: res.data.spreadsheetId,
-              title: res.data.properties?.title,
-              url: res.data.spreadsheetUrl,
+              documentId: res.data.id,
+              title: res.data.name,
+              url: res.data.webViewLink,
             },
             null,
             2
@@ -626,21 +642,29 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  create_presentation: async ({ title }, { authInfo }) => {
-    const slides = await getSlidesClient(authInfo);
-    if (!slides) {
-      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+  create_spreadsheet: async ({ title, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
     try {
-      const res = await slides.presentations.create({ requestBody: { title } });
+      const res = await drive.files.create({
+        requestBody: {
+          name: title,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
+      });
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              presentationId: res.data.presentationId,
-              title: res.data.title,
-              url: `https://docs.google.com/presentation/d/${res.data.presentationId}/edit`,
+              spreadsheetId: res.data.id,
+              title: res.data.name,
+              url: res.data.webViewLink,
             },
             null,
             2
@@ -652,7 +676,50 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  copy_file: async ({ fileId, name, parentId }, { authInfo }) => {
+  create_presentation: async ({ title, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+    try {
+      const res = await drive.files.create({
+        requestBody: {
+          name: title,
+          mimeType: "application/vnd.google-apps.presentation",
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              presentationId: res.data.id,
+              title: res.data.name,
+              url: res.data.webViewLink,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return handleDriveAccessError(err);
+    }
+  },
+
+  copy_file: async ({ fileId, name, parentId, capabilities }, { authInfo }) => {
+    const accessError = await ensureCapability(
+      "canCopy",
+      capabilities?.canCopy,
+      fileId,
+      authInfo
+    );
+    if (accessError) {
+      return accessError;
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -710,10 +777,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_comment: async (
-    { fileId, content, canEdit },
+    { fileId, content, capabilities },
     { authInfo, agentLoopContext }
   ) => {
-    const accessError = await ensureWriteAccess(canEdit, fileId, authInfo);
+    const accessError = await ensureCapability(
+      "canComment",
+      capabilities?.canComment,
+      fileId,
+      authInfo
+    );
     if (accessError) {
       return accessError;
     }
@@ -752,10 +824,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_reply: async (
-    { fileId, commentId, content, canEdit },
+    { fileId, commentId, content, capabilities },
     { authInfo, agentLoopContext }
   ) => {
-    const accessError = await ensureWriteAccess(canEdit, fileId, authInfo);
+    const accessError = await ensureCapability(
+      "canComment",
+      capabilities?.canComment,
+      fileId,
+      authInfo
+    );
     if (accessError) {
       return accessError;
     }
@@ -797,10 +874,15 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_document: async (
-    { documentId, requests, canEdit },
+    { documentId, requests, capabilities },
     { authInfo, agentLoopContext }
   ) => {
-    const accessError = await ensureWriteAccess(canEdit, documentId, authInfo);
+    const accessError = await ensureCapability(
+      "canEdit",
+      capabilities?.canEdit,
+      documentId,
+      authInfo
+    );
     if (accessError) {
       return accessError;
     }
@@ -853,12 +935,13 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueInputOption = "USER_ENTERED",
       insertDataOption = "INSERT_ROWS",
-      canEdit,
+      capabilities,
     },
     { authInfo, agentLoopContext }
   ) => {
-    const accessError = await ensureWriteAccess(
-      canEdit,
+    const accessError = await ensureCapability(
+      "canEdit",
+      capabilities?.canEdit,
       spreadsheetId,
       authInfo
     );
@@ -899,11 +982,12 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_spreadsheet: async (
-    { spreadsheetId, requests, canEdit },
+    { spreadsheetId, requests, capabilities },
     { authInfo, agentLoopContext }
   ) => {
-    const accessError = await ensureWriteAccess(
-      canEdit,
+    const accessError = await ensureCapability(
+      "canEdit",
+      capabilities?.canEdit,
       spreadsheetId,
       authInfo
     );
@@ -952,11 +1036,12 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_presentation: async (
-    { presentationId, requests, canEdit },
+    { presentationId, requests, capabilities },
     { authInfo, agentLoopContext }
   ) => {
-    const accessError = await ensureWriteAccess(
-      canEdit,
+    const accessError = await ensureCapability(
+      "canEdit",
+      capabilities?.canEdit,
       presentationId,
       authInfo
     );
@@ -999,6 +1084,176 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         }
       );
     }
+  },
+
+  share_file: async (
+    {
+      fileId,
+      type,
+      role,
+      emailAddress,
+      domain,
+      allowFileDiscovery,
+      sendNotificationEmail,
+      emailMessage,
+      capabilities,
+    },
+    { authInfo, agentLoopContext }
+  ) => {
+    const shareError = await ensureCapability(
+      "canShare",
+      capabilities?.canShare,
+      fileId,
+      authInfo
+    );
+    if (shareError) {
+      return shareError;
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    let res;
+    try {
+      res = await drive.permissions.create({
+        fileId,
+        supportsAllDrives: true,
+        sendNotificationEmail,
+        emailMessage,
+        requestBody: {
+          type,
+          role,
+          ...(["user", "group"].includes(type) && { emailAddress }),
+          ...(type === "domain" && {
+            domain,
+            allowFileDiscovery: allowFileDiscovery ?? false,
+          }),
+        },
+      });
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    const sharedWith =
+      type === "domain" ? `everyone in ${domain}` : emailAddress;
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            sharedWith,
+            role,
+            permissionId: res.data.id,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  update_file_permission: async (
+    { fileId, permissionId, role, capabilities },
+    { authInfo, agentLoopContext }
+  ) => {
+    const shareError = await ensureCapability(
+      "canShare",
+      capabilities?.canShare,
+      fileId,
+      authInfo
+    );
+    if (shareError) {
+      return shareError;
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      await drive.permissions.update({
+        fileId,
+        permissionId,
+        supportsAllDrives: true,
+        requestBody: { role },
+      });
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            permissionId,
+            newRole: role,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  revoke_file_sharing: async (
+    { fileId, permissionId, capabilities },
+    { authInfo, agentLoopContext }
+  ) => {
+    const shareError = await ensureCapability(
+      "canShare",
+      capabilities?.canShare,
+      fileId,
+      authInfo
+    );
+    if (shareError) {
+      return shareError;
+    }
+
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      await drive.permissions.delete({
+        fileId,
+        permissionId,
+        supportsAllDrives: true,
+      });
+    } catch (err) {
+      return handleFileAccessError(err, fileId, {
+        authInfo,
+        agentLoopContext,
+      });
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            fileId,
+            permissionId,
+            removed: true,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
   },
 };
 

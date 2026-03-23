@@ -61,6 +61,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
@@ -98,15 +99,6 @@ async function handler(
     });
   }
 
-  const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
@@ -116,7 +108,51 @@ async function handler(
       },
     });
   }
+  const conversationId = req.query.cId;
   const messageId = req.query.mId;
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversationResource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
+  }
+
+  const messageRes = await conversationResource.getMessageById(auth, messageId);
+
+  if (messageRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message:
+          "The message you're trying to edit does not exist or is not accessible.",
+      },
+    });
+  }
+
+  const branchId = messageRes.value.branchSId ?? null;
+
+  const conversationRes = await getConversation(
+    auth,
+    conversationId,
+    false,
+    branchId
+  );
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
+  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "POST":

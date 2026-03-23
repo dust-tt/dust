@@ -227,6 +227,7 @@ export async function createUserMessage(
     context,
     agenticMessageData: agenticMessageData ?? undefined,
     rank: m.rank,
+    branchId: conversation.branchId,
     reactions: [],
   };
   return createdUserMessage;
@@ -523,6 +524,7 @@ export const createAgentMessages = async (
             error: null,
             configuration,
             rank: messageRow.rank,
+            branchId: conversation.branchId,
             skipToolsValidation: agentMessageRow.skipToolsValidation,
             contents: [],
             parsedContents: {},
@@ -576,6 +578,7 @@ export async function getUserMessageIdFromMessageId(
   userMessageVersion: number;
   userMessageUserId: number | null;
   userMessageOrigin: UserMessageOrigin;
+  branchId: string | null;
 }> {
   // Query 1: Get the message and its parentId.
   const agentMessage = await MessageModel.findOne({
@@ -621,5 +624,6 @@ export async function getUserMessageIdFromMessageId(
     userMessageVersion: parentMessage.version,
     userMessageUserId: parentMessage.userMessage.userId,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
+    branchId: agentMessage.branchSId,
   };
 }

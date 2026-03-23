@@ -33,7 +33,7 @@ export function ProvidersConfigurationList({
           providerId={providerId}
           description={description}
           isLoading={isProviderCredentialsLoading}
-          apiKey={credentialsByProvider[providerId]?.credentials.api_key}
+          providerCredential={credentialsByProvider[providerId]}
         />
       ))}
     </ContextItem.List>

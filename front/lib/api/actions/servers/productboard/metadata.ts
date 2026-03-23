@@ -515,6 +515,7 @@ interface ConversationNotePart {
 `;
 
 export const PRODUCTBOARD_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "productboard",
     version: "1.0.0",
@@ -525,9 +526,6 @@ export const PRODUCTBOARD_SERVER = {
     },
     icon: "ProductboardLogo",
     documentationUrl: "https://docs.dust.tt/docs/productboard",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, as it's already widely adopted.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => ({

@@ -12,7 +12,6 @@ import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilde
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
@@ -42,7 +41,6 @@ import type {
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";
@@ -115,10 +113,7 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { hasFeature } = useFeatureFlags();
   const { fetcherWithBody } = useFetcher();
-  const hasSidekick = useIsAgentBuilderSidekickEnabled();
-
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -240,28 +235,11 @@ export default function AgentBuilder({
     }
 
     if (assistantTemplate) {
-      return transformTemplateToFormData(
-        assistantTemplate,
-        user,
-        owner,
-        hasFeature
-      );
+      return transformTemplateToFormData(assistantTemplate, user, owner);
     }
 
-    return getDefaultAgentFormData({
-      owner,
-      user,
-      hasSidekick,
-    });
-  }, [
-    agentConfiguration,
-    duplicateAgentId,
-    assistantTemplate,
-    user,
-    owner,
-    hasFeature,
-    hasSidekick,
-  ]);
+    return getDefaultAgentFormData({ owner, user });
+  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user, owner]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -616,14 +594,13 @@ function AgentBuilderContent({
   conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
-  const isSidekickEnabled = useIsAgentBuilderSidekickEnabled();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const { pendingSuggestions, getCommittedInstructionsHtml } =
     useSidekickSuggestions();
 
   const { serverId: clientSideMCPServerId } = useSidekickMCPServer({
-    enabled: isSidekickEnabled,
+    enabled: true,
   });
 
   const clientSideMCPServerIds = useMemo(
@@ -695,7 +672,6 @@ function AgentBuilderContent({
         />
       )}
       <AgentBuilderLayout
-        sidekickEnabled={isSidekickEnabled}
         leftPanel={
           <AgentBuilderLeftPanel
             title={title}
@@ -729,7 +705,6 @@ function AgentBuilderContent({
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
-                conversationId={conversationId}
               />
             </ConversationSidePanelProvider>
           </SidekickPanelProvider>

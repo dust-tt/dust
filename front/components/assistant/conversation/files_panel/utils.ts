@@ -1,9 +1,12 @@
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+
+export const MIN_FILES_FOR_SEARCH = 10;
+
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { SandboxFileEntry } from "@app/lib/api/sandbox/files";
+import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
 import {
   frameSlideshowContentType,
   isInteractiveContentType,
@@ -26,15 +29,43 @@ export const CATEGORY_CONFIG: {
 }[] = [
   { value: "frame", label: "Frames" },
   { value: "slideshow", label: "Slideshows" },
+  { value: "image", label: "Images" },
   { value: "document", label: "Documents" },
   { value: "pdf", label: "PDFs" },
   { value: "table", label: "Tables" },
-  { value: "code", label: "Code" },
-  { value: "image", label: "Images" },
   { value: "audio", label: "Audio" },
   { value: "knowledge", label: "Knowledge" },
   { value: "other", label: "Other" },
 ];
+
+/**
+ * Categorize a file by its content type alone (used for sandbox/mounted files).
+ */
+export function getCategoryFromContentType(
+  contentType: string
+): FilePanelCategory {
+  const previewConfig = getFilePreviewConfig(contentType);
+
+  switch (previewConfig.category) {
+    case "pdf":
+      return "pdf";
+    case "image":
+      return "image";
+    case "audio":
+      return "audio";
+    case "delimited":
+      return "table";
+    case "code":
+    case "viewer":
+    case "markdown":
+    case "text":
+      return "document";
+    case "frame":
+      return "frame";
+    default:
+      return "other";
+  }
+}
 
 export function getFilePanelCategory(
   item: ConversationAttachmentItem
@@ -61,7 +92,6 @@ export function getFilePanelCategory(
     case "delimited":
       return "table";
     case "code":
-      return "code";
     case "viewer":
     case "markdown":
     case "text":
@@ -80,7 +110,8 @@ export function conversationAttachmentToRow(
   const category = getFilePanelCategory(item);
 
   if (isFileAttachmentType(item)) {
-    const { title, contentType, fileId, source, isInProjectContext } = item;
+    const { title, contentType, fileId, source, isInProjectContext, creator } =
+      item;
     return {
       title,
       contentType,
@@ -88,10 +119,12 @@ export function conversationAttachmentToRow(
       source,
       category,
       isInProjectContext,
+      creator,
+      date: item.updatedAt ?? item.createdAt ?? null,
       onClick: () => onFileClick(item),
     };
   } else if (isContentNodeAttachmentType(item)) {
-    const { title, contentType, sourceUrl, isInProjectContext } = item;
+    const { title, contentType, sourceUrl, isInProjectContext, creator } = item;
     return {
       title,
       contentType,
@@ -99,6 +132,8 @@ export function conversationAttachmentToRow(
       source: null,
       category,
       isInProjectContext,
+      creator,
+      date: null,
       onClick: sourceUrl
         ? () => window.open(sourceUrl, "_blank", "noopener,noreferrer")
         : undefined,
@@ -114,7 +149,7 @@ export function conversationAttachmentToRow(
  * tree paths start at the sandbox working directory root.
  */
 export function buildSandboxTree(
-  entries: SandboxFileEntry[]
+  entries: GCSMountFileEntry[]
 ): SandboxTreeNode[] {
   const root: SandboxTreeNode[] = [];
   const nodeMap = new Map<string, SandboxTreeNode>();

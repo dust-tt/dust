@@ -1,9 +1,9 @@
-import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
 import {
   buildClientTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { attachPageTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
+import { attachTabsTextTool } from "@extension/platforms/chrome/tools/attachPageTextTool";
+import { CHROME_TOOLS_METADATA } from "@extension/platforms/chrome/tools/metadata";
 import {
   closeBrowserTabTool,
   moveBrowserTabTool,
@@ -14,7 +14,6 @@ import {
 import { takeScreenshotOrAttachFileTool } from "@extension/platforms/chrome/tools/takeScreenshotOrAttachFileTool";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getCurrentTabInfoTool } from "./getCurrentTabInfo";
 import { interactWithPageTool } from "./interactWithPageTool";
 import { listBrowserTabsTool } from "./listTabsTool";
 
@@ -29,8 +28,8 @@ export function registerAllTools(
   workspaceId: string
 ): void {
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
-    attach_page_text: (params) =>
-      attachPageTextTool({ ...params, captureService }),
+    attach_tabs_text: (params) =>
+      attachTabsTextTool({ ...params, captureService }),
     take_screenshot_or_attach_file: (params) =>
       takeScreenshotOrAttachFileTool({
         ...params,
@@ -38,7 +37,6 @@ export function registerAllTools(
         workspaceId,
       }),
     list_browser_tabs: () => listBrowserTabsTool(),
-    get_current_tab_info: () => getCurrentTabInfoTool(),
     switch_to_browser_tab: (params) => switchBrowserTabTool(params),
     close_browser_tab: (params) => closeBrowserTabTool(params),
     move_browser_tab: (params) => moveBrowserTabTool(params),
@@ -50,18 +48,34 @@ export function registerAllTools(
   const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
 
   for (const tool of tools) {
-    server.tool(tool.name, tool.description, tool.schema, async (params) => {
-      const result = await tool.handler(params);
-      if (result.isErr()) {
+    server.registerTool(
+      tool.name,
+      {
+        description: tool.description,
+        inputSchema: tool.schema,
+        _meta: {
+          dust: {
+            stake: tool.stake,
+            displayLabels: tool.displayLabels,
+            ...(tool.argumentsRequiringApproval
+              ? { argumentsRequiringApproval: tool.argumentsRequiringApproval }
+              : {}),
+          },
+        },
+      },
+      async (params) => {
+        const result = await tool.handler(params);
+        if (result.isErr()) {
+          return {
+            isError: true,
+            content: [{ type: "text" as const, text: result.error.message }],
+          };
+        }
         return {
-          isError: true,
-          content: [{ type: "text" as const, text: result.error.message }],
+          isError: false,
+          content: result.value,
         };
       }
-      return {
-        isError: false,
-        content: result.value,
-      };
-    });
+    );
   }
 }

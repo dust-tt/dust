@@ -11,7 +11,7 @@ Use `@app/hooks/useNotification` instead.
 ```grit
 language js
 
-`import { useSendNotification } from "@dust-tt/sparkle"` => `DIRECT_SPARKLE_NOTIFICATION_FORBIDDEN`
+direct_sparkle_notification() => `DIRECT_SPARKLE_NOTIFICATION_FORBIDDEN`
 ```
 
 ## Should flag direct sparkle notification import

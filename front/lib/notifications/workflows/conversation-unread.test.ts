@@ -85,6 +85,7 @@ describe("conversation-unread workflow business logic", () => {
     triggered: false,
     triggered_programmatic: false,
     zendesk: false,
+    reinforced_agent_notification: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
     it.each(

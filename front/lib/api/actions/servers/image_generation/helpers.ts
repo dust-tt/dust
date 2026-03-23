@@ -1,7 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  MCPProgressNotificationType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -9,8 +13,14 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
-import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
+import {
+  fileSizeToHumanReadable,
+  isSupportedImageContentType,
+  MAX_FILE_SIZES,
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Part } from "@google/genai";
 import { createPartFromUri } from "@google/genai";
 import { z } from "zod";
@@ -58,6 +68,20 @@ export function isValidGeminiInlineDataPart(
   part: unknown
 ): part is GeminiInlineDataPart {
   return GeminiInlineDataPartSchema.safeParse(part).success;
+}
+
+export type Base64ImageData = {
+  base64: string;
+  mimeType?: string;
+};
+
+export function geminiPartsToBase64Images(
+  parts: GeminiInlineDataPart[]
+): Base64ImageData[] {
+  return parts.map((part) => ({
+    base64: part.inlineData.data,
+    mimeType: part.inlineData.mimeType,
+  }));
 }
 
 export function computeImageGenerationCostDetails(usageMetadata: {
@@ -236,29 +260,76 @@ export function trackGeminiTokenUsage(response: {
   );
 }
 
-export function formatImageResponse(
-  imageParts: GeminiInlineDataPart[],
+export async function uploadAndFormatImageResponse(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined,
+  images: Base64ImageData[],
   fileName: string
-): Ok<
-  Array<{
-    type: "image";
-    mimeType: string;
-    data: string;
-    name: string;
-  }>
+): Promise<
+  Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
 > {
+  if (!agentLoopContext?.runContext) {
+    return new Err(
+      new MCPError("No conversation context available for file upload", {
+        tracked: false,
+      })
+    );
+  }
+
+  const conversationId = agentLoopContext.runContext.conversation.sId;
   const outputFileName = fileName.toLowerCase().endsWith(".png")
     ? fileName
     : `${fileName}.png`;
 
-  return new Ok(
-    imageParts.map((part) => ({
-      type: "image" as const,
-      mimeType: part.inlineData.mimeType ?? DEFAULT_IMAGE_MIME_TYPE,
-      data: part.inlineData.data,
-      name: outputFileName,
-    }))
-  );
+  const resources: Array<{
+    type: "resource";
+    resource: ToolGeneratedFileType;
+  }> = [];
+
+  for (const image of images) {
+    const mimeType = image.mimeType ?? DEFAULT_IMAGE_MIME_TYPE;
+
+    if (!isSupportedImageContentType(mimeType)) {
+      return new Err(
+        new MCPError(`Unsupported image type: ${mimeType}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const uploadResult = await uploadBase64ImageToFileStorage(auth, {
+      base64: image.base64,
+      contentType: mimeType,
+      fileName: outputFileName,
+      useCase: "conversation",
+      useCaseMetadata: { conversationId },
+    });
+
+    if (uploadResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to upload image: ${uploadResult.error.message}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const file = uploadResult.value;
+
+    resources.push({
+      type: "resource",
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+        uri: `file://${file.sId}`,
+        fileId: file.sId,
+        title: outputFileName,
+        contentType: file.contentType,
+        snippet: file.snippet,
+        text: `Generated image: ${outputFileName}`,
+      },
+    });
+  }
+
+  return new Ok(resources);
 }
 
 async function processSingleImageFile(

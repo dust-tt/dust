@@ -12,8 +12,6 @@ import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assist
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentConfigurationResponseBody = {
@@ -62,14 +60,13 @@ async function handler(
 
     case "PATCH":
       const bodyValidation =
-        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        PostOrPatchAgentConfigurationRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
@@ -103,7 +100,7 @@ async function handler(
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: bodyValidation.right.assistant,
+        assistant: bodyValidation.data.assistant,
         agentConfigurationId: req.query.aId as string,
       });
 

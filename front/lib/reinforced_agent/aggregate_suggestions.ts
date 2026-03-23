@@ -1,30 +1,60 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import {
+  createConversation,
+  postNewContentFragment,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getEditors } from "@app/lib/api/assistant/editors";
+import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
+import {
+  type AgentContextSkill,
+  formatAgentContext,
+} from "@app/lib/reinforced_agent/format_agent_context";
 import {
   buildReinforcedLLMParams,
   runReinforcedAnalysis,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type {
+  AgentInstructionsSuggestionType,
+  AgentSkillsSuggestionType,
+  AgentToolsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
+
+type ReinforcedSuggestionType =
+  | AgentInstructionsSuggestionType
+  | AgentToolsSuggestionType
+  | AgentSkillsSuggestionType;
+
+const REINFORCED_SUGGESTION_KINDS = new Set([
+  "instructions",
+  "tools",
+  "skills",
+]);
 
 interface AggregationContext {
-  agentConfig: LightAgentConfigurationType;
+  agentConfig: AgentConfigurationType;
   syntheticSuggestions: AgentSuggestionResource[];
   prompt: { systemPrompt: string; userMessage: string };
 }
 
-function toInstructionsSuggestions(
+function toReinforcedSuggestions(
   suggestions: AgentSuggestionResource[]
-): AgentInstructionsSuggestionType[] {
+): ReinforcedSuggestionType[] {
   return suggestions
     .map((s) => s.toJSON())
-    .filter(
-      (json): json is AgentInstructionsSuggestionType =>
-        json.kind === "instructions"
+    .filter((json): json is ReinforcedSuggestionType =>
+      REINFORCED_SUGGESTION_KINDS.has(json.kind)
     );
 }
 
@@ -45,7 +75,7 @@ async function loadAggregationContext(
 
   const [agentConfig] = await getAgentConfigurations(auth, {
     agentIds: [agentConfigurationId],
-    variant: "light",
+    variant: "full",
   });
   if (!agentConfig) {
     logger.warn(
@@ -55,51 +85,93 @@ async function loadAggregationContext(
     return null;
   }
 
-  const existingSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
+  const REJECTED_SUGGESTIONS_MAX_COUNT = 20;
+  const REJECTED_SUGGESTIONS_MAX_AGE_MONTHS = 3;
+
+  const [
+    pendingSuggestions,
+    rejectedSuggestions,
+    toolsAndSkillsContext,
+    agentSkills,
+  ] = await Promise.all([
+    AgentSuggestionResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId,
       {
         sources: ["reinforcement", "sidekick"],
-        states: ["pending", "rejected"],
+        states: ["pending"],
       }
-    );
+    ),
+    AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      {
+        sources: ["reinforcement", "sidekick"],
+        states: ["rejected"],
+        limit: REJECTED_SUGGESTIONS_MAX_COUNT,
+      }
+    ),
+    buildToolsAndSkillsContext(auth),
+    SkillResource.listByAgentConfiguration(auth, agentConfig),
+  ]);
 
-  const existingInstructions = toInstructionsSuggestions(existingSuggestions);
+  const rejectedCutoff = new Date();
+  rejectedCutoff.setMonth(
+    rejectedCutoff.getMonth() - REJECTED_SUGGESTIONS_MAX_AGE_MONTHS
+  );
+  const recentRejectedSuggestions = rejectedSuggestions.filter(
+    (s) => s.createdAt >= rejectedCutoff
+  );
 
   const prompt = buildAggregationPrompt(
-    agentConfig.name,
-    toInstructionsSuggestions(syntheticSuggestions),
+    agentConfig,
+    toReinforcedSuggestions(syntheticSuggestions),
     {
-      pending: existingInstructions.filter((s) => s.state === "pending"),
-      rejected: existingInstructions.filter((s) => s.state === "rejected"),
-    }
+      pending: toReinforcedSuggestions(pendingSuggestions),
+      rejected: toReinforcedSuggestions(recentRejectedSuggestions),
+    },
+    toolsAndSkillsContext,
+    agentSkills
   );
 
   return { agentConfig, syntheticSuggestions, prompt };
 }
 
-function formatSuggestions(
-  suggestions: AgentInstructionsSuggestionType[]
-): string {
-  return suggestions
-    .map(
-      (s, i) => `### Suggestion ${i + 1}
-kind: ${s.kind}
+function formatSuggestion(s: ReinforcedSuggestionType): string {
+  switch (s.kind) {
+    case "instructions":
+      return `kind: instructions
 targetBlockId: ${s.suggestion.targetBlockId}
 analysis: ${s.analysis ?? "N/A"}
-content: ${s.suggestion.content}`
-    )
+content: ${s.suggestion.content}`;
+    case "tools":
+      return `kind: tools
+action: ${s.suggestion.action}
+toolId: ${s.suggestion.toolId}
+analysis: ${s.analysis ?? "N/A"}`;
+    case "skills":
+      return `kind: skills
+action: ${s.suggestion.action}
+skillId: ${s.suggestion.skillId}
+analysis: ${s.analysis ?? "N/A"}`;
+  }
+}
+
+function formatSuggestions(suggestions: ReinforcedSuggestionType[]): string {
+  return suggestions
+    .map((s, i) => `### Suggestion ${i + 1}\n${formatSuggestion(s)}`)
     .join("\n\n");
 }
 
 export function buildAggregationPrompt(
-  agentName: string,
-  syntheticSuggestions: AgentInstructionsSuggestionType[],
+  agentConfig: AgentConfigurationType,
+  syntheticSuggestions: ReinforcedSuggestionType[],
   existingSuggestions: {
-    pending: AgentInstructionsSuggestionType[];
-    rejected: AgentInstructionsSuggestionType[];
-  }
+    pending: ReinforcedSuggestionType[];
+    rejected: ReinforcedSuggestionType[];
+  },
+  toolsAndSkillsContext: string,
+  agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
 
@@ -107,14 +179,21 @@ export function buildAggregationPrompt(
 - Merge suggestions that address the same issue, or that target the same block
 - Keep only the most impactful suggestions (max 5)
 - In the analysis, mention how many conversations support each suggestion
-- When calling the tool, make sure there is never more than one suggestion targeting the same block (including instructions-root)
+- When calling suggest_prompt_edits, make sure there is never more than one suggestion targeting the same block (including instructions-root)
 - Do NOT create suggestions that are too similar to existing pending suggestions (listed below) — they are already being reviewed
 - Do NOT create suggestions that are too similar to previously rejected suggestions (listed below) — they will get rejected again
-- It is perfectly fine to return an empty suggestions array if there is nothing new to say
+- It is perfectly fine to return empty suggestions arrays if there is nothing new to say
 
-You MUST call the tool. If no suggestions survive aggregation, return an empty suggestions array.`;
+You have three tools available:
+- suggest_prompt_edits: For instruction changes.
+- suggest_tools: For suggesting tools to add or remove.
+- suggest_skills: For suggesting skills to add or remove.
 
-  let userMessage = `## Agent: ${agentName}
+You MUST call at least one tool. If no suggestions survive aggregation, call suggest_prompt_edits with an empty suggestions array.`;
+
+  let userMessage = `${formatAgentContext(agentConfig, agentSkills)}
+
+${toolsAndSkillsContext}
 
 ## Synthetic suggestions from conversation analyses
 
@@ -161,7 +240,8 @@ export async function buildAggregationBatchMap(
  */
 export async function aggregateSyntheticSuggestions(
   auth: Authenticator,
-  agentConfigurationId: string
+  agentConfigurationId: string,
+  disableNotifications: boolean
 ): Promise<void> {
   const ctx = await loadAggregationContext(auth, agentConfigurationId);
   if (!ctx) {
@@ -179,11 +259,12 @@ export async function aggregateSyntheticSuggestions(
     contextId: "n/a",
   });
 
-  if (createdCount > 0) {
+  if (createdCount > 0 && !disableNotifications) {
     notifyAgentSuggestionsReady(auth, {
       agentConfiguration: agentConfig,
       suggestionCount: createdCount,
     });
+    await createAgentSuggestionsConversations(auth, agentConfig);
   }
 
   await AgentSuggestionResource.bulkUpdateState(
@@ -200,4 +281,123 @@ export async function aggregateSyntheticSuggestions(
     },
     "ReinforcedAgent: aggregated synthetic suggestions into pending"
   );
+}
+
+async function createAgentSuggestionsConversations(
+  auth: Authenticator,
+  agentConfiguration: AgentConfigurationType
+) {
+  const editors = await getEditors(auth, agentConfiguration);
+  if (editors.length === 0) {
+    return;
+  }
+
+  const pendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfiguration.sId,
+      { sources: ["reinforcement"], states: ["pending"] }
+    );
+
+  if (pendingSuggestions.length === 0) {
+    return;
+  }
+
+  const formattedSuggestions = formatSuggestions(
+    toReinforcedSuggestions(pendingSuggestions)
+  );
+
+  const conversationTitle = `Reinforced suggestions for @${agentConfiguration.name}`;
+  const conversation = await createConversation(auth, {
+    title: conversationTitle,
+    visibility: "unlisted",
+    spaceId: null,
+    metadata: {
+      reinforcedAgentNotification: {
+        agentName: agentConfiguration.name,
+        agentConfigurationId: agentConfiguration.sId,
+      },
+    },
+  });
+
+  const contentFragmentRes = await toFileContentFragment(auth, {
+    contentFragment: {
+      title: `${pendingSuggestions.length} pending suggestions for @${agentConfiguration.name}`,
+      content: formattedSuggestions,
+      contentType: "text/plain",
+      url: null,
+    },
+    fileName: "suggestions.txt",
+  });
+
+  if (contentFragmentRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: contentFragmentRes.error.message,
+      },
+      "Failed to create content fragment for suggestions conversation"
+    );
+    return;
+  }
+
+  const author = editors[0];
+
+  const contentFragmentPostRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentRes.value,
+    {
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+    }
+  );
+
+  if (contentFragmentPostRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: contentFragmentPostRes.error.message,
+      },
+      "ReinforcedAgent: failed to post content fragment for suggestions conversation"
+    );
+    return;
+  }
+
+  const messageRes = await postUserMessage(auth, {
+    conversation,
+    content: `Here are ${pendingSuggestions.length} pending improvement${pluralize(pendingSuggestions.length)} suggestions for the @${agentConfiguration.name} agent.`,
+    mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+      origin: "reinforced_agent_notification",
+    },
+    skipToolsValidation: true,
+  });
+
+  if (messageRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        error: messageRes.error.api_error.message,
+      },
+      "ReinforcedAgent: failed to post user message for suggestions conversation"
+    );
+    return;
+  }
+
+  for (const editor of editors) {
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: editor,
+      lastReadAt: null,
+    });
+  }
 }
