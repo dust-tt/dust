@@ -84,6 +84,34 @@ Each Dust plan maps 1:1 to a Metronome package. Packages are immutable templates
 
 Two seat types for now: **Pro** ($29/mo) and **Max** ($99/mo). Managed via Metronome's native seat-based subscriptions with `seat_group_key: "user_id"`. Usage events include `user_id` for per-seat credit attribution. Programmatic usage (no user) draws from workspace-level credits.
 
+### Agentic Work Units (AWU) classification
+
+Every message is classified as **basic** or **advanced** based on the models and tools used:
+
+- **Basic**: Standard models (Claude Sonnet, GPT-5 Mini, Gemini Flash, Mistral, DeepSeek), no expensive tools, not part of multi-agent chain
+- **Advanced**: Frontier/reasoning models (Claude Opus, GPT-5, o1/o3/o4, Gemini Pro), OR expensive tools (deep research, file/image generation, multi-agent orchestration)
+
+Classification is computed in code (`classifyMessageTier` in `events.ts`) and sent as `message_tier` property on all events. Metronome can use it to:
+- Apply different credit costs per tier (basic = 1 credit, advanced = 5 credits)
+- Enforce daily quotas per tier (100 basic/day, 50 advanced/month per seat)
+- Filter billing metrics by tier
+
+Sub-agent messages are tagged with `is_sub_agent_message: "true"` (detected via `agenticMessageType` on `UserMessageModel`). This allows metering at parent message level only — deep-dives spawning 100 sub-agents don't charge 100 credits.
+
+**AWU credit weights per tool category** (from Pricing Push):
+
+| Tool Category | Credits | Examples |
+|---|---|---|
+| RAG / Data retrieval | 1 | search, table query, include data |
+| Write / Visuals | 2 | file generation, image, slideshow |
+| Orchestrators | 5 | run_agent, agent_router |
+| Web search | TBD | web_search_&_browse |
+| Connectors | TBD | salesforce, slack, etc. |
+
+### Custom credit type (Dust Credits)
+
+To be created in Metronome (via UI/support): a non-fiat "Dust Credits" pricing unit. The rate card defines `credit_type_conversions` to set the USD value per credit (target: ~$0.03–$0.05/credit). Customers see and purchase credits; invoices show USD.
+
 ## Events Emitted to Metronome
 
 All events emitted for all workspaces when `METRONOME_ENABLED=true`.
@@ -103,6 +131,8 @@ All events emitted for all workspaces when `METRONOME_ENABLED=true`.
 | `cache_creation_tokens` | number | Cache write tokens |
 | `cost_micro_usd` | number | Provider cost (no markup), from `token_pricing.ts` |
 | `is_programmatic_usage` | string | `"true"` or `"false"` |
+| `message_tier` | string | `"basic"` or `"advanced"` (AWU classification) |
+| `is_sub_agent_message` | string | `"true"` if spawned by another agent |
 | `origin` | string | e.g., `web`, `slack`, `api`, `zapier` |
 
 ### `tool_use` — per MCP action per agent message
@@ -119,6 +149,8 @@ All events emitted for all workspaces when `METRONOME_ENABLED=true`.
 | `status` | string | `succeeded`, `errored`, `denied`, etc. |
 | `execution_duration_ms` | number | Wall-clock execution time |
 | `is_programmatic_usage` | string | `"true"` or `"false"` |
+| `message_tier` | string | `"basic"` or `"advanced"` (AWU classification) |
+| `is_sub_agent_message` | string | `"true"` if spawned by another agent |
 | `origin` | string | e.g., `web`, `slack`, `api` |
 
 **Tool categories** (8 values, mapped from `internal_mcp_server_name` in `events.ts`):
@@ -269,7 +301,7 @@ if isMetronomeBilled(plan):
 
 ### Block 3: Seat Types
 
-Two types: **Pro** ($29/mo) and **Max** ($99/mo).
+Two types: **Pro** ($29/mo, 200 credits/mo) and **Max** ($99/mo, 1000 credits/mo).
 
 **Data model:** Add `seatType` column to membership model. Default `"pro"` for backward compat.
 
@@ -277,17 +309,41 @@ Two types: **Pro** ($29/mo) and **Max** ($99/mo).
 type SeatType = "pro" | "max";
 ```
 
-**Seat assignment:**
-- Admin UI: assign seat types to users (similar to role assignment)
-- API: `PATCH /api/w/[wId]/members/[userId]` with `seatType`
-- On change: call Metronome edit contract API (`add_seat_ids`/`remove_seat_ids`)
+**Seat lifecycle:**
+
+| Event | Action |
+|-------|--------|
+| Workspace subscribes to Pro Plan | All existing members get Pro seats automatically |
+| New member joins | Auto-assign Pro seat (`add_seat_ids` on Pro subscription) |
+| Member removed | Remove their seat (`remove_seat_ids`) |
+| Admin upgrades user to Max | `remove_seat_ids` from Pro + `add_seat_ids` on Max |
+| Admin downgrades user to Pro | `remove_seat_ids` from Max + `add_seat_ids` on Pro |
+
+**Key rule:** Pro seats are automatic (every member gets one). Max seats are explicit (admin-purchased on demand).
+
+**Code changes needed:**
+
+| Location | Change |
+|----------|--------|
+| `checkout.session.completed` | After creating contract, iterate all workspace members → `add_seat_ids` on Pro seat subscription for each |
+| `signup.ts` (member joins) | Add a Pro seat for the new user |
+| `membership.ts` (member revoked) | Remove the seat from whichever subscription they're on |
+| New admin endpoint | `PATCH /api/w/[wId]/members/[userId]/seat-type` — upgrade/downgrade between Pro ↔ Max |
+| Membership model | Add `seatType` column (default `"pro"`) |
 
 **Metronome integration:**
 - Seats tracked natively via seat-based subscriptions (configured in package)
 - `seat_group_key: "user_id"` — matches `user_id` in usage events
-- Per-seat credit allocation configurable via recurring credits on subscriptions
+- Per-seat credit allocation: 200 Dust Credits/mo (Pro), 1000 Dust Credits/mo (Max) via recurring credits with `INDIVIDUAL` allocation
 - Balance queryable via `/contracts/seatBalances/list` (for UI)
 - `low_remaining_seat_balance_reached` webhook for alerts
+
+**Credits per seat type:**
+- Pro seat: 200 Dust Credits/month (auto-granted per seat)
+- Max seat: 1000 Dust Credits/month (auto-granted per seat)
+- Credits are per-seat (INDIVIDUAL allocation), not pooled
+- Usage events with `user_id` draw down from that user's seat credits
+- Programmatic usage (no `user_id`) draws from workspace-level credits/commits
 
 **Feature limits per seat type:** Enforced in code (faster than querying Metronome), similar to current plan limits + feature flag pattern.
 
@@ -297,6 +353,7 @@ type SeatType = "pro" | "max";
 1. `checkout.session.completed` fires (Stripe Checkout)
 2. Create Metronome customer with Stripe customer ID linked (already implemented)
 3. Create Metronome contract: `package_alias: plan.metronomePackageAlias`
+4. Iterate all workspace members → `add_seat_ids` on Pro seat subscription for each
 4. Assign initial seats on the contract
 
 **Contract configuration via packages:**
@@ -362,13 +419,19 @@ For understanding what gets replaced:
 
 ## Open Questions
 
-1. **Grace period on credit exhaustion**: Hard-block at zero or allow overage? Metronome supports overage billing natively.
+1. **Custom credit type**: Need to create "Dust Credits" pricing unit in Metronome (via UI or support). Required for AWU credit-based billing.
 
-2. **Free tier**: Do free workspaces get a Metronome customer? Probably not — gate behind paid subscription.
+2. **AWU credit weights**: Final credit weights per tool category TBD from Pricing Push (target: ~$0.03–$0.05 per credit, basic message = 1 credit, advanced = 1–5 credits).
 
-3. **Historical data backfill**: Metronome cannot apply new billable metrics to historical data. Events are accumulating from now. Historical analysis available via Elasticsearch.
+3. **Sub-agent billing**: Confirmed direction is parent-message-only. Events tagged with `is_sub_agent_message` — Metronome metrics should filter to `is_sub_agent_message=false`. Exact implementation TBD.
 
-4. **Enterprise plans**: Custom contracts (no package) or per-enterprise packages? Likely manual contract creation via Metronome UI/API by Ops.
+4. **Grace period on credit exhaustion**: Hard-block at zero or allow overage? Metronome supports overage billing natively.
+
+5. **Free tier**: Do free workspaces get a Metronome customer? Probably not — gate behind paid subscription.
+
+6. **Enterprise plans**: Custom contracts (no package) or per-enterprise packages? Likely manual contract creation via Metronome UI/API by Ops.
+
+7. **Basic/Advanced daily quotas**: AWU proposes per-seat daily quotas (100 basic/day, 50 advanced/month). Daily quotas need code-side enforcement (Metronome handles monthly credit budgets, not daily rate limits).
 
 ## Files Reference
 
@@ -389,6 +452,7 @@ For understanding what gets replaced:
 | `front/lib/plans/renderers.ts` | Modified | 0 |
 | `front/lib/plans/free_plans.ts` | Modified | 0 |
 | `front/lib/plans/pro_plans.ts` | Modified | 0 |
+| `front/lib/plans/plan_codes.ts` | Modified | 0 |
 | `front/docs/metronome-sandbox-setup.sh` | Created | 0 |
 | `front/docs/metronome-design-doc.md` | Created | 0 |
 | `front/lib/metronome/credit_balance.ts` | To create | 2 |
