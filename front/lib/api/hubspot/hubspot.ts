@@ -152,7 +152,10 @@ export async function submitToHubSpotPartnerForm(params: {
   addField("headquarters_region", formData.headquarters_region || "N/A");
   addField("company_industry", formData.company_industry || "N/A");
   addField("partner_customer_sizes", formData.partner_customer_sizes || "N/A");
-  addField("partner_project_duration", formData.partner_project_duration || "N/A");
+  addField(
+    "partner_project_duration",
+    formData.partner_project_duration || "N/A"
+  );
   addField("technical_staff", formData.technical_staff || "0");
   addField("partner_ai_proficiency", formData.partner_ai_proficiency || "N/A");
 

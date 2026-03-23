@@ -15,10 +15,22 @@ import { z } from "zod";
 
 // Field options from HubSpot dropdown/checkbox/radio fields
 export const PARTNER_BUSINESS_MODEL_OPTIONS = [
-  { value: "I help clients implement and optimize AI tools", label: "I help clients implement and optimize AI tools" },
-  { value: "I create content or build community around AI tools", label: "I create content or build community around AI tools" },
-  { value: "I have a marketplace of B2B tools", label: "I have a marketplace of B2B tools" },
-  { value: "I build integrations or complementary products", label: "I build integrations or complementary products" },
+  {
+    value: "I help clients implement and optimize AI tools",
+    label: "I help clients implement and optimize AI tools",
+  },
+  {
+    value: "I create content or build community around AI tools",
+    label: "I create content or build community around AI tools",
+  },
+  {
+    value: "I have a marketplace of B2B tools",
+    label: "I have a marketplace of B2B tools",
+  },
+  {
+    value: "I build integrations or complementary products",
+    label: "I build integrations or complementary products",
+  },
 ] as const;
 
 export const HEADQUARTERS_REGION_OPTIONS = [
@@ -38,11 +50,17 @@ export const COMPANY_INDUSTRY_OPTIONS = [
   { value: "Financial services", label: "Financial services" },
   { value: "Media", label: "Media" },
   { value: "Energy & Utilities", label: "Energy &amp; Utilities" },
-  { value: "Consulting Firms & Agencies", label: "Consulting Firms &amp; Agencies" },
+  {
+    value: "Consulting Firms & Agencies",
+    label: "Consulting Firms &amp; Agencies",
+  },
   { value: "Investment Firms", label: "Investment Firms" },
   { value: "Content & Entertainment", label: "Content &amp; Entertainment" },
   { value: "Industrial Manufacturing", label: "Industrial Manufacturing" },
-  { value: "Real Estate & Construction", label: "Real Estate &amp; Construction" },
+  {
+    value: "Real Estate & Construction",
+    label: "Real Estate &amp; Construction",
+  },
   { value: "Telecommunications", label: "Telecommunications" },
   { value: "Other", label: "Other" },
 ] as const;
@@ -55,10 +73,19 @@ export const PARTNER_PROJECT_DURATION_OPTIONS = [
 ] as const;
 
 export const PARTNER_AI_PROFICIENCY_OPTIONS = [
-  { value: "using conversational AI (eg. chatGPT) -", label: "using conversational AI (eg. chatGPT) -" },
-  { value: "have built multiple agents & workflows with AI", label: "have built multiple agents &amp; workflows with AI" },
+  {
+    value: "using conversational AI (eg. chatGPT) -",
+    label: "using conversational AI (eg. chatGPT) -",
+  },
+  {
+    value: "have built multiple agents & workflows with AI",
+    label: "have built multiple agents &amp; workflows with AI",
+  },
   { value: "have given AI trainings", label: "have given AI trainings" },
-  { value: "have implemented AI agents for customers", label: "have implemented AI agents for customers" },
+  {
+    value: "have implemented AI agents for customers",
+    label: "have implemented AI agents for customers",
+  },
 ] as const;
 
 export const PARTNER_DUST_USAGE_DURATION_OPTIONS = [
@@ -67,7 +94,6 @@ export const PARTNER_DUST_USAGE_DURATION_OPTIONS = [
   { value: "3-12 months", label: "3-12 months" },
   { value: "12+ months", label: "12+ months" },
 ] as const;
-
 
 // Field definitions for dynamic form rendering
 export const PARTNER_FIELD_DEFINITIONS = [
@@ -181,7 +207,8 @@ export const PARTNER_FIELD_DEFINITIONS = [
   },
   {
     name: "partner_other_partnerhips",
-    label: "Are you a partner for any other tools? and AI or Agentic tools? (If yes, list them below)",
+    label:
+      "Are you a partner for any other tools? and AI or Agentic tools? (If yes, list them below)",
     type: "text",
     required: false,
   },
@@ -191,21 +218,36 @@ export const PARTNER_FIELD_DEFINITIONS = [
 export const PartnerFormSchema = z.object({
   firstname: z.string().min(1, "First Name is required"),
   lastname: z.string().min(1, "Last Name is required"),
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
   company: z.string().min(1, "Company Name is required"),
   hs_linkedin_url: z.string().min(1, "LinkedIn URL is required"),
-  partner_business_model: z.string().min(1, "What is your main business model? is required"),
+  partner_business_model: z
+    .string()
+    .min(1, "What is your main business model? is required"),
   headquarters_region: z.string().optional(),
   company_industry: z.string().optional(),
   partner_customer_sizes: z.string().optional(),
   partner_project_duration: z.string().optional(),
   technical_staff: z.string().optional(),
   partner_ai_proficiency: z.string().optional(),
-  partner_dust_usage_duration: z.string().min(1, "How long have you been using Dust? is required"),
-  partner_agent_example: z.string().min(1, "Share your favorite Dust Agent you’ve built is required"),
-  partner_dust_clients: z.string().min(1, "How many Dust clients do you currently have? is required"),
-  any_existing_lead_to_share_: z.string().min(1, "Do you have a first opportunity in mind? is required"),
-  partner_additionnal_details: z.string().min(1, "How would you envision a partnership with Dust? is required"),
+  partner_dust_usage_duration: z
+    .string()
+    .min(1, "How long have you been using Dust? is required"),
+  partner_agent_example: z
+    .string()
+    .min(1, "Share your favorite Dust Agent you’ve built is required"),
+  partner_dust_clients: z
+    .string()
+    .min(1, "How many Dust clients do you currently have? is required"),
+  any_existing_lead_to_share_: z
+    .string()
+    .min(1, "Do you have a first opportunity in mind? is required"),
+  partner_additionnal_details: z
+    .string()
+    .min(1, "How would you envision a partnership with Dust? is required"),
   partner_other_partnerhips: z.string().optional(),
 });
 

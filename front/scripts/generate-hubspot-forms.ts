@@ -158,7 +158,10 @@ function mapFieldType(hubspotType: string): string {
 
 // Sanitize a HubSpot label for use inside a JS string literal.
 function sanitizeLabel(label: string): string {
-  return label.replace(/[\n\r]+/g, " ").replace(/"/g, '\\"').trim();
+  return label
+    .replace(/[\n\r]+/g, " ")
+    .replace(/"/g, '\\"')
+    .trim();
 }
 
 // Generate Zod validation for a field
