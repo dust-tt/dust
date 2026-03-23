@@ -2,11 +2,11 @@
 
 ## Context
 
-Dust is migrating from Stripe Billing to Metronome to support credit-based pricing. Metronome sits on top of Stripe (payments/invoicing remain in Stripe). The backend sends granular usage events to Metronome; all pricing logic, rate cards, custom plans, and limits are configured in Metronome by GTM/Ops — not by engineers in the codebase.
+Dust is migrating from Stripe Billing to Metronome to support credit-based pricing. Metronome sits on top of Stripe (payments remain in Stripe). The backend sends granular usage events to Metronome; all pricing logic, rate cards, custom plans, and limits are configured in Metronome by GTM/Ops — not by engineers in the codebase.
 
-**Current state:** Commitment signed ($30k). Metering infrastructure implemented (events flowing to Metronome). Customer provisioning script ready.
+**Current state:** Commitment signed ($30k). Metering infrastructure implemented (events flowing to Metronome). Customer provisioning ready. Sandbox configured with metrics, products, rate card, and package.
 
-**Target:** Metronome live for selected workspaces behind feature flag, with full migration when new pricing ships (~early April).
+**Target:** Metronome live when the new pricing ships (~early April).
 
 ## Architecture Overview
 
@@ -18,6 +18,7 @@ Dust is migrating from Stripe Billing to Metronome to support credit-based prici
    (all workspaces) │  Metrics    │
                     │  Rate Cards │
                     │  Contracts  │
+                    │  Packages   │
                     └──────┬──────┘
                            │ webhooks
                            ▼
@@ -34,349 +35,342 @@ Dust is migrating from Stripe Billing to Metronome to support credit-based prici
                     └─────────────┘
 ```
 
-**Two independent concerns:**
+**Key concepts:**
+
+- **Metronome creates one-off Stripe invoices**, not subscriptions. Stripe becomes a payment processor only.
+- **Stripe Checkout stays** as the entry point for payment method capture. Customer + contract provisioned from the `checkout.session.completed` webhook.
+- **Two independent concerns:**
 
 | Concern | Scope | Gating |
 |---------|-------|--------|
 | **Metering** — emitting usage events to Metronome | All workspaces | `METRONOME_ENABLED` env var |
-| **Billing** — using Metronome for invoicing, credits, limits | Per workspace | `metronome_billing` feature flag |
+| **Billing** — using Metronome for invoicing, credits, limits | Per plan | `metronomePackageAlias` on `PlanModel` |
 
-## Implemented (Block 0)
+## Key Design Decisions
 
-Already done and merged/ready:
+### Pricing logic split
 
-- **Metronome client** (`front/lib/metronome/client.ts`): HTTP client for ingest API + customer creation
-- **Event builders** (`front/lib/metronome/events.ts`): `llm_usage`, `tool_use`, `seats`, `mau` events
-- **Event emission** (`front/temporal/usage_queue/activities.ts`):
-  - `trackProgrammaticUsageActivity` emits `llm_usage` + `tool_use` events for ALL usage (not just programmatic)
-  - `recordUsageActivity` emits `seats` + `mau` gauge events
-- **Config** (`front/lib/api/config.ts`): `METRONOME_ENABLED` + `METRONOME_API_KEY` env vars
-- **Customer provisioning script** (`front/scripts/provision_metronome_customers.ts`)
-- **Billable metrics configured in Metronome**:
-  - LLM Token Cost (SQL metric with per-model pricing, 30% markup)
-  - Tool Invocations (COUNT, grouped by `internal_mcp_server_name`, `tool_name`, `origin`)
-  - Active Seats (MAX gauge)
-  - Monthly Active Users (MAX gauge)
+| Concern | Where it lives | Changed by |
+|---------|---------------|------------|
+| Per-model token rates (provider cost) | `token_pricing.ts` (code) | Engineers (when providers change pricing) |
+| Markup percentage (e.g., 30%) | Rate card in Metronome | GTM/Ops |
+| Per-tool-category pricing | Rate card in Metronome | GTM/Ops |
+| Per-seat-type pricing | Rate card in Metronome | GTM/Ops |
+| Custom enterprise discounts | Contract overrides in Metronome | Sales/Ops |
+| New model added | Update `token_pricing.ts` only | Engineers |
 
-## Block 1: Feature Flag + Billing Switchover
+### Programmatic vs user usage split
 
-### 1.1 Add `metronome_billing` feature flag
+All metrics and products are split into programmatic and user variants. This allows:
+- Different markup per type (e.g., 30% on programmatic, 0% on user)
+- Billing only programmatic usage on current plans (matching existing behavior)
+- Billing all usage when new credit-based pricing ships
 
-Add to `WHITELISTABLE_FEATURES_CONFIG` in `front/types/shared/feature_flags.ts`:
+### Plan-based billing mode (not feature flags)
+
+Metronome billing is determined by the workspace's plan via `metronomePackageAlias` column on `PlanModel`:
+- `null` → Stripe billing (all existing plans)
+- `"pro-plan"` → Metronome billing via Pro Plan package
 
 ```typescript
-metronome_billing: {
-  description: "Use Metronome for billing instead of Stripe Billing",
-  stage: "on_demand",
+function isMetronomeBilled(plan: PlanType): boolean {
+  return plan.metronomePackageAlias != null;
 }
 ```
 
-### 1.2 Helper to check billing mode
+Each Dust plan maps 1:1 to a Metronome package. Packages are immutable templates containing rate card + seat subscriptions.
 
-Create `front/lib/metronome/billing_mode.ts`:
+### Seat types
 
-```typescript
-async function isMetronomeBilled(auth: Authenticator): Promise<boolean> {
-  return (
-    config.isMetronomeEnabled() &&
-    hasFeatureFlag(auth, "metronome_billing")
-  );
-}
+Two seat types for now: **Pro** ($29/mo) and **Max** ($99/mo). Managed via Metronome's native seat-based subscriptions with `seat_group_key: "user_id"`. Usage events include `user_id` for per-seat credit attribution. Programmatic usage (no user) draws from workspace-level credits.
+
+## Events Emitted to Metronome
+
+All events emitted for all workspaces when `METRONOME_ENABLED=true`.
+
+### `llm_usage` — per model per agent message
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `workspace_id` | string | Workspace sId |
+| `user_id` | string (optional) | User sId, null for programmatic |
+| `agent_message_id` | string | Agent message sId |
+| `provider_id` | string | e.g., `anthropic`, `openai` |
+| `model_id` | string | e.g., `claude-sonnet-4-6` |
+| `prompt_tokens` | number | Input tokens |
+| `completion_tokens` | number | Output tokens |
+| `cached_tokens` | number | Cache read tokens |
+| `cache_creation_tokens` | number | Cache write tokens |
+| `cost_micro_usd` | number | Provider cost (no markup), from `token_pricing.ts` |
+| `is_programmatic_usage` | string | `"true"` or `"false"` |
+| `origin` | string | e.g., `web`, `slack`, `api`, `zapier` |
+
+### `tool_use` — per MCP action per agent message
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `workspace_id` | string | Workspace sId |
+| `user_id` | string (optional) | User sId, null for programmatic |
+| `agent_message_id` | string | Agent message sId |
+| `tool_name` | string | e.g., `websearch`, `search` |
+| `internal_mcp_server_name` | string | e.g., `web_search_&_browse`, empty for external |
+| `mcp_server_id` | string | Server sId |
+| `tool_category` | string | Pricing tier (see below) |
+| `status` | string | `succeeded`, `errored`, `denied`, etc. |
+| `execution_duration_ms` | number | Wall-clock execution time |
+| `is_programmatic_usage` | string | `"true"` or `"false"` |
+| `origin` | string | e.g., `web`, `slack`, `api` |
+
+**Tool categories** (8 values, mapped from `internal_mcp_server_name` in `events.ts`):
+- `retrieval` — search, query_tables_v2, data_warehouses, data_sources_file_system, include_data, conversation_files
+- `deep_research` — web_search_&_browse, http_client
+- `reasoning` — (reserved for future reasoning server)
+- `connectors` — confluence, github, slack, salesforce, notion, google_drive, jira, hubspot, etc.
+- `generation` — file_generation, image_generation, sound_studio, slideshow, etc.
+- `agents` — run_agent, agent_router, agent_sidekick_*, agent_management, run_dust_app
+- `actions` — external MCP servers (default for unknown)
+- `platform` — extract_data, common_utilities, toolsets, skill_management, etc.
+
+### `seats` — gauge, daily snapshot (analytics only)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `workspace_id` | string | Workspace sId |
+| `seat_count` | number | Total active members |
+
+Not used for billing (seats are tracked via Metronome's seat-based subscriptions). Kept for analytics and migration sanity checks.
+
+### `mau` — gauge, daily snapshot (analytics only)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `workspace_id` | string | Workspace sId |
+| `mau_count` | number | Users with 1+ message in rolling 30-day window |
+
+## Metronome Configuration (Sandbox)
+
+Full setup script: `front/docs/metronome-sandbox-setup.sh`
+
+### Billable Metrics
+
+| Metric | Aggregation | Filter |
+|--------|-------------|--------|
+| LLM Provider Cost (Programmatic) | SUM on `cost_micro_usd` | `is_programmatic_usage=true` |
+| LLM Provider Cost (User) | SUM on `cost_micro_usd` | `is_programmatic_usage=false` |
+| Tool Invocations (Programmatic) | COUNT (succeeded only) | grouped by `tool_category` |
+| Tool Invocations (User) | COUNT (succeeded only) | grouped by `tool_category` |
+| Active Seats | MAX on `seat_count` | analytics only |
+| Monthly Active Users | MAX on `mau_count` | analytics only |
+
+### Products
+
+| Product | Type | Pricing Key | Notes |
+|---------|------|-------------|-------|
+| AI Usage (Programmatic) | USAGE | — | quantity_conversion ÷1M (micro-USD → dollars) |
+| AI Usage (User) | USAGE | — | quantity_conversion ÷1M |
+| Tool Usage (Programmatic) | USAGE | `tool_category` | dimensional pricing by category |
+| Tool Usage (User) | USAGE | `tool_category` | dimensional pricing by category |
+| Pro Seat | SUBSCRIPTION | — | $29/mo |
+| Max Seat | SUBSCRIPTION | — | $99/mo |
+
+### Pro Plan Rate Card
+
+| Product | Price (cents) | Notes |
+|---------|--------------|-------|
+| Pro Seat | 2900 ($29/mo) | FLAT + MONTHLY billing |
+| Max Seat | 9900 ($99/mo) | FLAT + MONTHLY billing |
+| AI Usage (Programmatic) | 130 ($1.30 per $1 cost) | 30% markup on provider cost |
+| Tool Usage (Programmatic) | 0 per category | Ready for per-category pricing |
+
+User products (AI Usage User, Tool Usage User) are ready but not on any rate card yet — add when new pricing ships.
+
+### Pro Plan Package
+
+Bundles rate card + seat subscriptions into a reusable template:
+- 2 seat-based subscriptions (Pro, Max) with `seat_group_key: "user_id"`
+- `collection_schedule: ADVANCE`, prorated, bill immediately on seat changes
+- Provisioning: `package_alias: "pro-plan"`
+
+## Implementation Blocks
+
+### Block 0: Metering Infrastructure ✅ Done
+
+**Files created/modified:**
+- `front/lib/metronome/client.ts` — HTTP client for ingest API + customer creation
+- `front/lib/metronome/events.ts` — Event builders with tool category mapping + user_id
+- `front/lib/api/config.ts` — `METRONOME_ENABLED` + `METRONOME_API_KEY`
+- `front/temporal/usage_queue/activities.ts` — Emit events for all usage; daily cron for gauges
+- `front/temporal/usage_queue/workflows.ts` — `emitMetronomeGaugeEventsWorkflow`
+- `front/temporal/usage_queue/client.ts` — Schedule launcher (daily prod, 10min dev)
+- `front/temporal/usage_queue/worker.ts` — Start schedule on worker boot
+- `front/lib/plans/usage/mau.ts` — Exported `countActiveUsersForPeriodInWorkspace`
+- `front/scripts/provision_metronome_customers.ts` — Migration script for existing workspaces
+- `front/pages/api/stripe/webhook.ts` — Provision Metronome customer on `checkout.session.completed`
+- `front/lib/models/plan.ts` — Added `metronomePackageAlias` column
+- `front/types/plan.ts` — Added `metronomePackageAlias` to `PlanType`
+- `front/lib/plans/renderers.ts` — Render `metronomePackageAlias`
+- `front/docs/metronome-sandbox-setup.sh` — Full Metronome sandbox setup reference
+
+**Key fix:** MAU/seats gauge events were only triggered by membership changes. Added a daily Temporal cron that reports for all workspaces, fixing the stale data gap for stable workspaces.
+
+### Block 1: Billing Switchover
+
+**Plan-based gating:** `metronomePackageAlias` on `PlanModel` determines billing mode. No feature flag.
+
+**New subscriptions:** When `checkout.session.completed` fires for a plan with `metronomePackageAlias`:
+1. Create Metronome customer (already implemented)
+2. Create Metronome contract using `package_alias` (to implement)
+3. Skip Stripe subscription creation
+
+**Existing workspace migration:**
+1. Set `metronomePackageAlias` on the plan
+2. Wait for current Stripe billing cycle to end
+3. On cycle renewal (`customer.subscription.updated` webhook):
+   - Detect plan has `metronomePackageAlias`
+   - Create Metronome contract
+   - Migrate remaining internal credits to Metronome commits (free → prepaid priority 1, committed → prepaid priority 2, PAYG → postpaid priority 3)
+   - Freeze internal credits
+   - Cancel Stripe subscription items (keep Stripe customer)
+
+**Skip existing billing for Metronome workspaces:**
+- `recordUsageActivity`: skip `reportUsageForSubscriptionItems` (Stripe MAU/seat reporting)
+- `trackProgrammaticUsageActivity`: skip `trackProgrammaticCost` (internal credit consumption)
+- Both continue to emit Metronome events regardless
+
+### Block 2: Credit Blocking for All Usage
+
+Today only programmatic usage is blocked when credits run out. With Metronome, ALL usage (including web/Slack) must be gated.
+
+**Redis-cached credit balance:**
+- `getMetronomeCreditBalance(workspaceSId)` / `hasMetronomeCredits(workspaceSId)`
+- Cache TTL ~60 seconds
+- Updated by: Metronome webhooks (real-time) + periodic poll (fallback in daily gauge cron)
+
+**Pre-flight check in agent loop:**
 ```
-
-This is the single source of truth for "should this workspace use Metronome for billing?" Used everywhere billing logic diverges.
-
-### 1.3 Billing cycle switchover
-
-When `metronome_billing` is enabled for a workspace mid-cycle, we do NOT switch immediately. Instead:
-
-1. Admin enables `metronome_billing` FF via Poke
-2. Current billing cycle continues on Stripe as normal
-3. On next `customer.subscription.updated` webhook (cycle renewal):
-   - Detect that workspace has `metronome_billing` FF
-   - Create Metronome contract (starting at new cycle start date)
-   - Cancel Stripe subscription items (keep Stripe customer for payment methods)
-   - Log the switchover
-4. From that point on, Metronome handles invoicing
-
-**Modified file:** `front/pages/api/stripe/webhook.ts` — in the `customer.subscription.updated` handler, after detecting cycle change, check `isMetronomeBilled` and branch.
-
-### 1.4 Skip Stripe usage reporting for Metronome workspaces
-
-In `recordUsageActivity` (`front/temporal/usage_queue/activities.ts`):
-- If `isMetronomeBilled(auth)`: skip `reportUsageForSubscriptionItems` (Stripe), only emit Metronome gauge events
-- Otherwise: existing behavior (report to Stripe + emit Metronome events for analytics)
-
-### 1.5 Skip programmatic credit consumption for Metronome workspaces
-
-In `trackProgrammaticUsageActivity`:
-- If `isMetronomeBilled(auth)`: skip `trackProgrammaticCost` (Dust's internal credit system), only emit Metronome events
-- Otherwise: existing behavior (consume credits + emit Metronome events)
-
-Metronome handles credit drawdown for these workspaces via contracts/commits.
-
-## Block 2: Credit Blocking for All Usage
-
-Today only programmatic usage is blocked when credits run out. With Metronome, ALL usage must be gated by credit balance.
-
-### 2.1 Credit balance cache in Redis
-
-Create `front/lib/metronome/credit_balance.ts`:
-
-- `getMetronomeCreditBalance(workspaceSId)`: Read from Redis cache
-- `setMetronomeCreditBalance(workspaceSId, balanceMicroUsd)`: Write to Redis with TTL
-- `hasMetronomeCredits(workspaceSId)`: Boolean check (balance > 0)
-
-Cache TTL: ~60 seconds. Stale data is acceptable — worst case a few messages slip through after credits hit zero.
-
-### 2.2 Sync credit balance from Metronome
-
-Two sync mechanisms:
-
-**Webhook-driven (real-time):** Metronome sends `alerts.low_remaining_credit_balance_reached` → update Redis flag to "credits_exhausted". This catches the transition to zero.
-
-**Periodic poll (fallback):** In `recordUsageActivity` (runs hourly per workspace), if `isMetronomeBilled`, call Metronome API to fetch current credit balance → update Redis cache. This handles recovery (credits purchased/renewed).
-
-### 2.3 Pre-flight check in agent loop
-
-Add a check early in the agent message execution path (before LLM calls):
-
-```
-if isMetronomeBilled(auth):
+if isMetronomeBilled(plan):
   if not hasMetronomeCredits(workspace.sId):
     block message with "workspace out of credits" error
 ```
 
-**Where to add this:** In the agent loop entry point, alongside existing checks like `checkProgrammaticUsageLimits`. The exact location depends on where the agent loop starts — likely in the conversation API or the agent loop workflow.
-
-**UX considerations:**
-- Show a clear message: "Your workspace has run out of credits. Please purchase more or contact your admin."
-- Admin vs. non-admin messaging (like existing `checkProgrammaticUsageLimits`)
-- Consider a grace period or soft limit (warn at 80%, block at 0%)
-
-### 2.4 Metronome webhook handler
-
-Create `front/pages/api/metronome/webhook.ts`:
-
-Handle these events (for credit blocking):
+**Metronome webhook handler** (`front/pages/api/metronome/webhook.ts`):
 
 | Event | Action |
 |-------|--------|
-| `alerts.low_remaining_credit_balance_reached` | Update Redis: mark workspace as credits exhausted |
-| `alerts.spend_threshold_reached` | Update Redis: mark workspace approaching limit |
+| `alerts.low_remaining_credit_balance_reached` | Update Redis: credits exhausted |
+| `alerts.low_remaining_seat_balance_reached` | Update Redis: per-seat credits exhausted |
+| `alerts.spend_threshold_reached` | Update Redis: approaching limit |
 | `commit.segment.start` | Update Redis: credits available (new period) |
 | `credit.create` | Update Redis: credits available (purchase) |
-
-Other events (for future blocks):
-
-| Event | Action |
-|-------|--------|
 | `contract.start` | Activate Metronome billing for workspace |
-| `contract.end` | Downgrade workspace |
+| `contract.end` | Downgrade workspace, schedule scrub |
 | `invoice.finalized` | Log/record invoice |
 | `invoice.billing_provider_error` | Alert on-call |
 
-## Block 3: Seat Types
+### Block 3: Seat Types
 
-Today a seat is binary (active member or not). The new pricing introduces differentiated seat types with different limits and pricing.
+Two types: **Pro** ($29/mo) and **Max** ($99/mo).
 
-### 3.1 Data model
-
-Add a `seatType` field to the membership model. Options:
-
-**Option A: Field on MembershipModel** (simpler)
-
-New column `seat_type` on `memberships` table:
+**Data model:** Add `seatType` column to membership model. Default `"pro"` for backward compat.
 
 ```typescript
-type SeatType = "viewer" | "standard" | "power";
-// Default: "standard" for backward compat
+type SeatType = "pro" | "max";
 ```
 
-**Option B: Separate SeatAssignment model** (more flexible)
+**Seat assignment:**
+- Admin UI: assign seat types to users (similar to role assignment)
+- API: `PATCH /api/w/[wId]/members/[userId]` with `seatType`
+- On change: call Metronome edit contract API (`add_seat_ids`/`remove_seat_ids`)
 
-New model `WorkspaceSeatAssignment`:
+**Metronome integration:**
+- Seats tracked natively via seat-based subscriptions (configured in package)
+- `seat_group_key: "user_id"` — matches `user_id` in usage events
+- Per-seat credit allocation configurable via recurring credits on subscriptions
+- Balance queryable via `/contracts/seatBalances/list` (for UI)
+- `low_remaining_seat_balance_reached` webhook for alerts
 
-```
-- workspaceId (FK)
-- userId (FK)
-- seatType: SeatType
-- assignedAt: Date
-- assignedBy: userId (FK, nullable)
-```
+**Feature limits per seat type:** Enforced in code (faster than querying Metronome), similar to current plan limits + feature flag pattern.
 
-**Recommendation:** Option A for simplicity. Seat type is a property of the membership, not a separate entity. Migration: add column with default `"standard"`, backfill all existing memberships.
+### Block 4: Contract Provisioning
 
-### 3.2 Seat type assignment
+**New workspace signup (Metronome-billed):**
+1. `checkout.session.completed` fires (Stripe Checkout)
+2. Create Metronome customer with Stripe customer ID linked (already implemented)
+3. Create Metronome contract: `package_alias: plan.metronomePackageAlias`
+4. Assign initial seats on the contract
 
-- Admin UI: workspace admins assign seat types to users (similar to role assignment)
-- API endpoint: `PATCH /api/w/[wId]/members/[userId]` — add `seatType` field
-- On assignment change: call Metronome's edit contract API to add/remove seat IDs on the corresponding subscription
+**Contract configuration via packages:**
+- Each plan maps to a Metronome package (immutable template)
+- Package contains: rate card, seat subscriptions, recurring credits
+- New pricing version = new package with same alias + future effective date
 
-### 3.3 Metronome seat-based subscriptions
+### Block 5: Webhook Rewrite
 
-Metronome natively supports **seat-based credit subscriptions** — each seat type becomes a separate subscription on the contract, with per-seat credit allocation.
-
-**Per contract, create one subscription per seat type:**
-
-| Seat Type | Monthly Credit per Seat | Subscription |
-|---|---|---|
-| `viewer` | $5 (500 cents) | Subscription A |
-| `standard` | $50 (5000 cents) | Subscription B |
-| `power` | $200 (20000 cents) | Subscription C |
-
-**Seat assignment via Metronome API:**
-
-When an admin assigns a user to a seat type:
-1. Dust calls Metronome's edit contract API: `add_seat_ids: ["user-sId"]` on the corresponding seat type subscription
-2. Metronome allocates the credit budget for that seat
-3. Proration is handled automatically if mid-cycle
-
-When a user changes seat type:
-1. `remove_seat_ids: ["user-sId"]` from old subscription + `add_unassigned_seats: 1` (to maintain capacity)
-2. `add_seat_ids: ["user-sId"]` on new subscription
-
-**Per-seat credit tracking:**
-
-Usage events already include `user_id` (the user's sId). Metronome matches usage to seats via the user ID and draws down from that seat's credit balance. For programmatic usage (API keys), `user_id` is null — this usage draws from workspace-level credits/commits, not per-seat credits.
-
-**Monitoring:**
-- `low_remaining_seat_balance_reached` webhook alerts when a seat's credits are low
-- `/contracts/seatBalances/list` API to query per-seat balances (for UI display)
-
-### 3.4 Events for seat types
-
-**Usage events (already implemented):**
-
-`llm_usage` and `tool_use` events include `user_id` when available (user-initiated usage). Metronome uses this to attribute usage to the correct seat. Programmatic usage (no user) is billed at workspace level.
-
-**Gauge events (for billing seat subscriptions):**
-
-The existing `seats` gauge continues to report total seat count. Metronome's seat-based subscriptions track per-type counts internally (via `add_seat_ids`/`remove_seat_ids`), so we don't need to emit per-type gauge events — Metronome is the source of truth for seat assignments.
-
-### 3.5 Per-seat-type feature limits
-
-Each seat type defines feature access:
-
-```typescript
-const SEAT_TYPE_LIMITS: Record<SeatType, {
-  creditBudgetCentsPerMonth: number;   // per-seat credit allocation
-  allowedFeatures: string[];           // e.g., ["deep_research", "actions"]
-}> = {
-  viewer:   { creditBudgetCentsPerMonth: 500,   allowedFeatures: ["retrieval"] },
-  standard: { creditBudgetCentsPerMonth: 5000,  allowedFeatures: ["retrieval", "actions"] },
-  power:    { creditBudgetCentsPerMonth: 20000,  allowedFeatures: ["retrieval", "actions", "deep_research", "autonomous"] },
-};
-```
-
-**Where to enforce:**
-- Message limit: Pre-flight check in agent loop (alongside credit check)
-- Feature limits: In MCP server `isRestricted` checks (extend to check user's seat type, similar to how plan limits + feature flags work today)
-
-**Open question:** Should these limits live in code or in Metronome? If in Metronome, the backend queries Metronome for the user's entitlements. If in code, it's faster but requires deploys to change. Recommendation: start in code (faster enforcement), move to Metronome later when the pricing stabilizes.
-
-## Block 4: Metronome Contract Provisioning
-
-### 4.1 New workspace signup (Metronome-billed)
-
-When a new workspace completes checkout:
-
-1. `checkout.session.completed` webhook fires (stays in Stripe)
-2. Create Metronome customer (with Stripe customer ID linked)
-3. Create Metronome contract with:
-   - Rate card (determines pricing)
-   - Billing period (monthly)
-   - Initial commits/credits (free tier, purchased, etc.)
-4. Enable `metronome_billing` FF
-5. No Stripe subscription created (Metronome handles billing)
-
-### 4.2 Existing workspace migration
-
-For workspaces switching from Stripe to Metronome:
-
-1. Enable `metronome_billing` FF
-2. Wait for current Stripe billing cycle to end
-3. On cycle renewal webhook: create Metronome contract, cancel Stripe subscription
-4. Metronome takes over billing from next period
-
-### 4.3 Contract configuration
-
-Metronome contracts need:
-
-| Component | Maps to |
-|-----------|---------|
-| Rate card | Plan pricing (per-seat rates, per-model token rates, per-tool rates) |
-| Commits (prepaid) | Purchased credits (committed credits) |
-| Credits (free) | Free tier credits (bracketed by user count) |
-| Scheduled charges | Fixed platform fees |
-| Usage filters | Per-workspace usage isolation (already handled by `customer_id`) |
-
-## Block 5: Webhook Rewrite
-
-### 5.1 New Metronome webhook endpoint
-
-`front/pages/api/metronome/webhook.ts`
-
-Handles Metronome-specific events (see Block 2.4 for the event list).
-
-### 5.2 Modified Stripe webhook
-
-`front/pages/api/stripe/webhook.ts` — for Metronome-billed workspaces:
+**Stripe webhook changes** (for Metronome-billed workspaces):
 
 | Stripe Event | Current behavior | Metronome-billed behavior |
 |---|---|---|
-| `checkout.session.completed` | Create subscription | Create Metronome customer + contract (no Stripe subscription) |
+| `checkout.session.completed` | Create Stripe subscription | Create Metronome customer + contract via package (no Stripe subscription) |
 | `invoice.paid` | Grant free credits | No-op (Metronome handles credits) |
-| `invoice.payment_failed` | Email admins, track failure | Keep as-is (Stripe still collects payment) |
+| `invoice.payment_failed` | Email admins, track failure | Keep as-is (Stripe still collects payment on Metronome invoices) |
 | `customer.subscription.updated` | Report usage, allocate PAYG | Trigger switchover if mid-migration; otherwise no-op |
 | `customer.subscription.deleted` | End subscription, schedule scrub | No-op (contract.end handles this) |
+| `charge.dispute.created` | Log dispute | Keep as-is (Stripe-level) |
 
-### 5.3 Stripe events that stay unchanged
+**Stripe Checkout stays permanently** as the payment method capture entry point.
 
-- `charge.dispute.created` — disputes are Stripe-level
-- `invoice.payment_failed` — payment retries are Stripe-level
-- `invoice.voided` — for non-Metronome workspaces
+**New Metronome webhook endpoint:** `front/pages/api/metronome/webhook.ts` (see Block 2 for event list).
 
 ## Implementation Sequence
 
 ```
-Block 0: Metering infrastructure           ✅ Done
+Block 0: Metering infrastructure              ✅ Done
     │
     ▼
-Block 1: Feature flag + billing switchover  ← Start here
+Block 1: Plan-based billing switchover        ← Start here
     │
-    ├──▶ Block 2: Credit blocking           (can parallel with Block 3)
+    ├──▶ Block 2: Credit blocking              (can parallel with Block 3)
     │
-    ├──▶ Block 3: Seat types                (can parallel with Block 2)
-    │
-    ▼
-Block 4: Contract provisioning              (depends on Block 1)
+    ├──▶ Block 3: Seat types (pro/max)         (can parallel with Block 2)
     │
     ▼
-Block 5: Webhook rewrite                    (depends on Block 4)
+Block 4: Contract provisioning                 (depends on Block 1)
     │
     ▼
-Migration: Roll out to workspaces behind FF
+Block 5: Webhook rewrite                       (depends on Block 4)
+    │
+    ▼
+Migration: Roll out plan by plan
     │
     ▼
 Cleanup: Remove old Stripe billing code
 ```
 
-**Parallelization:** Blocks 2 and 3 can be worked on simultaneously by different engineers. Block 1 is the prerequisite for everything else. Blocks 4 and 5 are sequential.
+Blocks 2 and 3 can be parallelized. Estimated: 1 month with 4 engineers, then cooling with 1-2 engineers.
+
+## Current Stripe Billing — Reference
+
+For understanding what gets replaced:
+
+**Seat reporting (PER_SEAT plans):** `stripe.subscriptionItems.update({ quantity })` — triggered by membership changes, rate-limited 1/hour. Point-in-time quantity.
+
+**MAU reporting (MAU_X enterprise plans):** `stripe.subscriptionItems.createUsageRecord()` with `action: "set"` — also triggered by membership changes only (gap: MAU can change without membership changes, fixed by our daily cron).
+
+**Credit system:** Free → committed → PAYG → excess, consumed in priority order. Only programmatic usage is billed. `DUST_MARKUP_PERCENT = 30%` applied in code.
+
+**MAU thresholds:** `MAU_1`/`MAU_5`/`MAU_10` — minimum messages per month to count as active user (1, 5, or 10). Negotiated per enterprise deal.
 
 ## Open Questions
 
-1. **Checkout flow**: Does Stripe Checkout stay for payment method capture, or do we build a custom checkout? Recommendation: keep Stripe Checkout, provision Metronome contract from the webhook.
+1. **Grace period on credit exhaustion**: Hard-block at zero or allow overage? Metronome supports overage billing natively.
 
-2. **Seat type definitions**: What are the exact types and their limits? Depends on Pricing Push output (expected early April).
+2. **Free tier**: Do free workspaces get a Metronome customer? Probably not — gate behind paid subscription.
 
-3. **Grace period on credit exhaustion**: Should we hard-block immediately when credits hit zero, or allow a grace period (e.g., 24h or $X overage)? Metronome supports overage billing natively.
+3. **Historical data backfill**: Metronome cannot apply new billable metrics to historical data. Events are accumulating from now. Historical analysis available via Elasticsearch.
 
-4. **Free tier**: Do free workspaces get a Metronome customer? Probably not — they have no Stripe customer. Gate Metronome customer creation behind paid subscription.
+4. **Enterprise plans**: Custom contracts (no package) or per-enterprise packages? Likely manual contract creation via Metronome UI/API by Ops.
 
-5. **Historical data backfill**: Metronome cannot apply new billable metrics to historical data. We're already sending events, so data accumulates from now. If pricing decisions need historical analysis, we have Elasticsearch data.
-
-## Files Modified/Created
+## Files Reference
 
 | File | Status | Block |
 |------|--------|-------|
@@ -385,10 +379,18 @@ Cleanup: Remove old Stripe billing code
 | `front/lib/api/config.ts` | Modified | 0 |
 | `front/lib/plans/usage/mau.ts` | Modified | 0 |
 | `front/temporal/usage_queue/activities.ts` | Modified | 0 |
+| `front/temporal/usage_queue/workflows.ts` | Modified | 0 |
+| `front/temporal/usage_queue/client.ts` | Modified | 0 |
+| `front/temporal/usage_queue/worker.ts` | Modified | 0 |
 | `front/scripts/provision_metronome_customers.ts` | Created | 0 |
-| `front/types/shared/feature_flags.ts` | To modify | 1 |
-| `front/lib/metronome/billing_mode.ts` | To create | 1 |
+| `front/pages/api/stripe/webhook.ts` | Modified | 0 |
+| `front/lib/models/plan.ts` | Modified | 0 |
+| `front/types/plan.ts` | Modified | 0 |
+| `front/lib/plans/renderers.ts` | Modified | 0 |
+| `front/lib/plans/free_plans.ts` | Modified | 0 |
+| `front/lib/plans/pro_plans.ts` | Modified | 0 |
+| `front/docs/metronome-sandbox-setup.sh` | Created | 0 |
+| `front/docs/metronome-design-doc.md` | Created | 0 |
 | `front/lib/metronome/credit_balance.ts` | To create | 2 |
 | `front/pages/api/metronome/webhook.ts` | To create | 2, 5 |
-| `front/lib/models/membership.ts` (or new model) | To modify | 3 |
-| `front/pages/api/stripe/webhook.ts` | To modify | 4, 5 |
+| `front/lib/models/membership.ts` | To modify | 3 |
