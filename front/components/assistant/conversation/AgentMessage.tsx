@@ -26,6 +26,7 @@ import {
   isHandoverUserMessage,
   isMessageTemporayState,
   isUserMessage,
+  makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
@@ -53,15 +54,18 @@ import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
+import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
+import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -189,6 +193,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
+  const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
 
@@ -232,7 +237,7 @@ export function AgentMessage({
     [triggeringUser, user.sId]
   );
 
-  const { shouldStream } = useAgentMessageStream({
+  const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
     owner,
@@ -355,7 +360,7 @@ export function AgentMessage({
         mutateSandboxFiles,
       ]
     ),
-    streamId: `message-${sId}`,
+    streamId,
     useFullChainOfThought: false,
   });
 
@@ -622,6 +627,48 @@ export function AgentMessage({
     [retryMessage]
   );
 
+  const reloadMessage = useCallback(
+    async ({
+      conversationId,
+      messageId,
+    }: {
+      conversationId: string;
+      messageId: string;
+    }) => {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}?viewType=light`
+      );
+      if (response.ok) {
+        const msg: FetchConversationMessageResponseLight =
+          await response.json();
+        // Update the message state from the backend
+        methods.data.map((m) => {
+          if (m.sId === msg.message.sId && !isUserMessageType(msg.message)) {
+            return makeInitialMessageStreamState(msg.message);
+          }
+          return m;
+        });
+        // Force the stream to be re-created if needed
+        setStreamId(`message-${msg.message.sId}-${Date.now()}`);
+      }
+    },
+    [owner.sId, methods.data]
+  );
+
+  useEffect(() => {
+    if (!!streamError) {
+      // Hook to the focus event of the document to try reloading the message automatically
+      const handleFocus = () => {
+        void reloadMessage({ conversationId, messageId: agentMessage.sId });
+        window.removeEventListener("focus", handleFocus);
+      };
+      window.addEventListener("focus", handleFocus);
+      return () => {
+        window.removeEventListener("focus", handleFocus);
+      };
+    }
+  }, [streamError, reloadMessage, conversationId, agentMessage.sId]);
+
   // Add feedback buttons (always visible)
   if (shouldShowFeedback) {
     alwaysVisibleButtons.push(
@@ -830,11 +877,13 @@ export function AgentMessage({
           owner={owner}
           conversationId={conversationId}
           retryHandler={retryHandler}
+          reloadMessage={reloadMessage}
           isRetryHandlerProcessing={isRetryHandlerProcessing}
           isLastMessage={isLastMessage}
           agentMessage={agentMessage}
           references={references}
           streaming={shouldStream}
+          streamError={streamError}
           lastTokenClassification={
             agentMessage.streaming.agentState === "thinking" ? "tokens" : null
           }
@@ -945,12 +994,14 @@ function AgentMessageContent({
   agentMessage,
   references,
   streaming,
+  streamError,
   lastTokenClassification,
   owner,
   conversationId,
   activeReferences,
   setActiveReferences,
   retryHandler,
+  reloadMessage,
   isRetryHandlerProcessing,
   onQuickReplySend,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
@@ -965,10 +1016,15 @@ function AgentMessageContent({
     messageId: string;
     blockedOnly?: boolean;
   }) => Promise<void>;
+  reloadMessage: (params: {
+    conversationId: string;
+    messageId: string;
+  }) => Promise<void>;
   isRetryHandlerProcessing: boolean;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
+  streamError: Error | null;
   lastTokenClassification: null | "tokens" | "chain_of_thought";
   activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
@@ -1142,6 +1198,22 @@ function AgentMessageContent({
           />
         );
     }
+  }
+
+  if (agentMessage.status === "created" && !!streamError) {
+    return (
+      <ErrorMessage
+        error={{
+          message:
+            "Connection lost while generating message. Please try again.",
+          code: "stream_error",
+          metadata: {},
+        }}
+        retryHandler={() =>
+          reloadMessage({ conversationId, messageId: agentMessage.sId })
+        }
+      />
+    );
   }
 
   if (agentMessage.status === "failed") {

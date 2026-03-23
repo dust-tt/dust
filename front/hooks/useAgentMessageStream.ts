@@ -471,11 +471,17 @@ export function useAgentMessageStream({
     [customOnEventCallback, methods, sId]
   );
 
-  useEventSource(buildEventSourceURL, onEventCallback, streamId, {
-    isReadyToConsumeStream: shouldStream,
-  });
+  const { isError } = useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    streamId,
+    {
+      isReadyToConsumeStream: shouldStream,
+    }
+  );
 
   return {
+    streamError: isError,
     shouldStream,
     isFreshMountWithContent,
   };

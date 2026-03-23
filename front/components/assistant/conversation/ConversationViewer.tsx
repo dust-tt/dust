@@ -14,6 +14,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   areSameRankAndBranch,
+  convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
   isMessageTemporayState,
   isUserMessage,
@@ -41,14 +42,8 @@ import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
-import type {
-  ConversationWithoutContentType,
-  LightMessageType,
-} from "@app/types/assistant/conversation";
-import {
-  isUserMessageType,
-  isUserMessageTypeWithContentFragments,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
@@ -983,12 +978,3 @@ export const ConversationViewer = ({
     </>
   );
 };
-
-const convertLightMessageTypeToVirtuosoMessages = (
-  messages: LightMessageType[]
-) =>
-  messages.map((message) =>
-    isUserMessageTypeWithContentFragments(message)
-      ? message
-      : makeInitialMessageStreamState(message)
-  );
