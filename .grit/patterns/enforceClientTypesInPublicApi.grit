@@ -6,17 +6,22 @@ language js
 //
 // Uses two snippet patterns: one for the exact package import and one with
 // a metavariable to catch any subpath import (e.g. @dust-tt/client/src/foo).
-or {
-    `"@dust-tt/client"`,
-    `"@dust-tt/client/$_"`,
-} as $source where {
-    $filename <: r".*/front/.*",
-    $filename <: not or {
-        r".*pages/api/v1/.*",
-        r".*lib/actions/mcp_internal_actions/.*",
-        r".*lib/api/actions/servers/.*",
-        r".*\.test\..*",
-    },
+pattern client_import_source() {
+    or {
+        `"@dust-tt/client"`,
+        `"@dust-tt/client/$_"`,
+    } where {
+        $filename <: r".*/front/.*",
+        $filename <: not or {
+            r".*pages/api/v1/.*",
+            r".*lib/actions/mcp_internal_actions/.*",
+            r".*lib/api/actions/servers/.*",
+            r".*\.test\..*",
+        }
+    }
+}
+
+client_import_source() as $source where {
     register_diagnostic(
         span = $source,
         message = "Files outside front/api/v1/, front/lib/actions/mcp_internal_actions/ or front/lib/api/actions/servers/ cannot import from '@dust-tt/client'.",

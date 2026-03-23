@@ -388,6 +388,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
 });
 
 export const JIRA_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "jira",
     version: "1.0.0",
@@ -398,9 +399,6 @@ export const JIRA_SERVER = {
     },
     icon: "JiraLogo",
     documentationUrl: "https://docs.dust.tt/docs/jira",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: JIRA_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(JIRA_TOOLS_METADATA).map((t) => ({

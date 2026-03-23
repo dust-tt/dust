@@ -8,14 +8,8 @@ language js
 // Multiple import forms are matched to cover default, named, type, and namespace imports.
 // Note: Due to Biome GritQL bug #5801, named imports with multiple specifiers
 // may not be caught.
-or {
-    `import $_ from $source`,
-    `import { $_ } from $source`,
-    `import type $_ from $source`,
-    `import type { $_ } from $source`,
-    `import * as $_ from $source`,
-} where {
-    $source <: or {
+pattern next_import_source() {
+    or {
         `"next"`,
         `"next/app"`,
         `"next/document"`,
@@ -29,9 +23,24 @@ or {
         `"next/router"`,
         `"next/script"`,
         `"next/server"`
-    },
+    }
+}
+
+pattern no_next_import() {
+    or {
+        `import $_ from $source`,
+        `import { $_ } from $source`,
+        `import type $_ from $source`,
+        `import type { $_ } from $source`,
+        `import * as $_ from $source`,
+    } where {
+        $source <: next_import_source()
+    }
+}
+
+no_next_import() as $import where {
     register_diagnostic(
-        span = $source,
+        span = $import,
         message = "Direct import from 'next' or 'next/*' is not allowed in shared code. Use platform abstractions from '@app/lib/platform' instead.",
         severity = "error"
     )

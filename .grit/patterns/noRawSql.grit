@@ -19,21 +19,19 @@ pattern raw_sql_obj() {
     }
 }
 
-or {
-    `$obj.query($args)` where {
-        $obj <: raw_sql_obj(),
-        register_diagnostic(
-            span = $obj,
-            message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
-            severity = "error"
-        )
-    },
-    `$obj.query<$_>($args)` where {
-        $obj <: raw_sql_obj(),
-        register_diagnostic(
-            span = $obj,
-            message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
-            severity = "error"
-        )
+pattern raw_sql_query() {
+    or {
+        `$obj.query($args)`,
+        `$obj.query<$_>($args)`,
+    } where {
+        $obj <: raw_sql_obj()
     }
+}
+
+raw_sql_query() as $match where {
+    register_diagnostic(
+        span = $match,
+        message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
+        severity = "error"
+    )
 }

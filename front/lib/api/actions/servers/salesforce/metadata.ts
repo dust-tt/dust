@@ -104,6 +104,7 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
 });
 
 export const SALESFORCE_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "salesforce",
     version: "1.0.0",
@@ -114,10 +115,6 @@ export const SALESFORCE_SERVER = {
     },
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: SALESFORCE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({

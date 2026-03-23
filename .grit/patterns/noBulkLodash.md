@@ -11,17 +11,17 @@ Requires individual imports (e.g., `import debounce from 'lodash/debounce'`).
 ```grit
 language js
 
-`"lodash"` => `"BULK_LODASH_IMPORT_FORBIDDEN"`
+bulk_lodash_import() => `"BULK_LODASH_IMPORT_FORBIDDEN"`
 ```
 
 ## Should flag bulk lodash import
 
 ```typescript
-import { debounce } from "lodash";
+import {debounce} from "lodash";
 ```
 
 ```typescript
-import { debounce } from "BULK_LODASH_IMPORT_FORBIDDEN";
+import {debounce} from "BULK_LODASH_IMPORT_FORBIDDEN";
 ```
 
 ## Should flag named bulk lodash import

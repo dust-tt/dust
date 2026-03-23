@@ -1,5 +1,5 @@
 ---
-tags: [lint, imports]
+tags: [ lint, imports ]
 level: error
 ---
 
@@ -7,27 +7,48 @@ level: error
 
 Enforces that `@dust-tt/client` imports are only used in specific directories.
 
-Note: The original Biome plugin uses `$filename` filtering which cannot be tested
-in grit. This test validates the core matching logic only.
-
 ```grit
 language js
 
-`"@dust-tt/client"` => `"CLIENT_IMPORT_FLAGGED"`
+client_import_source() => `"CLIENT_IMPORT_FLAGGED"`
 ```
 
-## Should match client import
+## Should flag client import in front lib
 
 ```typescript
-import { SomeType } from "@dust-tt/client";
+// @filename: app/front/lib/utils.ts
+import {SomeType} from "@dust-tt/client";
 ```
 
 ```typescript
-import { SomeType } from "CLIENT_IMPORT_FLAGGED";
+// @filename: app/front/lib/utils.ts
+import {SomeType} from "CLIENT_IMPORT_FLAGGED";
 ```
 
-## Should not match other imports
+## Should not flag client import in api v1
 
 ```typescript
-import { SomeType } from "@dust-tt/types";
+// @filename: app/front/pages/api/v1/endpoint.ts
+import {SomeType} from "@dust-tt/client";
+```
+
+## Should not flag client import in mcp internal actions
+
+```typescript
+// @filename: app/front/lib/actions/mcp_internal_actions/tool.ts
+import {SomeType} from "@dust-tt/client";
+```
+
+## Should not flag client import in test files
+
+```typescript
+// @filename: app/front/lib/utils.test.ts
+import {SomeType} from "@dust-tt/client";
+```
+
+## Should not flag other imports
+
+```typescript
+// @filename: app/front/lib/utils.ts
+import {SomeType} from "@dust-tt/types";
 ```
