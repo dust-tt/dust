@@ -21,6 +21,10 @@ export interface MetronomeCustomer {
   custom_fields: Record<string, string>;
 }
 
+export interface MetronomeContract {
+  id: string;
+}
+
 /**
  * Send usage events to Metronome's ingest API.
  * Fire-and-forget: logs errors but never throws.
@@ -134,6 +138,121 @@ export async function createMetronomeCustomer({
     logger.error(
       { error, workspaceSId },
       "[Metronome] Failed to create customer"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Create a contract for a Metronome customer using a package alias.
+ * The package defines the rate card, seat subscriptions, and credit allocations.
+ */
+export async function createMetronomeContract({
+  metronomeCustomerId,
+  packageAlias,
+}: {
+  metronomeCustomerId: string;
+  packageAlias: string;
+}): Promise<Result<MetronomeContract, Error>> {
+  const apiKey = config.getMetronomeApiKey();
+  if (!config.isMetronomeEnabled() || !apiKey) {
+    return new Err(new Error("Metronome is not enabled"));
+  }
+
+  try {
+    const response = await fetch(`${METRONOME_BASE_URL}/contracts/create`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customer_id: metronomeCustomerId,
+        package_alias: packageAlias,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      logger.error(
+        {
+          status: response.status,
+          body,
+          metronomeCustomerId,
+          packageAlias,
+        },
+        "[Metronome] Failed to create contract"
+      );
+      return new Err(
+        new Error(`Metronome contract creation failed: ${response.status}`)
+      );
+    }
+
+    const result = (await response.json()) as { data: MetronomeContract };
+    logger.info(
+      {
+        metronomeCustomerId,
+        packageAlias,
+        metronomeContractId: result.data.id,
+      },
+      "[Metronome] Contract created"
+    );
+
+    return new Ok(result.data);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, packageAlias },
+      "[Metronome] Failed to create contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Find a Metronome customer by ingest alias (workspace sId).
+ * Returns the Metronome customer ID if found.
+ */
+export async function findMetronomeCustomerByAlias(
+  workspaceSId: string
+): Promise<Result<string | null, Error>> {
+  const apiKey = config.getMetronomeApiKey();
+  if (!config.isMetronomeEnabled() || !apiKey) {
+    return new Err(new Error("Metronome is not enabled"));
+  }
+
+  try {
+    const response = await fetch(
+      `${METRONOME_BASE_URL}/customers?ingest_alias=${encodeURIComponent(workspaceSId)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      logger.error(
+        { status: response.status, body, workspaceSId },
+        "[Metronome] Failed to find customer by alias"
+      );
+      return new Err(
+        new Error(`Metronome customer lookup failed: ${response.status}`)
+      );
+    }
+
+    const result = (await response.json()) as {
+      data: MetronomeCustomer[];
+    };
+    return new Ok(result.data[0]?.id ?? null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, workspaceSId },
+      "[Metronome] Failed to find customer by alias"
     );
     return new Err(error);
   }

@@ -12,6 +12,9 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
+// Metronome plans:
+export const PRO_PLAN_METRONOME_CODE = "PRO_PLAN_METRONOME";
+
 // BYOK plan:
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
 
