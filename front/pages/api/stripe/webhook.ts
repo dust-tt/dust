@@ -22,10 +22,7 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
-import {
-  createMetronomeContract,
-  createMetronomeCustomer,
-} from "@app/lib/metronome/client";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -323,20 +320,21 @@ async function handler(
               typeof session.customer === "string"
                 ? session.customer
                 : session.customer?.id;
+            const renderedPlan = renderPlanFromModel({ plan });
             if (stripeCustomerIdForMetronome) {
-              const customerResult = await createMetronomeCustomer({
-                workspaceSId: workspace.sId,
-                workspaceName: workspace.name,
-                stripeCustomerId: stripeCustomerIdForMetronome,
-              });
-
-              // If the plan is Metronome-billed, create a contract via the package.
-              const renderedPlan = renderPlanFromModel({ plan });
-              if (renderedPlan.metronomePackageAlias && customerResult.isOk()) {
-                await createMetronomeContract({
-                  metronomeCustomerId: customerResult.value.id,
-                  packageAlias: renderedPlan.metronomePackageAlias,
+              const metronomeResult =
+                await provisionMetronomeCustomerAndContract({
+                  workspaceSId: workspace.sId,
+                  workspaceName: workspace.name,
+                  stripeCustomerId: stripeCustomerIdForMetronome,
+                  packageAlias:
+                    renderedPlan.metronomePackageAlias ?? "pro-plan",
                 });
+              if (metronomeResult.isOk()) {
+                await WorkspaceResource.updateMetronomeCustomerId(
+                  workspace.sId,
+                  metronomeResult.value.metronomeCustomerId
+                );
               }
             }
 
