@@ -23,8 +23,10 @@ export const RunPage = () => {
     const run = async () => {
       const params = JSON.parse(decodeURI(location.search.substr(1)));
 
-      if (params.conversationId) {
-        await navigate(`/conversations/${params.conversationId}`);
+      if (params.conversationId && workspace) {
+        await navigate(
+          `/w/${workspace.sId}/conversation/${params.conversationId}`
+        );
         return;
       }
 
@@ -55,8 +57,10 @@ export const RunPage = () => {
 
       fileUploaderService.resetUpload();
 
-      if (conversationRes.isOk()) {
-        navigate(`/conversations/${conversationRes.value.sId}`);
+      if (conversationRes.isOk() && workspace) {
+        await navigate(
+          `/w/${workspace.sId}/conversation/${conversationRes.value.sId}`
+        );
       } else {
         navigate("/");
       }
