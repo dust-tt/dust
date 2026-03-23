@@ -22,7 +22,10 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
-import { createMetronomeCustomer } from "@app/lib/metronome/client";
+import {
+  createMetronomeContract,
+  createMetronomeCustomer,
+} from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -321,11 +324,20 @@ async function handler(
                 ? session.customer
                 : session.customer?.id;
             if (stripeCustomerIdForMetronome) {
-              await createMetronomeCustomer({
+              const customerResult = await createMetronomeCustomer({
                 workspaceSId: workspace.sId,
                 workspaceName: workspace.name,
                 stripeCustomerId: stripeCustomerIdForMetronome,
               });
+
+              // If the plan is Metronome-billed, create a contract via the package.
+              const renderedPlan = renderPlanFromModel({ plan });
+              if (renderedPlan.metronomePackageAlias && customerResult.isOk()) {
+                await createMetronomeContract({
+                  metronomeCustomerId: customerResult.value.id,
+                  packageAlias: renderedPlan.metronomePackageAlias,
+                });
+              }
             }
 
             return res.status(200).json({ success: true });
