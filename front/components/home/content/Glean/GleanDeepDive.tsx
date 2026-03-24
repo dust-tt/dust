@@ -1,10 +1,8 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { P } from "@app/components/home/ContentComponents";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { appendUTMParams } from "@app/lib/utils/utm";
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
+import { TRACKING_AREAS } from "@app/lib/tracking";
 import {
-  ArrowRightIcon,
-  Button,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -224,24 +222,17 @@ export function GleanDeepDive({ pros, testimonials }: GleanDeepDiveProps) {
                     platforms.
                   </P>
                 </div>
-
-                <div className="mt-8">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    label="Book a demo"
-                    icon={ArrowRightIcon}
-                    onClick={withTracking(
-                      TRACKING_AREAS.COMPETITIVE,
-                      "glean_deep_dive_demo",
-                      () => {
-                        // eslint-disable-next-line react-hooks/immutability
-                        window.location.href = appendUTMParams("/home/contact");
-                      }
-                    )}
-                  />
-                </div>
               </div>
+            </div>
+
+            {/* Free trial CTA */}
+            <div className="mt-8 flex justify-center">
+              <LandingEmailSignup
+                ctaButtonText="Start Free Trial"
+                trackingLocation="glean_deep_dive"
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+                className="w-full max-w-lg"
+              />
             </div>
 
             {/* Testimonial slider */}

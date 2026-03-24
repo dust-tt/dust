@@ -1,5 +1,5 @@
+import { MultiProductComparisonTable } from "@app/components/home/content/Competitive/MultiProductComparisonTable";
 import { gleanLandingConfig } from "@app/components/home/content/Glean/config/gleanConfig";
-import { GleanComparisonTable } from "@app/components/home/content/Glean/GleanComparisonTable";
 import { GleanDeepDive } from "@app/components/home/content/Glean/GleanDeepDive";
 import { GleanHeroSection } from "@app/components/home/content/Glean/GleanHeroSection";
 import { GleanLogoBar } from "@app/components/home/content/Glean/GleanLogoBar";
@@ -77,8 +77,9 @@ export default function GleanLandingPage() {
       />
 
       {/* Comparison Table */}
-      <GleanComparisonTable
+      <MultiProductComparisonTable
         title={gleanLandingConfig.comparisonTable.title}
+        columns={gleanLandingConfig.comparisonTable.columns}
         rows={gleanLandingConfig.comparisonTable.rows}
       />
 
