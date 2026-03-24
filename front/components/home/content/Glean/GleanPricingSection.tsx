@@ -1,4 +1,4 @@
-import { H2, P } from "@app/components/home/ContentComponents";
+import { H2, H3, H4, P } from "@app/components/home/ContentComponents";
 import { cn } from "@dust-tt/sparkle";
 
 interface PricingRow {
@@ -32,9 +32,7 @@ export function GleanPricingSection({
 
       {/* Glean pricing callout */}
       <div className="mx-auto mb-10 max-w-4xl rounded-2xl border border-amber-200 bg-amber-50 p-6 md:p-8">
-        <h3 className="mb-3 text-lg font-bold text-gray-900">
-          What does Glean actually cost?
-        </h3>
+        <H3 className="mb-3">What does Glean actually cost?</H3>
         <P size="sm" className="text-gray-700">
           {gleanDescription}
         </P>
@@ -53,26 +51,33 @@ export function GleanPricingSection({
             )}
           >
             <div className="flex items-center gap-4 md:w-1/5">
-              <h4
-                className={cn(
-                  "text-lg font-bold",
-                  i === 0 ? "text-[#1C91FF]" : "text-gray-900"
-                )}
-              >
+              <H4 className={cn(i === 0 ? "text-highlight" : "")}>
                 {row.product}
-              </h4>
+              </H4>
             </div>
             <div className="md:w-1/5">
-              <p className="text-sm font-medium text-gray-500">Price</p>
-              <p className="font-bold text-gray-900">{row.price}</p>
+              <P size="xs" className="font-medium text-muted-foreground">
+                Price
+              </P>
+              <P size="sm" className="font-bold text-foreground">
+                {row.price}
+              </P>
             </div>
             <div className="md:w-2/5">
-              <p className="text-sm font-medium text-gray-500">Includes</p>
-              <p className="text-sm text-gray-700">{row.includes}</p>
+              <P size="xs" className="font-medium text-muted-foreground">
+                Includes
+              </P>
+              <P size="xs" className="text-foreground">
+                {row.includes}
+              </P>
             </div>
             <div className="md:w-1/5">
-              <p className="text-sm font-medium text-gray-500">Note</p>
-              <p className="text-sm text-gray-600">{row.caveat}</p>
+              <P size="xs" className="font-medium text-muted-foreground">
+                Note
+              </P>
+              <P size="xs" className="text-muted-foreground">
+                {row.caveat}
+              </P>
             </div>
           </div>
         ))}

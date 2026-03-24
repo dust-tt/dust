@@ -107,7 +107,7 @@ export function LandingEmailSignup({
             </button>
           </div>
         ) : (
-          <div className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white p-1.5 shadow-md">
+          <div className="flex w-full flex-col gap-2 rounded-xl border border-gray-200 bg-white p-1.5 shadow-md sm:flex-row sm:items-center">
             <input
               type="email"
               value={email}
@@ -119,7 +119,7 @@ export function LandingEmailSignup({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-blue-600 hover:shadow-md disabled:opacity-70"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-blue-600 hover:shadow-md disabled:opacity-70 sm:w-auto"
             >
               {isLoading && <Spinner size="xs" />}
               {ctaButtonText}

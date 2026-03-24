@@ -1,4 +1,3 @@
-import { ChatGptEnterpriseComparisonTable } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseComparisonTable";
 import { ChatGptEnterpriseDeepDive } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseDeepDive";
 import { ChatGptEnterpriseHeroSection } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseHeroSection";
 import { ChatGptEnterpriseLogoBar } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseLogoBar";
@@ -7,6 +6,7 @@ import {
   ChatGptEnterpriseWhySection,
 } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseWhatSection";
 import { chatGptEnterpriseConfig } from "@app/components/home/content/ChatGptEnterprise/config/chatGptEnterpriseConfig";
+import { MultiProductComparisonTable } from "@app/components/home/content/Competitive/MultiProductComparisonTable";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -67,8 +67,9 @@ export default function ChatGptEnterpriseLandingPage() {
       />
 
       {/* Comparison Table */}
-      <ChatGptEnterpriseComparisonTable
+      <MultiProductComparisonTable
         title={chatGptEnterpriseConfig.comparisonTable.title}
+        columns={chatGptEnterpriseConfig.comparisonTable.columns}
         rows={chatGptEnterpriseConfig.comparisonTable.rows}
       />
     </>

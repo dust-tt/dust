@@ -1,4 +1,4 @@
-import { H2, P } from "@app/components/home/ContentComponents";
+import { H2, H3, P } from "@app/components/home/ContentComponents";
 import { cn } from "@dust-tt/sparkle";
 import { AlertTriangle, Check, Cpu, Lock, Settings } from "lucide-react";
 import type { ReactNode } from "react";
@@ -67,9 +67,7 @@ function ApproachCard({ title, items, variant }: ComparisonApproach) {
       {isPositive && (
         <div className="absolute -mr-16 -mt-16 right-0 top-0 h-32 w-32 rounded-bl-full bg-[#1C91FF]/10" />
       )}
-      <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-[#111418]">
-        {title}
-      </h3>
+      <H3 className="mb-4 flex items-center gap-2">{title}</H3>
       <ul className="relative z-10 space-y-4">
         {items.map((item) => (
           <li key={item.text} className="flex items-start gap-3">
@@ -132,9 +130,7 @@ export function GleanWhySection({ title, subtitle, reasons }: WhySectionProps) {
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm md:mb-6">
               {ICON_MAP[reason.iconColor]}
             </div>
-            <h3 className="mb-3 text-xl font-bold text-[#111418]">
-              {reason.title}
-            </h3>
+            <H3 className="mb-3">{reason.title}</H3>
             <P size="sm" className="text-muted-foreground">
               {reason.description}
             </P>

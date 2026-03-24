@@ -1,3 +1,4 @@
+import type { MultiProductComparisonColumn } from "@app/components/home/content/Competitive/MultiProductComparisonTable";
 import type { FAQItem } from "@app/components/home/FAQ";
 import type { ReactNode } from "react";
 
@@ -31,16 +32,6 @@ interface WhyReason {
   title: string;
   description: string;
   iconColor: "amber" | "red" | "purple" | "blue";
-}
-
-interface ComparisonTableRow {
-  name: string;
-  dust: string;
-  copilot: string;
-  guru: string;
-  notion: string;
-  chatgpt: string;
-  gemini: string;
 }
 
 interface DustProConfig {
@@ -79,7 +70,8 @@ export interface GleanLandingConfig {
   pricing: PricingConfig;
   comparisonTable: {
     title: string;
-    rows: ComparisonTableRow[];
+    columns: MultiProductComparisonColumn[];
+    rows: Record<string, string>[];
   };
   dustDeepDive: DustProConfig;
   faq: FAQItem[];
@@ -227,6 +219,14 @@ export const gleanLandingConfig: GleanLandingConfig = {
 
   comparisonTable: {
     title: "Glean competitors and alternatives at a glance",
+    columns: [
+      { key: "dust", label: "Dust", highlight: true },
+      { key: "copilot", label: "Microsoft Copilot" },
+      { key: "guru", label: "Guru" },
+      { key: "notion", label: "Notion AI" },
+      { key: "chatgpt", label: "ChatGPT Enterprise" },
+      { key: "gemini", label: "Gemini Enterprise" },
+    ],
     rows: [
       {
         name: "Starting price",

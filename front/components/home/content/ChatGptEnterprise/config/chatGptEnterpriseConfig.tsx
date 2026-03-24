@@ -1,3 +1,4 @@
+import type { MultiProductComparisonColumn } from "@app/components/home/content/Competitive/MultiProductComparisonTable";
 import type { ReactNode } from "react";
 
 interface HeroTestimonial {
@@ -33,15 +34,6 @@ interface WhyReason {
   iconColor: "amber" | "red" | "purple" | "blue";
 }
 
-interface ComparisonTableRow {
-  name: string;
-  dust: string;
-  ms: string;
-  google: string;
-  claude: string;
-  perplexity: string;
-}
-
 interface DustProConfig {
   pros: string[];
   testimonials: HeroTestimonial[];
@@ -70,7 +62,8 @@ export interface ChatGptEnterpriseConfig {
   };
   comparisonTable: {
     title: string;
-    rows: ComparisonTableRow[];
+    columns: MultiProductComparisonColumn[];
+    rows: Record<string, string>[];
   };
   dustDeepDive: DustProConfig;
   cta: CTAConfig;
@@ -190,6 +183,13 @@ export const chatGptEnterpriseConfig: ChatGptEnterpriseConfig = {
 
   comparisonTable: {
     title: "ChatGPT Enterprise alternatives at a glance",
+    columns: [
+      { key: "dust", label: "Dust", highlight: true },
+      { key: "ms", label: "Microsoft 365 Copilot" },
+      { key: "google", label: "Google Gemini 3" },
+      { key: "claude", label: "Claude Enterprise" },
+      { key: "perplexity", label: "Perplexity Enterprise" },
+    ],
     rows: [
       {
         name: "Starting price",
