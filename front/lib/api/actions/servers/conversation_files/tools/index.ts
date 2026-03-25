@@ -17,6 +17,7 @@ import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
   type ContentNodeAttachmentType,
+  type ConversationAttachmentType,
   conversationAttachmentId,
   isContentNodeAttachmentType,
   renderAttachmentXml,
@@ -50,6 +51,41 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
+const MAX_CONTENT_SIZE_FOR_LIST_FILES = 1024 * 256; // 256KB.
+
+export const contentFromAttachments = (
+  attachments: ConversationAttachmentType[],
+  snippetContent?: string
+) => {
+  let content = "";
+
+  // Directly attached files.
+  attachments
+    .filter((a) => !a.isInProjectContext)
+    .forEach((attachment, i) => {
+      if (i === 0) {
+        content +=
+          "The following files are currently attached to the conversation directly:\n";
+      } else {
+        content += "\n";
+      }
+      content += renderAttachmentXml({ attachment, content: snippetContent });
+    });
+
+  // Project context attached files.
+  attachments
+    .filter((a) => a.isInProjectContext)
+    .forEach((attachment, i) => {
+      if (i === 0) {
+        content +=
+          "The following files are currently attached to the conversation via the project context:\n";
+      } else {
+        content += "\n";
+      }
+      content += renderAttachmentXml({ attachment, content: snippetContent });
+    });
+  return content;
+};
 
 const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
   [CONVERSATION_LIST_FILES_ACTION_NAME]: async (
@@ -72,33 +108,14 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       ]);
     }
 
-    let content = "";
+    let content = contentFromAttachments(attachments);
 
-    // Directly attached files.
-    attachments
-      .filter((a) => !a.isInProjectContext)
-      .forEach((attachment, i) => {
-        if (i === 0) {
-          content +=
-            "The following files are currently attached to the conversation directly:\n";
-        } else {
-          content += "\n";
-        }
-        content += renderAttachmentXml({ attachment });
-      });
-
-    // Project context attached files.
-    attachments
-      .filter((a) => a.isInProjectContext)
-      .forEach((attachment, i) => {
-        if (i === 0) {
-          content +=
-            "The following files are currently attached to the conversation via the project context:\n";
-        } else {
-          content += "\n";
-        }
-        content += renderAttachmentXml({ attachment });
-      });
+    if (content.length > MAX_CONTENT_SIZE_FOR_LIST_FILES) {
+      content = contentFromAttachments(
+        attachments,
+        "Snippet content too large."
+      );
+    }
 
     return new Ok([
       {
