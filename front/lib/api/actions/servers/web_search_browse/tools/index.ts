@@ -19,6 +19,7 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -93,12 +94,10 @@ async function handleWebsearch(
 async function handleWebbrowser(
   {
     urls,
-    format = "markdown",
     screenshotMode = "none",
     links,
   }: {
     urls: string[];
-    format?: "markdown" | "html";
     screenshotMode?: "none" | "viewport" | "fullPage";
     links?: boolean;
   },
@@ -116,9 +115,13 @@ async function handleWebbrowser(
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
 
-  const browsingProvider = Math.random() < 0.8 ? "firecrawl" : "spider";
+  const isFirecrawlDisabled =
+    await KillSwitchResource.isKillSwitchEnabledCached(
+      "global_disable_firecrawl"
+    );
+  const browsingProvider = isFirecrawlDisabled ? "spider" : "firecrawl";
 
-  const results = await browseUrls(urls, 8, format, {
+  const results = await browseUrls(urls, 8, "markdown", {
     screenshotMode,
     links,
     provider: browsingProvider,
@@ -263,14 +266,12 @@ async function handleWebbrowser(
     }
 
     const {
-      markdown,
-      html,
+      markdown: contentText,
       title,
       description,
       screenshots: allScreenshots,
       links: outLinks,
     } = result;
-    const contentText = format === "html" ? html : markdown;
 
     const tokensRes = await tokenCountForTexts(
       [contentText ?? ""],
@@ -319,11 +320,6 @@ async function handleWebbrowser(
       description: description,
       responseCode: result.status.toString(),
     };
-
-    // Include HTML content when format is HTML
-    if (format === "html" && html) {
-      browseResult.html = html.slice(0, maxCharacters);
-    }
 
     toolContent.push({
       type: "resource" as const,
