@@ -79,59 +79,63 @@ function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
 }
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.2.0")
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.3.0")
+  // Create agent user first so e2b creates /home/agent with correct ownership.
+  .setUser("agent")
   // Conversation files bootstrap
   // Pre-create workspace directory for faster GCS mounts.
-  .runCmd(
-    "sudo mkdir -p /files/conversation && sudo chmod 777 /files/conversation"
-  )
+  .runCmd("mkdir -p /files/conversation && chmod 777 /files/conversation", {
+    user: "root",
+  })
   // Create simple netcat-based token server script.
-  .runCmd("sudo mkdir -p /home/user/.bin")
+  .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
-  .runCmd(`sudo tee /home/user/.bin/token-server.sh > /dev/null << 'SHELLEOF'
+  .runCmd(
+    `tee /home/agent/.bin/token-server.sh > /dev/null << 'SHELLEOF'
 #!/bin/bash
 while true; do
   (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
 done
-SHELLEOF`)
-  .runCmd("sudo chmod 755 /home/user/.bin/token-server.sh")
-  // Add sentinel file to indicate when mounts are pending.
-  .runCmd("sudo touch /files/conversation/.mount-pending")
-  // Hidden tools: installed but not in manifest (back profile functions)
-  .runCmd("sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd")
-  // Create profile directory and copy profile scripts
-  .registerTool(
-    [
-      { name: "git", description: "Version control system", runtime: "system" },
-      { name: "curl", description: "HTTP client", runtime: "system" },
-      { name: "wget", description: "Network downloader", runtime: "system" },
-      { name: "jq", description: "JSON processor", runtime: "system" },
-      { name: "sqlite3", description: "SQLite database", runtime: "system" },
-      { name: "pandoc", description: "Document converter", runtime: "system" },
-      {
-        name: "imagemagick",
-        description: "Image manipulation",
-        runtime: "system",
-      },
-      { name: "ffmpeg", description: "Media processing", runtime: "system" },
-      { name: "unzip", description: "Archive extraction", runtime: "system" },
-      {
-        name: "lsb-release",
-        description: "Linux distribution info",
-        runtime: "system",
-      },
-      {
-        name: "file",
-        description: "Determine file type",
-        runtime: "system",
-      },
-    ],
-    {
-      // the other tools are installed in bedrock
-      installCmd:
-        "sudo apt-get install -y jq pandoc imagemagick ffmpeg unzip file",
-    }
+SHELLEOF`,
+    { user: "root" }
   )
+  .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
+  // Add sentinel file to indicate when mounts are pending.
+  .runCmd("touch /files/conversation/.mount-pending", { user: "root" })
+  // Hidden tools: installed but not in manifest (back profile functions)
+  .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
+    user: "root",
+  })
+  // Create profile directory and copy profile scripts
+  // The other tools are installed in bedrock
+  .runCmd("apt-get install -y jq pandoc imagemagick ffmpeg unzip file", {
+    user: "root",
+  })
+  .registerTool([
+    { name: "git", description: "Version control system", runtime: "system" },
+    { name: "curl", description: "HTTP client", runtime: "system" },
+    { name: "wget", description: "Network downloader", runtime: "system" },
+    { name: "jq", description: "JSON processor", runtime: "system" },
+    { name: "sqlite3", description: "SQLite database", runtime: "system" },
+    { name: "pandoc", description: "Document converter", runtime: "system" },
+    {
+      name: "imagemagick",
+      description: "Image manipulation",
+      runtime: "system",
+    },
+    { name: "ffmpeg", description: "Media processing", runtime: "system" },
+    { name: "unzip", description: "Archive extraction", runtime: "system" },
+    {
+      name: "lsb-release",
+      description: "Linux distribution info",
+      runtime: "system",
+    },
+    {
+      name: "file",
+      description: "Determine file type",
+      runtime: "system",
+    },
+  ])
   .registerTool({
     name: "python",
     description: "Python interpreter",
@@ -149,39 +153,35 @@ SHELLEOF`)
     ],
     { installCmd: "npm install -g typescript tsx" }
   )
-  .registerTool(
-    { name: "dsbx", description: "Dust CLI", runtime: "system" },
-    {
-      installCmd:
-        `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
-        `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
-        "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
-        "chmod +x /tmp/dsbx && " +
-        "sudo mv /tmp/dsbx /opt/bin/dsbx",
-    }
+  .runCmd(
+    `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
+      `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
+      "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
+      "chmod +x /tmp/dsbx && " +
+      "mv /tmp/dsbx /opt/bin/dsbx",
+    { user: "root" }
   )
-  .runCmd("sudo mkdir -p /skills && sudo chmod 755 /skills")
-  .registerTool(
-    {
-      name: "apply_patch",
-      description:
-        "Apply V4A diffs to files. Supports add, update, and delete operations",
-      usage:
-        "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
-      returns: "Summary of applied changes (A/M/D per file)",
-      runtime: "system",
-      profile: "openai",
-    },
-    {
-      installCmd:
-        `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/apply_patch-linux-x86_64 -o /tmp/apply_patch && ` +
-        `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
-        "grep apply_patch-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/apply_patch\"}' | sha256sum -c - && " +
-        "chmod +x /tmp/apply_patch && " +
-        "sudo mv /tmp/apply_patch /opt/bin/apply_patch",
-    }
+  .registerTool({ name: "dsbx", description: "Dust CLI", runtime: "system" })
+  .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
+  .runCmd(
+    `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/apply_patch-linux-x86_64 -o /tmp/apply_patch && ` +
+      `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
+      "grep apply_patch-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/apply_patch\"}' | sha256sum -c - && " +
+      "chmod +x /tmp/apply_patch && " +
+      "mv /tmp/apply_patch /opt/bin/apply_patch",
+    { user: "root" }
   )
-  .runCmd(`sudo mkdir -p ${PROFILE_DIR}`)
+  .registerTool({
+    name: "apply_patch",
+    description:
+      "Apply V4A diffs to files. Supports add, update, and delete operations",
+    usage:
+      "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
+    returns: "Summary of applied changes (A/M/D per file)",
+    runtime: "system",
+    profile: "openai",
+  })
+  .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "common.sh"),
     `${PROFILE_DIR}/common.sh`
@@ -218,16 +218,26 @@ SHELLEOF`)
   // Telemetry configs for fluent-bit
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
-    "/etc/fluent-bit/fluent-bit.conf"
+    "/etc/fluent-bit/fluent-bit.conf",
+    { user: "root" }
   )
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "parsers.conf"),
-    "/etc/fluent-bit/parsers.conf"
+    "/etc/fluent-bit/parsers.conf",
+    { user: "root" }
   )
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "enrich.lua"),
-    "/etc/fluent-bit/enrich.lua"
+    "/etc/fluent-bit/enrich.lua",
+    { user: "root" }
   )
+  // fluent-bit systemd service (started at runtime with env vars)
+  .copy(
+    getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.service"),
+    "/etc/systemd/system/fluent-bit.service",
+    { user: "root" }
+  )
+  .runCmd("systemctl daemon-reload", { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
     {
@@ -287,11 +297,11 @@ SHELLEOF`)
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
-  .setWorkdir("/home/user")
+  .setWorkdir("/home/agent")
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.6.0",
+    tag: "0.7.0",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];

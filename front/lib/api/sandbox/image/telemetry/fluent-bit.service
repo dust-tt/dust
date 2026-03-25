@@ -1,0 +1,12 @@
+[Unit]
+Description=Fluent Bit log processor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

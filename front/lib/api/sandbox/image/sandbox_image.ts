@@ -86,16 +86,28 @@ export class SandboxImage {
       tools: [],
       resources: DEFAULT_RESOURCES,
       network: DEFAULT_NETWORK,
-      workdir: "/home/user",
+      workdir: "", // No default, set via setWorkdir in registry
       runEnv: {},
       capabilities: new Set(),
     });
   }
 
-  runCmd(command: string): SandboxImage {
+  runCmd(command: string, options?: { user?: string }): SandboxImage {
     const operation: Operation = {
       type: "run",
       command,
+      user: options?.user,
+    };
+
+    return this.clone({
+      operations: [...this.operations, operation],
+    });
+  }
+
+  setUser(user: string): SandboxImage {
+    const operation: Operation = {
+      type: "user",
+      user,
     };
 
     return this.clone({
@@ -122,9 +134,17 @@ export class SandboxImage {
     });
   }
 
-  copy(src: string, dest: string): SandboxImage;
-  copy(src: ContentGenerator, dest: string): SandboxImage;
-  copy(src: string | ContentGenerator, dest: string): SandboxImage {
+  copy(src: string, dest: string, options?: { user?: string }): SandboxImage;
+  copy(
+    src: ContentGenerator,
+    dest: string,
+    options?: { user?: string }
+  ): SandboxImage;
+  copy(
+    src: string | ContentGenerator,
+    dest: string,
+    options?: { user?: string }
+  ): SandboxImage {
     const srcValue: CopySource =
       typeof src === "string"
         ? { type: "path", path: src }
@@ -134,6 +154,7 @@ export class SandboxImage {
       type: "copy",
       src: srcValue,
       dest,
+      user: options?.user,
     };
 
     return this.clone({
