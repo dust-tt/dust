@@ -20,13 +20,7 @@ export function FeedbackSelectorPopoverContent({
   });
 
   if (isGlobalAgent) {
-    return (
-      <div className="mb-4 mt-2 flex flex-col gap-2">
-        <Page.P variant="secondary">
-          Your feedback goes to the Dust team.
-        </Page.P>
-      </div>
-    );
+    return null;
   }
 
   if (editors.length === 0) {
