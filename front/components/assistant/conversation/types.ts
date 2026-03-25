@@ -13,10 +13,14 @@ import type {
   ConversationWithoutContentType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
+  LightMessageType,
   UserMessageOrigin,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import {
+  isLightAgentMessageWithActionsType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
@@ -177,3 +181,12 @@ export const isSidekickBootstrapMessage = (
 ): boolean => {
   return message.context.origin === "agent_sidekick" && message.rank === 0;
 };
+
+export const convertLightMessageTypeToVirtuosoMessages = (
+  messages: LightMessageType[]
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );
