@@ -69,6 +69,7 @@ export async function renderConversationForModel(
   >
 > {
   const now = Date.now();
+  let stepStart = now;
 
   const messages = await renderAllMessages(auth, {
     conversation,
@@ -78,16 +79,37 @@ export async function renderConversationForModel(
     onMissingAction,
     agentConfiguration,
   });
+  const renderAllMessagesMs = Date.now() - stepStart;
+  stepStart = Date.now();
 
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
+  const getLlmCredentialsMs = Date.now() - stepStart;
+  stepStart = Date.now();
 
   // Tokenize messages and prompt/tools in parallel to reduce latency
-  const [messagesWithTokensRes, promptToolsRes] = await Promise.all([
-    countTokensForMessages(messages, model, credentials),
-    tokenCountForTexts([prompt, tools], model, credentials),
+  const countMessagesPromise = (async () => {
+    const start = Date.now();
+    const r = await countTokensForMessages(messages, model, credentials);
+    return { r, elapsedMs: Date.now() - start };
+  })();
+  const countPromptToolsPromise = (async () => {
+    const start = Date.now();
+    const r = await tokenCountForTexts([prompt, tools], model, credentials);
+    return { r, elapsedMs: Date.now() - start };
+  })();
+  const [messagesWithTokensWrapped, promptToolsWrapped] = await Promise.all([
+    countMessagesPromise,
+    countPromptToolsPromise,
   ]);
+  const parallelTokenizationWallMs = Date.now() - stepStart;
+  const countTokensForMessagesMs = messagesWithTokensWrapped.elapsedMs;
+  const tokenCountPromptToolsMs = promptToolsWrapped.elapsedMs;
+  const messagesWithTokensRes = messagesWithTokensWrapped.r;
+  const promptToolsRes = promptToolsWrapped.r;
+
+  stepStart = Date.now();
 
   if (messagesWithTokensRes.isErr()) {
     return messagesWithTokensRes;
@@ -231,6 +253,8 @@ export async function renderConversationForModel(
 
   const prunedContext = currentInteraction.prunedContext ?? false;
 
+  const pruneSelectAndFinalizeMs = Date.now() - stepStart;
+
   logger.info(
     {
       workspaceId: conversation.owner.sId,
@@ -241,6 +265,12 @@ export async function renderConversationForModel(
       messageSelected: finalMessages.length,
       prunedContext,
       elapsed: Date.now() - now,
+      renderAllMessagesMs,
+      getLlmCredentialsMs,
+      countTokensForMessagesMs,
+      tokenCountPromptToolsMs,
+      parallelTokenizationWallMs,
+      pruneSelectAndFinalizeMs,
     },
     "[ASSISTANT_TRACE] renderConversationForModelEnhanced"
   );
