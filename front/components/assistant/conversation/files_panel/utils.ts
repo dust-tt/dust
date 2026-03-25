@@ -6,7 +6,7 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
+import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import {
   frameSlideshowContentType,
   isInteractiveContentType,

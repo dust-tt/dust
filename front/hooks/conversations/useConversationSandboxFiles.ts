@@ -1,8 +1,8 @@
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GCSMountFileEntry,
-  GetConversationSandboxFilesResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files";
+  GetConversationFilesResponseBody,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
@@ -16,12 +16,12 @@ export function useConversationSandboxFiles({
   options?: { disabled?: boolean };
 }) {
   const { fetcher } = useFetcher();
-  const sandboxFilesFetcher: Fetcher<GetConversationSandboxFilesResponseBody> =
+  const sandboxFilesFetcher: Fetcher<GetConversationFilesResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
-      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files`
+      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/files`
       : null,
     sandboxFilesFetcher,
     options

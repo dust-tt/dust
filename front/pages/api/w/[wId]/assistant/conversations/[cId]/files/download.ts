@@ -95,7 +95,7 @@ async function handler(
   readStream.on("error", (err) => {
     logger.error(
       { err, filePath: normalizedPath },
-      "Error streaming sandbox file"
+      "Error streaming conversation file"
     );
     readStream.destroy();
     res.end();

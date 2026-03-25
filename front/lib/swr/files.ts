@@ -48,7 +48,7 @@ export async function downloadSandboxFile(
   conversationId: string,
   filePath: string
 ): Promise<Response> {
-  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files/download`;
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/download`;
   const res = await clientFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
