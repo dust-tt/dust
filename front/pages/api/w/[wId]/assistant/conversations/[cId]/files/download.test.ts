@@ -1,4 +1,4 @@
-import handler from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox/files/download";
+import handler from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files/download";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import type { RequestMethod } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,7 +50,7 @@ async function setupTest(method: RequestMethod = "POST") {
   return { req, res };
 }
 
-describe("POST /api/w/[wId]/assistant/conversations/[cId]/sandbox/files/download", () => {
+describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

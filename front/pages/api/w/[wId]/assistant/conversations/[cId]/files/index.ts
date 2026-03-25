@@ -14,15 +14,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export type { GCSMountFileEntry };
 
-export type GetConversationSandboxFilesResponseBody = {
+export type GetConversationFilesResponseBody = {
   files: GCSMountFileEntry[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetConversationSandboxFilesResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetConversationFilesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
