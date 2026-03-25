@@ -7,11 +7,13 @@
  * adapter.
  */
 
+import type { Authenticator } from "@app/lib/auth";
 import type {
   NetworkPolicy,
   SandboxImageId,
   SandboxResources,
 } from "@app/lib/api/sandbox/image/types";
+import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 
 // ---------------------------------------------------------------------------
@@ -97,21 +99,35 @@ export class SandboxNotFoundError extends Error {
  * signal recoverable failures — callers never need try/catch.
  */
 export interface SandboxProvider {
-  create(config: SandboxCreateConfig): Promise<Result<SandboxHandle, Error>>;
-  wake(providerId: string): Promise<Result<SandboxHandle, Error>>;
-  sleep(providerId: string): Promise<Result<void, Error>>;
-  destroy(providerId: string): Promise<Result<void, Error>>;
+  create(
+    config: SandboxCreateConfig,
+    auth: Authenticator
+  ): Promise<Result<SandboxHandle, Error>>;
+  wake(
+    providerId: string,
+    auth: Authenticator
+  ): Promise<Result<SandboxHandle, Error>>;
+  sleep(
+    providerId: string,
+    auth: Authenticator
+  ): Promise<Result<void, Error>>;
+  destroy(
+    providerId: string,
+    auth: Authenticator
+  ): Promise<Result<void, Error>>;
 
   exec(
     providerId: string,
     command: string,
-    opts?: ExecOptions
+    opts: ExecOptions | undefined,
+    auth: Authenticator
   ): Promise<Result<ExecResult, Error>>;
 
   writeFile(
     providerId: string,
     path: string,
-    data: ArrayBuffer
+    data: ArrayBuffer,
+    auth: Authenticator
   ): Promise<Result<void, Error>>;
 
   readFile(providerId: string, path: string): Promise<Buffer>;
@@ -119,6 +135,36 @@ export interface SandboxProvider {
   listFiles(
     providerId: string,
     path: string,
-    opts?: { recursive?: boolean }
+    opts: { recursive?: boolean } | undefined,
+    auth: Authenticator
   ): Promise<FileEntry[]>;
+}
+
+// ---------------------------------------------------------------------------
+// APM instrumentation helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Wraps provider operations with APM spans for tracing.
+ *
+ * This helper is provider-agnostic and can be used by any SandboxProvider
+ * implementation to add lightweight APM instrumentation.
+ */
+export function traceSandboxOperation<T>(
+  operation: string,
+  fn: () => Promise<T>,
+  tags?: Record<string, string>
+): Promise<T> {
+  return tracer.trace(
+    `sandbox.provider.${operation}`,
+    { resource: operation },
+    async (span) => {
+      if (tags) {
+        Object.entries(tags).forEach(([key, value]) => {
+          span?.setTag(key, value);
+        });
+      }
+      return fn();
+    }
+  );
 }
