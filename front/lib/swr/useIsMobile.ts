@@ -5,7 +5,10 @@ const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
   const clientType = useClientType();
-  const [isMobile, setIsMobile] = useState<boolean | undefined>();
+  // Read from window immediately so the initial value is correct to avoid keyboard pop up on mobile.
+  const [isMobile, setIsMobile] = useState<boolean>(
+    () => !!window && window.innerWidth < MOBILE_BREAKPOINT
+  );
 
   useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
@@ -22,5 +25,5 @@ export function useIsMobile() {
     return false;
   }
 
-  return !!isMobile;
+  return isMobile;
 }

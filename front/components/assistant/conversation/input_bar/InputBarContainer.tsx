@@ -645,7 +645,9 @@ const InputBarContainer = ({
       (editorService.isEmpty() || editorContainsOnlyStickyMentions)
     ) {
       // Schedule content restoration to avoid flushing during render lifecycle.
-      queueMicrotask(() => editorService.setContent(draft.text));
+      queueMicrotask(() =>
+        editorService.setContent(draft.text, { focus: !disableAutoFocus })
+      );
     }
   }, [
     conversation,
