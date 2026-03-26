@@ -28,19 +28,10 @@ export function parseSendgridDkimResults(
     return [];
   }
 
-  let parseFailureReason:
-    | "missing_enclosing_braces"
-    | "empty_dkim_results"
-    | "malformed_dkim_entry"
-    | null = null;
   const trimmedDkim = rawDkim.trim();
   if (!trimmedDkim.startsWith("{") || !trimmedDkim.endsWith("}")) {
-    parseFailureReason = "missing_enclosing_braces";
-  }
-
-  if (parseFailureReason !== null) {
     logger.warn(
-      { rawDkim, reason: parseFailureReason },
+      { rawDkim, reason: "missing_enclosing_braces" },
       DKIM_PARSE_FAILURE_LOG_MESSAGE
     );
     return [];
@@ -50,32 +41,29 @@ export function parseSendgridDkimResults(
     .replace(REPEATED_DKIM_ENTRY_SEPARATOR_PATTERN, ",")
     .slice(1, -1);
   if (normalizedDkim.length === 0) {
-    parseFailureReason = "empty_dkim_results";
-  }
-
-  const dkimResults: InboundEmailDkimResult[] = [];
-  if (parseFailureReason === null) {
-    for (const entry of normalizedDkim.split(",")) {
-      const match = entry.trim().match(SENDGRID_DKIM_ENTRY_PATTERN);
-      if (!match) {
-        parseFailureReason = "malformed_dkim_entry";
-        break;
-      }
-
-      const [, domain, result] = match;
-      dkimResults.push({
-        domain: domain.toLowerCase(),
-        result: result.toLowerCase(),
-      });
-    }
-  }
-
-  if (parseFailureReason !== null) {
     logger.warn(
-      { rawDkim, reason: parseFailureReason },
+      { rawDkim, reason: "empty_dkim_results" },
       DKIM_PARSE_FAILURE_LOG_MESSAGE
     );
     return [];
+  }
+
+  const dkimResults: InboundEmailDkimResult[] = [];
+  for (const entry of normalizedDkim.split(",")) {
+    const match = entry.trim().match(SENDGRID_DKIM_ENTRY_PATTERN);
+    if (!match) {
+      logger.warn(
+        { rawDkim, entry, reason: "malformed_dkim_entry" },
+        DKIM_PARSE_FAILURE_LOG_MESSAGE
+      );
+      return [];
+    }
+
+    const [, domain, result] = match;
+    dkimResults.push({
+      domain: domain.toLowerCase(),
+      result: result.toLowerCase(),
+    });
   }
 
   return dkimResults;
