@@ -36,6 +36,20 @@ describe("extractSingleEmailAddressFromHeader", () => {
     expect(result.value).toBe("sender@dust.tt");
   });
 
+  it("accepts punycode domains inside angle brackets", () => {
+    const result = extractSingleEmailAddressFromHeader(
+      "From",
+      "Sender Name <sender@xn--e1afmkfd.xn--p1ai>"
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value).toBe("sender@xn--e1afmkfd.xn--p1ai");
+  });
+
   it("rejects a From header with multiple mailboxes", () => {
     const result = extractSingleEmailAddressFromHeader(
       "From",

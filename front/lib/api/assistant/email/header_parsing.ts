@@ -1,8 +1,11 @@
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const EMAIL_ADDRESS_PATTERN_SOURCE =
-  "[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}";
+const DOMAIN_LABEL_PATTERN_SOURCE =
+  "[a-zA-Z0-9](?:[a-zA-Z0-9\\-]*[a-zA-Z0-9])?";
+const TOP_LEVEL_LABEL_PATTERN_SOURCE =
+  "(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9\\-]{2,})";
+const EMAIL_ADDRESS_PATTERN_SOURCE = `[a-zA-Z0-9._%+\\-]+@(?:${DOMAIN_LABEL_PATTERN_SOURCE}\\.)+${TOP_LEVEL_LABEL_PATTERN_SOURCE}`;
 const FULL_EMAIL_ADDRESS_PATTERN = new RegExp(
   `^${EMAIL_ADDRESS_PATTERN_SOURCE}$`
 );
@@ -67,6 +70,7 @@ export function extractEmailAddressesFromHeader(
 
   // Second pass: extract bare email addresses from parts without angle brackets.
   const remaining = getTextOutsideAngleBrackets(headerValue);
+  GLOBAL_EMAIL_ADDRESS_PATTERN.lastIndex = 0;
   while ((match = GLOBAL_EMAIL_ADDRESS_PATTERN.exec(remaining)) !== null) {
     addEmail(match[0]);
   }
