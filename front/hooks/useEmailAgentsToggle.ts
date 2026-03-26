@@ -32,14 +32,17 @@ export function useEmailAgentsToggle({ owner }: UseEmailAgentsToggleProps) {
         throw new Error("Failed to update Email agents setting");
       }
       setIsEnabled(!isEnabled);
+      return true;
     } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to update Email agents setting",
         description: normalizeError(error).message,
       });
+      return false;
+    } finally {
+      setIsChanging(false);
     }
-    setIsChanging(false);
   };
 
   return {
