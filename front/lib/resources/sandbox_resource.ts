@@ -261,7 +261,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
 
       if (sandbox.status !== "deleted") {
-        const result = await provider.destroy(sandbox.providerId);
+        const result = await provider.destroy(sandbox.providerId, auth);
         if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
           logger.error(
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
@@ -314,6 +314,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     return this.withLifecycleLock(conversation.sId, async (provider) => {
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
       const existing = await SandboxResource.fetchByConversationId(
         auth,
         conversation.sId
@@ -325,7 +326,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           return imageResult;
         }
         const createResult = await provider.create(
-          imageResult.value.toCreateConfig()
+          imageResult.value.toCreateConfig(),
+          auth
         );
         if (createResult.isErr()) {
           return createResult;
@@ -354,7 +356,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           break;
 
         case "sleeping": {
-          const wakeResult = await provider.wake(existing.providerId);
+          const wakeResult = await provider.wake(existing.providerId, auth);
           if (wakeResult.isErr()) {
             // The sandbox may have been killed by the provider (e.g. lifetime
             // expired). Fall through to recreation instead of propagating the
@@ -380,7 +382,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             return imageResult;
           }
           const createResult = await provider.create(
-            imageResult.value.toCreateConfig()
+            imageResult.value.toCreateConfig(),
+            auth
           );
           if (createResult.isErr()) {
             return createResult;
@@ -401,7 +404,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           assertNever(status);
       }
 
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
       await existing.updateStatus("running", { ctx });
       await existing.updateLastActivityAt();
 
@@ -437,7 +439,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       ]);
       const ctx = { workspaceSId: workspace?.sId ?? "unknown" };
 
-      const result = await provider.sleep(sandbox.providerId);
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace?.sId ?? "unknown"
+      );
+
+      const result = await provider.sleep(sandbox.providerId, auth);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
@@ -480,7 +486,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       ]);
       const ctx = { workspaceSId: workspace?.sId ?? "unknown" };
 
-      const result = await provider.destroy(sandbox.providerId);
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace?.sId ?? "unknown"
+      );
+
+      const result = await provider.destroy(sandbox.providerId, auth);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
@@ -513,7 +523,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.exec(this.providerId, command, opts);
+    const result = await provider.exec(this.providerId, command, opts, auth);
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
@@ -530,6 +540,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * List files in a directory on this sandbox.
    */
   async listFiles(
+    auth: Authenticator,
     path: string,
     opts?: { recursive?: boolean }
   ): Promise<Result<FileEntry[], Error>> {
@@ -539,7 +550,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     try {
-      const entries = await provider.listFiles(this.providerId, path, opts);
+      const entries = await provider.listFiles(
+        this.providerId,
+        path,
+        opts,
+        auth
+      );
       return new Ok(entries);
     } catch (err) {
       if (err instanceof SandboxNotFoundError) {
@@ -557,6 +573,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Write a file to the sandbox filesystem.
    */
   private async writeFile(
+    auth: Authenticator,
     path: string,
     data: ArrayBuffer
   ): Promise<Result<void, Error>> {
@@ -565,7 +582,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.writeFile(this.providerId, path, data);
+    const result = await provider.writeFile(this.providerId, path, data, auth);
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
@@ -599,7 +616,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       const readStream = file.getReadStream({ auth, version: "original" });
       const data = await streamConsumers.arrayBuffer(readStream);
 
-      const writeResult = await this.writeFile(targetPath, data);
+      const writeResult = await this.writeFile(auth, targetPath, data);
       if (writeResult.isErr()) {
         return writeResult;
       }
