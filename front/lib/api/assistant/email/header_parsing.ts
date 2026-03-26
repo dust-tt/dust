@@ -1,6 +1,44 @@
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+const DOMAIN_LABEL_PATTERN_SOURCE =
+  "[a-zA-Z0-9](?:[a-zA-Z0-9\\-]*[a-zA-Z0-9])?";
+const TOP_LEVEL_LABEL_PATTERN_SOURCE =
+  "(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9\\-]{2,})";
+const EMAIL_ADDRESS_PATTERN_SOURCE = `[a-zA-Z0-9._%+\\-]+@(?:${DOMAIN_LABEL_PATTERN_SOURCE}\\.)+${TOP_LEVEL_LABEL_PATTERN_SOURCE}`;
+const FULL_EMAIL_ADDRESS_PATTERN = new RegExp(
+  `^${EMAIL_ADDRESS_PATTERN_SOURCE}$`
+);
+const GLOBAL_EMAIL_ADDRESS_PATTERN = new RegExp(
+  EMAIL_ADDRESS_PATTERN_SOURCE,
+  "g"
+);
+
+function getTextOutsideAngleBrackets(headerValue: string): string {
+  let textOutsideAngleBrackets = "";
+  let isInsideAngleBrackets = false;
+
+  for (const character of headerValue) {
+    if (character === "<") {
+      isInsideAngleBrackets = true;
+      textOutsideAngleBrackets += " ";
+      continue;
+    }
+
+    if (character === ">") {
+      isInsideAngleBrackets = false;
+      textOutsideAngleBrackets += " ";
+      continue;
+    }
+
+    if (!isInsideAngleBrackets) {
+      textOutsideAngleBrackets += character;
+    }
+  }
+
+  return textOutsideAngleBrackets;
+}
+
 export function extractEmailAddressesFromHeader(
   headerValue: string | null
 ): string[] {
@@ -25,16 +63,15 @@ export function extractEmailAddressesFromHeader(
   let match;
   while ((match = anglePattern.exec(headerValue)) !== null) {
     const content = match[1].trim();
-    // Basic validation: must contain exactly one "@" and no spaces.
-    if (content.includes("@") && !content.includes(" ")) {
+    if (FULL_EMAIL_ADDRESS_PATTERN.test(content)) {
       addEmail(content);
     }
   }
 
   // Second pass: extract bare email addresses from parts without angle brackets.
-  const remaining = headerValue.replace(/<[^>]*>/g, " ");
-  const barePattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  while ((match = barePattern.exec(remaining)) !== null) {
+  const remaining = getTextOutsideAngleBrackets(headerValue);
+  GLOBAL_EMAIL_ADDRESS_PATTERN.lastIndex = 0;
+  while ((match = GLOBAL_EMAIL_ADDRESS_PATTERN.exec(remaining)) !== null) {
     addEmail(match[0]);
   }
 
