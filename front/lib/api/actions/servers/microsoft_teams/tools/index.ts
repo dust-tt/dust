@@ -452,17 +452,19 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       };
 
       if (mentions && mentions.length > 0) {
-        requestBody.mentions = mentions.map(({ id, mentionText, userAadId }) => ({
-          id,
-          mentionText,
-          mentioned: {
-            user: {
-              id: userAadId,
-              displayName: mentionText,
-              userIdentityType: "aadUser",
+        requestBody.mentions = mentions.map(
+          ({ id, mentionText, userAadId }) => ({
+            id,
+            mentionText,
+            mentioned: {
+              user: {
+                id: userAadId,
+                displayName: mentionText,
+                userIdentityType: "aadUser",
+              },
             },
-          },
-        }));
+          })
+        );
       }
 
       const response = await client.api(endpoint).post(requestBody);

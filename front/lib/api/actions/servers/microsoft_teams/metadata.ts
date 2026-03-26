@@ -177,12 +177,12 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
               .number()
               .int()
               .describe(
-                "Zero-based index matching the id attribute in the corresponding <at id=\"N\"> tag in messageContent."
+                'Zero-based index matching the id attribute in the corresponding <at id="N"> tag in messageContent.'
               ),
             mentionText: z
               .string()
               .describe(
-                "Display name used inside the <at> tag (e.g. <at id=\"0\">Display Name</at>)."
+                'Display name used inside the <at> tag (e.g. <at id="0">Display Name</at>).'
               ),
             userAadId: z
               .string()
@@ -191,7 +191,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         )
         .optional()
         .describe(
-          "List of @mentions. Each entry must have a corresponding <at id=\"N\">Name</at> tag in messageContent."
+          'List of @mentions. Each entry must have a corresponding <at id="N">Name</at> tag in messageContent.'
         ),
     },
     stake: "medium",
