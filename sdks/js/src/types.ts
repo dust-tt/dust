@@ -9,6 +9,7 @@ import {
 import {
   NotificationInteractiveContentFileContentSchema,
   OAuthProviderSchema,
+  UserQuestionItemSchema,
 } from "./output_schemas";
 import { CallToolResultSchema, ContentBlockSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
@@ -1353,20 +1354,7 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   conversationId: z.string(),
   status: ToolExecutionBlockedStatusSchema,
   // Present only when status is "blocked_user_question_required".
-  questions: z
-    .array(
-      z.object({
-        question: z.string(),
-        options: z.array(
-          z.object({
-            label: z.string(),
-            description: z.string(),
-          })
-        ),
-        multiSelect: z.boolean(),
-      })
-    )
-    .optional(),
+  questions: z.array(UserQuestionItemSchema).optional(),
   questionMetadata: z.record(z.unknown()).nullable().optional(),
 });
 
@@ -1459,18 +1447,7 @@ const ToolUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   conversationId: z.string(),
   created: z.number(),
   messageId: z.string(),
-  questions: z.array(
-    z.object({
-      question: z.string(),
-      options: z.array(
-        z.object({
-          label: z.string(),
-          description: z.string(),
-        })
-      ),
-      multiSelect: z.boolean(),
-    })
-  ),
+  questions: z.array(UserQuestionItemSchema),
   questionMetadata: z.record(z.unknown()).nullable(),
 });
 
