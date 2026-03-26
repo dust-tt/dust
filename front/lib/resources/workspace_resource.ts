@@ -659,6 +659,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     metronomeCustomerId: string
   ): Promise<void> {
     await WorkspaceModel.update({ metronomeCustomerId }, { where: { sId } });
+    await WorkspaceResource.invalidateWorkspaceCache(sId);
   }
 
   async updateConversationKillSwitch({
