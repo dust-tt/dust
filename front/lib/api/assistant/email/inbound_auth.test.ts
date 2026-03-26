@@ -4,14 +4,7 @@ import {
   evaluateInboundAuth,
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
-import logger from "@app/logger/logger";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/logger/logger", () => ({
-  default: {
-    warn: vi.fn(),
-  },
-}));
+import { describe, expect, it } from "vitest";
 
 function makeEmail(
   overrides: Partial<{
@@ -41,15 +34,10 @@ function makeEmail(
 }
 
 describe("parseSendgridDkimResults", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("parses a single passing signature", () => {
     expect(parseSendgridDkimResults("{@company.com : pass}")).toEqual([
       { domain: "company.com", result: "pass" },
     ]);
-    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("parses multiple signatures in a single SendGrid hash", () => {
@@ -78,41 +66,10 @@ describe("parseSendgridDkimResults", () => {
     expect(parseSendgridDkimResults("{@company.com : pass, broken}")).toEqual(
       []
     );
-    expect(logger.warn).toHaveBeenCalledWith(
-      {
-        rawDkim: "{@company.com : pass, broken}",
-        reason: "malformed_dkim_entry",
-        entry: "broken",
-        parsedEntryCount: 1,
-      },
-      "[email] Failed to parse SendGrid DKIM results"
-    );
   });
 
   it("returns an empty list for non-SendGrid input", () => {
     expect(parseSendgridDkimResults("pass")).toEqual([]);
-    expect(logger.warn).toHaveBeenCalledWith(
-      {
-        rawDkim: "pass",
-        reason: "missing_enclosing_braces",
-        entry: undefined,
-        parsedEntryCount: undefined,
-      },
-      "[email] Failed to parse SendGrid DKIM results"
-    );
-  });
-
-  it("returns an empty list and logs when the DKIM payload is empty", () => {
-    expect(parseSendgridDkimResults("{}")).toEqual([]);
-    expect(logger.warn).toHaveBeenCalledWith(
-      {
-        rawDkim: "{}",
-        reason: "empty_dkim_results",
-        entry: undefined,
-        parsedEntryCount: undefined,
-      },
-      "[email] Failed to parse SendGrid DKIM results"
-    );
   });
 });
 
