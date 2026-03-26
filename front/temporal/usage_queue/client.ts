@@ -155,7 +155,7 @@ export async function launchMetronomeGaugeEventsSchedule(): Promise<
         overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
-        intervals: [{ every: isDevelopment() ? "10m" : "24h" }],
+        intervals: [{ every: isDevelopment() ? "1h" : "24h" }],
       },
     });
 

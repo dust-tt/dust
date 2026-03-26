@@ -20,6 +20,7 @@ import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analyt
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
+import type { GetMetronomeContractResponseBody } from "@app/pages/api/w/[wId]/metronome/contract";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -623,6 +624,30 @@ export function useWorkspaceSeatsCount({
     isSeatsCountLoading: !error && !data && !disabled,
     isSeatsCountError: error,
     mutateSeatsCount: mutate,
+  };
+}
+
+export function useMetronomeContract({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const contractFetcher: Fetcher<GetMetronomeContractResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/metronome/contract`,
+    contractFetcher,
+    { disabled }
+  );
+
+  return {
+    metronomeContract: data ?? null,
+    isMetronomeContractLoading: !error && !data && !disabled,
+    isMetronomeContractError: error,
+    mutateMetronomeContract: mutate,
   };
 }
 

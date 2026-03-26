@@ -7,7 +7,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
-import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
+import {
+  cancelSubscriptionImmediately,
+  getCustomerId,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -98,12 +102,14 @@ async function handler(
       // Restore workspace functionality after subscription upgrade
       await restoreWorkspaceAfterSubscription(auth);
 
-      // If the new plan is Metronome-billed, ensure customer + contract exist.
+      // If the new plan is Metronome-billed, ensure customer + contract exist
+      // and cancel the existing Stripe subscription (Metronome invoices directly).
       const newPlan = await PlanModel.findOne({ where: { code: planCode } });
       if (newPlan) {
         const renderedPlan = renderPlanFromModel({ plan: newPlan });
         if (renderedPlan.metronomePackageAlias) {
-          // Try to get Stripe customer ID from existing subscription for linking.
+          // Get existing Stripe subscription (before it gets unlinked) for both
+          // the customer ID and cancellation.
           const subscription = auth.subscriptionResource();
           let stripeCustomerId: string | null = null;
           if (subscription?.stripeSubscriptionId) {
@@ -112,6 +118,21 @@ async function handler(
             );
             if (stripeSubscription) {
               stripeCustomerId = getCustomerId(stripeSubscription);
+              // Mark as ended_backend_only BEFORE cancelling Stripe so that the
+              // incoming customer.subscription.deleted webhook skips data scrubbing
+              // and does not revert the workspace to FREE_NO_PLAN.
+              await subscription.markAsEnded("ended_backend_only");
+              // Cancel Stripe subscription immediately — Metronome takes over billing.
+              await cancelSubscriptionImmediately({
+                stripeSubscriptionId: subscription.stripeSubscriptionId,
+              });
+              logger.info(
+                {
+                  workspaceId: owner.sId,
+                  stripeSubscriptionId: subscription.stripeSubscriptionId,
+                },
+                "[Metronome] Cancelled Stripe subscription on Metronome plan upgrade"
+              );
             }
           }
 

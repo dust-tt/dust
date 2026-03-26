@@ -266,6 +266,47 @@ export const createProPlanCheckoutSession = async ({
 };
 
 /**
+ * Create a Stripe Checkout session in setup mode for Metronome-billed workspaces.
+ * Setup mode captures a payment method and creates a Stripe customer without creating
+ * a recurring subscription — Metronome invoices directly through Stripe.
+ */
+export const createMetronomeCheckoutSession = async ({
+  owner,
+  user,
+}: {
+  owner: WorkspaceType;
+  user: UserType;
+}): Promise<string | null> => {
+  const stripe = getStripeClient();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "setup",
+    customer_creation: "always",
+    customer_email: user.email,
+    client_reference_id: owner.sId,
+    payment_method_types: ["card"],
+    metadata: {
+      workspaceId: owner.sId,
+      userId: `${user.id}`,
+    },
+    currency: "usd",
+    billing_address_collection: "auto",
+    tax_id_collection: { enabled: true },
+    consent_collection: { terms_of_service: "required" },
+    custom_text: {
+      terms_of_service_acceptance: {
+        message:
+          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://www.notion.so/dust-tt/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
+      },
+    },
+    success_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=PRO_PLAN_METRONOME`,
+    cancel_url: `${config.getAppUrl()}/w/${owner.sId}/subscribe`,
+  });
+
+  return session.url;
+};
+
+/**
  * Calls the Stripe API to create a customer portal session for a given workspace/plan.
  * This allows the user to access her Stripe dashbaord without having to log in on Stripe.
  */

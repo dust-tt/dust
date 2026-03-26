@@ -4,119 +4,246 @@
 
 Dust is migrating from Stripe Billing to Metronome to support credit-based pricing. Metronome sits on top of Stripe (payments remain in Stripe). The backend sends granular usage events to Metronome; all pricing logic, rate cards, custom plans, and limits are configured in Metronome by GTM/Ops — not by engineers in the codebase.
 
-**Current state:** Commitment signed ($30k). Metering infrastructure implemented (events flowing to Metronome). Customer provisioning ready. Sandbox configured with metrics, products, rate card, and package.
+**Current state:** Metering infrastructure implemented (events flowing to Metronome). Self-serve subscription flow complete: Stripe Checkout (setup mode) → Metronome customer + contract + seat seeding. Seat sync hooked into membership lifecycle. Sandbox fully configured.
 
-**Target:** Metronome live when the new pricing ships (~early April).
+**Target:** Metronome live when the new pricing ships (ETA TBD).
 
-## Architecture Overview
+**Current Stripe billing (for reference):**
+- Seat reporting (PER_SEAT plans): `stripe.subscriptionItems.update({ quantity })` — triggered by membership changes, rate-limited 1/hour
+- MAU reporting (MAU_X enterprise plans): `stripe.subscriptionItems.createUsageRecord()` — triggered by membership changes only (gap: MAU can change without membership changes, fixed by daily cron)
+- Credit system: Free → committed → PAYG → excess, consumed in priority order. Only programmatic usage is billed. 30% markup applied in code
+- MAU thresholds: `MAU_1`/`MAU_5`/`MAU_10` — minimum messages per month to count as active user (1, 5, or 10). Negotiated per enterprise deal
+
+## Concepts
+
+### Role of each brick
+
+| System | Role |
+|--------|------|
+| **Dust backend** | Sends usage events (LLM calls, tool invocations, gauges). Manages workspace subscriptions and membership. Enforces real-time usage limits via Redis cache |
+| **Metronome** | Aggregates usage into billable metrics. Applies rate cards (pricing, markup, credits). Manages contracts, seat subscriptions, and credit grants. Generates invoices. Sends webhooks for lifecycle events |
+| **Stripe** | Payment processor only. Captures payment methods via Checkout. Collects payment on Metronome-generated one-off invoices. No Stripe subscriptions for Metronome-billed workspaces |
+
+### AWU (Agentic Work Units)
+
+A custom non-fiat pricing unit in Metronome (id: `1ad632f0-4e5a-44d6-a1bf-aa6f6bc550d8`). Branded as **"Agentic Work Units" (AWU)** internally.
+
+**Price per credit: $0.01** (list price). Cost allocation: ~$0.009/credit. Gross margin: ~10% per credit. Markup kept low because intelligence is "externalized" commodity value — Dust aims to be mega-competitive on margins here.
+
+LLM and tool usage products are priced in AWU. Seats and other fixed charges remain in USD. The rate card defines `credit_type_conversions` to set the USD value per AWU. Customers see and purchase AWU credits; invoices show USD equivalent.
+
+**No fractional AWU.** Credit consumption is always rounded **up** to the nearest whole AWU. A message costing 0.3 AWU of intelligence + 1 AWU of tools = 2 AWU total (ceil(1.3)).
+
+**Credit composition — Additive model (decided):**
 
 ```
-                    ┌─────────────┐
-                    │  Metronome  │
-                    │             │
-   usage events ──▶ │  Billable   │──▶ One-off Stripe invoices
-   (all workspaces) │  Metrics    │
-                    │  Rate Cards │
-                    │  Contracts  │
-                    │  Packages   │
-                    └──────┬──────┘
-                           │ webhooks
-                           ▼
-                    ┌─────────────┐
-                    │    Dust     │
-                    │   Backend   │
-                    └──────┬──────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │   Stripe    │
-                    │  (payments  │
-                    │    only)    │
-                    └─────────────┘
+total_credits = intelligence_credits + tools_credits
 ```
 
-**Key concepts:**
+- **Intelligence credits**: proportional to LLM token cost. Charged only when `premium_feature_count > 0` OR model is advanced/reasoning. Formula: `ROUND(total_cost_usd / 0.01)`
+- **Tools credits**: fixed credit weight per tool action, cumulative across all tools in a message. `SUM(credit_weight_i × action_count_i)`
+- **Basic messages = 0 credits** (no premium features, no advanced model → unlimited with a seat)
 
-- **Metronome creates one-off Stripe invoices**, not subscriptions. Stripe becomes a payment processor only.
-- **Stripe Checkout stays** as the entry point for payment method capture. Customer + contract provisioned from the `checkout.session.completed` webhook.
-- **Two independent concerns:**
+> **Note:** Additive model was the leaning decision from the Mar 20 session with Gabe/Stan/Pauline/Théo. spolu leaned toward a step/multiplicative model — **final confirmation pending**.
 
-| Concern | Scope | Gating |
-|---------|-------|--------|
-| **Metering** — emitting usage events to Metronome | All workspaces | `METRONOME_ENABLED` env var |
-| **Billing** — using Metronome for invoicing, credits, limits | Per plan | `metronomePackageAlias` on `PlanModel` |
+### Seats
 
-## Key Design Decisions
+Every workspace member gets a **seat** on the Metronome contract. Seats replace MAU-based pricing — no more counting monthly active users for billing. Direction confirmed: **stop MAU billing, move to traditional seats**.
 
-### Pricing logic split
+| Seat type | Price (annual) | Price (monthly) | Credits/month | Assignment |
+|-----------|---------------|-----------------|---------------|------------|
+| **Free** | $0 | $0 | 300 | Auto — new users joining workspace |
+| **Pro** | $24/seat | $30/seat | 5,000 | Auto — every paying member |
+| **Max** | $100/seat | $125/seat | 20,000 | Explicit — admin-purchased upgrade |
+
+> **Note:** These are the latest calibrated numbers from Mar 27. Earlier proposals had Pro at 200–2,000 credits and Max at 1,000–10,000. Final validation with design partners pending.
+
+All tiers provide access to **all product features** (agent builder, all models, Frames, Deep Research, multi-agent orchestration, Salesforce tools, MCP, code execution). Differentiation is purely in credit volume.
+
+Seats are managed via Metronome's native seat-based subscriptions with `seat_group_key: "user_id"`. Per-seat credits use `INDIVIDUAL` allocation (each user has their own balance). When exhausted, usage falls back to the workspace-level credit pool.
+
+**No viewer seat for self-serve** (decided). Free credit allocation on join covers light users. Viewer/Light seat may be Enterprise-only.
+
+**Programmatic usage stays token-based** (decided) — credits are for interactive/agent usage only.
+
+### Plan restructuring (decided)
+
+| Change | Detail |
+|--------|--------|
+| "Pro" plan → **"Business" plan** | Gains SSO, EU hosting, Salesforce (previously Enterprise-gated) |
+| Feature gating removed | All product features accessible from Free plan |
+| Differentiation = volume | Connectors (1/20/unlimited), spaces (1/10/unlimited), credits |
+| Enterprise-only features | SCIM, audit logs, advanced analytics, custom data retention, remote MCP, priority support, CSM |
+
+### MAU (Monthly Active Users)
+
+Gauge metrics emitted daily. Not used for billing in Metronome plans — seat-based subscriptions replace MAU-based pricing. Kept for legacy enterprise contracts and observability.
+
+Three gauges with different activity thresholds:
+
+| Gauge | Threshold | Use case |
+|-------|-----------|----------|
+| `mau_1` | 1+ message in rolling 30 days | Default MAU count |
+| `mau_5` | 5+ messages in rolling 30 days | Enterprise contracts (MAU_5 threshold) |
+| `mau_10` | 10+ messages in rolling 30 days | Enterprise contracts (MAU_10 threshold) |
+
+### AWU classification: basic vs advanced
+
+Every message is classified as **basic** or **advanced** based on models and tools used:
+
+- **Basic** (0 credits): Standard models (Claude Sonnet, GPT-5 Mini, Gemini Flash, Mistral, DeepSeek), no premium tool features. Unlimited with any seat
+- **Advanced** (1+ credits): Frontier/reasoning models (Claude Opus, GPT-5, o1/o3/o4, Gemini Pro), OR premium tools (deep research, generation, multi-agent orchestration)
+
+Sent as `message_tier` on all events. Sub-agent messages tagged `is_sub_agent_message: "true"` — metered at parent level only.
+
+## Architecture
+
+### Overview
+
+```
+  ┌────────────────────────────────────────────────────────┐
+  │                     Dust Backend                       │
+  │                                                        │
+  │  Agent loop ──▶ usage_queue activity ──▶ Metronome     │
+  │  (LLM calls,    (Temporal workflow)      ingest API    │
+  │   tool calls)                                          │
+  │                                                        │
+  │  Membership ──▶ seats.ts ──▶ Metronome contracts/edit  │
+  │  (create/revoke)  (fire-and-forget)                    │
+  │                                                        │
+  │  Daily cron ──▶ registered_users gauge ──▶ Metronome   │
+  │                  mau gauges (×3)           ingest API   │
+  │                                                        │
+  │  Metronome webhook ──▶ Redis cache (credit balance)    │
+  │                    ──▶ DB (sync credit grants)         │
+  └────────────────────────────────────────────────────────┘
+                          │                    ▲
+                usage events              webhooks
+                seat edits           (alerts, credits,
+                          │            contracts)
+                          ▼                    │
+                   ┌─────────────┐
+                   │  Metronome  │
+                   │             │
+                   │  Metrics    │──▶ One-off Stripe invoices
+                   │  Rate Cards │
+                   │  Contracts  │
+                   │  Packages   │
+                   │  Credits    │
+                   └──────┬──────┘
+                          │ invoices
+                          ▼
+                   ┌─────────────┐
+                   │   Stripe    │
+                   │  (payments  │
+                   │    only)    │
+                   └─────────────┘
+```
+
+### Concept mapping: Dust ↔ Metronome
+
+| Dust concept | Metronome concept | Relationship |
+|---|---|---|
+| Plan (e.g., Business Plan) | Package | 1:1 via `metronomePackageAlias` |
+| Workspace | Customer | 1:1 — `metronomeCustomerId` on `WorkspaceModel`, workspace `sId` as ingest alias |
+| Subscription | Contract | 1:1 — contract created from package on subscribe |
+| Membership | Seat | 1:1 — each member gets a seat on the contract |
+| Agent message (LLM call) | `llm_usage` event | 1:N — one event per model call within a message |
+| Agent message (tool call) | `tool_use` event | 1:N — one event per MCP action |
+| Programmatic credit (free) | Recurring credit | **Legacy plans only** — bracket formula based on `registered_users`. New plans use per-seat allocation instead |
+| Programmatic credit (committed) | Commit (PREPAID) | Workspace pool (purchased credits) |
+| Programmatic credit (PAYG) | Commit (POSTPAID) | Workspace pool (overage) |
+
+### Event types
+
+| Event | Trigger | Frequency |
+|-------|---------|-----------|
+| `llm_usage` | Every LLM model call in an agent message | Per model call |
+| `tool_use` | Every MCP action in an agent message | Per tool invocation |
+| `registered_users` | Daily Temporal cron | Once/day/workspace |
+| `mau_1` / `mau_5` / `mau_10` | Daily Temporal cron | Once/day/workspace each |
+
+### Seats and auto-assigned credits
+
+When a workspace subscribes:
+1. Contract created from package → seat subscriptions (Pro, Max) provisioned automatically
+2. All existing members bulk-assigned as Pro seats
+3. Each seat gets its monthly credit allocation (5,000 or 20,000 AWU) via `INDIVIDUAL` recurring credits in the package
+
+On membership changes:
+- **Member joins** → `addMetronomeProSeat` (fire-and-forget from `createMembership`)
+- **Member leaves** → `removeMetronomeSeat` (fire-and-forget from `revokeMembership`)
+- **Seat type change** → `changeMetronomeSeatType` (remove from old subscription + add to new)
+
+Seat product IDs are resolved dynamically from Metronome's products API by name ("Pro Seat", "Max Seat") — no hardcoded IDs.
+
+## LLM and Tool Usage
+
+### Pricing logic
+
+Two options for where LLM cost → AWU conversion happens. **This is a one-way choice** — the two options produce different billing amounts, and switching after launch changes customer bills.
+
+**Option A: Cost computed in code, AWU rounded per message**
+
+Code computes `cost_micro_usd` per LLM call (`token_pricing.ts`), converts to AWU (`ceil(cost_usd / 0.01)`), and sends the rounded integer `awu_credits` as an event property. Metronome SUMs pre-rounded values. Tool credits are already integers (credit weights × invocation count).
 
 | Concern | Where it lives | Changed by |
 |---------|---------------|------------|
-| Per-model token rates (provider cost) | `token_pricing.ts` (code) | Engineers (when providers change pricing) |
-| Markup percentage (e.g., 30%) | Rate card in Metronome | GTM/Ops |
-| Per-tool-category pricing | Rate card in Metronome | GTM/Ops |
-| Per-seat-type pricing | Rate card in Metronome | GTM/Ops |
+| Per-model token rates (provider cost) | `token_pricing.ts` (code) | Engineers |
+| AWU rounding | Code (`ceil()` per message) | Engineers |
+| Intelligence markup (0–10%) | Rate card in Metronome | GTM/Ops |
+| Per-tool-category credit weights | Rate card in Metronome | GTM/Ops |
+| Per-seat pricing | Rate card in Metronome | GTM/Ops |
 | Custom enterprise discounts | Contract overrides in Metronome | Sales/Ops |
-| New model added | Update `token_pricing.ts` only | Engineers |
 
-### Programmatic vs user usage split
+Pros: per-message granularity, every message costs at least 1 AWU (when non-free), predictable for users.
+Cons: per-model pricing changes require code deploys; GTM/Ops cannot change token rates independently.
 
-All metrics and products are split into programmatic and user variants. This allows:
-- Different markup per type (e.g., 30% on programmatic, 0% on user)
-- Billing only programmatic usage on current plans (matching existing behavior)
-- Billing all usage when new credit-based pricing ships
+**Option B: Token pricing in Metronome, AWU rounded per billing period**
 
-### Plan-based billing mode (not feature flags)
+Code sends raw token counts (`prompt_tokens`, `completion_tokens`, `cached_tokens`, `cache_creation_tokens`) + `model_id` per LLM call. Metronome applies per-model per-token prices via dimensional pricing, converts to AWU, and rounds at the billing period level using `quantity_conversion.rounding_behavior: "ceiling"`.
 
-Metronome billing is determined by the workspace's plan via `metronomePackageAlias` column on `PlanModel`:
-- `null` → Stripe billing (all existing plans)
-- `"pro-plan"` → Metronome billing via Pro Plan package
+| Concern | Where it lives | Changed by |
+|---------|---------------|------------|
+| Per-model token rates | Rate card in Metronome (dimensional pricing by `model_id`) | GTM/Ops |
+| AWU rounding | Metronome (`ceiling` per billing period) | Metronome config |
+| Intelligence markup (0–10%) | Rate card in Metronome | GTM/Ops |
+| Per-tool-category credit weights | Rate card in Metronome | GTM/Ops |
+| Per-seat pricing | Rate card in Metronome | GTM/Ops |
+| Custom enterprise discounts | Contract overrides in Metronome | Sales/Ops |
 
-```typescript
-function isMetronomeBilled(plan: PlanType): boolean {
-  return plan.metronomePackageAlias != null;
-}
-```
+Pros: all pricing in Metronome, GTM/Ops can change per-model prices without code deploys, per-model overrides in enterprise contracts.
+Cons: rounding is per-period not per-message (10 × 0.3 AWU = 3 AWU, not 10); requires maintaining ~60 model entries in Metronome rate card; new models need a rate card entry or usage won't be billed.
 
-Each Dust plan maps 1:1 to a Metronome package. Packages are immutable templates containing rate card + seat subscriptions.
+> **OPEN — needs decision.** These two options are **not equivalent** and cannot be switched after launch without changing billing behavior. Per-message rounding (A) systematically charges more than per-period rounding (B) for users with many small messages. The choice also determines where per-model pricing lives (code vs Metronome) and who can change it (engineers vs GTM/Ops). All events already include both `cost_micro_usd` and raw token counts, so both options are technically ready.
 
-### Seat types
+### AWU credit weights per tool category
 
-Two seat types for now: **Pro** ($29/mo) and **Max** ($99/mo). Managed via Metronome's native seat-based subscriptions with `seat_group_key: "user_id"`. Usage events include `user_id` for per-seat credit attribution. Programmatic usage (no user) draws from workspace-level credits.
+Configured in the rate card. Working values (calibration in progress):
 
-### Agentic Work Units (AWU) classification
+| Tool Category | Credits | Status | Examples |
+|---|---|---|---|
+| Retrieval (RAG, MCP read, table query) | **1** | Proposal | search, include_data, extract_data |
+| Web search | **0** | Proposal | web_search_&_browse ("paying for web search is an anti-pattern") |
+| Write actions (MCP write) | **2** | Proposal | connector write-backs |
+| Visuals (Frames, data query) | **2** | Proposal | table query visualizations |
+| Create Frame | **5** | Proposal | new Frame creation |
+| Edit Frame | **2** | Proposal | Frame modification |
+| Orchestrator (run_agent) | **5** | Proposal | run_agent, agent_router |
+| Unsupervised actions (triggers, evals) | **2** | Proposal | scheduled triggers |
+| Platform utilities | **0** | Proposal | extract_data, common_utilities |
 
-Every message is classified as **basic** or **advanced** based on the models and tools used:
+> **Note:** Exact credit weights per tool are **not finalized** — calibration with analytics pending. Current values are from the Metabase simulator dashboard. Key open question: whether to use cumulative credits (sum of all tools) or costliest-tool-wins per message.
 
-- **Basic**: Standard models (Claude Sonnet, GPT-5 Mini, Gemini Flash, Mistral, DeepSeek), no expensive tools, not part of multi-agent chain
-- **Advanced**: Frontier/reasoning models (Claude Opus, GPT-5, o1/o3/o4, Gemini Pro), OR expensive tools (deep research, file/image generation, multi-agent orchestration)
+### Programmatic vs user usage
 
-Classification is computed in code (`classifyMessageTier` in `events.ts`) and sent as `message_tier` property on all events. Metronome can use it to:
-- Apply different credit costs per tier (basic = 1 credit, advanced = 5 credits)
-- Enforce daily quotas per tier (100 basic/day, 50 advanced/month per seat)
-- Filter billing metrics by tier
+All metrics split into programmatic and user variants via `is_programmatic_usage` property:
+- **Programmatic** (`is_programmatic_usage=true`): API key usage, no `user_id`. Stays token-based billing (decided). Currently billed with 30% markup
+- **User** (`is_programmatic_usage=false`): Web/Slack/extension usage, has `user_id`. Billed via credit system when new pricing ships
 
-Sub-agent messages are tagged with `is_sub_agent_message: "true"` (detected via `agenticMessageType` on `UserMessageModel`). This allows metering at parent message level only — deep-dives spawning 100 sub-agents don't charge 100 credits.
+The `origin` property (`web`, `slack`, `api`, `zapier`, etc.) is also available for filtering if needed.
 
-**AWU credit weights per tool category** (from Pricing Push):
-
-| Tool Category | Credits | Examples |
-|---|---|---|
-| RAG / Data retrieval | 1 | search, table query, include data |
-| Write / Visuals | 2 | file generation, image, slideshow |
-| Orchestrators | 5 | run_agent, agent_router |
-| Web search | TBD | web_search_&_browse |
-| Connectors | TBD | salesforce, slack, etc. |
-
-### Custom credit type (Dust Credits)
-
-To be created in Metronome (via UI/support): a non-fiat "Dust Credits" pricing unit. The rate card defines `credit_type_conversions` to set the USD value per credit (target: ~$0.03–$0.05/credit). Customers see and purchase credits; invoices show USD.
-
-## Events Emitted to Metronome
-
-All events emitted for all workspaces when `METRONOME_ENABLED=true`.
-
-### `llm_usage` — per model per agent message
+### `llm_usage` event properties
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -135,7 +262,7 @@ All events emitted for all workspaces when `METRONOME_ENABLED=true`.
 | `is_sub_agent_message` | string | `"true"` if spawned by another agent |
 | `origin` | string | e.g., `web`, `slack`, `api`, `zapier` |
 
-### `tool_use` — per MCP action per agent message
+### `tool_use` event properties
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -145,316 +272,417 @@ All events emitted for all workspaces when `METRONOME_ENABLED=true`.
 | `tool_name` | string | e.g., `websearch`, `search` |
 | `internal_mcp_server_name` | string | e.g., `web_search_&_browse`, empty for external |
 | `mcp_server_id` | string | Server sId |
-| `tool_category` | string | Pricing tier (see below) |
+| `tool_category` | string | Pricing tier (retrieval, deep_research, connectors, generation, agents, actions, platform, reasoning) |
 | `status` | string | `succeeded`, `errored`, `denied`, etc. |
 | `execution_duration_ms` | number | Wall-clock execution time |
 | `is_programmatic_usage` | string | `"true"` or `"false"` |
-| `message_tier` | string | `"basic"` or `"advanced"` (AWU classification) |
+| `message_tier` | string | `"basic"` or `"advanced"` |
 | `is_sub_agent_message` | string | `"true"` if spawned by another agent |
 | `origin` | string | e.g., `web`, `slack`, `api` |
 
-**Tool categories** (8 values, mapped from `internal_mcp_server_name` in `events.ts`):
-- `retrieval` — search, query_tables_v2, data_warehouses, data_sources_file_system, include_data, conversation_files
-- `deep_research` — web_search_&_browse, http_client
-- `reasoning` — (reserved for future reasoning server)
-- `connectors` — confluence, github, slack, salesforce, notion, google_drive, jira, hubspot, etc.
-- `generation` — file_generation, image_generation, sound_studio, slideshow, etc.
-- `agents` — run_agent, agent_router, agent_sidekick_*, agent_management, run_dust_app
-- `actions` — external MCP servers (default for unknown)
-- `platform` — extract_data, common_utilities, toolsets, skill_management, etc.
+### Idempotent retryability
 
-### `seats` — gauge, daily snapshot (analytics only)
+Every event carries a deterministic `transaction_id` derived from business identifiers — **not** random UUIDs. Metronome deduplicates events with the same `transaction_id`.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `workspace_id` | string | Workspace sId |
-| `seat_count` | number | Total active members |
+| Event type | `transaction_id` pattern | Uniqueness guarantee |
+|---|---|---|
+| `llm_usage` | `llm-{workspaceSId}-{agentMessageSId}-{modelId}-{index}` | Unique per model call within a message |
+| `tool_use` | `tool-{workspaceSId}-{actionSId}` | Unique per MCP action (action sId is globally unique) |
+| `registered_users` | `registered_users-{workspaceSId}-{YYYY-MM-DD}` | One per workspace per day |
+| `mau_N` | `mau_N-{workspaceSId}-{YYYY-MM-DD}` | One per threshold per workspace per day |
 
-Not used for billing (seats are tracked via Metronome's seat-based subscriptions). Kept for analytics and migration sanity checks.
+**Retry semantics:**
+- `ingestMetronomeEvents` is fire-and-forget — logs warnings but does not throw
+- Temporal activities can be safely retried — same deterministic `transaction_id` on replay, Metronome deduplicates
+- Gauge crons re-running same day → same `dateKey` → same `transaction_id` → idempotent
 
-### `mau` — gauge, daily snapshot (analytics only)
+**Extended downtime backfill:** Events emitted during outage are lost (fire-and-forget). To backfill, replay Temporal activities for the affected period — deterministic `transaction_id` ensures no double-counting.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `workspace_id` | string | Workspace sId |
-| `mau_count` | number | Users with 1+ message in rolling 30-day window |
+### Metronome billable metrics
 
-## Metronome Configuration (Sandbox)
+Metrics are **shared across all plans** — the same events feed both legacy and new pricing. What differs is which metrics each rate card uses.
 
-Full setup script: `front/docs/metronome-sandbox-setup.sh`
+| Billable Metric | Aggregation | Filter | Used by |
+|--------|-------------|--------|---------|
+| LLM Provider Cost (Programmatic) | SUM on `cost_micro_usd` | `is_programmatic_usage=true` | Legacy + New |
+| LLM Provider Cost (User) | SUM on `cost_micro_usd` | `is_programmatic_usage=false` | New pricing only |
+| Tool Invocations (Programmatic) | COUNT (succeeded only) | grouped by `tool_category` | Legacy (0-priced) + New |
+| Tool Invocations (User) | COUNT (succeeded only) | grouped by `tool_category` | New pricing only |
+| Registered Users | MAX on `member_count` | — | Legacy only (drives bracket-based free credit commit) |
+| MAU_1 | MAX on `mau_count` (1+ msg threshold) | — | Legacy enterprise (MAU_1 plans) |
+| MAU_5 | MAX on `mau_count` (5+ msg threshold) | — | Legacy enterprise (MAU_5 plans) |
+| MAU_10 | MAX on `mau_count` (10+ msg threshold) | — | Legacy enterprise (MAU_10 plans) |
 
-### Billable Metrics
+### Metronome products
 
-| Metric | Aggregation | Filter |
-|--------|-------------|--------|
-| LLM Provider Cost (Programmatic) | SUM on `cost_micro_usd` | `is_programmatic_usage=true` |
-| LLM Provider Cost (User) | SUM on `cost_micro_usd` | `is_programmatic_usage=false` |
-| Tool Invocations (Programmatic) | COUNT (succeeded only) | grouped by `tool_category` |
-| Tool Invocations (User) | COUNT (succeeded only) | grouped by `tool_category` |
-| Active Seats | MAX on `seat_count` | analytics only |
-| Monthly Active Users | MAX on `mau_count` | analytics only |
-
-### Products
+#### Shared products (used by both legacy and new pricing)
 
 | Product | Type | Pricing Key | Notes |
 |---------|------|-------------|-------|
-| AI Usage (Programmatic) | USAGE | — | quantity_conversion ÷1M (micro-USD → dollars) |
-| AI Usage (User) | USAGE | — | quantity_conversion ÷1M |
-| Tool Usage (Programmatic) | USAGE | `tool_category` | dimensional pricing by category |
-| Tool Usage (User) | USAGE | `tool_category` | dimensional pricing by category |
-| Pro Seat | SUBSCRIPTION | — | $29/mo |
-| Max Seat | SUBSCRIPTION | — | $99/mo |
+| AI Usage (Programmatic) | USAGE | — | quantity_conversion ÷1M (micro-USD → dollars). Priced in USD on legacy, AWU on new |
+| Tool Usage (Programmatic) | USAGE | `tool_category` | Dimensional pricing by category. 0-priced on legacy, AWU weights on new |
 
-### Pro Plan Rate Card
+#### Legacy-only products
 
-| Product | Price (cents) | Notes |
-|---------|--------------|-------|
-| Pro Seat | 2900 ($29/mo) | FLAT + MONTHLY billing |
-| Max Seat | 9900 ($99/mo) | FLAT + MONTHLY billing |
-| AI Usage (Programmatic) | 130 ($1.30 per $1 cost) | 30% markup on provider cost |
-| Tool Usage (Programmatic) | 0 per category | Ready for per-category pricing |
+| Product | Type | Pricing Key | Notes |
+|---------|------|-------------|-------|
+| Legacy Seat ($29) | SUBSCRIPTION | — | $29/mo flat. Maps to current Pro plan |
+| Legacy Seat ($39) | SUBSCRIPTION | — | $39/mo flat. Maps to current Business/SSO plan |
+| Legacy Enterprise Seat | SUBSCRIPTION | — | $45/mo flat (negotiable) |
+| MAU Reporting | USAGE | — | For MAU-based enterprise contracts only |
 
-User products (AI Usage User, Tool Usage User) are ready but not on any rate card yet — add when new pricing ships.
+#### New pricing products
 
-### Pro Plan Package
+| Product | Type | Pricing Key | Notes |
+|---------|------|-------------|-------|
+| Pro Seat | SUBSCRIPTION | — | $24/yr ($30/mo) + 5,000 AWU/month |
+| Max Seat | SUBSCRIPTION | — | $100/yr ($125/mo) + 20,000 AWU/month |
+| AI Usage (User) | USAGE | — | quantity_conversion ÷1M. Priced in AWU |
+| Tool Usage (User) | USAGE | `tool_category` | Dimensional pricing in AWU by AWU weights |
 
-Bundles rate card + seat subscriptions into a reusable template:
-- 2 seat-based subscriptions (Pro, Max) with `seat_group_key: "user_id"`
-- `collection_schedule: ADVANCE`, prorated, bill immediately on seat changes
-- Provisioning: `package_alias: "pro-plan"`
+### Rate cards
 
-## Implementation Blocks
+#### Legacy rate cards (grandfathered plans, Stripe-equivalent pricing on Metronome)
 
-### Block 0: Metering Infrastructure ✅ Done
+**Legacy Pro Rate Card** (`legacy-pro-29`):
 
-**Files created/modified:**
-- `front/lib/metronome/client.ts` — HTTP client for ingest API + customer creation
-- `front/lib/metronome/events.ts` — Event builders with tool category mapping + user_id
-- `front/lib/api/config.ts` — `METRONOME_ENABLED` + `METRONOME_API_KEY`
-- `front/temporal/usage_queue/activities.ts` — Emit events for all usage; daily cron for gauges
-- `front/temporal/usage_queue/workflows.ts` — `emitMetronomeGaugeEventsWorkflow`
-- `front/temporal/usage_queue/client.ts` — Schedule launcher (daily prod, 10min dev)
-- `front/temporal/usage_queue/worker.ts` — Start schedule on worker boot
-- `front/lib/plans/usage/mau.ts` — Exported `countActiveUsersForPeriodInWorkspace`
-- `front/scripts/provision_metronome_customers.ts` — Migration script for existing workspaces
-- `front/pages/api/stripe/webhook.ts` — Provision Metronome customer on `checkout.session.completed`
-- `front/lib/models/plan.ts` — Added `metronomePackageAlias` column
-- `front/types/plan.ts` — Added `metronomePackageAlias` to `PlanType`
-- `front/lib/plans/renderers.ts` — Render `metronomePackageAlias`
-- `front/docs/metronome-sandbox-setup.sh` — Full Metronome sandbox setup reference
+| Product | Price | Notes |
+|---------|-------|-------|
+| Legacy Seat ($29) | $29/mo (2900 cents) | FLAT + MONTHLY |
+| AI Usage (Programmatic) | $1.30 per $1 cost | 30% markup on provider cost, in USD |
+| Tool Usage (Programmatic) | $0 per category | Not billed on legacy |
 
-**Key fix:** MAU/seats gauge events were only triggered by membership changes. Added a daily Temporal cron that reports for all workspaces, fixing the stale data gap for stable workspaces.
+**Legacy Business Rate Card** (`legacy-business-39`):
 
-### Block 1: Billing Switchover
+| Product | Price | Notes |
+|---------|-------|-------|
+| Legacy Seat ($39) | $39/mo (3900 cents) | FLAT + MONTHLY, includes SSO |
+| AI Usage (Programmatic) | $1.30 per $1 cost | 30% markup on provider cost, in USD |
+| Tool Usage (Programmatic) | $0 per category | Not billed on legacy |
 
-**Plan-based gating:** `metronomePackageAlias` on `PlanModel` determines billing mode. No feature flag.
+**Legacy Enterprise Rate Card** (per-customer, manually configured):
 
-**New subscriptions:** When `checkout.session.completed` fires for a plan with `metronomePackageAlias`:
-1. Create Metronome customer (already implemented)
-2. Create Metronome contract using `package_alias` (to implement)
-3. Skip Stripe subscription creation
+| Product | Price | Notes |
+|---------|-------|-------|
+| Legacy Enterprise Seat | $45/mo (negotiable) | FLAT + MONTHLY |
+| MAU Reporting | $45/MAU/mo (negotiable) | For MAU-based contracts only |
+| AI Usage (Programmatic) | $1.30 per $1 cost (negotiable) | Markup varies per deal |
+| Tool Usage (Programmatic) | $0 per category | Not billed on legacy |
 
-**Existing workspace migration:**
-1. Set `metronomePackageAlias` on the plan
-2. Wait for current Stripe billing cycle to end
-3. On cycle renewal (`customer.subscription.updated` webhook):
-   - Detect plan has `metronomePackageAlias`
-   - Create Metronome contract
-   - Migrate remaining internal credits to Metronome commits (free → prepaid priority 1, committed → prepaid priority 2, PAYG → postpaid priority 3)
-   - Freeze internal credits
-   - Cancel Stripe subscription items (keep Stripe customer)
+> **Note:** Legacy rate cards replicate current Stripe billing exactly. The `registered_users` metric drives a bracket-based free credit commit on legacy plans (1–10 users → $5/user, 11–50 → $2/user, 51–100 → $1/user) via `syncMetronomeCreditGrantToDb`.
 
-**Skip existing billing for Metronome workspaces:**
-- `recordUsageActivity`: skip `reportUsageForSubscriptionItems` (Stripe MAU/seat reporting)
-- `trackProgrammaticUsageActivity`: skip `trackProgrammaticCost` (internal credit consumption)
-- Both continue to emit Metronome events regardless
+#### New pricing rate card (credit-based)
 
-### Block 2: Credit Blocking for All Usage
+**Business Plan Rate Card** (`business-plan`):
 
-Today only programmatic usage is blocked when credits run out. With Metronome, ALL usage (including web/Slack) must be gated.
+| Product | Price | Notes |
+|---------|-------|-------|
+| Pro Seat | $24/yr ($30/mo) | FLAT + MONTHLY, includes 5,000 AWU/month (INDIVIDUAL) |
+| Max Seat | $100/yr ($125/mo) | FLAT + MONTHLY, includes 20,000 AWU/month (INDIVIDUAL) |
+| AI Usage (Programmatic) | ~1 AWU per $0.01 cost (0–10% markup) | Provider cost → AWU conversion |
+| AI Usage (User) | ~1 AWU per $0.01 cost (0–10% markup) | Same formula as programmatic |
+| Tool Usage (Programmatic) | Per category in AWU | AWU weights (see tool credit weights table) |
+| Tool Usage (User) | Per category in AWU | AWU weights (see tool credit weights table) |
 
-**Redis-cached credit balance:**
-- `getMetronomeCreditBalance(workspaceSId)` / `hasMetronomeCredits(workspaceSId)`
-- Cache TTL ~60 seconds
-- Updated by: Metronome webhooks (real-time) + periodic poll (fallback in daily gauge cron)
+> **Note:** Exact intelligence markup (0–10% range) not yet decided. Tool credit weights still being calibrated.
 
-**Pre-flight check in agent loop:**
-```
-if isMetronomeBilled(plan):
-  if not hasMetronomeCredits(workspace.sId):
-    block message with "workspace out of credits" error
-```
+### Contracts (packages)
 
-**Metronome webhook handler** (`front/pages/api/metronome/webhook.ts`):
+#### Legacy contracts (grandfathered)
+
+Each legacy contract matches an existing Stripe plan 1:1. Created during migration Phase 4 when workspaces move from Stripe to Metronome.
+
+| Package | Maps to | Rate card | Seat type | Credit model |
+|---------|---------|-----------|-----------|--------------|
+| `legacy-pro-29` | Pro $29/mo | Legacy Pro | Legacy Seat ($29) | Free credits via `registered_users` bracket formula |
+| `legacy-business-39` | Business $39/mo | Legacy Business | Legacy Seat ($39) | Free credits via `registered_users` bracket formula |
+| `legacy-enterprise-mau` | Enterprise (MAU) | Legacy Enterprise | MAU Reporting | Custom per deal |
+| `legacy-enterprise-seat` | Enterprise (seat) | Legacy Enterprise | Legacy Enterprise Seat | Custom per deal |
+
+#### New pricing contracts
+
+| Package | Target | Rate card | Seat types | Credit model |
+|---------|--------|-----------|------------|--------------|
+| `business-plan` | New Business signups | Business Plan | Pro ($24/yr) + Max ($100/yr) | 5,000/20,000 per-seat INDIVIDUAL + workspace pool |
+| `enterprise-plan` | New Enterprise deals | Custom per deal | Custom seat types | Pooled workspace credits (negotiable) |
+
+> **Note:** Enterprise contract structure (seats+caps vs. platform fee + pools) not yet decided. Enterprise contracts likely created manually via Metronome UI/API by Ops, not via packages.
+
+## Seats Management
+
+Seats replace MAU-based pricing. Every workspace member gets a seat automatically.
+
+**Seat lifecycle:**
+
+| Event | Action |
+|-------|--------|
+| Workspace subscribes | All existing members get Pro seats automatically |
+| New member joins | Auto-assign Pro seat (`addMetronomeProSeat`, fire-and-forget) |
+| Member removed | Remove seat (`removeMetronomeSeat`, fire-and-forget) |
+| Admin upgrades to Max | Remove from Pro subscription + add to Max subscription |
+| Admin downgrades to Pro | Remove from Max subscription + add to Pro subscription |
+
+**Data model (pending):** `seatType` column on membership model (default `"pro"`). Admin endpoint `PATCH /api/w/[wId]/members/[userId]/seat-type` for upgrade/downgrade.
+
+**Metronome-side:** Seat subscriptions configured in the package with `seat_group_key: "user_id"`, `is_prorated: true`, `collection_schedule: ADVANCE`. Metronome handles proration when seats are added/removed mid-cycle.
+
+**Enterprise seats (open):** Two options on the table:
+1. Seat-based with credit caps and negotiable allocation (e.g., "Heavy" = 200 advanced/month, "Light" = 10)
+2. Platform access fee + credit pools that admins allocate per user
+
+Enterprise credits would be **pooled** at workspace level (vs. per-user on Business).
+
+> **Note:** Enterprise seat structure not yet decided. Metronome does not natively support seat-based tiered pricing (0–30 seats one price, 30–60 another) — Dust must own this logic until Metronome builds it. Logged as product request.
+
+## Credit Pool
+
+### Credit types and consumption order
+
+| Credit Type | Metronome Concept | Priority | Scope | Description |
+|-------------|-------------------|----------|-------|-------------|
+| **Free (seat allocation)** | Credits (recurring) | 1 (consumed first) | Per-user cap | 5,000/month (Pro) or 20,000/month (Max). Hard-capped per user — a Pro user can't exceed 5,000 even if other users haven't touched theirs |
+| **Committed (purchased pool)** | Commits (PREPAID) | 2 | Workspace-wide | Admin-purchased credits shared across all members. Fallback when individual allocation exhausted |
+| **PAYG (overage)** | Commits (POSTPAID) | 3 | Workspace-wide | Pay-as-you-go overage if enabled |
+
+**Consumption flow:** User burns through their individual seat allocation first → falls back to workspace purchased pool → hits overage (if enabled) or gets blocked.
+
+Programmatic usage (no `user_id`) draws directly from the workspace pool (committed/PAYG), not from any individual seat allocation.
+
+### Seat credit allocation
+
+Credits are granted per-seat automatically each billing cycle via Metronome's recurring credit mechanism in the package:
+- **Pro seat**: 5,000 AWU/month
+- **Max seat**: 20,000 AWU/month
+
+Per-seat, `INDIVIDUAL` allocation — each user has their own cap. Synced to Dust DB via `syncMetronomeCreditGrantToDb` on webhook.
+
+### Purchased credits
+
+Admins can buy additional credits that go into the shared workspace pool. Available for any member who has exhausted their individual allocation, or for programmatic usage.
+
+### Queryable balances
+
+- Per-seat balance: via Metronome `/contracts/seatBalances/list`
+- Workspace pool balance: via Metronome credit balance APIs
+
+### Overage pricing
+
+Per-credit at list price ($0.01). Enterprise: negotiable volume discount (e.g., $0.0075 at $500K ACV).
+
+> **Note:** Overage gross margin not yet defined. spolu requested simulation with 25% usage decrease for bucket 3, 50% for overaging users.
+
+## User Limit Handling
+
+**Two-level credit check:** Enforcement needs to account for both per-user seat allocation and workspace pool:
+
+1. Metronome sends webhooks when balances change:
+   - `alerts.low_remaining_seat_balance_reached` → per-user seat allocation exhausted
+   - `alerts.low_remaining_credit_balance_reached` → workspace pool exhausted
+2. Dust backend maintains **two Redis caches** (TTL ~60s):
+   - Per-user seat credit balance: `hasUserSeatCredits(workspaceSId, userSId)`
+   - Workspace pool balance: `hasWorkspacePoolCredits(workspaceSId)`
+3. Pre-flight check in agent loop:
+   ```
+   if isMetronomeBilled(plan):
+     if not hasUserSeatCredits(workspace.sId, user.sId)
+        and not hasWorkspacePoolCredits(workspace.sId):
+       block message with "out of credits" error
+   ```
+   A user with exhausted seat credits can still send messages if the workspace pool has balance.
+4. When credits are replenished (new billing period, credit purchase), `commit.segment.start` / `credit.create` webhook updates both caches.
+
+**UX thresholds:** Warn at **80%** of individual seat allocation, hard-block when both individual and workspace pool at **0%**.
+
+**Long-running agent loops:** An agent may start with credits available but exhaust them mid-run. Current approach: allow the run to complete (post-hoc billing), block only new messages. Metronome supports overage billing natively.
+
+> **Note:** Grace period on credit exhaustion (hard-block vs. 24h grace vs. $X overage cap) is an open product decision.
+
+**Metronome webhook events:**
 
 | Event | Action |
 |-------|--------|
 | `alerts.low_remaining_credit_balance_reached` | Update Redis: credits exhausted |
 | `alerts.low_remaining_seat_balance_reached` | Update Redis: per-seat credits exhausted |
 | `alerts.spend_threshold_reached` | Update Redis: approaching limit |
-| `commit.segment.start` | Update Redis: credits available (new period) |
-| `credit.create` | Update Redis: credits available (purchase) |
+| `commit.segment.start` | Sync credit grant to DB; update Redis: credits available |
+| `credit.create` | Sync credit grant to DB; update Redis: credits available |
 | `contract.start` | Activate Metronome billing for workspace |
 | `contract.end` | Downgrade workspace, schedule scrub |
 | `invoice.finalized` | Log/record invoice |
 | `invoice.billing_provider_error` | Alert on-call |
 
-### Block 3: Seat Types
+## UI Changes
 
-Two types: **Pro** ($29/mo, 200 credits/mo) and **Max** ($99/mo, 1000 credits/mo).
+### Onboarding / Subscribe page
 
-**Data model:** Add `seatType` column to membership model. Default `"pro"` for backward compat.
+`SubscribePage` shows a "Subscribe (usage-based)" card alongside existing per-seat billing options. Depending on the plan type selected:
+
+- **Existing plans (Stripe):** Redirect to Stripe Checkout with recurring subscription
+- **Metronome plan:** Redirect to Stripe Checkout in **setup mode** (payment method capture only, no recurring subscription). On success, `PaymentProcessingPage` calls `metronome-finalize` to provision Metronome customer + contract + seats
+
+### Manage Subscription page
+
+`SubscriptionPage` detects `metronomePackageAlias` and conditionally renders:
+
+- **Stripe-billed:** Stripe portal links, pricing table, billing period toggle
+- **Metronome-billed:** `MetronomeSubscriptionSection` showing:
+  - Pro/Max seat counts and monthly cost estimate
+  - Seat type management (upgrade/downgrade Pro ↔ Max)
+  - Cancel subscription button (ends Metronome contract)
+
+### Credits page
+
+Currently shows programmatic credits only. To be extended to show:
+- Per-seat credit balance (via Metronome `/contracts/seatBalances/list`)
+- Workspace credit pool balance
+- Credit purchase option (committed credits)
+- Credit purchase history
+
+> **Note:** Post-launch operational burden expected to be high (~1h/day support questions per Pigment's experience). Plan for admin observability dashboard (workspace + user-level usage tracking, forecasting, agent ROI) requested by sales.
+
+### Usage graphs
+
+Currently: programmatic usage graph only. To be refactored:
+- Replace internal usage tracking with Metronome API-backed data
+- Extend to all usage (not just programmatic) — per-user, per-model, per-tool breakdowns
+- Leverage Metronome's `/usage` APIs for consistent billing-grade data
+- Show credit estimate during deep-dive planning phase before execution (proposed UX)
+
+## Implementation / Code Pointers
+
+### Event emission
+
+Usage events are sent via Temporal workflows:
+- `front/temporal/usage_queue/activities.ts` — `recordUsageActivity` emits `llm_usage` + `tool_use` events per agent message; `emitMetronomeGaugeEventsForAllWorkspacesActivity` emits daily `registered_users` + `mau` gauges for all workspaces
+- Events are built by `front/lib/metronome/events.ts` and ingested via `front/lib/metronome/client.ts` → `ingestMetronomeEvents`
+- Only **parent messages** sent to Metronome, **not child/sub-agent messages** (~2% of messages are orchestrator type)
+
+### Seat sync
+
+Hooked directly into `front/lib/resources/membership_resource.ts`:
+- `createMembership` → `addMetronomeProSeat` (fire-and-forget)
+- `revokeMembership` → `removeMetronomeSeat` (fire-and-forget)
+
+Seat functions in `front/lib/metronome/seats.ts` resolve product IDs dynamically from Metronome API by product name.
+
+### Subscription flow
+
+- Self-serve: `PATCH /api/w/[wId]/subscriptions` (`subscribe_metronome`) → Stripe setup checkout → `POST /api/w/[wId]/subscriptions/metronome-finalize`
+- Poke upgrade: `front/pages/api/poke/workspaces/[wId]/upgrade.ts`
+- Contract management: `front/pages/api/w/[wId]/metronome/contract.ts`
+
+### Limit handling
+
+- Webhook endpoint (to create): `front/pages/api/metronome/webhook.ts`
+- Redis cache for credit balance (to create): `front/lib/metronome/credit_balance.ts`
+- Pre-flight credit check: to be added in agent loop entry point
+- Consideration: long-running agent loops may start with credits and exhaust them mid-run — allow completion, block new messages only
+
+### Credit sync
+
+`front/lib/credits/free.ts` → `syncMetronomeCreditGrantToDb`: called from Metronome webhook when a credit grant is applied. Takes the Metronome grant ID, amount, and dates; creates a `CreditResource` in the DB keyed by grant ID for idempotency. **Used for legacy plans only** (bracket formula based on `registered_users` gauge). New plans use per-seat credit allocation managed entirely in Metronome.
+
+### Plan-based gating
 
 ```typescript
-type SeatType = "pro" | "max";
+function isMetronomeBilled(plan: PlanType): boolean {
+  return plan.metronomePackageAlias != null;
+}
 ```
 
-**Seat lifecycle:**
+`metronomePackageAlias` on `PlanModel`: `null` → Stripe billing, `"business-plan"` → Metronome billing. Each Dust plan maps 1:1 to a Metronome package.
 
-| Event | Action |
-|-------|--------|
-| Workspace subscribes to Pro Plan | All existing members get Pro seats automatically |
-| New member joins | Auto-assign Pro seat (`add_seat_ids` on Pro subscription) |
-| Member removed | Remove their seat (`remove_seat_ids`) |
-| Admin upgrades user to Max | `remove_seat_ids` from Pro + `add_seat_ids` on Max |
-| Admin downgrades user to Pro | `remove_seat_ids` from Max + `add_seat_ids` on Pro |
+### Metronome limitations
 
-**Key rule:** Pro seats are automatic (every member gets one). Max seats are explicit (admin-purchased on demand).
+Three features **not natively supported** (logged as product requests):
+1. **Seat-based tiered pricing** (0–30 seats one price, 30–60 another) — Dust must own this logic
+2. **Payment-gated commitments for bank transfers** — only credit cards/ACH for initial charges
+3. **Daily credit allowances/tiering** — possible but not ergonomic
 
-**Code changes needed:**
+## Metronome Objects Deployment
 
-| Location | Change |
-|----------|--------|
-| `checkout.session.completed` | After creating contract, iterate all workspace members → `add_seat_ids` on Pro seat subscription for each |
-| `signup.ts` (member joins) | Add a Pro seat for the new user |
-| `membership.ts` (member revoked) | Remove the seat from whichever subscription they're on |
-| New admin endpoint | `PATCH /api/w/[wId]/members/[userId]/seat-type` — upgrade/downgrade between Pro ↔ Max |
-| Membership model | Add `seatType` column (default `"pro"`) |
+### Sandbox setup
 
-**Metronome integration:**
-- Seats tracked natively via seat-based subscriptions (configured in package)
-- `seat_group_key: "user_id"` — matches `user_id` in usage events
-- Per-seat credit allocation: 200 Dust Credits/mo (Pro), 1000 Dust Credits/mo (Max) via recurring credits with `INDIVIDUAL` allocation
-- Balance queryable via `/contracts/seatBalances/list` (for UI)
-- `low_remaining_seat_balance_reached` webhook for alerts
+Full configuration script: `front/docs/metronome-sandbox-setup.sh`. Creates all metrics, products, rate cards, and packages via Metronome API.
 
-**Credits per seat type:**
-- Pro seat: 200 Dust Credits/month (auto-granted per seat)
-- Max seat: 1000 Dust Credits/month (auto-granted per seat)
-- Credits are per-seat (INDIVIDUAL allocation), not pooled
-- Usage events with `user_id` draw down from that user's seat credits
-- Programmatic usage (no `user_id`) draws from workspace-level credits/commits
+See "Metronome billable metrics", "Metronome products", "Rate cards", and "Contracts" sections above for the full object definitions.
 
-**Feature limits per seat type:** Enforced in code (faster than querying Metronome), similar to current plan limits + feature flag pattern.
+### Deployment approach
 
-### Block 4: Contract Provisioning
+Currently deployed via setup script (`metronome-sandbox-setup.sh`). Consider Terraforming Metronome objects for production:
+- Metrics, products, rate card definitions as code
+- Package configurations versioned alongside plan changes
+- Environment-specific configs (sandbox vs production IDs)
+- Legacy and new pricing packages deployed in parallel
 
-**New workspace signup (Metronome-billed):**
-1. `checkout.session.completed` fires (Stripe Checkout)
-2. Create Metronome customer with Stripe customer ID linked (already implemented)
-3. Create Metronome contract: `package_alias: plan.metronomePackageAlias`
-4. Iterate all workspace members → `add_seat_ids` on Pro seat subscription for each
-4. Assign initial seats on the contract
+## Migration
 
-**Contract configuration via packages:**
-- Each plan maps to a Metronome package (immutable template)
-- Package contains: rate card, seat subscriptions, recurring credits
-- New pricing version = new package with same alias + future effective date
+### Two-step approach (decided)
 
-### Block 5: Webhook Rewrite
+1. **Billing platform migration first:** Grandfather all existing clients on identical pricing via Metronome. No pricing changes
+2. **Release new pricing:** Once Metronome is stable, ship new credit-based plans. New rate cards for new signups first, then existing customers
 
-**Stripe webhook changes** (for Metronome-billed workspaces):
+### Contract strategy
 
-| Stripe Event | Current behavior | Metronome-billed behavior |
-|---|---|---|
-| `checkout.session.completed` | Create Stripe subscription | Create Metronome customer + contract via package (no Stripe subscription) |
-| `invoice.paid` | Grant free credits | No-op (Metronome handles credits) |
-| `invoice.payment_failed` | Email admins, track failure | Keep as-is (Stripe still collects payment on Metronome invoices) |
-| `customer.subscription.updated` | Report usage, allocate PAYG | Trigger switchover if mid-migration; otherwise no-op |
-| `customer.subscription.deleted` | End subscription, schedule scrub | No-op (contract.end handles this) |
-| `charge.dispute.created` | Log dispute | Keep as-is (Stripe-level) |
+See "Contracts (packages)" section above for the full legacy and new pricing package definitions.
 
-**Stripe Checkout stays permanently** as the payment method capture entry point.
+- **Phase 4 (migration):** Each existing Stripe plan gets a matching legacy Metronome package. Workspaces migrated 1:1 with identical pricing
+- **Phase 5 (new pricing):** New signups get `business-plan` package with AWU credit pricing. Existing workspaces can be migrated by switching `metronomePackageAlias` from legacy to new package
 
-**New Metronome webhook endpoint:** `front/pages/api/metronome/webhook.ts` (see Block 2 for event list).
+### Phased rollout (decided)
 
-## Implementation Sequence
+| Phase | Duration | Scope |
+|-------|----------|-------|
+| **1. Shadow mode** | Active now | All workspaces emit events to Metronome; billing 100% on Stripe |
+| **2. Internal dogfood** | ~1 week | Enable on Dust's own workspace(s); validate invoices, credits, seat reporting |
+| **3. Controlled rollout** | ~1–2 weeks | 5–10 friendly/pilot workspaces (Pro + Enterprise mix) |
+| **4. Full migration** | ~2–3 weeks | Progressive batches: 10% → 25% → 50% → 100% at billing cycle boundaries |
+| **5. New pricing** | Post-migration | New rate cards for new signups, then existing customers |
+| **6. Cleanup** | TBD | Remove old Stripe billing code, conditional checks, old plan definitions |
 
-```
-Block 0: Metering infrastructure              ✅ Done
-    │
-    ▼
-Block 1: Plan-based billing switchover        ← Start here
-    │
-    ├──▶ Block 2: Credit blocking              (can parallel with Block 3)
-    │
-    ├──▶ Block 3: Seat types (pro/max)         (can parallel with Block 2)
-    │
-    ▼
-Block 4: Contract provisioning                 (depends on Block 1)
-    │
-    ▼
-Block 5: Webhook rewrite                       (depends on Block 4)
-    │
-    ▼
-Migration: Roll out plan by plan
-    │
-    ▼
-Cleanup: Remove old Stripe billing code
-```
+### Credit migration rules
 
-Blocks 2 and 3 can be parallelized. Estimated: 1 month with 4 engineers, then cooling with 1-2 engineers.
+- Migrate remaining balance only (not full amount)
+- Preserve expiration dates and priority order (free → committed → PAYG)
+- Freeze internal credits after migration to avoid double-consumption
 
-## Current Stripe Billing — Reference
+### Existing programmatic usage
 
-For understanding what gets replaced:
-
-**Seat reporting (PER_SEAT plans):** `stripe.subscriptionItems.update({ quantity })` — triggered by membership changes, rate-limited 1/hour. Point-in-time quantity.
-
-**MAU reporting (MAU_X enterprise plans):** `stripe.subscriptionItems.createUsageRecord()` with `action: "set"` — also triggered by membership changes only (gap: MAU can change without membership changes, fixed by our daily cron).
-
-**Credit system:** Free → committed → PAYG → excess, consumed in priority order. Only programmatic usage is billed. `DUST_MARKUP_PERCENT = 30%` applied in code.
-
-**MAU thresholds:** `MAU_1`/`MAU_5`/`MAU_10` — minimum messages per month to count as active user (1, 5, or 10). Negotiated per enterprise deal.
+Current programmatic credits continue for Stripe-billed workspaces. For Metronome-billed workspaces:
+- `reportUsageForSubscriptionItems` (Stripe MAU/seat reporting): skip
+- `trackProgrammaticCost` (internal credit consumption): skip — Metronome tracks credits
+- Free credit grants: replaced by per-seat allocation (5,000 Pro / 20,000 Max). Legacy `registered_users`-based bracket formula kept only for grandfathered plans via `syncMetronomeCreditGrantToDb`
+- Usage graphs: refactor from internal tracking to Metronome API-backed data
 
 ## Open Questions
 
-1. **Custom credit type**: Need to create "Dust Credits" pricing unit in Metronome (via UI or support). Required for AWU credit-based billing.
+### Critical (blocking)
 
-2. **AWU credit weights**: Final credit weights per tool category TBD from Pricing Push (target: ~$0.03–$0.05 per credit, basic message = 1 credit, advanced = 1–5 credits).
+| # | Question | Status |
+|---|----------|--------|
+| 1 | **Exact credit weights per tool category** | Not finalized — calibration with analytics pending |
+| 2 | **Exact intelligence markup** (0–10% range decided, exact value TBD) | Founders to decide |
+| 3 | **Cumulative vs costliest-tool-wins** for multi-tool messages | Théo leans cumulative; earlier doc says costliest. Needs reconciliation |
+| 4 | **Enterprise seat structure**: seats+caps vs. platform fee + pools | Two options on table |
+| 5 | **Overage credit gross margin** | Requested by spolu; unanswered |
+| 6 | **Additive vs step/multiplicative model final confirmation** | Additive = leaning decision; spolu may prefer step-based |
 
-3. **Sub-agent billing**: Confirmed direction is parent-message-only. Events tagged with `is_sub_agent_message` — Metronome metrics should filter to `is_sub_agent_message=false`. Exact implementation TBD.
+### Important (in progress)
 
-4. **Grace period on credit exhaustion**: Hard-block at zero or allow overage? Metronome supports overage billing natively.
+| # | Question | Leaning |
+|---|----------|---------|
+| 7 | Stop MAU billing → traditional seats? | **Yes** — confirm with AEs |
+| 8 | Viewer seat for Business plan? | **No** — free credits on join covers light use |
+| 9 | Grace period on credit exhaustion? | Undecided (hard-block vs. overage) |
+| 10 | RAG pricing at 1 credit — too much? (50% of tool credit consumption) | Flagged, needs calibration |
+| 11 | Should all actions be priced? (spolu objects to pricing "edit frame") | Under debate |
+| 12 | Free tier: Metronome customer for free workspaces? | Probably not |
+| 13 | Enterprise: credits or direct USD? (ElevenLabs abandoned credits for enterprise) | Open |
+| 14 | Business plan seat cap at 100–150? | Sales suggestion, unconfirmed |
+| 15 | FX ($/€) impact on per-credit pricing | Flagged, not analyzed |
 
-5. **Free tier**: Do free workspaces get a Metronome customer? Probably not — gate behind paid subscription.
+### Validation (pending)
 
-6. **Enterprise plans**: Custom contracts (no package) or per-enterprise packages? Likely manual contract creation via Metronome UI/API by Ops.
-
-7. **Basic/Advanced daily quotas**: AWU proposes per-seat daily quotas (100 basic/day, 50 advanced/month). Daily quotas need code-side enforcement (Metronome handles monthly credit budgets, not daily rate limits).
-
-## Files Reference
-
-| File | Status | Block |
-|------|--------|-------|
-| `front/lib/metronome/client.ts` | Created | 0 |
-| `front/lib/metronome/events.ts` | Created | 0 |
-| `front/lib/api/config.ts` | Modified | 0 |
-| `front/lib/plans/usage/mau.ts` | Modified | 0 |
-| `front/temporal/usage_queue/activities.ts` | Modified | 0 |
-| `front/temporal/usage_queue/workflows.ts` | Modified | 0 |
-| `front/temporal/usage_queue/client.ts` | Modified | 0 |
-| `front/temporal/usage_queue/worker.ts` | Modified | 0 |
-| `front/scripts/provision_metronome_customers.ts` | Created | 0 |
-| `front/pages/api/stripe/webhook.ts` | Modified | 0 |
-| `front/lib/models/plan.ts` | Modified | 0 |
-| `front/types/plan.ts` | Modified | 0 |
-| `front/lib/plans/renderers.ts` | Modified | 0 |
-| `front/lib/plans/free_plans.ts` | Modified | 0 |
-| `front/lib/plans/pro_plans.ts` | Modified | 0 |
-| `front/lib/plans/plan_codes.ts` | Modified | 0 |
-| `front/docs/metronome-sandbox-setup.sh` | Created | 0 |
-| `front/docs/metronome-design-doc.md` | Created | 0 |
-| `front/lib/metronome/credit_balance.ts` | To create | 2 |
-| `front/pages/api/metronome/webhook.ts` | To create | 2, 5 |
-| `front/lib/models/membership.ts` | To modify | 3 |
+- Design partner interviews (Laurel, Vanta, Alan, Holy, Back Market) — not yet booked
+- Before/after pricing impact for US customers (Persona, Whatnot, Watershed) — pending analytics
+- Rollback plan from Metronome mid-billing-cycle — not yet defined

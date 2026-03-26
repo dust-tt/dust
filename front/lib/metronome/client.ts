@@ -105,21 +105,41 @@ export async function createMetronomeCustomer({
       body: JSON.stringify({
         name: workspaceName,
         ingest_aliases: [workspaceSId],
-        customer_billing_provider_configurations: [
-          {
-            billing_provider: "stripe",
-            delivery_method: "direct_to_billing_provider",
-            configuration: {
-              stripe_customer_id: stripeCustomerId,
-              stripe_collection_method: "charge_automatically",
-            },
-          },
-        ],
+        ...(stripeCustomerId
+          ? {
+              customer_billing_provider_configurations: [
+                {
+                  billing_provider: "stripe",
+                  delivery_method: "direct_to_billing_provider",
+                  configuration: {
+                    stripe_customer_id: stripeCustomerId,
+                    stripe_collection_method: "charge_automatically",
+                  },
+                },
+              ],
+            }
+          : {}),
       }),
     });
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
+      // 409 means a customer with this ingest alias already exists — extract
+      // the conflicting ID and return it rather than failing.
+      if (response.status === 409) {
+        try {
+          const parsed = JSON.parse(body) as { conflicting_id?: string };
+          if (parsed.conflicting_id) {
+            logger.info(
+              { workspaceSId, metronomeCustomerId: parsed.conflicting_id },
+              "[Metronome] Customer already exists, reusing conflicting ID"
+            );
+            return new Ok({ id: parsed.conflicting_id } as MetronomeCustomer);
+          }
+        } catch {
+          // fall through to generic error
+        }
+      }
       logger.error(
         {
           status: response.status,
@@ -387,6 +407,64 @@ export async function editMetronomeContractSeats({
 }
 
 /**
+ * End (cancel) a Metronome contract at the end of the current billing period.
+ * Pass endingBefore to end at a specific time, or omit for end-of-period.
+ */
+export async function endMetronomeContract({
+  metronomeCustomerId,
+  contractId,
+  endingBefore,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  endingBefore?: string;
+}): Promise<Result<void, Error>> {
+  const apiKey = config.getMetronomeApiKey();
+  if (!config.isMetronomeEnabled() || !apiKey) {
+    return new Err(new Error("Metronome is not enabled"));
+  }
+
+  try {
+    const response = await fetch(`${METRONOME_BASE_URL}/contracts/end`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        ...(endingBefore ? { ending_before: endingBefore } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      logger.error(
+        { status: response.status, body, metronomeCustomerId, contractId },
+        "[Metronome] Failed to end contract"
+      );
+      return new Err(
+        new Error(`Metronome contract end failed: ${response.status}`)
+      );
+    }
+
+    logger.info(
+      { metronomeCustomerId, contractId, endingBefore },
+      "[Metronome] Contract ended"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId },
+      "[Metronome] Failed to end contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Get the active contract and subscription IDs for a Metronome customer.
  * Returns the contract ID and a map of product_id → subscription_id for seat subscriptions.
  */
@@ -454,6 +532,55 @@ export async function getMetronomeActiveContract(
       { error, metronomeCustomerId },
       "[Metronome] Failed to list contracts"
     );
+    return new Err(error);
+  }
+}
+
+export interface MetronomeProduct {
+  id: string;
+  name: string;
+}
+
+/**
+ * List all products from Metronome.
+ * Used to resolve product IDs by name (e.g. "Pro Seat", "Max Seat").
+ */
+export async function listMetronomeProducts(): Promise<
+  Result<MetronomeProduct[], Error>
+> {
+  const apiKey = config.getMetronomeApiKey();
+  if (!config.isMetronomeEnabled() || !apiKey) {
+    return new Err(new Error("Metronome is not enabled"));
+  }
+
+  try {
+    const response = await fetch(`${METRONOME_BASE_URL}/products/list`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      logger.error(
+        { status: response.status, body },
+        "[Metronome] Failed to list products"
+      );
+      return new Err(
+        new Error(`Metronome products list failed: ${response.status}`)
+      );
+    }
+
+    const result = (await response.json()) as {
+      data: Array<{ id: string; current: { name: string } }>;
+    };
+    return new Ok(result.data.map((p) => ({ id: p.id, name: p.current.name })));
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error({ error }, "[Metronome] Failed to list products");
     return new Err(error);
   }
 }

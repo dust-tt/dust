@@ -2,20 +2,40 @@ import config from "@app/lib/api/config";
 import {
   editMetronomeContractSeats,
   getMetronomeActiveContract,
+  listMetronomeProducts,
 } from "@app/lib/metronome/client";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
-// Product IDs for seat types — must match Metronome sandbox setup.
-const PRO_SEAT_PRODUCT_ID = "3bb03593-45b2-4b37-a2ce-3c2f41421f90";
-const MAX_SEAT_PRODUCT_ID = "9cec1c4a-a879-473d-a6aa-55d3e6b4b705";
-
 export type SeatType = "pro" | "max";
 
-const SEAT_TYPE_PRODUCT_MAP: Record<SeatType, string> = {
-  pro: PRO_SEAT_PRODUCT_ID,
-  max: MAX_SEAT_PRODUCT_ID,
+// Product names in Metronome that correspond to seat types.
+const SEAT_TYPE_PRODUCT_NAMES: Record<SeatType, string> = {
+  pro: "Pro Seat",
+  max: "Max Seat",
 };
+
+// In-process cache: product name → product ID, populated on first use.
+let productIdCache: Record<string, string> | null = null;
+
+async function getProductIdForSeatType(
+  seatType: SeatType
+): Promise<string | null> {
+  if (!productIdCache) {
+    const result = await listMetronomeProducts();
+    if (result.isErr()) {
+      logger.warn(
+        { error: result.error.message },
+        "[Metronome] Failed to fetch products for seat type resolution"
+      );
+      return null;
+    }
+    productIdCache = Object.fromEntries(
+      result.value.map((p) => [p.name, p.id])
+    );
+  }
+  return productIdCache[SEAT_TYPE_PRODUCT_NAMES[seatType]] ?? null;
+}
 
 /**
  * Add a Pro seat for a user on the workspace's Metronome contract.
@@ -88,8 +108,12 @@ export async function changeMetronomeSeatType(
   }
 
   const { contractId, seatSubscriptions } = contractResult.value;
-  const fromSubId = seatSubscriptions[SEAT_TYPE_PRODUCT_MAP[fromSeatType]];
-  const toSubId = seatSubscriptions[SEAT_TYPE_PRODUCT_MAP[toSeatType]];
+  const [fromProductId, toProductId] = await Promise.all([
+    getProductIdForSeatType(fromSeatType),
+    getProductIdForSeatType(toSeatType),
+  ]);
+  const fromSubId = fromProductId ? seatSubscriptions[fromProductId] : null;
+  const toSubId = toProductId ? seatSubscriptions[toProductId] : null;
 
   if (!fromSubId || !toSubId) {
     logger.warn(
@@ -140,7 +164,8 @@ export async function addAllMembersAsProSeats(
   }
 
   const { contractId, seatSubscriptions } = contractResult.value;
-  const proSubId = seatSubscriptions[PRO_SEAT_PRODUCT_ID];
+  const proProductId = await getProductIdForSeatType("pro");
+  const proSubId = proProductId ? seatSubscriptions[proProductId] : null;
 
   if (!proSubId) {
     logger.warn(
@@ -179,7 +204,8 @@ async function addMetronomeSeat(
   }
 
   const { contractId, seatSubscriptions } = contractResult.value;
-  const subId = seatSubscriptions[SEAT_TYPE_PRODUCT_MAP[seatType]];
+  const productId = await getProductIdForSeatType(seatType);
+  const subId = productId ? seatSubscriptions[productId] : null;
 
   if (!subId) {
     logger.warn(
