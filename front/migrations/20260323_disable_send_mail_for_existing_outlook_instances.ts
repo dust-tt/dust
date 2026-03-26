@@ -5,6 +5,7 @@ import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_serv
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -18,7 +19,7 @@ const PERMISSION_LEVEL = "high";
 async function disableSendMailForWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
-  logger: any
+  logger: Logger
 ): Promise<number> {
   // Finding all internal MCP server connections created before deployment for this workspace.
   const connections = await MCPServerConnectionModel.findAll({
