@@ -71,7 +71,7 @@ function getEmailDomain(email: string): string {
  *
  * Limitation: this is suffix-based, not PSL-aware — domains under public
  * suffixes like co.uk could incorrectly align (e.g. a.co.uk / b.co.uk).
- * A PSL-aware check should replace this if false positives arise.
+ * TODO: replace with PSL-aware organizational-domain extraction.
  */
 export function domainsAlign(a: string, b: string): boolean {
   const la = a.toLowerCase();
@@ -115,7 +115,7 @@ export function evaluateInboundAuth(
   }
 
   // Path 2: SPF pass with aligned envelope domain.
-  const spfPasses = email.auth.SPF === "pass";
+  const spfPasses = email.auth.SPF.toLowerCase() === "pass";
   const spfDomainAligns = domainsAlign(envelopeDomain, headerFromDomain);
 
   if (spfPasses && spfDomainAligns) {

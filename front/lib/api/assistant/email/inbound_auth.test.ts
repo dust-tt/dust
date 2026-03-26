@@ -125,6 +125,20 @@ describe("evaluateInboundAuth", () => {
     expect(decision.reason).toBe("aligned_spf");
   });
 
+  it("accepts SPF regardless of case", () => {
+    const decision = evaluateInboundAuth(
+      makeEmail({
+        senderEmail: "alice@company.com",
+        envelopeFrom: "bounce@company.com",
+        SPF: "Pass",
+        dkim: [],
+      })
+    );
+
+    expect(decision.authenticated).toBe(true);
+    expect(decision.reason).toBe("aligned_spf");
+  });
+
   it("rejects when DKIM passes for a non-aligned domain", () => {
     const decision = evaluateInboundAuth(
       makeEmail({
