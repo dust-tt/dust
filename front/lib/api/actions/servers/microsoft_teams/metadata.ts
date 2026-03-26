@@ -170,6 +170,29 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .describe(
           "The ID of the parent message to reply to (optional, creates a threaded reply). Only supported for channels."
         ),
+      mentions: z
+        .array(
+          z.object({
+            id: z
+              .number()
+              .int()
+              .describe(
+                "Zero-based index matching the id attribute in the corresponding <at id=\"N\"> tag in messageContent."
+              ),
+            mentionText: z
+              .string()
+              .describe(
+                "Display name used inside the <at> tag (e.g. <at id=\"0\">Display Name</at>)."
+              ),
+            userAadId: z
+              .string()
+              .describe("AAD object ID of the user to mention."),
+          })
+        )
+        .optional()
+        .describe(
+          "List of @mentions. Each entry must have a corresponding <at id=\"N\">Name</at> tag in messageContent."
+        ),
     },
     stake: "medium",
     displayLabels: {
