@@ -4,14 +4,7 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestion } from "@app/lib/actions/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import {
-  Button,
-  Checkbox,
-  CheckIcon,
-  ContentMessage,
-  ContextItem,
-  Input,
-} from "@dust-tt/sparkle";
+import { Button, ContentMessage, ContextItem, Input } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 interface MCPToolUserQuestionProps {
@@ -22,83 +15,58 @@ interface MCPToolUserQuestionProps {
   };
 }
 
-type QuestionAnswerState = {
-  selectedOptions: Set<number>;
-  customResponse: string;
-};
-
 interface QuestionCardProps {
   question: UserQuestion;
-  answerState: QuestionAnswerState;
   questionIndex: number;
-  onToggleOption: (
-    questionIndex: number,
-    optionIndex: number,
-    multiSelect: boolean
-  ) => void;
-  onCustomResponseChange: (questionIndex: number, value: string) => void;
+  customResponse: string;
+  disabled: boolean;
+  onOptionClick: (optionIndex: number) => void;
+  onCustomResponseChange: (value: string) => void;
+  onCustomResponseSubmit: () => void;
 }
 
 function QuestionCard({
   question,
-  answerState,
   questionIndex,
-  onToggleOption,
+  customResponse,
+  disabled,
+  onOptionClick,
   onCustomResponseChange,
+  onCustomResponseSubmit,
 }: QuestionCardProps) {
-  const isOtherActive = answerState.customResponse.trim() !== "";
-
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm font-medium text-foreground dark:text-foreground-night">
         {question.question}
       </span>
-
       <ContextItem.List>
         {question.options.map((option, oi) => (
           <ContextItem
             key={oi}
+            visual={null}
             title={<span className="text-sm font-normal">{option.label}</span>}
-            visual={
-              <Checkbox
-                className="mt-0.5"
-                checked={answerState.selectedOptions.has(oi) && !isOtherActive}
-                onCheckedChange={() =>
-                  onToggleOption(questionIndex, oi, question.multiSelect)
-                }
-                disabled={isOtherActive && !question.multiSelect}
-              />
-            }
-            onClick={() =>
-              onToggleOption(questionIndex, oi, question.multiSelect)
-            }
+            onClick={disabled ? undefined : () => onOptionClick(oi)}
           >
             <ContextItem.Description description={option.description} />
           </ContextItem>
         ))}
         <ContextItem
-          title={<span className="text-sm font-normal">Other</span>}
-          visual={
-            <Checkbox
-              className="mt-0.5"
-              checked={isOtherActive}
-              onCheckedChange={() => {
-                if (isOtherActive) {
-                  onCustomResponseChange(questionIndex, "");
+          visual={null}
+          title={
+            <Input
+              placeholder="Type something else..."
+              value={customResponse}
+              onChange={(e) => onCustomResponseChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && customResponse.trim()) {
+                  onCustomResponseSubmit();
                 }
               }}
+              disabled={disabled}
+              name={`custom-response-${questionIndex}`}
             />
           }
-        >
-          <Input
-            placeholder="Type your response..."
-            value={answerState.customResponse}
-            onChange={(e) =>
-              onCustomResponseChange(questionIndex, e.target.value)
-            }
-            name={`custom-response-${questionIndex}`}
-          />
-        </ContextItem>
+        />
       </ContextItem.List>
     </div>
   );
@@ -111,6 +79,9 @@ export function MCPToolUserQuestion({
 }: MCPToolUserQuestionProps) {
   const { user } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [customResponses, setCustomResponses] = useState<string[]>(() =>
+    blockedAction.questions.map(() => "")
+  );
 
   const { removeCompletedAction } = useBlockedActionsContext();
   const { answerQuestion, isSubmitting } = useAnswerUserQuestion({
@@ -121,83 +92,65 @@ export function MCPToolUserQuestion({
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
   const { questions } = blockedAction;
 
-  const [answerStates, setAnswerStates] = useState<QuestionAnswerState[]>(() =>
-    questions.map(() => ({ selectedOptions: new Set(), customResponse: "" }))
+  const submit = useCallback(
+    async (
+      answers: Array<{ selectedOptions: number[]; customResponse?: string }>
+    ) => {
+      const result = await answerQuestion({
+        conversationId: blockedAction.conversationId,
+        messageId: blockedAction.messageId,
+        actionId: blockedAction.actionId,
+        answers,
+      });
+      if (result.success) {
+        removeCompletedAction(blockedAction.actionId);
+      }
+    },
+    [answerQuestion, removeCompletedAction, blockedAction]
   );
 
-  const toggleOption = useCallback(
-    (questionIndex: number, optionIndex: number, multiSelect: boolean) => {
-      setAnswerStates((prev) => {
+  const handleOptionClick = useCallback(
+    (questionIndex: number, optionIndex: number) => {
+      void submit(
+        questions.map((_, qi) => ({
+          selectedOptions: qi === questionIndex ? [optionIndex] : [],
+          customResponse: customResponses[qi]?.trim() || undefined,
+        }))
+      );
+    },
+    [questions, customResponses, submit]
+  );
+
+  const handleCustomResponseChange = useCallback(
+    (questionIndex: number, value: string) => {
+      setCustomResponses((prev) => {
         const next = [...prev];
-        const current = next[questionIndex];
-        const nextOptions = new Set(current.selectedOptions);
-        if (multiSelect) {
-          if (nextOptions.has(optionIndex)) {
-            nextOptions.delete(optionIndex);
-          } else {
-            nextOptions.add(optionIndex);
-          }
-        } else {
-          if (nextOptions.has(optionIndex)) {
-            nextOptions.clear();
-          } else {
-            nextOptions.clear();
-            nextOptions.add(optionIndex);
-          }
-        }
-        const customResponse =
-          !multiSelect && nextOptions.size > 0 ? "" : current.customResponse;
-        next[questionIndex] = {
-          selectedOptions: nextOptions,
-          customResponse,
-        };
+        next[questionIndex] = value;
         return next;
       });
     },
     []
   );
 
-  const setCustomResponse = useCallback(
-    (questionIndex: number, value: string) => {
-      setAnswerStates((prev) => {
-        const next = [...prev];
-        const current = next[questionIndex];
-        const q = questions[questionIndex];
-        const selectedOptions =
-          !q.multiSelect && value.trim() !== ""
-            ? new Set<number>()
-            : current.selectedOptions;
-        next[questionIndex] = { selectedOptions, customResponse: value };
-        return next;
-      });
+  const handleCustomResponseSubmit = useCallback(
+    (questionIndex: number) => {
+      const text = customResponses[questionIndex]?.trim();
+      if (!text) {
+        return;
+      }
+      void submit(
+        questions.map((_, qi) => ({
+          selectedOptions: [],
+          customResponse: qi === questionIndex ? text : customResponses[qi]?.trim() || undefined,
+        }))
+      );
     },
-    [questions]
+    [questions, customResponses, submit]
   );
 
-  const hasAnySelection = answerStates.some(
-    (s) => s.selectedOptions.size > 0 || s.customResponse.trim() !== ""
-  );
-
-  const handleSubmit = async () => {
-    setErrorMessage(null);
-
-    const answers = answerStates.map((s) => ({
-      selectedOptions: Array.from(s.selectedOptions),
-      customResponse:
-        s.customResponse.trim() !== "" ? s.customResponse.trim() : undefined,
-    }));
-
-    const result = await answerQuestion({
-      conversationId: blockedAction.conversationId,
-      messageId: blockedAction.messageId,
-      actionId: blockedAction.actionId,
-      answers,
-    });
-
-    if (result.success) {
-      removeCompletedAction(blockedAction.actionId);
-    }
-  };
+  const handleSkip = useCallback(() => {
+    void submit(questions.map(() => ({ selectedOptions: [] })));
+  }, [questions, submit]);
 
   return (
     <ContentMessage
@@ -210,10 +163,12 @@ export function MCPToolUserQuestion({
             <QuestionCard
               key={qi}
               question={q}
-              answerState={answerStates[qi]}
               questionIndex={qi}
-              onToggleOption={toggleOption}
-              onCustomResponseChange={setCustomResponse}
+              customResponse={customResponses[qi] ?? ""}
+              disabled={isSubmitting}
+              onOptionClick={(oi) => handleOptionClick(qi, oi)}
+              onCustomResponseChange={(v) => handleCustomResponseChange(qi, v)}
+              onCustomResponseSubmit={() => handleCustomResponseSubmit(qi)}
             />
           ))}
 
@@ -223,16 +178,13 @@ export function MCPToolUserQuestion({
             </div>
           )}
 
-          <div className="flex justify-end">
-            <Button
-              label="Submit"
-              variant="highlight"
-              size="xs"
-              icon={CheckIcon}
-              disabled={isSubmitting || !hasAnySelection}
-              onClick={() => void handleSubmit()}
-            />
-          </div>
+          <Button
+            label="Skip"
+            variant="ghost"
+            size="xs"
+            disabled={isSubmitting}
+            onClick={handleSkip}
+          />
         </>
       ) : (
         <div className="text-sm text-foreground dark:text-foreground-night">
