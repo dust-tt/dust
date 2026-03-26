@@ -13,6 +13,12 @@ describe("extractEmailAddressesFromHeader", () => {
       )
     ).toEqual(["sender@dust.tt"]);
   });
+
+  it("does not recover a mailbox from an unmatched opening angle bracket", () => {
+    expect(extractEmailAddressesFromHeader("Sender <sender@dust.tt")).toEqual(
+      []
+    );
+  });
 });
 
 describe("extractSingleEmailAddressFromHeader", () => {

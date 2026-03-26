@@ -11,6 +11,31 @@ const GLOBAL_EMAIL_ADDRESS_PATTERN = new RegExp(
   "g"
 );
 
+function getTextOutsideAngleBrackets(headerValue: string): string {
+  let textOutsideAngleBrackets = "";
+  let isInsideAngleBrackets = false;
+
+  for (const character of headerValue) {
+    if (character === "<") {
+      isInsideAngleBrackets = true;
+      textOutsideAngleBrackets += " ";
+      continue;
+    }
+
+    if (character === ">") {
+      isInsideAngleBrackets = false;
+      textOutsideAngleBrackets += " ";
+      continue;
+    }
+
+    if (!isInsideAngleBrackets) {
+      textOutsideAngleBrackets += character;
+    }
+  }
+
+  return textOutsideAngleBrackets;
+}
+
 export function extractEmailAddressesFromHeader(
   headerValue: string | null
 ): string[] {
@@ -41,7 +66,7 @@ export function extractEmailAddressesFromHeader(
   }
 
   // Second pass: extract bare email addresses from parts without angle brackets.
-  const remaining = headerValue.replace(/<[^>]*>/g, " ");
+  const remaining = getTextOutsideAngleBrackets(headerValue);
   while ((match = GLOBAL_EMAIL_ADDRESS_PATTERN.exec(remaining)) !== null) {
     addEmail(match[0]);
   }
