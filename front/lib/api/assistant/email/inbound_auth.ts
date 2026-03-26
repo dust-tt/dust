@@ -1,7 +1,10 @@
 import type { InboundEmail } from "@app/lib/api/assistant/email/email_trigger";
+import logger from "@app/logger/logger";
 
 const REPEATED_DKIM_ENTRY_SEPARATOR_PATTERN = /\}\s*,?\s*\{/g;
 const SENDGRID_DKIM_ENTRY_PATTERN = /^@([^:\s]+)\s*:\s*([^,\s}]+)$/;
+const DKIM_PARSE_FAILURE_LOG_MESSAGE =
+  "[email] Failed to parse SendGrid DKIM results";
 
 export type InboundEmailDkimResult = {
   domain: string;
@@ -18,6 +21,26 @@ export type InboundAuthDecision = {
   dkimEntries: InboundEmailDkimResult[];
 };
 
+function logDkimParseIssue({
+  rawDkim,
+  reason,
+  entry,
+  parsedEntryCount,
+}: {
+  rawDkim: string;
+  reason:
+    | "missing_enclosing_braces"
+    | "empty_dkim_results"
+    | "malformed_dkim_entry";
+  entry?: string;
+  parsedEntryCount?: number;
+}) {
+  logger.warn(
+    { rawDkim, reason, entry, parsedEntryCount },
+    DKIM_PARSE_FAILURE_LOG_MESSAGE
+  );
+}
+
 export function parseSendgridDkimResults(
   rawDkim: string | null
 ): InboundEmailDkimResult[] {
@@ -27,6 +50,10 @@ export function parseSendgridDkimResults(
 
   const trimmedDkim = rawDkim.trim();
   if (!trimmedDkim.startsWith("{") || !trimmedDkim.endsWith("}")) {
+    logDkimParseIssue({
+      rawDkim,
+      reason: "missing_enclosing_braces",
+    });
     return [];
   }
 
@@ -34,6 +61,10 @@ export function parseSendgridDkimResults(
     .replace(REPEATED_DKIM_ENTRY_SEPARATOR_PATTERN, ",")
     .slice(1, -1);
   if (normalizedDkim.length === 0) {
+    logDkimParseIssue({
+      rawDkim,
+      reason: "empty_dkim_results",
+    });
     return [];
   }
 
@@ -41,6 +72,12 @@ export function parseSendgridDkimResults(
   for (const entry of normalizedDkim.split(",")) {
     const match = entry.trim().match(SENDGRID_DKIM_ENTRY_PATTERN);
     if (!match) {
+      logDkimParseIssue({
+        rawDkim,
+        reason: "malformed_dkim_entry",
+        entry: entry.trim(),
+        parsedEntryCount: dkimResults.length,
+      });
       return [];
     }
 
