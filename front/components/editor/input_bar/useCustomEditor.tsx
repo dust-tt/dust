@@ -72,7 +72,10 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(" ") // Add an extra space after the mention.
           .run();
       },
-      setContent: (content: string, { focus = true }: { focus?: boolean } = {}) => {
+      setContent: (
+        content: string,
+        { focus = true }: { focus?: boolean } = {}
+      ) => {
         const chain = editor
           ?.chain()
           .setContent(content, { contentType: "markdown" });
