@@ -23,6 +23,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
+import { addAllMembersAsProSeats } from "@app/lib/metronome/seats";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -335,6 +336,27 @@ async function handler(
                   workspace.sId,
                   metronomeResult.value.metronomeCustomerId
                 );
+
+                // Add all existing workspace members as Pro seats.
+                const refreshedWorkspace = await WorkspaceResource.fetchById(
+                  workspace.sId
+                );
+                if (refreshedWorkspace) {
+                  const adminAuth =
+                    await Authenticator.internalAdminForWorkspace(
+                      workspace.sId
+                    );
+                  const { members } = await getMembers(adminAuth, {
+                    activeOnly: true,
+                  });
+                  const memberSIds = members.map((m) => m.sId);
+                  if (memberSIds.length > 0) {
+                    void addAllMembersAsProSeats(
+                      refreshedWorkspace,
+                      memberSIds
+                    );
+                  }
+                }
               }
             }
 

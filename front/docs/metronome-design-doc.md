@@ -4,7 +4,7 @@
 
 Dust is migrating from Stripe Billing to Metronome to support credit-based pricing. Metronome sits on top of Stripe (payments remain in Stripe). The backend sends granular usage events to Metronome; all pricing logic, rate cards, custom plans, and limits are configured in Metronome by GTM/Ops — not by engineers in the codebase.
 
-**Current state:** Commitment signed ($30k). Metering infrastructure implemented (events flowing to Metronome). Customer provisioning ready. Sandbox configured with metrics, products, rate card, and package.
+**Current state:** Commitment signed ($30k). Metering infrastructure implemented (events flowing to Metronome). Customer provisioning, seat management, and contract creation ready. Sandbox fully configured: metrics, products, rate card, package, custom "Dust Credit" pricing unit ($0.05/credit).
 
 **Target:** Metronome live when the new pricing ships (~early April).
 
@@ -163,21 +163,29 @@ All events emitted for all workspaces when `METRONOME_ENABLED=true`.
 - `actions` — external MCP servers (default for unknown)
 - `platform` — extract_data, common_utilities, toolsets, skill_management, etc.
 
-### `seats` — gauge, daily snapshot (analytics only)
+### `registered_users` — gauge, daily snapshot (analytics only)
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `workspace_id` | string | Workspace sId |
-| `seat_count` | number | Total active members |
+| `member_count` | number | Total active members at time of snapshot |
 
-Not used for billing (seats are tracked via Metronome's seat-based subscriptions). Kept for analytics and migration sanity checks.
+Not used for billing (seats are tracked via Metronome's seat-based subscriptions). Kept for analytics and legacy contract proration sanity checks.
+
+**Emission:** Once per day via the daily Temporal cron. Timestamp is start-of-day UTC; `transaction_id` is `registered_users-{workspaceSId}-{YYYY-MM-DD}` for idempotency. Re-runs on the same day produce the same transaction ID and are deduplicated by Metronome.
+
+**Metric aggregation:** `MAX` (Metronome API does not support `LATEST`). These are analytics-only — actual seat billing proration is handled natively by Metronome's seat-based subscriptions, which are configured with `is_prorated: true` in the package. We still emit daily snapshots with start-of-day UTC timestamps and date-based idempotent transaction IDs for observability.
 
 ### `mau` — gauge, daily snapshot (analytics only)
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `workspace_id` | string | Workspace sId |
-| `mau_count` | number | Users with 1+ message in rolling 30-day window |
+| `mau_count` | number | Users with 1+ message in rolling 30-day window as of snapshot date |
+
+**Emission:** Same daily cron as `registered_users`. Start-of-day UTC timestamp; `transaction_id` is `mau-{workspaceSId}-{YYYY-MM-DD}`.
+
+**Metric aggregation:** `MAX` (analytics only, same constraint as above).
 
 ## Metronome Configuration (Sandbox)
 
@@ -191,7 +199,7 @@ Full setup script: `front/docs/metronome-sandbox-setup.sh`
 | LLM Provider Cost (User) | SUM on `cost_micro_usd` | `is_programmatic_usage=false` |
 | Tool Invocations (Programmatic) | COUNT (succeeded only) | grouped by `tool_category` |
 | Tool Invocations (User) | COUNT (succeeded only) | grouped by `tool_category` |
-| Active Seats | MAX on `seat_count` | analytics only |
+| Registered Users | MAX on `member_count` | analytics only — seat proration handled natively by seat subscriptions |
 | Monthly Active Users | MAX on `mau_count` | analytics only |
 
 ### Products
@@ -228,22 +236,33 @@ Bundles rate card + seat subscriptions into a reusable template:
 ### Block 0: Metering Infrastructure ✅ Done
 
 **Files created/modified:**
-- `front/lib/metronome/client.ts` — HTTP client for ingest API + customer creation
-- `front/lib/metronome/events.ts` — Event builders with tool category mapping + user_id
+- `front/lib/metronome/client.ts` — HTTP client: event ingest, customer/contract creation, seat management, contract listing
+- `front/lib/metronome/events.ts` — Event builders (llm_usage, tool_use, seats gauge, mau gauge) with tool category mapping, user_id, AWU tier
+- `front/lib/metronome/seats.ts` — Seat lifecycle: addMetronomeProSeat, removeMetronomeSeat, changeMetronomeSeatType, addAllMembersAsProSeats
 - `front/lib/api/config.ts` — `METRONOME_ENABLED` + `METRONOME_API_KEY`
-- `front/temporal/usage_queue/activities.ts` — Emit events for all usage; daily cron for gauges
+- `front/lib/api/signup.ts` — Auto-assign Pro seat when member joins (fire-and-forget)
+- `front/lib/api/membership.ts` — Remove seat on membership revocation (fire-and-forget)
+- `front/temporal/usage_queue/activities.ts` — Emit events for all usage; daily cron for gauges with start-of-day timestamps + date-based idempotent transaction IDs
 - `front/temporal/usage_queue/workflows.ts` — `emitMetronomeGaugeEventsWorkflow`
-- `front/temporal/usage_queue/client.ts` — Schedule launcher (daily prod, 10min dev)
+- `front/temporal/usage_queue/client.ts` — Schedule launcher (daily prod, 10min dev, `SKIP` overlap policy)
 - `front/temporal/usage_queue/worker.ts` — Start schedule on worker boot
 - `front/lib/plans/usage/mau.ts` — Exported `countActiveUsersForPeriodInWorkspace`
 - `front/scripts/provision_metronome_customers.ts` — Migration script for existing workspaces
-- `front/pages/api/stripe/webhook.ts` — Provision Metronome customer on `checkout.session.completed`
-- `front/lib/models/plan.ts` — Added `metronomePackageAlias` column
-- `front/types/plan.ts` — Added `metronomePackageAlias` to `PlanType`
+- `front/pages/api/stripe/webhook.ts` — Provision Metronome customer + contract on `checkout.session.completed`; bulk-assign Pro seats to all existing members
+- `front/lib/models/plan.ts` — Added `metronomePackageAlias` column; removed `metronomeCustomerId` from SubscriptionModel
+- `front/types/plan.ts` — Added `metronomePackageAlias` to `PlanType`; removed `metronomeCustomerId` from SubscriptionType
 - `front/lib/plans/renderers.ts` — Render `metronomePackageAlias`
-- `front/docs/metronome-sandbox-setup.sh` — Full Metronome sandbox setup reference
+- `front/lib/plans/plan_codes.ts` — Added `PRO_PLAN_METRONOME_CODE`
+- `front/lib/plans/pro_plans.ts` — Added "Pro (Metronome)" plan with `metronomePackageAlias: "pro-plan"`
+- `front/lib/resources/storage/models/workspace.ts` — Added `metronomeCustomerId` column (workspace-scoped, persists across subscription changes)
+- `front/lib/resources/workspace_resource.ts` — Added `metronomeCustomerId` to cached data; `updateMetronomeCustomerId` static method
+- `front/lib/resources/subscription_resource.ts` — Removed `metronomeCustomerId` (moved to workspace)
+- `front/docs/metronome-sandbox-setup.sh` — Full Metronome sandbox setup reference (metrics, products, rate card, package, IDs)
 
-**Key fix:** MAU/seats gauge events were only triggered by membership changes. Added a daily Temporal cron that reports for all workspaces, fixing the stale data gap for stable workspaces.
+**Key design decisions:**
+- `metronomeCustomerId` lives on `WorkspaceModel`, not `SubscriptionModel` — it's workspace-scoped and persists across plan changes
+- Gauge events use start-of-day UTC timestamps and date-based `transaction_id` for idempotency + proration (LATEST aggregation in Metronome)
+- MAU/seats gauge events run via daily Temporal cron, not only on membership changes (fixes stale data gap for stable workspaces)
 
 ### Block 1: Billing Switchover
 
@@ -419,9 +438,14 @@ For understanding what gets replaced:
 
 ## Open Questions
 
-1. **Custom credit type**: Need to create "Dust Credits" pricing unit in Metronome (via UI or support). Required for AWU credit-based billing.
+1. ~~**Custom credit type**: Need to create "Dust Credits" pricing unit in Metronome.~~ ✅ Done — "Dust Credit" created via Metronome UI, id: `3c03babd-9113-4c48-aa24-eed6beced99f`, $0.05/credit (5 cents).
 
-2. **AWU credit weights**: Final credit weights per tool category TBD from Pricing Push (target: ~$0.03–$0.05 per credit, basic message = 1 credit, advanced = 1–5 credits).
+2. **AWU credit weights**: Tool category credit weights are configured in the Pro Plan rate card. Values as of sandbox setup:
+   - retrieval: 1cr, connectors: 1cr, actions: 1cr
+   - deep_research: 2cr, generation: 2cr
+   - agents: 5cr, reasoning: 5cr
+   - platform: 0cr (free)
+   - AI Usage markup: 26 Dust Credits per $1 provider cost (30% markup)
 
 3. **Sub-agent billing**: Confirmed direction is parent-message-only. Events tagged with `is_sub_agent_message` — Metronome metrics should filter to `is_sub_agent_message=false`. Exact implementation TBD.
 
@@ -439,7 +463,10 @@ For understanding what gets replaced:
 |------|--------|-------|
 | `front/lib/metronome/client.ts` | Created | 0 |
 | `front/lib/metronome/events.ts` | Created | 0 |
+| `front/lib/metronome/seats.ts` | Created | 0 |
 | `front/lib/api/config.ts` | Modified | 0 |
+| `front/lib/api/signup.ts` | Modified | 0 |
+| `front/lib/api/membership.ts` | Modified | 0 |
 | `front/lib/plans/usage/mau.ts` | Modified | 0 |
 | `front/temporal/usage_queue/activities.ts` | Modified | 0 |
 | `front/temporal/usage_queue/workflows.ts` | Modified | 0 |
@@ -453,6 +480,9 @@ For understanding what gets replaced:
 | `front/lib/plans/free_plans.ts` | Modified | 0 |
 | `front/lib/plans/pro_plans.ts` | Modified | 0 |
 | `front/lib/plans/plan_codes.ts` | Modified | 0 |
+| `front/lib/resources/storage/models/workspace.ts` | Modified | 0 |
+| `front/lib/resources/workspace_resource.ts` | Modified | 0 |
+| `front/lib/resources/subscription_resource.ts` | Modified | 0 |
 | `front/docs/metronome-sandbox-setup.sh` | Created | 0 |
 | `front/docs/metronome-design-doc.md` | Created | 0 |
 | `front/lib/metronome/credit_balance.ts` | To create | 2 |

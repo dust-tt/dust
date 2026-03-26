@@ -10,7 +10,7 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildLlmUsageEvents,
   buildMauGaugeEvent,
-  buildSeatsGaugeEvent,
+  buildRegisteredUsersGaugeEvent,
   buildToolUseEvents,
   classifyMessageTier,
   getToolCategory,
@@ -337,27 +337,41 @@ async function emitMetronomeGaugeEventsForWorkspace(
   workspace: WorkspaceResource
 ): Promise<void> {
   const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const timestamp = new Date().toISOString();
+
+  // Use start-of-day UTC timestamp so Metronome can prorate by day.
+  // Daily snapshots with LATEST aggregation in Metronome give a time-weighted
+  // average (e.g., 5 seats for 15 days + 10 seats for 15 days → ~7.5 seats billed).
+  const now = new Date();
+  const startOfDayUtc = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  // YYYY-MM-DD for use in idempotent transaction IDs — re-running on the same
+  // day will produce the same transaction_id and be deduplicated by Metronome.
+  const dateKey = startOfDayUtc.toISOString().slice(0, 10);
+  const timestamp = startOfDayUtc.toISOString();
+
   const events: MetronomeEvent[] = [];
 
-  // Seats gauge.
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+  // Registered users gauge — current active member count.
+  const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
     workspace.sId
   );
   events.push(
-    buildSeatsGaugeEvent({
+    buildRegisteredUsersGaugeEvent({
       workspaceSId: workspace.sId,
-      seatCount: activeSeats,
+      memberCount,
       timestamp,
+      dateKey,
     })
   );
 
-  // MAU gauge — rolling 30-day window.
-  const now = new Date();
-  const thirtyDaysAgoMs = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  // MAU gauge — rolling 30-day window (definition of Monthly Active Users).
+  const thirtyDaysAgo = new Date(
+    startOfDayUtc.getTime() - 30 * 24 * 60 * 60 * 1000
+  );
   const mauCount = await countActiveUsersForPeriodInWorkspace({
     messagesPerMonthForMau: 1,
-    since: new Date(thirtyDaysAgoMs),
+    since: thirtyDaysAgo,
     to: now,
     workspace: lightWorkspace,
   });
@@ -366,6 +380,7 @@ async function emitMetronomeGaugeEventsForWorkspace(
       workspaceSId: workspace.sId,
       mauCount,
       timestamp,
+      dateKey,
     })
   );
 
