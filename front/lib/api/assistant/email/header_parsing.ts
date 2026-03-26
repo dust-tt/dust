@@ -1,6 +1,16 @@
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+const EMAIL_ADDRESS_PATTERN_SOURCE =
+  "[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}";
+const FULL_EMAIL_ADDRESS_PATTERN = new RegExp(
+  `^${EMAIL_ADDRESS_PATTERN_SOURCE}$`
+);
+const GLOBAL_EMAIL_ADDRESS_PATTERN = new RegExp(
+  EMAIL_ADDRESS_PATTERN_SOURCE,
+  "g"
+);
+
 export function extractEmailAddressesFromHeader(
   headerValue: string | null
 ): string[] {
@@ -25,16 +35,14 @@ export function extractEmailAddressesFromHeader(
   let match;
   while ((match = anglePattern.exec(headerValue)) !== null) {
     const content = match[1].trim();
-    // Basic validation: must contain exactly one "@" and no spaces.
-    if (content.includes("@") && !content.includes(" ")) {
+    if (FULL_EMAIL_ADDRESS_PATTERN.test(content)) {
       addEmail(content);
     }
   }
 
   // Second pass: extract bare email addresses from parts without angle brackets.
   const remaining = headerValue.replace(/<[^>]*>/g, " ");
-  const barePattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  while ((match = barePattern.exec(remaining)) !== null) {
+  while ((match = GLOBAL_EMAIL_ADDRESS_PATTERN.exec(remaining)) !== null) {
     addEmail(match[0]);
   }
 

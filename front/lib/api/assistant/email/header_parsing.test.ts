@@ -1,8 +1,19 @@
 import {
+  extractEmailAddressesFromHeader,
   extractSingleEmailAddressFromHeader,
   parseHeaderValue,
 } from "@app/lib/api/assistant/email/header_parsing";
 import { describe, expect, it } from "vitest";
+
+describe("extractEmailAddressesFromHeader", () => {
+  it("ignores malformed angle-bracket content that only partially looks like an email", () => {
+    expect(
+      extractEmailAddressesFromHeader(
+        "Sender <mailto:sender@dust.tt>, sender@dust.tt"
+      )
+    ).toEqual(["sender@dust.tt"]);
+  });
+});
 
 describe("extractSingleEmailAddressFromHeader", () => {
   it("extracts the single mailbox from a From header", () => {
