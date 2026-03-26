@@ -145,7 +145,6 @@ export function MCPToolUserQuestion({
             nextOptions.add(optionIndex);
           }
         }
-        // Selecting an option clears "Other" in single-select mode.
         const customResponse =
           !multiSelect && nextOptions.size > 0 ? "" : current.customResponse;
         next[questionIndex] = {
@@ -163,8 +162,6 @@ export function MCPToolUserQuestion({
       setAnswerStates((prev) => {
         const next = [...prev];
         const current = next[questionIndex];
-        // Typing in "Other" clears option selection in single-select mode.
-        // We check the question's multiSelect from the questions array.
         const q = questions[questionIndex];
         const selectedOptions =
           !q.multiSelect && value.trim() !== ""
