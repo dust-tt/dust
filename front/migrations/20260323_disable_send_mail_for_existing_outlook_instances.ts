@@ -8,9 +8,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
-
-const DEPLOYMENT_CUTOFF_DATE = new Date("2026-03-25T00:00:00Z");
 
 const TOOL_NAME = "send_mail";
 const INTERNAL_MCP_SERVER_NAME = "outlook";
@@ -20,8 +19,8 @@ async function disableSendMailForWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
-): Promise<number> {
-  // Finding all internal MCP server connections created before deployment for this workspace.
+): Promise<{ processedCount: number }> {
+  // Finding all internal MCP server connections for this workspace.
   const connections = await MCPServerConnectionModel.findAll({
     where: {
       workspaceId: workspace.id,
@@ -29,11 +28,7 @@ async function disableSendMailForWorkspace(
       internalMCPServerId: {
         [Op.ne]: null,
       },
-      createdAt: {
-        [Op.lt]: DEPLOYMENT_CUTOFF_DATE,
-      },
     },
-    attributes: ["id", "workspaceId", "internalMCPServerId", "createdAt"],
   });
 
   // Filter to keep only Outlook instances by decoding the internalMCPServerId.
@@ -41,9 +36,9 @@ async function disableSendMailForWorkspace(
   const uniqueInstancesMap = new Map<
     string,
     {
-      workspaceId: number;
+      connectionId: ModelId;
+      workspaceId: ModelId;
       internalMCPServerId: string;
-      createdAt: Date;
     }
   >();
 
@@ -58,9 +53,9 @@ async function disableSendMailForWorkspace(
       // Any instance works since they share the same internalMCPServerId key.
       if (!uniqueInstancesMap.has(conn.internalMCPServerId)) {
         uniqueInstancesMap.set(conn.internalMCPServerId, {
+          connectionId: conn.id,
           workspaceId: conn.workspaceId,
           internalMCPServerId: conn.internalMCPServerId,
-          createdAt: conn.createdAt,
         });
       }
     }
@@ -69,68 +64,65 @@ async function disableSendMailForWorkspace(
   const existingInstances = Array.from(uniqueInstancesMap.values());
 
   if (existingInstances.length === 0) {
-    return 0;
+    logger.info(
+      { workspaceSId: workspace.sId },
+      "No Outlook instances found in workspace."
+    );
+    return { processedCount: 0 };
   }
 
   logger.info(
     {
-      workspaceId: workspace.id,
+      workspaceSId: workspace.sId,
       instancesCount: existingInstances.length,
     },
     "Found Outlook instances to disable in workspace."
   );
 
-  // Force disable send_mail for all existing instances using upsert.
+  // Force disable send_mail for all existing instances.
   let processedCount = 0;
 
   for (const instance of existingInstances) {
+    const instanceLogger = logger.child({
+      workspaceSId: workspace.sId,
+      connectionId: instance.connectionId,
+      internalMCPServerId: instance.internalMCPServerId,
+    });
+
     if (execute) {
-      // Upsert to force enabled: false.
-      await RemoteMCPServerToolMetadataModel.upsert(
-        {
+      const existing = await RemoteMCPServerToolMetadataModel.findOne({
+        where: {
+          workspaceId: instance.workspaceId,
+          internalMCPServerId: instance.internalMCPServerId,
+          toolName: TOOL_NAME,
+        },
+      });
+
+      if (!existing) {
+        await RemoteMCPServerToolMetadataModel.create({
           workspaceId: instance.workspaceId,
           internalMCPServerId: instance.internalMCPServerId,
           toolName: TOOL_NAME,
           permission: PERMISSION_LEVEL,
           enabled: false,
-        },
-        {
-          conflictFields: ["workspaceId", "internalMCPServerId", "toolName"],
-        }
-      );
+        });
+      }
 
       processedCount++;
 
-      logger.info(
-        {
-          workspaceId: instance.workspaceId,
-          internalMCPServerId: instance.internalMCPServerId,
-          toolName: TOOL_NAME,
-          enabled: false,
-          permission: PERMISSION_LEVEL,
-          instanceCreatedAt: instance.createdAt.toISOString(),
-        },
+      instanceLogger.info(
         "Forced send_mail disabled for existing Outlook instance."
       );
     } else {
-      // DRY-RUN.
       processedCount++;
 
-      logger.info(
-        {
-          workspaceId: instance.workspaceId,
-          internalMCPServerId: instance.internalMCPServerId,
-          toolName: TOOL_NAME,
-          enabled: false,
-          permission: PERMISSION_LEVEL,
-          instanceCreatedAt: instance.createdAt.toISOString(),
-        },
+      instanceLogger.info(
         "Would force send_mail disabled for existing Outlook instance."
       );
     }
   }
 
-  return processedCount;
+  return { processedCount };
 }
 
 makeScript(
@@ -146,7 +138,6 @@ makeScript(
     logger.info(
       {
         workspaceId: workspaceId || "all",
-        cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
         toolName: TOOL_NAME,
         serverName: INTERNAL_MCP_SERVER_NAME,
       },
@@ -166,21 +157,22 @@ makeScript(
         workspace: workspaceResource,
       });
 
-      totalProcessed = await disableSendMailForWorkspace(
+      const result = await disableSendMailForWorkspace(
         workspace,
         execute,
         logger
       );
+      totalProcessed = result.processedCount;
     } else {
       // Process all workspaces
       await runOnAllWorkspaces(
         async (workspace) => {
-          const processed = await disableSendMailForWorkspace(
+          const result = await disableSendMailForWorkspace(
             workspace,
             execute,
             logger
           );
-          totalProcessed += processed;
+          totalProcessed += result.processedCount;
         },
         { concurrency: 8 }
       );
