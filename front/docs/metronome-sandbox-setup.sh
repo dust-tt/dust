@@ -71,14 +71,26 @@ curl -s -X POST "$API/billable-metrics/create" -H "$AUTH" -H "$CT" -d '{
 }'
 # -> id: 6cb68db2-a3ea-4ac5-8a6d-6b951bd33446
 
+# NOTE: Metronome does not allow editing metrics — archive via:
+#   curl -s -X POST "$API/billable-metrics/archive" -H "$AUTH" -H "$CT" -d '{"id": "<id>"}'
+#
+# "Active Seats" (old name, MAX agg) archived: ef99b99f-ac44-4f93-aefb-adf038e867cd
+# "Monthly Active Users" (old, MAX agg) archived: a321770f-b503-4db1-a47f-0543a6853e37
+#
+# NOTE: "latest" aggregation_type is not supported by the Metronome API.
+# These are analytics-only metrics — actual seat billing proration is handled natively
+# by Metronome's seat-based subscriptions (configured with is_prorated: true in the package).
+# We still emit daily snapshots with start-of-day timestamps + date-based transaction IDs
+# for idempotency and observability.
+
 curl -s -X POST "$API/billable-metrics/create" -H "$AUTH" -H "$CT" -d '{
-  "name": "Active Seats",
-  "event_type_filter": { "in_values": ["seats"] },
-  "property_filters": [{ "name": "seat_count", "exists": true }],
+  "name": "Registered Users",
+  "event_type_filter": { "in_values": ["registered_users"] },
+  "property_filters": [{ "name": "member_count", "exists": true }],
   "aggregation_type": "max",
-  "aggregation_key": "seat_count"
+  "aggregation_key": "member_count"
 }'
-# -> id: ef99b99f-ac44-4f93-aefb-adf038e867cd (analytics only)
+# -> id: 9fc9758e-48a3-4904-baae-80fc190523da (analytics only)
 
 curl -s -X POST "$API/billable-metrics/create" -H "$AUTH" -H "$CT" -d '{
   "name": "Monthly Active Users",
@@ -87,7 +99,7 @@ curl -s -X POST "$API/billable-metrics/create" -H "$AUTH" -H "$CT" -d '{
   "aggregation_type": "max",
   "aggregation_key": "mau_count"
 }'
-# -> id: a321770f-b503-4db1-a47f-0543a6853e37 (analytics only)
+# -> id: 6184b08d-8d76-4b1a-b8f9-0003aec6a35a (analytics only)
 
 # =============================================================================
 # PRODUCTS
@@ -262,8 +274,8 @@ curl -s -X POST "$API/packages/create" -H "$AUTH" -H "$CT" -d '{
 #   LLM Provider Cost (User):            f8e26387-c2cd-4bcd-91cb-b76a5a8e3b77
 #   Tool Invocations (Programmatic):      07273662-4b87-40c4-bff0-bb2c77274bd5
 #   Tool Invocations (User):              6cb68db2-a3ea-4ac5-8a6d-6b951bd33446
-#   Active Seats (analytics):             ef99b99f-ac44-4f93-aefb-adf038e867cd
-#   Monthly Active Users (analytics):     a321770f-b503-4db1-a47f-0543a6853e37
+#   Registered Users (analytics):           9fc9758e-48a3-4904-baae-80fc190523da
+#   Monthly Active Users (analytics):        6184b08d-8d76-4b1a-b8f9-0003aec6a35a
 #
 # Products (USAGE — priced in Dust Credits):
 #   AI Usage (Programmatic):              cb15d489-8c17-427d-84fd-f023b1872df1

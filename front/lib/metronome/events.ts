@@ -267,23 +267,27 @@ export function buildToolUseEvents({
   });
 }
 
-export function buildSeatsGaugeEvent({
+export function buildRegisteredUsersGaugeEvent({
   workspaceSId,
-  seatCount,
+  memberCount,
   timestamp,
+  dateKey,
 }: {
   workspaceSId: string;
-  seatCount: number;
+  memberCount: number;
   timestamp: string;
+  // YYYY-MM-DD — used as the idempotent transaction ID so re-runs on the same
+  // day are deduplicated by Metronome.
+  dateKey: string;
 }): MetronomeEvent {
   return {
-    transaction_id: `seats-${workspaceSId}-${timestamp}`,
+    transaction_id: `registered_users-${workspaceSId}-${dateKey}`,
     customer_id: workspaceSId,
-    event_type: "seats",
+    event_type: "registered_users",
     timestamp,
     properties: {
       workspace_id: workspaceSId,
-      seat_count: seatCount,
+      member_count: memberCount,
     },
   };
 }
@@ -292,13 +296,17 @@ export function buildMauGaugeEvent({
   workspaceSId,
   mauCount,
   timestamp,
+  dateKey,
 }: {
   workspaceSId: string;
   mauCount: number;
   timestamp: string;
+  // YYYY-MM-DD — used as the idempotent transaction ID so re-runs on the same
+  // day are deduplicated by Metronome.
+  dateKey: string;
 }): MetronomeEvent {
   return {
-    transaction_id: `mau-${workspaceSId}-${timestamp}`,
+    transaction_id: `mau-${workspaceSId}-${dateKey}`,
     customer_id: workspaceSId,
     event_type: "mau",
     timestamp,
