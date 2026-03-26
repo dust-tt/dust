@@ -143,7 +143,7 @@ export async function answerUserQuestion(
 
   logger.info(
     {
-      workspaceId: owner.id,
+      workspaceId: owner.sId,
       conversationId,
       messageId,
       actionId,
