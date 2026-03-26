@@ -21,26 +21,6 @@ export type InboundAuthDecision = {
   dkimEntries: InboundEmailDkimResult[];
 };
 
-function logDkimParseIssue({
-  rawDkim,
-  reason,
-  entry,
-  parsedEntryCount,
-}: {
-  rawDkim: string;
-  reason:
-    | "missing_enclosing_braces"
-    | "empty_dkim_results"
-    | "malformed_dkim_entry";
-  entry?: string;
-  parsedEntryCount?: number;
-}) {
-  logger.warn(
-    { rawDkim, reason, entry, parsedEntryCount },
-    DKIM_PARSE_FAILURE_LOG_MESSAGE
-  );
-}
-
 export function parseSendgridDkimResults(
   rawDkim: string | null
 ): InboundEmailDkimResult[] {
@@ -48,12 +28,21 @@ export function parseSendgridDkimResults(
     return [];
   }
 
+  let parseFailureReason:
+    | "missing_enclosing_braces"
+    | "empty_dkim_results"
+    | "malformed_dkim_entry"
+    | null = null;
   const trimmedDkim = rawDkim.trim();
   if (!trimmedDkim.startsWith("{") || !trimmedDkim.endsWith("}")) {
-    logDkimParseIssue({
-      rawDkim,
-      reason: "missing_enclosing_braces",
-    });
+    parseFailureReason = "missing_enclosing_braces";
+  }
+
+  if (parseFailureReason !== null) {
+    logger.warn(
+      { rawDkim, reason: parseFailureReason },
+      DKIM_PARSE_FAILURE_LOG_MESSAGE
+    );
     return [];
   }
 
@@ -61,31 +50,32 @@ export function parseSendgridDkimResults(
     .replace(REPEATED_DKIM_ENTRY_SEPARATOR_PATTERN, ",")
     .slice(1, -1);
   if (normalizedDkim.length === 0) {
-    logDkimParseIssue({
-      rawDkim,
-      reason: "empty_dkim_results",
-    });
-    return [];
+    parseFailureReason = "empty_dkim_results";
   }
 
   const dkimResults: InboundEmailDkimResult[] = [];
-  for (const entry of normalizedDkim.split(",")) {
-    const match = entry.trim().match(SENDGRID_DKIM_ENTRY_PATTERN);
-    if (!match) {
-      logDkimParseIssue({
-        rawDkim,
-        reason: "malformed_dkim_entry",
-        entry: entry.trim(),
-        parsedEntryCount: dkimResults.length,
-      });
-      return [];
-    }
+  if (parseFailureReason === null) {
+    for (const entry of normalizedDkim.split(",")) {
+      const match = entry.trim().match(SENDGRID_DKIM_ENTRY_PATTERN);
+      if (!match) {
+        parseFailureReason = "malformed_dkim_entry";
+        break;
+      }
 
-    const [, domain, result] = match;
-    dkimResults.push({
-      domain: domain.toLowerCase(),
-      result: result.toLowerCase(),
-    });
+      const [, domain, result] = match;
+      dkimResults.push({
+        domain: domain.toLowerCase(),
+        result: result.toLowerCase(),
+      });
+    }
+  }
+
+  if (parseFailureReason !== null) {
+    logger.warn(
+      { rawDkim, reason: parseFailureReason },
+      DKIM_PARSE_FAILURE_LOG_MESSAGE
+    );
+    return [];
   }
 
   return dkimResults;
