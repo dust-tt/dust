@@ -75,7 +75,6 @@ export async function answerUserQuestion(
     );
   }
 
-  // Update resumeState to include the answers.
   await action.updateStepContext({
     ...action.stepContext,
     resumeState: {
@@ -103,7 +102,6 @@ export async function answerUserQuestion(
     return new Ok(undefined);
   }
 
-  // Remove the user question event from the message channel.
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
     return isToolUserQuestionEvent(payload)

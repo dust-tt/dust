@@ -47,7 +47,6 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
       multiSelect: q.multi_select,
     }));
 
-    // Check if we have a resume state with the user's answers.
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
     const userAnswers =
       resumeState && typeof resumeState === "object" && "answer" in resumeState
@@ -63,7 +62,6 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
       ]);
     }
 
-    // No answer yet — return a pause resource to block the agent loop.
     const summaryText = typedQuestions.map((q) => q.question).join("; ");
 
     return new Ok([
