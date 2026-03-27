@@ -58,17 +58,6 @@ export interface ContactSubmitResponse {
     // Extra Zod fields to add to the schema (not in HubSpot)
     extraSchemaFields: [],
     preOptionsCode: "",
-    // Business profile fields are conditionally shown based on
-    // partner_business_model. HubSpot V4 forms don't expose this
-    // conditional logic via the API, so we override here.
-    optionalFieldOverrides: [
-      "headquarters_region",
-      "company_industry",
-      "partner_customer_sizes",
-      "partner_project_duration",
-      "technical_staff",
-      "partner_ai_proficiency",
-    ],
     // Extra code to add after the type definition
     extraCode: `
 // Response from the partner submit API
@@ -134,10 +123,6 @@ interface FormConfig {
   extraSchemaFields: ExtraSchemaField[];
   preOptionsCode: string;
   extraCode: string;
-  // Fields to treat as optional even if HubSpot marks them required.
-  // Used for conditional steps whose visibility logic isn't exposed via
-  // the HubSpot v3 API.
-  optionalFieldOverrides?: string[];
 }
 
 // Map HubSpot field types to our input types
@@ -165,13 +150,10 @@ function sanitizeLabel(label: string): string {
 }
 
 // Generate Zod validation for a field
-function generateZodValidation(
-  field: HubSpotFormField,
-  optionalOverrides: Set<string>
-): string {
+function generateZodValidation(field: HubSpotFormField): string {
   const { name, fieldType } = field;
   const label = sanitizeLabel(field.label);
-  const required = field.required && !optionalOverrides.has(name);
+  const required = field.required;
 
   // Handle checkbox (multi-select) fields
   if (fieldType === "checkbox") {
@@ -328,11 +310,9 @@ function generateCode(
     })
     .join(",\n");
 
-  const optionalOverrides = new Set(config.optionalFieldOverrides ?? []);
-
   // Generate Zod schema
   const zodFieldsFromHubSpot = fields.map((field) => {
-    return `  ${field.name}: ${generateZodValidation(field, optionalOverrides)}`;
+    return `  ${field.name}: ${generateZodValidation(field)}`;
   });
 
   // Add extra schema fields if configured
