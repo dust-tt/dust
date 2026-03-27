@@ -13,7 +13,11 @@ import {
   getOrCreateAnonymousId,
   getPostHogCookieDomain,
 } from "@app/lib/utils/anonymous_id";
-import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
+import {
+  getStoredReferrer,
+  getStoredUTMParams,
+  MARKETING_PARAMS,
+} from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
@@ -250,6 +254,20 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
           firstTouchProps[`first_${param}`] = value;
         }
       }
+
+      // Include the original external referrer (from the _dust_referrer cookie).
+      const storedReferrer = getStoredReferrer();
+      if (storedReferrer) {
+        firstTouchProps["first_referrer"] = storedReferrer;
+        try {
+          firstTouchProps["first_referring_domain"] = new URL(
+            storedReferrer
+          ).hostname;
+        } catch {
+          // Ignore malformed referrer URLs.
+        }
+      }
+
       if (Object.keys(firstTouchProps).length > 0) {
         posthog.setPersonProperties({}, firstTouchProps);
       }

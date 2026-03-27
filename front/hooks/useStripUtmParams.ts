@@ -6,6 +6,7 @@ import {
   MARKETING_PARAMS,
   persistClickIdCookies,
   persistDustAidFromURL,
+  persistReferrerCookie,
   persistUTMCookies,
 } from "@app/lib/utils/utm";
 import { useEffect } from "react";
@@ -34,6 +35,9 @@ export function useStripUtmParams() {
     try {
       // Re-establish anonymous device ID from email CTA links (?dust_aid=...).
       persistDustAidFromURL();
+
+      // Capture the original external referrer in a cross-subdomain cookie.
+      persistReferrerCookie();
 
       const params = Object.fromEntries(
         new URLSearchParams(window.location.search)
