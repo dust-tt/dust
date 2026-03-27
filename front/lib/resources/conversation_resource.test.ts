@@ -1335,7 +1335,9 @@ describe("getOptions", () => {
       const { frontSequelize } = await import("@app/lib/resources/storage");
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: threeDaysAgo.toISOString(),
@@ -1345,7 +1347,9 @@ describe("getOptions", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: fiveDaysAgo.toISOString(),
@@ -1384,7 +1388,9 @@ describe("getOptions", () => {
       const { frontSequelize } = await import("@app/lib/resources/storage");
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: threeDaysAgo.toISOString(),
@@ -1427,7 +1433,9 @@ describe("getOptions", () => {
       const { frontSequelize } = await import("@app/lib/resources/storage");
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: threeDaysAgo.toISOString(),
@@ -1437,7 +1445,9 @@ describe("getOptions", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: fiveDaysAgo.toISOString(),
@@ -1496,7 +1506,9 @@ describe("getOptions", () => {
       const { frontSequelize } = await import("@app/lib/resources/storage");
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: threeDaysAgo.toISOString(),
@@ -1506,7 +1518,9 @@ describe("getOptions", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: fiveDaysAgo.toISOString(),
@@ -1573,7 +1587,9 @@ describe("getOptions", () => {
       const { frontSequelize } = await import("@app/lib/resources/storage");
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: threeDaysAgo.toISOString(),
@@ -1583,7 +1599,9 @@ describe("getOptions", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: fiveDaysAgo.toISOString(),
@@ -1593,7 +1611,9 @@ describe("getOptions", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: fiveDaysAgo.toISOString(),
@@ -4315,7 +4335,9 @@ describe("markAsActionRequired", () => {
       const { frontSequelize } = await import("@app/lib/resources/storage");
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: sixDaysAgo.toISOString(),
@@ -4325,7 +4347,9 @@ describe("markAsActionRequired", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: fourDaysAgo.toISOString(),
@@ -4335,7 +4359,9 @@ describe("markAsActionRequired", () => {
       );
 
       await frontSequelize.query(
-        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        `UPDATE conversations
+         SET "updatedAt" = :updatedAt
+         WHERE id = :id`,
         {
           replacements: {
             updatedAt: twoDaysAgo.toISOString(),
@@ -4684,7 +4710,9 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     });
     const { frontSequelize } = await import("@app/lib/resources/storage");
     await frontSequelize.query(
-      `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+      `UPDATE conversations
+       SET "updatedAt" = :updatedAt
+       WHERE id = :id`,
       {
         replacements: {
           updatedAt: dateFromDaysAgo(daysAgo).toISOString(),
@@ -4984,6 +5012,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "user_conversation_reads",
   "user_project_digest",
   "conversation_butler_suggestion",
+  "conversation_todo_versioned",
 ];
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
@@ -5092,7 +5121,7 @@ describe("ConversationResource cleanup on delete", () => {
       modelsWithMessageFK.sort();
       const knownModels = [...KNOWN_MESSAGE_RELATED_MODELS].sort();
 
-      if (modelsWithMessageFK.length !== knownModels.length) {
+      if (modelsWithMessageFK.length != knownModels.length) {
         const missing = modelsWithMessageFK.filter(
           (m) => !knownModels.includes(m)
         );
