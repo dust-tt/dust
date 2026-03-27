@@ -1,3 +1,8 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -43,6 +48,19 @@ export async function revokeAndTrackMembership(
       role: revokeResult.value.role,
       startAt: revokeResult.value.startAt,
       endAt: revokeResult.value.endAt,
+    });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "membership.revoked",
+      targets: [
+        buildWorkspaceTarget(workspace),
+        { type: "user", id: user.sId, name: user.fullName() },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        previousRole: revokeResult.value.role,
+      },
     });
   }
 

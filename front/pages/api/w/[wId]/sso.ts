@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   deleteWorkOSOrganizationSSOConnection,
@@ -116,6 +121,16 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "sso.connection_deleted",
+        targets: [buildWorkspaceTarget(workspace)],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          connectionType: activeConnection.type,
+        },
+      });
 
       res.status(204).end();
       return;

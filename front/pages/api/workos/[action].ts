@@ -109,6 +109,7 @@
  *       400:
  *         description: Invalid session_id
  */
+import { emitAuditLogEventDirect } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
@@ -121,8 +122,11 @@ import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types"
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
+import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
@@ -591,6 +595,43 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const session = await getSession(req, res);
 
   if (session && session.type === "workos") {
+    // Emit audit log before revoking the session.
+    if (session.workspaceId) {
+      try {
+        const workspace = await WorkspaceResource.fetchById(
+          session.workspaceId
+        );
+        if (workspace) {
+          const user = await fetchUserFromSession(session);
+          const forwarded = req.headers["x-forwarded-for"];
+          const ip = forwarded
+            ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
+                .split(",")[0]
+                .trim()
+            : req.socket?.remoteAddress;
+          void emitAuditLogEventDirect({
+            workspace: renderLightWorkspaceType({ workspace }),
+            action: "user.logout",
+            actor: {
+              type: "user",
+              id: user?.sId ?? "unknown",
+              name: user?.name ?? session.user.name,
+            },
+            targets: [
+              {
+                type: "user",
+                id: user?.sId ?? "unknown",
+                name: user?.name ?? session.user.name,
+              },
+            ],
+            context: { location: ip ?? "internal" },
+          });
+        }
+      } catch (error) {
+        logger.error({ error }, "Error emitting audit log for logout");
+      }
+    }
+
     // Logout from WorkOS
     try {
       await getWorkOS().userManagement.revokeSession({
