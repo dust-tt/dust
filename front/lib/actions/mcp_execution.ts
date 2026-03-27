@@ -325,7 +325,10 @@ export async function processToolResults(
             const sanitizedResource = sanitizeStringsDeep(block.resource);
 
             // If the resource text is too large, we create a file and return a resource block that references the file.
-            if (text && computeTextByteSize(text) > FILE_OFFLOAD_RESOURCE_SIZE_BYTES) {
+            if (
+              text &&
+              computeTextByteSize(text) > FILE_OFFLOAD_RESOURCE_SIZE_BYTES
+            ) {
               const fileName =
                 block.resource.uri?.split("/").pop() ??
                 `resource_${Date.now()}.txt`;

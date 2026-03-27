@@ -190,10 +190,7 @@ async function handleWebbrowser(
           "Summarized content"
         );
 
-        const snippet = snippetRes.value.slice(
-          0,
-          FILE_OFFLOAD_SNIPPET_LENGTH
-        );
+        const snippet = snippetRes.value.slice(0, FILE_OFFLOAD_SNIPPET_LENGTH);
 
         const baseTitle = title ?? result.url;
         const fileTitle = `${baseTitle}`;
