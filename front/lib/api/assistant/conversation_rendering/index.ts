@@ -33,6 +33,8 @@ const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
+export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
+export const TOKENS_MARGIN = 1024;
 
 export async function renderConversationForModel(
   auth: Authenticator,
@@ -123,12 +125,12 @@ export async function renderConversationForModel(
   const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
   // Calculate base token usage.
-  const toolDefinitionsCountAdjustmentFactor = 0.7;
-  const tokensMargin = 1024;
   const baseTokens =
     promptCount +
-    Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
-    tokensMargin;
+    Math.floor(
+      toolDefinitionsCount * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR
+    ) +
+    TOKENS_MARGIN;
 
   const interactions = groupMessagesIntoInteractions(messagesWithTokens);
   let currentInteraction = interactions[interactions.length - 1];
