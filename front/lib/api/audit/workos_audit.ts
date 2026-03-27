@@ -86,6 +86,9 @@ export function buildAuditActor(auth: Authenticator): AuditLogActor {
     type: "user",
     id: user.sId,
     name: user.fullName() ?? undefined,
+    metadata: {
+      email: user.email,
+    },
   };
 }
 
