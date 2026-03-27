@@ -53,6 +53,39 @@ pub struct CallToolResult {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ContentBlock {
+#[serde(tag = "type")]
+pub enum ContentBlock {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "image")]
+    Image {
+        #[allow(dead_code)]
+        data: String,
+        #[serde(rename = "mimeType")]
+        mime_type: String,
+    },
+    #[serde(rename = "audio")]
+    Audio {
+        #[allow(dead_code)]
+        data: String,
+        #[serde(rename = "mimeType")]
+        mime_type: String,
+    },
+    #[serde(rename = "resource")]
+    Resource { resource: ResourceContent },
+    #[serde(rename = "resource_link")]
+    ResourceLink { uri: String, name: Option<String> },
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResourceContent {
+    pub uri: String,
+    #[serde(rename = "mimeType")]
+    #[allow(dead_code)]
+    pub mime_type: Option<String>,
     pub text: Option<String>,
+    #[allow(dead_code)]
+    pub blob: Option<String>,
 }

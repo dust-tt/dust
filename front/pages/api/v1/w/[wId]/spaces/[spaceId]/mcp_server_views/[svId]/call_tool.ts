@@ -122,11 +122,7 @@ async function handler(
           });
         }
 
-        const content: CallMCPToolResponseType["result"]["content"] =
-          result.content.map((block: { type: string; text?: string }) => ({
-            type: block.type,
-            ...("text" in block ? { text: block.text } : {}),
-          }));
+        const content = result.content;
 
         return res.status(200).json({
           success: true,
