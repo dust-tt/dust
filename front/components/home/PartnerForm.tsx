@@ -89,19 +89,12 @@ const Step1Schema = z.object({
 });
 
 const BusinessProfileSchema = z.object({
-  headquarters_region: z.string().min(1, "Please select a region"),
-  company_industry: z.string().min(1, "Please select an industry"),
-  partner_customer_sizes: z.string().min(1, "Please select at least one size"),
-  partner_project_duration: z
-    .string()
-    .min(1, "Please select a project duration"),
-  technical_staff: z
-    .string()
-    .min(1, "Please enter your technical staff count")
-    .regex(/^\d+$/, "Please enter a valid number"),
-  partner_ai_proficiency: z
-    .string()
-    .min(1, "Please select your AI proficiency level"),
+  headquarters_region: z.string().optional(),
+  company_industry: z.string().optional(),
+  partner_customer_sizes: z.string().optional(),
+  partner_project_duration: z.string().optional(),
+  technical_staff: z.string().optional(),
+  partner_ai_proficiency: z.string().optional(),
 });
 
 const LastStepSchema = z.object({
@@ -512,7 +505,6 @@ export function PartnerForm() {
         label="What's your regional focus?"
         options={HEADQUARTERS_REGION_OPTIONS}
         placeholder="Select region"
-        required
       />
 
       {/* Industry */}
@@ -522,7 +514,6 @@ export function PartnerForm() {
           label="What industry do you specialize in?"
           options={COMPANY_INDUSTRY_OPTIONS}
           placeholder="Select industry"
-          required
         />
         <p className="text-sm text-muted-foreground">
           Please choose one. It helps us hand pick leads for you.
@@ -534,7 +525,6 @@ export function PartnerForm() {
         name="partner_customer_sizes"
         label="What's the typical size of your client companies?"
         options={PARTNER_CUSTOMER_SIZE_OPTIONS}
-        required
       />
 
       {/* Project Duration */}
@@ -543,14 +533,12 @@ export function PartnerForm() {
         label="What is your average project duration?"
         options={PARTNER_PROJECT_DURATION_OPTIONS}
         placeholder="Select duration"
-        required
       />
 
       {/* Technical Staff */}
       <div className="flex flex-col gap-2">
         <Label>
           How many technical staff do you have dedicated to implementations?
-          <span className="text-red-500">*</span>
         </Label>
         <Input
           {...form.register("technical_staff")}
@@ -568,7 +556,6 @@ export function PartnerForm() {
         label="What's the current level of your team on AI?"
         options={PARTNER_AI_PROFICIENCY_OPTIONS}
         placeholder="Select level"
-        required
       />
     </div>
   );
@@ -700,7 +687,10 @@ export function PartnerForm() {
       return;
     }
 
-    void handleSubmit(values);
+    void handleSubmit({
+      ...values,
+      technical_staff: values.technical_staff || "-99",
+    });
   };
 
   return (
