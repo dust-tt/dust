@@ -6,6 +6,7 @@ import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
+import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -48,6 +49,8 @@ export default function LandingLayout({
     hideNavigation,
     fullWidth,
   } = pageProps;
+
+  useStripUtmParams();
 
   const [cookies, setCookie] = useCookies(
     [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
