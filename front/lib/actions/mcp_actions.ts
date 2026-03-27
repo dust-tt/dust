@@ -2,8 +2,8 @@
 
 import {
   calculateContentSize,
-  getMaxSize,
-  isValidContentSize,
+  getRemoteContentMaxSize,
+  isWithinRemoteContentLimit,
 } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -268,7 +268,7 @@ function generateContentMetadata(content: CallToolResult["content"]): {
   const result = [];
   for (const item of content) {
     const byteSize = calculateContentSize(item);
-    const maxSize = getMaxSize(item);
+    const maxSize = getRemoteContentMaxSize(item);
 
     result.push({ type: item.type, byteSize, maxSize });
 
@@ -552,8 +552,7 @@ export async function* tryCallMCPTool(
     }
 
     if (serverType === "remote") {
-      const isValid = isValidContentSize(content);
-
+      const isValid = isWithinRemoteContentLimit(content);
       if (!isValid) {
         const contentMetadata = generateContentMetadata(content);
         logger.info(

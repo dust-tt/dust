@@ -1,13 +1,19 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-// Size limits for MCP tool outputs
+// Thresholds for offloading MCP tool output items to files.
+// When a single content block exceeds these sizes, it gets stored as a file and replaced with a
+// snippet + file reference.
+export const FILE_OFFLOAD_TEXT_SIZE_BYTES = 20 * 1024; // 20KB.
+export const FILE_OFFLOAD_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+export const FILE_OFFLOAD_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
 
-// Max bytes for a single text block in a tool result before it gets offloaded to a file.
-export const MAX_TEXT_CONTENT_SIZE_BYTES = 20 * 1024; // 20KB.
-export const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
-export const MAX_RESOURCE_CONTENT_SIZE = 20 * 1024 * 1024; // 20MB.
+export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
-export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
+// Hard limits for remote MCP server tool results.
+// When any content block exceeds these sizes, the entire tool result is rejected.
+export const REMOTE_MAX_TEXT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+export const REMOTE_MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+export const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
 
 export function computeTextByteSize(text: string): number {
   return Buffer.byteLength(text, "utf8");
@@ -17,16 +23,18 @@ export function computeBase64ByteSize(base64: string): number {
   return Math.ceil((base64.length * 3) / 4);
 }
 
-export function getMaxSize(item: CallToolResult["content"][number]) {
+export function getRemoteContentMaxSize(
+  item: CallToolResult["content"][number]
+) {
   switch (item.type) {
     case "text":
-      return MAX_TEXT_CONTENT_SIZE_BYTES;
+      return REMOTE_MAX_TEXT_SIZE_BYTES;
 
     case "image":
-      return MAX_IMAGE_CONTENT_SIZE;
+      return REMOTE_MAX_IMAGE_SIZE_BYTES;
 
     case "resource":
-      return MAX_RESOURCE_CONTENT_SIZE;
+      return REMOTE_MAX_RESOURCE_SIZE_BYTES;
 
     default:
       return 1 * 1024 * 1024; // 1MB default
@@ -64,8 +72,10 @@ export function calculateContentSize(
   }
 }
 
-export function isValidContentSize(
+export function isWithinRemoteContentLimit(
   content: CallToolResult["content"]
 ): boolean {
-  return !content.some((item) => calculateContentSize(item) > getMaxSize(item));
+  return !content.some(
+    (item) => calculateContentSize(item) > getRemoteContentMaxSize(item)
+  );
 }
