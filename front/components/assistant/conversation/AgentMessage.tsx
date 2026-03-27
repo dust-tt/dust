@@ -1267,13 +1267,11 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => !referencedFileIds.has(file.fileId));
 
-  const generatedFiles = agentMessage.generatedFiles
-    .filter((file) => !file.hidden)
-    .filter(
-      (file) =>
-        !isSupportedImageContentType(file.contentType) &&
-        !isInteractiveContentType(file.contentType)
-    );
+  const generatedFiles = agentMessage.generatedFiles.filter(
+    (file) =>
+      !isSupportedImageContentType(file.contentType) &&
+      !isInteractiveContentType(file.contentType)
+  );
 
   return (
     <div className="flex flex-col gap-y-4">

@@ -6,7 +6,6 @@ import {
   getInternalMCPServerToolDisplayLabels,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -906,16 +905,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             output: removeNulls(outputItems.map(hideFileFromActionOutput)),
             generatedFiles: removeNulls(
               outputItems.map((o) => {
-                if (!o.file) {
-                  return null;
-                }
-
                 const file = o.file;
 
-                const hidden =
-                  o.content.type === "resource" &&
-                  isToolGeneratedFile(o.content) &&
-                  o.content.resource.hidden === true;
+                if (!file || file.useCaseMetadata?.hideFromGeneratedFiles) {
+                  return null;
+                }
 
                 return {
                   fileId: FileResource.modelIdToSId({
@@ -928,7 +922,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                   createdAt: file.createdAt.getTime(),
                   updatedAt: file.updatedAt.getTime(),
                   isInProjectContext: file.useCase === "project_context",
-                  ...(hidden ? { hidden: true } : {}),
                 };
               })
             ),

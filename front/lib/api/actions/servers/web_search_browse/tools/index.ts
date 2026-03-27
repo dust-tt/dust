@@ -202,6 +202,7 @@ async function handleWebbrowser(
           conversationId,
           content: fileContent,
           snippet,
+          hideFromGeneratedFiles: true,
         });
 
         await uploadFileToConversationDataSource({ auth, file });
@@ -214,7 +215,6 @@ async function handleWebbrowser(
           snippet,
           uri: file.getPublicUrl(auth),
           text: "Web page content archived as a file.",
-          hidden: true,
         };
 
         contentBlocks.push({

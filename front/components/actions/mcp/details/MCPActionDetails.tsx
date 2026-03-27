@@ -459,39 +459,37 @@ export function GenericActionDetails({
             </Collapsible>
           )}
 
-          {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
+          {action.generatedFiles.length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
               <div className="flex flex-wrap gap-2">
-                {action.generatedFiles
-                  .filter((file) => !file.hidden)
-                  .map((file) => {
-                    if (isSupportedImageContentType(file.contentType)) {
-                      return (
-                        <div
-                          key={file.fileId}
-                          className="h-24 w-24 flex-shrink-0"
-                        >
-                          <img
-                            className="h-full w-full rounded-xl object-cover"
-                            src={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
-                            alt={`${file.title}`}
-                          />
-                        </div>
-                      );
-                    }
+                {action.generatedFiles.map((file) => {
+                  if (isSupportedImageContentType(file.contentType)) {
                     return (
-                      <div key={file.fileId}>
-                        <a
-                          href={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {file.title}
-                        </a>
+                      <div
+                        key={file.fileId}
+                        className="h-24 w-24 flex-shrink-0"
+                      >
+                        <img
+                          className="h-full w-full rounded-xl object-cover"
+                          src={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
+                          alt={`${file.title}`}
+                        />
                       </div>
                     );
-                  })}
+                  }
+                  return (
+                    <div key={file.fileId}>
+                      <a
+                        href={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {file.title}
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

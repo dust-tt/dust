@@ -54,9 +54,9 @@ const ToolGeneratedFileSchema = z.object({
     ]
   ),
   snippet: z.string().nullable(),
-  // Optional UI hint to hide file from generic generated files sections.
-  hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
+  // DEPRECATED, only kept for backwards compatibility. Optional UI hint to hide file from generic generated files sections.
+  hidden: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
