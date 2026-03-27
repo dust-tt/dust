@@ -15,6 +15,7 @@ export const METRICS = {
   STEP_COMPLETIONS: "agent_loop_step.completions",
   STEP_DURATION: "agent_loop_step.duration_ms",
   STEP_STARTS: "agent_loop_step.starts",
+  TIME_TO_PROVIDER_CALL: "agent_loop_step.time_to_provider_call",
 } as const;
 
 /**

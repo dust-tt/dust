@@ -43,6 +43,7 @@ import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -62,6 +63,7 @@ import {
   updateAgentMessageDBAndMemory,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
+import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
@@ -104,11 +106,13 @@ export async function runModel(
     runIds,
     step,
     functionCallStepContentIds,
+    durationRecorder,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
+    durationRecorder: DurationRecorder;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -577,6 +581,8 @@ export async function runModel(
       step,
     });
   }
+
+  durationRecorder.record(METRICS.TIME_TO_PROVIDER_CALL);
 
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
