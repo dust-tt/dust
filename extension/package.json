@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/extension",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
