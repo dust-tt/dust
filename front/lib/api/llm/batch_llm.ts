@@ -38,7 +38,7 @@ export interface LlmConversationOptions
   visibility?: ConversationVisibility;
   metadata?: ConversationMetadata;
   userContextUsername?: string;
-  userContextOrigin?: UserMessageOrigin;
+  userContextOrigin: UserMessageOrigin;
 }
 
 /**
@@ -60,7 +60,7 @@ export async function writeBatchUserMessages(
     visibility = "unlisted",
     metadata = {},
     userContextUsername = "system",
-    userContextOrigin = "api",
+    userContextOrigin,
   }: LlmConversationOptions
 ): Promise<ConversationResource> {
   const workspace = auth.getNonNullableWorkspace();

@@ -53,6 +53,7 @@ function makeConversationOptions(
   return {
     newMessages: [makeUserMessage(question)],
     prompt: "You are a helpful assistant. Be concise.",
+    userContextOrigin: "api",
     specifications: [],
     ...overrides,
   };
