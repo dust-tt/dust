@@ -287,7 +287,7 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <div className={isCurrentUser ? "text-right" : "text-left"}>
+        <div className={isCurrentUser ? "flex flex-end flex-col" : "flex flex-start flex-col"}>
           {!isCurrentUser && (
             <div className="mb-1 flex items-center gap-1.5">
               <Avatar
@@ -320,7 +320,7 @@ export function UserMessage({
             </div>
           )}
           {isCurrentUser && (
-            <div className="inline-flex items-center justify-between gap-0.5">
+            <div className="inline-flex items-center justify-between gap-0.5 self-end">
               <ConversationMessageTitle
                 name={undefined}  
                 timestamp={timestamp}
@@ -472,7 +472,7 @@ const actionMenuContainerVariants = cva(
     variants: {
       mode: {
         side: "",
-        bottom: "translate-y-[calc(100%+2px)]",
+        bottom: "translate-y-[calc(100%+4px)] px-4",
       },
       isCurrentUser: {
         true: "",
