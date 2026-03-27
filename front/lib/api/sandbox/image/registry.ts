@@ -15,6 +15,7 @@ const DSBX_CLI_VERSION = "0.1.1";
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
+const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 
 interface PythonLibrary {
   name: string;
@@ -74,8 +75,8 @@ function getPythonInstallCmd(): string {
   return `uv pip install --python /opt/venv ${packages}`;
 }
 
-function getProfileContent(filename: string): () => string {
-  return () => fs.readFileSync(path.join(PROFILE_LOCAL_DIR, filename), "utf-8");
+function getLocalContent(dir: string, filename: string): () => string {
+  return () => fs.readFileSync(path.join(dir, filename), "utf-8");
 }
 
 const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.2.0")
@@ -181,15 +182,52 @@ SHELLEOF`)
     }
   )
   .runCmd(`sudo mkdir -p ${PROFILE_DIR}`)
-  .copy(getProfileContent("common.sh"), `${PROFILE_DIR}/common.sh`)
-  .copy(getProfileContent("_truncate.sh"), `${PROFILE_DIR}/_truncate.sh`)
-  .copy(getProfileContent("read_file.sh"), `${PROFILE_DIR}/read_file.sh`)
-  .copy(getProfileContent("edit_file.sh"), `${PROFILE_DIR}/edit_file.sh`)
-  .copy(getProfileContent("write_file.sh"), `${PROFILE_DIR}/write_file.sh`)
-  .copy(getProfileContent("grep_files.sh"), `${PROFILE_DIR}/grep_files.sh`)
-  .copy(getProfileContent("glob.sh"), `${PROFILE_DIR}/glob.sh`)
-  .copy(getProfileContent("list_dir.sh"), `${PROFILE_DIR}/list_dir.sh`)
-  .copy(getProfileContent("shell.sh"), `${PROFILE_DIR}/shell.sh`)
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "common.sh"),
+    `${PROFILE_DIR}/common.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "_truncate.sh"),
+    `${PROFILE_DIR}/_truncate.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "read_file.sh"),
+    `${PROFILE_DIR}/read_file.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "edit_file.sh"),
+    `${PROFILE_DIR}/edit_file.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "write_file.sh"),
+    `${PROFILE_DIR}/write_file.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "grep_files.sh"),
+    `${PROFILE_DIR}/grep_files.sh`
+  )
+  .copy(getLocalContent(PROFILE_LOCAL_DIR, "glob.sh"), `${PROFILE_DIR}/glob.sh`)
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "list_dir.sh"),
+    `${PROFILE_DIR}/list_dir.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "shell.sh"),
+    `${PROFILE_DIR}/shell.sh`
+  )
+  // Telemetry configs for fluent-bit
+  .copy(
+    getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
+    "/etc/fluent-bit/fluent-bit.conf"
+  )
+  .copy(
+    getLocalContent(TELEMETRY_LOCAL_DIR, "parsers.conf"),
+    "/etc/fluent-bit/parsers.conf"
+  )
+  .copy(
+    getLocalContent(TELEMETRY_LOCAL_DIR, "enrich.lua"),
+    "/etc/fluent-bit/enrich.lua"
+  )
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
     {
@@ -253,7 +291,7 @@ SHELLEOF`)
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.5.0",
+    tag: "0.6.0",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
