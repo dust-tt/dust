@@ -208,9 +208,7 @@ export class ImageGenerationGoogleLLM {
     }));
   }
 
-  private isValidInlineDataPart(
-    part: unknown
-  ): part is GeminiInlineDataPart {
+  private isValidInlineDataPart(part: unknown): part is GeminiInlineDataPart {
     return geminiInlineDataPartSchema.safeParse(part).success;
   }
 }

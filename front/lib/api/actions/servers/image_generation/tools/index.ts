@@ -15,8 +15,7 @@ import {
   uploadAndFormatImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
-import { ImageGenerationGoogleLLM } from "@app/lib/api/llm/clients/google/imageGeneration";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { getImageGenerationLLM } from "@app/lib/api/llm/getImageGenerationLLM";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -58,14 +57,21 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      const credentials = await getLlmCredentials(auth, {
-        skipEmbeddingApiKeyRequirement: true,
-      });
+      const imageGenerationModel = await getImageGenerationLLM(auth);
 
-      const generationImageModel = new ImageGenerationGoogleLLM(auth, {
-        modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
-        credentials,
-      });
+      if (!imageGenerationModel) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+          },
+          "No image generation model available for this workspace."
+        );
+        return new Err(
+          new MCPError(
+            "No image generation model available for this workspace."
+          )
+        );
+      }
 
       let referenceFileResources: FileResource[] = [];
 
@@ -73,7 +79,7 @@ export function createImageGenerationTools(
         const processResult = await processImageFileIds(auth, {
           imageFileIds: referenceImages,
           agentLoopContext,
-          supportedContentTypes: generationImageModel.supportedContentTypes,
+          supportedContentTypes: imageGenerationModel.supportedContentTypes,
         });
         if (processResult.isErr()) {
           return processResult;
@@ -111,7 +117,7 @@ export function createImageGenerationTools(
         userId: workspace.sId,
       });
 
-      const generationResult = await generationImageModel.generateImage({
+      const generationResult = await imageGenerationModel.generateImage({
         prompt,
         aspectRatio,
         fileResources: referenceFileResources,
@@ -141,7 +147,7 @@ export function createImageGenerationTools(
 
       trackTokenUsage({
         ...usageMetadata,
-        providerId: generationImageModel.providerId,
+        providerId: imageGenerationModel.providerId,
       });
 
       const { inputTokens, outputTokens, totalTokens, costDetails } =
