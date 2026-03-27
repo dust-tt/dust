@@ -117,10 +117,12 @@ export function createNotionTools(
         const citationsOffset =
           agentLoopContext?.runContext?.stepContext.citationsOffset ?? 0;
 
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
-        );
+        const refs = agentLoopContext?.runContext?.stepContext.citationsOffset
+          ? getRefs().slice(
+              citationsOffset,
+              citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+            )
+          : [];
 
         const resultResources = results.map((result) => {
           if (isFullPage(result)) {
