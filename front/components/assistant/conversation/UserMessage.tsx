@@ -287,7 +287,7 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <div className={isCurrentUser ? "flex flex-end flex-col" : "flex flex-start flex-col"}>
+        <div className={cn("flex flex-col", isCurrentUser ? "flex-end gap-1" : "flex-start")}>
           {!isCurrentUser && (
             <div className="mb-1 flex items-center gap-1.5">
               <Avatar
@@ -526,6 +526,7 @@ function ActionMenu({
   owner,
 }: ActionMenuProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const sendNotification = useSendNotification();
   const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
     useHover();
@@ -535,7 +536,8 @@ function ActionMenu({
     mode === "side" &&
     !isUserMessageHovered &&
     !isReactionsHovered &&
-    !isMenuOpen;
+    !isMenuOpen &&
+    !isEmojiPickerOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -602,6 +604,7 @@ function ActionMenu({
           <MessageEmojiPicker
             key="emoji-picker"
             onEmojiSelect={onReactionToggle}
+            onOpenChange={setIsEmojiPickerOpen}
           />
           {actions.length > 0 && (
             <DropdownMenu
