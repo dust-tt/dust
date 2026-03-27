@@ -33,58 +33,20 @@ export async function getConnectionForMCPServer(
     DustError<"mcp_access_token_error" | "connection_not_found">
   >
 > {
+  const localLogger = logger.child({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    mcpServerId,
+    connectionType,
+  });
+
   const connection = await MCPServerConnectionResource.findByMCPServer(auth, {
     mcpServerId,
     connectionType,
   });
-  if (connection.isOk()) {
-    if (!connection.value.connectionId) {
-      logger.info(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          mcpServerId,
-          connectionType,
-          connectionId: connection.value.connectionId,
-          credentialId: connection.value.credentialId,
-        },
-        "MCP server connection is not configured for OAuth"
-      );
-      return new Err(
-        new DustError("connection_not_found", "Connection not found")
-      );
-    }
-    const token = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      connectionId: connection.value.connectionId,
-    });
-    if (token.isOk()) {
-      return new Ok(token.value);
-    } else {
-      logger.warn(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          mcpServerId,
-          connectionType,
-          error: token.error,
-        },
-        "Failed to get access token for MCP server"
-      );
-      return new Err(
-        new DustError(
-          "mcp_access_token_error",
-          "Failed to get access token for MCP server"
-        )
-      );
-    }
-  } else {
-    logger.info(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        mcpServerId,
-        connectionType,
-        error: connection.error,
-      },
+
+  if (connection.isErr()) {
+    localLogger.info(
+      { error: connection.error },
       "No connection found for MCP server"
     );
     return new Err(
@@ -94,6 +56,37 @@ export async function getConnectionForMCPServer(
       )
     );
   }
+
+  if (!connection.value.connectionId) {
+    localLogger.info(
+      { credentialId: connection.value.credentialId },
+      "MCP server connection is not configured for OAuth"
+    );
+    return new Err(
+      new DustError("connection_not_found", "Connection not found")
+    );
+  }
+
+  const tokenResult = await getOAuthConnectionAccessToken({
+    config: apiConfig.getOAuthAPIConfig(),
+    logger,
+    connectionId: connection.value.connectionId,
+  });
+
+  if (tokenResult.isErr()) {
+    localLogger.warn(
+      { error: tokenResult.error },
+      "Failed to get access token for MCP server"
+    );
+    return new Err(
+      new DustError(
+        "mcp_access_token_error",
+        "Failed to get access token for MCP server"
+      )
+    );
+  }
+
+  return new Ok(tokenResult.value);
 }
 
 const MCPServerRequiresPersonalAuthenticationErrorName =
