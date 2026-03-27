@@ -209,10 +209,12 @@ export const MICROSOFT_TEAMS_SERVER = {
     description: "Microsoft Teams for searching and posting messages.",
     icon: "MicrosoftTeamsLogo",
     authorization: {
-      provider: "microsoft",
+      provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
+      scope:
+        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access",
     },
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
     instructions: null,
   },
   tools: Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => ({

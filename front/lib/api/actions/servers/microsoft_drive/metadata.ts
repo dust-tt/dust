@@ -203,10 +203,12 @@ export const MICROSOFT_DRIVE_SERVER = {
       "Search, read, and upload files in Microsoft OneDrive and SharePoint.",
     icon: "MicrosoftLogo",
     authorization: {
-      provider: "microsoft",
+      provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
+      scope:
+        "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access",
     },
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
     instructions: null,
   },
   tools: Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => ({
