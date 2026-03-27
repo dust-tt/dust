@@ -82,7 +82,7 @@ export const AuthenticatedImage: SparkleContextImageType = forwardRef<
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [src, needsAuth]);
+  }, [src]);
 
   // For non-API URLs (external images, data:, blob:), render a plain img.
   if (!needsAuth) {
