@@ -33,6 +33,18 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 15.0,
     cache_read_input_tokens: 0.25,
   },
+  // https://openai.com/api/pricing/
+  "gpt-5.4-mini": {
+    input: 0.75,
+    output: 4.5,
+    cache_read_input_tokens: 0.075,
+  },
+  // https://openai.com/api/pricing/
+  "gpt-5.4-nano": {
+    input: 0.2,
+    output: 1.25,
+    cache_read_input_tokens: 0.02,
+  },
   "gpt-5.2": {
     input: 1.75,
     output: 14.0,
