@@ -8,6 +8,8 @@
  *   npx tsx front/admin/register_audit_log_schemas.ts                # register all
  *   npx tsx front/admin/register_audit_log_schemas.ts --changed      # only new/modified schemas (vs origin/main)
  *   npx tsx front/admin/register_audit_log_schemas.ts user.login     # register specific actions
+ *   npx tsx front/admin/register_audit_log_schemas.ts --dry-run      # preview all schemas without registering
+ *   npx tsx front/admin/register_audit_log_schemas.ts --dry-run --changed  # preview only new/modified schemas
  */
 
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -38,7 +40,7 @@ function getChangedSchemaFiles(): Set<string> {
 
 function loadSchemas(args: string[]): CreateAuditLogSchemaOptions[] {
   const isChanged = args.includes("--changed");
-  const actions = args.filter((a) => a !== "--changed");
+  const actions = args.filter((a) => a !== "--changed" && a !== "--dry-run");
 
   const changedFiles = isChanged ? getChangedSchemaFiles() : null;
 
@@ -72,13 +74,26 @@ function loadSchemas(args: string[]): CreateAuditLogSchemaOptions[] {
 
 async function main() {
   const args = process.argv.slice(2);
+  const isDryRun = args.includes("--dry-run");
   const schemas = loadSchemas(args);
-  const workos = getWorkOS();
 
   if (schemas.length === 0) {
     console.log("No schemas to register.");
     return;
   }
+
+  if (isDryRun) {
+    for (const schema of schemas) {
+      const file = `admin/audit_log_schemas/${schema.action}.json`;
+      console.log(
+        `[dry-run] Would register schema: ${schema.action} (${file})`
+      );
+    }
+    console.log(`[dry-run] ${schemas.length} schemas would be registered`);
+    return;
+  }
+
+  const workos = getWorkOS();
 
   console.log(`Registering ${schemas.length} schema(s)\n`);
   let success = 0;
