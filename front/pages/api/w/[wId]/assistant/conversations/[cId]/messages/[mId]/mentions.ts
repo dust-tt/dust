@@ -9,22 +9,20 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const PostMentionActionRequestBodySchema = t.type({
-  type: t.union([t.literal("agent"), t.literal("user")]),
-  id: t.string,
-  action: t.union([
-    t.literal("approved"),
-    t.literal("rejected"),
-    t.literal("dismissed"),
+const PostMentionActionRequestBodySchema = z.object({
+  type: z.union([z.literal("agent"), z.literal("user")]),
+  id: z.string(),
+  action: z.union([
+    z.literal("approved"),
+    z.literal("rejected"),
+    z.literal("dismissed"),
   ]),
 });
 
-export type PostMentionActionRequestBody = t.TypeOf<
+export type PostMentionActionRequestBody = z.infer<
   typeof PostMentionActionRequestBodySchema
 >;
 
@@ -73,22 +71,20 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostMentionActionRequestBodySchema.decode(
+      const bodyValidation = PostMentionActionRequestBodySchema.safeParse(
         req.body
       );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
-      const { type, id, action } = bodyValidation.right;
+      const { type, id, action } = bodyValidation.data;
 
       if (action === "dismissed") {
         const dismissMentionRes = await dismissMention(auth, {

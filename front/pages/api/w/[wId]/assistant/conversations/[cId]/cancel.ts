@@ -58,17 +58,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type PostMessageEventResponseBody = {
   success: true;
 };
-const PostMessageEventBodySchema = t.type({
-  action: t.literal("cancel"),
-  messageIds: t.array(t.string),
+const PostMessageEventBodySchema = z.object({
+  action: z.literal("cancel"),
+  messageIds: z.array(z.string()),
 });
 
 async function handler(
@@ -98,20 +96,18 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMessageEventBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PostMessageEventBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
       await cancelMessageGenerationEvent(auth, {
-        messageIds: bodyValidation.right.messageIds,
+        messageIds: bodyValidation.data.messageIds,
         conversationId,
       });
       return res.status(200).json({ success: true });
