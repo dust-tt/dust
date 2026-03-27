@@ -5,19 +5,22 @@
  * Schemas are loaded from JSON files in front/admin/audit_log_schemas/.
  *
  * Usage:
- *   npx tsx front/admin/register_audit_log_schemas.ts                # register all
- *   npx tsx front/admin/register_audit_log_schemas.ts --changed      # only new/modified schemas (vs origin/main)
- *   npx tsx front/admin/register_audit_log_schemas.ts user.login     # register specific actions
- *   npx tsx front/admin/register_audit_log_schemas.ts --dry-run      # preview all schemas without registering
- *   npx tsx front/admin/register_audit_log_schemas.ts --dry-run --changed  # preview only new/modified schemas
+ *   npx tsx front/admin/register_audit_log_schemas.ts                          # preview all (dry-run)
+ *   npx tsx front/admin/register_audit_log_schemas.ts --execute                # register all
+ *   npx tsx front/admin/register_audit_log_schemas.ts --changed                # preview only new/modified schemas
+ *   npx tsx front/admin/register_audit_log_schemas.ts --execute --changed      # register only new/modified schemas
+ *   npx tsx front/admin/register_audit_log_schemas.ts user.login               # preview specific actions
+ *   npx tsx front/admin/register_audit_log_schemas.ts --execute user.login     # register specific actions
  */
 
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkOS } from "@workos-inc/node";
-import { execSync } from "child_process";
-import * as fs from "fs";
+import { execFileSync } from "child_process";
+import * as fs from "fs/promises";
+import minimist from "minimist";
 import * as path from "path";
+import { z } from "zod";
 
 type CreateAuditLogSchemaOptions = Parameters<
   WorkOS["auditLogs"]["createSchema"]
@@ -25,9 +28,40 @@ type CreateAuditLogSchemaOptions = Parameters<
 
 const SCHEMAS_DIR = path.join(__dirname, "audit_log_schemas");
 
+const metadataSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.boolean(), z.number()])
+);
+
+const auditLogSchemaValidator = z.object({
+  action: z.string().min(1, "action must be a non-empty string"),
+  targets: z
+    .array(
+      z.object({
+        type: z.string().min(1, "target type must be a non-empty string"),
+        metadata: metadataSchema.optional(),
+      })
+    )
+    .min(1, "targets must be a non-empty array"),
+  actor: z
+    .object({
+      metadata: metadataSchema,
+    })
+    .optional(),
+  metadata: metadataSchema.optional(),
+});
+
 function getChangedSchemaFiles(): Set<string> {
-  const diff = execSync(
-    `git diff --name-only --diff-filter=AM origin/main -- "${SCHEMAS_DIR}"`,
+  const diff = execFileSync(
+    "git",
+    [
+      "diff",
+      "--name-only",
+      "--diff-filter=AM",
+      "origin/main",
+      "--",
+      SCHEMAS_DIR,
+    ],
     { encoding: "utf-8" }
   ).trim();
 
@@ -38,14 +72,15 @@ function getChangedSchemaFiles(): Set<string> {
   return new Set(diff.split("\n").map((f) => path.basename(f)));
 }
 
-function loadSchemas(args: string[]): CreateAuditLogSchemaOptions[] {
-  const isChanged = args.includes("--changed");
-  const actions = args.filter((a) => a !== "--changed" && a !== "--dry-run");
+async function loadSchemas(
+  args: minimist.ParsedArgs
+): Promise<CreateAuditLogSchemaOptions[]> {
+  const isChanged = !!args.changed;
+  const actions = args._.map(String);
 
   const changedFiles = isChanged ? getChangedSchemaFiles() : null;
 
-  let files = fs
-    .readdirSync(SCHEMAS_DIR)
+  let files = (await fs.readdir(SCHEMAS_DIR))
     .filter((f) => f.endsWith(".json"))
     .sort();
 
@@ -53,11 +88,20 @@ function loadSchemas(args: string[]): CreateAuditLogSchemaOptions[] {
     files = files.filter((f) => changedFiles.has(f));
   }
 
-  // JSON.parse returns `any`, which is assignable to CreateAuditLogSchemaOptions.
-  const schemas: CreateAuditLogSchemaOptions[] = files.map((file) => {
-    const content = fs.readFileSync(path.join(SCHEMAS_DIR, file), "utf-8");
-    return JSON.parse(content);
-  });
+  const schemas: CreateAuditLogSchemaOptions[] = [];
+  for (const file of files) {
+    const content = await fs.readFile(path.join(SCHEMAS_DIR, file), "utf-8");
+    const parsed: unknown = JSON.parse(content);
+
+    const result = auditLogSchemaValidator.safeParse(parsed);
+    if (!result.success) {
+      throw new Error(
+        `Invalid schema in ${file}: ${result.error.issues.map((i) => i.message).join(", ")}`
+      );
+    }
+
+    schemas.push(result.data);
+  }
 
   if (actions.length > 0) {
     const filtered = schemas.filter((s) => actions.includes(s.action));
@@ -73,23 +117,23 @@ function loadSchemas(args: string[]): CreateAuditLogSchemaOptions[] {
 }
 
 async function main() {
-  const args = process.argv.slice(2);
-  const isDryRun = args.includes("--dry-run");
-  const schemas = loadSchemas(args);
+  const args = minimist(process.argv.slice(2));
+  const execute = !!args.execute;
+  const schemas = await loadSchemas(args);
 
   if (schemas.length === 0) {
     console.log("No schemas to register.");
     return;
   }
 
-  if (isDryRun) {
+  if (!execute) {
     for (const schema of schemas) {
       const file = `admin/audit_log_schemas/${schema.action}.json`;
-      console.log(
-        `[dry-run] Would register schema: ${schema.action} (${file})`
-      );
+      console.log(`Would register schema: ${schema.action} (${file})`);
     }
-    console.log(`[dry-run] ${schemas.length} schemas would be registered`);
+    console.log(
+      `\n${schemas.length} schema(s) would be registered. Pass --execute to register.`
+    );
     return;
   }
 
@@ -118,6 +162,8 @@ async function main() {
   if (failed > 0) {
     process.exit(1);
   }
+
+  process.exit(0);
 }
 
 main().catch((error) => {
