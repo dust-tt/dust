@@ -4,6 +4,7 @@ import type {
   ConversationError,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Fetcher } from "swr";
 
 export function useConversation({
@@ -17,7 +18,7 @@ export function useConversation({
 }): {
   conversation?: ConversationWithoutContentType;
   isConversationLoading: boolean;
-  conversationError: ConversationError;
+  conversationError: ConversationError | null;
   mutateConversation: ReturnType<
     typeof useSWRWithDefaults<string, GetConversationResponseBody>
   >["mutate"];
@@ -33,10 +34,19 @@ export function useConversation({
     options
   );
 
+  const conversation = data?.conversation;
+
+  // Don't count network/connection errors when we already have cached data.
+  // This allows u sto keep displaying the conversation instead of replacing it with the error screen.
+  // Actual API errors are always surfaced regardless (example: 404 if the spaces were changed and the conversation is
+  // no longer accessible to the user).
+  const conversationError =
+    error && (!conversation || isAPIErrorResponse(error)) ? error : null;
+
   return {
-    conversation: data ? data.conversation : undefined,
+    conversation,
     isConversationLoading: !error && !data,
-    conversationError: error,
+    conversationError,
     mutateConversation: mutate,
   };
 }
