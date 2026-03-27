@@ -1,3 +1,5 @@
+import type { NextApiRequest } from "next";
+
 import type {
   AuditLogActor,
   AuditLogContext,
@@ -8,10 +10,27 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
-// Audit actions will be added here as event emission is implemented per tier.
-// Using a union type ensures compile-time safety for action strings.
-type AuditAction = never;
+type AuditAction =
+  | "workspace.renamed"
+  | "workspace.sso_enforcement_changed"
+  | "workspace.providers_changed"
+  | "workspace.file_sharing_changed"
+  | "workspace.voice_transcription_changed"
+  | "workspace.domains_batch_updated"
+  | "workspace.auto_join_changed"
+  | "workspace.domain_added"
+  | "workspace.domain_removed"
+  | "api_key.created"
+  | "api_key.revoked"
+  | "analytics.agents_exported"
+  | "analytics.users_exported"
+  | "analytics.programmatic_cost_exported"
+  | "credits.purchased"
+  | "export.created"
+  | "domain.verified"
+  | "domain.verification_failed";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;
@@ -78,6 +97,53 @@ export async function emitAuditLogEvent({
 }
 
 /**
+ * Emits an audit log event directly with a workspace, bypassing Authenticator.
+ * Used in routes where no Authenticator is available (e.g. login, logout, signup)
+ * or in system contexts (e.g. Temporal activities).
+ * Does not throw errors — audit log failures should not break the main operation.
+ */
+export async function emitAuditLogEventDirect({
+  workspace,
+  action,
+  actor,
+  targets,
+  context,
+  metadata,
+}: {
+  workspace: LightWorkspaceType;
+  action: AuditAction;
+  actor: AuditLogActor;
+  targets: AuditLogTarget[];
+  context: AuditLogContext;
+  metadata?: Record<string, string | number | boolean>;
+}): Promise<void> {
+  try {
+    if (!workspace.workOSOrganizationId) {
+      return;
+    }
+
+    await createAuditLogEvent({
+      workspace,
+      event: {
+        action,
+        actor,
+        targets,
+        context,
+        metadata,
+      },
+    });
+  } catch (error) {
+    logger.error(
+      {
+        ...normalizeError(error),
+        auditEvent: { action, targets, metadata },
+      },
+      "Failed to emit audit log event"
+    );
+  }
+}
+
+/**
  * Builds the audit actor from an Authenticator.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
@@ -100,4 +166,25 @@ export function buildWorkspaceTarget(workspace: {
   name: string;
 }): AuditLogTarget {
   return { type: "workspace", id: workspace.sId, name: workspace.name };
+}
+
+/**
+ * Builds the audit log context with the client IP address.
+ * When called with a request object, extracts the IP from headers.
+ * Otherwise returns the IP from auth or "internal" as the location.
+ */
+export function getAuditLogContext(
+  auth: Authenticator,
+  req?: NextApiRequest
+): AuditLogContext {
+  if (req) {
+    const forwarded = req.headers["x-forwarded-for"];
+    const ip = forwarded
+      ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
+          .split(",")[0]
+          .trim()
+      : req.socket?.remoteAddress;
+    return { location: ip ?? "internal" };
+  }
+  return { location: auth.clientIp() ?? "internal" };
 }

@@ -1,0 +1,5 @@
+{
+  "action": "analytics.agents_exported",
+  "targets": [{ "type": "workspace" }],
+  "metadata": { "days": { "type": "string" }, "rowCount": { "type": "string" } }
+}

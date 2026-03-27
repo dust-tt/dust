@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
@@ -67,6 +71,13 @@ async function handleAddDomain(
     }
   }
 
+  void emitAuditLogEvent({
+    auth,
+    action: "workspace.domain_added",
+    targets: [buildWorkspaceTarget(workspace)],
+    metadata: { domain },
+  });
+
   return new Ok({
     display: "text",
     value:
@@ -99,6 +110,13 @@ export async function handleRemoveDomain(
   if (result.isErr()) {
     return new Err(result.error);
   }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "workspace.domain_removed",
+    targets: [buildWorkspaceTarget(workspace)],
+    metadata: { domain },
+  });
 
   return new Ok({
     display: "text",

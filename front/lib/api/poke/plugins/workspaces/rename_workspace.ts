@@ -1,3 +1,4 @@
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -26,6 +27,8 @@ export const renameWorkspace = createPlugin({
       );
     }
 
+    const previousName = auth.getNonNullableWorkspace().name;
+
     const res = await WorkspaceResource.updateName(
       auth.getNonNullableWorkspace().id,
       newName
@@ -53,6 +56,13 @@ export const renameWorkspace = createPlugin({
         new Error(`Failed to update WorkOS organization name: ${e.message}`)
       );
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "workspace.renamed",
+      targets: [{ type: "workspace", id: auth.getNonNullableWorkspace().sId, name: newName }],
+      metadata: { previousName, newName },
+    });
 
     return new Ok({
       display: "text",

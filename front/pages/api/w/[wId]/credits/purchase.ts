@@ -1,5 +1,9 @@
 /** @ignoreswagger */
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -252,6 +256,18 @@ async function handler(
           });
         }
 
+        void emitAuditLogEvent({
+          auth,
+          action: "credits.purchased",
+          targets: [buildWorkspaceTarget(workspace)],
+          metadata: {
+            amountDollars: String(amountDollars),
+            amountMicroUsd: String(amountMicroUsd),
+            isEnterprise: String(true),
+            discountPercent: String(discountPercent ?? 0),
+          },
+        });
+
         return res.status(200).json({
           success: true,
           creditsAddedMicroUsd: amountMicroUsd,
@@ -276,6 +292,18 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "credits.purchased",
+        targets: [buildWorkspaceTarget(workspace)],
+        metadata: {
+          amountDollars: String(amountDollars),
+          amountMicroUsd: String(amountMicroUsd),
+          isEnterprise: String(false),
+          discountPercent: String(discountPercent ?? 0),
+        },
+      });
 
       return res.status(200).json({
         success: true,

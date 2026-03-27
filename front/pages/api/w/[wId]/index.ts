@@ -1,4 +1,8 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -129,6 +133,7 @@ async function handler(
       }
 
       if ("name" in body) {
+        const previousName = owner.name;
         await workspace.updateWorkspaceSettings({
           name: escape(body.name),
         });
@@ -144,28 +149,62 @@ async function handler(
             },
           });
         }
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.renamed",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: { previousName, newName: body.name },
+        });
       } else if ("ssoEnforced" in body) {
+        const previousSsoEnforced = owner.ssoEnforced;
         await workspace.updateWorkspaceSettings({
           ssoEnforced: body.ssoEnforced,
         });
 
         owner.ssoEnforced = body.ssoEnforced;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.sso_enforcement_changed",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: {
+            previousValue: String(previousSsoEnforced),
+            newValue: String(body.ssoEnforced),
+          },
+        });
       } else if (
         "whiteListedProviders" in body &&
         "defaultEmbeddingProvider" in body
       ) {
+        const previousProviders = owner.whiteListedProviders;
+        const previousEmbeddingProvider = owner.defaultEmbeddingProvider;
         await workspace.updateWorkspaceSettings({
           whiteListedProviders: body.whiteListedProviders,
           defaultEmbeddingProvider: body.defaultEmbeddingProvider,
         });
         owner.whiteListedProviders = body.whiteListedProviders;
         owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.providers_changed",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: {
+            previousProviders: JSON.stringify(previousProviders),
+            newProviders: JSON.stringify(body.whiteListedProviders),
+            previousEmbeddingProvider: String(previousEmbeddingProvider),
+            newEmbeddingProvider: String(body.defaultEmbeddingProvider),
+          },
+        });
       } else if ("workOSOrganizationId" in body) {
         await workspace.updateWorkspaceSettings({
           workOSOrganizationId: body.workOSOrganizationId,
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
       } else if ("allowContentCreationFileSharing" in body) {
+        const previousFileSharing =
+          owner.metadata?.allowContentCreationFileSharing ?? false;
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
@@ -180,7 +219,19 @@ async function handler(
             newPolicy: "workspace_and_emails",
           });
         }
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.file_sharing_changed",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: {
+            previousValue: String(previousFileSharing),
+            newValue: String(body.allowContentCreationFileSharing),
+          },
+        });
       } else if ("allowVoiceTranscription" in body) {
+        const previousVoiceTranscription =
+          owner.metadata?.allowVoiceTranscription ?? false;
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
@@ -188,6 +239,16 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.voice_transcription_changed",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: {
+            previousValue: String(previousVoiceTranscription),
+            newValue: String(body.allowVoiceTranscription),
+          },
+        });
       } else if ("allowEmailAgents" in body) {
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
@@ -212,6 +273,13 @@ async function handler(
             });
           }
         }
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.domains_batch_updated",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: { updates: JSON.stringify(body.domainUpdates) },
+        });
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const updateResult = await workspace.updateDomainAutoJoinEnabled({
@@ -227,6 +295,16 @@ async function handler(
             },
           });
         }
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.auto_join_changed",
+          targets: [buildWorkspaceTarget(owner)],
+          metadata: {
+            domain: domain ?? "all",
+            enabled: String(domainAutoJoinEnabled),
+          },
+        });
       }
 
       res.status(200).json({ workspace: owner });

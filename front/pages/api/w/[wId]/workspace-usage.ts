@@ -1,4 +1,8 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationsDataRetention } from "@app/lib/data_retention";
@@ -128,6 +132,14 @@ async function handler(
         workspace: owner,
         includeInactive,
       });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "export.created",
+        targets: [buildWorkspaceTarget(owner)],
+        metadata: { table: query.table, mode: query.mode },
+      });
+
       if (query.table === "all") {
         const zip = new JSZip();
         const csvSuffix = startDate

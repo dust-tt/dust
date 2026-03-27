@@ -4,6 +4,10 @@ import {
   buildAgentAnalyticsBaseQuery,
   timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -197,6 +201,16 @@ async function handler(
       ];
       const csvData = rows.map((row) => headers.map((h) => row[h]));
       const csv = stringify([headers, ...csvData], { header: false });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "analytics.users_exported",
+        targets: [buildWorkspaceTarget(owner)],
+        metadata: {
+          days: String(q.data.days),
+          rowCount: String(rows.length),
+        },
+      });
 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(

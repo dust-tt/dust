@@ -1,4 +1,8 @@
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { toCsv } from "@app/lib/api/csv";
 import {
   bucketsToArray,
@@ -236,6 +240,17 @@ export async function handleProgrammaticCostExportRequest(
 
       const csv = await toCsv(rows);
       const filename = `programmatic-cost-${selectedPeriod ?? formatUTCDateFromMillis(Date.now()).slice(0, 7)}.csv`;
+
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        auth,
+        action: "analytics.programmatic_cost_exported",
+        targets: [buildWorkspaceTarget(owner)],
+        metadata: {
+          period: selectedPeriod ?? "current",
+          rowCount: String(rows.length),
+        },
+      });
 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);

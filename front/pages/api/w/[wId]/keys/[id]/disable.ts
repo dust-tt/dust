@@ -1,4 +1,8 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -55,6 +59,15 @@ async function handler(
   switch (req.method) {
     case "POST":
       await key.setIsDisabled();
+
+      void emitAuditLogEvent({
+        auth,
+        action: "api_key.revoked",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "api_key", id: String(key.id), name: key.name },
+        ],
+      });
 
       res.status(200).json({
         key: {

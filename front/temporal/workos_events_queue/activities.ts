@@ -1,3 +1,4 @@
+import { emitAuditLogEventDirect } from "@app/lib/api/audit/workos_audit";
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
@@ -380,6 +381,15 @@ async function handleOrganizationDomainVerified(
   eventData: OrganizationDomain
 ) {
   await handleOrganizationDomainEvent(workspace, eventData, "verified");
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "domain.verified",
+    actor: { type: "system", id: "workos", name: "WorkOS" },
+    targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
+    context: { location: "system" },
+    metadata: { domain: eventData.domain },
+  });
 }
 
 async function handleOrganizationDomainVerificationFailed(
@@ -387,6 +397,15 @@ async function handleOrganizationDomainVerificationFailed(
   eventData: OrganizationDomain
 ) {
   await handleOrganizationDomainEvent(workspace, eventData, "failed");
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "domain.verification_failed",
+    actor: { type: "system", id: "workos", name: "WorkOS" },
+    targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
+    context: { location: "system" },
+    metadata: { domain: eventData.domain },
+  });
 }
 
 async function handleOrganizationUpdated(
