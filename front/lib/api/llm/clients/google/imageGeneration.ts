@@ -133,7 +133,7 @@ export class ImageGenerationGoogleLLM {
       );
     }
 
-    const validationResult = this.validateGeminiImageResponse(
+    const validationResult = this.validateImageResponse(
       response,
       "generation",
       prompt
@@ -146,7 +146,7 @@ export class ImageGenerationGoogleLLM {
     const responseImageParts = validationResult.value;
 
     return new Ok({
-      images: this.geminiPartsToBase64Images(responseImageParts),
+      images: this.partsToBase64Images(responseImageParts),
       usageMetadata: {
         inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
@@ -155,7 +155,7 @@ export class ImageGenerationGoogleLLM {
     });
   }
 
-  private validateGeminiImageResponse(
+  private validateImageResponse(
     response: {
       candidates?: Array<{
         content?: {
@@ -191,7 +191,7 @@ export class ImageGenerationGoogleLLM {
       return new Err(new ImageGenerationError("No image data in response"));
     }
 
-    const imageParts = content.parts.filter(this.isValidGeminiInlineDataPart);
+    const imageParts = content.parts.filter(this.isValidInlineDataPart);
     if (imageParts.length === 0) {
       return new Err(new ImageGenerationError("No image data in response."));
     }
@@ -199,7 +199,7 @@ export class ImageGenerationGoogleLLM {
     return new Ok(imageParts);
   }
 
-  private geminiPartsToBase64Images(
+  private partsToBase64Images(
     parts: GeminiInlineDataPart[]
   ): Base64ImageData[] {
     return parts.map((part) => ({
@@ -208,7 +208,7 @@ export class ImageGenerationGoogleLLM {
     }));
   }
 
-  private isValidGeminiInlineDataPart(
+  private isValidInlineDataPart(
     part: unknown
   ): part is GeminiInlineDataPart {
     return geminiInlineDataPartSchema.safeParse(part).success;
