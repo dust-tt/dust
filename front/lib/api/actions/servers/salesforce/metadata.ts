@@ -45,6 +45,30 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       done: "Describe Salesforce object",
     },
   },
+  create_object: {
+    description: "Create one or more records in Salesforce",
+    schema: {
+      objectName: z
+        .string()
+        .describe("The name of the Salesforce object (e.g., Account, Contact)"),
+      records: z
+        .array(z.object({}).passthrough())
+        .min(1)
+        .describe(
+          "Record(s) to create. Must include all required fields for the object"
+        ),
+      allOrNone: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("If true, all creates must succeed or all fail"),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Creating Salesforce records",
+      done: "Create Salesforce records",
+    },
+  },
   update_object: {
     description: "Update one or more records in Salesforce",
     schema: {
