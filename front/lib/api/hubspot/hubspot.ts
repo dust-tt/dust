@@ -144,19 +144,28 @@ export async function submitToHubSpotPartnerForm(params: {
   addField("firstname", formData.firstname);
   addField("lastname", formData.lastname);
   addField("company", formData.company);
-  addField("company_size", formData.company_size);
-  addField("headquarters_region", formData.headquarters_region);
+  addField("hs_linkedin_url", formData.hs_linkedin_url);
+  addField("partner_business_model", formData.partner_business_model);
 
-  // Step 2 fields
-  addField("partner_type", formData.partner_type);
-  addField("partner_services", formData.partner_services);
-  addField("partner_is_dust_user", formData.partner_is_dust_user);
-  addField("partner_additionnal_details", formData.partner_additionnal_details);
+  // Step 2 fields (conditional — defaults for when step is skipped, since
+  // HubSpot requires these fields on the form definition)
+  addField("headquarters_region", formData.headquarters_region || "N/A");
+  addField("company_industry", formData.company_industry || "N/A");
+  addField("partner_customer_sizes", formData.partner_customer_sizes || "N/A");
+  addField(
+    "partner_project_duration",
+    formData.partner_project_duration || "N/A"
+  );
+  addField("technical_staff", formData.technical_staff || "0");
+  addField("partner_ai_proficiency", formData.partner_ai_proficiency || "N/A");
 
   // Step 3 fields
-  addField("partner_customer_sizes", formData.partner_customer_sizes);
-  addField("enterprise_tool_stack", formData.enterprise_tool_stack);
+  addField("partner_dust_usage_duration", formData.partner_dust_usage_duration);
+  addField("partner_agent_example", formData.partner_agent_example);
+  addField("partner_dust_clients", formData.partner_dust_clients);
   addField("any_existing_lead_to_share_", formData.any_existing_lead_to_share_);
+  addField("partner_additionnal_details", formData.partner_additionnal_details);
+  addField("partner_other_partnerhips", formData.partner_other_partnerhips);
 
   // UTM tracking fields - internal names have capital U
   addField("Utm_source", tracking.utm_source);
