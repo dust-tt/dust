@@ -117,6 +117,10 @@ procs:
   viz:
     cwd: "<CONFIG_DIR>/../viz"
     shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       npm run dev
     autostart: false
