@@ -8,9 +8,9 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { describe, expect, it, vi } from "vitest";
 

@@ -172,15 +172,7 @@ export async function storeLlmResult(
       order: [["rank", "DESC"]],
       transaction: t,
     });
-
-    const maxRank = await MessageModel.max<number, MessageModel>("rank", {
-      where: {
-        conversationId: conversation.id,
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
-    const nextRank = typeof maxRank === "number" ? maxRank + 1 : 0;
+    const nextRank = parentMessage ? parentMessage.rank + 1 : 0;
 
     // Determine status from events.
     const hasError = events.some((e) => e instanceof EventError);
@@ -396,6 +388,6 @@ function eventToStoredStepContent(
     case "tool_call_delta":
       return null;
     default:
-      assertNever(event.type);
+      assertNever(event);
   }
 }
