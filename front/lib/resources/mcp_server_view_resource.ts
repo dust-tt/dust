@@ -210,11 +210,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       serverType,
       internalMCPServerId: serverType === "internal" ? mcpServerId : null,
       remoteMCPServerId: serverType === "remote" ? id : null,
-      // Always copy the oAuthUseCase, name and description from the system view to the custom view.
-      // This way, it's always available on the MCP server view without having to fetch the system view.
+      // Always copy the oAuthUseCase, name, description and oauthScope from the
+      // system view to the custom view so they're available without fetching the
+      // system view (e.g. when resolving personal connection scopes).
       oAuthUseCase: systemView.oAuthUseCase,
       name: systemView.name,
       description: systemView.description,
+      oauthScope: systemView.oauthScope,
     };
 
     if (space.kind === "global") {
@@ -1100,6 +1102,22 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   // Serialization.
   toJSON(): MCPServerViewType {
+    const server =
+      this.serverType === "remote"
+        ? this.getRemoteMCPServerResource().toJSON()
+        : this.getInternalMCPServerResource().toJSON();
+
+    // Override the server's default authorization scope with the admin-configured
+    // restriction if one has been set. This ensures personal connections and
+    // platform OAuth setup both use the restricted scope.
+    const serverWithScope =
+      this.oauthScope !== null && server.authorization
+        ? {
+            ...server,
+            authorization: { ...server.authorization, scope: this.oauthScope },
+          }
+        : server;
+
     return {
       id: this.id,
       sId: this.sId,
@@ -1109,10 +1127,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
       serverType: this.serverType,
-      server:
-        this.serverType === "remote"
-          ? this.getRemoteMCPServerResource().toJSON()
-          : this.getInternalMCPServerResource().toJSON(),
+      server: serverWithScope,
       oAuthUseCase: this.oAuthUseCase,
       editedByUser: this.makeEditedBy(
         this.editedByUser,
