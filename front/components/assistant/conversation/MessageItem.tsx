@@ -122,6 +122,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       data.user?.sId !== undefined &&
       data.user.sId === nextData.user?.sId;
 
+    const isPreviousMessageSameSender =
+      prevData &&
+      isUserMessage(data) &&
+      isUserMessage(prevData) &&
+      data.user?.sId !== undefined &&
+      data.user.sId === prevData.user?.sId &&
+      getMessageDate(prevData).toDateString() ===
+        getMessageDate(data).toDateString();
+
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
         const parentMessageId = data.parentMessageId;
@@ -162,6 +171,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               citations={citations}
               conversationId={context.conversation.sId}
               currentUserId={context.user.sId}
+              isFirstInGroup={!isPreviousMessageSameSender}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}

@@ -123,6 +123,7 @@ interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
   currentUserId: string;
+  isFirstInGroup: boolean;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
@@ -133,6 +134,7 @@ export function UserMessage({
   citations,
   conversationId,
   currentUserId,
+  isFirstInGroup,
   isLastMessage,
   message,
   owner,
@@ -293,7 +295,7 @@ export function UserMessage({
             isCurrentUser ? "flex-end gap-1" : "flex-start"
           )}
         >
-          {!isCurrentUser && (
+          {!isCurrentUser && isFirstInGroup && (
             <div className="mb-1 flex items-center gap-1.5">
               <Avatar
                 visual={pictureUrl}
@@ -324,7 +326,7 @@ export function UserMessage({
               />
             </div>
           )}
-          {isCurrentUser && (
+          {isCurrentUser && isFirstInGroup && (
             <div className="inline-flex items-center justify-between gap-0.5 self-end">
               <ConversationMessageTitle
                 name={undefined}
