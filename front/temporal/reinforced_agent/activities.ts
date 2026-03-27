@@ -206,7 +206,8 @@ export async function startConversationAnalysisBatchActivity({
       ),
       ...llmParamsWithoutConversation,
       ...getReinforcementDefaultOptions(
-        "reinforced_agent_analyze_conversation"
+        "reinforced_agent_analyze_conversation",
+        agentConfigurationId
       ),
     });
     orderedAnalysedConversationIds.push(conversationId);
@@ -393,7 +394,8 @@ export async function startAggregationBatchActivity({
       ),
       ...llmParamsWithoutConversation,
       ...getReinforcementDefaultOptions(
-        "reinforced_agent_aggregate_suggestions"
+        "reinforced_agent_aggregate_suggestions",
+        agentConfigurationId
       ),
     });
   }

@@ -16,6 +16,8 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { ReinforcedOperationType } from "@app/lib/reinforced_agent/types";
+import { getReinforcementMetadata } from "@app/lib/reinforced_agent/types";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -54,21 +56,18 @@ function buildSpecifications(): AgentActionSpecification[] {
   }));
 }
 
-type ReinforcedOperationType =
-  | "reinforced_agent_analyze_conversation"
-  | "reinforced_agent_aggregate_suggestions";
-
 export const REINFORCEMENT_AGENT_ID = "reinforcement";
 
 export function getReinforcementDefaultOptions(
-  reinforcedOperationType: ReinforcedOperationType
+  reinforcedOperationType: ReinforcedOperationType,
+  reinforcedAgentConfigurationId: string
 ) {
   return {
     visibility: "test" as const,
-    metadata: {
-      reinforcedAgentBatch: true,
+    metadata: getReinforcementMetadata(
       reinforcedOperationType,
-    },
+      reinforcedAgentConfigurationId
+    ),
     userContextUsername: "reinforced_agent",
     userContextOrigin: "reinforcement" as const,
     agentConfigurationId: REINFORCEMENT_AGENT_ID,
@@ -382,7 +381,7 @@ export async function runReinforcedAnalysis({
     newMessages: llmConversation.messages,
     title: reinforcementConversationTitle(operationType, contextId),
     ...llmParamsWithoutConversation,
-    ...getReinforcementDefaultOptions(operationType),
+    ...getReinforcementDefaultOptions(operationType, agentConfig.sId),
   });
   if (writeResult.isErr()) {
     throw writeResult.error;
