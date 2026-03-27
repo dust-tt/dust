@@ -1,4 +1,5 @@
 import { Button } from "@sparkle/components/Button";
+import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import {
   downloadFile,
   ImageZoomDialog,
@@ -171,7 +172,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
             </div>
           ) : (
             <>
-              <img
+              <ImageWrapper
                 src={imgSrc}
                 alt={alt}
                 className={cn(
