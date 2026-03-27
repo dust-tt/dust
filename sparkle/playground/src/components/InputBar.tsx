@@ -46,6 +46,7 @@ export function InputBar({
   const [isCitationSheetOpen, setIsCitationSheetOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dragCounterRef = useRef(0);
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const selectedDroppedFileRef = useRef<DroppedFile | null>(null);
@@ -70,6 +71,32 @@ export function InputBar({
   const handleFocus = () => {
     setIsFocused(true);
   };
+
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const filesArray = Array.from(files as FileList | File[]);
+    if (!filesArray.length) {
+      return;
+    }
+    const newItems: DroppedFile[] = [];
+    for (let i = 0; i < filesArray.length; i++) {
+      const file = filesArray[i];
+      if (file) {
+        const isImage = file.type.startsWith("image/");
+        const objectUrl = isImage ? URL.createObjectURL(file) : undefined;
+        if (objectUrl) objectUrlsRef.current.add(objectUrl);
+        newItems.push({
+          id: `${file.name}-${i}-${Date.now()}`,
+          file,
+          objectUrl,
+        });
+      }
+    }
+    if (!newItems.length) {
+      return;
+    }
+    setIsFocused(true);
+    setDroppedFiles((prev) => [...prev, ...newItems]);
+  }, []);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -97,25 +124,24 @@ export function InputBar({
     e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragOver(false);
-    setIsFocused(true);
     const files = e.dataTransfer.files;
-    if (!files?.length) return;
-    const newItems: DroppedFile[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file) {
-        const isImage = file.type.startsWith("image/");
-        const objectUrl = isImage ? URL.createObjectURL(file) : undefined;
-        if (objectUrl) objectUrlsRef.current.add(objectUrl);
-        newItems.push({
-          id: `${file.name}-${i}-${Date.now()}`,
-          file,
-          objectUrl,
-        });
-      }
+    if (files?.length) {
+      addFiles(files);
     }
-    setDroppedFiles((prev) => [...prev, ...newItems]);
-  }, []);
+  }, [addFiles]);
+
+  const handleFileInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (!files?.length) {
+        return;
+      }
+      addFiles(files);
+      // Allow selecting the same file again by resetting the input value.
+      event.target.value = "";
+    },
+    [addFiles]
+  );
 
   const removeFile = useCallback((id: string) => {
     setDroppedFiles((prev) => {
@@ -212,6 +238,13 @@ export function InputBar({
           showAskSidekickMenu={false}
           className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="s-hidden"
+          onChange={handleFileInputChange}
+        />
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
           <Button
             variant="outline"
@@ -219,6 +252,9 @@ export function InputBar({
             size="sm"
             tooltip="Attach a document"
             className="md:s-hidden"
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
           />
           <div className="s-hidden s-gap-0 md:s-flex">
             <Button
@@ -226,6 +262,9 @@ export function InputBar({
               icon={AttachmentIcon}
               size="xs"
               tooltip="Attach a document"
+              onClick={() => {
+                fileInputRef.current?.click();
+              }}
             />
             <Button
               variant="ghost-secondary"

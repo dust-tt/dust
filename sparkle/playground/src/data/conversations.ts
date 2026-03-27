@@ -915,6 +915,32 @@ Risks:
     },
     {
       kind: "message",
+      id: "msg-1-14b",
+      content: "What would you like to do next?",
+      timestamp: new Date(conv1Start.getTime() + 25 * 60 * 1000 + 30 * 1000),
+      ownerId: agent1.id,
+      ownerType: "agent",
+      type: "agent",
+      group: {
+        id: "group-agent-1b",
+        type: "agent",
+        name: "GoTWriter",
+        timestamp: "09:21",
+        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+      },
+      question: {
+        question: "What would you like to do?",
+        options: [
+          { id: "explain", label: "Explain the code" },
+          { id: "refactor", label: "Refactor this" },
+          { id: "test", label: "Write tests" },
+          { id: "doc", label: "Add documentation" },
+        ],
+        allowOther: true,
+      },
+    },
+    {
+      kind: "message",
       id: "msg-1-15a",
       content:
         "Sharing these options now. Let me know if we should bundle any.",
