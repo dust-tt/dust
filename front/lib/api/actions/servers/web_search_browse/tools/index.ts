@@ -2,7 +2,7 @@ import {
   generatePlainTextFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
-import { MAXED_OUTPUT_FILE_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
+import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -190,10 +190,7 @@ async function handleWebbrowser(
           "Summarized content"
         );
 
-        const snippet = snippetRes.value.slice(
-          0,
-          MAXED_OUTPUT_FILE_SNIPPET_LENGTH
-        );
+        const snippet = snippetRes.value.slice(0, FILE_OFFLOAD_SNIPPET_LENGTH);
 
         const baseTitle = title ?? result.url;
         const fileTitle = `${baseTitle}`;
