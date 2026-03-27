@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import CopyPlugin from "copy-webpack-plugin";
 import Dotenv from "dotenv-webpack";
 import fs from "fs";
+import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import { promisify } from "util";
@@ -219,10 +220,6 @@ export const getConfig = async ({
             to: path.join(buildDirPath, "manifest.json"),
           },
           {
-            from: resolvePath("../../ui/main.html"),
-            to: path.join(buildDirPath, "main.html"),
-          },
-          {
             from: resolvePath("../../ui/request-mic.html"),
             to: path.join(buildDirPath, "request-mic.html"),
           },
@@ -236,6 +233,13 @@ export const getConfig = async ({
             to: path.resolve(buildDirPath, "images"),
           },
         ],
+      }),
+      new HtmlWebpackPlugin({
+        template: resolvePath("../../ui/main.html"),
+        filename: "main.html",
+        chunks: ["main"],
+        inject: "body",
+        scriptLoading: "blocking",
       }),
       new webpack.BannerPlugin({
         banner: "\ufeff", // UTF-8 BOM
