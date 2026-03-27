@@ -31,6 +31,58 @@ import type {
   AgentToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 
+const AGGREGATION_ASSEMBLY_ORDER = [
+  "primary",
+  "aggregation_rules",
+  "suggestion_tool_calls",
+] as const;
+
+type AggregationSectionKey = (typeof AGGREGATION_ASSEMBLY_ORDER)[number];
+
+const REINFORCED_AGGREGATION_SECTIONS: Record<AggregationSectionKey, string> = {
+  primary: `You improve an AI agent's configuration by consolidating many draft suggestions. Each draft was produced from a single agent conversation.
+Your job is to produce a subset of the highest quality suggestions for the agent builder to review.
+
+You have access to the following tools to suggest improvements to the agent: suggest_prompt_edits, suggest_tools, and suggest_skills.
+You will call these tools to create each of the final suggestions. You MUST follow <suggestion_tool_calls> for each suggestion.
+
+Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
+You MUST call at least one tool. If you think no suggestions are impactful, call suggest_prompt_edits with an empty suggestions array.
+You MUST follow <aggregation_rules> to determine the final set of suggestions.
+
+The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.
+`,
+
+  aggregation_rules: `
+Start by grouping suggestions by target ("targetBlockId" for instructions, "toolId" for tools, "skillId" for skills).
+NEVER create more than one suggestion per target.
+
+Rank the groups based on impact to the agent instructions. Use these heuristics in priority order to determine highest impact:
+- The number of conversations that exhibited the issue
+- Suggestions that were directly generated based on user feedback
+- Suggestions that were directly generated based on a user response to an agent message
+- Suggestions that change or enhance the core agent capabilities
+
+Use your discretion on what suggestions will most improve the agent's ability to handle the user's intent.
+
+You SHOULD drop suggestions that only have minor impact and are only supported by a single conversation.
+
+There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires a tool suggestion to be effective. In this case, NEVER create one suggestion without the other.`,
+
+  suggestion_tool_calls: `
+You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
+The only exception is the "analysis" attribute. You MUST provide a new analysis based on why you picked the suggestion. The end user does NOT care about the technical consideratations behind your thought process.
+The analysis MUST be a user-facing explanation of why the suggestion is impactful and how many conversations support the suggestion.
+`,
+};
+
+function buildAggregationSystemPrompt(): string {
+  return AGGREGATION_ASSEMBLY_ORDER.map((key) => {
+    const body = REINFORCED_AGGREGATION_SECTIONS[key].trim();
+    return `<${key}>\n${body}\n</${key}>`;
+  }).join("\n\n");
+}
+
 type ReinforcedSuggestionType =
   | AgentInstructionsSuggestionType
   | AgentToolsSuggestionType
@@ -173,23 +225,7 @@ export function buildAggregationPrompt(
   toolsAndSkillsContext: string,
   agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
-  const systemPrompt = `You are an AI agent improvement analyst. You have been given multiple suggestions from individual conversation analyses for the same agent. Your job is to deduplicate, merge, and prioritize them into a concise set of high-quality, actionable suggestions.
-
-## Your task
-- Merge suggestions that address the same issue, or that target the same block
-- Keep only the most impactful suggestions (max 5)
-- In the analysis, mention how many conversations support each suggestion
-- When calling suggest_prompt_edits, make sure there is never more than one suggestion targeting the same block (including instructions-root)
-- Do NOT create suggestions that are too similar to existing pending suggestions (listed below) — they are already being reviewed
-- Do NOT create suggestions that are too similar to previously rejected suggestions (listed below) — they will get rejected again
-- It is perfectly fine to return empty suggestions arrays if there is nothing new to say
-
-You have three tools available:
-- suggest_prompt_edits: For instruction changes.
-- suggest_tools: For suggesting tools to add or remove.
-- suggest_skills: For suggesting skills to add or remove.
-
-You MUST call at least one tool. If no suggestions survive aggregation, call suggest_prompt_edits with an empty suggestions array.`;
+  const systemPrompt = buildAggregationSystemPrompt();
 
   let userMessage = `${formatAgentContext(agentConfig, agentSkills)}
 

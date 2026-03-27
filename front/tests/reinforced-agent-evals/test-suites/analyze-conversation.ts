@@ -175,6 +175,68 @@ Score 2 if the correct tool is suggested but the analysis is weak.
 Score 3 if the correct tool is suggested with a clear, well-reasoned analysis.`,
     },
     {
+      scenarioId: "targeted-block-edit-not-full-rewrite",
+      type: "analysis",
+      agentConfig: {
+        name: "Incident Response Bot",
+        description:
+          "Helps the on-call team triage and respond to production incidents",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are an incident response assistant. Help on-call engineers triage production alerts, assess severity, and coordinate remediation steps.</p>
+        </div>
+        <div data-block-id="severity-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="severity-p">Severity classification: P1 = customer-facing outage, P2 = degraded service, P3 = internal impact only, P4 = no user impact.</p>
+        </div>
+        <div data-block-id="escalation-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="escalation-p">Always recommend escalation to the on-call lead for P1 and P2 incidents.</p>
+        </div>
+        </div>`,
+      },
+      conversation: [
+        {
+          role: "user",
+          content:
+            "We have a database connection pool exhaustion on the primary DB. Payment service is returning 500s.",
+        },
+        {
+          role: "agent",
+          content:
+            "This sounds like a P3 incident — internal tooling impact. I'd recommend monitoring for 10 minutes before escalating.",
+        },
+        {
+          role: "user",
+          content:
+            "P3?! Payments are failing for real customers right now. This is clearly P1.",
+          feedback: {
+            direction: "down",
+            comment:
+              "The agent completely misclassified the severity. Payment failures are always P1.",
+          },
+        },
+        {
+          role: "agent",
+          content:
+            "You're right, I apologize. Payment service 500s affecting customers is a P1. Please escalate to the on-call lead immediately and consider rolling back the last deployment.",
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [promptSuggestion("severity-block", "severity-p")],
+      judgeCriteria: `The reinforced agent MUST call suggest_prompt_edits targeting the severity classification
+block ("severity-block" or its paragraph "severity-p"), NOT the role block ("role-block") or
+"instructions-root". The suggestion should:
+- Clarify that payment service failures affecting real customers are always P1
+- NOT rewrite the entire instructions or the role block — only the severity section needs updating
+- Preserve the existing P2/P3/P4 definitions while fixing or supplementing the P1 definition
+- Include an analysis explaining why misclassification happened and how the targeted fix prevents it
+
+Score 0 if no suggest_prompt_edits call is made.
+Score 0 if the suggestion targets "instructions-root" or "role-block" / "role-p" instead of the severity block.
+Score 1 if it targets the severity block but rewrites unrelated sections.
+Score 2 if it targets the correct block with a reasonable fix but the analysis is weak.
+Score 3 if it targets only the severity block, fixes the P1 definition with payment examples, and the analysis explains the targeted change.`,
+    },
+    {
       scenarioId: "improve-tool-usage-crm-owner-lookup",
       type: "analysis",
       agentConfig: {

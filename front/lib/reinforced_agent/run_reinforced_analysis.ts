@@ -130,7 +130,7 @@ export async function getReinforcedLLM(
   if (!owner) {
     return null;
   }
-  const model = await getLargeWhitelistedModel(auth);
+  const model = getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }
