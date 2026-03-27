@@ -10,7 +10,7 @@ import {
   NotificationInteractiveContentFileContentSchema,
   OAuthProviderSchema,
 } from "./output_schemas";
-import { CallToolResultSchema } from "./raw_mcp_types";
+import { CallToolResultSchema, ContentBlockSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
 const ModelProviderIdSchema = FlexibleEnumSchema<
@@ -3295,15 +3295,10 @@ export type CallMCPToolRequestBodyType = z.infer<
   typeof CallMCPToolRequestBodySchema
 >;
 
-const CallMCPToolContentBlockSchema = z.object({
-  type: z.string(),
-  text: z.string().optional(),
-});
-
 export const CallMCPToolResponseSchema = z.object({
   success: z.literal(true),
   result: z.object({
-    content: z.array(CallMCPToolContentBlockSchema),
+    content: z.array(ContentBlockSchema),
     isError: z.boolean(),
   }),
 });
