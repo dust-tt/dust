@@ -13,6 +13,7 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import {
   fileSizeToHumanReadable,
   isSupportedImageContentType,
@@ -21,23 +22,16 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Part } from "@google/genai";
-import { createPartFromUri } from "@google/genai";
 import { z } from "zod";
 
-const GEMINI_SUPPORTED_IMAGE_TYPES = [
-  "image/bmp",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
+export class ImageGenerationError extends Error {
+  readonly data?: Record<string, unknown>;
 
-type GeminiSupportedImageType = (typeof GEMINI_SUPPORTED_IMAGE_TYPES)[number];
-
-function isGeminiSupportedImageType(
-  contentType: string
-): contentType is GeminiSupportedImageType {
-  return GEMINI_SUPPORTED_IMAGE_TYPES.some((type) => type === contentType);
+  constructor(message: string, data?: Record<string, unknown>) {
+    super(message);
+    this.name = "ImageGenerationError";
+    this.data = data;
+  }
 }
 
 export const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
@@ -85,8 +79,8 @@ export function geminiPartsToBase64Images(
 }
 
 export function computeImageGenerationCostDetails(usageMetadata: {
-  promptTokenCount?: number;
-  candidatesTokenCount?: number;
+  inputTokens: number;
+  outputTokens: number;
 }): {
   inputTokens: number;
   outputTokens: number;
@@ -98,8 +92,8 @@ export function computeImageGenerationCostDetails(usageMetadata: {
     total: number;
   };
 } {
-  const inputTokens = usageMetadata.promptTokenCount ?? 0;
-  const outputTokens = usageMetadata.candidatesTokenCount ?? 0;
+  const inputTokens = usageMetadata.inputTokens;
+  const outputTokens = usageMetadata.outputTokens;
   const totalTokens = inputTokens + outputTokens;
 
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
@@ -242,21 +236,24 @@ export function validateGeminiImageResponse(
   return new Ok(imageParts);
 }
 
-export function trackGeminiTokenUsage(response: {
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-  };
+export function trackTokenUsage({
+  inputTokens,
+  outputTokens,
+  providerId,
+}: {
+  inputTokens: number;
+  outputTokens: number;
+  providerId: ModelProviderIdType;
 }): void {
   getStatsDClient().increment(
     "tools.image_generation.usage.input_tokens",
-    response.usageMetadata?.promptTokenCount ?? 0,
-    ["provider:gemini"]
+    inputTokens,
+    [`provider:${providerId}`]
   );
   getStatsDClient().increment(
     "tools.image_generation.usage.output_tokens",
-    response.usageMetadata?.candidatesTokenCount ?? 0,
-    ["provider:gemini"]
+    outputTokens,
+    [`provider:${providerId}`]
   );
 }
 
@@ -338,12 +335,14 @@ async function processSingleImageFile(
     imageFileId,
     conversationId,
     maxImageSize,
+    supportedContentTypes,
   }: {
     imageFileId: string;
     conversationId: string;
     maxImageSize: number;
+    supportedContentTypes: string[];
   }
-): Promise<Ok<Part> | Err<MCPError>> {
+): Promise<Ok<FileResource> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
   const fileResource = await FileResource.fetchById(auth, imageFileId);
   if (!fileResource) {
@@ -391,10 +390,12 @@ async function processSingleImageFile(
     );
   }
 
-  if (!isGeminiSupportedImageType(fileResource.contentType)) {
+  if (!supportedContentTypes.includes(fileResource.contentType)) {
     return new Err(
       new MCPError(
-        `File ${imageFileId} is not a supported image type for editing. Got: ${fileResource.contentType}. Supported types: ${GEMINI_SUPPORTED_IMAGE_TYPES.map((t) => t.replace("image/", "").toUpperCase()).join(", ")}.`,
+        `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: ${supportedContentTypes
+          .map((t) => t.replace("image/", "").toUpperCase())
+          .join(", ")}.`,
         {
           tracked: false,
         }
@@ -402,12 +403,7 @@ async function processSingleImageFile(
     );
   }
 
-  const signedUrl = await fileResource.getSignedUrlForDownload(
-    auth,
-    "original"
-  );
-
-  return new Ok(createPartFromUri(signedUrl, fileResource.contentType));
+  return new Ok(fileResource);
 }
 
 export async function processImageFileIds(
@@ -415,11 +411,13 @@ export async function processImageFileIds(
   {
     imageFileIds,
     agentLoopContext,
+    supportedContentTypes,
   }: {
     imageFileIds: string[];
     agentLoopContext: AgentLoopContextType | undefined;
+    supportedContentTypes: string[];
   }
-): Promise<Ok<Part[]> | Err<MCPError>> {
+): Promise<Ok<FileResource[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
@@ -438,6 +436,7 @@ export async function processImageFileIds(
         imageFileId,
         conversationId,
         maxImageSize,
+        supportedContentTypes,
       }),
     { concurrency: 8 }
   );
@@ -447,9 +446,9 @@ export async function processImageFileIds(
     return firstError;
   }
 
-  const parts = results
-    .filter((r): r is Ok<Part> => r.isOk())
+  const fileResources = results
+    .filter((r): r is Ok<FileResource> => r.isOk())
     .map((r) => r.value);
 
-  return new Ok(parts);
+  return new Ok(fileResources);
 }
