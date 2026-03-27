@@ -4,6 +4,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   isBrowserExtension,
   isChromeExtension,
+  isFirefoxExtension,
 } from "@app/lib/utils/extension";
 
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
@@ -410,10 +411,41 @@ const extensionRequestMicrophonePermission = async (): Promise<MediaStream> => {
   if (state === "prompt") {
     // Side panel can't show the prompt — fall back to popup window
     await openMicrophoneAccessPopup();
+    const newState = await getMicrophonePermissionState();
+    if (newState !== "granted") {
+      throw new DOMException(
+        "Microphone permission not granted",
+        "NotAllowedError"
+      );
+    }
     return navigator.mediaDevices.getUserMedia({ audio: true });
   }
   // Permission is already granted
-  return navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (error) {
+    // Firefox bug: when the microphone permission is set to "Always Ask",
+    // navigator.permissions.query incorrectly reports the state as "granted"
+    // instead of "prompt". This causes getUserMedia to fail in the side panel
+    // (which cannot display the native permission prompt). We fall back to the
+    // popup flow so the user can still grant access.
+    if (
+      isFirefoxExtension() &&
+      error instanceof DOMException &&
+      error.name === "NotAllowedError"
+    ) {
+      await openMicrophoneAccessPopup();
+      const newState = await getMicrophonePermissionState();
+      if (newState !== "granted") {
+        throw new DOMException(
+          "Microphone permission not granted",
+          "NotAllowedError"
+        );
+      }
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+    throw error;
+  }
 };
 
 export const requestMicrophone = async (): Promise<MediaStream> => {

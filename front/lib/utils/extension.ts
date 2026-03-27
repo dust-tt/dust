@@ -5,7 +5,7 @@ export function isChromeExtension(): boolean {
   );
 }
 
-function isFirefoxExtension(): boolean {
+export function isFirefoxExtension(): boolean {
   return (
     typeof window !== "undefined" &&
     window.location?.protocol === "moz-extension:"
