@@ -335,7 +335,7 @@ function SearchResults({
                     }}
                   />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
                   <DropdownMenuLabel label="Conversations" />
                   <DropdownMenuItem
                     label={
@@ -1433,7 +1433,7 @@ function NavigationListWithInbox({
                     }}
                   />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
                   <DropdownMenuLabel label="Conversations" />
                   <DropdownMenuItem
                     label={
