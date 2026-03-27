@@ -58,9 +58,7 @@ type ReinforcedOperationType =
   | "reinforced_agent_analyze_conversation"
   | "reinforced_agent_aggregate_suggestions";
 
-// TODO(reinforced agent) create a hidden static agent for reinforcement
-// We need a real agent to redner the conversation in poke
-export const REINFORCEMENT_AGENT_ID = "sidekick";
+export const REINFORCEMENT_AGENT_ID = "reinforcement";
 
 export function getReinforcementDefaultOptions(
   reinforcedOperationType: ReinforcedOperationType
