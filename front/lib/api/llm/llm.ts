@@ -349,6 +349,10 @@ export abstract class LLM<TPayload = unknown> {
     return this.metadata;
   }
 
+  getModelConfig(): ModelConfigurationType {
+    return this.modelConfig;
+  }
+
   async *stream(
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
