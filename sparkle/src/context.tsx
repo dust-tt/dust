@@ -96,14 +96,8 @@ export const noHrefLink: SparkleContextLinkType = React.forwardRef<
   )
 );
 
-export const defaultImage: SparkleContextImageType = React.forwardRef<
-  HTMLImageElement,
-  ImgHTMLAttributes<HTMLImageElement>
->((props, ref) => <img ref={ref} {...props} />);
-
 export const SparkleContext = React.createContext<SparkleContextType>({
   components: {
     link: aLink,
-    image: defaultImage,
   },
 });
