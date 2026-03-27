@@ -87,6 +87,19 @@ export const getConfig = async ({
         }),
       ],
       concatenateModules: shouldBuild !== "analyze",
+      splitChunks: {
+        chunks: (chunk) => chunk.name === "main",
+        maxSize: 5 * 1024 * 1024, // 5MB — Firefox's 5MB limit
+        minSize: 50 * 1024,
+        cacheGroups: {
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: "vendors",
+            chunks: (chunk) => chunk.name === "main",
+            priority: 10,
+          },
+        },
+      },
     },
     performance: false,
     devtool: isDevelopment ? "inline-source-map" : undefined,
