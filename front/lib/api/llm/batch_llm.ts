@@ -19,14 +19,16 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-import type {
-  AgentMessageStatus,
-  ConversationMetadata,
-  ConversationVisibility,
-  UserMessageOrigin,
+import {
+  type AgentMessageStatus,
+  ConversationError,
+  type ConversationMetadata,
+  type ConversationVisibility,
+  type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
@@ -62,7 +64,7 @@ export async function writeBatchUserMessages(
     userContextUsername = "system",
     userContextOrigin,
   }: LlmConversationOptions
-): Promise<ConversationResource> {
+): Promise<Result<ConversationResource, ConversationError>> {
   const workspace = auth.getNonNullableWorkspace();
 
   let conversationResource: ConversationResource;
@@ -73,7 +75,7 @@ export async function writeBatchUserMessages(
       existingConversationId
     );
     if (!existing) {
-      throw new Error(`Conversation not found: ${existingConversationId}`);
+      return new Err(new ConversationError("conversation_not_found"));
     }
     conversationResource = existing;
   } else {
@@ -137,7 +139,7 @@ export async function writeBatchUserMessages(
     }
   });
 
-  return conversationResource;
+  return new Ok(conversationResource);
 }
 
 /**
@@ -239,10 +241,15 @@ export async function sendBatchCallToLlm(
   auth: Authenticator,
   llm: LLM,
   conversations: LlmConversationOptions[]
-): Promise<{
-  batchId: string;
-  conversationIds: string[];
-}> {
+): Promise<
+  Result<
+    {
+      batchId: string;
+      conversationIds: string[];
+    },
+    Error
+  >
+> {
   const conversationIds: string[] = [];
   const batchMap = new Map<string, LLMStreamParameters>();
 
@@ -250,7 +257,11 @@ export async function sendBatchCallToLlm(
 
   for (const input of conversations) {
     // Store new messages in DB.
-    const conversationResource = await writeBatchUserMessages(auth, input);
+    const writeBatchResult = await writeBatchUserMessages(auth, input);
+    if (writeBatchResult.isErr()) {
+      return writeBatchResult;
+    }
+    const conversationResource = writeBatchResult.value;
     conversationIds.push(conversationResource.sId);
 
     // Reconstruct the full conversation from DB.
@@ -259,9 +270,7 @@ export async function sendBatchCallToLlm(
       conversationResource.sId
     );
     if (conversationRes.isErr()) {
-      throw new Error(
-        `Failed to load conversation ${conversationResource.sId}: ${conversationRes.error.message}`
-      );
+      return conversationRes;
     }
 
     const promptText = systemPromptToText(input.prompt);
@@ -283,9 +292,7 @@ export async function sendBatchCallToLlm(
     });
 
     if (modelConversationRes.isErr()) {
-      throw new Error(
-        `Failed to render conversation ${conversationResource.sId}: ${modelConversationRes.error.message}`
-      );
+      return modelConversationRes;
     }
 
     batchMap.set(conversationResource.sId, {
@@ -295,7 +302,7 @@ export async function sendBatchCallToLlm(
   }
 
   const batchId = await llm.sendBatchProcessing(batchMap);
-  return { batchId, conversationIds };
+  return new Ok({ batchId, conversationIds });
 }
 
 /**

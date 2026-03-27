@@ -124,16 +124,15 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           await setupTest();
 
         // --- Step 1: Send a batch with a single conversation ---
-        const { batchId, conversationIds } = await sendBatchCallToLlm(
-          authenticator,
-          llm,
-          [
-            makeConversationOptions(
-              "What is 1+1? Reply with just the number.",
-              { title: "Batch Store Test" }
-            ),
-          ]
-        );
+        const sendBatchResult = await sendBatchCallToLlm(authenticator, llm, [
+          makeConversationOptions("What is 1+1? Reply with just the number.", {
+            title: "Batch Store Test",
+          }),
+        ]);
+        if (sendBatchResult.isErr()) {
+          throw sendBatchResult.error;
+        }
+        const { batchId, conversationIds } = sendBatchResult.value;
 
         expect(batchId).toBeTruthy();
         expect(conversationIds).toHaveLength(1);
@@ -241,12 +240,16 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           await setupTest();
 
         // Create conversation and user message.
-        const conversation = await writeBatchUserMessages(
+        const writeResult = await writeBatchUserMessages(
           authenticator,
           makeConversationOptions("What is 2+2? Reply with just the number.", {
             title: "Stream Store Test",
           })
         );
+        if (writeResult.isErr()) {
+          throw writeResult.error;
+        }
+        const conversation = writeResult.value;
 
         // Build LLMStreamParameters for the streaming call.
         const streamParams: LLMStreamParameters = {
@@ -319,13 +322,21 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         const { authenticator, llm, agentConfigurationId } = await setupTest();
 
         // --- Turn 1: Send a first batch ---
-        const { batchId: batchId1, conversationIds: conversationIds1 } =
-          await sendBatchCallToLlm(authenticator, llm, [
+        const sendBatchCallResult1 = await sendBatchCallToLlm(
+          authenticator,
+          llm,
+          [
             makeConversationOptions(
               "Remember this number: 42. Just confirm you noted it.",
               { title: "Multi-turn Test" }
             ),
-          ]);
+          ]
+        );
+        if (sendBatchCallResult1.isErr()) {
+          throw sendBatchCallResult1.error;
+        }
+        const { batchId: batchId1, conversationIds: conversationIds1 } =
+          sendBatchCallResult1.value;
 
         const conversationId = conversationIds1[0];
 
@@ -341,13 +352,21 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         );
 
         // --- Turn 2: Send a follow-up on the same conversation ---
-        const { batchId: batchId2, conversationIds: conversationIds2 } =
-          await sendBatchCallToLlm(authenticator, llm, [
+        const sendBatchCallResult2 = await sendBatchCallToLlm(
+          authenticator,
+          llm,
+          [
             makeConversationOptions(
               "What was the number I told you to remember? Reply with just the number.",
               { existingConversationId: conversationId }
             ),
-          ]);
+          ]
+        );
+        if (sendBatchCallResult2.isErr()) {
+          throw sendBatchCallResult2.error;
+        }
+        const { batchId: batchId2, conversationIds: conversationIds2 } =
+          sendBatchCallResult2.value;
 
         // The returned conversationId should be the same.
         expect(conversationIds2[0]).toBe(conversationId);
