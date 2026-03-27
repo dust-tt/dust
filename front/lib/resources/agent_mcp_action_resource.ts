@@ -19,6 +19,7 @@ import {
   isLightClientSideMCPToolConfiguration,
   isLightServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -647,6 +648,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         agentMCPActionId: this.id,
         // Write content to DB (kept during migration period to ease rollback).
         content: c.content,
+        citations: getCitationsFromToolOutput([c.content]),
         fileId: c.fileId,
         workspaceId: this.workspaceId,
       }))
@@ -903,6 +905,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           return {
             ...action.toJSON(),
             output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+            citations: outputItems.some(
+              (o) => o.citations !== null && o.citations !== undefined
+            )
+              ? outputItems.reduce(
+                  (acc, o) => ({
+                    ...acc,
+                    ...(o.citations ?? {}),
+                  }),
+                  {}
+                )
+              : null,
             generatedFiles: removeNulls(
               outputItems.map((o) => {
                 const file = o.file;
