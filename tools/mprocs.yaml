@@ -118,6 +118,10 @@ procs:
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       npm run storybook
     autostart: false
@@ -125,6 +129,10 @@ procs:
   sparkle-playground:
     cwd: "<CONFIG_DIR>/../sparkle/playground"
     shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       npm install && npm run dev
     autostart: false
@@ -143,6 +151,10 @@ procs:
   extension:
     cwd: "<CONFIG_DIR>/../extension"
     shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       npm run dev:chrome
     autostart: false
