@@ -189,11 +189,22 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
         // UTM params across page loads, and URLs may have been stripped by
         // useStripUtmParams.
         const storedParams = getStoredUTMParams();
+        const setOnceProps: Record<string, string> = {};
         for (const param of MARKETING_PARAMS) {
           const storedValue = storedParams[param];
           if (storedValue) {
             event.properties[param] = storedValue;
+            // Also populate PostHog's built-in "Initial UTM" person properties.
+            // The SDK normally reads these from the URL, but since we strip UTMs
+            // before PostHog sees them, we inject them via $set_once.
+            setOnceProps[`$initial_${param}`] = storedValue;
           }
+        }
+        if (Object.keys(setOnceProps).length > 0) {
+          event.properties["$set_once"] = {
+            ...event.properties["$set_once"],
+            ...setOnceProps,
+          };
         }
 
         // Inject the persistent anonymous device ID from the _dust_aid cookie
