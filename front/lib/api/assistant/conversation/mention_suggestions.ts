@@ -73,7 +73,7 @@ export function interleaveMentionsPreservingAgentOrder(
       lowerCaseQuery &&
       nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery);
 
-    // Our high priority agents first, then other agents, then users
+    // Our high priority agents first
     if (
       nextAgentStartsWithQuery &&
       SUGGESTION_PRIORITY[nextAgent.id] !== undefined
