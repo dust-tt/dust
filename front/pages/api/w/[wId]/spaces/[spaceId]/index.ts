@@ -169,6 +169,10 @@
  *       401:
  *         description: Unauthorized
  */
+import {
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -468,6 +472,13 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "space.deleted",
+        targets: [{ type: "space", id: space.sId, name: space.name }],
+        context: getAuditLogContext(auth, req),
+      });
 
       return res.status(200).json({ space: space.toJSON() });
     }

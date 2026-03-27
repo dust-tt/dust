@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -47,6 +52,18 @@ async function handler(
           },
         });
       }
+
+      const { cId } = req.query;
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        auth,
+        action: "integration.disconnected",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "integration", id: String(cId) },
+        ],
+        context: getAuditLogContext(auth, req),
+      });
 
       return res.status(200).json({
         success: true,

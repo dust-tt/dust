@@ -20,6 +20,7 @@ import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/proj
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { auditLog } from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -293,6 +294,26 @@ export async function validateUserMention(
       },
       auditMessage
     );
+
+    void emitAuditLogEvent({
+      auth,
+      action: "conversation.mention_approved",
+      targets: [
+        { type: "conversation", id: conversation.sId },
+        { type: "message", id: message.sId },
+      ],
+      metadata: { mentionedUserId: userId },
+    });
+  } else {
+    void emitAuditLogEvent({
+      auth,
+      action: "conversation.mention_rejected",
+      targets: [
+        { type: "conversation", id: conversation.sId },
+        { type: "message", id: message.sId },
+      ],
+      metadata: { mentionedUserId: userId },
+    });
   }
 
   if (isUserMessageType(message)) {

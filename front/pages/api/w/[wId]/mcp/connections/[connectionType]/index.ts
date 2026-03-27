@@ -2,6 +2,11 @@
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalServerCredentialPolicy } from "@app/lib/actions/mcp_server_connection_credential_policies";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -288,6 +293,25 @@ async function handler(
           remoteMCPServerId: serverType === "remote" ? id : null,
         }
       );
+
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        auth,
+        action: "integration.connected",
+        targets: [
+          buildWorkspaceTarget(owner),
+          {
+            type: "integration",
+            id: connectionResource.sId,
+          },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          connectionType,
+          serverType,
+          mcpServerId,
+        },
+      });
 
       return res
         .status(200)

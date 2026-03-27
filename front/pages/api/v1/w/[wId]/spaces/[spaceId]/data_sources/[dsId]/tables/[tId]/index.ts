@@ -1,3 +1,8 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { deleteTable } from "@app/lib/api/tables";
@@ -267,6 +272,17 @@ async function handler(
             assertNever(delRes.error);
         }
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "table.deleted",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "data_source", id: dataSource.sId, name: dataSource.name },
+          { type: "table", id: tId },
+        ],
+        context: getAuditLogContext(auth, req),
+      });
 
       res.status(200).end();
       return;

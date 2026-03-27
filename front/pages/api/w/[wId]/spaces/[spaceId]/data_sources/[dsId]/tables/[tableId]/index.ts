@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -154,6 +159,18 @@ async function handler(
             assertNever(delRes.error);
         }
       }
+
+      const workspace = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        auth,
+        action: "table.deleted",
+        targets: [
+          buildWorkspaceTarget(workspace),
+          { type: "data_source", id: dataSource.sId, name: dataSource.name },
+          { type: "table", id: tableId },
+        ],
+        context: getAuditLogContext(auth, req),
+      });
 
       res.status(200).end();
       break;

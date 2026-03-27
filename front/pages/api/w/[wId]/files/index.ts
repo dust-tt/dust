@@ -53,6 +53,10 @@
  *       429:
  *         description: Rate limit exceeded
  */
+import {
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
@@ -213,6 +217,18 @@ async function handler(
         workspaceId: owner.id,
         useCase,
         useCaseMetadata: useCaseMetadata,
+      });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "file.uploaded",
+        targets: [{ type: "file", id: file.sId, name: fileName }],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          contentType,
+          fileSize: String(fileSize),
+          useCase,
+        },
       });
 
       res.status(200).json({ file: file.toJSONWithUploadUrl(auth) });
