@@ -387,13 +387,10 @@ export async function processToolResults(
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
-      if (!c.file) {
+      if (!c.file || c.file.useCaseMetadata?.hideFromGeneratedFiles) {
         return null;
       }
-      const isHidden =
-        c.content.type === "resource" &&
-        isToolGeneratedFile(c.content) &&
-        c.content.resource.hidden === true;
+
       return {
         contentType: c.file.contentType,
         fileId: c.file.sId,
@@ -402,7 +399,6 @@ export async function processToolResults(
         createdAt: c.file.createdAt.getTime(),
         updatedAt: c.file.updatedAt.getTime(),
         isInProjectContext: c.file.useCase === "project_context",
-        ...(isHidden ? { hidden: true } : {}),
       } satisfies ActionGeneratedFileType;
     })
   );

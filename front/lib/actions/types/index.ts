@@ -48,7 +48,6 @@ export type ActionGeneratedFileType = {
   title: string;
   contentType: AllSupportedFileContentType;
   snippet: string | null;
-  hidden?: boolean;
   createdAt?: number;
   updatedAt?: number;
   isInProjectContext?: boolean;
