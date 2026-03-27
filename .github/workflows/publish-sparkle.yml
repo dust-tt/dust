@@ -51,6 +51,9 @@ jobs:
           node-version: '22.22.0'
           registry-url: "https://registry.npmjs.org"
 
+      - name: Install correct npm version
+        run: npm install -g npm@11.11.0
+
       - name: Configure git
         run: |
           git config --global user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
@@ -85,6 +88,9 @@ jobs:
         with:
           node-version: '22.22.0'
           registry-url: "https://registry.npmjs.org"
+
+      - name: Install correct npm version
+        run: npm install -g npm@11.11.0
 
       - name: Generate RC version
         working-directory: sparkle
