@@ -29,6 +29,7 @@ interface InputBarProps {
   className?: string;
   instructionReference?: { start: number; end: number } | null;
   onInstructionInserted?: () => void;
+  onSend?: () => void;
 }
 
 export function InputBar({
@@ -36,6 +37,7 @@ export function InputBar({
   className,
   instructionReference,
   onInstructionInserted,
+  onSend,
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -254,6 +256,7 @@ export function InputBar({
               size="xs"
               tooltip="Send message"
               isRounded
+              onClick={onSend}
             />
           </div>
         </div>

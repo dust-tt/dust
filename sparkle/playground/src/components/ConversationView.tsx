@@ -3,6 +3,7 @@ import {
   ArrowDownOnSquareIcon,
   ArrowLeftIcon,
   AttachmentChip,
+  AttachmentIcon,
   Avatar,
   Bar,
   BoltIcon,
@@ -18,7 +19,6 @@ import {
   DialogTitle,
   DocumentIcon,
   ExternalLinkIcon,
-  FolderIcon,
   Icon,
   ImageIcon,
   ImageZoomDialog,
@@ -29,6 +29,8 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SlackLogo,
@@ -40,6 +42,7 @@ import {
   NewConversationAgentMessage,
   NewConversationContainer,
   NewConversationMessageGroup,
+  NewConversationPendingValidationBlock,
   NewConversationSectionHeading,
   NewConversationUserMessage,
 } from "./NewConversationMessages";
@@ -59,6 +62,7 @@ import type {
   Conversation,
   ConversationItem,
   ConversationMessage,
+  ConversationPendingValidation,
   MessageCitationData,
   MessageGroupData,
   MessageGroupType,
@@ -78,6 +82,13 @@ interface ConversationViewProps {
   onBack?: () => void;
   conversationTitle?: string;
   projectTitle?: string;
+  onAcceptPendingValidation?: (blockId: string) => void;
+  onCancelPendingValidation?: (blockId: string) => void;
+  validationDisplayMode?: "inline" | "sheet";
+  /** When validationDisplayMode is "sheet", called when user clicks Send. Use to open the validation sheet. */
+  onSend?: () => void;
+  /** When validationDisplayMode is "sheet", the validation content to show in the sheet (e.g. when user clicked Send). */
+  pendingValidationForSheet?: ConversationPendingValidation | null;
 }
 
 export function ConversationView({
@@ -90,6 +101,11 @@ export function ConversationView({
   onBack,
   conversationTitle,
   projectTitle,
+  onAcceptPendingValidation,
+  onCancelPendingValidation,
+  validationDisplayMode = "inline",
+  onSend,
+  pendingValidationForSheet,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -682,10 +698,98 @@ export function ConversationView({
           avatar={item.avatar}
         />
       );
+      return;
+    }
+
+    if (item.kind === "pendingValidation") {
+      if (validationDisplayMode === "sheet") {
+        return;
+      }
+      const block = item as ConversationPendingValidation;
+      const userMsg = block.userMessage;
+      const agentMsg = block.agentMessage;
+
+      const userCitations = userMsg.citations?.map((citation) => (
+        <NewCitation
+          key={citation.id}
+          visual={getCitationIcon(citation.icon)}
+          label={citation.title}
+          size="lg"
+          onClick={() => {
+            setSelectedCitation(citation);
+            if (citation.imgSrc) {
+              setIsImageZoomOpen(true);
+            } else {
+              setIsCitationSheetOpen(true);
+            }
+          }}
+          {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
+        />
+      ));
+      const agentCitations = agentMsg.citations?.map((citation) => (
+        <NewCitation
+          key={citation.id}
+          visual={getCitationIcon(citation.icon)}
+          label={citation.title}
+          size="lg"
+          onClick={() => {
+            setSelectedCitation(citation);
+            if (citation.imgSrc) {
+              setIsImageZoomOpen(true);
+            } else {
+              setIsCitationSheetOpen(true);
+            }
+          }}
+          {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
+        />
+      ));
+
+      const agent = getAgentByOwnerId(agentMsg.ownerId);
+      const agentAvatar = agent
+        ? {
+            emoji: agent.emoji,
+            backgroundColor: agent.backgroundColor,
+            name: agent.name,
+          }
+        : agentMsg.group.avatar
+          ? { ...agentMsg.group.avatar, name: agentMsg.group.name }
+          : undefined;
+
+      conversationBlocks.push(
+        <NewConversationPendingValidationBlock
+          key={block.id}
+          userMessageContent={renderMessageBody(userMsg)}
+          agentMessageContent={renderMessageBody(agentMsg)}
+          userGroupHeader={{ timestamp: userMsg.group.timestamp }}
+          agentGroupHeader={{
+            avatar: agentAvatar,
+            name: agent?.name ?? agentMsg.group.name,
+            timestamp: agentMsg.group.timestamp,
+            completionStatus: agentMsg.group.completionStatus ? (
+              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {agentMsg.group.completionStatus}
+              </span>
+            ) : undefined,
+          }}
+          userCitations={userCitations}
+          agentCitations={agentCitations}
+          onAccept={() => onAcceptPendingValidation?.(block.id)}
+          onCancel={() => onCancelPendingValidation?.(block.id)}
+        />
+      );
     }
   });
 
   flushGroup();
+
+  const pendingValidationBlock =
+    validationDisplayMode === "sheet"
+      ? (pendingValidationForSheet ??
+        itemsToDisplay.find(
+          (m): m is ConversationPendingValidation =>
+            m.kind === "pendingValidation"
+        ))
+      : undefined;
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
@@ -697,7 +801,7 @@ export function ConversationView({
         size="sm"
         rightActions={
           <div className="s-flex s-gap-2">
-            <Button size="sm" variant="ghost" icon={FolderIcon} />
+            <Button size="sm" variant="ghost" icon={AttachmentIcon} isSelect />
             <Button size="sm" variant="ghost" icon={MoreIcon} />
           </div>
         }
@@ -758,7 +862,11 @@ export function ConversationView({
         </div>
         <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
           <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
-            <InputBar placeholder="Ask a question" className="s-shadow-xl" />
+            <InputBar
+              placeholder="Ask a question"
+              className="s-shadow-xl"
+              onSend={validationDisplayMode === "sheet" ? onSend : undefined}
+            />
           </div>
         </div>
       </div>
@@ -848,6 +956,146 @@ export function ConversationView({
           </SheetContainer>
         </SheetContent>
       </Sheet>
+
+      {/* Validation Sheet (when validationDisplayMode === "sheet") */}
+      {validationDisplayMode === "sheet" && pendingValidationBlock && (
+        <Sheet
+          open={!!pendingValidationBlock}
+          onOpenChange={(open) => {
+            if (!open && pendingValidationBlock) {
+              onCancelPendingValidation?.(pendingValidationBlock.id);
+            }
+          }}
+        >
+          <SheetContent size="xl" side="right">
+            <SheetHeader hideButton>
+              <SheetTitle>@StrategyPlanner</SheetTitle>
+              <SheetDescription>
+                This agent has access to sensitive data. Review the Agent's
+                message before publishing in the conversation.
+              </SheetDescription>
+            </SheetHeader>
+            <SheetContainer>
+              <div className="s-flex s-flex-col s-gap-4">
+                <NewConversationMessageGroup
+                  type="locutor"
+                  timestamp={pendingValidationBlock.userMessage.group.timestamp}
+                >
+                  <NewConversationUserMessage
+                    hideActions
+                    isLastMessage
+                    citations={pendingValidationBlock.userMessage.citations?.map(
+                      (citation) => (
+                        <NewCitation
+                          key={citation.id}
+                          visual={getCitationIcon(citation.icon)}
+                          label={citation.title}
+                          size="lg"
+                          onClick={() => {
+                            setSelectedCitation(citation);
+                            if (citation.imgSrc) {
+                              setIsImageZoomOpen(true);
+                            } else {
+                              setIsCitationSheetOpen(true);
+                            }
+                          }}
+                          {...(citation.imgSrc
+                            ? { imgSrc: citation.imgSrc }
+                            : {})}
+                        />
+                      )
+                    )}
+                  >
+                    {renderMessageBody(pendingValidationBlock.userMessage)}
+                  </NewConversationUserMessage>
+                </NewConversationMessageGroup>
+                <NewConversationMessageGroup
+                  type="agent"
+                  avatar={(() => {
+                    const agent = getAgentByOwnerId(
+                      pendingValidationBlock.agentMessage.ownerId
+                    );
+                    return agent
+                      ? {
+                          emoji: agent.emoji,
+                          backgroundColor: agent.backgroundColor,
+                          name: agent.name,
+                        }
+                      : pendingValidationBlock.agentMessage.group.avatar
+                        ? {
+                            ...pendingValidationBlock.agentMessage.group.avatar,
+                            name: pendingValidationBlock.agentMessage.group
+                              .name,
+                          }
+                        : undefined;
+                  })()}
+                  name={
+                    getAgentByOwnerId(
+                      pendingValidationBlock.agentMessage.ownerId
+                    )?.name ?? pendingValidationBlock.agentMessage.group.name
+                  }
+                  timestamp={
+                    pendingValidationBlock.agentMessage.group.timestamp
+                  }
+                  completionStatus={
+                    pendingValidationBlock.agentMessage.group
+                      .completionStatus ? (
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {
+                          pendingValidationBlock.agentMessage.group
+                            .completionStatus
+                        }
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  <NewConversationAgentMessage
+                    hideActions
+                    isLastMessage
+                    citations={pendingValidationBlock.agentMessage.citations?.map(
+                      (citation) => (
+                        <NewCitation
+                          key={citation.id}
+                          visual={getCitationIcon(citation.icon)}
+                          label={citation.title}
+                          size="lg"
+                          onClick={() => {
+                            setSelectedCitation(citation);
+                            if (citation.imgSrc) {
+                              setIsImageZoomOpen(true);
+                            } else {
+                              setIsCitationSheetOpen(true);
+                            }
+                          }}
+                          {...(citation.imgSrc
+                            ? { imgSrc: citation.imgSrc }
+                            : {})}
+                        />
+                      )
+                    )}
+                  >
+                    {renderMessageBody(pendingValidationBlock.agentMessage)}
+                  </NewConversationAgentMessage>
+                </NewConversationMessageGroup>
+              </div>
+            </SheetContainer>
+            <SheetFooter
+              leftButtonProps={{
+                label: "Reject",
+                variant: "outline",
+                onClick: () =>
+                  onCancelPendingValidation?.(pendingValidationBlock.id),
+              }}
+              rightButtonProps={{
+                label: "Publish in conversation",
+                variant: "highlight",
+                onClick: () =>
+                  onAcceptPendingValidation?.(pendingValidationBlock.id),
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }
