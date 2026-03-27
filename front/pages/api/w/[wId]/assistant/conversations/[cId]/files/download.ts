@@ -1,10 +1,9 @@
 /** @ignoreswagger */
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -50,9 +49,15 @@ async function handler(
   }
 
   // Validate the conversation exists and user has access.
-  const conversationRes = await getLightConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  const conversation = await ConversationResource.fetchById(auth, cId);
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
   }
 
   // Validate the requested path is within this conversation's files directory.
