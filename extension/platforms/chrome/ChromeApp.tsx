@@ -5,6 +5,7 @@ import { SparkleContext } from "@dust-tt/sparkle";
 import { ChromeExtensionWrapper } from "@extension/platforms/chrome/ChromeExtensionWrapper";
 import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
+import { AuthenticatedImage } from "@extension/shared/AuthenticatedImage";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
 import { useCaptureActions } from "@extension/shared/hooks/useCaptureActions";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
@@ -26,7 +27,12 @@ export const ChromeApp = () => {
             <ExtensionAuthProvider>
               <ExtensionFetcherProvider>
                 <SparkleContext.Provider
-                  value={{ components: { link: ReactRouterLinkWrapper } }}
+                  value={{
+                    components: {
+                      link: ReactRouterLinkWrapper,
+                      image: AuthenticatedImage,
+                    },
+                  }}
                 >
                   <RootLayout>
                     <ChromeExtensionWrapper>
