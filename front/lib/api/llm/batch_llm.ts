@@ -155,7 +155,7 @@ export async function storeLlmResult(
 ): Promise<void> {
   const workspace = auth.getNonNullableWorkspace();
 
-  await withTransaction(async (t: Transaction) => {
+  const agentMessage = await withTransaction(async (t: Transaction) => {
     // Find the last user message in this conversation to use as parent.
     const parentMessage = await MessageModel.findOne({
       where: {
@@ -190,7 +190,7 @@ export async function storeLlmResult(
       (e): e is EventError => e instanceof EventError
     );
 
-    const agentMessage = await AgentMessageModel.create(
+    const msg = await AgentMessageModel.create(
       {
         status,
         agentConfigurationId,
@@ -210,32 +210,31 @@ export async function storeLlmResult(
         rank: nextRank,
         conversationId: conversation.id,
         parentId: parentMessage?.id ?? null,
-        agentMessageId: agentMessage.id,
+        agentMessageId: msg.id,
         workspaceId: workspace.id,
       },
       { transaction: t }
     );
 
-    // Create step content entries from LLM events.
-    let index = 0;
-    for (const event of events) {
-      const stepContent = eventToStoredStepContent(event);
-      if (stepContent) {
-        await AgentStepContentResource.createNewVersion(
-          {
-            agentMessageId: agentMessage.id,
-            workspaceId: workspace.id,
-            step: 0,
-            index,
-            type: stepContent.type,
-            value: stepContent,
-          },
-          t
-        );
-        index++;
-      }
-    }
+    return msg;
   });
+
+  // Create step content entries from LLM events.
+  let index = 0;
+  for (const event of events) {
+    const stepContent = eventToStoredStepContent(event);
+    if (stepContent) {
+      await AgentStepContentResource.createNewVersion({
+        agentMessageId: agentMessage.id,
+        workspaceId: workspace.id,
+        step: 0,
+        index,
+        type: stepContent.type,
+        value: stepContent,
+      });
+      index++;
+    }
+  }
 }
 
 /**

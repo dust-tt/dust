@@ -11,7 +11,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -387,47 +386,41 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
   }
 
-  static async createNewVersion(
-    {
+  static async createNewVersion({
+    agentMessageId,
+    workspaceId,
+    step,
+    index,
+    type,
+    value,
+  }: Omit<
+    CreationAttributes<AgentStepContentModel>,
+    "version"
+  >): Promise<AgentStepContentResource> {
+    const existingContent = await this.model.findAll({
+      where: {
+        agentMessageId,
+        step,
+        index,
+        workspaceId,
+      },
+      order: [["version", "DESC"]],
+      attributes: ["version"],
+      limit: 1,
+    });
+
+    const currentMaxVersion =
+      existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+
+    return this.makeNew({
       agentMessageId,
       workspaceId,
       step,
       index,
+      version: currentMaxVersion,
       type,
       value,
-    }: Omit<CreationAttributes<AgentStepContentModel>, "version">,
-    transaction?: Transaction
-  ): Promise<AgentStepContentResource> {
-    return withTransaction(async (t: Transaction) => {
-      const existingContent = await this.model.findAll({
-        where: {
-          agentMessageId,
-          step,
-          index,
-          workspaceId,
-        },
-        order: [["version", "DESC"]],
-        attributes: ["version"],
-        limit: 1,
-        transaction: t,
-      });
-
-      const currentMaxVersion =
-        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
-
-      return this.makeNew(
-        {
-          agentMessageId,
-          workspaceId,
-          step,
-          index,
-          version: currentMaxVersion,
-          type,
-          value,
-        },
-        t
-      );
-    }, transaction);
+    });
   }
 
   get sId(): string {
