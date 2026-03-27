@@ -1,7 +1,5 @@
-import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -1668,13 +1666,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: false,
-          include: [
-            {
-              model: AgentStepContentModel,
-              as: "agentStepContents",
-              required: false,
-            },
-          ],
         },
         // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
         // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -1686,16 +1677,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       ],
     });
-
-    // Filter to only keep the step content with the maximum version for each step and index combination.
-    for (const message of messages) {
-      if (message.agentMessage && message.agentMessage.agentStepContents) {
-        message.agentMessage.agentStepContents =
-          getMaximalVersionAgentStepContent(
-            message.agentMessage.agentStepContents
-          );
-      }
-    }
 
     return {
       hasMore,
