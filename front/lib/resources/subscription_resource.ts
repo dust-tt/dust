@@ -35,6 +35,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -169,7 +170,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static async invalidateSubscriptionCacheForPlan(
     planId: number
   ): Promise<void> {
-    const subscriptions = await SubscriptionModel.findAll({
+    const subscriptions = await SubscriptionResource.model.findAll({
       attributes: ["workspaceId"],
       where: { planId, status: "active" },
       // WORKSPACE_ISOLATION_BYPASS: We need to invalidate caches across all workspaces on this plan.
@@ -177,9 +178,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    for (const sub of subscriptions) {
-      await SubscriptionResource.invalidateSubscriptionCache(sub.workspaceId);
-    }
+    await concurrentExecutor(
+      subscriptions,
+      (sub) =>
+        SubscriptionResource.invalidateSubscriptionCache(sub.workspaceId),
+      { concurrency: 8 }
+    );
   }
 
   private static fromCachedData(
