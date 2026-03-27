@@ -147,38 +147,6 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       done: "Create reply draft",
     },
   },
-  send_mail: {
-    description: `Send an email directly via Outlook.
-- The email will be sent immediately without creating a draft.
-- Use this when all required email information is already available.
-- The email will include proper recipients, body formatting, and optional importance.`,
-    schema: {
-      to: z
-        .array(z.string())
-        .min(1)
-        .describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("The email addresses to BCC"),
-      subject: z.string().describe("The subject line of the email"),
-      contentType: z
-        .string()
-        .default("text")
-        .describe("The content type of the email (text or html)."),
-      body: z.string().describe("The body of the email"),
-      importance: z
-        .string()
-        .optional()
-        .describe("The importance level of the email"),
-    },
-    stake: "high",
-    displayLabels: {
-      running: "Sending email",
-      done: "Send email",
-    },
-  },
   get_contacts: {
     description:
       "Get contacts from Outlook. Supports search queries to filter contacts.",
@@ -287,9 +255,9 @@ export const OUTLOOK_MAIL_SERVER = {
     description: "Read emails, manage drafts and contacts.",
     authorization: {
       provider: "microsoft_tools",
-      supported_use_cases: ["personal_actions", "platform_actions"],
+      supported_use_cases: ["personal_actions"],
       scope:
-        "Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access",
+        "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access",
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
