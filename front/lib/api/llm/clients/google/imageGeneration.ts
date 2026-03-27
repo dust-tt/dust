@@ -4,6 +4,7 @@ import {
   QUALITY_TO_IMAGE_SIZE,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import type { ImageGenerationToolInput } from "@app/lib/api/actions/servers/image_generation/metadata";
+import { ImageGenerationLLM } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/temporal/utils";
@@ -47,12 +48,8 @@ type ImageGenerationOutput = {
   usageMetadata: TokenCountDetails;
 };
 
-export class ImageGenerationGoogleLLM {
-  get supportedContentTypes(): string[] {
-    return ["image/bmp", "image/jpeg", "image/png", "image/webp"];
-  }
-  protected readonly auth: Authenticator;
-  protected readonly modelId: ImageModelIdType;
+export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
+  readonly supportedContentTypes: string[];
   readonly providerId: ModelProviderIdType;
 
   private readonly client: GoogleGenAI;
@@ -67,9 +64,15 @@ export class ImageGenerationGoogleLLM {
       credentials: { GOOGLE_AI_STUDIO_API_KEY?: string };
     }
   ) {
-    this.auth = auth;
-    this.modelId = modelId;
+    super(auth, { modelId, credentials });
     this.providerId = GOOGLE_AI_STUDIO_PROVIDER_ID;
+    this.supportedContentTypes = [
+      "image/bmp",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
     assert(
       credentials.GOOGLE_AI_STUDIO_API_KEY,
       "GOOGLE_AI_STUDIO_API_KEY credential is required"
