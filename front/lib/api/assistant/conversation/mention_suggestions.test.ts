@@ -97,8 +97,28 @@ describe("interleaveMentionsPreservingAgentOrder", () => {
   });
 
   describe("query-based prioritization", () => {
-    it("should prioritize users whose label starts with query", () => {
+    it("should prioritize users whose label starts with query when in a conversation", () => {
       const agents = [buildAgent(1, "AgentJo", false)];
+      const users = [
+        buildUser(1, "John Doe", false),
+        buildUser(2, "Joan Smith", false),
+      ];
+
+      const result = interleaveMentionsPreservingAgentOrder(
+        agents,
+        users,
+        "jo",
+        null,
+        "conv-1"
+      );
+
+      expect(result[0].label).toBe("John Doe");
+      expect(result[1].label).toBe("Joan Smith");
+      expect(result[2].label).toBe("AgentJo");
+    });
+
+    it("should prioritize agents whose label starts with query when new message", () => {
+      const agents = [buildAgent(1, "John MyAgent", false)];
       const users = [
         buildUser(1, "John Doe", false),
         buildUser(2, "Joan Smith", false),
@@ -110,9 +130,9 @@ describe("interleaveMentionsPreservingAgentOrder", () => {
         "jo"
       );
 
-      expect(result[0].label).toBe("John Doe");
-      expect(result[1].label).toBe("Joan Smith");
-      expect(result[2].label).toBe("AgentJo");
+      expect(result[0].label).toBe("John MyAgent");
+      expect(result[1].label).toBe("John Doe");
+      expect(result[2].label).toBe("Joan Smith");
     });
 
     it("should prioritize agents whose label starts with query", () => {
