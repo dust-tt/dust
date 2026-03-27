@@ -23,8 +23,10 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
   };
 });
 
-vi.mock("@app/lib/api/assistant/conversation/fetch", () => ({
-  getLightConversation: vi.fn().mockResolvedValue({ isErr: () => false }),
+vi.mock("@app/lib/resources/conversation_resource", () => ({
+  ConversationResource: {
+    fetchById: vi.fn().mockResolvedValue({}),
+  },
 }));
 
 vi.mock("@app/lib/file_storage", () => ({
