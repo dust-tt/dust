@@ -199,7 +199,7 @@ export async function githubExtractToGcsActivity({
 
   logger.info("Extracting GitHub repository tarball to GCS");
 
-  const MAX_ATTEMPTS_BEFORE_SKIP = 10;
+  const MAX_ATTEMPTS_BEFORE_SKIP = 20;
 
   let extractResult;
   try {
