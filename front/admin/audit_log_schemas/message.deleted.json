@@ -1,0 +1,11 @@
+{
+  "action": "message.deleted",
+  "targets": [
+    { "type": "conversation" },
+    { "type": "message" }
+  ],
+  "metadata": {
+    "deletedBy": { "type": "string" },
+    "messageType": { "type": "string" }
+  }
+}

@@ -8,6 +8,10 @@ import {
   enrichAgentConfigurations,
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
@@ -1250,6 +1254,19 @@ export async function archiveAgentConfiguration(
   }
 
   const affectedCount = updated[0];
+  if (affectedCount > 0) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.archived",
+      targets: [
+        buildWorkspaceTarget(owner),
+        { type: "agent", id: agentConfigurationId },
+      ],
+      metadata: {
+        triggersDisabled: String(triggers.length),
+      },
+    });
+  }
   return affectedCount > 0;
 }
 
@@ -1355,7 +1372,18 @@ export async function restoreAgentConfiguration(
     }
   }
 
-  return new Ok({ restored: updated[0] > 0 });
+  const affectedCount = updated[0];
+  if (affectedCount > 0) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.restored",
+      targets: [
+        buildWorkspaceTarget(owner),
+        { type: "agent", id: agentConfigurationId },
+      ],
+    });
+  }
+  return new Ok({ restored: affectedCount > 0 });
 }
 
 // Should only be called when we need to clean up the agent configuration
@@ -1443,6 +1471,15 @@ export async function unsafeHardDeleteAgentConfiguration(
       },
       transaction: t,
     });
+  });
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.deleted",
+    targets: [
+      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+      { type: "agent", id: agentConfiguration.sId, name: agentConfiguration.name },
+    ],
   });
 }
 
@@ -1607,6 +1644,19 @@ export async function updateAgentPermissions(
       }
     }
 
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.permissions_updated",
+      targets: [
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+        { type: "agent", id: agent.sId, name: agent.name },
+      ],
+      metadata: {
+        editorsAdded: usersToAdd.map((u) => u.sId).join(","),
+        editorsRemoved: usersToRemove.map((u) => u.sId).join(","),
+      },
+    });
+
     return new Ok(undefined);
   } catch (error) {
     // Catch errors thrown from within the transaction
@@ -1659,6 +1709,22 @@ export async function updateAgentConfigurationScope(
       },
     }
   );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.scope_changed",
+    targets: [
+      {
+        type: "agent",
+        id: agentConfigurationId,
+        name: agentConfig.name,
+      },
+    ],
+    metadata: {
+      previousScope,
+      newScope: scope,
+    },
+  });
 
   // When scope changes from visible to hidden, disable triggers for non-editors.
   // Non-editors will no longer have access to the hidden agent.

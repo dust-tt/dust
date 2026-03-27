@@ -1,5 +1,9 @@
 // Okay to use public API types because here front is talking to core API.
 
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
@@ -215,6 +219,18 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
 
   // The scrubbing workflow will delete associated resources and hard delete the data source.
   await launchScrubDataSourceWorkflow(owner, dataSource);
+
+  void emitAuditLogEvent({
+    auth,
+    action: "datasource.deleted",
+    targets: [
+      buildWorkspaceTarget(owner),
+      { type: "data_source", id: dataSource.sId, name: dataSource.name },
+    ],
+    metadata: {
+      connectorProvider: dataSource.connectorProvider ?? "none",
+    },
+  });
 
   return new Ok(dataSource.toJSON());
 }
@@ -1138,6 +1154,22 @@ export async function createDataSourceWithoutProvider(
           "Failed to track data source creation"
         );
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "datasource.created",
+        targets: [
+          buildWorkspaceTarget(owner),
+          {
+            type: "data_source",
+            id: dataSourceView.dataSource.sId,
+            name: dataSourceView.dataSource.name,
+          },
+        ],
+        metadata: {
+          spaceId: space.sId,
+        },
+      });
 
       return new Ok(dataSourceView);
     }

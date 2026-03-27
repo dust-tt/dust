@@ -1,0 +1,11 @@
+{
+  "action": "agent.scope_changed",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "agent" }
+  ],
+  "metadata": {
+    "previousScope": { "type": "string" },
+    "newScope": { "type": "string" }
+  }
+}

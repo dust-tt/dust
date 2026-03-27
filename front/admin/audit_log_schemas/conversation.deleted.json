@@ -1,0 +1,10 @@
+{
+  "action": "conversation.deleted",
+  "targets": [
+    { "type": "conversation" }
+  ],
+  "metadata": {
+    "wasLastMember": { "type": "string" },
+    "isConversationCreator": { "type": "string" }
+  }
+}

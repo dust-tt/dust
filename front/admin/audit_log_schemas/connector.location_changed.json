@@ -1,0 +1,11 @@
+{
+  "action": "connector.location_changed",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "data_source" }
+  ],
+  "metadata": {
+    "previousLocation": { "type": "string" },
+    "newLocation": { "type": "string" }
+  }
+}

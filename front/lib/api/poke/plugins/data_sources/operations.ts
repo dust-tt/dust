@@ -1,3 +1,4 @@
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
@@ -76,6 +77,14 @@ export const connectorOperationsPlugin = createPlugin({
       },
       "Executing operation on connector"
     );
+
+    void emitAuditLogEvent({
+      auth,
+      action: "connector.operation_executed",
+      targets: [{ type: "connector", id: connectorId.toString() }],
+      metadata: { operation: op[0] },
+    });
+
     const res = await doOperation(
       op[0] as OperationType,
       connectorId.toString()

@@ -130,6 +130,10 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import {
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -290,6 +294,23 @@ async function handler(
         visibility,
         spaceId: spaceModelId,
         metadata,
+      });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "conversation.created",
+        targets: [
+          {
+            type: "conversation",
+            id: conversation.sId,
+            name: title ?? undefined,
+          },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          visibility: visibility ?? "unlisted",
+          hasInitialMessage: String(!!message),
+        },
       });
 
       const newContentFragments: ContentFragmentType[] = [];

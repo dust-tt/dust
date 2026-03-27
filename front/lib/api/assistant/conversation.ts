@@ -33,6 +33,7 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -267,6 +268,15 @@ export async function deleteOrLeaveConversation(
       },
       "Conversation soft-deleted"
     );
+    void emitAuditLogEvent({
+      auth,
+      action: "conversation.deleted",
+      targets: [{ type: "conversation", id: conversationId }],
+      metadata: {
+        wasLastMember: leaveRes.value.wasLastMember,
+        isConversationCreator,
+      },
+    });
     await conversation.updateVisibilityToDeleted();
   }
 
@@ -1768,6 +1778,16 @@ export async function softDeleteUserMessage(
       : "User deleted their message"
   );
 
+  void emitAuditLogEvent({
+    auth,
+    action: "message.deleted",
+    targets: [
+      { type: "conversation", id: conversation.sId },
+      { type: "message", id: message.sId },
+    ],
+    metadata: { deletedBy: auth.isAdmin() ? "admin" : "user", messageType: "user" },
+  });
+
   return new Ok({ success: true });
 }
 
@@ -1836,6 +1856,16 @@ export async function softDeleteAgentMessage(
     },
     "User deleted an agent message"
   );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "message.deleted",
+    targets: [
+      { type: "conversation", id: conversation.sId },
+      { type: "message", id: message.sId },
+    ],
+    metadata: { deletedBy: "user", messageType: "agent" },
+  });
 
   return new Ok({ success: true });
 }
