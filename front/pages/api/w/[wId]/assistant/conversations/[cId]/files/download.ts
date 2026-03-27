@@ -80,6 +80,12 @@ async function handler(
     if (contentType) {
       res.setHeader("Content-Type", contentType);
     }
+
+    const fileName = path.posix.basename(normalizedPath);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(fileName)}"`
+    );
   } catch {
     return apiError(req, res, {
       status_code: 404,

@@ -116,7 +116,13 @@ export function ConversationFilesPanel({
         }
         const url = URL.createObjectURL(blob);
         blobUrlRef.current = url;
-        window.open(url, "_blank", "noopener,noreferrer");
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = entry.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       } catch {
         sendNotification({
           type: "error",
