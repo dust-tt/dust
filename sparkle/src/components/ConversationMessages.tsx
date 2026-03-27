@@ -166,7 +166,7 @@ export const ConversationMessageTitle = React.forwardRef<
       >
         <div className="s-inline-flex s-items-center s-gap-2 s-text-foreground dark:s-text-foreground-night">
           <span className="s-heading-sm">{renderName(name)}</span>
-          <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
             {timestamp}
           </span>
           {infoChip && (

@@ -287,66 +287,85 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <ConversationMessageContainer
-          messageType={isCurrentUser ? "me" : "user"}
-          type="user"
-          className={cn(
-            isCurrentUser ? "ml-auto" : undefined,
-            "relative min-w-60 max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
-            actionMenuBottomMargin
-          )}
-          ref={userMessageHoveredRef}
-        >
-          {!isCurrentUser && (
-            <ConversationMessageAvatar
-              className="flex"
-              avatarUrl={pictureUrl}
-              name={name}
-              type="user"
+        <div className="text-right">
+          <div className="inline-flex items-center justify-between gap-0.5">
+            <ConversationMessageTitle
+              name={isCurrentUser ? undefined : name}
+              timestamp={timestamp}
+              infoChip={
+                displayChip ? (
+                  <>
+                    {isTriggeredOrigin(message.context.origin) && (
+                      <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                        <TriggerChip message={message} />
+                      </span>
+                    )}
+                    {message.version > 0 && !isDeleted && (
+                      <span className="text-xs text-faint dark:text-muted-foreground-night">
+                        (edited)
+                      </span>
+                    )}
+                  </>
+                ) : undefined
+              }
+              renderName={isCurrentUser ? () => null : renderName}
             />
-          )}
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="inline-flex items-center justify-between gap-0.5">
-              <ConversationMessageTitle
-                name={isCurrentUser ? undefined : name}
-                timestamp={timestamp}
-                infoChip={
-                  displayChip ? (
-                    <>
-                      {isTriggeredOrigin(message.context.origin) && (
-                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                          <TriggerChip message={message} />
-                        </span>
-                      )}
-                      {message.version > 0 && !isDeleted && (
-                        <span className="text-xs text-faint dark:text-muted-foreground-night">
-                          (edited)
-                        </span>
-                      )}
-                    </>
-                  ) : undefined
-                }
-                renderName={isCurrentUser ? () => null : renderName}
+          </div>
+          <ConversationMessageContainer
+            messageType={isCurrentUser ? "me" : "user"}
+            type="user"
+            className={cn(
+              isCurrentUser ? "ml-auto" : undefined,
+              "relative min-w-56 max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
+              actionMenuBottomMargin
+            )}
+            ref={userMessageHoveredRef}
+          >
+            {!isCurrentUser && (
+              <ConversationMessageAvatar
+                className="flex"
+                avatarUrl={pictureUrl}
+                name={name}
+                type="user"
               />
-            </div>
-            <ConversationMessageContent
-              citations={citations}
-              type="user"
-              className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
-            >
-              {isDeleted ? (
-                <DeletedMessage />
-              ) : (
-                <UserMessageMarkdown
-                  owner={owner}
+            )}
+            <div className="flex min-w-0 flex-col gap-1">
+              <ConversationMessageContent
+                citations={citations}
+                type="user"
+                className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+              >
+                {isDeleted ? (
+                  <DeletedMessage />
+                ) : (
+                  <UserMessageMarkdown
+                    owner={owner}
+                    message={message}
+                    isLastMessage={isLastMessage}
+                  />
+                )}
+              </ConversationMessageContent>
+              {showBottomActionMenu && (
+                <ActionMenu
+                  mode="bottom"
+                  isCurrentUser={isCurrentUser}
+                  isDeleted={isDeleted}
+                  showActions={showActions}
+                  isUserMessageHovered={isUserMessageHovered}
                   message={message}
-                  isLastMessage={isLastMessage}
+                  onReactionToggle={onReactionToggle}
+                  handleEditMessage={handleEditMessage}
+                  handleDeleteMessage={handleDeleteMessage}
+                  canDelete={canDelete}
+                  canEdit={canEdit}
+                  conversationId={conversationId}
+                  owner={owner}
                 />
               )}
-            </ConversationMessageContent>
-            {showBottomActionMenu && (
+            </div>
+            {showSideActionMenu && (
               <ActionMenu
-                mode="bottom"
+                mode="side"
                 isCurrentUser={isCurrentUser}
                 isDeleted={isDeleted}
                 showActions={showActions}
@@ -361,25 +380,8 @@ export function UserMessage({
                 owner={owner}
               />
             )}
-          </div>
-          {showSideActionMenu && (
-            <ActionMenu
-              mode="side"
-              isCurrentUser={isCurrentUser}
-              isDeleted={isDeleted}
-              showActions={showActions}
-              isUserMessageHovered={isUserMessageHovered}
-              message={message}
-              onReactionToggle={onReactionToggle}
-              handleEditMessage={handleEditMessage}
-              handleDeleteMessage={handleDeleteMessage}
-              canDelete={canDelete}
-              canEdit={canEdit}
-              conversationId={conversationId}
-              owner={owner}
-            />
-          )}
-        </ConversationMessageContainer>
+          </ConversationMessageContainer>
+        </div>
       )}
 
       {showAgentSuggestions && (
