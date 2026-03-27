@@ -260,7 +260,7 @@ function makeClientSideMCPToolConfigurations(
   }));
 }
 
-function generateContentMetadata(content: CallToolResult["content"]): {
+function generateRemoteContentMetadata(content: CallToolResult["content"]): {
   type: "text" | "image" | "resource" | "audio" | "resource_link";
   byteSize: number;
   maxSize: number;
@@ -554,7 +554,7 @@ export async function* tryCallMCPTool(
     if (serverType === "remote") {
       const isValid = isWithinRemoteContentLimit(content);
       if (!isValid) {
-        const contentMetadata = generateContentMetadata(content);
+        const contentMetadata = generateRemoteContentMetadata(content);
         logger.info(
           { contentMetadata, isValid },
           "Information on MCP tool result"
