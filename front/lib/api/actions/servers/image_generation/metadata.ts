@@ -6,54 +6,60 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const IMAGE_GENERATION_SERVER_NAME = "image_generation" as const;
 
+export const imageGenerationToolInputSchema = z.object({
+  prompt: z
+    .string()
+    .max(4000)
+    .describe("A text description of the desired image."),
+  outputName: z
+    .string()
+    .max(64)
+    .describe(
+      "The filename that will be used to save the generated image. Must be 64 characters or less."
+    ),
+  referenceImages: z
+    .array(z.string())
+    .max(14)
+    .optional()
+    .describe(
+      "Optional file IDs of reference images from conversation attachments. Up to 14 reference images."
+    ),
+  aspectRatio: z
+    .enum([
+      "1:1",
+      "3:2",
+      "2:3",
+      "3:4",
+      "4:3",
+      "4:5",
+      "5:4",
+      "9:16",
+      "16:9",
+      "21:9",
+    ])
+    .optional()
+    .default("1:1")
+    .describe(
+      "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
+    ),
+  quality: z
+    .enum(["low", "medium", "high"])
+    .optional()
+    .default("low")
+    .describe(
+      "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
+    ),
+});
+
+export type ImageGenerationToolInput = z.infer<
+  typeof imageGenerationToolInputSchema
+>;
+
 export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
   generate_image: {
     description:
       "Generate or edit images from text descriptions and reference images.",
-    schema: {
-      prompt: z
-        .string()
-        .max(4000)
-        .describe("A text description of the desired image."),
-      outputName: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the generated image. Must be 64 characters or less."
-        ),
-      referenceImages: z
-        .array(z.string())
-        .max(14)
-        .optional()
-        .describe(
-          "Optional file IDs of reference images from conversation attachments. Up to 14 reference images."
-        ),
-      aspectRatio: z
-        .enum([
-          "1:1",
-          "3:2",
-          "2:3",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9",
-        ])
-        .optional()
-        .default("1:1")
-        .describe(
-          "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
-        ),
-      quality: z
-        .enum(["low", "medium", "high"])
-        .optional()
-        .default("low")
-        .describe(
-          "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
-        ),
-    },
+    schema: imageGenerationToolInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Generating image",
