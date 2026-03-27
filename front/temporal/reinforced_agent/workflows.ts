@@ -7,11 +7,11 @@ import {
 import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import {
   ApplicationFailure,
+  executeChild,
   ParentClosePolicy,
   proxyActivities,
   setHandler,
   sleep,
-  startChild,
 } from "@temporalio/workflow";
 import { concurrentExecutor } from "../utils";
 
@@ -98,7 +98,7 @@ export async function reinforcedAgentWorkflow(): Promise<void> {
   await concurrentExecutor(
     workspaceIds,
     (workspaceId) =>
-      startChild(reinforcedAgentWorkspaceWorkflow, {
+      executeChild(reinforcedAgentWorkspaceWorkflow, {
         workflowId: `reinforced-agent-workspace-${workspaceId}`,
         args: [{ workspaceId, useBatchMode: true }],
         parentClosePolicy: ParentClosePolicy.ABANDON,
@@ -122,7 +122,7 @@ export async function reinforcedAgentWorkspaceWorkflow({
   await concurrentExecutor(
     agentIds,
     (agentConfigurationId) =>
-      startChild(reinforcedAgentForAgentWorkflow, {
+      executeChild(reinforcedAgentForAgentWorkflow, {
         workflowId: `reinforced-agent-${workspaceId}-${agentConfigurationId}`,
         args: [{ workspaceId, agentConfigurationId, useBatchMode }],
         parentClosePolicy: ParentClosePolicy.ABANDON,
