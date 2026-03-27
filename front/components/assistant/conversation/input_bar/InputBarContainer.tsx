@@ -562,7 +562,7 @@ const InputBarContainer = ({
     return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
   }, []);
 
-  const pageShortcut = isMac ? "⇧⌘P" : "Ctrl+Maj+P";
+  const pageShortcut = isMac ? "⇧⌘Y" : "Ctrl+Maj+Y";
   const screenshotShortcut = isMac ? "⇧⌘S" : "Ctrl+Maj+S";
 
   useEffect(() => {
@@ -578,7 +578,7 @@ const InputBarContainer = ({
       if (captureActions.isCapturing || fileUploaderService.isProcessingFiles) {
         return;
       }
-      if (e.key === "p" || e.key === "P") {
+      if (e.key === "y" || e.key === "Y") {
         e.preventDefault();
         captureActions.onCapture("text");
       } else if (e.key === "s" || e.key === "S") {
