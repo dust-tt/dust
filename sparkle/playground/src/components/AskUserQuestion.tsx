@@ -1,4 +1,4 @@
-import { Button, Card } from "@dust-tt/sparkle";
+import { Button, Card, cn } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 
 export interface AskUserQuestionOption {
@@ -17,13 +17,6 @@ interface AskUserQuestionProps {
   className?: string;
 }
 
-/**
- * Card-based question component for agent "Go Deep" style interactions.
- * Each option is a clickable card with title + optional description.
- * Last item is always a "Type something else..." editable field.
- * Selecting an option or clicking Skip calls the handler (parent should dismiss).
- * When typing custom text, a Submit button appears next to Skip.
- */
 export function AskUserQuestion({
   question,
   options,
@@ -53,7 +46,7 @@ export function AskUserQuestion({
         variant="secondary"
         size="md"
         containerClassName="s-w-full"
-        className={"s-w-full s-flex-col s-gap-3 " + (className ?? "")}
+        className={cn("s-w-full s-flex-col s-gap-3", className)}
       >
         <p className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
           {question}
@@ -83,7 +76,7 @@ export function AskUserQuestion({
       variant="secondary"
       size="md"
       containerClassName="s-w-full"
-      className={"s-w-full s-flex-col s-gap-3 " + (className ?? "")}
+      className={cn("s-w-full s-flex-col s-gap-3", className)}
     >
       <p className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
         {question}

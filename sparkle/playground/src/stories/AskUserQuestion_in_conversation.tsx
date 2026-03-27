@@ -18,7 +18,6 @@ import {
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
-  RobotIcon,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -30,10 +29,22 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  AskUserQuestion,
+  type AskUserQuestionOption,
+} from "../components/AskUserQuestion";
+import { InputBar } from "../components/InputBar";
+import {
+  NewConversationAgentMessage,
+  NewConversationContainer,
+  NewConversationMessageGroup,
+  NewConversationSectionHeading,
+  NewConversationUserMessage,
+} from "../components/NewConversationMessages";
+import { mockUsers } from "../data";
+
 // ---------------------------------------------------------------------------
-// Streaming text — simulates LLM token streaming
-// Uses plain text while streaming to avoid Markdown memoisation issues,
-// then switches to <Markdown> once complete.
+// Utilities
 // ---------------------------------------------------------------------------
 
 function StreamingMarkdown({
@@ -54,6 +65,7 @@ function StreamingMarkdown({
     setDisplayed("");
     posRef.current = 0;
 
+    let handle: number;
     const tick = () => {
       posRef.current = Math.min(posRef.current + 3, content.length);
       setDisplayed(content.slice(0, posRef.current));
@@ -64,13 +76,11 @@ function StreamingMarkdown({
       }
     };
 
-    let handle = window.setTimeout(tick, charDelay);
+    handle = window.setTimeout(tick, charDelay);
     return () => window.clearTimeout(handle);
   }, [content, charDelay]);
 
-  const isComplete = displayed.length >= content.length;
-
-  if (isComplete) {
+  if (displayed.length >= content.length) {
     return <Markdown content={content} />;
   }
 
@@ -80,10 +90,6 @@ function StreamingMarkdown({
     </p>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Fade-in wrapper
-// ---------------------------------------------------------------------------
 
 function FadeIn({
   children,
@@ -113,26 +119,16 @@ function FadeIn({
   );
 }
 
-import {
-  AskUserQuestion,
-  type AskUserQuestionOption,
-} from "../components/AskUserQuestion";
-import { InputBar } from "../components/InputBar";
-import {
-  NewConversationAgentMessage,
-  NewConversationContainer,
-  NewConversationMessageGroup,
-  NewConversationSectionHeading,
-  NewConversationUserMessage,
-} from "../components/NewConversationMessages";
-import { mockAgents, mockUsers } from "../data";
+// ---------------------------------------------------------------------------
+// Data
+// ---------------------------------------------------------------------------
 
 const locutor = mockUsers[0];
-const agent = mockAgents[0];
-
-// ---------------------------------------------------------------------------
-// Question options
-// ---------------------------------------------------------------------------
+const agent = {
+  name: "monitor",
+  emoji: "📡",
+  backgroundColor: "s-bg-blue-100",
+};
 
 const QUESTION = "Which monitoring area should we start with?";
 
@@ -156,14 +152,7 @@ const QUESTION_OPTIONS: AskUserQuestionOption[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Thinking steps — generated per selected option
-// ---------------------------------------------------------------------------
-
-type ThinkingStepFile = {
-  name: string;
-  type: string;
-};
+type ThinkingStepFile = { name: string; type: string };
 
 type ThinkingStep = {
   id: string;
@@ -178,348 +167,41 @@ type ThinkingStep = {
   files?: ThinkingStepFile[];
 };
 
-function getFinalResponse(choice: string): string {
-  return `Here's the monitoring plan for **${choice}**:
-
-**Current state** — Found an existing Datadog integration in \`infra/monitoring/\`. It covers basic health checks but has no ${choice.toLowerCase()} instrumentation.
-
-**Recommended approach** — 3-phase rollout:
-1. **Instrument** — Add OpenTelemetry middleware to capture ${choice.toLowerCase()} metrics on all API routes
-2. **Visualize** — Import the generated Grafana dashboard (attached config). Key panels: ${choice.toLowerCase()} overview, top-10 breakdown, trend over 7d
-3. **Alert** — Set up PagerDuty rules: warning at p95 threshold, critical at p99
-
-**Deliverables** — Dashboard JSON and alerting config are ready to import. The implementation PR draft is in @engineer's conversation.
-
-Want me to proceed with phase 1, or adjust the thresholds first?`;
-}
-
-// ---------------------------------------------------------------------------
-// Thinking indicator
-// ---------------------------------------------------------------------------
-
-function AnimatedDots() {
-  const [dots, setDots] = useState(1);
-  useEffect(() => {
-    const id = setInterval(() => setDots((d) => (d % 3) + 1), 500);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <span className="s-inline-block s-w-4 s-text-left">{".".repeat(dots)}</span>
-  );
-}
-
-function ThinkingIndicator({
-  done,
-  isOpen,
-  onToggle,
-  summaryText,
-}: {
-  done: boolean;
-  isOpen: boolean;
-  onToggle: () => void;
-  summaryText?: string;
-}) {
-  const label = done && summaryText ? summaryText : null;
-
-  return (
-    <button
-      onClick={onToggle}
-      className="s-flex s-w-full s-items-center s-gap-1.5 s-text-left s-text-sm s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
-    >
-      <span className="s-flex-1">
-        {label ?? (
-          <>
-            Thinking
-            <AnimatedDots />
-          </>
-        )}
-      </span>
-      {isOpen ? (
-        <ChevronUpIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
-      ) : (
-        <ChevronDownIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
-      )}
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Thinking block — progressive steps, collapsible
-// ---------------------------------------------------------------------------
-
-function AgentThinkingBlock({
-  visibleSteps,
-  allSteps,
-  thinkingText,
-  summaryText,
-  isOpen,
-  onToggle,
-  onStepClick,
-  done,
-}: {
-  visibleSteps: ThinkingStep[];
-  allSteps: ThinkingStep[];
-  thinkingText: string;
-  summaryText: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onStepClick: (step: ThinkingStep) => void;
-  done: boolean;
-}) {
-  return (
-    <div className="s-flex s-flex-col s-gap-1.5 s-py-3">
-      <ThinkingIndicator
-        done={done}
-        isOpen={isOpen}
-        onToggle={onToggle}
-        summaryText={summaryText}
-      />
-
-      <div
-        className={cn(
-          "s-grid s-transition-[grid-template-rows] s-duration-200 s-ease-out",
-          isOpen ? "s-grid-rows-[1fr]" : "s-grid-rows-[0fr]"
-        )}
-      >
-        <div className="s-overflow-hidden">
-          <div className="s-flex s-flex-col s-gap-2 s-pt-1">
-            <p className="s-truncate s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {thinkingText}
-            </p>
-
-            {(done ? allSteps : visibleSteps).map((step) => (
-              <FadeIn key={step.id}>
-                <button
-                  onClick={() => onStepClick(step)}
-                  className="s-flex s-w-full s-min-w-0 s-items-center s-gap-1 s-rounded-md s-py-0.5 s-text-left s-text-sm s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
-                >
-                  <span className="s-min-w-0 s-flex-1 s-truncate">
-                    {step.thinkingLabel}
-                  </span>
-                  <ChevronRightIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
-                </button>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Side panel — Message breakdown (using Bar + ResizablePanel)
-// ---------------------------------------------------------------------------
-
-function TimelineStepContent({
-  step,
-  isExpanded,
-}: {
-  step: ThinkingStep;
-  isExpanded: boolean;
-}) {
-  return (
-    <div className="s-flex s-min-w-0 s-flex-col s-overflow-hidden">
-      {/* Title row — always semibold, vertically centered with avatar */}
-      <div className="s-flex s-h-7 s-items-center s-justify-between s-gap-2">
-        <span className="s-truncate s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-          {step.title}
-        </span>
-        <ChevronDownIcon
-          className={cn(
-            "s-h-3.5 s-w-3.5 s-flex-shrink-0 s-text-muted-foreground s-transition-transform s-duration-200 dark:s-text-muted-foreground-night",
-            isExpanded ? "s-rotate-0" : "-s-rotate-90"
-          )}
-        />
-      </div>
-
-      {/* Subtext — always visible */}
-      <p className="s-truncate s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-        {step.thinkingLabel}
-      </p>
-
-      {/* Expanded content with animation */}
-      <div
-        className={cn(
-          "s-grid s-transition-[grid-template-rows] s-duration-200 s-ease-out",
-          isExpanded ? "s-grid-rows-[1fr]" : "s-grid-rows-[0fr]"
-        )}
-      >
-        <div className="s-overflow-hidden">
-          <p className="s-mt-1.5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {step.description}
-          </p>
-
-          {/* Terminal output */}
-          {step.terminalOutput && (
-            <div className="s-mt-3 s-overflow-hidden s-rounded-xl s-bg-slate-800 s-p-4 dark:s-bg-slate-900">
-              <div className="s-mb-2 s-flex s-items-center s-gap-1.5 s-text-xs s-text-slate-400">
-                <CommandLineIcon className="s-h-3.5 s-w-3.5" />
-                <span>terminal</span>
-              </div>
-              <pre className="s-text-sm s-leading-relaxed s-text-slate-200">
-                {step.terminalOutput.split("\\n").map((line, i) => (
-                  <div key={i}>
-                    {line.startsWith("$") ? (
-                      <>
-                        <span className="s-text-emerald-400">$ </span>
-                        <span className="s-font-medium">{line.slice(2)}</span>
-                      </>
-                    ) : (
-                      <span>{line}</span>
-                    )}
-                  </div>
-                ))}
-              </pre>
-            </div>
-          )}
-
-          {/* Files created */}
-          {step.files && step.files.length > 0 && (
-            <div className="s-mt-3">
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                Files created
-              </span>
-              <div className="s-mt-1.5 s-flex s-flex-wrap s-gap-2">
-                {step.files.map((f) => (
-                  <div
-                    key={f.name}
-                    className="s-flex s-items-center s-gap-2 s-rounded-lg s-border s-border-border s-px-3 s-py-2 dark:s-border-border-night"
-                  >
-                    <DocumentIcon className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                    <div className="s-flex s-flex-col">
-                      <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
-                        {f.name}
-                      </span>
-                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                        {f.type}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* View conversation button */}
-          {step.hasViewConversation && (
-            <div className="s-mt-3">
-              <Button
-                variant="outline"
-                size="xs"
-                label="View full conversation"
-                icon={ExternalLinkIcon}
-              />
-            </div>
-          )}
-
-          {/* Bottom spacing for the expanded content */}
-          <div className="s-h-2" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MessageBreakdownPanel({
-  step,
-  allSteps,
-  onClose,
-  onStepSelect,
-}: {
-  step: ThinkingStep | null;
-  allSteps: ThinkingStep[];
-  onClose: () => void;
-  onStepSelect: (step: ThinkingStep) => void;
-}) {
-  const handleToggle = (s: ThinkingStep) => {
-    // Toggle: if already expanded, collapse; otherwise expand this one
-    onStepSelect(step?.id === s.id ? (null as unknown as ThinkingStep) : s);
-  };
-
-  return (
-    <div className="s-flex s-h-full s-flex-col s-bg-background dark:s-bg-background-night">
-      <Bar
-        position="top"
-        variant="default"
-        title="Message breakdown"
-        rightActions={<Bar.ButtonBar variant="close" onClose={onClose} />}
-      />
-
-      <div className="s-flex s-flex-1 s-flex-col s-overflow-y-auto">
-        <div className="s-px-4 s-pt-4 s-pb-2">
-          {allSteps.map((s, i) => {
-            const isExpanded = step?.id === s.id;
-            const isLast = i === allSteps.length - 1;
-
-            return (
-              <div
-                key={s.id}
-                className="s-grid s-grid-cols-[28px,1fr] s-gap-x-3"
-              >
-                {/* Timeline column: avatar + line */}
-                <div className="s-flex s-flex-col s-items-center">
-                  <div className="s-flex-shrink-0">
-                    <Avatar
-                      icon={s.icon}
-                      size="xs"
-                      backgroundColor={s.iconBg}
-                    />
-                  </div>
-                  {!isLast && (
-                    <div className="s-w-[2px] s-flex-1 s-min-h-3 s-bg-border dark:s-bg-border-night" />
-                  )}
-                </div>
-
-                {/* Content column */}
-                <div
-                  onClick={() => handleToggle(s)}
-                  className="s-mb-2 s-min-w-0 s-cursor-pointer s-text-left"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") handleToggle(s);
-                  }}
-                >
-                  <TimelineStepContent step={s} isExpanded={isExpanded} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="s-mt-auto s-border-t s-border-separator s-p-4 dark:s-border-separator-night">
-          <p className="s-mb-3 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            The agent ran for 1m 47 sec
-          </p>
-          <div className="s-flex s-flex-col s-gap-1">
-            {[
-              { label: "Capabilities enabled", count: 3 },
-              { label: "Sources used", count: 4 },
-            ].map(({ label, count }) => (
-              <button
-                key={label}
-                className="s-flex s-items-center s-justify-between s-rounded-md s-px-1 s-py-1.5 s-text-sm s-text-foreground hover:s-bg-muted-background dark:s-text-foreground-night dark:hover:s-bg-muted-background-night"
-              >
-                <span>{label}</span>
-                <div className="s-flex s-items-center s-gap-1">
-                  <span className="s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-muted-background s-text-xs s-font-medium dark:s-bg-muted-background-night">
-                    {count}
-                  </span>
-                  <ChevronRightIcon className="s-h-3 s-w-3 s-text-muted-foreground" />
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Second thinking steps — per selected option
-// ---------------------------------------------------------------------------
+const INITIAL_THINKING_TEXT =
+  "The user wants to set up API monitoring. Let me analyze their current infrastructure and identify the key areas that need attention.";
+const INITIAL_THINKING_SUMMARY =
+  "Analyzed current infrastructure and identified 3 monitoring areas to prioritize.";
+const INITIAL_THINKING_STEPS: ThinkingStep[] = [
+  {
+    id: "docs",
+    thinkingLabel: "Searching internal docs for existing monitoring setup",
+    icon: MagnifyingGlassIcon,
+    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    title: "Documentation Search",
+    description:
+      'Searched internal docs for "API monitoring" — 8 results, found existing Datadog integration covering basic health checks',
+    resultCount: 8,
+  },
+  {
+    id: "websearch",
+    thinkingLabel: "Searching the web for monitoring best practices",
+    icon: GlobeAltIcon,
+    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    title: "Web Search",
+    description:
+      'Searched "API monitoring best practices 2026" — 11 results from Datadog, Grafana, and OpenTelemetry docs',
+    resultCount: 11,
+  },
+  {
+    id: "analysis",
+    thinkingLabel: "Analyzing gaps in current monitoring coverage",
+    icon: CodeSlashIcon,
+    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    title: "Gap Analysis",
+    description:
+      "Compared current setup against best practices — identified 3 key areas: latency tracking, error monitoring, and uptime checks",
+  },
+];
 
 function getSecondThinkingSteps(optionId: string): ThinkingStep[] {
   const byOption: Record<string, ThinkingStep[]> = {
@@ -610,48 +292,20 @@ function getSecondThinkingSummary(optionLabel: string): string {
   return `Planned the ${optionLabel.toLowerCase()} implementation — dashboard and alert configs ready.`;
 }
 
-// ---------------------------------------------------------------------------
-// Story — idle → thinking → asking → thinking2 → done
-// ---------------------------------------------------------------------------
+function getFinalResponse(choice: string): string {
+  return `Here's the monitoring plan for **${choice}**:
 
-type Phase = "idle" | "thinking" | "asking" | "thinking2" | "done";
+**Current state** — Found an existing Datadog integration in \`infra/monitoring/\`. It covers basic health checks but has no ${choice.toLowerCase()} instrumentation.
 
-// Generic thinking steps (before user picks a focus area)
-const INITIAL_THINKING_TEXT =
-  "The user wants to set up API monitoring. Let me analyze their current infrastructure and identify the key areas that need attention.";
-const INITIAL_THINKING_SUMMARY =
-  "Analyzed current infrastructure and identified 3 monitoring areas to prioritize.";
-const INITIAL_THINKING_STEPS: ThinkingStep[] = [
-  {
-    id: "docs",
-    thinkingLabel: "Searching internal docs for existing monitoring setup",
-    icon: MagnifyingGlassIcon,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
-    title: "Documentation Search",
-    description:
-      'Searched internal docs for "API monitoring" — 8 results, found existing Datadog integration covering basic health checks',
-    resultCount: 8,
-  },
-  {
-    id: "websearch",
-    thinkingLabel: "Searching the web for monitoring best practices",
-    icon: GlobeAltIcon,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
-    title: "Web Search",
-    description:
-      'Searched "API monitoring best practices 2026" — 11 results from Datadog, Grafana, and OpenTelemetry docs',
-    resultCount: 11,
-  },
-  {
-    id: "analysis",
-    thinkingLabel: "Analyzing gaps in current monitoring coverage",
-    icon: CodeSlashIcon,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
-    title: "Gap Analysis",
-    description:
-      "Compared current setup against best practices — identified 3 key areas: latency tracking, error monitoring, and uptime checks",
-  },
-];
+**Recommended approach** — 3-phase rollout:
+1. **Instrument** — Add OpenTelemetry middleware to capture ${choice.toLowerCase()} metrics on all API routes
+2. **Visualize** — Import the generated Grafana dashboard (attached config). Key panels: ${choice.toLowerCase()} overview, top-10 breakdown, trend over 7d
+3. **Alert** — Set up PagerDuty rules: warning at p95 threshold, critical at p99
+
+**Deliverables** — Dashboard JSON and alerting config are ready to import. The implementation PR draft is in @engineer's conversation.
+
+Want me to proceed with phase 1, or adjust the thresholds first?`;
+}
 
 const SIDEBAR_CONVERSATIONS = [
   { id: "conv-1", label: "API monitoring setup", selected: true },
@@ -660,6 +314,321 @@ const SIDEBAR_CONVERSATIONS = [
   { id: "conv-4", label: "CI/CD pipeline debugging" },
   { id: "conv-5", label: "Frontend performance audit" },
 ];
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function AnimatedDots() {
+  const [dots, setDots] = useState(1);
+  useEffect(() => {
+    const id = setInterval(() => setDots((d) => (d % 3) + 1), 500);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span className="s-inline-block s-w-4 s-text-left">{".".repeat(dots)}</span>
+  );
+}
+
+function ThinkingIndicator({
+  done,
+  isOpen,
+  onToggle,
+  summaryText,
+}: {
+  done: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  summaryText?: string;
+}) {
+  const label = done && summaryText ? summaryText : null;
+
+  return (
+    <button
+      onClick={onToggle}
+      className="s-flex s-w-full s-items-center s-gap-1.5 s-text-left s-text-sm s-font-medium s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
+    >
+      {!done && <Spinner size="xs" variant="dark" />}
+      <span className="s-flex-1">
+        {label ?? (
+          <>
+            Thinking
+            <AnimatedDots />
+          </>
+        )}
+      </span>
+      {isOpen ? (
+        <ChevronUpIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
+      ) : (
+        <ChevronDownIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
+      )}
+    </button>
+  );
+}
+
+function AgentThinkingBlock({
+  visibleSteps,
+  allSteps,
+  thinkingText,
+  summaryText,
+  isOpen,
+  onToggle,
+  onStepClick,
+  done,
+}: {
+  visibleSteps: ThinkingStep[];
+  allSteps: ThinkingStep[];
+  thinkingText: string;
+  summaryText: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onStepClick: (step: ThinkingStep) => void;
+  done: boolean;
+}) {
+  return (
+    <div className="s-flex s-flex-col s-gap-1.5 s-pb-3 s-pt-1">
+      <ThinkingIndicator
+        done={done}
+        isOpen={isOpen}
+        onToggle={onToggle}
+        summaryText={summaryText}
+      />
+
+      {/* Smooth expand/collapse via grid-rows transition */}
+      <div
+        className={cn(
+          "s-grid s-transition-[grid-template-rows] s-duration-200 s-ease-out",
+          isOpen ? "s-grid-rows-[1fr]" : "s-grid-rows-[0fr]"
+        )}
+      >
+        <div className="s-overflow-hidden">
+          <div className="s-flex s-flex-col s-gap-2 s-pt-1">
+            <p className="s-truncate s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {thinkingText}
+            </p>
+
+            {(done ? allSteps : visibleSteps).map((step) => (
+              <FadeIn key={step.id}>
+                <button
+                  onClick={() => onStepClick(step)}
+                  className="s-flex s-w-full s-min-w-0 s-items-center s-gap-1 s-rounded-md s-py-0.5 s-text-left s-text-sm s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
+                >
+                  <span className="s-min-w-0 s-flex-1 s-truncate">
+                    {step.thinkingLabel}
+                  </span>
+                  <ChevronRightIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
+                </button>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineStepContent({
+  step,
+  isExpanded,
+}: {
+  step: ThinkingStep;
+  isExpanded: boolean;
+}) {
+  return (
+    <div className="s-flex s-min-w-0 s-flex-col s-overflow-hidden">
+      <div className="s-flex s-h-7 s-items-center s-justify-between s-gap-2">
+        <span className="s-truncate s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+          {step.title}
+        </span>
+        <ChevronDownIcon
+          className={cn(
+            "s-h-3.5 s-w-3.5 s-flex-shrink-0 s-text-muted-foreground s-transition-transform s-duration-200 dark:s-text-muted-foreground-night",
+            isExpanded ? "s-rotate-0" : "-s-rotate-90"
+          )}
+        />
+      </div>
+
+      <p className="s-truncate s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+        {step.thinkingLabel}
+      </p>
+
+      {/* Smooth expand/collapse via grid-rows transition */}
+      <div
+        className={cn(
+          "s-grid s-transition-[grid-template-rows] s-duration-200 s-ease-out",
+          isExpanded ? "s-grid-rows-[1fr]" : "s-grid-rows-[0fr]"
+        )}
+      >
+        <div className="s-overflow-hidden">
+          <p className="s-mt-1.5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            {step.description}
+          </p>
+
+          {step.terminalOutput && (
+            <div className="s-mt-3 s-overflow-hidden s-rounded-xl s-bg-slate-800 s-p-4 dark:s-bg-slate-900">
+              <div className="s-mb-2 s-flex s-items-center s-gap-1.5 s-text-xs s-text-slate-400">
+                <CommandLineIcon className="s-h-3.5 s-w-3.5" />
+                <span>terminal</span>
+              </div>
+              <pre className="s-text-sm s-leading-relaxed s-text-slate-200">
+                {step.terminalOutput.split("\\n").map((line, i) => (
+                  <div key={i}>
+                    {line.startsWith("$") ? (
+                      <>
+                        <span className="s-text-emerald-400">$ </span>
+                        <span className="s-font-medium">{line.slice(2)}</span>
+                      </>
+                    ) : (
+                      <span>{line}</span>
+                    )}
+                  </div>
+                ))}
+              </pre>
+            </div>
+          )}
+
+          {step.files && step.files.length > 0 && (
+            <div className="s-mt-3">
+              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                Files created
+              </span>
+              <div className="s-mt-1.5 s-flex s-flex-wrap s-gap-2">
+                {step.files.map((f) => (
+                  <div
+                    key={f.name}
+                    className="s-flex s-items-center s-gap-2 s-rounded-lg s-border s-border-border s-px-3 s-py-2 dark:s-border-border-night"
+                  >
+                    <DocumentIcon className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                    <div className="s-flex s-flex-col">
+                      <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                        {f.name}
+                      </span>
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {f.type}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step.hasViewConversation && (
+            <div className="s-mt-3">
+              <Button
+                variant="outline"
+                size="xs"
+                label="View full conversation"
+                icon={ExternalLinkIcon}
+              />
+            </div>
+          )}
+
+          <div className="s-h-2" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessageBreakdownPanel({
+  step,
+  allSteps,
+  onClose,
+  onStepSelect,
+}: {
+  step: ThinkingStep | null;
+  allSteps: ThinkingStep[];
+  onClose: () => void;
+  onStepSelect: (step: ThinkingStep | null) => void;
+}) {
+  const handleToggle = (s: ThinkingStep) => {
+    onStepSelect(step?.id === s.id ? null : s);
+  };
+
+  return (
+    <div className="s-flex s-h-full s-flex-col s-bg-background dark:s-bg-background-night">
+      <Bar
+        position="top"
+        variant="default"
+        title="Message breakdown"
+        rightActions={<Bar.ButtonBar variant="close" onClose={onClose} />}
+      />
+
+      <div className="s-flex s-flex-1 s-flex-col s-overflow-y-auto">
+        <div className="s-px-4 s-pt-4 s-pb-2">
+          {allSteps.map((s, i) => {
+            const isExpanded = step?.id === s.id;
+            const isLast = i === allSteps.length - 1;
+
+            return (
+              <div
+                key={s.id}
+                className="s-grid s-grid-cols-[28px,1fr] s-gap-x-3"
+              >
+                <div className="s-flex s-flex-col s-items-center">
+                  <div className="s-flex-shrink-0">
+                    <Avatar
+                      icon={s.icon}
+                      size="xs"
+                      backgroundColor={s.iconBg}
+                    />
+                  </div>
+                  {!isLast && (
+                    <div className="s-w-[2px] s-flex-1 s-min-h-3 s-bg-border dark:s-bg-border-night" />
+                  )}
+                </div>
+
+                <div
+                  onClick={() => handleToggle(s)}
+                  className="s-mb-2 s-min-w-0 s-cursor-pointer s-text-left"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") handleToggle(s);
+                  }}
+                >
+                  <TimelineStepContent step={s} isExpanded={isExpanded} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="s-mt-auto s-border-t s-border-separator s-p-4 dark:s-border-separator-night">
+          <p className="s-mb-3 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+            The agent ran for 1m 47 sec
+          </p>
+          <div className="s-flex s-flex-col s-gap-1">
+            {[
+              { label: "Capabilities enabled", count: 3 },
+              { label: "Sources used", count: 4 },
+            ].map(({ label, count }) => (
+              <button
+                key={label}
+                className="s-flex s-items-center s-justify-between s-rounded-md s-px-1 s-py-1.5 s-text-sm s-text-foreground hover:s-bg-muted-background dark:s-text-foreground-night dark:hover:s-bg-muted-background-night"
+              >
+                <span>{label}</span>
+                <div className="s-flex s-items-center s-gap-1">
+                  <span className="s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-muted-background s-text-xs s-font-medium dark:s-bg-muted-background-night">
+                    {count}
+                  </span>
+                  <ChevronRightIcon className="s-h-3 s-w-3 s-text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main story — idle → thinking → asking → thinking2 → done
+// ---------------------------------------------------------------------------
+
+type Phase = "idle" | "thinking" | "asking" | "thinking2" | "done";
 
 export default function AskUserQuestionInConversation() {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -677,11 +646,6 @@ export default function AskUserQuestionInConversation() {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const finalResponse = selectedOption
-    ? getFinalResponse(selectedOption.label)
-    : "";
 
   const secondSteps = selectedOption
     ? getSecondThinkingSteps(selectedOption.id)
@@ -690,7 +654,6 @@ export default function AskUserQuestionInConversation() {
     ? getSecondThinkingSummary(selectedOption.label)
     : "";
 
-  // Auto-scroll on state changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [phase, visibleSteps.length, visibleSteps2.length]);
@@ -739,20 +702,18 @@ export default function AskUserQuestionInConversation() {
     return () => timers.forEach(clearTimeout);
   }, [phase, selectedOption]);
 
-  // Auto-collapse/expand + start streaming with delays
+  // Phase-driven UI transitions (collapse/expand, streaming delays)
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     if (phase === "asking") {
       setIntroStarted(false);
       setIntroComplete(false);
-      // Small pause before the agent starts writing
       timers.push(setTimeout(() => setIntroStarted(true), 500));
     } else if (phase === "thinking2") {
       setIsThinkingOpen(true);
       setFinalStarted(false);
     } else if (phase === "done") {
       setIsThinkingOpen(false);
-      // Pause before final response starts streaming
       timers.push(setTimeout(() => setFinalStarted(true), 600));
     }
     return () => timers.forEach(clearTimeout);
@@ -774,21 +735,13 @@ export default function AskUserQuestionInConversation() {
     setIsPanelOpen(true);
   };
 
-  // ---------------------------------------------------------------------------
-  // Conversation content (shared between both layouts)
-  // ---------------------------------------------------------------------------
-
   const conversationContent = (
     <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
-      <div
-        ref={scrollContainerRef}
-        className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
-      >
+      <div className="s-flex s-flex-1 s-flex-col s-overflow-y-auto">
         <NewConversationContainer>
           <div className="s-h-12 s-shrink-0" />
           <NewConversationSectionHeading label="Today" />
 
-          {/* User message */}
           {phase !== "idle" && (
             <FadeIn>
               <NewConversationMessageGroup
@@ -809,7 +762,6 @@ export default function AskUserQuestionInConversation() {
             </FadeIn>
           )}
 
-          {/* Agent block */}
           {phase !== "idle" && (
             <FadeIn delay={150}>
               <NewConversationMessageGroup
@@ -827,7 +779,6 @@ export default function AskUserQuestionInConversation() {
                   className="s-pl-0"
                 >
                   <div className="s-flex s-flex-col s-gap-0">
-                    {/* Single unified thinking block — accumulates steps from both phases */}
                     <AgentThinkingBlock
                       visibleSteps={[...visibleSteps, ...visibleSteps2]}
                       allSteps={[...INITIAL_THINKING_STEPS, ...secondSteps]}
@@ -847,7 +798,6 @@ export default function AskUserQuestionInConversation() {
                       done={phase === "done"}
                     />
 
-                    {/* AskUserQuestion — only during "asking" phase, disappears after */}
                     {phase === "asking" && (
                       <div className="s-flex s-flex-col s-gap-3">
                         <div className="s-pb-3 s-pt-2">
@@ -872,7 +822,6 @@ export default function AskUserQuestionInConversation() {
                       </div>
                     )}
 
-                    {/* Final response — streams in after a pause */}
                     {phase === "done" && finalStarted && (
                       <FadeIn className="s-pb-3 s-pt-2">
                         <StreamingMarkdown
@@ -893,7 +842,6 @@ export default function AskUserQuestionInConversation() {
         </NewConversationContainer>
       </div>
 
-      {/* Floating input bar */}
       <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
         <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
           {phase === "idle" ? (
@@ -911,17 +859,12 @@ export default function AskUserQuestionInConversation() {
     </div>
   );
 
-  // ---------------------------------------------------------------------------
-  // Sidebar
-  // ---------------------------------------------------------------------------
-
   const filteredConvs = SIDEBAR_CONVERSATIONS.filter((c) =>
     c.label.toLowerCase().includes(sidebarSearch.toLowerCase())
   );
 
   const sidebarContent = (
     <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-      {/* Top bar */}
       <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-pl-3 s-pr-2 dark:s-border-border-night">
         <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-2">
           <Avatar
@@ -949,7 +892,6 @@ export default function AskUserQuestionInConversation() {
 
       <ScrollArea className="s-flex-1">
         <ScrollBar orientation="vertical" size="minimal" />
-        {/* Search + New */}
         <div className="s-flex s-items-center s-gap-1 s-p-2">
           <SearchInput
             name="sidebar-search"
@@ -967,7 +909,6 @@ export default function AskUserQuestionInConversation() {
           />
         </div>
 
-        {/* Navigation */}
         <NavigationList className="s-px-2">
           <NavigationListItem label="Inbox" icon={InboxIcon} count={3} />
           <NavigationListCollapsibleSection
@@ -989,16 +930,10 @@ export default function AskUserQuestionInConversation() {
     </div>
   );
 
-  // ---------------------------------------------------------------------------
-  // Layout: SidebarLayout + sliding panel
-  // ---------------------------------------------------------------------------
-
   const mainContent = (
     <div className="s-flex s-h-full s-w-full s-overflow-hidden">
-      {/* Conversation — always takes remaining space */}
       <div className="s-flex s-min-w-0 s-flex-1">{conversationContent}</div>
 
-      {/* Side panel — slides in/out */}
       <div
         className={cn(
           "s-h-full s-overflow-hidden s-border-l s-border-separator s-transition-[width] s-duration-300 s-ease-out dark:s-border-separator-night",
