@@ -18,8 +18,9 @@ import {
 } from "@app/lib/reinforced_agent/analyze_conversation";
 import {
   getReinforcedLLM,
+  getReinforcementDefaultOptions,
   processReinforcedEvents,
-  REINFORCEMENT_DEFAULTS,
+  REINFORCEMENT_AGENT_ID,
   reinforcementConversationTitle,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -204,7 +205,9 @@ export async function startConversationAnalysisBatchActivity({
         conversationId
       ),
       ...llmParamsWithoutConversation,
-      ...REINFORCEMENT_DEFAULTS,
+      ...getReinforcementDefaultOptions(
+        "reinforced_agent_analyze_conversation"
+      ),
     });
     orderedAnalysedConversationIds.push(conversationId);
   }
@@ -301,7 +304,7 @@ export async function processConversationAnalysisBatchResultActivity({
     llm,
     batchId,
     reinforcementConversationIds,
-    REINFORCEMENT_DEFAULTS.agentConfigurationId
+    REINFORCEMENT_AGENT_ID
   );
 
   // Build mapping from reinforcement conversation sIds back to the analysed conversation sIds.
@@ -389,7 +392,9 @@ export async function startAggregationBatchActivity({
         agentConfigurationId
       ),
       ...llmParamsWithoutConversation,
-      ...REINFORCEMENT_DEFAULTS,
+      ...getReinforcementDefaultOptions(
+        "reinforced_agent_aggregate_suggestions"
+      ),
     });
   }
 
@@ -456,7 +461,7 @@ export async function processAggregationBatchResultActivity({
     llm,
     batchId,
     reinforcementConversationIds,
-    REINFORCEMENT_DEFAULTS.agentConfigurationId
+    REINFORCEMENT_AGENT_ID
   );
 
   // The aggregation batch has a single entry — get the first result.
