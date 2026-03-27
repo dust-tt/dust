@@ -9,6 +9,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -1199,6 +1200,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         };
       })
     );
+  }
+
+  static async listReinforcementConversations(
+    auth: Authenticator,
+    agentConfigurationId: string
+  ): Promise<ConversationWithoutContentType[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversations = await ConversationModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        [Op.and]: [
+          where(
+            fn(
+              "jsonb_extract_path_text",
+              col("metadata"),
+              REINFORCEMENT_METADATA_KEYS.reinforcedAgent
+            ),
+            "true"
+          ),
+          where(
+            fn(
+              "jsonb_extract_path_text",
+              col("metadata"),
+              REINFORCEMENT_METADATA_KEYS.reinforcedAgentConfigurationId
+            ),
+            agentConfigurationId
+          ),
+        ],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return conversations.map((c) => ({
+      id: c.id,
+      created: c.createdAt.getTime(),
+      updated: c.updatedAt.getTime(),
+      sId: c.sId,
+      title: c.title,
+      triggerId: ConversationResource.triggerIdToSId(c.triggerId, workspace.id),
+      actionRequired: false,
+      unread: false,
+      lastReadMs: Date.now(),
+      hasError: c.hasError,
+      requestedSpaceIds: c.requestedSpaceIds.map(String),
+      spaceId: null,
+      depth: c.depth,
+      metadata: c.metadata,
+    }));
   }
 
   static async markAsActionRequired(
