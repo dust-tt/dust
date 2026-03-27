@@ -1,10 +1,10 @@
 import { getLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
-  createLlmConversation,
   downloadBatchResultFromLlm,
   sendBatchCallToLlm,
   storeLlmResult,
+  writeBatchUserMessages,
 } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
@@ -17,6 +17,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
@@ -94,7 +95,7 @@ async function setupTest(): Promise<{
 async function awaitBatch(llm: LLM, batchId: string): Promise<void> {
   let status = await llm.getBatchStatus(batchId);
   while (status === "computing") {
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    await setTimeoutAsync(POLL_INTERVAL_MS);
     status = await llm.getBatchStatus(batchId);
   }
   expect(status).toBe("ready");
@@ -233,13 +234,13 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
     );
 
     it(
-      "createLlmConversation + storeLlmResult stores data for a streamed call",
+      "writeBatchUserMessages + storeLlmResult stores data for a streamed call",
       async () => {
         const { authenticator, workspace, llm, agentConfigurationId } =
           await setupTest();
 
         // Create conversation and user message.
-        const conversation = await createLlmConversation(
+        const conversation = await writeBatchUserMessages(
           authenticator,
           makeConversationOptions("What is 2+2? Reply with just the number.", {
             title: "Stream Store Test",

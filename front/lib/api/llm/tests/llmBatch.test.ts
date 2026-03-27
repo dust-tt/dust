@@ -10,6 +10,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { describe, expect, it, vi } from "vitest";
 
@@ -288,9 +289,7 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           // Poll until the batch is done (up to the test timeout).
           let status = await llm.getBatchStatus(batchId);
           while (status === "computing") {
-            await new Promise((resolve) =>
-              setTimeout(resolve, POLL_INTERVAL_MS)
-            );
+            await setTimeoutAsync(POLL_INTERVAL_MS);
             status = await llm.getBatchStatus(batchId);
           }
 

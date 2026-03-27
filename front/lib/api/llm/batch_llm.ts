@@ -27,6 +27,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export interface LlmConversationOptions
@@ -50,7 +51,7 @@ export interface LlmConversationOptions
  *
  * Returns the conversation resource.
  */
-export async function createLlmConversation(
+export async function writeBatchUserMessages(
   auth: Authenticator,
   {
     newMessages,
@@ -218,7 +219,7 @@ export async function storeLlmResult(
     // Create step content entries from LLM events.
     let index = 0;
     for (const event of events) {
-      const stepContent = eventToStepContent(event);
+      const stepContent = eventToStoredStepContent(event);
       if (stepContent) {
         await AgentStepContentResource.createNewVersion(
           {
@@ -258,7 +259,7 @@ export async function sendBatchCallToLlm(
 
   for (const input of conversations) {
     // Store new messages in DB.
-    const conversationResource = await createLlmConversation(auth, input);
+    const conversationResource = await writeBatchUserMessages(auth, input);
     conversationIds.push(conversationResource.sId);
 
     // Reconstruct the full conversation from DB.
@@ -323,12 +324,12 @@ export async function downloadBatchResultFromLlm(
     auth,
     conversationIds
   );
-  const conversationBySId = new Map(
+  const conversationById = new Map(
     conversationResources.map((c) => [c.sId, c])
   );
 
   for (const [conversationId, events] of results) {
-    const conversation = conversationBySId.get(conversationId);
+    const conversation = conversationById.get(conversationId);
     if (!conversation) {
       continue;
     }
@@ -342,7 +343,9 @@ export async function downloadBatchResultFromLlm(
  * Convert an LLM event to an AgentStepContent value.
  * Returns null for events that don't map to stored content (deltas, token usage, etc.).
  */
-function eventToStepContent(event: LLMEvent): AgentContentItemType | null {
+function eventToStoredStepContent(
+  event: LLMEvent
+): AgentContentItemType | null {
   if (event instanceof EventError) {
     return {
       type: "error",
@@ -386,8 +389,14 @@ function eventToStepContent(event: LLMEvent): AgentContentItemType | null {
           provider: event.metadata.clientId,
         },
       };
-
-    default:
+    case "interaction_id":
+    case "reasoning_delta":
+    case "success":
+    case "text_delta":
+    case "token_usage":
+    case "tool_call_delta":
       return null;
+    default:
+      assertNever(event.type);
   }
 }
