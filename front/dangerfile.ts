@@ -6,6 +6,7 @@ const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
+const mcpAutoAckLabel = "mcp-auto-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -255,10 +256,19 @@ async function checkAutoAvailabilityMCPServer() {
   }
 
   if (/availability:\s*"auto(?:_hidden_builder)?"/.test(content.added)) {
-    warn(
-      "An auto internal MCP server was added. Make sure to run the script `ensure_all_mcp_server_views_created.ts` " +
-        "to create the MCP server views for all existing workspaces."
-    );
+    if (hasLabel(mcpAutoAckLabel)) {
+      warn(
+        `An auto internal MCP server was added and the PR has the \`${mcpAutoAckLabel}\` label. ` +
+          "Make sure to run the script `ensure_all_mcp_server_views_created.ts` " +
+          "to create the MCP server views for all existing workspaces."
+      );
+    } else {
+      fail(
+        `An auto internal MCP server was added. Please add the \`${mcpAutoAckLabel}\` label to acknowledge ` +
+          "that you will run the script `ensure_all_mcp_server_views_created.ts` " +
+          "to create the MCP server views for all existing workspaces."
+      );
+    }
   }
 }
 
