@@ -486,7 +486,10 @@ describe("POST /api/workos/authenticate", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData()).toEqual({ error: "Invalid grant_type" });
+    expect(res._getJSONData()).toEqual({
+      error: "Invalid grant_type",
+      type: "invalid_request_error",
+    });
   });
 
   it("exchanges code for tokens on success", async () => {
@@ -518,7 +521,10 @@ describe("POST /api/workos/authenticate", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData()).toEqual({ error: "Invalid refresh token" });
+    expect(res._getJSONData()).toEqual({
+      error: "Invalid refresh token",
+      type: "invalid_request_error",
+    });
   });
 });
 
