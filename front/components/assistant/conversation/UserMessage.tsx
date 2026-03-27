@@ -297,16 +297,18 @@ export function UserMessage({
           )}
           ref={userMessageHoveredRef}
         >
-          <ConversationMessageAvatar
-            className="flex"
-            avatarUrl={pictureUrl}
-            name={name}
-            type="user"
-          />
+          {!isCurrentUser && (
+            <ConversationMessageAvatar
+              className="flex"
+              avatarUrl={pictureUrl}
+              name={name}
+              type="user"
+            />
+          )}
           <div className="flex min-w-0 flex-col gap-1">
             <div className="inline-flex items-center justify-between gap-0.5">
               <ConversationMessageTitle
-                name={name}
+                name={isCurrentUser ? undefined : name}
                 timestamp={timestamp}
                 infoChip={
                   displayChip ? (
@@ -324,7 +326,7 @@ export function UserMessage({
                     </>
                   ) : undefined
                 }
-                renderName={renderName}
+                renderName={isCurrentUser ? () => null : renderName}
               />
             </div>
             <ConversationMessageContent
