@@ -14,6 +14,7 @@ import type {
   StaticCredentialFormHandle,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
+import { getRemoteMCPServerOAuthConfigComponent } from "@app/components/actions/mcp/remote_mcp_oauth_config_registry";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -316,6 +317,22 @@ export function CreateMCPServerDialog({
         }
       : undefined;
 
+  const remoteMcpOAuthConfig = useMemo(() => {
+    if (
+      authorization?.provider !== "mcp_static" ||
+      !defaultServerConfig?.oauthStaticPresetKey
+    ) {
+      return undefined;
+    }
+    const component = getRemoteMCPServerOAuthConfigComponent(
+      defaultServerConfig.oauthStaticPresetKey
+    );
+    if (!component) {
+      return undefined;
+    }
+    return { defaultServerConfig, component };
+  }, [authorization?.provider, defaultServerConfig]);
+
   // Synchronous validation — no race condition with useEffect.
   const credentialError = useMemo(
     () =>
@@ -446,6 +463,7 @@ export function CreateMCPServerDialog({
                     internalMCPServer?.documentationUrl ?? undefined
                   }
                   staticCredentialConfig={staticCredentialConfig}
+                  remoteMcpOAuthConfig={remoteMcpOAuthConfig}
                 />
               )}
 
