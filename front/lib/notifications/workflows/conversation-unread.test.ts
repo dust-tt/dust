@@ -59,7 +59,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 
 describe("conversation-unread workflow business logic", () => {
-  // This ensures all origis are tested as it is a record
+  // This ensures all origins are tested as it is a record
   const userMessageOriginRecord: Record<UserMessageOrigin, boolean> = {
     web: true,
     extension: true,
@@ -86,6 +86,7 @@ describe("conversation-unread workflow business logic", () => {
     triggered_programmatic: false,
     zendesk: false,
     reinforced_agent_notification: false,
+    reinforcement: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
     it.each(

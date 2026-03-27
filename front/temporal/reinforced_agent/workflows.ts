@@ -193,36 +193,41 @@ export async function reinforcedAgentForAgentWorkflow({
   if (useBatchMode) {
     // Phase 1: Batch-analyze all conversations.
     if (conversationIds.length > 0) {
-      const analysisBatchId = await startConversationAnalysisBatchActivity({
+      const analysisResult = await startConversationAnalysisBatchActivity({
         workspaceId,
         agentConfigurationId,
-        conversationIds,
+        analysedConversationIds: conversationIds,
       });
 
-      if (analysisBatchId) {
-        await waitForBatch({ workspaceId, batchId: analysisBatchId });
+      if (analysisResult) {
+        await waitForBatch({ workspaceId, batchId: analysisResult.batchId });
 
         await processConversationAnalysisBatchResultActivity({
           workspaceId,
           agentConfigurationId,
-          batchId: analysisBatchId,
+          batchId: analysisResult.batchId,
+          reinforcementConversationIds:
+            analysisResult.reinforcementConversationIds,
+          analysedConversationIds: analysisResult.analysedConversationIds,
         });
       }
     }
 
     // Phase 2: Batch-aggregate synthetic suggestions into pending.
-    const aggregationBatchId = await startAggregationBatchActivity({
+    const aggregationResult = await startAggregationBatchActivity({
       workspaceId,
       agentConfigurationId,
     });
 
-    if (aggregationBatchId) {
-      await waitForBatch({ workspaceId, batchId: aggregationBatchId });
+    if (aggregationResult) {
+      await waitForBatch({ workspaceId, batchId: aggregationResult.batchId });
 
       await processAggregationBatchResultActivity({
         workspaceId,
         agentConfigurationId,
-        batchId: aggregationBatchId,
+        batchId: aggregationResult.batchId,
+        reinforcementConversationIds:
+          aggregationResult.reinforcementConversationIds,
         disableNotifications,
       });
     }
