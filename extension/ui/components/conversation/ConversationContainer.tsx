@@ -23,13 +23,15 @@ interface ConversationContainerProps {
 const SUGGESTIONS = {
   formHelper: {
     id: "form_helper",
-    title: "Dust can help you fill out forms",
-    description: "Ask an agent to get started",
+    title: "Fill forms with Dust extension",
+    description:
+      "No more copy-pasting. Fill out forms directly from your agents.",
   },
   multiTab: {
     id: "multi_tab",
-    title: "Dust can work across all your open tabs",
-    description: "Ask an agent to get started",
+    title: "Bring any tab into your conversation",
+    description:
+      "Ask an agent to read, summarize, or act on any of your open tabs.",
   },
 } as const;
 

@@ -300,6 +300,7 @@ type AllTabContentProps = {
   setDisplayedAssistantId: (id: string) => void;
   owner: WorkspaceType;
   showTagHeadings: boolean;
+  canGetMore?: boolean;
 };
 
 export function AllTabContent({
@@ -312,6 +313,7 @@ export function AllTabContent({
   setDisplayedAssistantId,
   owner,
   showTagHeadings,
+  canGetMore = true,
 }: AllTabContentProps) {
   return (
     <>
@@ -359,6 +361,7 @@ export function AllTabContent({
                 handleAssistantClick={handleAgentClick}
                 handleMoreClick={setDisplayedAssistantId}
                 owner={owner}
+                canGetMore={canGetMore}
               />
             </React.Fragment>
           ))}
