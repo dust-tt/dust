@@ -9,6 +9,8 @@ on:
         options:
           - chrome:production
           - chrome:release
+          - firefox:production
+          - firefox:release
           - front:production
         required: true
   workflow_call:
@@ -66,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
-          path: extension/platforms/${{ contains(inputs.target, 'chrome') && 'chrome' || 'front' }}/build/
+          path: extension/platforms/${{ contains(inputs.target, 'chrome') && 'chrome' || contains(inputs.target, 'firefox') && 'firefox' || 'front' }}/build/

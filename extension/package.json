@@ -11,6 +11,7 @@
     "dev:firefox": "tsx run/watch.ts --platform=firefox --mode=development",
     "package:firefox:production": "tsx run/build.ts --platform=firefox",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
+    "package:firefox:release": "tsx run/build.ts --platform=firefox --release",
     "analyze:chrome": "tsx run/build.ts --platform=chrome --analyze",
     "tsgo": "tsgo"
   },
