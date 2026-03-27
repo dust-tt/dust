@@ -18,113 +18,68 @@ async function disableCreateObjectForWorkspace(
   execute: boolean,
   logger: Logger,
   cutoffDate: Date
-): Promise<{ processedCount: number }> {
-  // Finding all internal MCP server connections created before the cutoff date.
+): Promise<number> {
   const connections = await MCPServerConnectionModel.findAll({
     where: {
       workspaceId: workspace.id,
       serverType: "internal",
-      internalMCPServerId: {
-        [Op.ne]: null,
-      },
-      createdAt: {
-        [Op.lt]: cutoffDate,
-      },
+      internalMCPServerId: { [Op.ne]: null },
+      createdAt: { [Op.lt]: cutoffDate },
     },
   });
 
-  // Filter to keep only Salesforce instances by decoding the internalMCPServerId.
-  // Group by internalMCPServerId to avoid duplicates (personal + workspace connections).
-  const uniqueInstancesMap = new Map<
-    string,
-    {
-      connectionId: number;
-      workspaceId: number;
-      internalMCPServerId: string;
-      createdAt: Date;
-    }
-  >();
-
+  // Deduplicate by internalMCPServerId, keeping only Salesforce instances.
+  const salesforceServerIds = new Set<string>();
   for (const conn of connections) {
     if (!conn.internalMCPServerId) continue;
-
     const parsed = getInternalMCPServerNameAndWorkspaceId(
       conn.internalMCPServerId
     );
-
     if (parsed.isOk() && parsed.value.name === INTERNAL_MCP_SERVER_NAME) {
-      if (!uniqueInstancesMap.has(conn.internalMCPServerId)) {
-        uniqueInstancesMap.set(conn.internalMCPServerId, {
-          connectionId: conn.id,
-          workspaceId: conn.workspaceId,
-          internalMCPServerId: conn.internalMCPServerId,
-          createdAt: conn.createdAt,
-        });
-      }
+      salesforceServerIds.add(conn.internalMCPServerId);
     }
   }
-
-  const existingInstances = Array.from(uniqueInstancesMap.values());
-
-  if (existingInstances.length === 0) {
-    return { processedCount: 0 };
-  }
-
-  logger.info(
-    {
-      workspaceId: workspace.id,
-      instancesCount: existingInstances.length,
-    },
-    "Found Salesforce instances to disable create_object in workspace."
-  );
 
   let processedCount = 0;
 
-  for (const instance of existingInstances) {
+  for (const serverId of salesforceServerIds) {
     const instanceLogger = logger.child({
-      workspaceId: instance.workspaceId,
-      connectionId: instance.connectionId,
-      internalMCPServerId: instance.internalMCPServerId,
+      workspaceId: workspace.id,
+      internalMCPServerId: serverId,
       toolName: TOOL_NAME,
-      permission: PERMISSION_LEVEL,
     });
 
     if (execute) {
-      const existing = await RemoteMCPServerToolMetadataModel.findOne({
-        where: {
-          workspaceId: instance.workspaceId,
-          internalMCPServerId: instance.internalMCPServerId,
-          toolName: TOOL_NAME,
-        },
-      });
-
-      if (!existing) {
-        await RemoteMCPServerToolMetadataModel.create({
-          workspaceId: instance.workspaceId,
-          internalMCPServerId: instance.internalMCPServerId,
-          toolName: TOOL_NAME,
-          permission: PERMISSION_LEVEL,
-          enabled: false,
+      const [record, created] =
+        await RemoteMCPServerToolMetadataModel.findOrCreate({
+          where: {
+            workspaceId: workspace.id,
+            internalMCPServerId: serverId,
+            toolName: TOOL_NAME,
+          },
+          defaults: {
+            workspaceId: workspace.id,
+            internalMCPServerId: serverId,
+            toolName: TOOL_NAME,
+            permission: PERMISSION_LEVEL,
+            enabled: false,
+          },
         });
+
+      if (!created && record.enabled) {
+        await record.update({ enabled: false });
       }
-
-      processedCount++;
-
-      instanceLogger.info(
-        { instanceCreatedAt: instance.createdAt.toISOString() },
-        "Forced create_object disabled for existing Salesforce instance."
-      );
-    } else {
-      processedCount++;
-
-      instanceLogger.info(
-        { instanceCreatedAt: instance.createdAt.toISOString() },
-        "Would force create_object disabled for existing Salesforce instance."
-      );
     }
+
+    processedCount++;
+    instanceLogger.info(
+      execute
+        ? "Disabled create_object for Salesforce instance."
+        : "Would disable create_object for Salesforce instance."
+    );
   }
 
-  return { processedCount };
+  return processedCount;
 }
 
 makeScript(
@@ -146,33 +101,26 @@ makeScript(
     }
 
     logger.info(
-      {
-        cutoffDate: cutoffDate.toISOString(),
-        toolName: TOOL_NAME,
-        serverName: INTERNAL_MCP_SERVER_NAME,
-      },
-      "Starting create_object disabling migration for existing Salesforce instances."
+      { cutoffDate: cutoffDate.toISOString() },
+      "Starting create_object disabling migration."
     );
 
     let totalProcessed = 0;
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const result = await disableCreateObjectForWorkspace(
+        totalProcessed += await disableCreateObjectForWorkspace(
           workspace,
           execute,
           logger,
           cutoffDate
         );
-        totalProcessed += result.processedCount;
       },
       { concurrency: 8 }
     );
 
     logger.info(
-      {
-        processedCount: totalProcessed,
-      },
+      { processedCount: totalProcessed },
       execute
         ? "Migration completed successfully."
         : "Dry-run completed. Use --execute to apply changes."
