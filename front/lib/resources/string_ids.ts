@@ -80,6 +80,7 @@ export const RESOURCES_PREFIX = {
 
   // Butler
   user_project_digest: "pje",
+  conversation_todo_snapshot: "cts",
   conversation_butler_suggestion: "cbs",
 
   // Conversation branches.
