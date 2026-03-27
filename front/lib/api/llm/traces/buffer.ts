@@ -393,7 +393,7 @@ export class LLMTraceBuffer {
           workspaceId: this.workspaceId,
           operationType: this.context.operationType,
           userId: this.context.userId,
-          modelId: this.input?.modelId,
+          modelId: this.input?.modelId ?? this.modelId,
           gcsPath: this.filePath,
           durationMs,
           hasError: !!this.endingError,
