@@ -693,6 +693,7 @@ function makeServerSideMCPConnectionParams(
     type: "mcpServerId",
     mcpServerId: mcpServerView.mcpServerId,
     oAuthUseCase: mcpServerView.oAuthUseCase,
+    oauthScope: mcpServerView.oauthScope,
   };
 }
 

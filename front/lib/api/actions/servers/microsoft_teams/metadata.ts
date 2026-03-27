@@ -209,10 +209,74 @@ export const MICROSOFT_TEAMS_SERVER = {
     description: "Microsoft Teams for searching and posting messages.",
     icon: "MicrosoftTeamsLogo",
     authorization: {
-      provider: "microsoft",
+      provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
+      scope:
+        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access",
+      availableScopes: [
+        {
+          value: "Chat.Read",
+          label: "Read chats",
+          description: "Read messages in direct and group chats.",
+          required: true,
+        },
+        {
+          value: "Chat.ReadWrite",
+          label: "Send chat messages",
+          description: "Send messages in direct and group chats.",
+        },
+        {
+          value: "ChatMessage.Read",
+          label: "Search chat messages",
+          description: "Search for messages across all chats.",
+        },
+        {
+          value: "ChatMessage.Send",
+          label: "Send messages via chat API",
+          description: "Send messages using the chat message API.",
+        },
+        {
+          value: "ChannelMessage.Read.All",
+          label: "Read channel messages",
+          description: "Read and search messages in Teams channels.",
+        },
+        {
+          value: "ChannelMessage.Send",
+          label: "Send channel messages",
+          description: "Post messages to Teams channels.",
+        },
+        {
+          value: "Team.ReadBasic.All",
+          label: "Read teams",
+          description: "List teams the user has joined.",
+          required: true,
+        },
+        {
+          value: "Channel.ReadBasic.All",
+          label: "Read channels",
+          description: "List channels within teams.",
+          required: true,
+        },
+        {
+          value: "User.ReadBasic.All",
+          label: "Read user directory",
+          description: "List and search users in the organization.",
+        },
+        {
+          value: "User.Read",
+          label: "Read user profile",
+          description: "Read basic profile information of the signed-in user.",
+          required: true,
+        },
+        {
+          value: "offline_access",
+          label: "Offline access",
+          description: "Maintain access without requiring re-authentication.",
+          required: true,
+        },
+      ],
     },
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
     instructions: null,
   },
   tools: Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => ({

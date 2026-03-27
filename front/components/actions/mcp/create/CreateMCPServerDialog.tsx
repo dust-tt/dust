@@ -152,6 +152,11 @@ export function CreateMCPServerDialog({
     name: "viewName",
   });
 
+  const selectedScopes = useWatch({
+    control: form.control,
+    name: "selectedScopes",
+  });
+
   // Client-side validation for the view name field.
   const viewNameError = useMemo(() => {
     if (!needsCustomName) {
@@ -200,6 +205,16 @@ export function CreateMCPServerDialog({
       setAuthorization(internalMCPServer.authorization);
     }
   }, [internalMCPServer, isOpen]);
+
+  // Initialize selectedScopes to all available scopes when authorization changes.
+  useEffect(() => {
+    if (authorization?.availableScopes) {
+      form.setValue(
+        "selectedScopes",
+        authorization.availableScopes.map((s) => s.value)
+      );
+    }
+  }, [authorization, form]);
 
   const resetState = () => {
     setIsLoading(false);
@@ -446,6 +461,10 @@ export function CreateMCPServerDialog({
                     internalMCPServer?.documentationUrl ?? undefined
                   }
                   staticCredentialConfig={staticCredentialConfig}
+                  selectedScopes={selectedScopes}
+                  onSelectedScopesChange={(scopes) =>
+                    form.setValue("selectedScopes", scopes)
+                  }
                 />
               )}
 

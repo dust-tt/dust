@@ -203,10 +203,51 @@ export const MICROSOFT_DRIVE_SERVER = {
       "Search, read, and upload files in Microsoft OneDrive and SharePoint.",
     icon: "MicrosoftLogo",
     authorization: {
-      provider: "microsoft",
+      provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
+      scope:
+        "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access",
+      availableScopes: [
+        {
+          value: "Files.Read.All",
+          label: "Read files",
+          description: "Read files in OneDrive and SharePoint.",
+          impliedBy: "Files.ReadWrite.All",
+          required: true,
+        },
+        {
+          value: "Files.ReadWrite.All",
+          label: "Write files",
+          description:
+            "Modify files in OneDrive and SharePoint. Required for uploading, updating, and copying files.",
+          fallbackScope: "Files.Read.All",
+        },
+        {
+          value: "Sites.Read.All",
+          label: "Read SharePoint sites",
+          description:
+            "Access SharePoint sites for content search via the Copilot retrieval API.",
+        },
+        {
+          value: "ExternalItem.Read.All",
+          label: "Read external items",
+          description: "Search external items indexed in Microsoft Graph.",
+        },
+        {
+          value: "User.Read",
+          label: "Read user profile",
+          description: "Read basic profile information of the signed-in user.",
+          required: true,
+        },
+        {
+          value: "offline_access",
+          label: "Offline access",
+          description: "Maintain access without requiring re-authentication.",
+          required: true,
+        },
+      ],
     },
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
     instructions: null,
   },
   tools: Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => ({
