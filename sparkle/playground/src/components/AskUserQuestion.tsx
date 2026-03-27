@@ -1,165 +1,160 @@
-import { Input } from "@dust-tt/sparkle";
+import { Button, Card } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 
 export interface AskUserQuestionOption {
   id: string;
   label: string;
-}
-
-export interface AskUserQuestionItem {
-  question: string;
-  options: AskUserQuestionOption[];
-  allowOther?: boolean;
-  /** Label for the tab when multiple questions (defaults to question text or "Question N") */
-  label?: string;
+  description?: string;
 }
 
 interface AskUserQuestionProps {
-  /** Single question (backward compatible) */
-  question?: string;
-  options?: AskUserQuestionOption[];
-  allowOther?: boolean;
-  /** Multiple questions: show tabs above to switch. When provided, question/options/allowOther are ignored. */
-  questions?: AskUserQuestionItem[];
-  onSelect: (option: AskUserQuestionOption) => void;
+  question: string;
+  options: AskUserQuestionOption[];
+  onSelect?: (option: AskUserQuestionOption) => void;
+  onSkip?: () => void;
+  selectedOptionId?: string;
+  otherLabel?: string;
   className?: string;
 }
 
 /**
- * Single-click question component (Claude Code style).
- * Options are numbered rows — clicking one immediately fires onSelect.
- * "Other…" reveals an inline input that sends on Enter.
- * Multiple questions: tab strip at top to switch between them.
+ * Card-based question component for agent "Go Deep" style interactions.
+ * Each option is a clickable card with title + optional description.
+ * Last item is always a "Type something else..." editable field.
+ * Selecting an option or clicking Skip calls the handler (parent should dismiss).
+ * When typing custom text, a Submit button appears next to Skip.
  */
 export function AskUserQuestion({
-  question: questionProp,
-  options: optionsProp,
-  allowOther: allowOtherProp,
-  questions: questionsProp,
+  question,
+  options,
   onSelect,
+  onSkip,
+  selectedOptionId,
+  otherLabel = "Type something else...",
   className,
 }: AskUserQuestionProps) {
-  const normalizedQuestions: AskUserQuestionItem[] =
-    questionsProp && questionsProp.length > 0
-      ? questionsProp
-      : questionProp && optionsProp
-        ? [
-            {
-              question: questionProp,
-              options: optionsProp,
-              allowOther: allowOtherProp,
-            },
-          ]
-        : [];
-
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [showOtherInput, setShowOtherInput] = useState(false);
   const [otherValue, setOtherValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
 
-  const current = normalizedQuestions[activeIndex];
-  if (!current) return null;
-
-  const { question, options, allowOther } = current;
-
-  const switchQuestion = (index: number) => {
-    if (index !== activeIndex) {
-      setActiveIndex(index);
-      setShowOtherInput(false);
-      setOtherValue("");
-    }
-  };
+  const isLocked = selectedOptionId !== undefined;
+  const isTyping = otherValue.length > 0;
 
   const handleOtherSend = () => {
     const text = otherValue.trim();
-    if (!text) return;
+    if (!text || !onSelect) return;
     onSelect({ id: "other", label: text });
-    setOtherValue("");
-    setShowOtherInput(false);
   };
 
-  const hasMultipleQuestions = normalizedQuestions.length > 1;
+  // Locked state: only show the selected option
+  if (isLocked) {
+    const selected = options.find((o) => o.id === selectedOptionId);
+    return (
+      <Card
+        variant="secondary"
+        size="md"
+        containerClassName="s-w-full"
+        className={"s-w-full s-flex-col s-gap-3 " + (className ?? "")}
+      >
+        <p className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
+          {question}
+        </p>
+        {selected && (
+          <Card
+            variant="primary"
+            size="sm"
+            className="s-w-full s-flex-col s-gap-0.5"
+          >
+            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              {selected.label}
+            </span>
+            {selected.description && (
+              <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {selected.description}
+              </span>
+            )}
+          </Card>
+        )}
+      </Card>
+    );
+  }
 
   return (
-    <div className={"s-flex s-w-full s-flex-col s-gap-2 " + (className ?? "")}>
-      {hasMultipleQuestions && (
-        <div className="s-flex s-flex-wrap s-gap-1 s-pb-1">
-          {normalizedQuestions.map((q, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => switchQuestion(index)}
-              className={
-                "s-rounded-md s-px-2.5 s-py-1 s-text-xs s-font-medium s-transition-colors focus-visible:s-outline-none " +
-                (activeIndex === index
-                  ? "s-bg-highlight-100 s-text-highlight-800 dark:s-bg-highlight-100-night dark:s-text-highlight-800-night"
-                  : "s-text-muted-foreground hover:s-bg-muted-background hover:s-text-foreground dark:s-text-muted-foreground-night dark:hover:s-bg-muted-background-night dark:hover:s-text-foreground-night")
-              }
-            >
-              {q.label ?? q.question ?? `Question ${index + 1}`}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+    <Card
+      variant="secondary"
+      size="md"
+      containerClassName="s-w-full"
+      className={"s-w-full s-flex-col s-gap-3 " + (className ?? "")}
+    >
+      <p className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
         {question}
       </p>
 
-      <div className="s-flex s-flex-col">
-        {options.map((opt, i) => (
-          <button
+      <div className="s-flex s-w-full s-flex-col s-gap-2">
+        {options.map((opt) => (
+          <Card
             key={opt.id}
-            type="button"
-            onClick={() => onSelect(opt)}
-            className="s-group s-flex s-w-full s-items-baseline s-gap-3 s-rounded-md s-px-2 s-py-1.5 s-text-left s-transition-colors hover:s-bg-muted-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring dark:hover:s-bg-muted-background-night"
+            variant="secondary"
+            size="sm"
+            onClick={() => onSelect?.(opt)}
+            className="s-w-full s-flex-col s-gap-0.5"
           >
-            <span className="s-w-4 s-shrink-0 s-text-right s-text-xs s-tabular-nums s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {i + 1}
-            </span>
-            <span className="s-text-sm s-text-foreground group-hover:s-text-foreground dark:s-text-foreground-night">
+            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
               {opt.label}
             </span>
-          </button>
+            {opt.description && (
+              <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {opt.description}
+              </span>
+            )}
+          </Card>
         ))}
 
-        {allowOther && !showOtherInput && (
-          <button
-            type="button"
-            onClick={() => {
-              setShowOtherInput(true);
-              setTimeout(() => inputRef.current?.focus(), 0);
+        {/* "Type something else..." — a contentEditable card acting as inline input */}
+        <div
+          className="s-flex s-w-full s-cursor-text s-overflow-hidden s-rounded-xl s-border s-border-border s-bg-background s-p-3 s-text-sm s-outline-none focus-within:s-border-highlight-300 focus-within:s-ring-2 focus-within:s-ring-highlight-200/70 dark:s-border-border-night dark:s-bg-background-night dark:focus-within:s-border-highlight-300-night dark:focus-within:s-ring-highlight-300/60"
+          onClick={() => inputRef.current?.focus()}
+        >
+          <div
+            ref={inputRef}
+            contentEditable
+            suppressContentEditableWarning
+            className="s-w-full s-outline-none empty:before:s-text-muted-foreground empty:before:s-content-[attr(data-placeholder)] dark:empty:before:s-text-muted-foreground-night"
+            data-placeholder={otherLabel}
+            onInput={(e) =>
+              setOtherValue(
+                (e.currentTarget as HTMLDivElement).textContent ?? ""
+              )
+            }
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = e.clipboardData.getData("text/plain");
+              document.execCommand("insertText", false, text);
             }}
-            className="s-group s-flex s-w-full s-items-baseline s-gap-3 s-rounded-md s-px-2 s-py-1.5 s-text-left s-transition-colors hover:s-bg-muted-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring dark:hover:s-bg-muted-background-night"
-          >
-            <span className="s-w-4 s-shrink-0 s-text-right s-text-xs s-tabular-nums s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {options.length + 1}
-            </span>
-            <span className="s-text-sm s-text-muted-foreground group-hover:s-text-foreground dark:s-text-muted-foreground-night dark:group-hover:s-text-foreground-night">
-              Other…
-            </span>
-          </button>
-        )}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleOtherSend();
+              }
+            }}
+          />
+        </div>
+      </div>
 
-        {allowOther && showOtherInput && (
-          <div className="s-mt-1 s-px-2">
-            <Input
-              ref={inputRef}
-              value={otherValue}
-              onChange={(e) => setOtherValue(e.target.value)}
-              placeholder="Type your answer and press Enter…"
-              containerClassName="s-w-full"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleOtherSend();
-                if (e.key === "Escape") {
-                  setShowOtherInput(false);
-                  setOtherValue("");
-                }
-              }}
-            />
-          </div>
+      <div className="s-flex s-items-center s-justify-between">
+        <div>
+          {onSkip && (
+            <Button variant="outline" size="sm" label="Skip" onClick={onSkip} />
+          )}
+        </div>
+        {isTyping && (
+          <Button
+            variant="highlight"
+            size="sm"
+            label="Submit"
+            onClick={handleOtherSend}
+          />
         )}
       </div>
-    </div>
+    </Card>
   );
 }

@@ -76,7 +76,7 @@ export interface MessageGroupData {
 
 export interface MessageQuestionData {
   question: string;
-  options: { id: string; label: string }[];
+  options: { id: string; label: string; description?: string }[];
   allowOther?: boolean;
 }
 

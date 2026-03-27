@@ -316,6 +316,7 @@ export function ConversationView({
   const [sentQuestionMessages, setSentQuestionMessages] = useState<
     { id: string; content: string }[]
   >([]);
+  const [questionDismissed, setQuestionDismissed] = useState(false);
 
   // When there are sent question messages, the last message in the thread is one of them
   const effectiveLastMessageId =
@@ -629,24 +630,25 @@ export function ConversationView({
               >
                 <div className="s-flex s-flex-col s-gap-3">
                   {messageContent}
-                  {isLastAgentMessage && !isDeleted && (
-                    <AskUserQuestion
-                      question="What would you like to do?"
-                      options={[
-                        { id: "explain", label: "Explain the code" },
-                        { id: "refactor", label: "Refactor this" },
-                        { id: "test", label: "Write tests" },
-                        { id: "doc", label: "Add documentation" },
-                      ]}
-                      allowOther
-                      onSelect={(option) =>
-                        setSentQuestionMessages((prev) => [
-                          ...prev,
-                          { id: option.id, content: option.label },
-                        ])
-                      }
-                    />
-                  )}
+                  {isLastAgentMessage &&
+                    !isDeleted &&
+                    message.question &&
+                    !questionDismissed && (
+                      <div className="-s-mx-4">
+                        <AskUserQuestion
+                          question={message.question.question}
+                          options={message.question.options}
+                          onSelect={(option) => {
+                            setSentQuestionMessages((prev) => [
+                              ...prev,
+                              { id: option.id, content: option.label },
+                            ]);
+                            setQuestionDismissed(true);
+                          }}
+                          onSkip={() => setQuestionDismissed(true)}
+                        />
+                      </div>
+                    )}
                 </div>
               </NewConversationAgentMessage>
             );
@@ -727,7 +729,9 @@ export function ConversationView({
       <NewConversationMessageGroup
         key={`sent-q-${msg.id}-${index}`}
         type="locutor"
-        avatar={locutorAvatar ? { ...locutorAvatar, name: undefined } : undefined}
+        avatar={
+          locutorAvatar ? { ...locutorAvatar, name: undefined } : undefined
+        }
         name={undefined}
         renderName={(name) => <span>{name}</span>}
       >
