@@ -28,9 +28,9 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Avatar,
   BoltIcon,
   Button,
-  ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
@@ -287,30 +287,63 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <div className="text-right">
-          <div className="inline-flex items-center justify-between gap-0.5">
-            <ConversationMessageTitle
-              name={isCurrentUser ? undefined : name}
-              timestamp={timestamp}
-              infoChip={
-                displayChip ? (
-                  <>
-                    {isTriggeredOrigin(message.context.origin) && (
-                      <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                        <TriggerChip message={message} />
-                      </span>
-                    )}
-                    {message.version > 0 && !isDeleted && (
-                      <span className="text-xs text-faint dark:text-muted-foreground-night">
-                        (edited)
-                      </span>
-                    )}
-                  </>
-                ) : undefined
-              }
-              renderName={isCurrentUser ? () => null : renderName}
-            />
-          </div>
+        <div className={isCurrentUser ? "text-right" : "text-left"}>
+          {!isCurrentUser && (
+            <div className="mb-1 flex items-center gap-1.5">
+              <Avatar
+                visual={pictureUrl}
+                name={name ?? ""}
+                isRounded
+                size="xs"
+              />
+              <ConversationMessageTitle
+                name={name}
+                timestamp={timestamp}
+                infoChip={
+                  displayChip ? (
+                    <>
+                      {isTriggeredOrigin(message.context.origin) && (
+                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                          <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {message.version > 0 && !isDeleted && (
+                        <span className="text-xs text-faint dark:text-muted-foreground-night">
+                          (edited)
+                        </span>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                renderName={renderName}
+              />
+            </div>
+          )}
+          {isCurrentUser && (
+            <div className="inline-flex items-center justify-between gap-0.5">
+              <ConversationMessageTitle
+                name={undefined}  
+                timestamp={timestamp}
+                infoChip={
+                  displayChip ? (
+                    <>
+                      {isTriggeredOrigin(message.context.origin) && (
+                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                          <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {message.version > 0 && !isDeleted && (
+                        <span className="text-xs text-faint dark:text-muted-foreground-night">
+                          (edited)
+                        </span>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                renderName={() => null}
+              />
+            </div>
+          )}
           <ConversationMessageContainer
             messageType={isCurrentUser ? "me" : "user"}
             type="user"
@@ -321,14 +354,6 @@ export function UserMessage({
             )}
             ref={userMessageHoveredRef}
           >
-            {!isCurrentUser && (
-              <ConversationMessageAvatar
-                className="flex"
-                avatarUrl={pictureUrl}
-                name={name}
-                type="user"
-              />
-            )}
             <div className="flex min-w-0 flex-col gap-1">
               <ConversationMessageContent
                 citations={citations}
