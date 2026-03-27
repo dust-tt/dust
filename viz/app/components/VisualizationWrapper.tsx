@@ -486,7 +486,7 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
     }
     // Support wildcard for browser extension origins in dev (e.g. "moz-extension://*").
     // In production, use exact origins instead.
-    if (allowed.endsWith("://*")) {
+    if (isDevelopment() && allowed.endsWith("://*")) {
       const scheme = allowed.slice(0, -1); // e.g. "moz-extension://"
       return origin.startsWith(scheme);
     }
