@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/actions/servers/poke/metadata";
 import { connectorHandlers } from "@app/lib/api/actions/servers/poke/tools/connectors";
 import { conversationHandlers } from "@app/lib/api/actions/servers/poke/tools/conversations";
+import { userHandlers } from "@app/lib/api/actions/servers/poke/tools/users";
 import {
   enforcePokeSecurityGates,
   getTargetAuth,
@@ -62,6 +63,7 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   ...workspaceHandlers,
   ...connectorHandlers,
   ...conversationHandlers,
+  ...userHandlers,
 };
 
 export const TOOLS = buildTools(POKE_TOOLS_METADATA, handlers);
