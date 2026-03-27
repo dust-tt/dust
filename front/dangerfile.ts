@@ -242,6 +242,27 @@ async function checkWorkspaceAwareModels(filePaths: string[]) {
 }
 
 /**
+ * Warn when a new internal MCP server is added with availability "auto" or "auto_hidden_builder".
+ * We need to run the script `ensure_all_mcp_server_views_created` in this case. 
+ */
+async function checkAutoAvailabilityMCPServer() {
+  const constantsFile =
+    "front/lib/actions/mcp_internal_actions/constants.ts";
+  const content = await danger.git.diffForFile(constantsFile);
+
+  if (!content) {
+    return;
+  }
+
+  if (/availability:\s*"auto(?:_hidden_builder)?"/.test(content.added)) {
+    warn(
+      "An auto internal MCP server was added. Make sure to run the script `ensure_all_mcp_server_views_created.ts` " +
+        "to create the MCP server views for all existing workspaces."
+    );
+  }
+}
+
+/**
  * Triggers related checks based on modified files
  */
 async function warnTriggersWorkflowChanges() {
@@ -322,6 +343,15 @@ async function checkDiffFiles() {
   });
   if (modifiedWorkflowFiles.length > 0) {
     await warnTriggersWorkflowChanges();
+  }
+
+  // Internal MCP server constants
+  if (
+    diffFiles.includes(
+      "front/lib/actions/mcp_internal_actions/constants.ts"
+    )
+  ) {
+    await checkAutoAvailabilityMCPServer();
   }
 
   // SSE endpoint files — changes here require a front-sse deploy too.
