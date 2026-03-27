@@ -30,6 +30,89 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
+// ---------------------------------------------------------------------------
+// Streaming text — simulates LLM token streaming
+// Uses plain text while streaming to avoid Markdown memoisation issues,
+// then switches to <Markdown> once complete.
+// ---------------------------------------------------------------------------
+
+function StreamingMarkdown({
+  content,
+  onComplete,
+  charDelay = 15,
+}: {
+  content: string;
+  onComplete?: () => void;
+  charDelay?: number;
+}) {
+  const [displayed, setDisplayed] = useState("");
+  const posRef = useRef(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    setDisplayed("");
+    posRef.current = 0;
+
+    const tick = () => {
+      posRef.current = Math.min(posRef.current + 3, content.length);
+      setDisplayed(content.slice(0, posRef.current));
+      if (posRef.current < content.length) {
+        handle = window.setTimeout(tick, charDelay);
+      } else {
+        onCompleteRef.current?.();
+      }
+    };
+
+    let handle = window.setTimeout(tick, charDelay);
+    return () => window.clearTimeout(handle);
+  }, [content, charDelay]);
+
+  const isComplete = displayed.length >= content.length;
+
+  if (isComplete) {
+    return <Markdown content={content} />;
+  }
+
+  return (
+    <p className="s-whitespace-pre-wrap s-text-base s-text-foreground dark:s-text-foreground-night">
+      {displayed}
+    </p>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fade-in wrapper
+// ---------------------------------------------------------------------------
+
+function FadeIn({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay + 16);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <div
+      className={cn(
+        "s-transition-opacity s-duration-300 s-ease-out",
+        visible ? "s-opacity-100" : "s-opacity-0",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 import {
   AskUserQuestion,
   type AskUserQuestionOption,
@@ -114,6 +197,17 @@ Want me to proceed with phase 1, or adjust the thresholds first?`;
 // Thinking indicator
 // ---------------------------------------------------------------------------
 
+function AnimatedDots() {
+  const [dots, setDots] = useState(1);
+  useEffect(() => {
+    const id = setInterval(() => setDots((d) => (d % 3) + 1), 500);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span className="s-inline-block s-w-4 s-text-left">{".".repeat(dots)}</span>
+  );
+}
+
 function ThinkingIndicator({
   done,
   isOpen,
@@ -125,14 +219,21 @@ function ThinkingIndicator({
   onToggle: () => void;
   summaryText?: string;
 }) {
-  const label = done && summaryText ? summaryText : "Thinking";
+  const label = done && summaryText ? summaryText : null;
 
   return (
     <button
       onClick={onToggle}
       className="s-flex s-w-full s-items-center s-gap-1.5 s-text-left s-text-sm s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
     >
-      <span className="s-flex-1">{label}</span>
+      <span className="s-flex-1">
+        {label ?? (
+          <>
+            Thinking
+            <AnimatedDots />
+          </>
+        )}
+      </span>
       {isOpen ? (
         <ChevronUpIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
       ) : (
@@ -187,16 +288,17 @@ function AgentThinkingBlock({
             </p>
 
             {(done ? allSteps : visibleSteps).map((step) => (
-              <button
-                key={step.id}
-                onClick={() => onStepClick(step)}
-                className="s-flex s-w-full s-min-w-0 s-items-center s-gap-1 s-rounded-md s-py-0.5 s-text-left s-text-sm s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
-              >
-                <span className="s-min-w-0 s-flex-1 s-truncate">
-                  {step.thinkingLabel}
-                </span>
-                <ChevronRightIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
-              </button>
+              <FadeIn key={step.id}>
+                <button
+                  onClick={() => onStepClick(step)}
+                  className="s-flex s-w-full s-min-w-0 s-items-center s-gap-1 s-rounded-md s-py-0.5 s-text-left s-text-sm s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
+                >
+                  <span className="s-min-w-0 s-flex-1 s-truncate">
+                    {step.thinkingLabel}
+                  </span>
+                  <ChevronRightIcon className="s-h-3 s-w-3 s-flex-shrink-0" />
+                </button>
+              </FadeIn>
             ))}
           </div>
         </div>
@@ -566,6 +668,9 @@ export default function AskUserQuestionInConversation() {
   const [visibleSteps, setVisibleSteps] = useState<ThinkingStep[]>([]);
   const [isThinkingOpen, setIsThinkingOpen] = useState(true);
   const [visibleSteps2, setVisibleSteps2] = useState<ThinkingStep[]>([]);
+  const [introStarted, setIntroStarted] = useState(false);
+  const [introComplete, setIntroComplete] = useState(false);
+  const [finalStarted, setFinalStarted] = useState(false);
   const [selectedStep, setSelectedStep] = useState<ThinkingStep | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -634,13 +739,23 @@ export default function AskUserQuestionInConversation() {
     return () => timers.forEach(clearTimeout);
   }, [phase, selectedOption]);
 
-  // Auto-collapse/expand the thinking block depending on phase
+  // Auto-collapse/expand + start streaming with delays
   useEffect(() => {
-    if (phase === "thinking2") {
-      setIsThinkingOpen(true); // re-open to show new steps streaming in
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (phase === "asking") {
+      setIntroStarted(false);
+      setIntroComplete(false);
+      // Small pause before the agent starts writing
+      timers.push(setTimeout(() => setIntroStarted(true), 500));
+    } else if (phase === "thinking2") {
+      setIsThinkingOpen(true);
+      setFinalStarted(false);
     } else if (phase === "done") {
       setIsThinkingOpen(false);
+      // Pause before final response starts streaming
+      timers.push(setTimeout(() => setFinalStarted(true), 600));
     }
+    return () => timers.forEach(clearTimeout);
   }, [phase]);
 
   const handleSend = () => {
@@ -675,88 +790,103 @@ export default function AskUserQuestionInConversation() {
 
           {/* User message */}
           {phase !== "idle" && (
-            <NewConversationMessageGroup
-              type="locutor"
-              avatar={{ visual: locutor.portrait, isRounded: true }}
-              timestamp="10:00"
-            >
-              <NewConversationUserMessage isLastMessage={false}>
-                <span>
-                  <span className="s-font-medium s-text-highlight dark:s-text-highlight-night">
-                    @monitor
-                  </span>{" "}
-                  I want to set up monitoring for our API. What approach do you
-                  recommend?
-                </span>
-              </NewConversationUserMessage>
-            </NewConversationMessageGroup>
+            <FadeIn>
+              <NewConversationMessageGroup
+                type="locutor"
+                avatar={{ visual: locutor.portrait, isRounded: true }}
+                timestamp="10:00"
+              >
+                <NewConversationUserMessage isLastMessage={false}>
+                  <span>
+                    <span className="s-font-medium s-text-highlight dark:s-text-highlight-night">
+                      @monitor
+                    </span>{" "}
+                    I want to set up monitoring for our API. What approach do
+                    you recommend?
+                  </span>
+                </NewConversationUserMessage>
+              </NewConversationMessageGroup>
+            </FadeIn>
           )}
 
           {/* Agent block */}
           {phase !== "idle" && (
-            <NewConversationMessageGroup
-              type="agent"
-              avatar={{
-                emoji: agent.emoji,
-                backgroundColor: agent.backgroundColor,
-              }}
-              name={`@${agent.name}`}
-              timestamp="10:01"
-            >
-              <NewConversationAgentMessage
-                isLastMessage={phase !== "thinking"}
-                hideActions={phase === "thinking"}
-                className="s-pl-0"
+            <FadeIn delay={150}>
+              <NewConversationMessageGroup
+                type="agent"
+                avatar={{
+                  emoji: agent.emoji,
+                  backgroundColor: agent.backgroundColor,
+                }}
+                name={`@${agent.name}`}
+                timestamp="10:01"
               >
-                <div className="s-flex s-flex-col s-gap-0">
-                  {/* Single unified thinking block — accumulates steps from both phases */}
-                  <AgentThinkingBlock
-                    visibleSteps={[...visibleSteps, ...visibleSteps2]}
-                    allSteps={[...INITIAL_THINKING_STEPS, ...secondSteps]}
-                    thinkingText={
-                      phase === "thinking2" || phase === "done"
-                        ? `The user chose "${selectedOption?.label}". Let me plan the implementation.`
-                        : INITIAL_THINKING_TEXT
-                    }
-                    summaryText={
-                      phase === "done"
-                        ? secondSummary
-                        : INITIAL_THINKING_SUMMARY
-                    }
-                    isOpen={isThinkingOpen}
-                    onToggle={() => setIsThinkingOpen((v) => !v)}
-                    onStepClick={handleStepClick}
-                    done={phase === "done"}
-                  />
+                <NewConversationAgentMessage
+                  isLastMessage={phase !== "thinking"}
+                  hideActions={phase === "thinking"}
+                  className="s-pl-0"
+                >
+                  <div className="s-flex s-flex-col s-gap-0">
+                    {/* Single unified thinking block — accumulates steps from both phases */}
+                    <AgentThinkingBlock
+                      visibleSteps={[...visibleSteps, ...visibleSteps2]}
+                      allSteps={[...INITIAL_THINKING_STEPS, ...secondSteps]}
+                      thinkingText={
+                        phase === "thinking2" || phase === "done"
+                          ? `The user chose "${selectedOption?.label}". Let me plan the implementation.`
+                          : INITIAL_THINKING_TEXT
+                      }
+                      summaryText={
+                        phase === "done"
+                          ? secondSummary
+                          : INITIAL_THINKING_SUMMARY
+                      }
+                      isOpen={isThinkingOpen}
+                      onToggle={() => setIsThinkingOpen((v) => !v)}
+                      onStepClick={handleStepClick}
+                      done={phase === "done"}
+                    />
 
-                  {/* AskUserQuestion — only during "asking" phase, disappears after */}
-                  {phase === "asking" && (
-                    <div className="s-flex s-flex-col s-gap-3">
-                      <div className="s-pb-3 s-pt-2">
-                        <Markdown content="There are a few directions we could take depending on your priorities. Which area would you like to focus on first?" />
+                    {/* AskUserQuestion — only during "asking" phase, disappears after */}
+                    {phase === "asking" && (
+                      <div className="s-flex s-flex-col s-gap-3">
+                        <div className="s-pb-3 s-pt-2">
+                          {introStarted && (
+                            <StreamingMarkdown
+                              content="There are a few directions we could take depending on your priorities. Which area would you like to focus on first?"
+                              onComplete={() => setIntroComplete(true)}
+                              charDelay={18}
+                            />
+                          )}
+                        </div>
+                        {introComplete && (
+                          <FadeIn>
+                            <AskUserQuestion
+                              question={QUESTION}
+                              options={QUESTION_OPTIONS}
+                              onSelect={handleOptionSelect}
+                              onSkip={() => setPhase("done")}
+                            />
+                          </FadeIn>
+                        )}
                       </div>
-                      <div>
-                        <AskUserQuestion
-                          question={QUESTION}
-                          options={QUESTION_OPTIONS}
-                          onSelect={handleOptionSelect}
-                          onSkip={() => setPhase("done")}
+                    )}
+
+                    {/* Final response — streams in after a pause */}
+                    {phase === "done" && finalStarted && (
+                      <FadeIn className="s-pb-3 s-pt-2">
+                        <StreamingMarkdown
+                          content={getFinalResponse(
+                            selectedOption?.label ?? ""
+                          )}
+                          charDelay={10}
                         />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Final response */}
-                  {phase === "done" && (
-                    <div className="s-pb-3 s-pt-2">
-                      <Markdown
-                        content={getFinalResponse(selectedOption?.label ?? "")}
-                      />
-                    </div>
-                  )}
-                </div>
-              </NewConversationAgentMessage>
-            </NewConversationMessageGroup>
+                      </FadeIn>
+                    )}
+                  </div>
+                </NewConversationAgentMessage>
+              </NewConversationMessageGroup>
+            </FadeIn>
           )}
 
           <div ref={messagesEndRef} className="s-h-32 s-shrink-0" />
