@@ -166,7 +166,7 @@ function generateZodValidation(field: HubSpotFormField): string {
   // Handle boolean checkbox fields
   if (fieldType === "booleancheckbox") {
     if (required) {
-      return `z.boolean().refine(val => val === true, { message: "${label} is required" })`;
+      return `z.boolean().refine((val) => val === true, { message: "${label} is required" })`;
     }
     return `z.boolean().optional()`;
   }
@@ -180,7 +180,6 @@ function generateZodValidation(field: HubSpotFormField): string {
       validation = `z.string().email("Please enter a valid email address").optional()`;
     }
   } else if (required) {
-    // Generate appropriate error message based on field name
     const labelMap: Record<string, string> = {
       language: "Language is required",
       company_headcount_form: "Company headcount is required",
@@ -343,8 +342,7 @@ import { z } from "zod";
 
 // Field options from HubSpot dropdown/checkbox/radio fields
 ${optionsConsts.join("\n")}
-${config.preOptionsCode}
-// Field definitions for dynamic form rendering
+${config.preOptionsCode}// Field definitions for dynamic form rendering
 export const ${config.fieldDefsName} = [
 ${fieldDefs},
 ] as const;
