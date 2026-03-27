@@ -38,8 +38,8 @@ use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
-pub static ATLASSIAN_PROVIDER_TIMEOUT_SECONDS: u64 = 15;
-pub static JIRA_PROVIDER_TIMEOUT_SECONDS: u64 = 30;
+pub static ATLASSIAN_PROVIDER_TIMEOUT_SECONDS: u64 = 75;
+pub static JIRA_PROVIDER_TIMEOUT_SECONDS: u64 = 75;
 // We hold the lock long enough for the slowest provider timeout plus secret persistence.
 static REDIS_LOCK_TTL_BUFFER_SECONDS: u64 = 10;
 static REDIS_LOCK_TTL_SECONDS: u64 = JIRA_PROVIDER_TIMEOUT_SECONDS + REDIS_LOCK_TTL_BUFFER_SECONDS;
