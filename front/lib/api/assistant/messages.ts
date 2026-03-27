@@ -377,10 +377,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     }
   );
   const actionsWithOutputs =
-    await AgentMCPActionResource.enrichActionsWithOutputItems(
-      auth,
-      agentMCPActions
-    );
+    await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
+      actions: agentMCPActions,
+      ignoreContent: viewType === "light",
+    });
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
     stepContents.reduce(

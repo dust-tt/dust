@@ -440,9 +440,10 @@ describe("Output items with GCS storage", () => {
     gcsStore.set(gcsPath, Buffer.from(modified, "utf-8"));
 
     const outputItemsByActionId =
-      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, [
-        action.id,
-      ]);
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [action!.id],
+        ignoreContent: false,
+      });
 
     const items = outputItemsByActionId.get(action.id);
     expect(items).toBeDefined();
@@ -493,10 +494,10 @@ describe("Output items with GCS storage", () => {
     expect(gcsStore.size).toBe(2);
 
     const outputItemsByActionId =
-      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, [
-        action1.id,
-        action2.id,
-      ]);
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [action1.id, action2.id],
+        ignoreContent: false,
+      });
 
     expect(outputItemsByActionId.get(action1.id)).toHaveLength(1);
     expect(outputItemsByActionId.get(action2.id)).toHaveLength(1);
@@ -511,7 +512,7 @@ describe("Output items with GCS storage", () => {
     // action2's items should still be fetchable.
     const remaining = await AgentMCPActionResource.fetchOutputItemsByActionIds(
       auth,
-      [action2.id]
+      { actionIds: [action2.id], ignoreContent: false }
     );
     const items = remaining.get(action2.id);
     expect(items).toHaveLength(1);
@@ -519,5 +520,81 @@ describe("Output items with GCS storage", () => {
       type: "text",
       text: "Action 2 content",
     });
+  });
+
+  it("fetchOutputItemsByActionIds returns an empty map for empty actionIds", async () => {
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [],
+      ignoreContent: false,
+    });
+
+    expect(map.size).toBe(0);
+  });
+
+  it("fetchOutputItemsByActionIds with ignoreContent true does not load content or GCS path", async () => {
+    const { action, outputItems } = await createActionWithOutputItems([
+      { type: "text", text: "not loaded" },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action.id],
+      ignoreContent: true,
+    });
+
+    const items = map.get(action.id);
+    expect(items).toHaveLength(1);
+    expect(items![0].id).toBe(outputItems[0].id);
+    expect(items![0].content).toBeUndefined();
+    expect(items![0].contentGcsPath).toBeUndefined();
+  });
+
+  it("fetchOutputItemsByActionIds loads legacy rows (no GCS path) from DB content", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    expect(action).toBeDefined();
+
+    await AgentMCPActionOutputItemModel.create({
+      workspaceId: workspace.id,
+      agentMCPActionId: action!.id,
+      content: { type: "text", text: "db-only legacy" },
+      contentGcsPath: null,
+      citations: null,
+    });
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action!.id],
+      ignoreContent: false,
+    });
+
+    const items = map.get(action!.id);
+    expect(items).toHaveLength(1);
+    expect(items![0].content).toEqual({
+      type: "text",
+      text: "db-only legacy",
+    });
+    expect(items![0].contentGcsPath).toBeNull();
+  });
+
+  it("fetchOutputItemsByActionIds returns all output items for one action", async () => {
+    const { action } = await createActionWithOutputItems([
+      { type: "text", text: "first" },
+      { type: "text", text: "second" },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action.id],
+      ignoreContent: false,
+    });
+
+    const items = map.get(action.id)!;
+    expect(items).toHaveLength(2);
+    const texts = items
+      .map((i) => (i.content as { type: "text"; text: string }).text)
+      .sort();
+    expect(texts).toEqual(["first", "second"]);
   });
 });

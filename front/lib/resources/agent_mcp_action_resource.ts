@@ -691,113 +691,129 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async fetchOutputItemsByActionIds(
     auth: Authenticator,
-    actionIds: ModelId[]
+    {
+      actionIds,
+      ignoreContent,
+    }: { actionIds: ModelId[]; ignoreContent: boolean }
   ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
-    const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
-    const batchResults = await concurrentExecutor(
-      batches,
-      async (batchActionIds) => {
-        // Split into two parallel queries:
-        // 1. GCS-backed rows: EXCLUDE content column (avoids TOAST decompression)
-        // 2. Legacy rows: INCLUDE content (old rows without GCS path)
-        const [gcsItems, legacyItems] = await Promise.all([
-          AgentMCPActionOutputItemModel.findAll({
-            attributes: { exclude: ["content"] },
-            where: {
-              workspaceId,
-              agentMCPActionId: { [Op.in]: batchActionIds },
-              contentGcsPath: { [Op.ne]: null },
-            },
-          }),
-          AgentMCPActionOutputItemModel.findAll({
-            where: {
-              workspaceId,
-              agentMCPActionId: { [Op.in]: batchActionIds },
-              contentGcsPath: null,
-            },
-          }),
-        ]);
-
-        getStatsDClient().increment(
-          "mcp_output_items.fetch.count",
-          gcsItems.length,
-          ["storage:gcs"]
-        );
-        getStatsDClient().increment(
-          "mcp_output_items.fetch.count",
-          legacyItems.length,
-          ["storage:legacy"]
-        );
-
-        // Hydrate GCS-backed items from cache/GCS.
-        if (gcsItems.length > 0) {
-          const gcsStartMs = Date.now();
-          const contentResult = await batchFetchContentsFromGcs(
-            auth,
-            gcsItems.map((item) => ({
-              itemId: item.id,
-              gcsPath: item.contentGcsPath!,
-            }))
-          );
-          getStatsDClient().distribution(
-            "mcp_output_items.gcs_hydrate.duration_ms",
-            Date.now() - gcsStartMs
-          );
-
-          if (contentResult.isOk()) {
-            for (const item of gcsItems) {
-              const content = contentResult.value.get(item.id);
-              if (content) {
-                item.content = content;
-              }
-            }
-          } else {
-            getStatsDClient().increment(
-              "mcp_output_items.gcs_fallback_db.count",
-              gcsItems.length
-            );
-            // TODO(2026-02-25 PERF): Remove this post-migration.
-            // GCS read failed. We re-fetch from DB with content included.
-            // This is a temporary fallback during the migration period while content is still in
-            // DB. Once content column is dropped, this will become a hard error.
-            logger.error(
-              {
-                action: "mcp_output_items",
-                err: contentResult.error,
-                itemCount: gcsItems.length,
-                workspaceId,
-              },
-              "GCS read failed for MCP output items — falling back to DB"
-            );
-            const dbItems = await AgentMCPActionOutputItemModel.findAll({
+    let outputItems: AgentMCPActionOutputItemModel[] = [];
+    if (ignoreContent) {
+      outputItems = await AgentMCPActionOutputItemModel.findAll({
+        attributes: { exclude: ["content", "contentGcsPath"] },
+        where: {
+          workspaceId,
+          agentMCPActionId: { [Op.in]: actionIds },
+        },
+      });
+    } else {
+      // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
+      const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+      const batchResults = await concurrentExecutor(
+        batches,
+        async (batchActionIds) => {
+          // Split into two parallel queries:
+          // 1. GCS-backed rows: EXCLUDE content column (avoids TOAST decompression)
+          // 2. Legacy rows: INCLUDE content (old rows without GCS path)
+          const [gcsItems, legacyItems] = await Promise.all([
+            AgentMCPActionOutputItemModel.findAll({
+              attributes: { exclude: ["content"] },
               where: {
                 workspaceId,
-                id: { [Op.in]: gcsItems.map((item) => item.id) },
+                agentMCPActionId: { [Op.in]: batchActionIds },
+                contentGcsPath: { [Op.ne]: null },
               },
-            });
-            const dbMap = new Map(dbItems.map((item) => [item.id, item]));
-            for (const item of gcsItems) {
-              const dbItem = dbMap.get(item.id);
-              if (dbItem) {
-                item.content = dbItem.content;
+            }),
+            AgentMCPActionOutputItemModel.findAll({
+              where: {
+                workspaceId,
+                agentMCPActionId: { [Op.in]: batchActionIds },
+                contentGcsPath: null,
+              },
+            }),
+          ]);
+
+          getStatsDClient().increment(
+            "mcp_output_items.fetch.count",
+            gcsItems.length,
+            ["storage:gcs"]
+          );
+          getStatsDClient().increment(
+            "mcp_output_items.fetch.count",
+            legacyItems.length,
+            ["storage:legacy"]
+          );
+
+          // Hydrate GCS-backed items from cache/GCS.
+          if (gcsItems.length > 0) {
+            const gcsStartMs = Date.now();
+            const contentResult = await batchFetchContentsFromGcs(
+              auth,
+              gcsItems.map((item) => ({
+                itemId: item.id,
+                gcsPath: item.contentGcsPath!,
+              }))
+            );
+            getStatsDClient().distribution(
+              "mcp_output_items.gcs_hydrate.duration_ms",
+              Date.now() - gcsStartMs
+            );
+
+            if (contentResult.isOk()) {
+              for (const item of gcsItems) {
+                const content = contentResult.value.get(item.id);
+                if (content) {
+                  item.content = content;
+                }
+              }
+            } else {
+              getStatsDClient().increment(
+                "mcp_output_items.gcs_fallback_db.count",
+                gcsItems.length
+              );
+              // TODO(2026-02-25 PERF): Remove this post-migration.
+              // GCS read failed. We re-fetch from DB with content included.
+              // This is a temporary fallback during the migration period while content is still in
+              // DB. Once content column is dropped, this will become a hard error.
+              logger.error(
+                {
+                  action: "mcp_output_items",
+                  err: contentResult.error,
+                  itemCount: gcsItems.length,
+                  workspaceId,
+                },
+                "GCS read failed for MCP output items — falling back to DB"
+              );
+              const dbItems = await AgentMCPActionOutputItemModel.findAll({
+                where: {
+                  workspaceId,
+                  id: { [Op.in]: gcsItems.map((item) => item.id) },
+                },
+              });
+              const dbMap = new Map(dbItems.map((item) => [item.id, item]));
+              for (const item of gcsItems) {
+                const dbItem = dbMap.get(item.id);
+                if (dbItem) {
+                  item.content = dbItem.content;
+                }
               }
             }
           }
-        }
 
-        return [...gcsItems, ...legacyItems];
-      },
-      { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
-    );
+          return [...gcsItems, ...legacyItems];
+        },
+        { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
+      );
+
+      outputItems = batchResults.flat();
+    }
 
     const outputItemsByActionId = new Map<
       number,
       AgentMCPActionOutputItemModel[]
     >();
-    for (const item of batchResults.flat()) {
+    for (const item of outputItems) {
       const existing = outputItemsByActionId.get(item.agentMCPActionId);
       if (existing) {
         existing.push(item);
@@ -850,7 +866,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
-    actions: AgentMCPActionResource[]
+    {
+      actions,
+      ignoreContent,
+    }: { actions: AgentMCPActionResource[]; ignoreContent: boolean }
   ): Promise<AgentMCPActionWithOutputType[]> {
     return tracer.trace(
       "agent_mcp_action.enrich_with_output_items",
@@ -863,10 +882,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         const outputItemsByActionId = _.groupBy(
           Array.from(
             (
-              await this.fetchOutputItemsByActionIds(
-                auth,
-                actions.map((a) => a.id)
-              )
+              await this.fetchOutputItemsByActionIds(auth, {
+                actionIds: actions.map((a) => a.id),
+                ignoreContent,
+              })
             ).values()
           ).flat(),
           "agentMCPActionId"

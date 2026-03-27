@@ -62,9 +62,10 @@ const ToolGeneratedFileSchema = z.object({
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
-  outputBlock: CallToolResult["content"][number]
+  outputBlock: CallToolResult["content"][number] | null
 ): outputBlock is { type: "resource"; resource: ToolGeneratedFileType } {
   return (
+    !!outputBlock &&
     outputBlock.type === "resource" &&
     ToolGeneratedFileSchema.safeParse(outputBlock.resource).success
   );
