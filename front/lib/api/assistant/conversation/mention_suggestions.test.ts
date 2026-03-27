@@ -118,7 +118,7 @@ describe("interleaveMentionsPreservingAgentOrder", () => {
     });
 
     it("should prioritize agents whose label starts with query when new message", () => {
-      const agents = [buildAgent(1, "AgentJo", false)];
+      const agents = [buildAgent(1, "John MyAgent", false)];
       const users = [
         buildUser(1, "John Doe", false),
         buildUser(2, "Joan Smith", false),
@@ -130,7 +130,7 @@ describe("interleaveMentionsPreservingAgentOrder", () => {
         "jo"
       );
 
-      expect(result[0].label).toBe("AgentJo");
+      expect(result[0].label).toBe("John MyAgent");
       expect(result[1].label).toBe("John Doe");
       expect(result[2].label).toBe("Joan Smith");
     });
