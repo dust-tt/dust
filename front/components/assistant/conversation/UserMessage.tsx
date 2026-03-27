@@ -287,7 +287,12 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <div className={cn("flex flex-col", isCurrentUser ? "flex-end gap-1" : "flex-start")}>
+        <div
+          className={cn(
+            "flex flex-col",
+            isCurrentUser ? "flex-end gap-1" : "flex-start"
+          )}
+        >
           {!isCurrentUser && (
             <div className="mb-1 flex items-center gap-1.5">
               <Avatar
@@ -322,7 +327,7 @@ export function UserMessage({
           {isCurrentUser && (
             <div className="inline-flex items-center justify-between gap-0.5 self-end">
               <ConversationMessageTitle
-                name={undefined}  
+                name={undefined}
                 timestamp={timestamp}
                 infoChip={
                   displayChip ? (
