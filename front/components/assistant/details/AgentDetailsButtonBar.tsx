@@ -1,6 +1,6 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
@@ -13,7 +13,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { canShowAgentConversationActions } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   BracesIcon,
   Button,
@@ -45,12 +45,6 @@ export function AgentDetailsButtonBar({
   owner,
 }: AgentDetailsButtonBarProps) {
   const { user } = useAuth();
-
-  const { featureFlags } = useFeatureFlags();
-
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
@@ -120,21 +114,20 @@ export function AgentDetailsButtonBar({
         />
       )}
 
-      {agentConfiguration.scope !== "global" &&
-        !isRestrictedFromAgentCreation && (
-          <Button
-            size="sm"
-            tooltip="Edit agent"
-            href={
-              canEditAgent
-                ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
-                : undefined
-            }
-            disabled={!canEditAgent}
-            variant="outline"
-            icon={PencilSquareIcon}
-          />
-        )}
+      {agentConfiguration.scope !== "global" && (
+        <Button
+          size="sm"
+          tooltip="Edit agent"
+          href={
+            canEditAgent
+              ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
+              : undefined
+          }
+          disabled={!canEditAgent}
+          variant="outline"
+          icon={PencilSquareIcon}
+        />
+      )}
 
       {agentConfiguration.scope !== "global" && (
         <AgentDetailsDropdownMenu
