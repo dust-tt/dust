@@ -1,5 +1,6 @@
 import { Button } from "@sparkle/components/Button";
 import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
+import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Spinner } from "@sparkle/components/Spinner";
 import {
   ArrowDownOnSquareIcon,
@@ -91,7 +92,7 @@ function ImageZoomDialog({
               </div>
             ) : (
               <>
-                <img
+                <ImageWrapper
                   src={image.src}
                   alt={image.alt ?? ""}
                   className="s-max-h-full s-max-w-full s-object-contain"

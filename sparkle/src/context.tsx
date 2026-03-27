@@ -1,5 +1,6 @@
 import React, {
   type ComponentType,
+  type ImgHTMLAttributes,
   type MouseEvent,
   type ReactNode,
 } from "react";
@@ -33,9 +34,14 @@ export type SparkleContextLinkType = ComponentType<
   SparkleLinkProps & React.RefAttributes<HTMLAnchorElement>
 >;
 
+export type SparkleContextImageType = ComponentType<
+  ImgHTMLAttributes<HTMLImageElement> & React.RefAttributes<HTMLImageElement>
+>;
+
 export type SparkleContextType = {
   components: {
     link: SparkleContextLinkType;
+    image?: SparkleContextImageType;
   };
 };
 
@@ -90,8 +96,14 @@ export const noHrefLink: SparkleContextLinkType = React.forwardRef<
   )
 );
 
+export const defaultImage: SparkleContextImageType = React.forwardRef<
+  HTMLImageElement,
+  ImgHTMLAttributes<HTMLImageElement>
+>((props, ref) => <img ref={ref} {...props} />);
+
 export const SparkleContext = React.createContext<SparkleContextType>({
   components: {
     link: aLink,
+    image: defaultImage,
   },
 });
