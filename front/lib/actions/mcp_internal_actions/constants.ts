@@ -299,6 +299,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: INCLUDE_DATA_SERVER,
   },
   run_dust_app: {
@@ -878,6 +879,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SEARCH_SERVER,
   },
   run_agent: {
@@ -900,6 +902,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: QUERY_TABLES_V2_SERVER,
   },
   data_sources_file_system: {
@@ -937,6 +940,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: DATA_WAREHOUSES_SERVER,
   },
   toolsets: {
@@ -1007,6 +1011,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SKILL_MANAGEMENT_SERVER,
   },
   schedules_management: {
@@ -1018,6 +1023,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
   project_manager: {
@@ -1067,6 +1073,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
+    availableInDirectExecution: false,
   },
   project_conversation: {
     id: 1025,
@@ -1127,6 +1134,9 @@ type InternalMCPServerEntryCommon = {
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
   requiresBearerToken?: boolean;
+  // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
+  // Defaults to true.
+  availableInDirectExecution?: boolean;
 };
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
@@ -1355,4 +1365,11 @@ export function getInternalMCPServerMetadata(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
+}
+
+export function isInternalMCPServerAvailableInDirectExecution(
+  name: InternalMCPServerNameType
+): boolean {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  return server.availableInDirectExecution !== false;
 }

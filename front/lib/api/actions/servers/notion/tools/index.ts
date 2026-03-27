@@ -74,10 +74,6 @@ export function createNotionTools(
       { query, type, relativeTimeFrame },
       { authInfo }: ToolHandlerExtra
     ) => {
-      if (!agentLoopContext?.runContext) {
-        return new Err(new MCPError("Agent loop run context is required"));
-      }
-
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Ok(makePersonalAuthenticationError("notion").content);
@@ -118,12 +114,15 @@ export function createNotionTools(
           },
         ]);
       } else {
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+        const citationsOffset =
+          agentLoopContext?.runContext?.stepContext.citationsOffset ?? 0;
 
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
-        );
+        const refs = agentLoopContext?.runContext?.stepContext.citationsOffset
+          ? getRefs().slice(
+              citationsOffset,
+              citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+            )
+          : [];
 
         const resultResources = results.map((result) => {
           if (isFullPage(result)) {
