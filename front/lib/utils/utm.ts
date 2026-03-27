@@ -1,4 +1,7 @@
-import { buildDustAidCookieString } from "@app/lib/utils/anonymous_id";
+import {
+  buildDustAidCookieString,
+  getRootCookieDomain,
+} from "@app/lib/utils/anonymous_id";
 import { posthog } from "posthog-js";
 
 // Marketing and UTM parameter keys to track across the application.
@@ -67,6 +70,9 @@ export function persistClickIdCookies(params: UTMParams): void {
     return;
   }
 
+  const domain = getRootCookieDomain();
+  const domainPart = domain ? `; domain=${domain}` : "";
+
   for (const key of CLICK_ID_KEYS) {
     const value = params[key];
     if (value) {
@@ -74,7 +80,7 @@ export function persistClickIdCookies(params: UTMParams): void {
       const expires = new Date(
         Date.now() + expiryDays * 24 * 60 * 60 * 1000
       ).toUTCString();
-      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
+      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
     }
   }
 }
@@ -101,13 +107,16 @@ export function persistUTMCookies(params: UTMParams): void {
     return;
   }
 
+  const domain = getRootCookieDomain();
+  const domainPart = domain ? `; domain=${domain}` : "";
+
   for (const key of UTM_KEYS) {
     const value = params[key];
     if (value) {
       const expires = new Date(
         Date.now() + UTM_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
       ).toUTCString();
-      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
+      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
     }
   }
 }
@@ -170,6 +179,57 @@ export const getStoredUTMParams = (): UTMParams => {
     return {};
   }
 };
+
+const REFERRER_COOKIE = "_dust_referrer";
+const REFERRER_COOKIE_EXPIRY_DAYS = 30;
+
+// Persist `document.referrer` in a cross-subdomain cookie (first-touch only).
+// Only written when the referrer is external (not *.dust.tt) and the cookie
+// does not already exist, so the original traffic source survives the
+// dust.tt → signin → app.dust.tt auth flow.
+export function persistReferrerCookie(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  if (getStoredReferrer()) {
+    return;
+  }
+
+  const referrer = document.referrer;
+  if (!referrer) {
+    return;
+  }
+
+  try {
+    const host = new URL(referrer).hostname;
+    if (host === "localhost" || host.endsWith(".dust.tt")) {
+      return;
+    }
+  } catch {
+    return;
+  }
+
+  const domain = getRootCookieDomain();
+  const domainPart = domain ? `; domain=${domain}` : "";
+  const expires = new Date(
+    Date.now() + REFERRER_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+  ).toUTCString();
+
+  document.cookie = `${REFERRER_COOKIE}=${encodeURIComponent(referrer)}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
+}
+
+// Read the stored referrer from the cross-subdomain `_dust_referrer` cookie.
+export function getStoredReferrer(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const prefix = `${REFERRER_COOKIE}=`;
+  const cookie = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+}
 
 // Append UTM parameters to URLs.
 export const appendUTMParams = (url: string, utmParams?: UTMParams): string => {
