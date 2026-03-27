@@ -30,19 +30,13 @@ export function renderCandidateList(candidates: AshbyCandidate[]): string {
 }
 
 export async function renderReport(
-  responseResults: NonNullable<AshbyReportSynchronousResponse["results"]>,
+  responseResults: Extract<
+    NonNullable<AshbyReportSynchronousResponse>,
+    { status: "complete" }
+  >,
   { reportId }: { reportId: string }
 ): Promise<CallToolResult["content"]> {
-  const { reportData, status } = responseResults;
-
-  if (status !== "complete") {
-    return [
-      {
-        type: "text" as const,
-        text: `Generation of report ${reportId} is not complete (status: ${status}).`,
-      },
-    ];
-  }
+  const { reportData } = responseResults;
 
   if (reportData.data.length === 0) {
     return [
@@ -310,7 +304,7 @@ export function renderHireData({
 }: {
   candidateInfo: AshbyCandidateInfo;
   offerInfo: AshbyOfferInfo | null;
-  jobInfo: AshbyJobInfo | null;
+  jobInfo: AshbyJobInfo | undefined;
   applicationId: string;
 }): string {
   const lines: string[] = ["# Hire Data Summary", ""];

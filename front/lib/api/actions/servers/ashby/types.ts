@@ -1,5 +1,21 @@
 import z from "zod";
 
+export const AshbyAPIErrorInfoSchema = z
+  .object({
+    code: z.string(),
+    message: z.string().optional(),
+    requestId: z.string().optional(),
+  })
+  .passthrough();
+
+export type AshbyAPIErrorInfo = z.infer<typeof AshbyAPIErrorInfoSchema>;
+
+export const AshbyAPIErrorResponseSchema = z.object({
+  success: z.literal(false),
+  errors: z.array(z.string()).optional(),
+  errorInfo: AshbyAPIErrorInfoSchema.optional(),
+});
+
 export const AshbyCandidateSchema = z
   .object({
     id: z.string(),
@@ -42,34 +58,31 @@ export type AshbyReportSynchronousRequest = z.infer<
   typeof AshbyReportSynchronousRequestSchema
 >;
 
-export const AshbyReportSynchronousResponseSchema = z.object({
-  success: z.boolean(),
-  results: z
-    .union([
-      z.object({
-        requestId: z.string(),
-        status: z.literal("complete"),
-        reportData: z.object({
-          data: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
-          columnNames: z.array(z.string()),
-          metadata: z
-            .object({
-              updatedAt: z.string(),
-              title: z.string(),
-            })
-            .passthrough(),
-        }),
-        failureReason: z.string().nullable(),
+export const AshbyReportSynchronousResponseSchema = z
+  .union([
+    z.object({
+      requestId: z.string(),
+      status: z.literal("complete"),
+      reportData: z.object({
+        data: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
+        columnNames: z.array(z.string()),
+        metadata: z
+          .object({
+            updatedAt: z.string(),
+            title: z.string(),
+          })
+          .passthrough(),
       }),
-      z.object({
-        requestId: z.string(),
-        status: z.enum(["failed", "in_progress"]),
-        reportData: z.null(),
-        failureReason: z.string().nullable(),
-      }),
-    ])
-    .optional(),
-});
+      failureReason: z.string().nullable(),
+    }),
+    z.object({
+      requestId: z.string(),
+      status: z.enum(["failed", "in_progress"]),
+      reportData: z.null(),
+      failureReason: z.string().nullable(),
+    }),
+  ])
+  .optional();
 
 export type AshbyReportSynchronousResponse = z.infer<
   typeof AshbyReportSynchronousResponseSchema
@@ -84,9 +97,9 @@ export type AshbyCandidateSearchRequest = z.infer<
   typeof AshbyCandidateSearchRequestSchema
 >;
 
-export const AshbyCandidateSearchResponseSchema = z.object({
-  results: z.array(AshbyCandidateSchema).optional(),
-});
+export const AshbyCandidateSearchResponseSchema = z
+  .array(AshbyCandidateSchema)
+  .optional();
 
 export type AshbyCandidateSearchResponse = z.infer<
   typeof AshbyCandidateSearchResponseSchema
@@ -157,9 +170,9 @@ export type AshbyFeedbackSubmission = z.infer<
   typeof AshbyFeedbackSubmissionSchema
 >;
 
-export const AshbyApplicationFeedbackListResponseSchema = z.object({
-  results: z.array(AshbyFeedbackSubmissionSchema),
-});
+export const AshbyApplicationFeedbackListResponseSchema = z.array(
+  AshbyFeedbackSubmissionSchema
+);
 
 export type AshbyApplicationFeedbackListResponse = z.infer<
   typeof AshbyApplicationFeedbackListResponseSchema
@@ -177,14 +190,9 @@ export type AshbyCandidateCreateNoteRequest = z.infer<
   typeof AshbyCandidateCreateNoteRequestSchema
 >;
 
-export const AshbyCandidateCreateNoteResponseSchema = z.object({
-  success: z.boolean(),
-  results: z
-    .object({
-      id: z.string(),
-    })
-    .passthrough(),
-});
+export const AshbyCandidateCreateNoteResponseSchema = z
+  .object({ id: z.string() })
+  .passthrough();
 
 export type AshbyCandidateCreateNoteResponse = z.infer<
   typeof AshbyCandidateCreateNoteResponseSchema
@@ -217,10 +225,9 @@ export const AshbyCandidateNoteSchema = z
 
 export type AshbyCandidateNote = z.infer<typeof AshbyCandidateNoteSchema>;
 
-export const AshbyCandidateListNotesResponseSchema = z.object({
-  success: z.boolean(),
-  results: z.array(AshbyCandidateNoteSchema),
-});
+export const AshbyCandidateListNotesResponseSchema = z.array(
+  AshbyCandidateNoteSchema
+);
 
 export type AshbyCandidateListNotesResponse = z.infer<
   typeof AshbyCandidateListNotesResponseSchema
@@ -245,17 +252,14 @@ export type AshbyApplicationStatus = z.infer<
   typeof AshbyApplicationStatusSchema
 >;
 
-export const AshbyApplicationInfoResponseSchema = z.object({
-  success: z.boolean(),
-  results: z
-    .object({
-      id: z.string(),
-      status: AshbyApplicationStatusSchema,
-      job: z.object({ id: z.string() }).passthrough().optional(),
-      candidateId: z.string().optional(),
-    })
-    .passthrough(),
-});
+export const AshbyApplicationInfoResponseSchema = z
+  .object({
+    id: z.string(),
+    status: AshbyApplicationStatusSchema,
+    job: z.object({ id: z.string() }).passthrough().optional(),
+    candidateId: z.string().optional(),
+  })
+  .passthrough();
 
 export type AshbyApplicationInfoResponse = z.infer<
   typeof AshbyApplicationInfoResponseSchema
@@ -272,15 +276,6 @@ export const AshbyJobSchema = z
   .passthrough();
 
 export type AshbyJob = z.infer<typeof AshbyJobSchema>;
-
-export const AshbyJobListResponseSchema = z.object({
-  success: z.boolean(),
-  results: z.array(AshbyJobSchema),
-  moreDataAvailable: z.boolean().optional(),
-  nextCursor: z.string().optional(),
-});
-
-export type AshbyJobListResponse = z.infer<typeof AshbyJobListResponseSchema>;
 
 // User search
 
@@ -305,10 +300,7 @@ export const AshbyUserSchema = z
 
 export type AshbyUser = z.infer<typeof AshbyUserSchema>;
 
-export const AshbyUserSearchResponseSchema = z.object({
-  success: z.boolean(),
-  results: z.array(AshbyUserSchema),
-});
+export const AshbyUserSearchResponseSchema = z.array(AshbyUserSchema);
 
 export type AshbyUserSearchResponse = z.infer<
   typeof AshbyUserSearchResponseSchema
@@ -369,10 +361,7 @@ export const AshbyReferralFormInfoSchema = z
 
 export type AshbyReferralFormInfo = z.infer<typeof AshbyReferralFormInfoSchema>;
 
-export const AshbyReferralFormInfoResponseSchema = z.object({
-  success: z.boolean(),
-  results: AshbyReferralFormInfoSchema,
-});
+export const AshbyReferralFormInfoResponseSchema = AshbyReferralFormInfoSchema;
 
 export type AshbyReferralFormInfoResponse = z.infer<
   typeof AshbyReferralFormInfoResponseSchema
@@ -424,24 +413,13 @@ export type AshbyReferralCreateRequest = z.infer<
   typeof AshbyReferralCreateRequestSchema
 >;
 
-export const AshbyReferralCreateResponseSchema = z.object({
-  success: z.boolean(),
-  results: z
-    .object({
-      id: z.string(),
-      status: z.string(),
-    })
-    .passthrough()
-    .optional(),
-  errors: z.array(z.string()).optional(),
-  errorInfo: z
-    .object({
-      code: z.string().optional(),
-      message: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
+export const AshbyReferralCreateResponseSchema = z
+  .object({
+    id: z.string(),
+    status: z.string(),
+  })
+  .passthrough()
+  .optional();
 
 export type AshbyReferralCreateResponse = z.infer<
   typeof AshbyReferralCreateResponseSchema
@@ -501,10 +479,7 @@ export type AshbyJobPostingListRequest = z.infer<
   typeof AshbyJobPostingListRequestSchema
 >;
 
-export const AshbyJobPostingListResponseSchema = z.object({
-  success: z.boolean(),
-  results: z.array(AshbyJobPostingSchema),
-});
+export const AshbyJobPostingListResponseSchema = z.array(AshbyJobPostingSchema);
 
 export type AshbyJobPostingListResponse = z.infer<
   typeof AshbyJobPostingListResponseSchema
@@ -543,10 +518,8 @@ export const AshbyJobPostingInfoSchema = z
 
 export type AshbyJobPostingInfo = z.infer<typeof AshbyJobPostingInfoSchema>;
 
-export const AshbyJobPostingInfoResponseSchema = z.object({
-  success: z.boolean(),
-  results: AshbyJobPostingInfoSchema.optional(),
-});
+export const AshbyJobPostingInfoResponseSchema =
+  AshbyJobPostingInfoSchema.optional();
 
 export type AshbyJobPostingInfoResponse = z.infer<
   typeof AshbyJobPostingInfoResponseSchema
@@ -602,24 +575,13 @@ export type AshbyJobPostingUpdateRequest = z.infer<
   typeof AshbyJobPostingUpdateRequestSchema
 >;
 
-export const AshbyJobPostingUpdateResponseSchema = z.object({
-  success: z.boolean(),
-  results: z
-    .object({
-      id: z.string(),
-      title: z.string(),
-    })
-    .passthrough()
-    .optional(),
-  errors: z.array(z.string()).optional(),
-  errorInfo: z
-    .object({
-      code: z.string().optional(),
-      message: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
+export const AshbyJobPostingUpdateResponseSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+  })
+  .passthrough()
+  .optional();
 
 export type AshbyJobPostingUpdateResponse = z.infer<
   typeof AshbyJobPostingUpdateResponseSchema
@@ -709,10 +671,8 @@ export const AshbyCandidateInfoSchema = z
 
 export type AshbyCandidateInfo = z.infer<typeof AshbyCandidateInfoSchema>;
 
-export const AshbyCandidateInfoResponseSchema = z.object({
-  success: z.boolean(),
-  results: AshbyCandidateInfoSchema.optional(),
-});
+export const AshbyCandidateInfoResponseSchema =
+  AshbyCandidateInfoSchema.optional();
 
 export type AshbyCandidateInfoResponse = z.infer<
   typeof AshbyCandidateInfoResponseSchema
@@ -780,12 +740,7 @@ export const AshbyOfferListRequestSchema = z.object({
 
 export type AshbyOfferListRequest = z.infer<typeof AshbyOfferListRequestSchema>;
 
-export const AshbyOfferListResponseSchema = z.object({
-  success: z.boolean(),
-  results: z.array(AshbyOfferSchema),
-  moreDataAvailable: z.boolean().optional(),
-  nextCursor: z.string().optional(),
-});
+export const AshbyOfferListResponseSchema = z.array(AshbyOfferSchema);
 
 export type AshbyOfferListResponse = z.infer<
   typeof AshbyOfferListResponseSchema
@@ -812,10 +767,7 @@ export const AshbyOfferInfoSchema = z
 
 export type AshbyOfferInfo = z.infer<typeof AshbyOfferInfoSchema>;
 
-export const AshbyOfferInfoResponseSchema = z.object({
-  success: z.boolean(),
-  results: AshbyOfferInfoSchema.optional(),
-});
+export const AshbyOfferInfoResponseSchema = AshbyOfferInfoSchema.optional();
 
 export type AshbyOfferInfoResponse = z.infer<
   typeof AshbyOfferInfoResponseSchema
@@ -853,9 +805,6 @@ export const AshbyJobInfoSchema = z
 
 export type AshbyJobInfo = z.infer<typeof AshbyJobInfoSchema>;
 
-export const AshbyJobInfoResponseSchema = z.object({
-  success: z.boolean(),
-  results: AshbyJobInfoSchema.optional(),
-});
+export const AshbyJobInfoResponseSchema = AshbyJobInfoSchema.optional();
 
 export type AshbyJobInfoResponse = z.infer<typeof AshbyJobInfoResponseSchema>;
