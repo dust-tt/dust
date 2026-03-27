@@ -611,20 +611,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_DRIVE_SERVER,
-      serverInfo: {
-        ...MICROSOFT_DRIVE_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
-        },
-        documentationUrl:
-          "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
-      },
-    },
+    metadata: MICROSOFT_DRIVE_SERVER,
   },
   microsoft_teams: {
     id: 36,
@@ -646,20 +633,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_TEAMS_SERVER,
-      serverInfo: {
-        ...MICROSOFT_TEAMS_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
-        },
-        documentationUrl:
-          "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-      },
-    },
+    metadata: MICROSOFT_TEAMS_SERVER,
   },
   sound_studio: {
     id: 37,
@@ -681,18 +655,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_EXCEL_SERVER,
-      serverInfo: {
-        ...MICROSOFT_EXCEL_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
-        },
-      },
-    },
+    metadata: MICROSOFT_EXCEL_SERVER,
   },
   http_client: {
     id: 39,
