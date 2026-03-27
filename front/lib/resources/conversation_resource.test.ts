@@ -5139,6 +5139,8 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_skills",
   "data_source",
   "message",
+  "project_todo_conversation",
+  "project_todo_source",
   "sandbox",
   "user_conversation_reads",
   "user_project_digest",

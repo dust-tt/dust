@@ -43,6 +43,7 @@ import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resou
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -171,6 +172,21 @@ export async function scrubSpaceActivity({
       workspaceId,
     });
   }
+
+  // Delete all project todos for this space, before the conversations as it's linked to convo
+  const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
+    spaceId: space.id,
+  });
+  await concurrentExecutor(
+    projectTodos,
+    async (todo) => {
+      const res = await todo.delete(auth, {});
+      if (res.isErr()) {
+        throw res.error;
+      }
+    },
+    { concurrency: 8 }
+  );
 
   // Delete all conversations in the space.
   // Won't scale if there's tons of conversations in spaces.

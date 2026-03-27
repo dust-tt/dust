@@ -21,6 +21,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
+import {
+  ProjectTodoConversationModel,
+  ProjectTodoSourceModel,
+} from "@app/lib/resources/storage/models/project_todo";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type {
   ConversationError,
@@ -307,6 +311,13 @@ export async function destroyConversation(
       workspaceId: owner.id,
       conversationId: conversation.id,
     },
+  });
+
+  await ProjectTodoConversationModel.destroy({
+    where: { workspaceId: owner.id, conversationId: conversation.id },
+  });
+  await ProjectTodoSourceModel.destroy({
+    where: { workspaceId: owner.id, sourceConversationId: conversation.id },
   });
 
   await SandboxResource.deleteByConversationId(auth, conversation.sId);
