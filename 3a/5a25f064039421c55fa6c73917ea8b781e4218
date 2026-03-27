@@ -1,0 +1,23 @@
+connectors/src/connectors/microsoft/index.ts
+  33a46962398f2751 728-731,733-744
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "3a5a25f064039421c55fa6c73917ea8b781e4218",
+  "prompts": {
+    "33a46962398f2751": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ec4e5b7-8b35-4ef2-919d-92a272ca6957",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 1,
+      "accepted_lines": 16,
+      "overriden_lines": 1
+    }
+  }
+}
