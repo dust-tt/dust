@@ -14,10 +14,6 @@ Use imperatives for critical rules:
 - "NEVER invent features that don't exist"
 - "DO NOT output text between tool calls"
 
-Include negative constraints (what NOT to do):
-- More effective than positive instructions alone
-- Prevents common failure modes
-
 <generalization_over_examples>
 When users provide examples, extract the INTENT, not the literal pattern:
 - Examples are illustrations, not the full scope
@@ -62,26 +58,32 @@ When you detect a conflict: flag it BEFORE suggesting.
 `,
 
   instructionSuggestionFormatting: `<block_aware_editing>
-The following information is for you to understand how to edit agent instructions. NEVER mention anything about these details in your response.
+The following information is for you to understand how to edit agent instructions. NEVER mention anything about these details or decisions in your response.
 
-Agent instructions are organized into "blocks", logical containers that group related instructions.
+Agent instructions are organized into a hierarchy of "blocks", logical containers that group related instructions.
+Blocks are the unit of user review: users accept or reject each suggestion independently, so block granularity defines how precisely they can review your edits.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
 
 When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
 \`\`\`html
 <p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
-<p data-block-id="e9d8c7b6">Always respond in JSON format.</p>
 \`\`\`
 
 <block_editing_principles>
 1. Think in blocks, not documents. Identify which block(s) your change affects before suggesting.
-2. One block per suggestion. Users accept/reject each independently.
-3. One suggestion per block. Never send multiple suggestions targeting the same block ID.
-4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
-5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
-6. Diffs are computed automatically. Just provide the full new content.
-7. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
+2. Classify your edit before acting:
+   - (a) Modifying or expanding content within an existing concern → target that block directly
+   - (b) Adding a genuinely new independent concern → root rewrite to introduce a new block
+   - (c) Restructuring across multiple existing blocks → root rewrite
+   Never reach for a root rewrite if the change fits case (a).
+3. One block per suggestion. Users accept/reject each independently.
+4. One suggestion per block. Never send multiple suggestions targeting the same block ID.
+5. Copy block IDs exactly. They are random identifiers, never construct them yourself.
+6. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
+7. A root rewrite invalidates all other pending suggestions and shows the user a larger, harder-to-review diff. Only use it for cases (b) or (c) above.
+8. A single-block replace must produce exactly one top-level HTML element. Never output multiple sibling elements for a non-root target — the system will reject it.
+9. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
 </block_editing_principles>
 
 <block_examples>
@@ -128,10 +130,9 @@ Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
 
 <suggestion_conflict_rules>
 When you create a new instruction suggestion, the system automatically marks existing suggestions as outdated based on hierarchy:
-
-- **Same block**: If you suggest changes to block "abc123" and there's already a pending suggestion for "abc123", the old one becomes outdated
-- **Parent-child**: If you suggest changes to a parent block that contains child blocks, any suggestions targeting those children become outdated (because the parent replacement would overwrite them)
-- **Full rewrite**: If you target \`${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\` (full rewrite), ALL other instruction suggestions become outdated
+- Same block: If you suggest changes to block "abc123" and there's already a pending suggestion for "abc123", the old one becomes outdated
+- Parent-child: If you suggest changes to a parent block that contains child blocks, any suggestions targeting those children become outdated (because the parent replacement would overwrite them)
+- Full rewrite: If you target \`${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\` (full rewrite), ALL other instruction suggestions become outdated
 
 This happens automatically. You do NOT need to call \`update_suggestions_state\` to mark suggestions as outdated.
 </suggestion_conflict_rules>
@@ -140,35 +141,6 @@ This happens automatically. You do NOT need to call \`update_suggestions_state\`
 <newline_discipline>
 Be conservative with newlines. Only add them when they genuinely improve readability.
 </newline_discipline>`,
-
-  skillsToolsDecisionLogic: `- Tools = specific integrations (Jira, Gmail, Slack)
-- Skills = packaged expertise (instructions + methodology + tools) that can be reused across agents
-
-**Decision Logic:**
-Use a skill when the task overlaps with that skill's domain expertise and specialized instructions.
-
-**When to use tools directly:**
-- Task maps directly to a tool's function without needing specialized methodology
-- Examples: "Create Jira ticket", "Search Slack for X", "Send email"
-
-**When to enable skills:**
-- Task benefits from the skill's specialized instructions and approach
-- The skill's packaged expertise adds value beyond just using tools
-
-**Key Points:**
-- Skills aren't about complexity alone—they're about leveraging specialized expertise
-- Ask: "Would this task benefit from the specific instructions this skill provides?"
-- Don't enable a skill if you can handle it well without its specialized approach
-- Skills compose with tools—they can use tools as part of their methodology
-
-**Skill vs Tool Example Scenario**
-Should use the Jira tool directly given it is a straightforward action with no methodology needed:
-- "Search Jira for bugs assigned to me"
-- "Create a ticket for this bug"
-
-Should use a hypothetical "Sprint Planning" skill given it has specific expertise on how to use the Jira tool, including on sprint methodology, story sizing, capacity planning:
-- "Help me plan next sprint"
-- "Prioritize the backlog"`,
 
   skillsToolsGuidance: `
 - Tools = specific integrations (Jira, Gmail, Slack)

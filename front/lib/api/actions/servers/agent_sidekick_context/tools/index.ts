@@ -78,6 +78,7 @@ import {
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
+import { JSDOM } from "jsdom";
 
 const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
@@ -189,6 +190,14 @@ async function markDuplicateSuggestionsAsOutdated(
 type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 
 /**
+ * Returns the number of top-level HTML elements in the given HTML string
+ */
+function countTopLevelBlocks(html: string): number {
+  const dom = new JSDOM(`<body>${html}</body>`);
+  return dom.window.document.body.children.length;
+}
+
+/**
  * Shared logic for creating instruction suggestions. Used by both the
  * suggest_prompt_edits MCP handler and reinforced agent analysis.
  */
@@ -243,6 +252,19 @@ export async function createInstructionSuggestions({
 
   if (!agentConfiguration) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
+  }
+
+  // Reject non-root suggestions that contain multiple top-level blocks.
+  for (const suggestion of suggestions) {
+    if (suggestion.targetBlockId !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
+      const blockCount = countTopLevelBlocks(suggestion.content);
+      if (blockCount > 1) {
+        return new Err(
+          `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
+            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
+        );
+      }
+    }
   }
 
   const createdSuggestions: {
