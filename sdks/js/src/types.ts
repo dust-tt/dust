@@ -2782,6 +2782,38 @@ export type GetWorkspaceUsageResponseType = z.infer<
   typeof GetWorkspaceUsageResponseSchema
 >;
 
+const AnalyticsExportTableSchema = z.enum([
+  "usage_metrics",
+  "active_users",
+  "source",
+  "agents",
+  "users",
+  "skill_usage",
+  "tool_usage",
+]);
+
+const AnalyticsDateSchema = z
+  .string()
+  .refine(
+    (s): s is string => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s),
+    { message: "Date must be in YYYY-MM-DD format" }
+  );
+
+export const GetAnalyticsExportRequestSchema = z
+  .object({
+    table: AnalyticsExportTableSchema,
+    startDate: AnalyticsDateSchema,
+    endDate: AnalyticsDateSchema,
+    timezone: Timezone.optional(),
+  })
+  .refine((d) => d.startDate <= d.endDate, {
+    message: "startDate must be before or equal to endDate",
+  });
+
+export type GetAnalyticsExportRequestType = z.infer<
+  typeof GetAnalyticsExportRequestSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
