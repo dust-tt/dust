@@ -48,6 +48,7 @@ Runbooks for various typical development tasks are located under `runbooks/`:
 `NEW_WEBHOOK_SOURCE.md`: add a new webhook source to Dust.
 `TEMPORAL.md`: create a new temporal workflow.
 `TEST.md`: running tests in front.
+`LANDING_PAGE.md`: port a Replit landing page into the Dust front codebase.
 
 Read these files on-demand when working on tasks.
 
