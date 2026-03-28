@@ -3,9 +3,12 @@ import {
   findSkillDirectories,
   parseSkillMarkdown,
 } from "@app/lib/api/skills/detection/parsing";
-import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { stripCommonZipPrefix } from "@app/lib/api/skills/detection/zip/parsing";
-import type { ZipEntry } from "@app/lib/api/skills/detection/zip/types";
+import type {
+  ZipDetectedSkill,
+  ZipDetectedSkillAttachment,
+  ZipEntry,
+} from "@app/lib/api/skills/detection/zip/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -60,15 +63,12 @@ function readZipFileContent(
 }
 
 /**
- * Detects Agent Skills (https://agentskills.io/specification) in a ZIP archive
- * by scanning for SKILL.md files. Same logic as the GitHub detection but
- * operating on a ZIP buffer instead of the GitHub API.
+ * Validates zip size limits and extracts entries + the AdmZip instance.
+ * Shared between detection and attachment reading.
  */
-export function detectSkillsFromZip({
-  zipBuffer,
-}: {
-  zipBuffer: Buffer;
-}): Result<DetectedSkill[], Error> {
+function openAndValidateZip(
+  zipBuffer: Buffer
+): Result<{ entries: ZipEntry[]; zip: AdmZip }, Error> {
   if (zipBuffer.length > MAX_ZIP_SIZE_BYTES) {
     return new Err(
       new Error(
@@ -98,6 +98,26 @@ export function detectSkillsFromZip({
     );
   }
 
+  return new Ok({ entries: rawEntries, zip });
+}
+
+/**
+ * Detects Agent Skills (https://agentskills.io/specification) in a ZIP archive
+ * by scanning for SKILL.md files. Returns ZipDetectedSkill[] where each
+ * attachment carries an `originalEntryName` (the raw zip path before prefix
+ * stripping), analogous to the `sha` in GitHubDetectedSkillAttachment.
+ */
+export function detectSkillsFromZip({
+  zipBuffer,
+}: {
+  zipBuffer: Buffer;
+}): Result<ZipDetectedSkill[], Error> {
+  const openResult = openAndValidateZip(zipBuffer);
+  if (openResult.isErr()) {
+    return openResult;
+  }
+  const { entries: rawEntries, zip } = openResult.value;
+
   const entries = stripCommonZipPrefix(rawEntries);
   // Map stripped path -> entry (preserves originalEntryName) for adm-zip lookup.
   const entryByPath = new Map<string, ZipEntry>();
@@ -114,7 +134,7 @@ export function detectSkillsFromZip({
     return new Ok([]);
   }
 
-  const allSkills: DetectedSkill[] = [];
+  const allSkills: ZipDetectedSkill[] = [];
 
   for (const skillDir of skillDirs) {
     const skillMdEntry = entryByPath.get(skillDir.skillMdPath);
@@ -135,14 +155,48 @@ export function detectSkillsFromZip({
     }
 
     const parsed = parseSkillMarkdown(contentResult.value);
+
+    // Enrich each attachment with originalEntryName so the import flow can
+    // extract content without re-parsing the zip structure.
+    const baseAttachments = collectAttachments(fileEntries, skillDir);
+    const attachments: ZipDetectedSkillAttachment[] = baseAttachments.map(
+      (a) => ({
+        ...a,
+        originalEntryName: entryByPath.get(a.path)?.originalEntryName ?? a.path,
+      })
+    );
+
     allSkills.push({
       name: parsed.name,
       skillMdPath: skillDir.skillMdPath,
       description: parsed.description,
       instructions: parsed.instructions,
-      attachments: collectAttachments(fileEntries, skillDir),
+      attachments,
     });
   }
 
   return new Ok(allSkills.filter((s) => s.name.length > 0));
+}
+
+/**
+ * Returns a reader function that reads a zip entry's raw bytes by
+ * originalEntryName. Open this once per buffer; pass it to the import flow
+ * to extract attachment content without re-parsing the zip structure.
+ */
+export function createZipAttachmentReader(
+  zipBuffer: Buffer
+): Result<(originalEntryName: string) => Result<Buffer, Error>, Error> {
+  const openResult = openAndValidateZip(zipBuffer);
+  if (openResult.isErr()) {
+    return openResult;
+  }
+  const { zip } = openResult.value;
+
+  return new Ok((originalEntryName: string): Result<Buffer, Error> => {
+    const entry = zip.getEntry(originalEntryName);
+    if (!entry) {
+      return new Err(new Error(`ZIP entry not found: "${originalEntryName}"`));
+    }
+    return new Ok(entry.getData());
+  });
 }
