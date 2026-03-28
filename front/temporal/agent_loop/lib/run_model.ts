@@ -218,12 +218,12 @@ export async function runModel(
   const {
     enabledSkills,
     equippedSkills,
-    hasConditionalJITTools,
-    mcpActions,
+    stableServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
+    const { stableJITServers, conditionalJITServers } = await getJITServers(
       auth,
       {
         agentConfiguration,
@@ -271,7 +271,8 @@ export async function runModel(
     }
 
     const {
-      serverToolsAndInstructions: mcpActions,
+      stableServerToolsAndInstructions,
+      conditionalJITServerToolsAndInstructions,
       error: mcpToolsListingError,
     } = await startActiveObservation("list-mcp-tools", () =>
       tryListMCPTools(
@@ -282,15 +283,15 @@ export async function runModel(
           agentMessage,
           clientSideActionConfigurations: clientSideMCPActionConfigurations,
         },
-        { jitServers, skillServers }
+        { stableJITServers, conditionalJITServers, skillServers }
       )
     );
 
     return {
-      hasConditionalJITTools,
       enabledSkills,
       equippedSkills,
-      mcpActions,
+      stableServerToolsAndInstructions,
+      conditionalJITServerToolsAndInstructions,
       mcpToolsListingError,
     };
   });
@@ -308,7 +309,13 @@ export async function runModel(
 
   // If we are on the last step, we don't show any action.
   // This will force the agent to run the generation.
-  const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
+  const allServerToolsAndInstructions = [
+    ...stableServerToolsAndInstructions,
+    ...conditionalJITServerToolsAndInstructions,
+  ];
+  const availableActions = isLastStep
+    ? []
+    : allServerToolsAndInstructions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -382,7 +389,8 @@ export async function runModel(
     errorContext: mcpToolsListingError,
     agentsList,
     conversation,
-    serverToolsAndInstructions: mcpActions,
+    stableServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,
     memoriesContext,
@@ -587,7 +595,7 @@ export async function runModel(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    hasConditionalJITTools: conditionalJITServerToolsAndInstructions.length > 0,
     userMessage,
     specifications,
     flushParserTokens,

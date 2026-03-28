@@ -161,11 +161,14 @@ async function listAvailableTools(
     });
 
   const attachments = await listAttachments(auth, { conversation });
-  const { servers: jitServers } = await getJITServers(auth, {
-    agentConfiguration,
-    conversation,
-    attachments,
-  });
+  const { stableJITServers, conditionalJITServers } = await getJITServers(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+      attachments,
+    }
+  );
 
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
@@ -204,7 +207,10 @@ async function listAvailableTools(
     skillServers.push(dataWarehouseServer);
   }
 
-  const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
+  const {
+    stableServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
+  } = await tryListMCPTools(
     auth,
     {
       agentConfiguration,
@@ -213,12 +219,16 @@ async function listAvailableTools(
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
     {
-      jitServers,
+      stableJITServers,
+      conditionalJITServers,
       skillServers,
     }
   );
 
-  return mcpActions.flatMap((s) => s.tools);
+  return [
+    ...stableServerToolsAndInstructions,
+    ...conditionalJITServerToolsAndInstructions,
+  ].flatMap((s) => s.tools);
 }
 
 /**

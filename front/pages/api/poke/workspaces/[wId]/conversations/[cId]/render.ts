@@ -163,11 +163,14 @@ async function handler(
 
       // Build tools list and prompt similar to the agent loop.
       const attachments = await listAttachments(auth, { conversation });
-      const { servers: jitServers } = await getJITServers(auth, {
-        agentConfiguration,
-        conversation,
-        attachments,
-      });
+      const { stableJITServers, conditionalJITServers } = await getJITServers(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+          attachments,
+        }
+      );
 
       const { enabledSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
@@ -216,24 +219,29 @@ async function handler(
         reactions: [],
       };
 
-      const { serverToolsAndInstructions, error: mcpToolsListingError } =
-        await tryListMCPTools(
-          auth,
-          {
-            agentConfiguration,
-            conversation,
-            agentMessage: placeholderAgentMessage,
-            clientSideActionConfigurations: clientSideMCPActionConfigurations,
-          },
-          {
-            jitServers,
-            skillServers,
-          }
-        );
-
-      const availableActions = serverToolsAndInstructions.flatMap(
-        (s) => s.tools
+      const {
+        stableServerToolsAndInstructions,
+        conditionalJITServerToolsAndInstructions,
+        error: mcpToolsListingError,
+      } = await tryListMCPTools(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+          agentMessage: placeholderAgentMessage,
+          clientSideActionConfigurations: clientSideMCPActionConfigurations,
+        },
+        {
+          stableJITServers,
+          conditionalJITServers,
+          skillServers,
+        }
       );
+
+      const availableActions = [
+        ...stableServerToolsAndInstructions,
+        ...conditionalJITServerToolsAndInstructions,
+      ].flatMap((s) => s.tools);
 
       let fallbackPrompt = "You are a conversational agent";
       if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -261,7 +269,8 @@ async function handler(
         errorContext: mcpToolsListingError,
         agentsList,
         conversation,
-        serverToolsAndInstructions,
+        stableServerToolsAndInstructions,
+        conditionalJITServerToolsAndInstructions,
         enabledSkills,
         equippedSkills,
       });
