@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
+import { disableWorkOSSSOAndSCIM } from "@app/lib/api/workos/organization";
 import {
   getMembers,
   getWorkspaceInfos,
@@ -133,6 +134,10 @@ export async function scrubWorkspaceData({
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
+  await disableWorkOSSSOAndSCIM(renderLightWorkspaceType({ workspace }), {
+    disableSSO: true,
+    disableSCIM: true,
+  });
 }
 
 export async function pauseAllConnectors({
