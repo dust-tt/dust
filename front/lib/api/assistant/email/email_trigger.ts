@@ -31,6 +31,7 @@ import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import fs from "fs";
 import sanitizeHtml from "sanitize-html";
@@ -914,14 +915,14 @@ export async function sendToolValidationEmail({
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    const toolName = sanitizeHtml(action.metadata.toolName, {
+    const toolName = sanitizeHtml(asDisplayName(action.metadata.toolName), {
       allowedTags: [],
       allowedAttributes: {},
     });
-    const serverName = sanitizeHtml(action.metadata.mcpServerName, {
-      allowedTags: [],
-      allowedAttributes: {},
-    });
+    const serverName = sanitizeHtml(
+      asDisplayName(action.metadata.mcpServerName),
+      { allowedTags: [], allowedAttributes: {} }
+    );
 
     return `
       <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
