@@ -31,6 +31,7 @@ import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import fs from "fs";
 import sanitizeHtml from "sanitize-html";
@@ -884,7 +885,7 @@ export async function sendToolValidationEmail({
     agentName: agentConfiguration.name,
   });
 
-  const name = `Dust Agent (${agentConfiguration.name})`;
+  const name = `${agentConfiguration.name} (Dust agent)`;
   const sender = `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   const subject = email.subject
@@ -914,23 +915,22 @@ export async function sendToolValidationEmail({
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    const toolName = sanitizeHtml(action.metadata.toolName, {
+    const toolName = sanitizeHtml(asDisplayName(action.metadata.toolName), {
       allowedTags: [],
       allowedAttributes: {},
     });
-    const serverName = sanitizeHtml(action.metadata.mcpServerName, {
-      allowedTags: [],
-      allowedAttributes: {},
-    });
+    const serverName = sanitizeHtml(
+      asDisplayName(action.metadata.mcpServerName),
+      { allowedTags: [], allowedAttributes: {} }
+    );
 
     return `
       <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
-        <h3 style="margin: 0 0 8px 0; color: #333;">${toolName}</h3>
-        <p style="margin: 0 0 8px 0; color: #666;">Server: ${serverName}</p>
+        <h3 style="margin: 0 0 8px 0; color: #333;">Allow ${serverName} to ${toolName}?</h3>
         <pre style="background-color: #fff; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid #eee;">${inputsJson}</pre>
         <div style="margin-top: 12px;">
-          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Approve</a>
-          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Reject</a>
+          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Allow</a>
+          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Decline</a>
         </div>
       </div>
     `;
@@ -938,8 +938,7 @@ export async function sendToolValidationEmail({
 
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <h2 style="color: #333;">Tool Approval Required</h2>
-      <p>The agent <strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs your approval to execute the following tool(s):</p>
+      <p><strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs permission to use the following tool(s):</p>
       ${actionBlocks.join("")}
       <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
       <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>
@@ -1001,8 +1000,8 @@ export async function replyToEmail({
   recipient: string;
 }) {
   const name = agentConfiguration
-    ? `Dust Agent (${agentConfiguration.name})`
-    : "Dust Agent";
+    ? `${agentConfiguration.name} (Dust agent)`
+    : "Dust agent";
   const sender = agentConfiguration
     ? `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
     : `assistants@${ASSISTANT_EMAIL_SUBDOMAIN}`;
