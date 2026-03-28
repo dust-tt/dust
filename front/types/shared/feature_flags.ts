@@ -270,6 +270,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
+  ask_user_question_tool: {
+    description:
+      "Enable ask_user_question tool for agents to ask users questions",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

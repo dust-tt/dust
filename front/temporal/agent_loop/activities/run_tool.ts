@@ -283,6 +283,7 @@ async function executeToolStreaming(
       case "tool_personal_auth_required":
       case "tool_file_auth_required":
       case "tool_approve_execution":
+      case "tool_user_question":
         updateActiveObservation(
           {
             output: { status: event.type },

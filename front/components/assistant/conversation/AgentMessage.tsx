@@ -15,6 +15,7 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { MCPToolUserQuestion } from "@app/components/assistant/conversation/MCPToolUserQuestion";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import type {
   AgentMessageStateWithControlEvent,
@@ -314,6 +315,17 @@ export function AgentMessage({
                 metadata: eventPayload.data.metadata,
                 stake: eventPayload.data.stake,
                 userId: eventPayload.data.userId,
+              },
+            });
+            break;
+
+          case "tool_user_question":
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                ...eventPayload.data,
+                status: "blocked_user_question_required",
+                authorizationInfo: null,
               },
             });
             break;
@@ -1195,6 +1207,15 @@ function AgentMessageContent({
                 messageId: blockedAction.messageId,
               })
             }
+          />
+        );
+
+      case "blocked_user_question_required":
+        return (
+          <MCPToolUserQuestion
+            triggeringUser={triggeringUser}
+            owner={owner}
+            blockedAction={blockedAction}
           />
         );
     }
