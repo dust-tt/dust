@@ -42,16 +42,16 @@ const CASE_STUDIES: Record<string, string> = {
 const LOGO_SETS = {
   default: {
     us: [
-      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
+      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
-      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
       { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
@@ -73,16 +73,16 @@ const LOGO_SETS = {
   },
   landing: {
     us: [
-      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
+      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
-      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
       { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
