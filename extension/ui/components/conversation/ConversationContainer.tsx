@@ -6,8 +6,8 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Button, MenuIcon } from "@dust-tt/sparkle";
-import { sendGetSessionInfoMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { sendGetSessionInfoMessage } from "@extension/shared/messages";
 import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
 import { useContext, useEffect, useMemo, useState } from "react";
 

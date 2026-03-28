@@ -1,16 +1,11 @@
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
-import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types/user";
 import type { CaptureService } from "@extension/shared/services/capture";
 import { McpService } from "@extension/shared/services/mcp";
 import { registerAllTools } from "@extension/shared/tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-/**
- * Chrome-specific implementation of the MCP service.
- * Tools use the capture service to retrieve page content.
- */
-export class ChromeMcpService extends McpService {
+export class FirefoxMcpService extends McpService {
   private captureService: CaptureService | null = null;
   private server: McpServer | null = null;
   private transport: BrowserMCPTransport | null = null;
@@ -28,12 +23,12 @@ export class ChromeMcpService extends McpService {
     try {
       const server = new McpServer(
         {
-          name: "chrome-mcp-server",
+          name: "firefox-mcp-server",
           version: "1.0.0",
         },
         {
           instructions:
-            "You are running inside a Dust Chrome extension. " +
+            "You are running inside a Dust Firefox extension. " +
             "The user is actively browsing the web, so their questions often relate to content on their current browser tab. " +
             "When the user's message implicitly or explicitly refers to a page, article, document, or 'this' / 'it' / 'the page' without further specification, " +
             "proactively call `get-current-browser-page` to fetch the page title, URL, and text content before answering. " +
@@ -46,7 +41,7 @@ export class ChromeMcpService extends McpService {
 
       return server;
     } catch (error) {
-      logger.error({ err: error }, "Error creating MCP server.");
+      console.error("Error creating MCP server:", error);
       return null;
     }
   }
@@ -67,7 +62,7 @@ export class ChromeMcpService extends McpService {
 
       const transport = new BrowserMCPTransport(
         owner.sId,
-        "dust-chrome-extension",
+        "dust-firefox-extension",
         (serverId) => {
           this.serverId = serverId;
           onServerIdReceived(serverId);
@@ -79,7 +74,7 @@ export class ChromeMcpService extends McpService {
       this.server = server;
       this.transport = transport;
     } catch (error) {
-      logger.error({ err: error }, "Failed to connect MCP server.");
+      console.error("Failed to connect MCP server:", error);
       throw error;
     }
   }
@@ -101,7 +96,7 @@ export class ChromeMcpService extends McpService {
       await this.connectServer(server, owner, onServerIdReceived);
       return { server: this.server, serverId: this.serverId };
     } catch (error) {
-      logger.error({ err: error }, "Error getting or creating MCP server.");
+      console.error("Error getting or creating MCP server:", error);
       return { server: null, serverId: undefined };
     }
   }

@@ -1,6 +1,6 @@
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { sendGetActiveTabMessage } from "@extension/platforms/chrome/messages";
+import { sendGetActiveTabMessage } from "@extension/shared/messages";
 import type {
   CaptureOperationId,
   CaptureOptions,
@@ -19,7 +19,7 @@ const getIncludeCurrentTab = async (params: CaptureOptions) => {
   return new Ok(backgroundRes);
 };
 
-export class ChromeCaptureService implements CaptureService {
+export class ChromeFirefoxCaptureService implements CaptureService {
   isOperationSupported(id: CaptureOperationId) {
     return ["capture-page-content"].includes(id);
   }

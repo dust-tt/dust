@@ -6,7 +6,7 @@ import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
-} from "@extension/platforms/chrome/messages";
+} from "@extension/shared/messages";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
@@ -16,7 +16,7 @@ import {
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
 
-export class ChromeAuthService extends AuthService {
+export class ChromeFirefoxAuthService extends AuthService {
   constructor(storage: StorageService) {
     super(storage);
   }

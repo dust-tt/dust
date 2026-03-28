@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Err, Ok } from "@app/types/shared/result";
-import { sendInteractWithPageMessage } from "@extension/platforms/chrome/messages";
+import { sendInteractWithPageMessage } from "@extension/shared/messages";
 
 export async function interactWithPageTool(input: {
   action: "get_elements" | "click_element" | "type_text" | "delete_text";

@@ -48,7 +48,7 @@ export const getConfig = async ({
 
   if (!isDevelopment && !process.env.DATADOG_CLIENT_TOKEN) {
     throw new Error(
-      "❌ DATADOG_CLIENT_TOKEN=[Chrome extension logs collection token] must be set when building for production or release.\n" +
+      "❌ DATADOG_CLIENT_TOKEN=[Firefox extension logs collection token] must be set when building for production or release.\n" +
         "The token can be found on https://app.datadoghq.eu/organization-settings/client-tokens"
     );
   }
@@ -94,7 +94,6 @@ export const getConfig = async ({
       main: resolvePath("./main.tsx"),
       background: resolvePath("./background.ts"),
       page: resolvePath("./../../shared/page.ts"),
-      "content-script": resolvePath("./content-script.ts"),
     },
     output: {
       path: buildDirPath,
@@ -164,15 +163,15 @@ export const getConfig = async ({
         global: "globalThis",
       }),
       new WebpackBar({
-        name: `DustExt [${env}]`,
-        color: "#3B82F6",
+        name: `DustExt Firefox [${env}]`,
+        color: "#FF7139",
       }),
       new webpack.EnvironmentPlugin({
         BUILD_DATE: process.env.COMMIT_HASH || Math.floor(Date.now() / 1000),
         COMMIT_HASH: process.env.COMMIT_HASH || getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
-        DUST_EXTENSION_VERSION: `chrome-${version}`,
+        DUST_EXTENSION_VERSION: `firefox-${version}`,
         NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
         NEXT_PUBLIC_DUST_CLIENT_FACING_URL:
           process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL || "",
@@ -233,13 +232,13 @@ export const getConfig = async ({
       packageDirPath
         ? new ZipPlugin({
             path: packageDirPath,
-            filename: `Dust_Extension_Chrome.${env}.v${version}.zip`,
+            filename: `Dust_Extension_Firefox.${env}.v${version}.zip`,
           })
         : null,
       isDevelopment
         ? // @ts-expect-error (it's working)
           new ExtReloader({
-            port: 9090,
+            port: 9080,
             reloadPage: true,
             entries: {
               contentScript: "main",

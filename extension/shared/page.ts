@@ -1,6 +1,8 @@
 // This code is based on the following code:
 // https://github.com/mrcoles/full-page-screen-capture-chrome-extension
 
+import type { CaptureFullPageMessage } from "@extension/shared/messages";
+
 /**
  * The MIT License
  *
@@ -24,8 +26,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-import type { CaptureFullPageMessage } from "@extension/platforms/chrome/messages";
 
 declare global {
   interface Window {
