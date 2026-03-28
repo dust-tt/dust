@@ -19,11 +19,11 @@ const wrapperVariants = cva("s-flex s-flex-col s-@container @xs:s-flex-row", {
     messageType: "agent",
   },
 });
-const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
+const messageVariants = cva("s-flex s-max-w-full", {
   variants: {
     type: {
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-p-3 s-gap-2 s-w-fit",
-      agent: "s-w-full s-gap-3 s-p-4 @xs:s-flex-row s-flex-col",
+      user: "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit",
+      agent: "s-rounded-2xl s-w-full s-gap-3 s-py-4 s-flex-col",
     },
   },
   defaultVariants: {
@@ -106,22 +106,12 @@ export const ConversationMessageAvatar = React.forwardRef<
         {...props}
       >
         <Avatar
-          className="@xs:s-hidden"
           name={name}
           visual={avatarUrl}
           busy={isBusy}
           disabled={isDisabled}
           isRounded={type === "user"}
           size="xs"
-        />
-        <Avatar
-          className="s-hidden @xs:s-flex"
-          name={name}
-          visual={avatarUrl}
-          busy={isBusy}
-          disabled={isDisabled}
-          isRounded={type === "user"}
-          size="sm"
         />
       </div>
     );
@@ -164,9 +154,9 @@ export const ConversationMessageTitle = React.forwardRef<
         )}
         {...props}
       >
-        <div className="s-inline-flex s-items-center s-gap-2 s-text-foreground dark:s-text-foreground-night">
-          <span className="s-heading-sm">{renderName(name)}</span>
-          <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
+          <span className="s-text-sm">{renderName(name)}</span>
+          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
             {timestamp}
           </span>
           {infoChip && (
