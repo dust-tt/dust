@@ -9,10 +9,12 @@ import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/reques
 const ACTIVE_TASK_ID = "active-task-id";
 
 export class SlackStreamHandler {
-  private streamer: ChatStreamer | undefined;
+  private streamer: ChatStreamer;
   private hasTask = false;
   private stopped = false;
-  private channelId: string | undefined;
+  private streaming = false;
+  private channelId: string;
+  private slackMessageTs: string;
   private threadTs: string | undefined;
   messageTs: string | undefined;
 
@@ -20,25 +22,29 @@ export class SlackStreamHandler {
     return this.stopped;
   }
 
+  get isStreaming(): boolean {
+    return this.streaming;
+  }
+
   constructor(
     private readonly slackClient: WebClient,
-    private readonly connectorId: number
-  ) {}
-
-  public start({
-    slackChannel,
-    slackMessageTs,
-    slackThreadTs,
-    slackTeamId,
-    slackUserId,
-  }: {
-    slackChannel: string;
-    slackMessageTs: string;
-    slackThreadTs?: string;
-    slackTeamId: string;
-    slackUserId?: string;
-  }) {
+    private readonly connectorId: number,
+    {
+      slackChannel,
+      slackMessageTs,
+      slackThreadTs,
+      slackTeamId,
+      slackUserId,
+    }: {
+      slackChannel: string;
+      slackMessageTs: string;
+      slackThreadTs?: string;
+      slackTeamId: string;
+      slackUserId: string;
+    }
+  ) {
     this.channelId = slackChannel;
+    this.slackMessageTs = slackMessageTs;
     this.threadTs = slackThreadTs;
     this.streamer = this.slackClient.chatStream({
       channel: slackChannel,
@@ -50,12 +56,9 @@ export class SlackStreamHandler {
   }
 
   async setThinking(status: string) {
-    if (!this.channelId || !this.threadTs) {
-      return;
-    }
     await this.slackClient.assistant.threads.setStatus({
       channel_id: this.channelId,
-      thread_ts: this.threadTs,
+      thread_ts: this.threadTs ?? this.slackMessageTs,
       status,
       loading_messages: ["Thinking..."],
     });
@@ -68,9 +71,12 @@ export class SlackStreamHandler {
       RATE_LIMITS["chat.appendStream"],
       `${this.connectorId}-chat-appendStream`,
       { canBeIgnored: false },
-      () => this.streamer?.append(payload) ?? Promise.resolve(undefined),
+      () => this.streamer.append(payload),
       {}
     );
+    if (!this.streaming) {
+      this.streaming = true;
+    }
     if (!this.messageTs && res?.ts) {
       this.messageTs = res.ts;
     }
@@ -110,6 +116,9 @@ export class SlackStreamHandler {
   async stop() {
     this.hasTask = false;
     this.stopped = true;
-    await this.streamer?.stop();
+    const res = await this.streamer.stop();
+    if (!this.messageTs && res?.ts) {
+      this.messageTs = res.ts;
+    }
   }
 }
