@@ -25,7 +25,7 @@ import {
 
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
-import { isGlobalAgentId } from "./assistant";
+import { GLOBAL_AGENTS_SID, isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
 function isReinforcedAgentNotificationMetadata(
@@ -54,6 +54,44 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
 
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
+
+// Global agents with configs built from static instructions and workspace-level data
+// can use a longer, workspace-scoped cache shared across messages.
+const GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Returns true for global agents whose configuration is mostly static and can
+ * benefit from a longer, workspace-scoped cache.
+ */
+function isGlobalAgentWithLongCaching(agentId: string): boolean {
+  switch (agentId) {
+    case GLOBAL_AGENTS_SID.SIDEKICK:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Builds a workspace-scoped cache key for global agents with long caching.
+ * The key includes only the context fields that actually affect the config,
+ * maximizing cache sharing across messages.
+ */
+function getCacheKeyForGlobalAgent(
+  workspaceId: string,
+  userId: string,
+  agentId: string,
+  globalAgentContext: GlobalAgentContext
+): string {
+  switch (agentId) {
+    case GLOBAL_AGENTS_SID.SIDEKICK:
+      // SIDEKICK config varies only by model selection: first turn (rank 0)
+      // picks a lighter model, and new-agent-from-scratch first turns use noop.
+      return `workspace:${workspaceId}-user:${userId}-agent:${agentId}-firstTurn:${globalAgentContext.userMessageRank === 0}-newFromScratch:${globalAgentContext.sidekickIsNewAgentFromScratch ?? false}`;
+    default:
+      throw new Error(`No cache key strategy for global agent: ${agentId}`);
+  }
+}
 
 export type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
@@ -328,15 +366,29 @@ export async function getAgentLoopDataWithAuth(
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.
   // The key will be different for a new message or a new version of the same message (retries).
+  //
+  // Global agents with long caching use a workspace-scoped key with a longer TTL,
+  // allowing cache sharing across messages within the same workspace.
+  const useLongCaching = isGlobalAgentWithLongCaching(agentId);
+
   const agentConfiguration = await cacheWithRedis<
     AgentConfigurationType | null,
     Parameters<typeof getAgentConfiguration<"full">>
   >(
     getAgentConfiguration,
     () =>
-      `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
+      useLongCaching
+        ? getCacheKeyForGlobalAgent(
+            auth.getNonNullableWorkspace().sId,
+            auth.getNonNullableUser().sId,
+            agentId,
+            globalAgentContext
+          )
+        : `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
     {
-      ttlMs: AGENT_CONFIGURATION_CACHE_TTL_MS,
+      ttlMs: useLongCaching
+        ? GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS
+        : AGENT_CONFIGURATION_CACHE_TTL_MS,
     }
   )(auth, {
     agentId,
