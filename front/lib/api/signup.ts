@@ -332,6 +332,12 @@ export async function handleRegularSignupFlow(
       origin: "auto-joined",
     });
 
+    void ServerSideTracking.trackWorkspaceCreated({
+      user: user.toJSON(),
+      workspace: lightWorkspace,
+      utmParams,
+    });
+
     return new Ok({ flow: "joined", workspace: lightWorkspace });
   } else {
     // Redirect the user to their existing workspace if they are not allowed to join the target
