@@ -1,4 +1,8 @@
 import {
+  issueClosedExample,
+  issueClosedSchema,
+} from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_closed";
+import {
   issueCreatedExample,
   issueCreatedSchema,
 } from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_created";
@@ -34,6 +38,15 @@ const JIRA_ISSUE_UPDATED_EVENT: WebhookEvent = {
   sample: issueUpdatedExample,
 };
 
+const JIRA_ISSUE_CLOSED_EVENT: WebhookEvent = {
+  name: "issue_closed",
+  value: "jira:issue_closed",
+  description:
+    "Triggered when an issue is closed in Jira. The event includes details about the issue, the user who closed it, and the status change.",
+  schema: issueClosedSchema,
+  sample: issueClosedExample,
+};
+
 const JIRA_ISSUE_DELETED_EVENT: WebhookEvent = {
   name: "issue_deleted",
   value: "jira:issue_deleted",
@@ -50,6 +63,7 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
     field: "webhookEvent",
   },
   events: [
+    JIRA_ISSUE_CLOSED_EVENT,
     JIRA_ISSUE_CREATED_EVENT,
     JIRA_ISSUE_UPDATED_EVENT,
     JIRA_ISSUE_DELETED_EVENT,
