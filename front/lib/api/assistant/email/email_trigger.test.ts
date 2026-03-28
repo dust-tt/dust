@@ -81,6 +81,8 @@ describe("parseEmailReplyContext", () => {
       workspaceId: "workspace-1",
       conversationId: "conversation-1",
     });
+    expect(parsed).not.toHaveProperty("replyTo");
+    expect(parsed).not.toHaveProperty("replyCc");
   });
 });
 

@@ -147,8 +147,18 @@ export function parseEmailReplyContext(
     return null;
   }
 
-  // Legacy contexts may still contain replyTo/replyCc during the Redis TTL window.
-  return parsed;
+  return {
+    subject: parsed.subject,
+    originalText: parsed.originalText,
+    fromEmail: parsed.fromEmail,
+    fromFull: parsed.fromFull,
+    threadingMessageId: parsed.threadingMessageId,
+    threadingInReplyTo: parsed.threadingInReplyTo,
+    threadingReferences: parsed.threadingReferences,
+    agentConfigurationId: parsed.agentConfigurationId,
+    workspaceId: parsed.workspaceId,
+    conversationId: parsed.conversationId,
+  };
 }
 
 /**
