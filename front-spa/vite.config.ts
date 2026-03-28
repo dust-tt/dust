@@ -364,6 +364,124 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       rollupOptions: {
         input: appDefinition.inputs,
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) {
+              return undefined;
+            }
+
+            // Framework: @dust-tt/sparkle follows app code splitting
+            if (id.includes("@dust-tt/sparkle")) {
+              return undefined;
+            }
+
+            // React core
+            if (
+              /\/(react-dom|react-router|scheduler|use-sync-external-store)\//.test(
+                id
+              ) ||
+              /\/node_modules\/react\//.test(id)
+            ) {
+              return "vendor-react";
+            }
+
+            // Mermaid ecosystem (very large ~2-3MB, includes parser deps)
+            if (
+              /\/(mermaid|@mermaid-js|chevrotain|@chevrotain|cytoscape|dagre|roughjs|elkjs|layout-base|cose-base|langium|pegjs|vscode-jsonrpc|vscode-languageserver)/.test(
+                id
+              )
+            ) {
+              return "vendor-mermaid";
+            }
+
+            // Markdown/syntax highlighting pipeline
+            if (
+              /\/(remark-|rehype-|unified|vfile|react-markdown|react-syntax-highlighter|refractor|highlight\.js|micromark|mdast|hast-|marked|remove-markdown)/.test(
+                id
+              )
+            ) {
+              return "vendor-markdown";
+            }
+
+            // Rich text editor
+            if (
+              /\/(@tiptap|prosemirror-|@uiw\/react-textarea-code-editor)/.test(
+                id
+              )
+            ) {
+              return "vendor-editor";
+            }
+
+            // Emoji
+            if (/\/(emoji-mart|@emoji-mart)/.test(id)) {
+              return "vendor-emoji";
+            }
+
+            // Charts
+            if (/\/(recharts|d3-|victory-vendor)/.test(id)) {
+              return "vendor-charts";
+            }
+
+            // UI components & animation
+            if (
+              /\/(@radix-ui|@headlessui|@floating-ui|framer-motion|motion-dom|@heroicons|class-variance-authority|tailwind-merge|sonner|lottie-web)/.test(
+                id
+              )
+            ) {
+              return "vendor-ui";
+            }
+
+            // Forms & validation
+            if (
+              /\/(react-hook-form|@hookform|zod|zod-to-json-schema)/.test(id)
+            ) {
+              return "vendor-forms";
+            }
+
+            // State management & data fetching
+            if (
+              /\/(@reduxjs|redux|redux-thunk|reselect|swr|react-redux)/.test(id)
+            ) {
+              return "vendor-state";
+            }
+
+            // Real-time & notifications
+            if (/\/(socket\.io|@socket\.io|@novu|engine\.io)/.test(id)) {
+              return "vendor-comms";
+            }
+
+            // Monitoring & analytics
+            if (/\/(@datadog|posthog-js)/.test(id)) {
+              return "vendor-monitoring";
+            }
+
+            // Math rendering
+            if (/\/katex/.test(id)) {
+              return "vendor-katex";
+            }
+
+            // Phone number & internationalization
+            if (
+              /\/(libphonenumber-js|react-phone-number-input|country-flag-icons|input-format)/.test(
+                id
+              )
+            ) {
+              return "vendor-phone";
+            }
+
+            // Utility libraries
+            if (
+              /\/(lodash|lodash-es|fp-ts|io-ts|es-toolkit|date-fns|moment|immer)\//.test(
+                id
+              )
+            ) {
+              return "vendor-utils";
+            }
+
+            // Catch-all for remaining node_modules
+            return "vendor";
+          },
+        },
       },
     },
   };
