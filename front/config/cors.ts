@@ -7,6 +7,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Chrome extension.
   "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+  // Firefox extension.
+  "moz-extension://8513c13e-1050-4fe6-a548-34448bfa51af",
   // Documentation website.
   "https://docs.dust.tt",
   // Microsoft Power Automate.
