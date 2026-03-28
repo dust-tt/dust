@@ -76,15 +76,19 @@ function SidekickContent({
   isAdmin,
   clientSideMCPServerIds,
 }: SidekickContentProps) {
+  const { subscription } = useAuth();
   const agentBuilderContext = useMemo(
     () => ({
       isSubmitting: false,
       resetConversation,
-      actionsToShow: ["attachment", "voice"] satisfies InputBarAction[],
+      actionsToShow: [
+        "attachment",
+        ...(subscription.plan.isByok ? [] : ["voice" as const]),
+      ] satisfies InputBarAction[],
       clientSideMCPServerIds,
       skipToolsValidation: true,
     }),
-    [resetConversation, clientSideMCPServerIds]
+    [resetConversation, clientSideMCPServerIds, subscription.plan.isByok]
   );
 
   const additionalMarkdownComponents: Components = useMemo(
