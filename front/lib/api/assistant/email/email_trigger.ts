@@ -30,7 +30,7 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString, isStringArray } from "@app/types/shared/utils/general";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import fs from "fs";
 import sanitizeHtml from "sanitize-html";
@@ -53,8 +53,6 @@ export type EmailReplyContext = {
   originalText: string;
   fromEmail: string;
   fromFull: string;
-  replyTo: string[];
-  replyCc: string[];
   threadingMessageId: string | null;
   threadingInReplyTo: string | null;
   threadingReferences: string | null;
@@ -80,10 +78,6 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
     isString(value.fromEmail) &&
     "fromFull" in value &&
     isString(value.fromFull) &&
-    "replyTo" in value &&
-    isStringArray(value.replyTo) &&
-    "replyCc" in value &&
-    isStringArray(value.replyCc) &&
     "threadingMessageId" in value &&
     isNullableString(value.threadingMessageId) &&
     "threadingInReplyTo" in value &&
@@ -129,7 +123,7 @@ export async function storeEmailReplyContext(
 /**
  * Parse and validate a raw Redis value into an EmailReplyContext.
  */
-function parseEmailReplyContext(
+export function parseEmailReplyContext(
   value: string,
   agentMessageId: string,
   key: string
@@ -153,7 +147,18 @@ function parseEmailReplyContext(
     return null;
   }
 
-  return parsed;
+  return {
+    subject: parsed.subject,
+    originalText: parsed.originalText,
+    fromEmail: parsed.fromEmail,
+    fromFull: parsed.fromFull,
+    threadingMessageId: parsed.threadingMessageId,
+    threadingInReplyTo: parsed.threadingInReplyTo,
+    threadingReferences: parsed.threadingReferences,
+    agentConfigurationId: parsed.agentConfigurationId,
+    workspaceId: parsed.workspaceId,
+    conversationId: parsed.conversationId,
+  };
 }
 
 /**
@@ -261,11 +266,6 @@ function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
 }
 
-// Cap on total reply recipients (to + cc combined). To/Cc are sourced from raw email headers,
-// which a sender can freely forge to list arbitrary addresses. The cap prevents using the agent
-// as a bulk relay while leaving no impact on legitimate threads (nobody CCs 15+ people normally).
-export const MAX_REPLY_RECIPIENTS = 15;
-
 function formatEmailRecipients(recipients: string[]): string {
   return recipients.length > 0 ? recipients.join(", ") : "(none)";
 }
@@ -359,53 +359,14 @@ function buildSendgridThreadingHeaders(
   };
 }
 
-export function buildSuccessReplyRecipients(email: InboundEmail): {
-  to: string[];
-  cc: string[];
-} {
-  const to = deduplicateEmailAddresses(
-    [email.sender.email, ...email.envelope.to].filter(
-      (recipient) => !isAssistantRecipient(recipient)
-    )
-  );
-
-  const toSet = new Set(to.map(normalizeEmailAddress));
-  const cc = deduplicateEmailAddresses(
-    email.envelope.cc.filter((recipient) => {
-      const normalizedRecipient = normalizeEmailAddress(recipient);
-      return (
-        !isAssistantRecipient(recipient) && !toSet.has(normalizedRecipient)
-      );
-    })
-  );
-
-  // Enforce recipient cap: the authenticated sender is always kept, extras are dropped from cc
-  // first.
-  const total = to.length + cc.length;
-  if (total <= MAX_REPLY_RECIPIENTS) {
-    return { to, cc };
-  }
-  const cappedCc = cc.slice(0, Math.max(0, MAX_REPLY_RECIPIENTS - to.length));
-  logger.warn(
-    { totalRecipients: total, cappedTo: to.length, cappedCc: cappedCc.length },
-    "[email] Reply recipient list truncated to MAX_REPLY_RECIPIENTS."
-  );
-  return { to, cc: cappedCc };
-}
-
 export function buildEmailUserMessage({
   email,
   userMessage,
-  replyRecipients,
   hasThreadHistory,
   attachmentCount,
 }: {
   email: InboundEmail;
   userMessage: string;
-  replyRecipients: {
-    to: string[];
-    cc: string[];
-  };
   hasThreadHistory: boolean;
   attachmentCount: number;
 }): string {
@@ -448,19 +409,10 @@ export function buildEmailUserMessage({
     escapeTagContent(userMessage),
     "  </email_body>",
     ...additionalContext.map((line) => `  ${line}`),
-    `  <email_response_to>${escapeTagContent(
-      formatEmailRecipients(replyRecipients.to)
-    )}</email_response_to>`,
-    ...(replyRecipients.cc.length > 0
-      ? [
-          `  <email_response_cc>${escapeTagContent(
-            formatEmailRecipients(replyRecipients.cc)
-          )}</email_response_cc>`,
-        ]
-      : []),
+    `  <email_response_to>${escapeTagContent(email.sender.email)}</email_response_to>`,
     "</email_message>",
     "",
-    "You are in the recipients. Answer appropriately. Your full response will be emailed automatically as-is to the recipients listed above (and me).",
+    "You are in the recipients. Answer appropriately. Your full response will be emailed automatically as-is only to me, the sender above.",
   ].join("\n");
 }
 export async function userAndWorkspaceFromEmail({
@@ -829,7 +781,6 @@ export async function triggerFromEmail({
     }
   }
 
-  const successReplyRecipients = buildSuccessReplyRecipients(email);
   const content =
     agentConfigurations
       .map((agent) => {
@@ -840,7 +791,6 @@ export async function triggerFromEmail({
     buildEmailUserMessage({
       email,
       userMessage,
-      replyRecipients: successReplyRecipients,
       hasThreadHistory: restOfThread.length > 0,
       attachmentCount: attachedContentCount,
     });
@@ -890,8 +840,6 @@ export async function triggerFromEmail({
         originalText: email.text,
         fromEmail: email.sender.email,
         fromFull: email.sender.full,
-        replyTo: successReplyRecipients.to,
-        replyCc: successReplyRecipients.cc,
         threadingMessageId: email.threadingHeaders.messageId,
         threadingInReplyTo: email.threadingHeaders.inReplyTo,
         threadingReferences: email.threadingHeaders.references,
@@ -1045,15 +993,12 @@ export async function replyToEmail({
   email,
   agentConfiguration,
   htmlContent,
-  recipients,
+  recipient,
 }: {
   email: InboundEmail;
   agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
-  recipients: {
-    to: string[];
-    cc: string[];
-  };
+  recipient: string;
 }) {
   const name = agentConfiguration
     ? `Dust Agent (${agentConfiguration.name})`
@@ -1100,8 +1045,8 @@ export async function replyToEmail({
   };
 
   await sendEmailToRecipients({
-    to: recipients.to,
-    cc: recipients.cc,
+    to: [recipient],
+    cc: [],
     message: msg,
   });
 }

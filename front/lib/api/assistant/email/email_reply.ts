@@ -265,18 +265,14 @@ export async function sendEmailReplyOnCompletion(
       email,
       agentConfiguration: agentConfiguration ?? undefined,
       htmlContent: fullHtmlContent,
-      recipients: {
-        to: context.replyTo,
-        cc: context.replyCc,
-      },
+      recipient: context.fromEmail,
     });
 
     logger.info(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         conversationId: conversation.sId,
-        to: context.replyTo,
-        cc: context.replyCc,
+        to: context.fromEmail,
       },
       "[email] Sent email reply on agent completion"
     );
@@ -334,10 +330,7 @@ export async function sendEmailReplyOnError(
     await replyToEmail({
       email,
       htmlContent,
-      recipients: {
-        to: [context.fromEmail],
-        cc: [],
-      },
+      recipient: context.fromEmail,
     });
 
     logger.info(

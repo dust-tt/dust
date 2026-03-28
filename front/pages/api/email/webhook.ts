@@ -177,10 +177,7 @@ const replyToError = async (
   await replyToEmail({
     email,
     htmlContent,
-    recipients: {
-      to: [email.sender.email],
-      cc: [],
-    },
+    recipient: email.sender.email,
   });
 };
 
