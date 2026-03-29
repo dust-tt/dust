@@ -124,6 +124,7 @@ export const frontSequelize = new SequelizeWithComments(
     },
     dialectOptions: {
       appName: "front master",
+      statement_timeout: 60_000, // 1 minute query timeout.
     },
   }
 );
