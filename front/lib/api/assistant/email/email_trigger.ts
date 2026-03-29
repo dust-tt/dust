@@ -13,7 +13,7 @@ import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -463,22 +463,11 @@ export async function userAndWorkspaceFromEmail({
     });
   }
 
-  // Filter to workspaces with the email_agents feature flag enabled.
-  const eligibleWorkspaceModels: typeof workspaceModels = [];
-  for (const w of workspaceModels) {
-    const lightWorkspace = renderLightWorkspaceType({ workspace: w });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      lightWorkspace.sId
-    );
-    const flags = await getFeatureFlags(auth);
-    if (
-      flags.includes("email_agents") &&
-      lightWorkspace.metadata?.allowEmailAgents === true
-    ) {
-      eligibleWorkspaceModels.push(w);
-    }
-  }
+  const eligibleWorkspaceModels = workspaceModels.filter(
+    (workspaceModel) =>
+      renderLightWorkspaceType({ workspace: workspaceModel }).metadata
+        ?.allowEmailAgents === true
+  );
 
   if (eligibleWorkspaceModels.length === 0) {
     return new Err({
