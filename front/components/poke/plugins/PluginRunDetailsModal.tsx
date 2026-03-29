@@ -119,6 +119,16 @@ export function PluginRunDetailsModal({
               </div>
             </div>
 
+            {/* Reason */}
+            {run.reason && (
+              <div>
+                <h3 className="mb-3 text-lg font-semibold">Reason</h3>
+                <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+                  <p className="text-sm">{run.reason}</p>
+                </div>
+              </div>
+            )}
+
             {/* Input Arguments */}
             <div>
               <h3 className="mb-3 text-lg font-semibold">Input Arguments</h3>
