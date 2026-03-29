@@ -14,6 +14,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
+import { UniqueConstraintError } from "sequelize";
 import type Stripe from "stripe";
 
 const BRACKET_1_USERS = 10;
@@ -254,13 +255,29 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
   const periodStart = new Date(stripeSubscription.current_period_start * 1000);
   const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
-  const credit = await CreditResource.makeNew(auth, {
-    type: "free",
-    initialAmountMicroUsd: creditAmountMicroUsd,
-    consumedAmountMicroUsd: 0,
-    discount: null,
-    invoiceOrLineItemId: idempotencyKey,
-  });
+  let credit: CreditResource;
+  try {
+    credit = await CreditResource.makeNew(auth, {
+      type: "free",
+      initialAmountMicroUsd: creditAmountMicroUsd,
+      consumedAmountMicroUsd: 0,
+      discount: null,
+      invoiceOrLineItemId: idempotencyKey,
+    });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      logger.info(
+        {
+          workspaceId: workspaceSId,
+          subscriptionId: stripeSubscription.id,
+          idempotencyKey,
+        },
+        "[Free Credits] Credit already exists for this billing cycle, skipping"
+      );
+      return new Ok(undefined);
+    }
+    throw error;
+  }
 
   logger.info(
     {
@@ -413,13 +430,29 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
   const periodStart = new Date(stripeSubscription.current_period_start * 1000);
   const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
-  const credit = await CreditResource.makeNew(auth, {
-    type: "free",
-    initialAmountMicroUsd: creditAmountMicroUsd,
-    consumedAmountMicroUsd: 0,
-    discount: null,
-    invoiceOrLineItemId: idempotencyKey,
-  });
+  let credit: CreditResource;
+  try {
+    credit = await CreditResource.makeNew(auth, {
+      type: "free",
+      initialAmountMicroUsd: creditAmountMicroUsd,
+      consumedAmountMicroUsd: 0,
+      discount: null,
+      invoiceOrLineItemId: idempotencyKey,
+    });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      logger.info(
+        {
+          workspaceId: workspaceSId,
+          subscriptionId: stripeSubscription.id,
+          idempotencyKey,
+        },
+        "[Free Credits Yearly] Credit already exists for this billing cycle, skipping"
+      );
+      return new Ok(undefined);
+    }
+    throw error;
+  }
 
   logger.info(
     {
