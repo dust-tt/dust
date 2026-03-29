@@ -114,6 +114,23 @@ void emitAuditLogEvent({
 - [ ] Metadata values are all strings (use `String()` for numbers/booleans)
 - [ ] Targets start with the workspace target
 
+### 5. Register schemas with WorkOS (post-merge)
+
+After your PR is merged and before deploying, register the new schema(s) with WorkOS:
+
+```bash
+# Preview what will be registered
+npx tsx front/admin/register_audit_log_schemas.ts --changed
+
+# Register only schemas changed since main
+npx tsx front/admin/register_audit_log_schemas.ts --execute --changed
+
+# Or register specific actions by name
+npx tsx front/admin/register_audit_log_schemas.ts --execute user.login api_key.created
+```
+
+WorkOS silently rejects events without a registered schema. This step is required before the events will appear in customer audit logs.
+
 ## Reference
 
 - Audit module: `front/lib/api/audit/workos_audit.ts`
