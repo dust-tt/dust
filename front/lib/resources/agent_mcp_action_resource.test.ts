@@ -441,8 +441,8 @@ describe("Output items with GCS storage", () => {
 
     const outputItemsByActionId =
       await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-        actionIds: [action!.id],
-        ignoreContent: false,
+        actionIdsWithoutContent: [],
+        actionIdsWithContent: [action!.id],
       });
 
     const items = outputItemsByActionId.get(action.id);
@@ -495,8 +495,8 @@ describe("Output items with GCS storage", () => {
 
     const outputItemsByActionId =
       await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-        actionIds: [action1.id, action2.id],
-        ignoreContent: false,
+        actionIdsWithoutContent: [],
+        actionIdsWithContent: [action1.id, action2.id],
       });
 
     expect(outputItemsByActionId.get(action1.id)).toHaveLength(1);
@@ -512,7 +512,10 @@ describe("Output items with GCS storage", () => {
     // action2's items should still be fetchable.
     const remaining = await AgentMCPActionResource.fetchOutputItemsByActionIds(
       auth,
-      { actionIds: [action2.id], ignoreContent: false }
+      {
+        actionIdsWithoutContent: [],
+        actionIdsWithContent: [action2.id],
+      }
     );
     const items = remaining.get(action2.id);
     expect(items).toHaveLength(1);
@@ -522,23 +525,23 @@ describe("Output items with GCS storage", () => {
     });
   });
 
-  it("fetchOutputItemsByActionIds returns an empty map for empty actionIds", async () => {
+  it("fetchOutputItemsByActionIds returns an empty map when both id lists are empty", async () => {
     const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: [],
-      ignoreContent: false,
+      actionIdsWithoutContent: [],
+      actionIdsWithContent: [],
     });
 
     expect(map.size).toBe(0);
   });
 
-  it("fetchOutputItemsByActionIds with ignoreContent true does not load content or GCS path", async () => {
+  it("fetchOutputItemsByActionIds with actionIdsWithoutContent does not load content or GCS path", async () => {
     const { action, outputItems } = await createActionWithOutputItems([
       { type: "text", text: "not loaded" },
     ]);
 
     const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: [action.id],
-      ignoreContent: true,
+      actionIdsWithoutContent: [action.id],
+      actionIdsWithContent: [],
     });
 
     const items = map.get(action.id);
@@ -546,6 +549,40 @@ describe("Output items with GCS storage", () => {
     expect(items![0].id).toBe(outputItems[0].id);
     expect(items![0].content).toBeUndefined();
     expect(items![0].contentGcsPath).toBeUndefined();
+  });
+
+  it("fetchOutputItemsByActionIds mixes metadata-only and full-content actions in one call", async () => {
+    const { action: actionMetadataOnly } = await createActionWithOutputItems([
+      { type: "text", text: "should not appear on row" },
+    ]);
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const { action: actionWithContent } = await createActionWithOutputItems([
+      { type: "text", text: "loaded from GCS" },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIdsWithoutContent: [actionMetadataOnly.id],
+      actionIdsWithContent: [actionWithContent.id],
+    });
+
+    const metaItems = map.get(actionMetadataOnly.id);
+    expect(metaItems).toHaveLength(1);
+    expect(metaItems![0].content).toBeUndefined();
+    expect(metaItems![0].contentGcsPath).toBeUndefined();
+
+    const fullItems = map.get(actionWithContent.id);
+    expect(fullItems).toHaveLength(1);
+    expect(fullItems![0].content).toEqual({
+      type: "text",
+      text: "loaded from GCS",
+    });
+    expect(fullItems![0].contentGcsPath).toBeTruthy();
   });
 
   it("fetchOutputItemsByActionIds loads legacy rows (no GCS path) from DB content", async () => {
@@ -566,8 +603,8 @@ describe("Output items with GCS storage", () => {
     });
 
     const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: [action!.id],
-      ignoreContent: false,
+      actionIdsWithoutContent: [],
+      actionIdsWithContent: [action!.id],
     });
 
     const items = map.get(action!.id);
@@ -586,8 +623,8 @@ describe("Output items with GCS storage", () => {
     ]);
 
     const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: [action.id],
-      ignoreContent: false,
+      actionIdsWithoutContent: [],
+      actionIdsWithContent: [action.id],
     });
 
     const items = map.get(action.id)!;

@@ -13,8 +13,12 @@ export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
 };
 
-export type InteractionWithTokens = {
-  messages: MessageWithTokens[];
+export type MinimalMessageType = {
+  role: string;
+};
+
+export type InteractionWithTokens<T extends MinimalMessageType> = {
+  messages: T[];
   prunedContext?: boolean;
 };
 
@@ -22,9 +26,9 @@ export type InteractionWithTokens = {
  * Prunes all tool results in an interaction.
  * Returns a new interaction with all tool results replaced by placeholders.
  */
-export function pruneAllToolResults(
-  interaction: InteractionWithTokens
-): InteractionWithTokens {
+export function pruneAllToolResults<T extends MinimalMessageType>(
+  interaction: InteractionWithTokens<T>
+): InteractionWithTokens<T> {
   const prunedMessages = interaction.messages.map((msg) => {
     if (msg.role === "function") {
       return {
@@ -45,7 +49,7 @@ export function pruneAllToolResults(
  * Calculate total tokens for an interaction.
  */
 export function getInteractionTokenCount(
-  interaction: InteractionWithTokens
+  interaction: InteractionWithTokens<MessageWithTokens>
 ): number {
   return interaction.messages.reduce((sum, msg) => sum + msg.tokenCount, 0);
 }
@@ -55,9 +59,9 @@ export function getInteractionTokenCount(
  * Prunes from oldest to newest tool results until the interaction fits.
  */
 export function progressivelyPruneInteraction(
-  interaction: InteractionWithTokens,
+  interaction: InteractionWithTokens<MessageWithTokens>,
   maxTokens: number
-): InteractionWithTokens {
+): InteractionWithTokens<MessageWithTokens> {
   const currentTokens = getInteractionTokenCount(interaction);
   if (currentTokens <= maxTokens) {
     return interaction;
@@ -113,10 +117,10 @@ export function progressivelyPruneInteraction(
  * we'll fully prune the remaining interactions.
  */
 export function prunePreviousInteractions(
-  inputInteractions: InteractionWithTokens[],
+  inputInteractions: InteractionWithTokens<MessageWithTokens>[],
   maxTokens: number,
   interactionsToPreserve: number
-): InteractionWithTokens[] {
+): InteractionWithTokens<MessageWithTokens>[] {
   const interactions = [...inputInteractions];
 
   let shouldPrune = false;

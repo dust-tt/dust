@@ -445,8 +445,8 @@ async function extractRetrievalDocuments(
   // Using standalone resource allows independent querying for reporting purposes.
   const [outputItemsByActionId, serverConfigs] = await Promise.all([
     AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: searchActions.map((a) => a.id),
-      ignoreContent: false,
+      actionIdsWithoutContent: [],
+      actionIdsWithContent: searchActions.map((a) => a.id),
     }),
     AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds),
   ]);

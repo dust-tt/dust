@@ -304,7 +304,8 @@ async function batchRenderUserMessages(
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  outputItemContentOnlyForMessageIds: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -369,17 +370,35 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const agentMCPActions = await AgentMCPActionResource.fetchByStepContents(
+  const allAgentMCPActions = await AgentMCPActionResource.fetchByStepContents(
     auth,
     {
       stepContents,
       latestVersionsOnly: true,
     }
   );
+
+  let agentMCPActionsWithContent: AgentMCPActionResource[] = [];
+  let agentMCPActionsWithoutContent: AgentMCPActionResource[] = [];
+
+  for (const action of allAgentMCPActions) {
+    // Light messages always exclude content for all actions.
+    // Otherwise, for full messages, we only include content for the actions that are in the optional outputItemContentOnlyForMessageIds.
+    if (
+      viewType === "light" ||
+      (outputItemContentOnlyForMessageIds &&
+        !outputItemContentOnlyForMessageIds.has(action.agentMessageId))
+    ) {
+      agentMCPActionsWithoutContent.push(action);
+    } else {
+      agentMCPActionsWithContent.push(action);
+    }
+  }
+
   const actionsWithOutputs =
     await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-      actions: agentMCPActions,
-      ignoreContent: viewType === "light",
+      actionsWithoutContent: agentMCPActionsWithoutContent,
+      actionsWithContent: agentMCPActionsWithContent,
     });
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
@@ -643,7 +662,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversation: ConversationResource,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  outputItemContentOnlyForMessageIds: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full"
@@ -658,7 +678,12 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 > {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(auth, messages, viewType),
+    batchRenderAgentMessages(
+      auth,
+      messages,
+      viewType,
+      outputItemContentOnlyForMessageIds
+    ),
     batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
 

@@ -692,24 +692,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async fetchOutputItemsByActionIds(
     auth: Authenticator,
     {
-      actionIds,
-      ignoreContent,
-    }: { actionIds: ModelId[]; ignoreContent: boolean }
+      actionIdsWithoutContent,
+      actionIdsWithContent,
+    }: { actionIdsWithoutContent: ModelId[]; actionIdsWithContent: ModelId[] }
   ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     let outputItems: AgentMCPActionOutputItemModel[] = [];
-    if (ignoreContent) {
+    if (actionIdsWithoutContent.length > 0) {
       outputItems = await AgentMCPActionOutputItemModel.findAll({
         attributes: { exclude: ["content", "contentGcsPath"] },
         where: {
           workspaceId,
-          agentMCPActionId: { [Op.in]: actionIds },
+          agentMCPActionId: { [Op.in]: actionIdsWithoutContent },
         },
       });
-    } else {
+    }
+
+    if (actionIdsWithContent.length > 0) {
       // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
-      const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+      const batches = _.chunk(actionIdsWithContent, OUTPUT_ITEMS_BATCH_SIZE);
       const batchResults = await concurrentExecutor(
         batches,
         async (batchActionIds) => {
@@ -806,7 +808,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
       );
 
-      outputItems = batchResults.flat();
+      outputItems.push(...batchResults.flat());
     }
 
     const outputItemsByActionId = new Map<
@@ -867,15 +869,21 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     {
-      actions,
-      ignoreContent,
-    }: { actions: AgentMCPActionResource[]; ignoreContent: boolean }
+      actionsWithoutContent,
+      actionsWithContent,
+    }: {
+      actionsWithoutContent: AgentMCPActionResource[];
+      actionsWithContent: AgentMCPActionResource[];
+    }
   ): Promise<AgentMCPActionWithOutputType[]> {
     return tracer.trace(
       "agent_mcp_action.enrich_with_output_items",
       { resource: "agent_mcp_action" },
       async (span) => {
-        span?.setTag("action_count", actions.length);
+        span?.setTag(
+          "action_count",
+          actionsWithoutContent.length + actionsWithContent.length
+        );
 
         const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -883,8 +891,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           Array.from(
             (
               await this.fetchOutputItemsByActionIds(auth, {
-                actionIds: actions.map((a) => a.id),
-                ignoreContent,
+                actionIdsWithoutContent: actionsWithoutContent.map((a) => a.id),
+                actionIdsWithContent: actionsWithContent.map((a) => a.id),
               })
             ).values()
           ).flat(),
@@ -919,46 +927,49 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           }
         }
 
-        return actions.map((action) => {
-          const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
-          return {
-            ...action.toJSON(),
-            output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-            citations: outputItems.some(
-              (o) => o.citations !== null && o.citations !== undefined
-            )
-              ? outputItems.reduce(
-                  (acc, o) => ({
-                    ...acc,
-                    ...(o.citations ?? {}),
-                  }),
-                  {}
-                )
-              : null,
-            generatedFiles: removeNulls(
-              outputItems.map((o) => {
-                const file = o.file;
+        return [...actionsWithoutContent, ...actionsWithContent].map(
+          (action) => {
+            const outputItems =
+              outputItemsByActionId[action.id.toString()] ?? [];
+            return {
+              ...action.toJSON(),
+              output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+              citations: outputItems.some(
+                (o) => o.citations !== null && o.citations !== undefined
+              )
+                ? outputItems.reduce(
+                    (acc, o) => ({
+                      ...acc,
+                      ...(o.citations ?? {}),
+                    }),
+                    {}
+                  )
+                : null,
+              generatedFiles: removeNulls(
+                outputItems.map((o) => {
+                  const file = o.file;
 
-                if (!file || file.useCaseMetadata?.hideFromGeneratedFiles) {
-                  return null;
-                }
+                  if (!file || file.useCaseMetadata?.hideFromGeneratedFiles) {
+                    return null;
+                  }
 
-                return {
-                  fileId: FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: file.workspaceId,
-                  }),
-                  contentType: file.contentType,
-                  title: file.fileName,
-                  snippet: file.snippet,
-                  createdAt: file.createdAt.getTime(),
-                  updatedAt: file.updatedAt.getTime(),
-                  isInProjectContext: file.useCase === "project_context",
-                };
-              })
-            ),
-          };
-        });
+                  return {
+                    fileId: FileResource.modelIdToSId({
+                      id: file.id,
+                      workspaceId: file.workspaceId,
+                    }),
+                    contentType: file.contentType,
+                    title: file.fileName,
+                    snippet: file.snippet,
+                    createdAt: file.createdAt.getTime(),
+                    updatedAt: file.updatedAt.getTime(),
+                    isInProjectContext: file.useCase === "project_context",
+                  };
+                })
+              ),
+            };
+          }
+        );
       }
     );
   }
