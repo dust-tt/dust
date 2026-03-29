@@ -1,3 +1,8 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
@@ -500,6 +505,21 @@ export function withPublicAPIAuthentication<T>(
         });
       }
       setClientIpOnAuth(workspaceAuth, req);
+
+      void emitAuditLogEvent({
+        auth: workspaceAuth,
+        action: "api_key.used",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "api_key", id: String(keyRes.value.id), name: keyRes.value.name },
+        ],
+        context: getAuditLogContext(workspaceAuth, req),
+        metadata: {
+          endpoint: req.url ?? "unknown",
+          method: req.method ?? "unknown",
+        },
+      });
+
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming

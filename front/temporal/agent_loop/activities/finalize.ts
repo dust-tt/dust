@@ -2,6 +2,7 @@ import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
 } from "@app/lib/api/assistant/email/email_reply";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import {
   Authenticator,
   type AuthenticatorType,
@@ -102,6 +103,21 @@ export async function finalizeSuccessfulAgentLoopActivity(
     );
     shouldSignalButler = conversation?.spaceId !== null;
   }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.executed",
+    targets: [
+      {
+        type: "agent",
+        id: agentLoopArgs.agentMessageId,
+      },
+    ],
+    metadata: {
+      conversationId: agentLoopArgs.conversationId,
+      agentName: agentLoopArgs.agentMessageId,
+    },
+  });
 
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),

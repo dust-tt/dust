@@ -1,3 +1,4 @@
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -27,8 +28,6 @@ import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 
-// TODO(audit): Very high-volume event tool.executed — needs sampling/batching strategy.
-// Would emit here with tool name, type, and conversation ID.
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
@@ -319,6 +318,20 @@ async function executeToolStreaming(
           },
           { asType: "tool" }
         );
+
+        void emitAuditLogEvent({
+          auth,
+          action: "tool.executed",
+          targets: [
+            { type: "agent", id: agentConfiguration.sId, name: agentConfiguration.name },
+            { type: "tool", id: action.toolConfiguration.name, name: action.toolConfiguration.name },
+          ],
+          metadata: {
+            toolName: action.toolConfiguration.name,
+            toolType: action.toolConfiguration.mcpServerName,
+            conversationId: conversation.sId,
+          },
+        });
 
         await updateResourceAndPublishEvent(auth, {
           event: {
