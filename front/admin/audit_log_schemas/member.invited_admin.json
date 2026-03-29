@@ -1,0 +1,8 @@
+{
+  "action": "member.invited_admin",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "invitedEmails": { "type": "string" },
+    "count": { "type": "string" }
+  }
+}

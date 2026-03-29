@@ -1,0 +1,8 @@
+{
+  "action": "member.revoked_admin",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "revokedEmails": { "type": "string" },
+    "count": { "type": "string" }
+  }
+}

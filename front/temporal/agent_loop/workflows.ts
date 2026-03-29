@@ -120,6 +120,8 @@ export async function agentLoopConversationTitleWorkflow({
   await ensureConversationTitleActivity(authType, agentLoopArgs);
 }
 
+// TODO(audit): High-volume event agent.executed — needs sampling strategy before enabling.
+// Would emit here with agent config ID, conversation ID, and agent name.
 export async function agentLoopWorkflow({
   authType,
   initialStartTime,

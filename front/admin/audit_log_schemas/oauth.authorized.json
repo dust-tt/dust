@@ -1,0 +1,8 @@
+{
+  "action": "oauth.authorized",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "provider": { "type": "string" },
+    "connectionId": { "type": "string" }
+  }
+}

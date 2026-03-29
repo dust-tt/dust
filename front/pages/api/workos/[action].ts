@@ -586,6 +586,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     redirectTo(res, appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
+    // TODO(audit): user.login_failed needs workspace context to emit — currently not available on login failure path
     getStatsDClient().increment("login.callback.error", 1);
     redirectTo(res, `/login-error?type=workos-callback`);
   }

@@ -1,0 +1,8 @@
+{
+  "action": "agent.executed",
+  "targets": [{ "type": "workspace" }, { "type": "agent" }],
+  "metadata": {
+    "conversationId": { "type": "string" },
+    "agentName": { "type": "string" }
+  }
+}

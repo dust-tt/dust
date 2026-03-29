@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getDustAppSecret } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
@@ -51,6 +56,21 @@ async function handler(
         });
       }
       await secret.destroy();
+
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        auth,
+        action: "dust_app_secret.deleted",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "dust_app_secret", id: String(req.query.name), name: String(req.query.name) },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          secretName: String(req.query.name),
+        },
+      });
+
       res.status(204).end();
       return;
     default:

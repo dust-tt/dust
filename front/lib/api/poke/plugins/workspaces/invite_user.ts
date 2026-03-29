@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
@@ -91,6 +95,18 @@ export const inviteUser = createPlugin({
 
     const successes = invitationRes.value.filter((r) => r.success);
     const failures = invitationRes.value.filter((r) => !r.success);
+
+    if (successes.length > 0) {
+      void emitAuditLogEvent({
+        auth,
+        action: "member.invited_admin",
+        targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+        metadata: {
+          invitedEmails: successes.map((r) => r.email).join(","),
+          count: String(successes.length),
+        },
+      });
+    }
 
     const results: string[] = [];
 

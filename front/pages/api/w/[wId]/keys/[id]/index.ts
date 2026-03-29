@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { invalidateKeyCapCache } from "@app/lib/api/programmatic_usage/key_cap";
 import type { Authenticator } from "@app/lib/auth";
@@ -87,12 +92,28 @@ async function handler(
         });
       }
 
+      const previousCapMicroUsd = key.monthlyCapMicroUsd;
+
       await key.updateMonthlyCap({
         monthlyCapMicroUsd: monthly_cap_micro_usd,
       });
       await invalidateKeyCapCache({
         workspace: owner,
         keyId: key.id,
+      });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "api_key.updated",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "api_key", id: String(key.id), name: key.name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          previousSpendingCap: String(previousCapMicroUsd ?? "none"),
+          newSpendingCap: String(monthly_cap_micro_usd ?? "none"),
+        },
       });
 
       res.status(200).json({

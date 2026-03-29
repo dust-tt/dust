@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
@@ -380,6 +384,15 @@ async function handleOrganizationDomainVerified(
   eventData: OrganizationDomain
 ) {
   await handleOrganizationDomainEvent(workspace, eventData, "verified");
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "domain.verified",
+    actor: { type: "system", id: "workos", name: "WorkOS" },
+    targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
+    context: { location: "system" },
+    metadata: { domain: eventData.domain },
+  });
 }
 
 async function handleOrganizationDomainVerificationFailed(
@@ -387,6 +400,15 @@ async function handleOrganizationDomainVerificationFailed(
   eventData: OrganizationDomain
 ) {
   await handleOrganizationDomainEvent(workspace, eventData, "failed");
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "domain.verification_failed",
+    actor: { type: "system", id: "workos", name: "WorkOS" },
+    targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
+    context: { location: "system" },
+    metadata: { domain: eventData.domain },
+  });
 }
 
 async function handleOrganizationUpdated(
@@ -617,9 +639,31 @@ async function handleGroupUpsert(
   const group = await GroupResource.upsertByWorkOSGroupId(auth, event);
 
   // Auto-create space if workspace setting is enabled
+  let spaceCreated = false;
   if (workspace.metadata?.autoCreateSpaceForProvisionedGroups) {
+    const existingSpaces = await SpaceResource.listForGroups(auth, [group]);
+    const hadSpaceBefore = existingSpaces.length > 0;
     await autoCreateSpaceForProvisionedGroup(auth, group, workspace);
+    if (!hadSpaceBefore) {
+      const spacesAfter = await SpaceResource.listForGroups(auth, [group]);
+      spaceCreated = spacesAfter.length > 0;
+    }
   }
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.group_created",
+    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    targets: [
+      buildWorkspaceTarget(workspace),
+      { type: "group", id: group.sId, name: group.name },
+    ],
+    context: { location: "system" },
+    metadata: {
+      groupName: group.name,
+      spaceCreated: String(spaceCreated),
+    },
+  });
 }
 
 async function handleUserAddedToGroup(
@@ -710,6 +754,22 @@ async function handleUserAddedToGroup(
       "Updated membership origin to provisioned based on group sync"
     );
   }
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.group_user_added",
+    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    targets: [
+      buildWorkspaceTarget(workspace),
+      { type: "group", id: group.sId, name: group.name },
+      { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+    ],
+    context: { location: "system" },
+    metadata: {
+      groupName: group.name,
+      roleGranted: "member",
+    },
+  });
 }
 
 async function handleUserRemovedFromGroup(
@@ -778,6 +838,22 @@ async function handleUserRemovedFromGroup(
     user,
     group,
     action: "remove",
+  });
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.group_user_removed",
+    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    targets: [
+      buildWorkspaceTarget(workspace),
+      { type: "group", id: group.sId, name: group.name },
+      { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+    ],
+    context: { location: "system" },
+    metadata: {
+      groupName: group.name,
+      roleChange: "removed",
+    },
   });
 }
 
@@ -873,6 +949,27 @@ async function handleCreateOrUpdateWorkOSUser(
       newOrigin: "provisioned",
       author: createdOrUpdatedUser.toJSON(),
     });
+
+    void emitAuditLogEventDirect({
+      workspace,
+      action: "scim.user_updated",
+      actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+      targets: [
+        buildWorkspaceTarget(workspace),
+        {
+          type: "user",
+          id: createdOrUpdatedUser.sId,
+          name: createdOrUpdatedUser.fullName() ?? undefined,
+        },
+      ],
+      context: { location: "system" },
+      metadata: {
+        updatedAttributes: JSON.stringify(
+          Object.keys(event.rawAttributes ?? {})
+        ),
+      },
+    });
+
     return;
   }
 
@@ -881,6 +978,25 @@ async function handleCreateOrUpdateWorkOSUser(
     workspace,
     role: "user",
     origin: "provisioned",
+  });
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.user_provisioned",
+    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    targets: [
+      buildWorkspaceTarget(workspace),
+      {
+        type: "user",
+        id: createdOrUpdatedUser.sId,
+        name: createdOrUpdatedUser.fullName() ?? undefined,
+      },
+    ],
+    context: { location: "system" },
+    metadata: {
+      email: createdOrUpdatedUser.email,
+      directoryId: String(event.directoryId ?? "unknown"),
+    },
   });
 }
 
@@ -974,6 +1090,21 @@ async function handleDeleteWorkOSUser(
     workspace,
     ...membershipRevokeResult.value,
   });
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.user_deprovisioned",
+    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    targets: [
+      buildWorkspaceTarget(workspace),
+      { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+    ],
+    context: { location: "system" },
+    metadata: {
+      email: user.email,
+      triggersDeleted: "true",
+    },
+  });
 }
 
 async function handleGroupDelete(
@@ -996,8 +1127,25 @@ async function handleGroupDelete(
     return;
   }
 
+  const groupSId = group.sId;
+  const groupName = group.name;
+
   const deleteResult = await group.delete(auth);
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.group_deleted",
+    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    targets: [
+      buildWorkspaceTarget(workspace),
+      { type: "group", id: groupSId, name: groupName },
+    ],
+    context: { location: "system" },
+    metadata: {
+      groupName,
+    },
+  });
 }

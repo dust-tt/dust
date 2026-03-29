@@ -13,6 +13,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 type AuditAction =
+  // Existing Tier 1 events.
   | "user.login"
   | "user.logout"
   | "membership.created"
@@ -21,7 +22,50 @@ type AuditAction =
   | "sso.connection_deleted"
   | "domain.removed"
   | "dsync.connection_deleted"
-  | "workspace.deleted";
+  | "workspace.deleted"
+  // Authentication & Admin.
+  | "user.login_failed"
+  | "user.identity_merged"
+  | "user.relocated"
+  // API Keys & Secrets.
+  | "api_key.created"
+  | "api_key.revoked"
+  | "api_key.updated"
+  | "api_key.used"
+  | "dust_app_secret.created"
+  | "dust_app_secret.deleted"
+  // Membership & Invitations.
+  | "membership.role_updated"
+  | "membership.origin_updated"
+  | "invitation.revoked"
+  | "invitation.role_updated"
+  | "member.invited_admin"
+  | "member.revoked_admin"
+  // Domains & SSO.
+  | "domain.verified"
+  | "domain.verification_failed"
+  | "sso.connection_created"
+  // OAuth & Credentials.
+  | "oauth.initiated"
+  | "oauth.authorized"
+  | "credentials.created"
+  // Projects.
+  | "project.joined"
+  | "project.left"
+  // SCIM / Directory Sync.
+  | "scim.user_provisioned"
+  | "scim.user_updated"
+  | "scim.user_deprovisioned"
+  | "scim.group_created"
+  | "scim.group_deleted"
+  | "scim.group_user_added"
+  | "scim.group_user_removed"
+  // Agent & Tool Execution.
+  | "agent.executed"
+  | "tool.executed"
+  // Triggers.
+  | "trigger.fired"
+  | "trigger.email_received";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;

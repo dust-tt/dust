@@ -9,6 +9,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { QUEUE_NAME } from "./config";
 import { agentTriggerWorkflow } from "./workflows";
 
+// TODO(audit): trigger.fired — system context without Authenticator.
+// Need to use emitAuditLogEventDirect with workspace from trigger context.
 export async function launchAgentTriggerWorkflow({
   auth,
   trigger,

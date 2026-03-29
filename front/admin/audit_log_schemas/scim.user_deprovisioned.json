@@ -1,0 +1,8 @@
+{
+  "action": "scim.user_deprovisioned",
+  "targets": [{ "type": "workspace" }, { "type": "user" }],
+  "metadata": {
+    "email": { "type": "string" },
+    "triggersDeleted": { "type": "string" }
+  }
+}

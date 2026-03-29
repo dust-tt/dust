@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  emitAuditLogEvent,
+  buildWorkspaceTarget,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -93,6 +98,19 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "project.joined",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          { type: "space", id: space.sId, name: space.name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          spaceName: space.name,
+        },
+      });
 
       // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
       const workspace = auth.getNonNullableWorkspace();

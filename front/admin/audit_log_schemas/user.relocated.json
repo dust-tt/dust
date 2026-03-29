@@ -1,0 +1,8 @@
+{
+  "action": "user.relocated",
+  "targets": [{ "type": "user" }],
+  "metadata": {
+    "fromRegion": { "type": "string" },
+    "toRegion": { "type": "string" }
+  }
+}

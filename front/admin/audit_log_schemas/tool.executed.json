@@ -1,0 +1,9 @@
+{
+  "action": "tool.executed",
+  "targets": [{ "type": "workspace" }, { "type": "agent" }, { "type": "tool" }],
+  "metadata": {
+    "toolName": { "type": "string" },
+    "toolType": { "type": "string" },
+    "conversationId": { "type": "string" }
+  }
+}

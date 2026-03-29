@@ -345,6 +345,9 @@ async function handler(
         return;
       }
 
+      // TODO(audit): trigger.email_received — needs workspace context from email processing.
+      // Would emit after successful email trigger with sender email and agent ID.
+
       // Trigger async processing - reply will be sent by finalization activity.
       const triggerRes = await triggerFromEmail({
         auth,

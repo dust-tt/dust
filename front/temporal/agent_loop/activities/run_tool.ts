@@ -27,6 +27,8 @@ import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 
+// TODO(audit): Very high-volume event tool.executed — needs sampling/batching strategy.
+// Would emit here with tool name, type, and conversation ID.
 export async function runToolActivity(
   authType: AuthenticatorType,
   {

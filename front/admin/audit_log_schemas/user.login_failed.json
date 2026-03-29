@@ -1,0 +1,8 @@
+{
+  "action": "user.login_failed",
+  "targets": [{ "type": "user" }],
+  "metadata": {
+    "reason": { "type": "string" },
+    "authenticationMethod": { "type": "string" }
+  }
+}

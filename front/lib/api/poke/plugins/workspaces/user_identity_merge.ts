@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { mergeUserIdentities } from "@app/lib/iam/users";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,6 +62,20 @@ export const userIdentityMergePlugin = createPlugin({
     if (mergeResult.isErr()) {
       return new Err(mergeResult.error);
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "user.identity_merged",
+      targets: [
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+        { type: "user", id: mergeResult.value.primaryUser.sId, name: mergeResult.value.primaryUser.fullName() ?? undefined },
+        { type: "user", id: mergeResult.value.secondaryUser.sId, name: mergeResult.value.secondaryUser.fullName() ?? undefined },
+      ],
+      metadata: {
+        primaryUserId: mergeResult.value.primaryUser.sId,
+        mergedUserId: mergeResult.value.secondaryUser.sId,
+      },
+    });
 
     return new Ok({
       display: "text",

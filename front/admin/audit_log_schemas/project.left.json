@@ -1,0 +1,7 @@
+{
+  "action": "project.left",
+  "targets": [{ "type": "workspace" }, { "type": "space" }],
+  "metadata": {
+    "spaceName": { "type": "string" }
+  }
+}

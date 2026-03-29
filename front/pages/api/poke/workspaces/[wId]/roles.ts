@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
@@ -115,6 +120,24 @@ async function handler(
           workspace: owner,
           previousRole: updateRes.value.previousRole,
           role: updateRes.value.newRole,
+        });
+
+        void emitAuditLogEvent({
+          auth,
+          action: "membership.role_updated",
+          targets: [
+            buildWorkspaceTarget(owner),
+            {
+              type: "user",
+              id: user.sId,
+              name: user.fullName() ?? undefined,
+            },
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            previousRole: updateRes.value.previousRole,
+            newRole: updateRes.value.newRole,
+          },
         });
       }
       return res.status(200).json({ success: true });

@@ -1,0 +1,8 @@
+{
+  "action": "scim.group_user_added",
+  "targets": [{ "type": "workspace" }, { "type": "group" }, { "type": "user" }],
+  "metadata": {
+    "groupName": { "type": "string" },
+    "roleGranted": { "type": "string" }
+  }
+}

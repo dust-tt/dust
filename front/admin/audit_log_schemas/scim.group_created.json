@@ -1,0 +1,8 @@
+{
+  "action": "scim.group_created",
+  "targets": [{ "type": "workspace" }, { "type": "group" }],
+  "metadata": {
+    "groupName": { "type": "string" },
+    "spaceCreated": { "type": "string" }
+  }
+}

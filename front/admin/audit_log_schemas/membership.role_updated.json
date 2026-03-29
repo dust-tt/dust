@@ -1,0 +1,8 @@
+{
+  "action": "membership.role_updated",
+  "targets": [{ "type": "workspace" }, { "type": "user" }],
+  "metadata": {
+    "previousRole": { "type": "string" },
+    "newRole": { "type": "string" }
+  }
+}

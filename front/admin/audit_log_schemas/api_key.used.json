@@ -1,0 +1,8 @@
+{
+  "action": "api_key.used",
+  "targets": [{ "type": "workspace" }, { "type": "api_key" }],
+  "metadata": {
+    "endpoint": { "type": "string" },
+    "method": { "type": "string" }
+  }
+}

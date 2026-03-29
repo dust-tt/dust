@@ -1409,6 +1409,8 @@ export async function getAPIKey(
 
   if (!key.isSystem) {
     await key.markAsUsed();
+    // TODO(audit): High-volume event api_key.used - needs sampling/rate-limiting before enabling.
+    // Would emit here after markAsUsed() with endpoint and method metadata.
   }
 
   return new Ok(key);

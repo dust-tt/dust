@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -103,6 +108,17 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "credentials.created",
+        targets: [buildWorkspaceTarget(owner)],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          provider: String(bodyValidation.right.provider),
+          credentialType: "oauth",
+        },
+      });
 
       return res.status(201).json({
         credentials: {

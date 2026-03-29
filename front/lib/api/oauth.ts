@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import type {
   BaseOAuthStrategyProvider,
@@ -215,6 +219,16 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
+  void emitAuditLogEvent({
+    auth,
+    action: "oauth.initiated",
+    targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+    metadata: {
+      provider: String(provider),
+      connectionId: connection.connection_id,
+    },
+  });
+
   return new Ok(
     providerStrategy.setupUri({
       connection,
@@ -226,6 +240,8 @@ export async function createConnectionAndGetSetupUrl(
   );
 }
 
+// TODO(audit): oauth.authorized — finalizeConnection() doesn't receive Authenticator.
+// Need to pass auth from the calling API route or use emitAuditLogEventDirect.
 export async function finalizeConnection(
   provider: OAuthProvider,
   query: ParsedUrlQuery

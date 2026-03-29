@@ -1,0 +1,8 @@
+{
+  "action": "sso.connection_created",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "connectionType": { "type": "string" },
+    "provider": { "type": "string" }
+  }
+}
