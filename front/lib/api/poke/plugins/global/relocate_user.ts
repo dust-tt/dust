@@ -86,9 +86,7 @@ export const relocateUserPlugin = createPlugin({
       void emitAuditLogEvent({
         auth,
         action: "user.relocated",
-        targets: [
-          { type: "user", id: userId, name: user.email },
-        ],
+        targets: [{ type: "user", id: userId, name: user.email }],
         metadata: {
           fromRegion: multiRegionsConfig.getCurrentRegion(),
           toRegion: String(newRegion[0]),

@@ -5,10 +5,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
-import {
-  buildWorkspaceTarget,
-  emitAuditLogEvent,
-} from "@app/lib/api/audit/workos_audit";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
@@ -20,7 +16,6 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
-
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -38,14 +33,15 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
-import { KeyResource } from "@app/lib/resources/key_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { getFeatureFlags } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
 import {
@@ -63,6 +59,7 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -71,6 +68,7 @@ import {
   generateRandomModelSId,
   getResourceIdFromSId,
 } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
   getTimeframeSecondsFromLiteral,
@@ -897,7 +895,11 @@ export async function postUserMessage(
         action: "agent.executed",
         targets: [
           buildWorkspaceTarget(conversation.owner),
-          { type: "agent", id: agentMessage.configuration.sId, name: agentMessage.configuration.name },
+          {
+            type: "agent",
+            id: agentMessage.configuration.sId,
+            name: agentMessage.configuration.name,
+          },
         ],
         metadata: {
           conversationId: conversation.sId,

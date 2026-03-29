@@ -1,5 +1,3 @@
-import type { NextApiRequest } from "next";
-
 import type {
   AuditLogActor,
   AuditLogContext,
@@ -216,7 +214,10 @@ export function buildWorkspaceTarget(workspace: {
  */
 export function getAuditLogContext(
   auth: Authenticator,
-  req?: NextApiRequest
+  req?: {
+    headers: Record<string, string | string[] | undefined>;
+    socket?: { remoteAddress?: string };
+  }
 ): AuditLogContext {
   if (req) {
     const forwarded = req.headers["x-forwarded-for"];

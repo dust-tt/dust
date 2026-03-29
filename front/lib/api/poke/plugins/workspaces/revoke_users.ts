@@ -56,18 +56,14 @@ export const revokeUsersPlugin = createPlugin({
       { concurrency: 10 }
     );
 
-    const successfulRevocations = revokedResults.filter((r) =>
-      r.result.isOk()
-    );
+    const successfulRevocations = revokedResults.filter((r) => r.result.isOk());
     if (successfulRevocations.length > 0) {
       void emitAuditLogEvent({
         auth,
         action: "member.bulk_revoked",
         targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
         metadata: {
-          revokedUserIds: successfulRevocations
-            .map((r) => r.userId)
-            .join(","),
+          revokedUserIds: successfulRevocations.map((r) => r.userId).join(","),
           count: String(successfulRevocations.length),
           source: "poke",
         },

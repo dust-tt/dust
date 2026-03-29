@@ -324,8 +324,16 @@ async function executeToolStreaming(
             auth,
             action: "tool.executed",
             targets: [
-              { type: "agent", id: agentConfiguration.sId, name: agentConfiguration.name },
-              { type: "tool", id: action.toolConfiguration.name, name: action.toolConfiguration.name },
+              {
+                type: "agent",
+                id: agentConfiguration.sId,
+                name: agentConfiguration.name,
+              },
+              {
+                type: "tool",
+                id: action.toolConfiguration.name,
+                name: action.toolConfiguration.name,
+              },
             ],
             metadata: {
               toolName: action.toolConfiguration.name,

@@ -128,7 +128,11 @@ async function handler(
         action: "dust_app_secret.created",
         targets: [
           buildWorkspaceTarget(owner),
-          { type: "dust_app_secret", id: sanitizedSecretName, name: sanitizedSecretName },
+          {
+            type: "dust_app_secret",
+            id: sanitizedSecretName,
+            name: sanitizedSecretName,
+          },
         ],
         context: getAuditLogContext(auth, req),
         metadata: {

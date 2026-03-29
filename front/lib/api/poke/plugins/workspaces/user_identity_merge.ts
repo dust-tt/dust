@@ -68,8 +68,16 @@ export const userIdentityMergePlugin = createPlugin({
       action: "user.identity_merged",
       targets: [
         buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-        { type: "user", id: mergeResult.value.primaryUser.sId, name: mergeResult.value.primaryUser.fullName() ?? undefined },
-        { type: "user", id: mergeResult.value.secondaryUser.sId, name: mergeResult.value.secondaryUser.fullName() ?? undefined },
+        {
+          type: "user",
+          id: mergeResult.value.primaryUser.sId,
+          name: mergeResult.value.primaryUser.fullName() ?? undefined,
+        },
+        {
+          type: "user",
+          id: mergeResult.value.secondaryUser.sId,
+          name: mergeResult.value.secondaryUser.fullName() ?? undefined,
+        },
       ],
       metadata: {
         primaryUserId: mergeResult.value.primaryUser.sId,
