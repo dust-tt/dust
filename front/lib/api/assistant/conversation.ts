@@ -42,7 +42,9 @@ import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { KeyResource } from "@app/lib/resources/key_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -869,13 +871,32 @@ export async function postUserMessage(
   });
 
   // Emit agent.executed for each agent being invoked.
-  if (auth.user()) {
+  // For API key invocations, look up the key creator as the actor.
+  let auditAuth = auth.user() ? auth : null;
+  if (!auditAuth && auth.key()) {
+    const keyResource = await KeyResource.fetchByWorkspaceAndId({
+      workspace: conversation.owner,
+      id: auth.key()!.id,
+    });
+    if (keyResource?.userId) {
+      const keyCreators = await UserResource.fetchByModelIds([
+        keyResource.userId,
+      ]);
+      if (keyCreators[0]) {
+        auditAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          keyCreators[0].sId,
+          conversation.owner.sId
+        );
+      }
+    }
+  }
+  if (auditAuth) {
     for (const agentMessage of agentMessages) {
       void emitAuditLogEvent({
-        auth,
+        auth: auditAuth,
         action: "agent.executed",
         targets: [
-          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          buildWorkspaceTarget(conversation.owner),
           { type: "agent", id: agentMessage.configuration.sId, name: agentMessage.configuration.name },
         ],
         metadata: {
@@ -885,7 +906,6 @@ export async function postUserMessage(
       });
     }
   }
-  // TODO(audit): Emit agent.executed for API key invocations once key owner is threaded into Authenticator.
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
   if (agentMessages.length > 0) {
