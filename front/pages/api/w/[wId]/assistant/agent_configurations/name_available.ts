@@ -7,9 +7,12 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type GetAgentNameIsAvailableResponseBody = {
-  available: boolean;
-};
+export const GetAgentNameIsAvailableResponseBodySchema = z.object({
+  available: z.boolean(),
+});
+export type GetAgentNameIsAvailableResponseBody = z.infer<
+  typeof GetAgentNameIsAvailableResponseBodySchema
+>;
 
 export const GetAgentConfigurationNameIsAvailable = z.object({
   handle: z.string(),

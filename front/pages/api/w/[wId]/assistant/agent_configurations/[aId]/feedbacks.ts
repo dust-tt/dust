@@ -1,8 +1,10 @@
 /** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
+import {
+  AgentMessageFeedbackSchema,
+  getAgentFeedbacks,
+} from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,14 +12,18 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+
+export const GetAgentFeedbacksResponseBodySchema = z.object({
+  feedbacks: z.array(AgentMessageFeedbackSchema),
+});
+export type GetAgentFeedbacksResponseBody = z.infer<
+  typeof GetAgentFeedbacksResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<{
-      feedbacks: AgentMessageFeedbackType[];
-    }>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetAgentFeedbacksResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { aId } = req.query;
