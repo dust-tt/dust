@@ -92,8 +92,25 @@ describe("domainsAlign", () => {
   });
 
   it("does not align on partial suffix matches", () => {
-    // "evilcompany.com" should not align with "company.com".
     expect(domainsAlign("evilcompany.com", "company.com")).toBe(false);
+  });
+
+  it("aligns sibling subdomains sharing the same registered domain", () => {
+    expect(domainsAlign("alerts.company.com", "mailer.company.com")).toBe(true);
+  });
+
+  it("does not align domains under a public suffix (PSL-aware)", () => {
+    expect(domainsAlign("a.co.uk", "b.co.uk")).toBe(false);
+    expect(domainsAlign("a.com.au", "b.com.au")).toBe(false);
+  });
+
+  it("aligns subdomains under a ccTLD registered domain", () => {
+    expect(domainsAlign("mail.company.co.uk", "company.co.uk")).toBe(true);
+  });
+
+  it("returns false for bare public suffixes", () => {
+    expect(domainsAlign("co.uk", "co.uk")).toBe(false);
+    expect(domainsAlign("com", "com")).toBe(false);
   });
 });
 
