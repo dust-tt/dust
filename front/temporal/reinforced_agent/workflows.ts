@@ -24,10 +24,6 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
   internals: [new OpenTelemetryInternalsInterceptor()],
 });
 
-const { getFlaggedWorkspacesActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
-});
-
 const { getAgentConfigurationsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -72,11 +68,6 @@ const { processAggregationBatchResultActivity } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
-// Note on concurrency: we can reach (WORKSPACE_CONCURRENCY x AGENT_CONCURRENCY) simulateneous workflows
-// and it may be way higher than the worker's maxConcurrentActivityTaskExecutions but this is OK
-// as a lot of the time will be spent waiting for the batch to finish so many workflows should not
-// have any activity running.
-const WORKSPACE_CONCURRENCY = 8;
 const AGENT_CONCURRENCY = 8;
 const CONVERSATION_ANALYSIS_CONCURRENCY = 4;
 
@@ -85,30 +76,26 @@ const BATCH_POLL_INTERVAL_MAX_MS = 5 * 60_000; // 5 minutes (linear backoff cap)
 const BATCH_POLL_INTERVAL_STEP_MS = 10_000; // 10 seconds (linear backoff step).
 const BATCH_TIMEOUT_MS = 6 * 60 * 60_000; // 6 hours.
 
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
 /**
- * Top-level workflow: find flagged workspaces and start a child workflow for each.
+ * Compute a deterministic delay (0 to 2 hours) from a workspace ID string.
+ * This spreads cron-triggered executions across the midnight–2am window
+ * without using non-deterministic APIs (safe for Temporal replay).
  */
-export async function reinforcedAgentWorkflow(): Promise<void> {
-  setHandler(runSignal, () => {
-    // Empty handler — receiving the signal triggers a workflow execution.
-  });
-
-  const workspaceIds = await getFlaggedWorkspacesActivity();
-
-  await concurrentExecutor(
-    workspaceIds,
-    (workspaceId) =>
-      executeChild(reinforcedAgentWorkspaceWorkflow, {
-        workflowId: `reinforced-agent-workspace-${workspaceId}`,
-        args: [{ workspaceId, useBatchMode: true }],
-        parentClosePolicy: ParentClosePolicy.ABANDON,
-      }),
-    { concurrency: WORKSPACE_CONCURRENCY }
-  );
+function computeWorkspaceDelayMs(workspaceId: string): number {
+  let hash = 0;
+  for (const ch of workspaceId) {
+    hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
+  }
+  return Math.abs(hash) % TWO_HOURS_MS;
 }
 
 /**
- * Workspace-level workflow: list active agents and start a child workflow for each.
+ * Workspace-level workflow (one per workspace, cron-scheduled).
+ * When triggered by cron, sleeps a deterministic delay derived from the
+ * workspace ID to spread load across the midnight–2am window, then lists
+ * active agents and starts a child workflow for each.
  */
 export async function reinforcedAgentWorkspaceWorkflow({
   workspaceId,
@@ -117,6 +104,19 @@ export async function reinforcedAgentWorkspaceWorkflow({
   workspaceId: string;
   useBatchMode: boolean;
 }): Promise<void> {
+  let skipDelay = false;
+  setHandler(runSignal, () => {
+    skipDelay = true;
+  });
+
+  // When run via cron (no signal), spread start times across 0–2 hours.
+  if (!skipDelay) {
+    const delayMs = computeWorkspaceDelayMs(workspaceId);
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+  }
+
   const agentIds = await getAgentConfigurationsActivity({ workspaceId });
 
   await concurrentExecutor(
