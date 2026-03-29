@@ -3,6 +3,7 @@
  */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -22,7 +23,6 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
@@ -94,7 +94,8 @@ async function getConversationForAgentLoop(
     auth,
     conversationId,
     false,
-    conversationBranchId
+    conversationBranchId,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // The last one + X previous.
   );
   if (res.isErr()) {
     throw res.error;

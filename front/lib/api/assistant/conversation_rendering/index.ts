@@ -21,7 +21,11 @@ import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
+import type {
+  InteractionWithTokens,
+  MessageWithTokens,
+  MinimalMessageType,
+} from "./pruning";
 import {
   getInteractionTokenCount,
   progressivelyPruneInteraction,
@@ -29,7 +33,7 @@ import {
 } from "./pruning";
 
 // When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
-const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
+export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
@@ -293,11 +297,11 @@ export async function renderConversationForModel(
  * Example: [content_fragment, user, content_fragment, user, assistant, function, function]
  * results in a single interaction.
  */
-function groupMessagesIntoInteractions(
-  messages: MessageWithTokens[]
-): InteractionWithTokens[] {
-  const interactions: InteractionWithTokens[] = [];
-  let currentInteraction: MessageWithTokens[] = [];
+export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
+  messages: T[]
+): InteractionWithTokens<T>[] {
+  const interactions: InteractionWithTokens<T>[] = [];
+  let currentInteraction: T[] = [];
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
@@ -306,9 +310,7 @@ function groupMessagesIntoInteractions(
     //Determine the high-level turn type for a message.
     // - "user": user messages and content fragments
     // - "agent": assistant messages and tool/function results*/
-    const turnTypeForMessage = (
-      message: MessageWithTokens
-    ): "user" | "agent" => {
+    const turnTypeForMessage = (message: T): "user" | "agent" => {
       if (message.role === "user" || message.role === "content_fragment") {
         return "user";
       }
