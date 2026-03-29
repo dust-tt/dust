@@ -33,16 +33,15 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
   });
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const nextIsEnabled = !isEnabled;
-  const confirmDialogTitle = nextIsEnabled
-    ? "Enable email agents"
-    : "Disable email agents";
-  const confirmDialogDescription = nextIsEnabled
-    ? ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE
-    : `All users in your company will no longer be able to forward emails to their agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}.`;
-  const confirmButtonLabel = nextIsEnabled
-    ? "Enable email agents"
-    : "Disable email agents";
+  const confirmDialogTitle = isEnabled
+    ? "Disable email agents"
+    : "Enable email agents";
+  const confirmDialogDescription = isEnabled
+    ? `All users in your company will no longer be able to forward emails to their agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}.`
+    : ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE;
+  const confirmButtonLabel = isEnabled
+    ? "Disable email agents"
+    : "Enable email agents";
 
   return (
     <>
@@ -104,7 +103,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
             <Button
               label={confirmButtonLabel}
               disabled={isChanging}
-              variant={nextIsEnabled ? "primary" : "warning"}
+              variant={isEnabled ? "warning" : "primary"}
               onClick={async () => {
                 const isSuccess = await doToggleEmailAgents();
 
