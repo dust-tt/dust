@@ -65,7 +65,7 @@ export async function launchReinforcedAgentWorkspaceCron({
   const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
 
   await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
-    args: [{ workspaceId, useBatchMode: true }],
+    args: [{ workspaceId, useBatchMode: true, skipDelay: false }],
     taskQueue: QUEUE_NAME,
     workflowId,
     cronSchedule: `0 ${utcHour} * * *`,
