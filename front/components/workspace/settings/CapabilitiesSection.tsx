@@ -8,13 +8,11 @@ import { ContextItem, Page } from "@dust-tt/sparkle";
 interface CapabilitiesSectionProps {
   owner: WorkspaceType;
   publishingRestrictionMessage: string | null;
-  isEmailAgentsAvailable: boolean;
 }
 
 export function CapabilitiesSection({
   owner,
   publishingRestrictionMessage,
-  isEmailAgentsAvailable,
 }: CapabilitiesSectionProps) {
   return (
     <Page.Vertical align="stretch" gap="md">
@@ -23,7 +21,7 @@ export function CapabilitiesSection({
         <div className="h-full border-b border-border dark:border-border-night" />
         <InteractiveContentSharingToggle owner={owner} />
         <VoiceTranscriptionToggle owner={owner} />
-        {isEmailAgentsAvailable && <EmailAgentsToggle owner={owner} />}
+        <EmailAgentsToggle owner={owner} />
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

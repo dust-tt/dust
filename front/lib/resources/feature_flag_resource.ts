@@ -3,7 +3,10 @@ import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isWhitelistableFeature,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
@@ -32,7 +35,9 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       where: { workspaceId: workspace.id },
     });
 
-    return flags.map((f) => new FeatureFlagResource(FeatureFlagModel, f.get()));
+    return flags
+      .map((f) => new FeatureFlagResource(FeatureFlagModel, f.get()))
+      .filter((flag) => isWhitelistableFeature(flag.name));
   }
 
   static async isEnabledForWorkspace(

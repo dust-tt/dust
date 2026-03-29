@@ -43,7 +43,6 @@ export function WorkspaceSettingsPage() {
         publishingRestrictionMessage={getPublishingRestrictionMessage(
           featureFlags
         )}
-        isEmailAgentsAvailable={featureFlags.includes("email_agents")}
       />
       <IntegrationsSection
         owner={owner}

@@ -11,11 +11,7 @@ import {
   storeEmailReplyContext,
 } from "@app/lib/api/assistant/email/email_trigger";
 import config from "@app/lib/api/config";
-import {
-  Authenticator,
-  type AuthenticatorType,
-  getFeatureFlags,
-} from "@app/lib/auth";
+import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -54,30 +50,19 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
 }
 
 /**
- * Defense-in-depth: check feature flag before sending email replies.
- * Duplicates the webhook handler check in case Redis data is manipulated
- * or context is stored incorrectly.
+ * Defense-in-depth: check the workspace toggle before sending email replies.
+ * Duplicates the webhook handler check in case Redis data is manipulated or
+ * context is stored incorrectly.
  */
 async function isEmailAgentsEnabled(
   authType: AuthenticatorType
 ): Promise<boolean> {
   const authResult = await Authenticator.fromJSON(authType);
   if (authResult.isErr()) {
-    logger.warn(
-      "[email] Failed to create authenticator for feature flag check"
-    );
+    logger.warn("[email] Failed to create authenticator for email reply check");
     return false;
   }
-  const auth = authResult.value;
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("email_agents")) {
-    logger.info(
-      { workspaceId: authType.workspaceId },
-      "[email] email_agents feature flag not enabled, skipping reply"
-    );
-    return false;
-  }
+  const workspace = authResult.value.getNonNullableWorkspace();
   if (workspace.metadata?.allowEmailAgents !== true) {
     logger.info(
       { workspaceId: authType.workspaceId },
