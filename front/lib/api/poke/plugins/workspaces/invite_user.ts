@@ -99,11 +99,12 @@ export const inviteUser = createPlugin({
     if (successes.length > 0) {
       void emitAuditLogEvent({
         auth,
-        action: "member.invited_admin",
+        action: "member.bulk_invited",
         targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
         metadata: {
           invitedEmails: successes.map((r) => r.email).join(","),
           count: String(successes.length),
+          source: "poke",
         },
       });
     }

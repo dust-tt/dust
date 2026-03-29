@@ -1,5 +1,5 @@
 {
-  "action": "member.invited_admin",
+  "action": "member.bulk_invited",
   "targets": [
     {
       "type": "workspace"
@@ -7,6 +7,7 @@
   ],
   "metadata": {
     "invitedEmails": "string",
-    "count": "string"
+    "count": "string",
+    "source": "string"
   }
 }

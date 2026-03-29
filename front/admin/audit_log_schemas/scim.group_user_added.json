@@ -13,6 +13,8 @@
   ],
   "metadata": {
     "groupName": "string",
+    "userEmail": "string",
+    "directoryId": "string",
     "roleGranted": "string"
   }
 }

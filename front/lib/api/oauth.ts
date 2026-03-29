@@ -320,6 +320,11 @@ export async function finalizeConnection(
         connectionId,
       },
     });
+  } else {
+    logger.warn(
+      { provider, connectionId },
+      "oauth.authorized: skipping audit log — no Authenticator available"
+    );
   }
 
   return new Ok(cRes.value.connection);

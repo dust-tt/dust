@@ -8,6 +8,7 @@ import type {
 import { createAuditLogEvent } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -39,8 +40,8 @@ type AuditAction =
   | "membership.origin_updated"
   | "invitation.revoked"
   | "invitation.role_updated"
-  | "member.invited_admin"
-  | "member.revoked_admin"
+  | "member.bulk_invited"
+  | "member.bulk_revoked"
   // Domains & SSO.
   | "domain.verified"
   | "domain.verification_failed"
@@ -153,6 +154,12 @@ export async function emitAuditLogEventDirect({
 }): Promise<void> {
   try {
     if (!workspace.workOSOrganizationId) {
+      return;
+    }
+
+    const subscription =
+      await SubscriptionResource.fetchLastByWorkspace(workspace);
+    if (!subscription || !subscription.getPlan().isAuditLogsAllowed) {
       return;
     }
 

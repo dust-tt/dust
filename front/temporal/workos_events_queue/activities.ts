@@ -661,6 +661,7 @@ async function handleGroupUpsert(
     context: { location: "system" },
     metadata: {
       groupName: group.name,
+      directoryId: String(event.directoryId ?? "unknown"),
       spaceCreated: String(spaceCreated),
     },
   });
@@ -782,6 +783,8 @@ async function handleUserAddedToGroup(
     context: { location: "system" },
     metadata: {
       groupName: group.name,
+      userEmail: user.email,
+      directoryId: String(event.user.directoryId ?? "unknown"),
       roleGranted: "member",
     },
   });
@@ -867,6 +870,8 @@ async function handleUserRemovedFromGroup(
     context: { location: "system" },
     metadata: {
       groupName: group.name,
+      userEmail: user.email,
+      directoryId: String(event.user.directoryId ?? "unknown"),
       roleChange: "removed",
     },
   });
@@ -998,6 +1003,7 @@ async function handleCreateOrUpdateWorkOSUser(
       ],
       context: { location: "system" },
       metadata: {
+        directoryId: String(event.directoryId ?? "unknown"),
         updatedAttributes: JSON.stringify(
           Object.keys(event.rawAttributes ?? {})
         ),
@@ -1136,6 +1142,7 @@ async function handleDeleteWorkOSUser(
     context: { location: "system" },
     metadata: {
       email: user.email,
+      directoryId: String(event.directoryId ?? "unknown"),
       triggersDeleted: "true",
     },
   });
@@ -1180,6 +1187,7 @@ async function handleGroupDelete(
     context: { location: "system" },
     metadata: {
       groupName,
+      directoryId: String(event.directoryId ?? "unknown"),
     },
   });
 }

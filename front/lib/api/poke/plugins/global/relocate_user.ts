@@ -81,6 +81,8 @@ export const relocateUserPlugin = createPlugin({
         },
       });
 
+      // Audit event is gated on the admin's workspace (Poke context).
+      // Relocation is a global operation not tied to the target user's workspace.
       void emitAuditLogEvent({
         auth,
         action: "user.relocated",

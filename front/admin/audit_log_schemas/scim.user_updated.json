@@ -9,6 +9,7 @@
     }
   ],
   "metadata": {
+    "directoryId": "string",
     "updatedAttributes": "string"
   }
 }

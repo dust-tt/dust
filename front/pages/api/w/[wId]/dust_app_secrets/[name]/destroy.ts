@@ -63,11 +63,11 @@ async function handler(
         action: "dust_app_secret.deleted",
         targets: [
           buildWorkspaceTarget(owner),
-          { type: "dust_app_secret", id: String(req.query.name), name: String(req.query.name) },
+          { type: "dust_app_secret", id: secret.name, name: secret.name },
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          secretName: String(req.query.name),
+          secretName: secret.name,
         },
       });
 

@@ -23,6 +23,7 @@ import {
 import {
   buildWorkspaceTarget,
   emitAuditLogEvent,
+  getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -368,6 +369,7 @@ async function handler(
           buildWorkspaceTarget(auth.getNonNullableWorkspace()),
           { type: "trigger", id: triggerRes.value.conversation.sId },
         ],
+        context: getAuditLogContext(auth, req),
         metadata: {
           senderEmail: email.sender.email,
           agentId: agentConfigurations.map((a) => a.sId).join(","),

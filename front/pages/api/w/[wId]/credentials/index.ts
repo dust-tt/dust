@@ -117,6 +117,7 @@ async function handler(
         metadata: {
           provider: String(bodyValidation.right.provider),
           credentialType: "oauth",
+          credentialId: response.value.credential.credential_id,
         },
       });
 
