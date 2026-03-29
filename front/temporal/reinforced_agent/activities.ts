@@ -6,7 +6,7 @@ import {
   sendBatchCallToLlm,
 } from "@app/lib/api/llm/batch_llm";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   aggregateSyntheticSuggestions,
@@ -40,24 +40,6 @@ async function getAuthForWorkspace(
     );
   }
   return Authenticator.internalAdminForWorkspace(workspaceId);
-}
-
-/**
- * List workspace sIds that have the reinforced_agents feature flag.
- */
-export async function getFlaggedWorkspacesActivity(): Promise<string[]> {
-  const allWorkspaces = await WorkspaceResource.listAll();
-  const flaggedIds: string[] = [];
-
-  for (const workspace of allWorkspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("reinforced_agents")) {
-      flaggedIds.push(workspace.sId);
-    }
-  }
-
-  return flaggedIds;
 }
 
 /**
