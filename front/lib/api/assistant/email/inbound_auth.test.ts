@@ -112,6 +112,12 @@ describe("domainsAlign", () => {
     expect(domainsAlign("co.uk", "co.uk")).toBe(false);
     expect(domainsAlign("com", "com")).toBe(false);
   });
+
+  it("does not align different registrations under a private suffix", () => {
+    // github.io is a private PSL entry; foo.github.io and bar.github.io
+    // are separate registrations and must not align.
+    expect(domainsAlign("foo.github.io", "bar.github.io")).toBe(false);
+  });
 });
 
 describe("evaluateInboundAuth", () => {
