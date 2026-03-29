@@ -319,19 +319,21 @@ async function executeToolStreaming(
           { asType: "tool" }
         );
 
-        void emitAuditLogEvent({
-          auth,
-          action: "tool.executed",
-          targets: [
-            { type: "agent", id: agentConfiguration.sId, name: agentConfiguration.name },
-            { type: "tool", id: action.toolConfiguration.name, name: action.toolConfiguration.name },
-          ],
-          metadata: {
-            toolName: action.toolConfiguration.name,
-            toolType: action.toolConfiguration.mcpServerName,
-            conversationId: conversation.sId,
-          },
-        });
+        if (auth.user()) {
+          void emitAuditLogEvent({
+            auth,
+            action: "tool.executed",
+            targets: [
+              { type: "agent", id: agentConfiguration.sId, name: agentConfiguration.name },
+              { type: "tool", id: action.toolConfiguration.name, name: action.toolConfiguration.name },
+            ],
+            metadata: {
+              toolName: action.toolConfiguration.name,
+              toolType: action.toolConfiguration.mcpServerName,
+              conversationId: conversation.sId,
+            },
+          });
+        }
 
         await updateResourceAndPublishEvent(auth, {
           event: {

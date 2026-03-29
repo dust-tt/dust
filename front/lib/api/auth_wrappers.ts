@@ -12,6 +12,7 @@ import {
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
@@ -506,19 +507,36 @@ export function withPublicAPIAuthentication<T>(
       }
       setClientIpOnAuth(workspaceAuth, req);
 
-      void emitAuditLogEvent({
-        auth: workspaceAuth,
-        action: "api_key.used",
-        targets: [
-          buildWorkspaceTarget(owner),
-          { type: "api_key", id: String(keyRes.value.id), name: keyRes.value.name },
-        ],
-        context: getAuditLogContext(workspaceAuth, req),
-        metadata: {
-          endpoint: req.url ?? "unknown",
-          method: req.method ?? "unknown",
-        },
-      });
+      // Audit log: api_key.used — use the key creator as the actor.
+      if (keyRes.value.userId) {
+        const keyCreators = await UserResource.fetchByModelIds([
+          keyRes.value.userId,
+        ]);
+        const keyCreator = keyCreators[0];
+        if (keyCreator) {
+          const auditAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            keyCreator.sId,
+            wId
+          );
+          void emitAuditLogEvent({
+            auth: auditAuth,
+            action: "api_key.used",
+            targets: [
+              buildWorkspaceTarget(owner),
+              {
+                type: "api_key",
+                id: String(keyRes.value.id),
+                name: keyRes.value.name,
+              },
+            ],
+            context: getAuditLogContext(auditAuth, req),
+            metadata: {
+              endpoint: req.url ?? "unknown",
+              method: req.method ?? "unknown",
+            },
+          });
+        }
+      }
 
       return handler(req, res, workspaceAuth, null);
     },

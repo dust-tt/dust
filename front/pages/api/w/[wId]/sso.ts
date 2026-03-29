@@ -82,7 +82,7 @@ async function handler(
   const [activeConnection] = ssoConnections;
 
   // TODO(audit): sso.connection_created — SSO connections are created via WorkOS admin portal.
-  // Need to detect creation via webhook event or portal redirect callback.
+  // Implement once WorkOS connection.activated webhook is subscribed.
 
   switch (req.method) {
     case "GET":

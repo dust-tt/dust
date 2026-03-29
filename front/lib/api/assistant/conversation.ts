@@ -5,6 +5,10 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
@@ -863,6 +867,25 @@ export async function postUserMessage(
     conversationId: conversation.sId,
     agentMessages,
   });
+
+  // Emit agent.executed for each agent being invoked.
+  if (auth.user()) {
+    for (const agentMessage of agentMessages) {
+      void emitAuditLogEvent({
+        auth,
+        action: "agent.executed",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          { type: "agent", id: agentMessage.configuration.sId, name: agentMessage.configuration.name },
+        ],
+        metadata: {
+          conversationId: conversation.sId,
+          agentName: agentMessage.configuration.name,
+        },
+      });
+    }
+  }
+  // TODO(audit): Emit agent.executed for API key invocations once key owner is threaded into Authenticator.
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
   if (agentMessages.length > 0) {

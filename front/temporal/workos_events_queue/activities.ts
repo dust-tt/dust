@@ -753,6 +753,21 @@ async function handleUserAddedToGroup(
       },
       "Updated membership origin to provisioned based on group sync"
     );
+
+    void emitAuditLogEventDirect({
+      workspace,
+      action: "membership.origin_updated",
+      actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+      targets: [
+        buildWorkspaceTarget(workspace),
+        { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+      ],
+      context: { location: "system" },
+      metadata: {
+        previousOrigin,
+        newOrigin,
+      },
+    });
   }
 
   void emitAuditLogEventDirect({
@@ -943,11 +958,30 @@ async function handleCreateOrUpdateWorkOSUser(
       },
       "User already has a membership associated to workspace"
     );
-    await membership.updateOrigin({
+    const { previousOrigin, newOrigin } = await membership.updateOrigin({
       user: createdOrUpdatedUser,
       workspace,
       newOrigin: "provisioned",
       author: createdOrUpdatedUser.toJSON(),
+    });
+
+    void emitAuditLogEventDirect({
+      workspace,
+      action: "membership.origin_updated",
+      actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+      targets: [
+        buildWorkspaceTarget(workspace),
+        {
+          type: "user",
+          id: createdOrUpdatedUser.sId,
+          name: createdOrUpdatedUser.fullName() ?? undefined,
+        },
+      ],
+      context: { location: "system" },
+      metadata: {
+        previousOrigin,
+        newOrigin,
+      },
     });
 
     void emitAuditLogEventDirect({

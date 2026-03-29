@@ -240,9 +240,8 @@ export async function createConnectionAndGetSetupUrl(
   );
 }
 
-// TODO(audit): oauth.authorized — finalizeConnection() doesn't receive Authenticator.
-// Need to pass auth from the calling API route or use emitAuditLogEventDirect.
 export async function finalizeConnection(
+  auth: Authenticator | null,
   provider: OAuthProvider,
   query: ParsedUrlQuery
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
@@ -309,6 +308,18 @@ export async function finalizeConnection(
         message: res.error.message,
       });
     }
+  }
+
+  if (auth) {
+    void emitAuditLogEvent({
+      auth,
+      action: "oauth.authorized",
+      targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+      metadata: {
+        provider: String(provider),
+        connectionId,
+      },
+    });
   }
 
   return new Ok(cRes.value.connection);

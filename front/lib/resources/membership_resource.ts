@@ -1089,10 +1089,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
   }
 
-  // TODO(audit): membership.origin_updated - emit audit log event when origin is updated.
-  // Callers are in temporal/workos_events_queue/activities.ts and don't have req context.
-  // Consider using emitAuditLogEventDirect with a system actor.
-
   /**
    * Update the origin of an active membership.
    */
