@@ -9,7 +9,6 @@ import type { WorkflowHandle } from "@temporalio/client";
 import moment from "moment-timezone";
 
 import { QUEUE_NAME } from "./config";
-import { runSignal } from "./signals";
 import {
   reinforcedAgentForAgentWorkflow,
   reinforcedAgentWorkspaceWorkflow,
@@ -65,12 +64,10 @@ export async function launchReinforcedAgentWorkspaceCron({
   const utcHour = getMidnightUtcHour(timezone);
   const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
 
-  await client.workflow.signalWithStart(reinforcedAgentWorkspaceWorkflow, {
+  await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
     args: [{ workspaceId, useBatchMode: true }],
     taskQueue: QUEUE_NAME,
     workflowId,
-    signal: runSignal,
-    signalArgs: undefined,
     cronSchedule: `0 ${utcHour} * * *`,
   });
 
@@ -159,7 +156,7 @@ export async function startReinforcedAgentWorkspaceWorkflow({
   const workflowId = `reinforced-agent-workspace-${workspaceId}-manual-${Date.now()}`;
 
   await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
-    args: [{ workspaceId, useBatchMode }],
+    args: [{ workspaceId, useBatchMode, skipDelay: true }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

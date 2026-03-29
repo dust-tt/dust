@@ -10,12 +10,9 @@ import {
   executeChild,
   ParentClosePolicy,
   proxyActivities,
-  setHandler,
   sleep,
 } from "@temporalio/workflow";
 import { concurrentExecutor } from "../utils";
-
-import { runSignal } from "./signals";
 
 // Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
 export const interceptors: WorkflowInterceptorsFactory = () => ({
@@ -93,23 +90,19 @@ function computeWorkspaceDelayMs(workspaceId: string): number {
 
 /**
  * Workspace-level workflow (one per workspace, cron-scheduled).
- * When triggered by cron, sleeps a deterministic delay derived from the
- * workspace ID to spread load across the midnight–2am window, then lists
- * active agents and starts a child workflow for each.
+ * When `skipDelay` is false (cron runs), sleeps a deterministic delay derived
+ * from the workspace ID to spread load across the midnight–2am window.
+ * When `skipDelay` is true (manual runs), starts immediately.
  */
 export async function reinforcedAgentWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
+  skipDelay = false,
 }: {
   workspaceId: string;
   useBatchMode: boolean;
+  skipDelay?: boolean;
 }): Promise<void> {
-  let skipDelay = false;
-  setHandler(runSignal, () => {
-    skipDelay = true;
-  });
-
-  // When run via cron (no signal), spread start times across 0–2 hours.
   if (!skipDelay) {
     const delayMs = computeWorkspaceDelayMs(workspaceId);
     if (delayMs > 0) {
