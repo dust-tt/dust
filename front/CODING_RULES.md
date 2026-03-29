@@ -279,6 +279,53 @@ Example:
 /api/w/[wId]/resource/[sId]
 ```
 
+## AUDIT LOGGING
+
+### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event
+
+- Use `void emitAuditLogEvent({ auth, action, targets, context?, metadata? })` for user-initiated actions where an `Authenticator` is available
+- Use `void emitAuditLogEventDirect({ workspace, action, actor, targets, context, metadata? })` for system-initiated actions (Temporal activities, webhooks, login/logout) where no `Authenticator` exists
+- Never `await` the emit call; always fire-and-forget with `void`
+- Audit log failures must never break the main operation (the emit functions handle this internally)
+
+### [AUDIT2] Always prefer the real human actor over "system"
+
+- If a human configured the automation (trigger, API key), use that human as the actor via `Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId)`
+- Only use `Authenticator.internalAdminForWorkspace(workspaceId)` or `emitAuditLogEventDirect` with a system actor for genuinely external events (SCIM sync, WorkOS webhooks, login failures without workspace context)
+
+### [AUDIT3] Every new audit action requires three artifacts
+
+- A JSON schema file at `front/admin/audit_log_schemas/<action>.json`
+- The action string added to the `AuditAction` union type in `front/lib/api/audit/workos_audit.ts`
+- A `void emitAuditLogEvent(...)` or `void emitAuditLogEventDirect(...)` call at the mutation site
+- See `runbooks/NEW_AUDIT_EVENT.md` for the step-by-step checklist
+
+### [AUDIT4] Place the emit call AFTER the mutation succeeds, not before
+
+- The audit log records what happened, not what was attempted
+- Exception: `user.login_failed` and similar failure events are emitted on the failure path
+
+### [AUDIT5] Metadata values must be strings
+
+- WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
+- Schema files use `"string"` as the value type (e.g., `"role": "string"`)
+
+### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
+
+- This captures the client IP from `x-forwarded-for` headers
+- In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
+
+### [AUDIT7] Targets always include the workspace as the first target
+
+- Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
+- Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
+
+### [AUDIT8] Action names follow `<resource>.<verb>` dot notation
+
+- Resource is singular, lowercase: `user`, `api_key`, `membership`, `scim`
+- Verb is past tense or descriptive: `created`, `revoked`, `role_updated`, `login_failed`
+- Consistency matters: check existing `AuditAction` values before inventing new names
+
 ## ERROR
 
 ### [ERR1] Do not rely on throw + catch
