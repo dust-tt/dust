@@ -1,0 +1,13 @@
+{
+  "action": "member.bulk_revoked",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "revokedEmails": "string",
+    "count": "string",
+    "source": "string"
+  }
+}

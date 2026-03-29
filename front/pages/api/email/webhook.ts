@@ -20,6 +20,11 @@ import {
   evaluateInboundAuth,
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -356,6 +361,20 @@ async function handler(
         await replyToError(email, triggerRes.error);
         return;
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.email_received",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          { type: "trigger", id: triggerRes.value.conversation.sId },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          senderEmail: email.sender.email,
+          agentId: agentConfigurations.map((a) => a.sId).join(","),
+        },
+      });
 
       logger.info(
         {

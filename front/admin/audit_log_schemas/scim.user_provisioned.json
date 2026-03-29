@@ -1,0 +1,15 @@
+{
+  "action": "scim.user_provisioned",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "email": "string",
+    "directoryId": "string"
+  }
+}

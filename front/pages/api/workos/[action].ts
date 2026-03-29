@@ -109,6 +109,11 @@
  *       400:
  *         description: Invalid session_id
  */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
@@ -119,15 +124,19 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
-import { getSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
+import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { isDevelopment } from "@app/types/shared/env";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { GenericServerException, OauthException } from "@workos-inc/node";
@@ -395,6 +404,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
     : {};
 
+  let callbackWorkspaceId: string | undefined;
+
   try {
     const {
       user,
@@ -423,6 +434,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         multiRegionsConfig.getCurrentRegion(),
       workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
+
+    callbackWorkspaceId = sessionCookie.workspaceId;
 
     const sealedCookie = await sealData(sessionCookie, {
       password: config.getWorkOSCookiePassword(),
@@ -582,6 +595,28 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     redirectTo(res, appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
+
+    // Emit user.login_failed if workspace context is available.
+    if (callbackWorkspaceId) {
+      try {
+        const auth =
+          await Authenticator.internalAdminForWorkspace(callbackWorkspaceId);
+        void emitAuditLogEvent({
+          auth,
+          action: "user.login_failed",
+          targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+          metadata: {
+            reason: normalizeError(error).message,
+            authenticationMethod: "workos",
+          },
+        });
+      } catch {
+        // Best-effort audit logging.
+      }
+    }
+    // Login failures without a workspace context are not audit-logged.
+    // WorkOS captures these on their side.
+
     getStatsDClient().increment("login.callback.error", 1);
     redirectTo(res, `/login-error?type=workos-callback`);
   }
@@ -591,6 +626,43 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const session = await getSession(req, res);
 
   if (session && session.type === "workos") {
+    // Emit audit log before revoking the session.
+    if (session.workspaceId) {
+      try {
+        const workspace = await WorkspaceResource.fetchById(
+          session.workspaceId
+        );
+        if (workspace) {
+          const user = await fetchUserFromSession(session);
+          const forwarded = req.headers["x-forwarded-for"];
+          const ip = forwarded
+            ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
+                .split(",")[0]
+                .trim()
+            : req.socket?.remoteAddress;
+          void emitAuditLogEventDirect({
+            workspace: renderLightWorkspaceType({ workspace }),
+            action: "user.logout",
+            actor: {
+              type: "user",
+              id: user?.sId ?? "unknown",
+              name: user?.name ?? session.user.name,
+            },
+            targets: [
+              {
+                type: "user",
+                id: user?.sId ?? "unknown",
+                name: user?.name ?? session.user.name,
+              },
+            ],
+            context: { location: ip ?? "internal" },
+          });
+        }
+      } catch (error) {
+        logger.error({ error }, "Error emitting audit log for logout");
+      }
+    }
+
     // Logout from WorkOS
     try {
       await getWorkOS().userManagement.revokeSession({

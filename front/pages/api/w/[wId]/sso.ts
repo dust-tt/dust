@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   deleteWorkOSOrganizationSSOConnection,
@@ -76,6 +81,9 @@ async function handler(
 
   const [activeConnection] = ssoConnections;
 
+  // TODO(audit): sso.connection_created — SSO connections are created via WorkOS admin portal.
+  // Implement once WorkOS connection.activated webhook is subscribed.
+
   switch (req.method) {
     case "GET":
       let status: WorkOSConnectionSyncStatus["status"] = "not_configured";
@@ -116,6 +124,16 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "sso.connection_deleted",
+        targets: [buildWorkspaceTarget(workspace)],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          connectionType: activeConnection.type,
+        },
+      });
 
       res.status(204).end();
       return;

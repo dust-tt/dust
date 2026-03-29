@@ -1,0 +1,15 @@
+{
+  "action": "trigger.email_received",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "trigger"
+    }
+  ],
+  "metadata": {
+    "senderEmail": "string",
+    "agentId": "string"
+  }
+}

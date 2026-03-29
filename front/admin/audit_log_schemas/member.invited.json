@@ -1,0 +1,12 @@
+{
+  "action": "member.invited",
+  "targets": [
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "invitedCount": "string",
+    "emails": "string"
+  }
+}
