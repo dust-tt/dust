@@ -2,12 +2,12 @@ import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { WorkflowHandle } from "@temporalio/client";
 import moment from "moment-timezone";
-
 import { QUEUE_NAME } from "./config";
 import {
   reinforcedAgentForAgentWorkflow,
@@ -113,9 +113,11 @@ export async function launchAllReinforcedAgentWorkspaceCrons(): Promise<
 > {
   const workspaceIds = await getFlaggedWorkspaceIds();
 
-  for (const workspaceId of workspaceIds) {
-    await launchReinforcedAgentWorkspaceCron({ workspaceId });
-  }
+  await concurrentExecutor(
+    workspaceIds,
+    (workspaceId) => launchReinforcedAgentWorkspaceCron({ workspaceId }),
+    { concurrency: 8 }
+  );
 
   logger.info(
     { workspaceCount: workspaceIds.length },
@@ -128,12 +130,15 @@ export async function launchAllReinforcedAgentWorkspaceCrons(): Promise<
 export async function stopAllReinforcedAgentWorkspaceCrons(): Promise<void> {
   const workspaceIds = await getFlaggedWorkspaceIds();
 
-  for (const workspaceId of workspaceIds) {
-    await stopReinforcedAgentWorkspaceCron({
-      workspaceId,
-      stopReason: "Stopped all via CLI",
-    });
-  }
+  await concurrentExecutor(
+    workspaceIds,
+    (workspaceId) =>
+      stopReinforcedAgentWorkspaceCron({
+        workspaceId,
+        stopReason: "Stopped all via CLI",
+      }),
+    { concurrency: 8 }
+  );
 
   logger.info(
     { workspaceCount: workspaceIds.length },
