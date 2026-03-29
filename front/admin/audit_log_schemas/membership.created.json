@@ -1,11 +1,15 @@
 {
   "action": "membership.created",
   "targets": [
-    { "type": "workspace" },
-    { "type": "user" }
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
   ],
   "metadata": {
-    "role": { "type": "string" },
-    "origin": { "type": "string" }
+    "role": "string",
+    "origin": "string"
   }
 }

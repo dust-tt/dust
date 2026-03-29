@@ -1,10 +1,12 @@
 {
   "action": "user.login",
   "targets": [
-    { "type": "user" }
+    {
+      "type": "user"
+    }
   ],
   "metadata": {
-    "isSSO": { "type": "string" },
-    "authenticationMethod": { "type": "string" }
+    "isSSO": "string",
+    "authenticationMethod": "string"
   }
 }

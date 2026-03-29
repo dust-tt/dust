@@ -1,9 +1,11 @@
 {
   "action": "sso.connection_deleted",
   "targets": [
-    { "type": "workspace" }
+    {
+      "type": "workspace"
+    }
   ],
   "metadata": {
-    "connectionType": { "type": "string" }
+    "connectionType": "string"
   }
 }

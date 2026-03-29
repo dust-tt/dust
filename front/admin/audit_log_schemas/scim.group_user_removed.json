@@ -1,8 +1,18 @@
 {
   "action": "scim.group_user_removed",
-  "targets": [{ "type": "workspace" }, { "type": "group" }, { "type": "user" }],
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    },
+    {
+      "type": "user"
+    }
+  ],
   "metadata": {
-    "groupName": { "type": "string" },
-    "roleChange": { "type": "string" }
+    "groupName": "string",
+    "roleChange": "string"
   }
 }

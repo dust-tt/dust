@@ -1,9 +1,11 @@
 {
   "action": "workspace.deleted",
   "targets": [
-    { "type": "workspace" }
+    {
+      "type": "workspace"
+    }
   ],
   "metadata": {
-    "relocated": { "type": "string" }
+    "relocated": "string"
   }
 }

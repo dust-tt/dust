@@ -1,8 +1,15 @@
 {
   "action": "trigger.fired",
-  "targets": [{ "type": "workspace" }, { "type": "trigger" }],
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "trigger"
+    }
+  ],
   "metadata": {
-    "triggerType": { "type": "string" },
-    "agentId": { "type": "string" }
+    "triggerType": "string",
+    "agentId": "string"
   }
 }

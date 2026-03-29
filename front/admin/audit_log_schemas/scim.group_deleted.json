@@ -1,7 +1,14 @@
 {
   "action": "scim.group_deleted",
-  "targets": [{ "type": "workspace" }, { "type": "group" }],
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
   "metadata": {
-    "groupName": { "type": "string" }
+    "groupName": "string"
   }
 }

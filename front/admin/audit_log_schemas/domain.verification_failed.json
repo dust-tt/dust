@@ -1,8 +1,12 @@
 {
   "action": "domain.verification_failed",
-  "targets": [{ "type": "workspace" }],
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
   "metadata": {
-    "domain": { "type": "string" },
-    "reason": { "type": "string" }
+    "domain": "string",
+    "reason": "string"
   }
 }

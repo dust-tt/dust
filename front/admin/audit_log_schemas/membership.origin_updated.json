@@ -1,8 +1,15 @@
 {
   "action": "membership.origin_updated",
-  "targets": [{ "type": "workspace" }, { "type": "user" }],
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
   "metadata": {
-    "previousOrigin": { "type": "string" },
-    "newOrigin": { "type": "string" }
+    "previousOrigin": "string",
+    "newOrigin": "string"
   }
 }
