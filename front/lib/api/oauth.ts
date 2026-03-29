@@ -219,6 +219,7 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
+  // No req available in this library function — context defaults to auth.clientIp().
   void emitAuditLogEvent({
     auth,
     action: "oauth.initiated",
@@ -311,6 +312,7 @@ export async function finalizeConnection(
   }
 
   if (auth) {
+    // No req available in this library function — context defaults to auth.clientIp().
     void emitAuditLogEvent({
       auth,
       action: "oauth.authorized",

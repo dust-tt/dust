@@ -653,7 +653,7 @@ async function handleGroupUpsert(
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.group_created",
-    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
     targets: [
       buildWorkspaceTarget(workspace),
       { type: "group", id: group.sId, name: group.name },
@@ -758,7 +758,7 @@ async function handleUserAddedToGroup(
     void emitAuditLogEventDirect({
       workspace,
       action: "membership.origin_updated",
-      actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+      actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
       targets: [
         buildWorkspaceTarget(workspace),
         { type: "user", id: user.sId, name: user.fullName() ?? undefined },
@@ -774,7 +774,7 @@ async function handleUserAddedToGroup(
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.group_user_added",
-    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
     targets: [
       buildWorkspaceTarget(workspace),
       { type: "group", id: group.sId, name: group.name },
@@ -861,7 +861,7 @@ async function handleUserRemovedFromGroup(
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.group_user_removed",
-    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
     targets: [
       buildWorkspaceTarget(workspace),
       { type: "group", id: group.sId, name: group.name },
@@ -973,7 +973,7 @@ async function handleCreateOrUpdateWorkOSUser(
     void emitAuditLogEventDirect({
       workspace,
       action: "membership.origin_updated",
-      actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+      actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
       targets: [
         buildWorkspaceTarget(workspace),
         {
@@ -992,7 +992,7 @@ async function handleCreateOrUpdateWorkOSUser(
     void emitAuditLogEventDirect({
       workspace,
       action: "scim.user_updated",
-      actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+      actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
       targets: [
         buildWorkspaceTarget(workspace),
         {
@@ -1023,7 +1023,7 @@ async function handleCreateOrUpdateWorkOSUser(
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.user_provisioned",
-    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
     targets: [
       buildWorkspaceTarget(workspace),
       {
@@ -1134,7 +1134,7 @@ async function handleDeleteWorkOSUser(
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.user_deprovisioned",
-    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
     targets: [
       buildWorkspaceTarget(workspace),
       { type: "user", id: user.sId, name: user.fullName() ?? undefined },
@@ -1179,7 +1179,7 @@ async function handleGroupDelete(
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.group_deleted",
-    actor: { type: "system", id: "directory_sync", name: "Directory Sync" },
+    actor: { type: "system", id: String(event.directoryId ?? "directory_sync"), name: "Directory Sync" },
     targets: [
       buildWorkspaceTarget(workspace),
       { type: "group", id: groupSId, name: groupName },
