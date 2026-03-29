@@ -1,6 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { invalidateFeatureFlagsCache } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
@@ -16,7 +17,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
     name: "Toggle Feature Flag",
     description:
       "Toggle a specific feature flag ON/OFF for this workspace. Use the table below to see " +
-      "current status.",
+      "current status. Flags marked [Global: N%] are enabled via global rollout.",
     resourceTypes: ["workspaces"],
     args: {
       features: {
@@ -31,11 +32,17 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const enabledFlags = await FeatureFlagResource.listForWorkspace(workspace);
+    const [enabledFlags, globalFlags] = await Promise.all([
+      FeatureFlagResource.listForWorkspace(workspace),
+      GlobalFeatureFlagResource.listAll(),
+    ]);
 
     const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
+    const globalFlagMap = new Map(
+      globalFlags.map((f) => [f.name, f.rolloutPercentage])
+    );
 
-    const sortedFeatures = WHITELISTABLE_FEATURES.sort((a, b) => {
+    const sortedFeatures = [...WHITELISTABLE_FEATURES].sort((a, b) => {
       const configA = WHITELISTABLE_FEATURES_CONFIG[a];
       const configB = WHITELISTABLE_FEATURES_CONFIG[b];
       if (configA.stage !== configB.stage) {
@@ -47,8 +54,11 @@ export const toggleFeatureFlagPlugin = createPlugin({
     return new Ok({
       features: sortedFeatures.map((feature) => {
         const config = WHITELISTABLE_FEATURES_CONFIG[feature];
+        const globalPct = globalFlagMap.get(feature);
+        const globalLabel =
+          globalPct !== undefined ? ` [Global: ${globalPct}%]` : "";
         return {
-          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} `,
+          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature}${globalLabel}`,
           value: feature,
           checked: enabledFlagNames.has(feature),
         };
