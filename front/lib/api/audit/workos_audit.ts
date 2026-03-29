@@ -44,7 +44,6 @@ type AuditAction =
   // Domains & SSO.
   | "domain.verified"
   | "domain.verification_failed"
-  | "sso.connection_created"
   // OAuth & Credentials.
   | "oauth.initiated"
   | "oauth.authorized"
