@@ -13,6 +13,7 @@ export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
 // BYOK plan:
+export const FREE_BYOK_TRANSITIONNING_PLAN_CODE = "FREE_BYOK_TRANSITIONNING";
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
 
 /**
@@ -55,6 +56,9 @@ export function isProPlan(plan?: PlanType) {
     plan?.code === PRO_PLAN_LARGE_FILES_CODE
   );
 }
+
+export const isByokTransitionningPlan = (plan?: PlanType) =>
+  plan?.code === FREE_BYOK_TRANSITIONNING_PLAN_CODE;
 
 export function isBusinessPlan(plan?: PlanType) {
   return plan?.code === PRO_PLAN_SEAT_39_CODE;
