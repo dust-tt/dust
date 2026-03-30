@@ -317,7 +317,7 @@ export function ConversationMenu({
         ) : (
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent>
+        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
