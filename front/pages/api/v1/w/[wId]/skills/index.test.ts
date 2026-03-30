@@ -87,7 +87,6 @@ function makeSerializedSkill(): SkillType {
     icon: null,
     source: "api",
     sourceMetadata: {
-      repoUrl: "https://github.com/dust-tt/dust",
       filePath: "skills/release-notes/SKILL.md",
     },
     requestedSpaceIds: [],
@@ -138,9 +137,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     const { req, res } = makeRequest();
 
     mockParse.mockResolvedValue([
-      {
-        repoUrl: ["https://github.com/dust-tt/dust"],
-      },
+      {},
       {
         files: [
           { filepath: "/tmp/skills.zip", originalFilename: "skills.zip" },
@@ -163,11 +160,13 @@ describe("POST /api/v1/w/[wId]/skills", () => {
       expect.anything(),
       expect.objectContaining({
         source: "api",
-        repoUrl: "https://github.com/dust-tt/dust",
       })
     );
     expect(mockImportSkillsFromFiles.mock.calls[0]?.[1]).not.toHaveProperty(
       "names"
+    );
+    expect(mockImportSkillsFromFiles.mock.calls[0]?.[1]).not.toHaveProperty(
+      "repoUrl"
     );
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({
@@ -194,10 +193,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   it("returns 400 when no files are uploaded", async () => {
     const { req, res } = makeRequest();
 
-    mockParse.mockResolvedValue([
-      { repoUrl: ["https://github.com/dust-tt/dust"] },
-      {},
-    ]);
+    mockParse.mockResolvedValue([{}, {}]);
 
     await handler(req, res);
 

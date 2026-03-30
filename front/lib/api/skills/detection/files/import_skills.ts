@@ -20,43 +20,6 @@ type ImportSkillsResult = {
   errored: { name: string; message: string }[];
 };
 
-function isSkillFromFileImportSource(
-  skill: SkillResource,
-  {
-    source,
-    repoUrl,
-  }: {
-    source: FileImportSource;
-    repoUrl?: string;
-  }
-): boolean {
-  if (skill.source !== source) {
-    return false;
-  }
-
-  if (source !== "api" || !repoUrl) {
-    return true;
-  }
-
-  return skill.sourceMetadata?.repoUrl === repoUrl;
-}
-
-function buildSourceMetadata({
-  filePath,
-  repoUrl,
-  source,
-}: {
-  filePath: string;
-  repoUrl?: string;
-  source: FileImportSource;
-}) {
-  if (source === "api" && repoUrl) {
-    return { filePath, repoUrl };
-  }
-
-  return { filePath };
-}
-
 /**
  * Imports skills from uploaded files. Detects skills from the files,
  * then creates or updates SkillResource objects.
@@ -67,12 +30,10 @@ export async function importSkillsFromFiles(
     uploadedFiles,
     names,
     source = "local_file",
-    repoUrl,
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
     source?: FileImportSource;
-    repoUrl?: string;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
@@ -106,10 +67,7 @@ export async function importSkillsFromFiles(
     async (skill) => {
       const existing = await SkillResource.fetchActiveByName(auth, skill.name);
 
-      if (
-        existing &&
-        !isSkillFromFileImportSource(existing, { source, repoUrl })
-      ) {
+      if (existing && existing.source !== source) {
         errored.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
@@ -130,11 +88,7 @@ export async function importSkillsFromFiles(
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
           source,
-          sourceMetadata: buildSourceMetadata({
-            filePath: skill.skillMdPath,
-            repoUrl,
-            source,
-          }),
+          sourceMetadata: { filePath: skill.skillMdPath },
         });
 
         updated.push(existing);
@@ -167,11 +121,7 @@ export async function importSkillsFromFiles(
             extendedSkillId: null,
             icon,
             source,
-            sourceMetadata: buildSourceMetadata({
-              filePath: skill.skillMdPath,
-              repoUrl,
-              source,
-            }),
+            sourceMetadata: { filePath: skill.skillMdPath },
             isDefault: false,
           },
           { mcpServerViews: [] }

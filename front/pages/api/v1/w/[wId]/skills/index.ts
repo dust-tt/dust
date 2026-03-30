@@ -7,7 +7,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isString } from "@app/types/shared/utils/general";
 import formidable from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -53,14 +52,13 @@ async function handler(
     });
   }
 
-  let fields: formidable.Fields;
   let files: formidable.Files;
   try {
     const form = formidable({
       multiples: true,
       maxFileSize: MAX_ZIP_SIZE_BYTES,
     });
-    [fields, files] = await form.parse(req);
+    [, files] = await form.parse(req);
   } catch (err) {
     return apiError(req, res, {
       status_code: 400,
@@ -82,14 +80,9 @@ async function handler(
     });
   }
 
-  const repoUrl = isString(fields.repoUrl)
-    ? fields.repoUrl
-    : fields.repoUrl?.[0];
-
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
     source: "api",
-    repoUrl,
   });
   if (result.isErr()) {
     return apiError(req, res, {
