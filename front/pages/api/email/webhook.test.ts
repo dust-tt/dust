@@ -80,9 +80,9 @@ describe("POST /api/email/webhook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    delete process.env.IS_DEVELOPMENT;
     process.env.EMAIL_WEBHOOK_SECRET = "test-email-webhook-secret";
     process.env.SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY = publicKeyPem;
-    process.env.SENDGRID_PARSE_WEBHOOK_SIGNATURE_MODE = "required";
 
     rawBodyMock.mockResolvedValue(rawBody);
     parseSendgridDkimResultsMock.mockReturnValue([]);
@@ -140,6 +140,52 @@ describe("POST /api/email/webhook", () => {
     expect(res._getJSONData().error.message).toBe(
       "Invalid SendGrid Parse webhook signature."
     );
+  });
+
+  it("skips signature verification in development", async () => {
+    process.env.IS_DEVELOPMENT = "true";
+    formParseMock.mockResolvedValue([
+      {
+        subject: ["hello"],
+        text: ["body"],
+        from: ["Sender <sender@company.com>"],
+        SPF: ["pass"],
+        dkim: ["{@company.com : pass}"],
+        headers: [
+          [
+            "From: Sender <sender@company.com>",
+            "To: agent@dust.team",
+            "Message-ID: <msg-1@example.com>",
+          ].join("\r\n"),
+        ],
+        envelope: [
+          JSON.stringify({
+            from: "bounce@company.com",
+            to: ["agent@dust.team"],
+            cc: [],
+            bcc: [],
+          }),
+        ],
+      },
+      {},
+    ]);
+
+    const { req, res } = createMocks<
+      NextApiRequestWithContext,
+      NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+    >({
+      method: "POST",
+      headers: {
+        authorization: basicAuthHeader(process.env.EMAIL_WEBHOOK_SECRET ?? ""),
+        "content-type": "multipart/form-data; boundary=boundary",
+      },
+    });
+
+    await handler(req, res);
+
+    expect(formParseMock).toHaveBeenCalledTimes(1);
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
   });
 
   it("accepts a valid signature and parses the multipart body", async () => {

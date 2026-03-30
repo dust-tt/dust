@@ -37,6 +37,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -379,24 +380,25 @@ async function handler(
         });
       }
 
-      const signatureValidationRes = validateSendgridParseWebhookSignature({
-        mode: apiConfig.getSendgridParseWebhookSignatureMode(),
-        publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
-        headers: req.headers,
-        rawBody,
-      });
-      if (signatureValidationRes.isErr()) {
-        logger.warn(
-          {
-            errorType: signatureValidationRes.error.apiError.type,
-            message: signatureValidationRes.error.apiError.message,
-          },
-          "[email] Rejected SendGrid Parse webhook before multipart parsing"
-        );
-        return apiError(req, res, {
-          status_code: signatureValidationRes.error.statusCode,
-          api_error: signatureValidationRes.error.apiError,
+      if (!isDevelopment()) {
+        const signatureValidationRes = validateSendgridParseWebhookSignature({
+          publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
+          headers: req.headers,
+          rawBody,
         });
+        if (signatureValidationRes.isErr()) {
+          logger.warn(
+            {
+              errorType: signatureValidationRes.error.apiError.type,
+              message: signatureValidationRes.error.apiError.message,
+            },
+            "[email] Rejected SendGrid Parse webhook before multipart parsing"
+          );
+          return apiError(req, res, {
+            status_code: signatureValidationRes.error.statusCode,
+            api_error: signatureValidationRes.error.apiError,
+          });
+        }
       }
 
       const emailRes = await parseSendgridWebhookContent(rawBody, req.headers);

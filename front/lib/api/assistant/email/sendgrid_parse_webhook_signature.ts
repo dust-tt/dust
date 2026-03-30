@@ -4,11 +4,6 @@ import { Readable } from "node:stream";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type SendgridParseWebhookSignatureMode =
-  | "disabled"
-  | "optional"
-  | "required";
-
 type SignatureValidationError = {
   statusCode: 401 | 403 | 500;
   apiError: {
@@ -89,22 +84,16 @@ export function verifySendgridParseWebhookSignature({
 }
 
 export function validateSendgridParseWebhookSignature({
-  mode,
   publicKey,
   headers,
   rawBody,
   nowMs = Date.now(),
 }: {
-  mode: SendgridParseWebhookSignatureMode;
   publicKey: string | undefined;
   headers: IncomingHttpHeaders;
   rawBody: Buffer;
   nowMs?: number;
 }): Result<void, SignatureValidationError> {
-  if (mode === "disabled") {
-    return new Ok(undefined);
-  }
-
   if (!publicKey) {
     return new Err({
       statusCode: 500,
@@ -123,13 +112,8 @@ export function validateSendgridParseWebhookSignature({
     headers,
     SENDGRID_PARSE_WEBHOOK_TIMESTAMP_HEADER
   );
-  const hasAnySignatureHeaders = Boolean(signature) || Boolean(timestamp);
 
   if (!signature || !timestamp) {
-    if (mode === "optional" && !hasAnySignatureHeaders) {
-      return new Ok(undefined);
-    }
-
     return new Err({
       statusCode: 401,
       apiError: {

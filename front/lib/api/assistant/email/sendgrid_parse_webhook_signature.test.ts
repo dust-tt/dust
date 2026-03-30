@@ -104,7 +104,9 @@ describe("verifySendgridParseWebhookSignature", () => {
       "content-type": "multipart/form-data; boundary=boundary",
     });
     if (!isSendgridParseFormRequest(req)) {
-      throw new Error("Expected replayed raw body to be parseable by formidable");
+      throw new Error(
+        "Expected replayed raw body to be parseable by formidable"
+      );
     }
     const form = new IncomingForm();
     const [fields, files] = await form.parse(req);
@@ -124,21 +126,25 @@ describe("validateSendgridParseWebhookSignature", () => {
     timestamp: freshTimestamp,
   });
 
-  it("accepts missing headers in optional mode", () => {
+  it("rejects a missing public key", () => {
     const result = validateSendgridParseWebhookSignature({
-      mode: "optional",
-      publicKey: publicKeyPem,
+      publicKey: undefined,
       headers: {},
       rawBody,
       nowMs,
     });
 
-    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected missing public key to be rejected");
+    }
+
+    expect(result.error.statusCode).toBe(500);
+    expect(result.error.apiError.type).toBe("internal_server_error");
   });
 
-  it("rejects missing headers in required mode", () => {
+  it("rejects missing headers", () => {
     const result = validateSendgridParseWebhookSignature({
-      mode: "required",
       publicKey: publicKeyPem,
       headers: {},
       rawBody,
@@ -156,7 +162,6 @@ describe("validateSendgridParseWebhookSignature", () => {
 
   it("rejects an invalid signature", () => {
     const result = validateSendgridParseWebhookSignature({
-      mode: "required",
       publicKey: publicKeyPem,
       headers: {
         "x-twilio-email-event-webhook-signature": "invalid-signature",
@@ -177,7 +182,6 @@ describe("validateSendgridParseWebhookSignature", () => {
 
   it("rejects stale timestamps", () => {
     const result = validateSendgridParseWebhookSignature({
-      mode: "required",
       publicKey: publicKeyPem,
       headers: {
         "x-twilio-email-event-webhook-signature": signWebhook({
@@ -199,9 +203,8 @@ describe("validateSendgridParseWebhookSignature", () => {
     expect(result.error.apiError.type).toBe("invalid_request_error");
   });
 
-  it("accepts a valid signature in required mode", () => {
+  it("accepts a valid signature", () => {
     const result = validateSendgridParseWebhookSignature({
-      mode: "required",
       publicKey: publicKeyPem,
       headers: {
         "x-twilio-email-event-webhook-signature": signature,
