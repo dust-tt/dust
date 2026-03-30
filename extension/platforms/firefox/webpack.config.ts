@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import CopyPlugin from "copy-webpack-plugin";
 import Dotenv from "dotenv-webpack";
 import fs from "fs";
+import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import { promisify } from "util";
@@ -87,6 +88,19 @@ export const getConfig = async ({
         }),
       ],
       concatenateModules: shouldBuild !== "analyze",
+      splitChunks: {
+        chunks: (chunk) => chunk.name === "main",
+        maxSize: 5 * 1024 * 1024, // 5MB — Firefox's 5MB limit
+        minSize: 50 * 1024,
+        cacheGroups: {
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: "vendors",
+            chunks: (chunk) => chunk.name === "main",
+            priority: 10,
+          },
+        },
+      },
     },
     performance: false,
     devtool: isDevelopment ? "inline-source-map" : undefined,
@@ -206,10 +220,6 @@ export const getConfig = async ({
             to: path.join(buildDirPath, "manifest.json"),
           },
           {
-            from: resolvePath("../../ui/main.html"),
-            to: path.join(buildDirPath, "main.html"),
-          },
-          {
             from: resolvePath("../../ui/request-mic.html"),
             to: path.join(buildDirPath, "request-mic.html"),
           },
@@ -223,6 +233,13 @@ export const getConfig = async ({
             to: path.resolve(buildDirPath, "images"),
           },
         ],
+      }),
+      new HtmlWebpackPlugin({
+        template: resolvePath("../../ui/main.html"),
+        filename: "main.html",
+        chunks: ["main"],
+        inject: "body",
+        scriptLoading: "blocking",
       }),
       new webpack.BannerPlugin({
         banner: "\ufeff", // UTF-8 BOM
