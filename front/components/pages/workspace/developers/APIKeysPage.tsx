@@ -48,14 +48,13 @@ export function APIKeys({ owner }: APIKeysProps) {
     useSubmitFunction(
       async ({
         name,
-        group,
+        groups: selectedGroups,
         monthlyCapMicroUsd,
       }: {
         name: string;
-        group: GroupType | null;
+        groups: GroupType[];
         monthlyCapMicroUsd: number | null;
       }) => {
-        const globalGroup = groups.find((g) => g.kind === "global");
         const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
           headers: {
@@ -63,8 +62,7 @@ export function APIKeys({ owner }: APIKeysProps) {
           },
           body: JSON.stringify({
             name,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            group_id: group?.sId ? group.sId : globalGroup?.sId,
+            group_ids: selectedGroups.map((g) => g.sId),
             monthly_cap_micro_usd: monthlyCapMicroUsd,
           }),
         });

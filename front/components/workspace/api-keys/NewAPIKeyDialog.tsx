@@ -9,8 +9,8 @@ import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import {
   Button,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -42,7 +43,7 @@ interface NewAPIKeyDialogProps {
   isRevoking: boolean;
   onCreate: (params: {
     name: string;
-    group: GroupType | null;
+    groups: GroupType[];
     monthlyCapMicroUsd: number | null;
   }) => Promise<void>;
 }
@@ -54,9 +55,7 @@ export const NewAPIKeyDialog = ({
   onCreate,
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [restrictedGroup, setRestrictedGroup] = useState<GroupType | null>(
-    null
-  );
+  const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -76,7 +75,7 @@ export const NewAPIKeyDialog = ({
 
   const handleClose = () => {
     reset();
-    setRestrictedGroup(null);
+    setSelectedGroups([]);
     setIsOpen(false);
   };
 
@@ -86,7 +85,7 @@ export const NewAPIKeyDialog = ({
 
     await onCreate({
       name: data.name,
-      group: restrictedGroup,
+      groups: selectedGroups,
       monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
     });
     handleClose();
@@ -136,16 +135,30 @@ export const NewAPIKeyDialog = ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label>Add optional additional Space</Label>
+                <Label>Additional Spaces</Label>
+                {selectedGroups.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedGroups.map((g) => (
+                      <Button
+                        key={g.id}
+                        label={prettifyGroupName(g)}
+                        icon={XMarkIcon}
+                        size="xs"
+                        variant="outline"
+                        onClick={() =>
+                          setSelectedGroups((prev) =>
+                            prev.filter((sg) => sg.id !== g.id)
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label={
-                          restrictedGroup
-                            ? prettifyGroupName(restrictedGroup)
-                            : "Add a space"
-                        }
+                        label="Add spaces"
                         size="sm"
                         variant="outline"
                         isSelect
@@ -158,13 +171,27 @@ export const NewAPIKeyDialog = ({
                             .toLowerCase()
                             .localeCompare(prettifyGroupName(b).toLowerCase())
                         )
-                        .map((group: GroupType) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
-                            onClick={() => setRestrictedGroup(group)}
-                          />
-                        ))}
+                        .map((group: GroupType) => {
+                          const isSelected = selectedGroups.some(
+                            (sg) => sg.id === group.id
+                          );
+                          return (
+                            <DropdownMenuCheckboxItem
+                              key={group.id}
+                              label={prettifyGroupName(group)}
+                              checked={isSelected}
+                              onCheckedChange={() => {
+                                if (isSelected) {
+                                  setSelectedGroups((prev) =>
+                                    prev.filter((sg) => sg.id !== group.id)
+                                  );
+                                } else {
+                                  setSelectedGroups((prev) => [...prev, group]);
+                                }
+                              }}
+                            />
+                          );
+                        })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

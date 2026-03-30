@@ -1,7 +1,6 @@
 import config from "@app/lib/api/config";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
-import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Button, cn } from "@dust-tt/sparkle";
@@ -25,17 +24,10 @@ const getKeySpaces = (
   key: KeyType,
   groupsById: Record<ModelId, GroupType>
 ): string[] => {
-  const group = groupsById[key.groupId];
-
-  if (!group) {
-    return [];
-  }
-
-  if (group.kind === "global" || key.scope == "restricted_group_only") {
-    return [prettifyGroupName(group)];
-  }
-
-  return [GLOBAL_SPACE_NAME, prettifyGroupName(group)];
+  return key.groupIds
+    .map((gId) => groupsById[gId])
+    .filter(Boolean)
+    .map((g) => prettifyGroupName(g));
 };
 
 export const APIKeysList = ({
