@@ -83,6 +83,10 @@ import {
   launchOrSignalButlerWorkflow,
   signalButlerComplete,
 } from "@app/temporal/butler/client";
+import {
+  launchOrSignalProjectTodoWorkflow,
+  signalProjectTodoComplete,
+} from "@app/temporal/project_todo/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -920,20 +924,30 @@ export async function postUserMessage(
       : Promise.resolve(undefined),
   ]);
 
-  if (featureFlags.includes("conversation_butler") && isPartOfProject) {
-    // Fire-and-forget: butler failures must not block message posting.
-    void launchOrSignalButlerWorkflow({
+  if (isPartOfProject) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
       conversationId: conversation.sId,
       messageId: userMessage.sId,
-    });
+    };
 
-    if (agentMessages.length === 0) {
-      void signalButlerComplete({
-        authType: auth.toJSON(),
-        conversationId: conversation.sId,
-        messageId: userMessage.sId,
-      });
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+
+      if (agentMessages.length === 0) {
+        void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
+      }
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block message posting.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+
+      if (agentMessages.length === 0) {
+        void signalButlerComplete(projectTodoAndConversationButlerParams);
+      }
     }
   }
 
@@ -1255,23 +1269,30 @@ export async function editUserMessage(
   );
 
   const featureFlags = await getFeatureFlags(auth);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
-    // Fire-and-forget: butler failures must not block message editing.
-    void launchOrSignalButlerWorkflow({
+  if (isProjectConversation(conversation)) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
       conversationId: conversation.sId,
       messageId: userMessage.sId,
-    });
+    };
 
-    if (agentMessages.length === 0) {
-      void signalButlerComplete({
-        authType: auth.toJSON(),
-        conversationId: conversation.sId,
-        messageId: userMessage.sId,
-      });
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+
+      if (agentMessages.length === 0) {
+        void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
+      }
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block message editing.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+
+      if (agentMessages.length === 0) {
+        void signalButlerComplete(projectTodoAndConversationButlerParams);
+      }
     }
   }
 
@@ -1535,16 +1556,23 @@ export async function retryAgentMessage(
   });
 
   const featureFlags = await getFeatureFlags(auth);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
-    // Fire-and-forget: butler failures must not block retries.
-    void launchOrSignalButlerWorkflow({
+  if (isProjectConversation(conversation)) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
       conversationId: conversation.sId,
       messageId: agentMessage.sId,
-    });
+    };
+
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block retries.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+    }
   }
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
@@ -1695,21 +1723,25 @@ export async function postNewContentFragment(
   });
 
   const featureFlags = await getFeatureFlags(auth);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
-    // Fire-and-forget: butler failures must not block content fragment posting.
-    void launchOrSignalButlerWorkflow({
+  if (isProjectConversation(conversation)) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
       conversationId: conversation.sId,
       messageId,
-    });
-    void signalButlerComplete({
-      authType: auth.toJSON(),
-      conversationId: conversation.sId,
-      messageId,
-    });
+    };
+
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+      void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block content fragment posting.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+      void signalButlerComplete(projectTodoAndConversationButlerParams);
+    }
   }
 
   return new Ok(render);

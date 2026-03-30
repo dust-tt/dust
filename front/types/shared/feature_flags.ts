@@ -233,6 +233,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable conversation butler for automated conversation management",
     stage: "dust_only",
   },
+  project_todo: {
+    description: "Enable project todo feature",
+    stage: "dust_only",
+  },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
