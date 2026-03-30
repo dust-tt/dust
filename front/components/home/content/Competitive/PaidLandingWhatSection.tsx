@@ -1,9 +1,9 @@
-import { H2, H3, P } from "@app/components/home/ContentComponents";
+import { H2, P } from "@app/components/home/ContentComponents";
 import { cn } from "@dust-tt/sparkle";
 import { AlertTriangle, Check, Cpu, Lock, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 
-// ─── "What is Glean?" ─────────────────────────────────────────────────
+// ─── "What is [Product]?" ─────────────────────────────────────────────────────
 
 interface ComparisonCardItem {
   text: string;
@@ -22,15 +22,15 @@ interface WhatSectionProps {
   approaches: [ComparisonApproach, ComparisonApproach];
 }
 
-export function GleanWhatSection({
+export function PaidLandingWhatSection({
   title,
   description,
   catchLine,
   approaches,
 }: WhatSectionProps) {
   return (
-    <section className="w-full py-3 md:py-6">
-      <div className="mb-6 text-center md:mb-16">
+    <section className="w-full py-12 md:py-6">
+      <div className="mb-16 text-center">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto mb-6 max-w-3xl text-muted-foreground">
           {description}
@@ -42,8 +42,7 @@ export function GleanWhatSection({
           {catchLine}
         </P>
       </div>
-
-      <div className="mt-4 grid gap-4 md:mt-12 md:gap-8 md:grid-cols-2">
+      <div className="mt-12 grid gap-8 md:grid-cols-2">
         {approaches.map((approach) => (
           <ApproachCard key={approach.title} {...approach} />
         ))}
@@ -67,7 +66,9 @@ function ApproachCard({ title, items, variant }: ComparisonApproach) {
       {isPositive && (
         <div className="absolute -mr-16 -mt-16 right-0 top-0 h-32 w-32 rounded-bl-full bg-[#1C91FF]/10" />
       )}
-      <H3 className="mb-4 flex items-center gap-2">{title}</H3>
+      <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-[#111418]">
+        {title}
+      </h3>
       <ul className="relative z-10 space-y-4">
         {items.map((item) => (
           <li key={item.text} className="flex items-start gap-3">
@@ -90,7 +91,7 @@ function ApproachCard({ title, items, variant }: ComparisonApproach) {
   );
 }
 
-// ─── "Why teams look for alternatives" ─────────────────────────────────
+// ─── "Why teams look for alternatives" ────────────────────────────────────────
 
 interface WhyReason {
   title: string;
@@ -111,26 +112,31 @@ const ICON_MAP = {
   blue: <Cpu className="h-6 w-6 text-blue-500" />,
 } as const;
 
-export function GleanWhySection({ title, subtitle, reasons }: WhySectionProps) {
+export function PaidLandingWhySection({
+  title,
+  subtitle,
+  reasons,
+}: WhySectionProps) {
   return (
-    <section className="w-full pt-1 pb-3 md:pt-2 md:pb-6">
-      <div className="mb-6 text-center md:mb-16">
+    <section className="w-full pt-4 pb-12 md:pt-2 md:pb-6">
+      <div className="mb-16 text-center">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto max-w-2xl text-muted-foreground">
           {subtitle}
         </P>
       </div>
-
-      <div className="grid gap-4 md:gap-8 md:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-2">
         {reasons.map((reason) => (
           <div
             key={reason.title}
-            className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition-all hover:shadow-lg md:p-8"
+            className="rounded-2xl border border-gray-100 bg-gray-50 p-8 transition-all hover:shadow-lg"
           >
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm md:mb-6">
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
               {ICON_MAP[reason.iconColor]}
             </div>
-            <H3 className="mb-3">{reason.title}</H3>
+            <h3 className="mb-3 text-xl font-bold text-[#111418]">
+              {reason.title}
+            </h3>
             <P size="sm" className="text-muted-foreground">
               {reason.description}
             </P>

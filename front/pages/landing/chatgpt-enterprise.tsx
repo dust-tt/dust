@@ -1,12 +1,12 @@
 import { ChatGptEnterpriseDeepDive } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseDeepDive";
-import { ChatGptEnterpriseHeroSection } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseHeroSection";
-import { ChatGptEnterpriseLogoBar } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseLogoBar";
-import {
-  ChatGptEnterpriseWhatSection,
-  ChatGptEnterpriseWhySection,
-} from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseWhatSection";
 import { chatGptEnterpriseConfig } from "@app/components/home/content/ChatGptEnterprise/config/chatGptEnterpriseConfig";
 import { MultiProductComparisonTable } from "@app/components/home/content/Competitive/MultiProductComparisonTable";
+import { PaidLandingHeroSection } from "@app/components/home/content/Competitive/PaidLandingHeroSection";
+import { PaidLandingLogoBar } from "@app/components/home/content/Competitive/PaidLandingLogoBar";
+import {
+  PaidLandingWhatSection,
+  PaidLandingWhySection,
+} from "@app/components/home/content/Competitive/PaidLandingWhatSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -33,17 +33,17 @@ export default function ChatGptEnterpriseLandingPage() {
       />
 
       {/* Hero Section */}
-      <ChatGptEnterpriseHeroSection
+      <PaidLandingHeroSection
         headline={chatGptEnterpriseConfig.hero.headline}
         subtitle={chatGptEnterpriseConfig.hero.subtitle}
         ctaButtonText={chatGptEnterpriseConfig.hero.ctaButtonText}
-        ctaButtonLink={chatGptEnterpriseConfig.hero.ctaButtonLink}
         secondaryButtonText={chatGptEnterpriseConfig.hero.secondaryButtonText}
         secondaryButtonLink={chatGptEnterpriseConfig.hero.secondaryButtonLink}
+        trackingPrefix="chatgpt_enterprise"
       />
 
       {/* Logo Bar */}
-      <ChatGptEnterpriseLogoBar title={chatGptEnterpriseConfig.logoBarTitle} />
+      <PaidLandingLogoBar title={chatGptEnterpriseConfig.logoBarTitle} />
 
       {/* Dust Deep Dive */}
       <ChatGptEnterpriseDeepDive
@@ -52,7 +52,7 @@ export default function ChatGptEnterpriseLandingPage() {
       />
 
       {/* What is ChatGPT Enterprise? */}
-      <ChatGptEnterpriseWhatSection
+      <PaidLandingWhatSection
         title={chatGptEnterpriseConfig.whatIs.title}
         description={chatGptEnterpriseConfig.whatIs.description}
         catchLine={chatGptEnterpriseConfig.whatIs.catchLine}
@@ -60,7 +60,7 @@ export default function ChatGptEnterpriseLandingPage() {
       />
 
       {/* Why teams look for alternatives */}
-      <ChatGptEnterpriseWhySection
+      <PaidLandingWhySection
         title={chatGptEnterpriseConfig.whyEvaluate.title}
         subtitle={chatGptEnterpriseConfig.whyEvaluate.subtitle}
         reasons={chatGptEnterpriseConfig.whyEvaluate.reasons}

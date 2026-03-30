@@ -1,13 +1,13 @@
 import { MultiProductComparisonTable } from "@app/components/home/content/Competitive/MultiProductComparisonTable";
+import { PaidLandingHeroSection } from "@app/components/home/content/Competitive/PaidLandingHeroSection";
+import { PaidLandingLogoBar } from "@app/components/home/content/Competitive/PaidLandingLogoBar";
+import {
+  PaidLandingWhatSection,
+  PaidLandingWhySection,
+} from "@app/components/home/content/Competitive/PaidLandingWhatSection";
 import { gleanLandingConfig } from "@app/components/home/content/Glean/config/gleanConfig";
 import { GleanDeepDive } from "@app/components/home/content/Glean/GleanDeepDive";
-import { GleanHeroSection } from "@app/components/home/content/Glean/GleanHeroSection";
-import { GleanLogoBar } from "@app/components/home/content/Glean/GleanLogoBar";
 import { GleanPricingSection } from "@app/components/home/content/Glean/GleanPricingSection";
-import {
-  GleanWhatSection,
-  GleanWhySection,
-} from "@app/components/home/content/Glean/GleanWhatSection";
 import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -35,17 +35,17 @@ export default function GleanLandingPage() {
       />
 
       {/* Hero Section */}
-      <GleanHeroSection
+      <PaidLandingHeroSection
         headline={gleanLandingConfig.hero.headline}
         subtitle={gleanLandingConfig.hero.subtitle}
         ctaButtonText={gleanLandingConfig.hero.ctaButtonText}
-        ctaButtonLink={gleanLandingConfig.hero.ctaButtonLink}
         secondaryButtonText={gleanLandingConfig.hero.secondaryButtonText}
         secondaryButtonLink={gleanLandingConfig.hero.secondaryButtonLink}
+        trackingPrefix="glean"
       />
 
       {/* Logo Bar */}
-      <GleanLogoBar title={gleanLandingConfig.logoBarTitle} />
+      <PaidLandingLogoBar title={gleanLandingConfig.logoBarTitle} />
 
       {/* Dust Deep Dive */}
       <GleanDeepDive
@@ -54,7 +54,7 @@ export default function GleanLandingPage() {
       />
 
       {/* What is Glean? */}
-      <GleanWhatSection
+      <PaidLandingWhatSection
         title={gleanLandingConfig.whatIs.title}
         description={gleanLandingConfig.whatIs.description}
         catchLine={gleanLandingConfig.whatIs.catchLine}
@@ -62,7 +62,7 @@ export default function GleanLandingPage() {
       />
 
       {/* Why teams look for alternatives */}
-      <GleanWhySection
+      <PaidLandingWhySection
         title={gleanLandingConfig.whyEvaluate.title}
         subtitle={gleanLandingConfig.whyEvaluate.subtitle}
         reasons={gleanLandingConfig.whyEvaluate.reasons}
