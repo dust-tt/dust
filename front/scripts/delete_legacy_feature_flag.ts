@@ -1,4 +1,4 @@
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -21,9 +21,7 @@ makeScript(
       );
     }
 
-    const count = await FeatureFlagModel.count({
-      where: { name: featureFlag },
-    });
+    const count = await FeatureFlagResource.countLegacyByName(featureFlag);
 
     logger.info(
       { featureFlag, workspaceCount: count },
@@ -42,9 +40,7 @@ makeScript(
       return;
     }
 
-    await FeatureFlagModel.destroy({
-      where: { name: featureFlag },
-    });
+    await FeatureFlagResource.deleteLegacyByName(featureFlag);
 
     logger.info(
       { featureFlag, workspaceCount: count },
