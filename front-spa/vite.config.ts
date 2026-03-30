@@ -364,47 +364,6 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       rollupOptions: {
         input: appDefinition.inputs,
-        output: {
-          manualChunks(id) {
-            if (!id.includes("node_modules")) {
-              return undefined;
-            }
-
-            // @dust-tt/sparkle follows app code splitting (route-based)
-            if (id.includes("@dust-tt/sparkle")) {
-              return undefined;
-            }
-
-            // Mermaid ecosystem (~2.7MB) — already behind dynamic import()
-            // in sparkle's CodeBlockWithExtendedSupport, so Vite will
-            // naturally put it in a separate lazy chunk. No manual
-            // chunking needed.
-
-            // Markdown/syntax highlighting + katex (~2.1MB) — only needed
-            // for rendering conversations and markdown content.
-            if (
-              /\/(remark-|rehype-|unified|vfile|react-markdown|react-syntax-highlighter|refractor|highlight\.js|micromark|mdast|hast-|marked|remove-markdown|katex)/.test(
-                id
-              )
-            ) {
-              return "vendor-markdown";
-            }
-
-            // Rich text editor (~870KB) — tiptap + prosemirror, only
-            // needed in pages with text editing.
-            if (
-              /\/(@tiptap|prosemirror-|@uiw\/react-textarea-code-editor)/.test(
-                id
-              )
-            ) {
-              return "vendor-editor";
-            }
-
-            // All other node_modules — let Vite's default code splitting
-            // handle the rest to avoid circular chunk initialization errors.
-            return undefined;
-          },
-        },
       },
     },
   };

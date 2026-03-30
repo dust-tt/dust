@@ -1,9 +1,12 @@
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { UserIcon } from "@sparkle/icons/app";
-import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
+import {
+  getEmojiAndBackgroundFromUrl,
+  preloadEmojiData,
+} from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export const AVATAR_SIZES = [
   "xxs",
@@ -188,6 +191,11 @@ export function Avatar({
   icon,
   iconColor = "s-text-foreground",
 }: AvatarProps) {
+  const [, setEmojiLoaded] = useState(false);
+  useEffect(() => {
+    preloadEmojiData().then(() => setEmojiLoaded(true));
+  }, []);
+
   const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
     typeof normalizedVisual === "string" &&

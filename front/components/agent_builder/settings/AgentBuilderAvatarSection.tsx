@@ -71,7 +71,7 @@ export function AgentBuilderAvatarSection({
     });
     if (emojiSuggestions.isOk() && emojiSuggestions.value.suggestions.length) {
       const suggestion = emojiSuggestions.value.suggestions[0];
-      const emoji = buildSelectedEmojiType(suggestion.emoji);
+      const emoji = await buildSelectedEmojiType(suggestion.emoji);
       if (emoji) {
         avatarUrl = makeUrlForEmojiAndBackground(
           {

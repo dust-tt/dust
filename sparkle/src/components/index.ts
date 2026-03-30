@@ -120,7 +120,7 @@ export {
 } from "./Dropdown";
 export { DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";
-export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
+export { EmojiPicker, getEmojiMartData } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FaviconIcon } from "./FaviconIcon";
 export { FilterChips } from "./FilterChips";
