@@ -61,7 +61,22 @@ type AuditAction =
   | "tool.executed"
   // Triggers.
   | "trigger.fired"
-  | "trigger.email_received";
+  | "trigger.email_received"
+  // Agent lifecycle.
+  | "agent.created"
+  | "agent.updated"
+  | "agent.archived"
+  | "agent.deleted"
+  | "agent.scope_changed"
+  // Spaces.
+  | "space.created"
+  | "space.deleted"
+  | "space.permissions_updated"
+  // Data Sources.
+  | "datasource.created"
+  | "datasource.updated"
+  | "datasource.deleted"
+  | "datasource.deleted_admin";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;

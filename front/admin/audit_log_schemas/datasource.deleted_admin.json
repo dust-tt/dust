@@ -1,0 +1,16 @@
+{
+  "action": "datasource.deleted_admin",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "data_source"
+    }
+  ],
+  "metadata": {
+    "dataSourceName": "string",
+    "provider": "string",
+    "deletedBy": "string"
+  }
+}

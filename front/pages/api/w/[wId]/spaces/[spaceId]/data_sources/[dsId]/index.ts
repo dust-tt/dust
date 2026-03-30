@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -102,6 +107,24 @@ async function handler(
 
       await dataSource.setDescription(description);
 
+      void emitAuditLogEvent({
+        auth,
+        action: "datasource.updated",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          {
+            type: "data_source",
+            id: dataSource.sId,
+            name: dataSource.name,
+          },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          dataSourceName: dataSource.name,
+          field: "description",
+        },
+      });
+
       return res.status(200).json({
         dataSource: dataSource.toJSON(),
       });
@@ -151,6 +174,25 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "datasource.deleted",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          {
+            type: "data_source",
+            id: dataSource.sId,
+            name: dataSource.name,
+          },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          dataSourceName: dataSource.name,
+          provider: dataSource.connectorProvider ?? "folder",
+          spaceId: space.sId,
+        },
+      });
 
       res.status(204).end();
       return;

@@ -16,6 +16,10 @@ import {
   PUBLISHING_RESTRICTIONS,
 } from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
@@ -852,6 +856,27 @@ export async function createAgentConfiguration(
       }
     }
 
+    // Emit audit log: agent.created for new agents (no agentConfigurationId, or
+    // pending→active transition); agent.updated for version bumps of existing agents.
+    const isCreate = !agentConfigurationId || agentConfiguration.version === 0;
+    void emitAuditLogEvent({
+      auth,
+      action: isCreate ? "agent.created" : "agent.updated",
+      targets: [
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+        {
+          type: "agent",
+          id: agentConfiguration.sId,
+          name: agentConfiguration.name,
+        },
+      ],
+      metadata: {
+        agentName: agentConfiguration.name,
+        scope: scope,
+        model: `${model.providerId}/${model.modelId}`,
+      },
+    });
+
     return new Ok(agentConfiguration);
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
@@ -1247,6 +1272,18 @@ export async function archiveAgentConfiguration(
     if (editorGroupRes.isOk()) {
       await editorGroupRes.value.suspendMembers(auth);
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.archived",
+      targets: [
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+        { type: "agent", id: agentConfig.sId, name: agentConfig.name },
+      ],
+      metadata: {
+        agentName: agentConfig.name,
+      },
+    });
   }
 
   const affectedCount = updated[0];
@@ -1364,7 +1401,24 @@ export async function unsafeHardDeleteAgentConfiguration(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceId = workspace.id;
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.deleted",
+    targets: [
+      buildWorkspaceTarget(workspace),
+      {
+        type: "agent",
+        id: agentConfiguration.sId,
+        name: agentConfiguration.name,
+      },
+    ],
+    metadata: {
+      agentName: agentConfiguration.name,
+    },
+  });
 
   await withTransaction(async (t) => {
     // Clean up MCP server configurations and their children first
@@ -1659,6 +1713,20 @@ export async function updateAgentConfigurationScope(
       },
     }
   );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.scope_changed",
+    targets: [
+      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+      { type: "agent", id: agentConfig.sId, name: agentConfig.name },
+    ],
+    metadata: {
+      agentName: agentConfig.name,
+      previousScope: previousScope,
+      newScope: scope,
+    },
+  });
 
   // When scope changes from visible to hidden, disable triggers for non-editors.
   // Non-editors will no longer have access to the hidden agent.

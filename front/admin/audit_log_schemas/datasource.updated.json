@@ -1,0 +1,15 @@
+{
+  "action": "datasource.updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "data_source"
+    }
+  ],
+  "metadata": {
+    "dataSourceName": "string",
+    "field": "string"
+  }
+}

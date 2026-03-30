@@ -1,0 +1,16 @@
+{
+  "action": "datasource.deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "data_source"
+    }
+  ],
+  "metadata": {
+    "dataSourceName": "string",
+    "provider": "string",
+    "spaceId": "string"
+  }
+}

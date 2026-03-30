@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
@@ -188,6 +193,25 @@ async function handler(
         }
 
         const dataSourceView = r.value;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "datasource.created",
+          targets: [
+            buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+            {
+              type: "data_source",
+              id: dataSourceView.dataSource.sId,
+              name: dataSourceView.dataSource.name,
+            },
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            dataSourceName: dataSourceView.dataSource.name,
+            provider: "folder",
+            spaceId: space.sId,
+          },
+        });
 
         return res.status(201).json({
           dataSource: dataSourceView.dataSource.toJSON(),
@@ -582,6 +606,21 @@ const handleDataSourceWithProvider = async ({
       });
     }
   }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "datasource.created",
+    targets: [
+      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+      { type: "data_source", id: dataSource.sId, name: dataSource.name },
+    ],
+    context: getAuditLogContext(auth, req),
+    metadata: {
+      dataSourceName: dataSource.name,
+      provider: provider,
+      spaceId: space.sId,
+    },
+  });
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),
