@@ -18,7 +18,6 @@ export const addClientVersionHeaders = (
   "X-Commit-Hash": `${process.env.COMMIT_HASH}`,
   "X-Build-Date": `${process.env.BUILD_DATE}`,
   "X-Dust-Extension-Version": `${process.env.DUST_EXTENSION_VERSION}`,
-  "X-Extension-Id": chrome.runtime.id,
 });
 
 export const resHandler = async (res: Response) => {

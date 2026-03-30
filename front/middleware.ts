@@ -1,7 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   ALLOWED_HEADERS,
-  isAllowedFirefoxExtensionId,
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
@@ -180,25 +179,6 @@ function setCorsHeaders(
 
   // Check if origin is allowed (prod or dev).
   if (isDevelopment || isAllowedOrigin(origin)) {
-    // For non-preflight Firefox extension requests, additionally validate the
-    // extension ID header to ensure the request comes from our known extension.
-    if (
-      request.method !== "OPTIONS" &&
-      origin.startsWith("moz-extension://") &&
-      !isDevelopment
-    ) {
-      const extensionId = request.headers.get("x-extension-id");
-      if (!isAllowedFirefoxExtensionId(extensionId)) {
-        logger.info(
-          { origin, extensionId },
-          "Forbidden: Unknown Firefox Extension"
-        );
-        return new NextResponse(null, {
-          status: 403,
-          statusText: "Forbidden: Unknown Firefox Extension",
-        });
-      }
-    }
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else {

@@ -30,22 +30,6 @@ const ALLOWED_ORIGIN_PATTERNS = [
   new RegExp("^moz-extension://"),
 ] as const;
 
-// gecko.id values from the Firefox extension manifest.
-// Used to validate X-Extension-Id header on requests from moz-extension:// origins.
-export const FIREFOX_EXTENSION_IDS = [
-  "dust-dev@dust.tt",
-  "dust@dust.tt",
-] as const;
-
-export function isAllowedFirefoxExtensionId(
-  extensionId: string | null
-): boolean {
-  return (
-    extensionId !== null &&
-    (FIREFOX_EXTENSION_IDS as readonly string[]).includes(extensionId)
-  );
-}
-
 type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];
 
 export function isAllowedOrigin(origin: string): boolean {
@@ -61,7 +45,6 @@ export const ALLOWED_HEADERS = [
   "x-commit-hash",
   "x-dust-extension-version",
   "x-build-date",
-  "x-extension-id",
   "x-hackerone-research",
   "x-request-origin",
   // Datadog RUM tracing headers (injected automatically by the browser SDK).
