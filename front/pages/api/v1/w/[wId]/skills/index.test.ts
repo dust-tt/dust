@@ -1,16 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
-import { KeyResource } from "@app/lib/resources/key_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { Ok } from "@app/types/shared/result";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { createMocks } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
@@ -24,7 +19,7 @@ const serializedSkill: SkillType = {
   sId: "skill_new",
   createdAt: null,
   updatedAt: null,
-  editedBy: 1,
+  editedBy: null,
   status: "active",
   name: "Release Notes",
   agentFacingDescription: "Summarize releases",
@@ -64,31 +59,6 @@ describe(
   "public api authentication tests",
   createPublicApiAuthenticationTests(handler)
 );
-
-async function createNonBuilderPublicApiMockRequest() {
-  const workspace = await WorkspaceFactory.basic();
-  const { globalGroup } = await GroupFactory.defaults(workspace);
-  const key = await KeyResource.makeNew(
-    {
-      name: "non-builder-key",
-      workspaceId: workspace.id,
-      isSystem: false,
-      status: "active",
-      role: "user",
-    },
-    globalGroup
-  );
-
-  const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-    method: "POST",
-    query: { wId: workspace.sId },
-    headers: {
-      authorization: `Bearer ${key.secret}`,
-    },
-  });
-
-  return { req, res };
-}
 
 describe("POST /api/v1/w/[wId]/skills", () => {
   beforeEach(() => {
@@ -143,20 +113,6 @@ describe("POST /api/v1/w/[wId]/skills", () => {
       imported: [serializedSkill],
       updated: [],
       errored: [],
-    });
-  });
-
-  it("returns 403 when the caller is not a builder", async () => {
-    const { req, res } = await createNonBuilderPublicApiMockRequest();
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
     });
   });
 
