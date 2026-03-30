@@ -34,6 +34,7 @@ import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { validateNonRootInstructionReplaceHtml } from "@app/lib/editor/specs/nonRootInstructionReplaceValidation";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -78,7 +79,6 @@ import {
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
-import { JSDOM } from "jsdom";
 
 const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
@@ -190,14 +190,6 @@ async function markDuplicateSuggestionsAsOutdated(
 type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 
 /**
- * Returns the number of top-level HTML elements in the given HTML string
- */
-function countTopLevelBlocks(html: string): number {
-  const dom = new JSDOM(`<body>${html}</body>`);
-  return dom.window.document.body.children.length;
-}
-
-/**
  * Shared logic for creating instruction suggestions. Used by both the
  * suggest_prompt_edits MCP handler and reinforced agent analysis.
  */
@@ -254,15 +246,16 @@ export async function createInstructionSuggestions({
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
-  // Reject non-root suggestions that contain multiple top-level blocks.
+  // Reject non-root suggestions with several inner blocks or an outer element
+  // not in the schema (e.g. bare <div> — parses as one block but is invalid).
   for (const suggestion of suggestions) {
     if (suggestion.targetBlockId !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      const blockCount = countTopLevelBlocks(suggestion.content);
-      if (blockCount > 1) {
-        return new Err(
-          `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
-            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
-        );
+      const validation = validateNonRootInstructionReplaceHtml(
+        suggestion.targetBlockId,
+        suggestion.content
+      );
+      if (validation.isErr()) {
+        return validation;
       }
     }
   }
