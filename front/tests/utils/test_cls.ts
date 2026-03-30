@@ -57,8 +57,9 @@ export function createNamespace(name: string): CLSNamespace {
       storage.enterWith(context);
     },
     exit(_context: CLSStore): void {
-      // No-op: AsyncLocalStorage scopes context automatically through the
-      // async execution chain — no explicit cleanup is needed.
+      // Reset the store to an empty Map so that code running after exit() (e.g.
+      // afterAll hooks) doesn't inherit the now-rolled-back test transaction.
+      storage.enterWith(new Map<string, unknown>());
     },
   };
 

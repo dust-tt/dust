@@ -24,8 +24,9 @@ function createNamespace() {
     },
     createContext: (): CLSStore => new Map<string, unknown>(),
     enter: (context: CLSStore) => clsStorage.enterWith(context),
-    // No-op: AsyncLocalStorage scopes context automatically.
-    exit: (_context: CLSStore) => {},
+    // Reset the store so afterAll hooks don't inherit the rolled-back transaction.
+    exit: (_context: CLSStore) =>
+      clsStorage.enterWith(new Map<string, unknown>()),
   };
 }
 
