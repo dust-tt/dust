@@ -133,6 +133,7 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
 5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
 6. The \`content\` value must be a single-line string with no literal newline characters. Write \`<p>Line 1</p><p>Line 2</p>\`, never multi-line HTML. Literal newlines inside a JSON string value cause a parse error.
+7. The outer tag must be a block the schema recognises (e.g. \`<p>\`, headings, lists). For example, bare \`<div>\` is not a block node and the parser unwraps it.
 </block_editing_principles>
 
 <block_examples>
