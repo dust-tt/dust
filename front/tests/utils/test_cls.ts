@@ -57,9 +57,13 @@ export function createNamespace(name: string): CLSNamespace {
       storage.enterWith(context);
     },
     exit(_context: CLSStore): void {
-      // Reset the store to an empty Map so that code running after exit() (e.g.
-      // afterAll hooks) doesn't inherit the now-rolled-back test transaction.
-      storage.enterWith(new Map<string, unknown>());
+      // Delete the transaction key from the existing Map rather than replacing
+      // the store. afterAll hooks share the same Map reference as beforeEach
+      // (AsyncLocalStorage propagates references, not copies), so replacing the
+      // store with enterWith(new Map()) only affects the current continuation —
+      // afterAll's store reference still points to the original Map. Deleting
+      // from it ensures all holders of that reference see the cleared state.
+      storage.getStore()?.delete("transaction");
     },
   };
 
