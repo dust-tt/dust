@@ -123,6 +123,15 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     });
   }
 
+  // Count/delete rows for a flag name that is no longer in WHITELISTABLE_FEATURES.
+  static async countLegacyByName(name: string): Promise<number> {
+    return FeatureFlagModel.count({ where: { name } });
+  }
+
+  static async deleteLegacyByName(name: string): Promise<number> {
+    return FeatureFlagModel.destroy({ where: { name } });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
