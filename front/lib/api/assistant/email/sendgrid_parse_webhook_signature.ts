@@ -49,8 +49,18 @@ function hasFreshTimestamp(timestamp: string, nowMs: number): boolean {
   );
 }
 
-function normalizePublicKey(publicKey: string): string {
-  return publicKey.replace(/\\n/g, "\n");
+function createSendgridParseWebhookPublicKey(publicKey: string) {
+  const normalizedPublicKey = publicKey.replace(/\\n/g, "\n").trim();
+
+  if (normalizedPublicKey.includes("BEGIN PUBLIC KEY")) {
+    return createPublicKey(normalizedPublicKey);
+  }
+
+  return createPublicKey({
+    key: Buffer.from(normalizedPublicKey.replace(/\s+/g, ""), "base64"),
+    format: "der",
+    type: "spki",
+  });
 }
 
 export function verifySendgridParseWebhookSignature({
@@ -73,7 +83,7 @@ export function verifySendgridParseWebhookSignature({
   return verify(
     "sha256",
     signedContent,
-    createPublicKey(normalizePublicKey(publicKey)),
+    createSendgridParseWebhookPublicKey(publicKey),
     signatureBytes
   );
 }

@@ -13,6 +13,9 @@ const { privateKey, publicKey } = generateKeyPairSync("ec", {
 const publicKeyPem = publicKey
   .export({ format: "pem", type: "spki" })
   .toString();
+const publicKeyBase64 = publicKey
+  .export({ format: "der", type: "spki" })
+  .toString("base64");
 
 function signWebhook({
   rawBody,
@@ -51,6 +54,22 @@ describe("verifySendgridParseWebhookSignature", () => {
     expect(
       verifySendgridParseWebhookSignature({
         publicKey: publicKeyPem,
+        rawBody: multipartPayload,
+        signature,
+        timestamp,
+      })
+    ).toBe(true);
+  });
+
+  it("accepts the SendGrid base64 public-key format", () => {
+    const signature = signWebhook({
+      rawBody: multipartPayload,
+      timestamp,
+    });
+
+    expect(
+      verifySendgridParseWebhookSignature({
+        publicKey: publicKeyBase64,
         rawBody: multipartPayload,
         signature,
         timestamp,
