@@ -47,7 +47,7 @@
     "@types/remove-markdown": "^0.3.4",
     "@types/uuid": "^9.0.2",
     "axios": "^1.7.9",
-    "blake3": "^2.1.7",
+    "@napi-rs/blake-hash": "^1.3.6",
     "body-parser": "^1.20.2",
     "botbuilder": "^4.23.3",
     "crawlee": "3.14.1",
