@@ -1,0 +1,61 @@
+front/lib/api/actions/servers/image_generation/tools/index.ts
+  7cb748a816c0be4e 18,53-54,59,64-65,78,86-91,103,105,123,126-128,131,139,145,158-159
+front/lib/api/actions/servers/image_generation/helpers.ts
+  7cb748a816c0be4e 15,27-30,32,34,36,38,67-68,147,161,278,284,321,356,361,383
+front/lib/api/llm/imageGeneration.ts
+  7cb748a816c0be4e 34,54-57
+front/lib/api/llm/clients/google/imageGeneration.ts
+  7cb748a816c0be4e 114-116,161-162,166-168,173-175,180-182,197-206
+front/lib/api/actions/servers/image_generation/metadata.ts
+  7cb748a816c0be4e 78-79,90
+front/lib/api/llm/clients/openai/imageGeneration.ts
+  7cb748a816c0be4e 48-57,92,114-121,123-124,129-131,135,143-146,149,161,165,167-193
+front/lib/dev/byok_seed.sql
+  966f0635ced39252 178-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "e7b32978390c0ff333cc298d0d7c4ec3736af0bd",
+  "prompts": {
+    "5ca15cef064edaa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291ee395-224b-4beb-98a3-d8e81cc77995",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    },
+    "7cb748a816c0be4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6dc36119-0000-4862-b2db-3be2fb9034ad",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 195,
+      "total_deletions": 188,
+      "accepted_lines": 159,
+      "overriden_lines": 1
+    },
+    "966f0635ced39252": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0cd5531-8748-4c7e-9645-55bd85b55e96",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
