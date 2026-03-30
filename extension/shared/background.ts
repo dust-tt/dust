@@ -40,6 +40,14 @@ import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
 
+// Cache for /extension/config responses (5-minute TTL, matching front's SWR config).
+const EXTENSION_CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
+let extensionConfigCache: {
+  key: string;
+  blacklistedDomains: string[];
+  timestamp: number;
+} | null = null;
+
 function withTimeout<T>(
   promise: Promise<T>,
   ms: number,
@@ -93,18 +101,36 @@ const shouldDisableContextMenuForDomain = async (
   }
 
   try {
-    const res = await fetch(
-      `${regionInfo.url}/api/w/${selectedWorkspace}/extension/config`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: "omit",
+    const cacheKey = `${regionInfo.url}:${selectedWorkspace}`;
+    let blacklistedDomains: string[];
+
+    if (
+      extensionConfigCache &&
+      extensionConfigCache.key === cacheKey &&
+      Date.now() - extensionConfigCache.timestamp <
+        EXTENSION_CONFIG_CACHE_TTL_MS
+    ) {
+      blacklistedDomains = extensionConfigCache.blacklistedDomains;
+    } else {
+      const res = await fetch(
+        `${regionInfo.url}/api/w/${selectedWorkspace}/extension/config`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "omit",
+        }
+      );
+      if (!res.ok) {
+        return false;
       }
-    );
-    if (!res.ok) {
-      return false;
+      const data = await res.json();
+      blacklistedDomains = data.blacklistedDomains ?? [];
+      extensionConfigCache = {
+        key: cacheKey,
+        blacklistedDomains,
+        timestamp: Date.now(),
+      };
     }
-    const data = await res.json();
-    const blacklistedDomains: string[] = data.blacklistedDomains ?? [];
+
     const hostname = new URL(url).hostname;
     return blacklistedDomains.some((d) =>
       d.startsWith("http://") || d.startsWith("https://")
