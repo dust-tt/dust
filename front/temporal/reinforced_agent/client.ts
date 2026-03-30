@@ -7,6 +7,10 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { WorkflowHandle } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 import moment from "moment-timezone";
 import { QUEUE_NAME } from "./config";
 import {
@@ -64,17 +68,28 @@ export async function launchReinforcedAgentWorkspaceCron({
   const utcHour = getMidnightUtcHour(timezone);
   const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
 
-  await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
-    args: [{ workspaceId, useBatchMode: true, skipDelay: false }],
-    taskQueue: QUEUE_NAME,
-    workflowId,
-    cronSchedule: `0 ${utcHour} * * *`,
-  });
+  try {
+    await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
+      args: [{ workspaceId, useBatchMode: true, skipDelay: false }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      cronSchedule: `0 ${utcHour} * * *`,
+    });
 
-  logger.info(
-    { region, timezone, utcHour, workflowId, workspaceId },
-    "[ReinforcedAgent] Launched workspace cron workflow."
-  );
+    logger.info(
+      { region, timezone, utcHour, workflowId, workspaceId },
+      "[ReinforcedAgent] Launched workspace cron workflow."
+    );
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.info(
+        { workflowId, workspaceId },
+        "[ReinforcedAgent] Workspace cron workflow already running, skipping."
+      );
+    } else {
+      throw e;
+    }
+  }
 
   return new Ok(undefined);
 }
@@ -97,10 +112,17 @@ export async function stopReinforcedAgentWorkspaceCron({
       client.workflow.getHandle(workflowId);
     await handle.terminate(stopReason);
   } catch (e) {
-    logger.error(
-      { error: e, workflowId, workspaceId },
-      "[ReinforcedAgent] Failed stopping workspace cron workflow."
-    );
+    if (e instanceof WorkflowNotFoundError) {
+      logger.info(
+        { workflowId, workspaceId },
+        "[ReinforcedAgent] Workspace cron workflow not running, skipping."
+      );
+    } else {
+      logger.error(
+        { error: e, workflowId, workspaceId },
+        "[ReinforcedAgent] Failed stopping workspace cron workflow."
+      );
+    }
   }
 }
 
