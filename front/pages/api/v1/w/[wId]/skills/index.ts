@@ -31,16 +31,6 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
-
   const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("sandbox_tools")) {
     return apiError(req, res, {
