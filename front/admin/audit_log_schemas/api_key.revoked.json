@@ -1,0 +1,11 @@
+{
+  "action": "api_key.revoked",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "api_key"
+    }
+  ]
+}

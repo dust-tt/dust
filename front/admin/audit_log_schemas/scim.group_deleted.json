@@ -1,0 +1,15 @@
+{
+  "action": "scim.group_deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "groupName": "string",
+    "directoryId": "string"
+  }
+}

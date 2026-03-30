@@ -1,0 +1,12 @@
+{
+  "action": "user.identity_merged",
+  "targets": [
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "primaryUserId": "string",
+    "mergedUserId": "string"
+  }
+}

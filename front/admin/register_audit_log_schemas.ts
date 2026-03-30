@@ -117,7 +117,9 @@ async function loadSchemas(
 }
 
 async function main() {
-  const args = minimist(process.argv.slice(2));
+  const args = minimist(process.argv.slice(2), {
+    boolean: ["execute", "changed"],
+  });
   const execute = !!args.execute;
   const schemas = await loadSchemas(args);
 

@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -159,6 +164,19 @@ async function handler(
         },
         group.value
       );
+
+      void emitAuditLogEvent({
+        auth,
+        action: "api_key.created",
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "api_key", id: String(key.id), name: trimmedName },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          groupId: group.value.sId,
+        },
+      });
 
       res.status(201).json({
         key: key.toJSON(),

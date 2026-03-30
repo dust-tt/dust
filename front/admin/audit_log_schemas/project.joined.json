@@ -1,0 +1,14 @@
+{
+  "action": "project.joined",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "spaceName": "string"
+  }
+}

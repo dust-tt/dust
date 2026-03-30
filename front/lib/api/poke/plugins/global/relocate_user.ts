@@ -1,6 +1,10 @@
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import {
+  config as multiRegionsConfig,
+  SUPPORTED_REGIONS,
+} from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";
@@ -74,6 +78,18 @@ export const relocateUserPlugin = createPlugin({
         userId: user.workOSUserId,
         metadata: {
           region: newRegion[0] as RegionType,
+        },
+      });
+
+      // Audit event is gated on the admin's workspace (Poke context).
+      // Relocation is a global operation not tied to the target user's workspace.
+      void emitAuditLogEvent({
+        auth,
+        action: "user.relocated",
+        targets: [{ type: "user", id: userId, name: user.email }],
+        metadata: {
+          fromRegion: multiRegionsConfig.getCurrentRegion(),
+          toRegion: String(newRegion[0]),
         },
       });
 

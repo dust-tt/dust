@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -80,6 +85,19 @@ async function handler(
           });
         }
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "project.left",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          { type: "space", id: space.sId, name: space.name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          spaceName: space.name,
+        },
+      });
 
       return res.status(200).json({ success: true });
     }

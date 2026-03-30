@@ -7,6 +7,7 @@ import {
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
@@ -500,6 +501,7 @@ export function withPublicAPIAuthentication<T>(
         });
       }
       setClientIpOnAuth(workspaceAuth, req);
+
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming

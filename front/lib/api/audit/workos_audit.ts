@@ -6,12 +6,62 @@ import type {
 import { createAuditLogEvent } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
-// Audit actions will be added here as event emission is implemented per tier.
-// Using a union type ensures compile-time safety for action strings.
-type AuditAction = never;
+type AuditAction =
+  // Existing Tier 1 events.
+  | "user.login"
+  | "user.logout"
+  | "membership.created"
+  | "membership.revoked"
+  | "member.invited"
+  | "sso.connection_deleted"
+  | "domain.removed"
+  | "dsync.connection_deleted"
+  | "workspace.deleted"
+  // Authentication & Admin.
+  | "user.login_failed"
+  | "user.identity_merged"
+  | "user.relocated"
+  // API Keys & Secrets.
+  | "api_key.created"
+  | "api_key.revoked"
+  | "api_key.updated"
+  // Membership & Invitations.
+  | "membership.role_updated"
+  | "membership.origin_updated"
+  | "invitation.revoked"
+  | "invitation.role_updated"
+  | "member.bulk_invited"
+  | "member.bulk_revoked"
+  // Domains & SSO.
+  | "domain.verified"
+  | "domain.verification_failed"
+  // OAuth & Credentials.
+  | "oauth.initiated"
+  | "oauth.authorized"
+  | "credentials.created"
+  // Projects.
+  | "project.joined"
+  | "project.left"
+  // SCIM / Directory Sync.
+  | "scim.user_provisioned"
+  | "scim.user_updated"
+  | "scim.user_deprovisioned"
+  | "scim.group_created"
+  | "scim.group_deleted"
+  | "scim.group_user_added"
+  | "scim.group_user_removed"
+  // Agent & Tool Execution.
+  | "agent.executed"
+  | "tool.executed"
+  // Triggers.
+  | "trigger.fired"
+  | "trigger.email_received";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;
@@ -78,6 +128,59 @@ export async function emitAuditLogEvent({
 }
 
 /**
+ * Emits an audit log event directly with a workspace, bypassing Authenticator.
+ * Used in routes where no Authenticator is available (e.g. login, logout, signup)
+ * or in system contexts (e.g. Temporal activities).
+ * Does not throw errors — audit log failures should not break the main operation.
+ */
+export async function emitAuditLogEventDirect({
+  workspace,
+  action,
+  actor,
+  targets,
+  context,
+  metadata,
+}: {
+  workspace: LightWorkspaceType;
+  action: AuditAction;
+  actor: AuditLogActor;
+  targets: AuditLogTarget[];
+  context: AuditLogContext;
+  metadata?: Record<string, string | number | boolean>;
+}): Promise<void> {
+  try {
+    if (!workspace.workOSOrganizationId) {
+      return;
+    }
+
+    const subscription =
+      await SubscriptionResource.fetchLastByWorkspace(workspace);
+    if (!subscription || !subscription.getPlan().isAuditLogsAllowed) {
+      return;
+    }
+
+    await createAuditLogEvent({
+      workspace,
+      event: {
+        action,
+        actor,
+        targets,
+        context,
+        metadata,
+      },
+    });
+  } catch (error) {
+    logger.error(
+      {
+        ...normalizeError(error),
+        auditEvent: { action, targets, metadata },
+      },
+      "Failed to emit audit log event"
+    );
+  }
+}
+
+/**
  * Builds the audit actor from an Authenticator.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
@@ -100,4 +203,22 @@ export function buildWorkspaceTarget(workspace: {
   name: string;
 }): AuditLogTarget {
   return { type: "workspace", id: workspace.sId, name: workspace.name };
+}
+
+/**
+ * Builds the audit log context with the client IP address.
+ * When called with a request object, extracts the IP from headers.
+ * Otherwise returns the IP from auth or "internal" as the location.
+ */
+export function getAuditLogContext(
+  auth: Authenticator,
+  req?: {
+    headers: Record<string, string | string[] | undefined>;
+    socket?: { remoteAddress?: string };
+  }
+): AuditLogContext {
+  if (req) {
+    return { location: getClientIp(req) };
+  }
+  return { location: auth.clientIp() ?? "internal" };
 }

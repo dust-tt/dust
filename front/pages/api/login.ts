@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+import { emitAuditLogEventDirect } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
@@ -270,6 +271,30 @@ async function handler(
   };
 
   await user.recordLoginActivity();
+
+  if (targetWorkspace) {
+    const forwarded = req.headers["x-forwarded-for"];
+    const ip = forwarded
+      ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
+          .split(",")[0]
+          .trim()
+      : req.socket?.remoteAddress;
+    void emitAuditLogEventDirect({
+      workspace: targetWorkspace,
+      action: "user.login",
+      actor: {
+        type: "user",
+        id: user.sId,
+        name: user.name,
+      },
+      targets: [{ type: "user", id: user.sId, name: user.name }],
+      context: { location: ip ?? "internal" },
+      metadata: {
+        isSSO: String(session.isSSO),
+        authenticationMethod: session.authenticationMethod ?? "unknown",
+      },
+    });
+  }
 
   // Mark first use for provisioned membership when user accesses a workspace.
   if (targetWorkspace) {
