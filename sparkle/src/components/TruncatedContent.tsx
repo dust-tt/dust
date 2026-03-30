@@ -2,7 +2,7 @@ import { Button } from "@sparkle/components/Button";
 import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const contentVariants = cva("s-relative", {
   variants: {
