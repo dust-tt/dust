@@ -1,7 +1,7 @@
 import { WebCrawlerConfigurationResourceFactory } from "@connectors/tests/utils/WebCrawlerConfigurationFactory";
 import { describe, expect, test } from "vitest";
 
-import { shouldCrawlLink } from "./utils";
+import { shouldCrawlLink, stableIdForUrl } from "./utils";
 
 describe("shouldCrawlLink", () => {
   const baseConfig = WebCrawlerConfigurationResourceFactory.createMock();
@@ -145,5 +145,77 @@ describe("shouldCrawlLink", () => {
       const result = shouldCrawlLink(link, baseConfig);
       expect(result).toBe(true);
     });
+  });
+});
+
+describe("stableIdForUrl", () => {
+  // These expected values are computed with blake3 and serve as regression tests.
+  // If blake3 is replaced with a different hash function, these tests will fail,
+  // signaling that all persisted document IDs would become inconsistent.
+
+  test("generates a stable hex id for a document URL", () => {
+    const id = stableIdForUrl({
+      url: "https://example.com/page",
+      ressourceType: "document",
+    });
+    expect(id).toBe(
+      "37c116c576407985ebab61057ebbe2bef272d763a7fd24615323d2db80aeb2c3"
+    );
+  });
+
+  test("generates a stable hex id for a folder URL", () => {
+    const id = stableIdForUrl({
+      url: "https://example.com",
+      ressourceType: "folder",
+    });
+    expect(id).toBe(
+      "5c52da5148ba2a5de7d048f860e055ad719ac6e38c03fdf3abccb6701c84e527"
+    );
+  });
+
+  test("generates a stable hex id for a table URL", () => {
+    const id = stableIdForUrl({
+      url: "https://example.com/data",
+      ressourceType: "table",
+    });
+    expect(id).toBe(
+      "a5a24193f2893d414e7db5ab19dbad21f897c62c40b233cb25ec3ee4b996afc9"
+    );
+  });
+
+  test("returns the same id for the same input on repeated calls", () => {
+    const id1 = stableIdForUrl({
+      url: "https://example.com/foo",
+      ressourceType: "document",
+    });
+    const id2 = stableIdForUrl({
+      url: "https://example.com/foo",
+      ressourceType: "document",
+    });
+    expect(id1).toBe(id2);
+  });
+
+  test("returns different ids for different URLs", () => {
+    const id1 = stableIdForUrl({
+      url: "https://example.com/foo",
+      ressourceType: "document",
+    });
+    const id2 = stableIdForUrl({
+      url: "https://example.com/bar",
+      ressourceType: "document",
+    });
+    expect(id1).not.toBe(id2);
+  });
+
+  test("returns different ids for different resource types with the same URL", () => {
+    const id1 = stableIdForUrl({
+      url: "https://example.com",
+      ressourceType: "document",
+    });
+    const id2 = stableIdForUrl({
+      url: "https://example.com",
+      ressourceType: "folder",
+    });
+    expect(id1).not.toBe(id2);
   });
 });
