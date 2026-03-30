@@ -2,6 +2,7 @@ import {
   initializeOpenTelemetryInstrumentation,
   resource,
 } from "@app/lib/api/instrumentation/init";
+import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -10,7 +11,6 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/reinforced_agent/activities";
-import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Context } from "@temporalio/activity";

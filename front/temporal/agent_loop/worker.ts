@@ -2,6 +2,7 @@ import {
   initializeOpenTelemetryInstrumentation,
   resource,
 } from "@app/lib/api/instrumentation/init";
+import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -17,7 +18,6 @@ import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Context } from "@temporalio/activity";
