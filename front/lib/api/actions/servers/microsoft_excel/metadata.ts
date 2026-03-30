@@ -197,8 +197,42 @@ export const MICROSOFT_EXCEL_SERVER = {
       "Read and write Excel spreadsheets in Microsoft OneDrive and SharePoint.",
     icon: "MicrosoftExcelLogo",
     authorization: {
-      provider: "microsoft",
+      provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
+      scope: "User.Read Files.ReadWrite.All Sites.Read.All offline_access",
+      availableScopes: [
+        {
+          value: "Files.Read.All",
+          label: "Read files",
+          description: "Read Excel files in OneDrive and SharePoint.",
+          impliedBy: "Files.ReadWrite.All",
+          required: true,
+        },
+        {
+          value: "Files.ReadWrite.All",
+          label: "Write files",
+          fallbackScope: "Files.Read.All",
+          description:
+            "Modify Excel files. Required for writing, creating, and clearing worksheets.",
+        },
+        {
+          value: "Sites.Read.All",
+          label: "Read SharePoint sites",
+          description: "Search for Excel files across SharePoint sites.",
+        },
+        {
+          value: "User.Read",
+          label: "Read user profile",
+          description: "Read basic profile information of the signed-in user.",
+          required: true,
+        },
+        {
+          value: "offline_access",
+          label: "Offline access",
+          description: "Maintain access without requiring re-authentication.",
+          required: true,
+        },
+      ],
     },
     documentationUrl: null,
     instructions: null,
