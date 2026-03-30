@@ -43,6 +43,9 @@ export class PlanModel extends BaseModel<PlanModel> {
   declare isSCIMAllowed: boolean;
   declare isAuditLogsAllowed: boolean;
   declare isByok: boolean;
+  // Metronome package alias for this plan. When set, billing for workspaces on
+  // this plan is handled by Metronome instead of Stripe Billing.
+  declare metronomePackageAlias: CreationOptional<string | null>;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -155,6 +158,11 @@ PlanModel.init(
     isByok: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    metronomePackageAlias: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     maxDataSourcesCount: {
       type: DataTypes.INTEGER,

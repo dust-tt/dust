@@ -253,7 +253,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     auth: Authenticator
   ): Promise<Result<number, Error>> {
     const deletedCount = await withTransaction(async (t) => {
-      await RunResource.deleteAllByAppId(this.id, t);
+      await RunResource.deleteAllByAppId(auth, this.id, t);
 
       await CloneModel.destroy({
         where: {

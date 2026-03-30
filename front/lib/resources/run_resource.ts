@@ -184,10 +184,16 @@ export class RunResource extends BaseResource<RunModel> {
     });
   }
 
-  static async deleteAllByAppId(appId: ModelId, transaction?: Transaction) {
+  static async deleteAllByAppId(
+    auth: Authenticator,
+    appId: ModelId,
+    transaction?: Transaction
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
     assert(typeof appId === "number");
     await RunUsageModel.destroy({
       where: {
+        workspaceId: workspace.id,
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
@@ -213,6 +219,7 @@ export class RunResource extends BaseResource<RunModel> {
     assert(typeof workspace.id === "number");
     await RunUsageModel.destroy({
       where: {
+        workspaceId: workspace.id,
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
@@ -236,6 +243,7 @@ export class RunResource extends BaseResource<RunModel> {
       // Delete the run usage entry.
       await RunUsageModel.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           runId: this.id,
         },
         transaction,

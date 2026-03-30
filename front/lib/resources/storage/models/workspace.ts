@@ -32,6 +32,10 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
   declare conversationsRetentionDays: number | null;
+  // Metronome customer ID for this workspace. Set when the workspace is
+  // provisioned in Metronome (at first paid subscription). Persists across
+  // subscription changes — the Metronome customer represents the workspace.
+  declare metronomeCustomerId: CreationOptional<string | null>;
 }
 WorkspaceModel.init(
   {
@@ -101,6 +105,11 @@ WorkspaceModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: DEFAULT_SHARING_POLICY,
+    },
+    metronomeCustomerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

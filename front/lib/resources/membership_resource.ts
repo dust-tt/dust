@@ -1,6 +1,10 @@
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  addMetronomeProSeat,
+  removeMetronomeSeat,
+} from "@app/lib/metronome/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -773,6 +777,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       });
     });
 
+    // Sync seat to Metronome (fire-and-forget).
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    if (workspaceResource) {
+      void addMetronomeProSeat(workspaceResource, user.sId).catch((err) => {
+        logger.warn(
+          { workspaceId: workspace.sId, userSId: user.sId, err },
+          "[Metronome] Failed to add pro seat on membership creation"
+        );
+      });
+    }
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -899,6 +914,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     // We do not invalidate GroupMembership here
     // because WorkspaceMembership is tested before GroupMembership
     // in  lib/auth
+
+    // Sync seat removal to Metronome (fire-and-forget).
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    if (workspaceResource) {
+      void removeMetronomeSeat(workspaceResource, user.sId).catch((err) => {
+        logger.warn(
+          { workspaceId: workspace.sId, userSId: user.sId, err },
+          "[Metronome] Failed to remove seat on membership revocation"
+        );
+      });
+    }
 
     return new Ok({
       role: membership.role,
