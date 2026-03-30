@@ -1506,7 +1506,7 @@ export default function ThinkingActivity() {
         <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
           <div className="s-flex s-flex-col">
             {phase === "asking" && introComplete && (
-              <FadeIn className="s-mx-auto s-w-[92%]">
+              <FadeIn className="s-mx-auto s-w-[96%]">
                 <AskUserQuestion
                   question={QUESTION}
                   options={QUESTION_OPTIONS}
