@@ -1,5 +1,5 @@
 import { createPublicKey, verify } from "node:crypto";
-import type { IncomingHttpHeaders } from "node:http";
+import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 import { Readable } from "node:stream";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -177,4 +177,14 @@ export function createBufferedRequestFromRawBody(
   return Object.assign(Readable.from([rawBody]), {
     headers,
   });
+}
+
+export function isSendgridParseFormRequest(
+  req: Readable & { headers: IncomingHttpHeaders }
+): req is IncomingMessage {
+  return (
+    typeof req.pause === "function" &&
+    typeof req.resume === "function" &&
+    typeof req.on === "function"
+  );
 }

@@ -69,16 +69,6 @@ function basicAuthHeader(secret: string): string {
   return `Basic ${Buffer.from(`sendgrid:${secret}`).toString("base64")}`;
 }
 
-function asLoggedRequest(req: unknown): NextApiRequestWithContext {
-  return req as NextApiRequestWithContext;
-}
-
-function asApiResponse(
-  res: unknown
-): NextApiResponse<WithAPIErrorResponse<PostResponseBody>> {
-  return res as NextApiResponse<WithAPIErrorResponse<PostResponseBody>>;
-}
-
 describe("POST /api/email/webhook", () => {
   const rawBody = Buffer.from("multipart body", "utf8");
   const timestamp = `${Math.floor(Date.now() / 1000)}`;
@@ -107,7 +97,10 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("rejects missing signature headers before multipart parsing", async () => {
-    const { req, res } = createMocks({
+    const { req, res } = createMocks<
+      NextApiRequestWithContext,
+      NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+    >({
       method: "POST",
       headers: {
         authorization: basicAuthHeader(process.env.EMAIL_WEBHOOK_SECRET ?? ""),
@@ -115,7 +108,7 @@ describe("POST /api/email/webhook", () => {
       },
     });
 
-    await handler(asLoggedRequest(req), asApiResponse(res));
+    await handler(req, res);
 
     expect(formParseMock).not.toHaveBeenCalled();
     expect(res._getStatusCode()).toBe(401);
@@ -126,7 +119,10 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("rejects an invalid signature before multipart parsing", async () => {
-    const { req, res } = createMocks({
+    const { req, res } = createMocks<
+      NextApiRequestWithContext,
+      NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+    >({
       method: "POST",
       headers: {
         authorization: basicAuthHeader(process.env.EMAIL_WEBHOOK_SECRET ?? ""),
@@ -136,7 +132,7 @@ describe("POST /api/email/webhook", () => {
       },
     });
 
-    await handler(asLoggedRequest(req), asApiResponse(res));
+    await handler(req, res);
 
     expect(formParseMock).not.toHaveBeenCalled();
     expect(res._getStatusCode()).toBe(403);
@@ -173,7 +169,10 @@ describe("POST /api/email/webhook", () => {
       {},
     ]);
 
-    const { req, res } = createMocks({
+    const { req, res } = createMocks<
+      NextApiRequestWithContext,
+      NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+    >({
       method: "POST",
       headers: {
         authorization: basicAuthHeader(process.env.EMAIL_WEBHOOK_SECRET ?? ""),
@@ -183,7 +182,7 @@ describe("POST /api/email/webhook", () => {
       },
     });
 
-    await handler(asLoggedRequest(req), asApiResponse(res));
+    await handler(req, res);
 
     expect(formParseMock).toHaveBeenCalledTimes(1);
     expect(res._getStatusCode()).toBe(200);

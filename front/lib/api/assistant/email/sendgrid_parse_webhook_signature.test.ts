@@ -1,8 +1,10 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import {
+  createBufferedRequestFromRawBody,
   validateSendgridParseWebhookSignature,
   verifySendgridParseWebhookSignature,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
+import { IncomingForm } from "formidable";
 import { describe, expect, it } from "vitest";
 
 const { privateKey, publicKey } = generateKeyPairSync("ec", {
@@ -74,6 +76,18 @@ describe("verifySendgridParseWebhookSignature", () => {
         timestamp,
       })
     ).toBe(false);
+  });
+
+  it("replays the raw multipart body into formidable without rewriting it first", async () => {
+    const req = createBufferedRequestFromRawBody(multipartPayload, {
+      "content-length": `${multipartPayload.length}`,
+      "content-type": "multipart/form-data; boundary=boundary",
+    });
+    const form = new IncomingForm();
+    const [fields, files] = await form.parse(req);
+
+    expect(fields.text?.[0]).toBe("hello world");
+    expect(Object.keys(files)).toHaveLength(0);
   });
 });
 

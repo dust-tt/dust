@@ -22,6 +22,7 @@ import {
 } from "@app/lib/api/assistant/email/inbound_auth";
 import {
   createBufferedRequestFromRawBody,
+  isSendgridParseFormRequest,
   validateSendgridParseWebhookSignature,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import {
@@ -198,8 +199,13 @@ const parseSendgridWebhookContent = async (
   headers: NextApiRequest["headers"]
 ): Promise<Result<InboundEmail, Error>> => {
   const req = createBufferedRequestFromRawBody(rawBody, headers);
+  if (!isSendgridParseFormRequest(req)) {
+    return new Err(
+      new Error("Failed to recreate request body for multipart parsing")
+    );
+  }
   const form = new IncomingForm();
-  const [fields, files] = await form.parse(req as never);
+  const [fields, files] = await form.parse(req);
 
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
