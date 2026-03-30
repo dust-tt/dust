@@ -3,6 +3,7 @@ import { loadAllModels } from "@app/admin/db";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import {
+  AgentMessageModel,
   ConversationModel,
   MessageModel,
   UserMessageModel,
@@ -213,6 +214,79 @@ describe("ConversationResource", () => {
       );
       expect(oldConversations.length).toBe(4);
     });
+  });
+});
+
+describe("destroyConversation", () => {
+  let auth: Authenticator;
+  let agentConfigurationId: string;
+  let conversationId: string | null = null;
+
+  const getDestroyIdCounts = (calls: unknown[][]) => {
+    return calls.map((call) => {
+      const options = call[0] as { where?: { id?: unknown } };
+      const ids = options.where?.id;
+
+      if (Array.isArray(ids)) {
+        return ids.length;
+      }
+
+      return ids === undefined ? 0 : 1;
+    });
+  };
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const agents = await setupTestAgents(workspace, user);
+    agentConfigurationId = agents[0].sId;
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+
+    if (conversationId) {
+      await destroyConversation(auth, { conversationId });
+    }
+  });
+
+  it("should delete batched message resources chunk by chunk", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: Array.from({ length: 30 }, () => new Date()),
+    });
+    conversationId = conversation.sId;
+
+    const userMessageDestroySpy = vi.spyOn(UserMessageModel, "destroy");
+    const agentMessageDestroySpy = vi.spyOn(AgentMessageModel, "destroy");
+
+    const result = await destroyConversation(auth, { conversationId });
+
+    expect(result.isOk()).toBe(true);
+    conversationId = null;
+
+    const userMessageDestroyCounts = getDestroyIdCounts(
+      userMessageDestroySpy.mock.calls as unknown[][]
+    );
+    expect(userMessageDestroyCounts).toHaveLength(2);
+    expect(userMessageDestroyCounts.reduce((sum, count) => sum + count, 0)).toBe(
+      30
+    );
+    expect(Math.max(...userMessageDestroyCounts)).toBeLessThan(30);
+
+    const agentMessageDestroyCounts = getDestroyIdCounts(
+      agentMessageDestroySpy.mock.calls as unknown[][]
+    );
+    expect(agentMessageDestroyCounts).toHaveLength(2);
+    expect(
+      agentMessageDestroyCounts.reduce((sum, count) => sum + count, 0)
+    ).toBe(30);
+    expect(Math.max(...agentMessageDestroyCounts)).toBeLessThan(30);
   });
 });
 

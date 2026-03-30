@@ -231,10 +231,14 @@ export async function destroyConversation(
   const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
   for (const messagesChunk of messagesChunks) {
     const messageIds = messagesChunk.map((m) => m.id);
-    const userMessageIds = removeNulls(messages.map((m) => m.userMessageId));
-    const agentMessageIds = removeNulls(messages.map((m) => m.agentMessageId));
+    const userMessageIds = removeNulls(
+      messagesChunk.map((m) => m.userMessageId)
+    );
+    const agentMessageIds = removeNulls(
+      messagesChunk.map((m) => m.agentMessageId)
+    );
     const messageAndContentFragmentIds = removeNulls(
-      messages.map((m) => {
+      messagesChunk.map((m) => {
         if (m.contentFragmentId) {
           return { contentFragmentId: m.contentFragmentId, messageId: m.sId };
         }
