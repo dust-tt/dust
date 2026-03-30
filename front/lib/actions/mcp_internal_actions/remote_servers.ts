@@ -1,6 +1,7 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export type DefaultRemoteMCPServerConfig = {
   id: number;
@@ -15,6 +16,7 @@ export type DefaultRemoteMCPServerConfig = {
   scope?: string;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
   toolDisplayLabels?: Record<string, ToolDisplayLabels>;
+  featureFlag?: WhitelistableFeature;
 };
 
 export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
@@ -1027,6 +1029,53 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       continue_thread: {
         running: "Continuing thread on Hex",
         done: "Continue thread on Hex",
+      },
+    },
+  },
+  {
+    id: 10015,
+    name: "Power BI",
+    description:
+      "Query Power BI semantic models, retrieve schemas, and execute DAX queries directly from your conversations.",
+    url: "https://api.fabric.microsoft.com/v1/mcp/powerbi",
+    icon: "PowerBiLogo",
+    documentationUrl: "https://docs.dust.tt/docs/power-bi",
+    featureFlag: "power_bi_mcp",
+    authMethod: "oauth-static",
+    scope: "https://analysis.windows.net/powerbi/api/.default offline_access",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    toolStakes: {
+      get_reports: "never_ask",
+      get_datasets: "never_ask",
+      get_dashboards: "never_ask",
+      get_tiles: "never_ask",
+      execute_queries: "never_ask",
+      refresh_dataset: "low",
+    },
+    toolDisplayLabels: {
+      get_reports: {
+        running: "Fetching reports on Power BI",
+        done: "Fetch reports on Power BI",
+      },
+      get_datasets: {
+        running: "Fetching datasets on Power BI",
+        done: "Fetch datasets on Power BI",
+      },
+      get_dashboards: {
+        running: "Fetching dashboards on Power BI",
+        done: "Fetch dashboards on Power BI",
+      },
+      get_tiles: {
+        running: "Fetching tiles on Power BI",
+        done: "Fetch tiles on Power BI",
+      },
+      execute_queries: {
+        running: "Executing query on Power BI",
+        done: "Execute query on Power BI",
+      },
+      refresh_dataset: {
+        running: "Refreshing dataset on Power BI",
+        done: "Refresh dataset on Power BI",
       },
     },
   },

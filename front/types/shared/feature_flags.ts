@@ -198,6 +198,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Luma MCP tool for event management and guest tracking",
     stage: "on_demand",
   },
+  power_bi_mcp: {
+    description: "Power BI MCP tool for querying semantic models and DAX",
+    stage: "on_demand",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
