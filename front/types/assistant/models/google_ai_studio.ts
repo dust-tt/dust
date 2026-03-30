@@ -4,6 +4,8 @@ export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
 export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_3_PRO_IMAGE_MODEL_ID =
   "gemini-3-pro-image-preview" as const;
+export const GEMINI_3_1_FLASH_IMAGE_MODEL_ID =
+  "gemini-3.1-flash-image-preview" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 export const GEMINI_3_PRO_MODEL_ID = "gemini-3-pro-preview" as const;
 export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro-preview" as const;

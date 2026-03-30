@@ -21,6 +21,18 @@ export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
 
+const capabilitiesSchema = z
+  .object({
+    canEdit: z.boolean().optional(),
+    canComment: z.boolean().optional(),
+    canShare: z.boolean().optional(),
+    canCopy: z.boolean().optional(),
+  })
+  .optional()
+  .describe(
+    "The capabilities object for this file, as returned by search_files or get_file_content. Pass this value if it was returned by a previous tool call."
+  );
+
 // Tool name constants for cross-referencing in descriptions
 const GET_DOCUMENT_STRUCTURE_TOOL = "get_document_structure" as const;
 const GET_PRESENTATION_STRUCTURE_TOOL = "get_presentation_structure" as const;
@@ -236,6 +248,19 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       done: "Retrieve Google worksheet",
     },
   },
+  list_file_permissions: {
+    description:
+      "List all permissions (sharing settings) on a Google Drive file, showing who has access and their roles. Requires sharing access to the file.",
+    schema: {
+      fileId: z.string().describe("The ID of the Google Drive file."),
+      capabilities: capabilitiesSchema,
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing file permissions",
+      done: "List file permissions",
+    },
+  },
   list_comments: {
     description:
       "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
@@ -263,9 +288,16 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
 
 export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   create_document: {
-    description: "Create a new Google Docs document in the user's Drive.",
+    description:
+      "Create a new Google Docs document. Optionally specify a folder to create it in.",
     schema: {
       title: z.string().describe("The title of the new document."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -274,9 +306,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_spreadsheet: {
-    description: "Create a new Google Sheets spreadsheet in the user's Drive.",
+    description:
+      "Create a new Google Sheets spreadsheet. Optionally specify a folder to create it in.",
     schema: {
       title: z.string().describe("The title of the new spreadsheet."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -285,9 +324,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_presentation: {
-    description: "Create a new Google Slides presentation in the user's Drive.",
+    description:
+      "Create a new Google Slides presentation. Optionally specify a folder to create it in.",
     schema: {
       title: z.string().describe("The title of the new presentation."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -313,6 +359,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe(
           "The ID of the folder to place the copy in. If not provided, the copy will be placed in the same folder as the original."
         ),
+      capabilities: capabilitiesSchema,
     },
     stake: "low",
     displayLabels: {
@@ -326,12 +373,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     schema: {
       fileId: z.string().describe("The ID of the file to comment on."),
       content: z.string().describe("The text content of the comment."),
-      canEdit: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
-        ),
+      capabilities: capabilitiesSchema,
     },
     stake: "low",
     displayLabels: {
@@ -346,12 +388,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       fileId: z.string().describe("The ID of the file containing the comment."),
       commentId: z.string().describe("The ID of the comment to reply to."),
       content: z.string().describe("The plain text content of the reply."),
-      canEdit: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
-        ),
+      capabilities: capabilitiesSchema,
     },
     stake: "low",
     displayLabels: {
@@ -370,12 +407,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       "Text must be inserted within paragraph bounds, not at structural element boundaries (e.g., insert at startIndex + 1 for table cells).",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
-      canEdit: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
-        ),
+      capabilities: capabilitiesSchema,
       requests: GoogleDocsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
@@ -396,12 +428,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       "For more complex operations like formatting, merging cells, or updating existing data, use update_spreadsheet instead.",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      canEdit: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
-        ),
+      capabilities: capabilitiesSchema,
       range: z
         .string()
         .describe(
@@ -442,12 +469,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       spreadsheetId: z
         .string()
         .describe("The ID of the spreadsheet to update."),
-      canEdit: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
-        ),
+      capabilities: capabilitiesSchema,
       requests: GoogleSheetsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the spreadsheet. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
@@ -471,12 +493,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       presentationId: z
         .string()
         .describe("The ID of the presentation to update."),
-      canEdit: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has edit access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canEdit field."
-        ),
+      capabilities: capabilitiesSchema,
       requests: GoogleSlidesRequestsArraySchema.describe(
         "An array of batch update requests to apply to the presentation. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
@@ -531,17 +548,53 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("A custom message to include in the notification email."),
-      canShare: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether the user has sharing access to this file. Pass this value if it was returned by a previous search_files or get_file_content call in the capabilities.canShare field."
-        ),
+      capabilities: capabilitiesSchema,
     },
-    stake: "low",
+    stake: "medium",
     displayLabels: {
       running: "Sharing Google Drive file",
       done: "Share Google Drive file",
+    },
+  },
+  update_file_permission: {
+    description:
+      "Update the role of an existing permission on a Google Drive file. Use list_file_permissions to find the permissionId first. To grant new access, use share_file instead.",
+    schema: {
+      fileId: z.string().describe("The ID of the Google Drive file."),
+      permissionId: z
+        .string()
+        .describe(
+          "The ID of the permission to update. Use list_file_permissions to find this."
+        ),
+      role: z
+        .enum(["writer", "commenter", "reader"])
+        .describe("The new access level to set."),
+      capabilities: capabilitiesSchema,
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating file permission",
+      done: "Update file permission",
+    },
+  },
+  revoke_file_sharing: {
+    description:
+      "Remove access to a Google Drive file for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
+    schema: {
+      fileId: z
+        .string()
+        .describe("The ID of the Google Drive file to remove access from."),
+      permissionId: z
+        .string()
+        .describe(
+          "The ID of the permission to remove. Use list_file_permissions to find this."
+        ),
+      capabilities: capabilitiesSchema,
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Removing file access",
+      done: "Remove file access",
     },
   },
 });
@@ -560,7 +613,7 @@ export function getGoogleDriveServerMetadata(): ServerMetadata {
       name: "google_drive",
       version: "1.0.0",
       description:
-        "Search, read, create, clone, edit and comment on files in Google Drive (Docs, Sheets, Presentations).",
+        "Search, read, create, clone, edit, comment on, and manage permissions for files in Google Drive (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions"],

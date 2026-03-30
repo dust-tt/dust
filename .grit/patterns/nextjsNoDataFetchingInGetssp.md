@@ -8,30 +8,39 @@ level: warn
 Warns when `getServerSideProps` is defined. Only `owner` and context params
 should be returned. Fetch data client-side using SWR hooks instead.
 
-Note: The original Biome plugin uses `$filename` filtering which cannot be tested
-in grit. This test validates the core matching logic only.
-
 ```grit
 language js
 
-`const getServerSideProps = $init` => `GSSP_FLAGGED`
+getServerSideProps_definition() => `GSSP_FLAGGED`
 ```
 
-## Should flag getServerSideProps definition
+## Should flag getServerSideProps definition in pages
 
 ```typescript
+// @filename: front/pages/index.tsx
 const getServerSideProps = async (context) => {
   return { props: {} };
 };
 ```
 
 ```typescript
+// @filename: front/pages/index.tsx
 GSSP_FLAGGED
+```
+
+## Should not flag getServerSideProps outside pages
+
+```typescript
+// @filename: front/lib/utils.ts
+const getServerSideProps = async (context) => {
+  return { props: {} };
+};
 ```
 
 ## Should not flag other const declarations
 
 ```typescript
+// @filename: front/pages/index.tsx
 const getStaticProps = async () => {
   return { props: {} };
 };

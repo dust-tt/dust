@@ -13,7 +13,12 @@ export function useExtensionConfig(
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/extension/config`,
     configFetcher,
-    { disabled }
+    {
+      disabled,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes.
+    }
   );
 
   return {

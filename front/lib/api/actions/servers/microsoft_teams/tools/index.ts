@@ -286,6 +286,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       chatId,
       userIds,
       parentMessageId,
+      mentions,
     },
     { auth, authInfo, agentLoopContext }
   ) => {
@@ -434,12 +435,37 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         finalContent = `${messageContent}<br/><br/>${footerMessage}`;
       }
 
-      const requestBody = {
+      // Allow <at id="N"> tags so Teams @mentions are preserved after sanitization.
+      const sanitizedContent = sanitizeHtml(finalContent, {
+        allowedTags: [...sanitizeHtml.defaults.allowedTags, "at"],
+        allowedAttributes: {
+          ...sanitizeHtml.defaults.allowedAttributes,
+          at: ["id"],
+        },
+      });
+
+      const requestBody: Record<string, unknown> = {
         body: {
           contentType: "html",
-          content: sanitizeHtml(finalContent),
+          content: sanitizedContent,
         },
       };
+
+      if (mentions && mentions.length > 0) {
+        requestBody.mentions = mentions.map(
+          ({ id, mentionText, userAadId }) => ({
+            id,
+            mentionText,
+            mentioned: {
+              user: {
+                id: userAadId,
+                displayName: mentionText,
+                userIdentityType: "aadUser",
+              },
+            },
+          })
+        );
+      }
 
       const response = await client.api(endpoint).post(requestBody);
 

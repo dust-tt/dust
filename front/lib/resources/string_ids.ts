@@ -75,6 +75,9 @@ export const RESOURCES_PREFIX = {
   // Sandboxes.
   sandbox: "sbx",
 
+  // Project todos.
+  project_todo: "ptd",
+
   // Butler
   user_project_digest: "pje",
   conversation_butler_suggestion: "cbs",

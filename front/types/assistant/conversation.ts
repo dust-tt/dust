@@ -107,7 +107,9 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for the butler in projects
-  | "project_butler";
+  | "project_butler"
+  // for internal use, for reinforced agent batch LLM operations
+  | "reinforcement";
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
@@ -368,6 +370,14 @@ export type LightConversationType = ConversationWithoutContentType & {
   branchId: string | null;
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
+
+export function isLightConversationType(
+  conversation: ConversationType | LightConversationType
+): conversation is LightConversationType {
+  // Content is not an array of arrays of messages, it's an array of messages.
+  // Just check that the item 0 is not an
+  return "content" in conversation && !Array.isArray(conversation.content[0]);
+}
 
 export const isProjectConversation = <T extends ConversationWithoutContentType>(
   conversation: T

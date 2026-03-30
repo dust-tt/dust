@@ -17,6 +17,10 @@ const ImportSkillsRequestBodySchema = t.type({
   names: t.array(t.string),
 });
 
+export type ImportSkillsRequestBody = t.TypeOf<
+  typeof ImportSkillsRequestBodySchema
+>;
+
 export type ImportSkillsResponseBody = {
   imported: SkillType[];
   updated: SkillType[];

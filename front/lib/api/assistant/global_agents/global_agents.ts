@@ -47,6 +47,7 @@ import {
   _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
+import { _getReinforcementGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/reinforcement";
 import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
@@ -327,6 +328,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsToolsets: false,
     injectsUserContext: true,
     injectsWorkspaceContext: true,
+  },
+  [GLOBAL_AGENTS_SID.REINFORCEMENT]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.SLACK]: {
     injectsMemory: false,
@@ -1015,6 +1022,9 @@ function getGlobalAgent({
         globalAgentContext,
       });
       break;
+    case GLOBAL_AGENTS_SID.REINFORCEMENT:
+      agentConfiguration = _getReinforcementGlobalAgent();
+      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -1100,7 +1110,10 @@ export async function getGlobalAgents(
     Object.values(GLOBAL_AGENTS_SID)
       .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
       // We only want to fetch sidekick global agents if explicitly requested.
-      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK);
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK)
+      // The reinforcement agent is never called directly, it is only used as a
+      // placeholder when building reinforcement conversations.
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT);
 
   const flags = await getFeatureFlags(auth);
 

@@ -326,10 +326,14 @@ export function FeedbackSelector({
                         />
                         <div className="flex flex-col">
                           <Label htmlFor="share-conversation">
-                            Share conversation with the agent’s editors
+                            {isGlobalAgent
+                              ? "Share conversation with the Dust team"
+                              : "Share conversation with the agent’s editors"}
                           </Label>
                           <span className="text-xs text-muted-foreground">
-                            Helps editors improve the agent
+                            {isGlobalAgent
+                              ? `Helps the Dust team improve @${agentName}`
+                              : "Helps editors improve the agent"}
                           </span>
                         </div>
                       </div>

@@ -5,9 +5,11 @@ import {
   convertMarkdownToHTML,
   findChannelAddress,
   formatConversationForLLM,
+  formatDraftsForLLM,
   formatMessagesForLLM,
   getFrontAPITokenFromExtra,
   makeFrontAPIRequest,
+  parseFrontDraftsResponse,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
 import { Err, Ok } from "@app/types/shared/result";
@@ -367,6 +369,37 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     }
   },
 
+  get_conversation_drafts: async ({ conversation_id }, extra) => {
+    try {
+      const apiToken = await getFrontAPITokenFromExtra(extra);
+
+      const data = await makeFrontAPIRequest({
+        method: "GET",
+        endpoint: `conversations/${conversation_id}/drafts`,
+        apiToken,
+      });
+
+      const drafts = parseFrontDraftsResponse(data);
+      const formatted = formatDraftsForLLM(drafts, conversation_id);
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: formatted,
+        },
+      ]);
+    } catch (error) {
+      if (error instanceof MCPError) {
+        return new Err(error);
+      }
+      return new Err(
+        new MCPError(
+          `Failed to get conversation drafts: ${normalizeError(error).message}`
+        )
+      );
+    }
+  },
+
   create_conversation: async (
     { inbox_id, to, subject, body, author_id },
     extra
@@ -465,6 +498,49 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
       }
       return new Err(
         new MCPError(`Failed to create draft: ${normalizeError(error).message}`)
+      );
+    }
+  },
+
+  delete_draft: async ({ draft_id, version }, extra) => {
+    try {
+      const apiToken = await getFrontAPITokenFromExtra(extra);
+
+      await makeFrontAPIRequest({
+        method: "DELETE",
+        endpoint: `drafts/${draft_id}`,
+        apiToken,
+        body: { version },
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Draft ${draft_id} deleted successfully.`,
+        },
+      ]);
+    } catch (error) {
+      if (error instanceof MCPError) {
+        if (error.code === 404) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Draft ${draft_id} already deleted or not found.`,
+            },
+          ]);
+        }
+        if (error.code === 409) {
+          return new Err(
+            new MCPError(
+              "Draft has been modified. Use get_conversation_drafts to get the latest version.",
+              { code: 409 }
+            )
+          );
+        }
+        return new Err(error);
+      }
+      return new Err(
+        new MCPError(`Failed to delete draft: ${normalizeError(error).message}`)
       );
     }
   },

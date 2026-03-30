@@ -13,6 +13,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
@@ -58,12 +59,38 @@ export function getCitationsFromActions(
     "internalMCPServerName" | "toolName" | "status" | "displayLabels"
   >[]
 ): Record<string, CitationType> {
-  const searchResultsWithDocs = removeNulls(
-    actions.flatMap((action) =>
-      action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
-    )
-  );
+  // Prefer persisted citations when present (backfilled/new rows).
+  const persistedRefs: Record<string, CitationType> = {};
+  let hasAnyPersisted = false;
+  for (const action of actions) {
+    if (action.citations !== undefined && action.citations !== null) {
+      hasAnyPersisted = true;
+      Object.assign(persistedRefs, action.citations);
+    }
+  }
+  if (hasAnyPersisted) {
+    return persistedRefs;
+  }
 
+  // Legacy fallback: compute citations from the tool output.
+  return actions.reduce<Record<string, CitationType>>((acc, action) => {
+    return {
+      ...acc,
+      ...getCitationsFromToolOutput(action.output ?? null),
+    };
+  }, {});
+}
+
+export function getCitationsFromToolOutput(
+  output: CallToolResult["content"] | null
+): Record<string, CitationType> {
+  if (!output || output.length === 0) {
+    return {};
+  }
+
+  const searchResultsWithDocs = removeNulls(
+    output.filter(isSearchResultResourceType).map((o) => o.resource)
+  );
   const searchRefs: Record<string, CitationType> = {};
   searchResultsWithDocs.forEach((d) => {
     searchRefs[d.ref] = {
@@ -75,11 +102,8 @@ export function getCitationsFromActions(
   });
 
   const websearchResultsWithDocs = removeNulls(
-    actions.flatMap((action) =>
-      action.output?.filter(isWebsearchResultResourceType)
-    )
+    output.filter(isWebsearchResultResourceType)
   );
-
   const websearchRefs: Record<string, CitationType> = {};
   websearchResultsWithDocs.forEach((d) => {
     websearchRefs[d.resource.reference] = {
@@ -91,11 +115,8 @@ export function getCitationsFromActions(
   });
 
   const runAgentResultsWithRefs = removeNulls(
-    actions.flatMap((action) =>
-      action.output?.filter(isRunAgentResultResourceType)
-    )
+    output.filter(isRunAgentResultResourceType)
   );
-
   const runAgentRefs: Record<string, CitationType> = {};
   runAgentResultsWithRefs.forEach((result) => {
     if (result.resource.refs) {
@@ -111,11 +132,8 @@ export function getCitationsFromActions(
   });
 
   const dataSourceNodeContentResults = removeNulls(
-    actions.flatMap((action) =>
-      action.output?.filter(isDataSourceNodeContentType).map((o) => o.resource)
-    )
+    output.filter(isDataSourceNodeContentType).map((o) => o.resource)
   );
-
   const dataSourceNodeContentRefs: Record<string, CitationType> = {};
   dataSourceNodeContentResults.forEach((d) => {
     if (!d.ref) {
@@ -172,7 +190,6 @@ export function getLightAgentMessageFromAgentMessage(
         isInProjectContext: f.isInProjectContext,
         createdAt: f.createdAt,
         updatedAt: f.updatedAt,
-        ...(f.hidden ? { hidden: true } : {}),
       })),
     richMentions: agentMessage.richMentions,
     completionDurationMs: agentMessage.completionDurationMs,

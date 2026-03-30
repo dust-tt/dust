@@ -9,8 +9,6 @@ import { apiError } from "@app/logger/withlogging";
 import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/internal/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -53,25 +51,25 @@ async function handler(
   switch (req.method) {
     case "GET":
       // extract the limit from the query parameters
-      const queryValidation = GetAgentConfigurationsHistoryQuerySchema.decode({
-        ...req.query,
-        limit:
-          typeof req.query.limit === "string"
-            ? parseInt(req.query.limit, 10)
-            : undefined,
-      });
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const queryValidation =
+        GetAgentConfigurationsHistoryQuerySchema.safeParse({
+          ...req.query,
+          limit:
+            typeof req.query.limit === "string"
+              ? parseInt(req.query.limit, 10)
+              : undefined,
+        });
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${queryValidation.error.message}`,
           },
         });
       }
 
-      const { limit } = queryValidation.right;
+      const { limit } = queryValidation.data;
 
       let agentConfigurations = await listsAgentConfigurationVersions(auth, {
         agentId: aId,

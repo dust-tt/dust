@@ -7,6 +7,7 @@ import { Chip, IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const MAX_ANALYSIS_LENGTH = 80;
+const MAX_CONTENT_LENGTH = 80;
 
 function truncate(text: string | null, maxLength: number): string {
   if (!text) {
@@ -16,6 +17,28 @@ function truncate(text: string | null, maxLength: number): string {
     return text;
   }
   return text.slice(0, maxLength) + "...";
+}
+
+function ClickableCell({
+  text,
+  maxLength,
+  onClick,
+}: {
+  text: string | null;
+  maxLength: number;
+  onClick: () => void;
+}) {
+  const truncated = truncate(text, maxLength);
+  const isTruncated = text && text.length > maxLength;
+  return (
+    <span
+      onClick={isTruncated ? onClick : undefined}
+      className={isTruncated ? "cursor-pointer hover:underline" : ""}
+      title={isTruncated ? "Click to see full content" : undefined}
+    >
+      {truncated}
+    </span>
+  );
 }
 
 async function deleteSuggestion(
@@ -54,7 +77,8 @@ async function deleteSuggestion(
 export function makeColumnsForSuggestions(
   owner: LightWorkspaceType,
   agentId: string,
-  onSuggestionDeleted: () => Promise<void>
+  onSuggestionDeleted: () => Promise<void>,
+  onSuggestionClick: (suggestion: AgentSuggestionType) => void
 ): ColumnDef<AgentSuggestionType>[] {
   return [
     {
@@ -137,7 +161,13 @@ export function makeColumnsForSuggestions(
         <PokeColumnSortableHeader column={column} label="Analysis" />
       ),
       cell: ({ row }) => {
-        return truncate(row.original.analysis, MAX_ANALYSIS_LENGTH);
+        return (
+          <ClickableCell
+            text={row.original.analysis}
+            maxLength={MAX_ANALYSIS_LENGTH}
+            onClick={() => onSuggestionClick(row.original)}
+          />
+        );
       },
     },
     {
@@ -150,12 +180,17 @@ export function makeColumnsForSuggestions(
       },
     },
     {
-      accessorKey: "updatedAt",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Updated at" />
-      ),
+      id: "content",
+      header: "Content",
       cell: ({ row }) => {
-        return formatTimestampToFriendlyDate(row.original.updatedAt);
+        const content = JSON.stringify(row.original.suggestion);
+        return (
+          <ClickableCell
+            text={content}
+            maxLength={MAX_CONTENT_LENGTH}
+            onClick={() => onSuggestionClick(row.original)}
+          />
+        );
       },
     },
     {

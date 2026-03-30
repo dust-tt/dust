@@ -524,6 +524,7 @@ export async function createAgentConfiguration(
               "authorId",
               "workspaceId",
               "createdAt",
+              "reinforcement",
             ],
             order: [["version", "DESC"]],
             transaction: t,
@@ -607,7 +608,8 @@ export async function createAgentConfiguration(
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
-            reinforcement: reinforcement ?? "auto",
+            reinforcement:
+              reinforcement ?? existingAgent.reinforcement ?? "auto",
           },
           {
             where: {
@@ -652,7 +654,8 @@ export async function createAgentConfiguration(
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
-            reinforcement: reinforcement ?? "auto",
+            reinforcement:
+              reinforcement ?? existingAgent?.reinforcement ?? "auto",
           },
           {
             transaction: t,
@@ -1731,4 +1734,21 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   return allowedBySpaceIds;
+}
+
+export async function updateAgentReinforcementMode(
+  auth: Authenticator,
+  agentSId: string,
+  reinforcement: AgentReinforcementMode
+): Promise<void> {
+  await AgentConfigurationModel.update(
+    { reinforcement },
+    {
+      where: {
+        sId: agentSId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+      },
+    }
+  );
 }

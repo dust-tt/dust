@@ -36,7 +36,12 @@ class LLMStreamTimeoutError extends Error {
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
-  logContext?: { conversationId: string; step: number; modelId: ModelIdType }
+  logContext?: {
+    workspaceId: string;
+    conversationId: string;
+    step: number;
+    modelId: ModelIdType;
+  }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
@@ -167,6 +172,7 @@ export async function getOutputFromLLMStream(
   let nativeChainOfThought = "";
 
   const logContext = {
+    workspaceId: conversation.owner.sId,
     conversationId: conversation.sId,
     step,
     modelId: model.modelId,

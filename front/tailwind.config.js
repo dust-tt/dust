@@ -1008,7 +1008,7 @@ module.exports = {
     // Avatar bg classes are constructed dynamically.
     {
       pattern:
-        /^bg-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800)$/,
+        /^(bg|text)-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800|900)$/,
     },
     // MainNavigation grid rows are constructed dynamically.
     "grid-rows-2",

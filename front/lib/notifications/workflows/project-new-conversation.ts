@@ -1,4 +1,4 @@
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -93,7 +93,10 @@ const getConversationDetails = async ({
     payload.workspaceId
   );
 
-  const conversationRes = await getConversation(auth, payload.conversationId);
+  const conversationRes = await getLightConversation(
+    auth,
+    payload.conversationId
+  );
 
   if (conversationRes.isErr()) {
     return new Err(
@@ -144,8 +147,8 @@ const getConversationDetails = async ({
   });
 
   const firstMessageContent =
-    conversation.content[0]?.[0].type === "user_message"
-      ? conversation.content[0][0].content
+    conversation.content[0]?.type === "user_message"
+      ? conversation.content[0].content
       : null;
 
   return new Ok({

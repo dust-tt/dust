@@ -1,6 +1,7 @@
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
@@ -13,7 +14,9 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   areSameRankAndBranch,
+  convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
+  isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -39,14 +42,8 @@ import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
-import type {
-  ConversationWithoutContentType,
-  LightMessageType,
-} from "@app/types/assistant/conversation";
-import {
-  isUserMessageType,
-  isUserMessageTypeWithContentFragments,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
@@ -318,6 +315,33 @@ export const ConversationViewer = ({
     conversation?.unread,
     conversation?.lastReadMs,
   ]);
+
+  // Sync the virtuoso ref with the side panel context.
+  const {
+    data: panelData,
+    currentPanel,
+    setVirtuosoMsg,
+  } = useConversationSidePanelContext();
+
+  // The ConversationSidePanel is not a children of the VirtuosoMessageList, therefor it doesn't have access to the state easily.
+  // This provide the msg to the "Agent Details" panel when it's open and keep it updated.
+  // It's a workaround until we found a cleaner way to handle this.
+  // Note: it's based on the "onRenderedDataChange" call so it means that if the message is not rendered, the panel won't be updated.
+  // It's highly unlikely to happen (we render much more than the viewport and it would be surprising that the user scroll to another message) but it's something to keep in mind.
+  const onRenderedDataChange = useCallback(
+    (renderedData: VirtuosoMessage[]) => {
+      if (currentPanel === "actions" && panelData) {
+        const messageId = panelData;
+        const message = renderedData
+          .filter(isMessageTemporayState)
+          .find((m) => m.sId === messageId);
+        if (message) {
+          setVirtuosoMsg(message);
+        }
+      }
+    },
+    [currentPanel, panelData, setVirtuosoMsg]
+  );
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
@@ -917,6 +941,7 @@ export const ConversationViewer = ({
         licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
       >
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
+          onRenderedDataChange={onRenderedDataChange}
           data={{
             data: initialListData,
             scrollModifier: {
@@ -953,12 +978,3 @@ export const ConversationViewer = ({
     </>
   );
 };
-
-const convertLightMessageTypeToVirtuosoMessages = (
-  messages: LightMessageType[]
-) =>
-  messages.map((message) =>
-    isUserMessageTypeWithContentFragments(message)
-      ? message
-      : makeInitialMessageStreamState(message)
-  );

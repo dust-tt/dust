@@ -1,6 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   getSmallWhitelistedModel,
@@ -20,12 +19,14 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { formatConversationForDisplay } from "../../actions/servers/project_manager/tools/conversation_formatting";
 
 export async function updateConversationTitle(
   auth: Authenticator,
@@ -180,21 +181,21 @@ async function generateConversationTitle(
   }
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    tools: "",
-    allowedTokenCount: model.contextSize - model.generationTokensCount,
-    excludeActions: true,
-    excludeImages: true,
-  });
+  const conv: ModelConversationTypeMultiActions = {
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Here is the conversation to generate a title for.\n\n${JSON.stringify(formatConversationForDisplay(conversation, owner.sId).messages, null, 2)}`,
+          },
+        ],
+        name: "",
+      },
+    ],
+  };
 
-  if (modelConversationRes.isErr()) {
-    return modelConversationRes;
-  }
-
-  const { modelConversation: conv } = modelConversationRes.value;
   if (conv.messages.length === 0) {
     // It is possible that no message were selected if the context size of the small model was
     // overflown by the initial user message. In that case we just skip title generation for now (it

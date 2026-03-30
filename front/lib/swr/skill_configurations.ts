@@ -1,7 +1,6 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   emptyArray,
@@ -204,7 +203,9 @@ export function useArchiveSkill({
   owner: LightWorkspaceType;
   skill: SkillType;
 }) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
       owner,
@@ -228,7 +229,7 @@ export function useArchiveSkill({
     if (!skill.sId) {
       return;
     }
-    const res = await clientFetch(`/api/w/${owner.sId}/skills/${skill.sId}`, {
+    const res = await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}`, {
       method: "DELETE",
     });
 
@@ -264,7 +265,9 @@ export function useRestoreSkill({
   owner: LightWorkspaceType;
   skill: SkillType;
 }) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
       owner,
@@ -282,7 +285,7 @@ export function useRestoreSkill({
     if (!skill.sId) {
       return;
     }
-    const res = await clientFetch(
+    const res = await fetcher(
       `/api/w/${owner.sId}/skills/${skill.sId}/restore`,
       {
         method: "POST",
@@ -374,6 +377,7 @@ export function useDetectSkillsFromRepo({
   owner: LightWorkspaceType;
 }) {
   const { fetcher } = useFetcher();
+
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
     []
   );
@@ -467,7 +471,9 @@ function notifyImportResult(
 }
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+
   const [isImporting, setIsImporting] = useState(false);
   const { mutateSkillsWithRelations: mutateActiveSkills } =
     useSkillsWithRelations({
@@ -483,7 +489,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         let res: Response;
         switch (formData.importType) {
           case "repository": {
-            res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
+            res = await fetcher(`/api/w/${owner.sId}/skills/import`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -501,10 +507,10 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
             for (const name of formData.selectedSkillNames) {
               body.append("names", name);
             }
-            res = await clientFetch(
-              `/api/w/${owner.sId}/skills/import/upload`,
-              { method: "POST", body }
-            );
+            res = await fetcher(`/api/w/${owner.sId}/skills/import/upload`, {
+              method: "POST",
+              body,
+            });
             break;
           }
         }
@@ -528,7 +534,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         setIsImporting(false);
       }
     },
-    [owner.sId, mutateActiveSkills, sendNotification]
+    [owner.sId, mutateActiveSkills, sendNotification, fetcher]
   );
 
   return { importSkills, isImporting };
@@ -539,6 +545,8 @@ export function useDetectSkillsFromFiles({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
+
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
     []
   );
@@ -557,10 +565,10 @@ export function useDetectSkillsFromFiles({
       }
 
       try {
-        const res = await clientFetch(
-          `/api/w/${owner.sId}/skills/detect/upload`,
-          { method: "POST", body: formData }
-        );
+        const res = await fetcher(`/api/w/${owner.sId}/skills/detect/upload`, {
+          method: "POST",
+          body: formData,
+        });
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
@@ -580,7 +588,7 @@ export function useDetectSkillsFromFiles({
         setIsUploading(false);
       }
     },
-    [owner.sId]
+    [owner.sId, fetcher]
   );
 
   return {

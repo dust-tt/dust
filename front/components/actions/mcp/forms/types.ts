@@ -78,6 +78,9 @@ export const createMCPServerDialogFormSchema = mcpServerOAuthFormSchema.extend({
     .array(z.object({ key: z.string(), value: z.string() }))
     .default([]),
   viewName: z.string().optional(),
+  // Admin-selected OAuth scopes. When set, only the selected scopes will be
+  // requested during OAuth setup and stored on the server for personal connections.
+  selectedScopes: z.array(z.string()).optional(),
 });
 
 export type CreateMCPServerDialogFormValues = z.infer<

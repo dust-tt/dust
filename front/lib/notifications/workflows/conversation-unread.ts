@@ -1,8 +1,8 @@
 import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { formatConversationForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
@@ -22,17 +22,12 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  AgentMessageType,
-  UserMessageOrigin,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
   ConversationError,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
@@ -78,6 +73,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "agent_sidekick":
     case "project_butler":
     case "reinforced_agent_notification":
+    case "reinforcement":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -173,7 +169,10 @@ const getConversationDetails = async ({
     );
   }
 
-  const conversationRes = await getConversation(auth, payload.conversationId);
+  const conversationRes = await getLightConversation(
+    auth,
+    payload.conversationId
+  );
 
   if (conversationRes.isErr()) {
     // Check if the conversation was deleted (expected during workflow delay).
@@ -346,7 +345,7 @@ const specification: AgentActionSpecification = {
   },
 };
 
-const SUMMARY_ALLOWED_TOKEN_COUNT = 4000;
+const MAX_CONVERSATION_SNIPPET_LENGTH = 12_000;
 
 const generateUnreadMessagesSummary = async ({
   subscriberId,
@@ -376,7 +375,10 @@ const generateUnreadMessagesSummary = async ({
     payload.workspaceId
   );
 
-  const conversationRes = await getConversation(auth, payload.conversationId);
+  const conversationRes = await getLightConversation(
+    auth,
+    payload.conversationId
+  );
 
   if (conversationRes.isErr()) {
     return new Err(
@@ -386,24 +388,9 @@ const generateUnreadMessagesSummary = async ({
 
   const conversation = conversationRes.value;
 
-  const unreadMessages = conversation.content
-    .map((messages) =>
-      messages.filter((msg) => isMessageUnread(msg, conversation.lastReadMs))
-    )
-    .filter(
-      (
-        turn
-      ): turn is
-        | UserMessageType[]
-        | AgentMessageType[]
-        | ContentFragmentType[] => {
-        if (turn.length === 0) {
-          return false;
-        }
-        const firstType = turn[0].type;
-        return turn.every((msg) => msg.type === firstType);
-      }
-    );
+  const unreadMessages = conversation.content.filter((msg) =>
+    isMessageUnread(msg, conversation.lastReadMs)
+  );
 
   if (unreadMessages.length === 0) {
     return new Err(
@@ -466,29 +453,17 @@ const generateUnreadMessagesSummary = async ({
     `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
     `Write in a natural, engaging tone that makes someone want to read it.`;
 
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation: {
-      ...conversation,
-      content: unreadMessages,
-    },
-    model,
-    prompt,
-    tools: JSON.stringify(specification),
-    allowedTokenCount: Math.min(
-      model.contextSize - model.generationTokensCount,
-      SUMMARY_ALLOWED_TOKEN_COUNT
-    ),
-    excludeActions: true,
-    excludeImages: true,
-  });
+  let conversationSnippet = JSON.stringify(
+    formatConversationForDisplay(conversation, owner.sId).messages,
+    null,
+    2
+  );
 
-  if (modelConversationRes.isErr()) {
-    return new Err(
-      new DustError("internal_error", "Failed to render conversation for model")
-    );
+  if (conversationSnippet.length > MAX_CONVERSATION_SNIPPET_LENGTH) {
+    conversationSnippet =
+      "(the conversation history has been truncated)...\n\n" +
+      conversationSnippet.substring(0, MAX_CONVERSATION_SNIPPET_LENGTH);
   }
-
-  const { modelConversation } = modelConversationRes.value;
 
   const res = await runMultiActionsAgent(
     auth,
@@ -506,7 +481,7 @@ const generateUnreadMessagesSummary = async ({
             content: [
               {
                 type: "text",
-                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${JSON.stringify(modelConversation.messages, null, 2)}\n\`\`\``,
+                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${conversationSnippet}\n\`\`\``,
               },
             ],
           },

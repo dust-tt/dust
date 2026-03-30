@@ -503,7 +503,11 @@ const config = {
     return EnvironmentConfig.getEnvVariable("NOVU_SECRET_KEY");
   },
   getNovuApiUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("NEXT_PUBLIC_NOVU_API_URL");
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_NOVU_API_URL) {
+      throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_NOVU_API_URL;
   },
 };
 

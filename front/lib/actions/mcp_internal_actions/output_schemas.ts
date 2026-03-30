@@ -54,17 +54,18 @@ const ToolGeneratedFileSchema = z.object({
     ]
   ),
   snippet: z.string().nullable(),
-  // Optional UI hint to hide file from generic generated files sections.
-  hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
+  // DEPRECATED, only kept for backwards compatibility. Optional UI hint to hide file from generic generated files sections.
+  hidden: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
-  outputBlock: CallToolResult["content"][number]
+  outputBlock: CallToolResult["content"][number] | null
 ): outputBlock is { type: "resource"; resource: ToolGeneratedFileType } {
   return (
+    !!outputBlock &&
     outputBlock.type === "resource" &&
     ToolGeneratedFileSchema.safeParse(outputBlock.resource).success
   );

@@ -7,6 +7,7 @@
  */
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import { canShowAgentConversationActions } from "@app/types/assistant/assistant";
@@ -43,6 +44,7 @@ export const MentionDropdown = React.forwardRef<
   MentionDropdownProps
 >(({ mention, owner, children }, ref) => {
   const router = useAppRouter();
+  const clientType = useClientType();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 
@@ -73,11 +75,13 @@ export const MentionDropdown = React.forwardRef<
             icon={ChatBubbleBottomCenterPlusIcon}
             label={`New conversation with @${mention.label}`}
           />
-          <DropdownMenuItem
-            onClick={handleAgentSeeDetails}
-            icon={EyeIcon}
-            label={`About @${mention.label}`}
-          />
+          {clientType !== "extension" && (
+            <DropdownMenuItem
+              onClick={handleAgentSeeDetails}
+              icon={EyeIcon}
+              label={`About @${mention.label}`}
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );

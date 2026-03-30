@@ -1750,7 +1750,7 @@ describe("postUserMessage", () => {
     describe("with conversation_branches feature flag enabled", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent();
-        await FeatureFlagFactory.basic("conversation_branches", workspace);
+        await FeatureFlagFactory.basic(auth, "conversation_branches");
       });
 
       it("should create a branch and put first message in branch when posting with restricted agent", async () => {

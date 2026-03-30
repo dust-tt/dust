@@ -1,7 +1,7 @@
 import {
-  MAX_RESOURCE_CONTENT_SIZE,
-  MAX_TEXT_CONTENT_SIZE_BYTES,
-  MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
+  FILE_OFFLOAD_RESOURCE_SIZE_BYTES,
+  FILE_OFFLOAD_SNIPPET_LENGTH,
+  FILE_OFFLOAD_TEXT_SIZE_BYTES,
 } from "@app/lib/actions/action_output_limits";
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { processToolResults } from "@app/lib/actions/mcp_execution";
@@ -83,11 +83,11 @@ async function setupTest() {
 }
 
 describe("processToolResults", () => {
-  it("should store snippet in DB when text exceeds MAX_TEXT_CONTENT_SIZE_BYTES", async () => {
+  it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
-    // Generate text that exceeds MAX_TEXT_CONTENT_SIZE_BYTES (20KB).
-    const largeText = "x".repeat(MAX_TEXT_CONTENT_SIZE_BYTES + 1);
+    // Generate text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
+    const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
     const { outputItems } = await processToolResults(auth, {
       action,
@@ -104,7 +104,7 @@ describe("processToolResults", () => {
     expect(stored.type).toBe("resource");
     if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text.length).toBeLessThanOrEqual(
-        MAXED_OUTPUT_FILE_SNIPPET_LENGTH + 50
+        FILE_OFFLOAD_SNIPPET_LENGTH + 50
       );
       expect(stored.resource.text).toContain("... (truncated)");
     }
@@ -113,8 +113,8 @@ describe("processToolResults", () => {
   it("should store snippet for large resource text", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
-    // Generate resource text that exceeds MAX_RESOURCE_CONTENT_SIZE (20MB).
-    const largeResourceText = "y".repeat(MAX_RESOURCE_CONTENT_SIZE + 1);
+    // Generate resource text that exceeds FILE_OFFLOAD_RESOURCE_SIZE_BYTES (20MB).
+    const largeResourceText = "y".repeat(FILE_OFFLOAD_RESOURCE_SIZE_BYTES + 1);
 
     const { outputItems } = await processToolResults(auth, {
       action,
@@ -135,7 +135,7 @@ describe("processToolResults", () => {
     expect(stored.type).toBe("resource");
     if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text.length).toBeLessThanOrEqual(
-        MAXED_OUTPUT_FILE_SNIPPET_LENGTH + 50
+        FILE_OFFLOAD_SNIPPET_LENGTH + 50
       );
       expect(stored.resource.text).toContain("... (truncated)");
     }

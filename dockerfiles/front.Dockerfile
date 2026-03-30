@@ -8,6 +8,8 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
+RUN npm install -g npm@11.11.0
+
 WORKDIR /app
 
 # Copy all package.json files and lockfile

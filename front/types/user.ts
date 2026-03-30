@@ -1,13 +1,14 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
-
+import { z } from "zod";
 import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "./assistant/models/types";
 import type { MembershipOriginType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
+import { DbModelIdSchema } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
 
 export type WorkspaceSegmentationType = "interesting" | null;
@@ -40,6 +41,11 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
+export type WorkspaceSharingPolicy =
+  | "emails_only"
+  | "workspace_and_emails"
+  | "all_scopes";
+
 /**
  * @swaggerschema Workspace (swagger_schemas.ts), PrivateWorkspace (swagger_private_schemas.ts)
  */
@@ -54,6 +60,7 @@ export type LightWorkspaceType = {
   metadata?: {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
+  sharingPolicy: WorkspaceSharingPolicy;
   workOSOrganizationId?: string | null;
   groups?: string[];
 };
@@ -67,31 +74,30 @@ export type ExtensionWorkspaceType = WorkspaceType & {
   blacklistedDomains: string[] | null;
 };
 
-export type UserProviderType =
-  | "auth0"
-  | "github"
-  | "google"
-  | "okta"
-  | "samlp"
-  | "waad"
-  | null;
+export const UserProviderSchema = z
+  .enum(["auth0", "github", "google", "okta", "samlp", "waad"])
+  .nullable();
+
+export type UserProviderType = z.infer<typeof UserProviderSchema>;
+
+export const UserSchema = z.object({
+  sId: z.string(),
+  id: DbModelIdSchema,
+  createdAt: z.number(),
+  provider: UserProviderSchema,
+  username: z.string(),
+  email: z.string(),
+  firstName: z.string(),
+  lastName: z.string().nullable(),
+  fullName: z.string(),
+  image: z.string().nullable(),
+  lastLoginAt: z.number().nullable(),
+});
 
 /**
  * @swaggerschema User (swagger_schemas.ts)
  */
-export type UserType = {
-  sId: string;
-  id: ModelId;
-  createdAt: number;
-  provider: UserProviderType;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string | null;
-  fullName: string;
-  image: string | null;
-  lastLoginAt: number | null;
-};
+export type UserType = z.infer<typeof UserSchema>;
 
 export type UserTypeWithWorkspace = UserType & {
   workspace: WorkspaceType;
@@ -125,13 +131,14 @@ export type UserMetadataType = {
   value: string;
 };
 
-export type EditedByUser = {
-  editedAt: number | null;
-  fullName: string | null;
-  imageUrl: string | null;
-  email: string | null;
-  userId: string | null;
-};
+export const EditedByUserSchema = z.object({
+  editedAt: z.number().nullable(),
+  fullName: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  email: z.string().nullable(),
+  userId: z.string().nullable(),
+});
+export type EditedByUser = z.infer<typeof EditedByUserSchema>;
 
 export function formatUserFullName(user: {
   firstName?: string;

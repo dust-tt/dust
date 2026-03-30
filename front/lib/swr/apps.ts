@@ -13,6 +13,7 @@ import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[s
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type { AppType } from "@app/types/app";
 import type { RunRunType } from "@app/types/run";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -135,7 +136,7 @@ export function useDustAppSecrets(owner: LightWorkspaceType | null) {
   return {
     secrets: data?.secrets ?? emptyArray(),
     isSecretsLoading: !error && !data && !!owner,
-    isSecretsError: error,
+    isSecretsError: error ? normalizeError(error) : undefined,
   };
 }
 

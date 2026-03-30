@@ -26,6 +26,7 @@ export function renderLightWorkspaceType({
     name: workspace.name,
     role,
     segmentation: workspace.segmentation,
+    sharingPolicy: workspace.sharingPolicy,
     sId: workspace.sId,
     whiteListedProviders: workspace.whiteListedProviders,
     workOSOrganizationId: workspace.workOSOrganizationId,

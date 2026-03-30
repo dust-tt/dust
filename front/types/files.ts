@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { removeNulls } from "./shared/utils/general";
+import type { UserType } from "./user";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
@@ -39,6 +40,7 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
   sourceIcon?: string;
+  hideFromGeneratedFiles?: boolean;
 };
 
 export function isConversationFileUseCase(
@@ -47,9 +49,25 @@ export function isConversationFileUseCase(
   return ["conversation", "tool_output"].includes(useCase);
 }
 
-export const fileShareScopeSchema = z.enum(["workspace", "public"]);
+export const MAX_EMAILS_PER_INVITE = 20;
+
+export const fileShareScopeSchema = z.enum([
+  "emails_only",
+  "public",
+  "workspace_and_emails",
+  "workspace",
+]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
+
+export interface SharingGrantType {
+  id: number;
+  email: string;
+  grantedAt: Date;
+  grantedBy: UserType | null;
+  expiresAt: Date | null;
+  lastViewedAt: Date | null;
+}
 
 export interface FileType {
   contentType: AllSupportedFileContentType;
@@ -631,4 +649,29 @@ export function isPdfContentType(contentType: string): boolean {
 
 export function isMarkdownContentType(contentType: string): boolean {
   return contentType === "text/markdown";
+}
+
+/**
+ * Infers a supported content type from a file name's extension.
+ * Returns null if the extension is not recognized.
+ */
+export function contentTypeFromFileName(
+  fileName: string
+): SupportedFileContentType | null {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex === -1) {
+    return null;
+  }
+  const extension = fileName.slice(dotIndex).toLowerCase();
+
+  for (const key of Object.keys(FILE_FORMATS)) {
+    if (isSupportedFileContentType(key)) {
+      const exts: readonly string[] = FILE_FORMATS[key].exts;
+      if (exts.includes(extension)) {
+        return key;
+      }
+    }
+  }
+
+  return null;
 }

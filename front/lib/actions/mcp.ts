@@ -1,8 +1,4 @@
 import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
-import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
@@ -19,25 +15,16 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import type { FileAuthorizationInfo } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
-  DataSourceConfiguration,
-  ProjectConfiguration,
-  TableDataSourceConfiguration,
-} from "@app/lib/api/assistant/configuration/types";
-import type {
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { DustAppRunConfigurationType } from "@app/types/app";
-import type {
-  PersonalAuthenticationRequiredErrorContent,
-  ToolErrorEvent,
-} from "@app/types/assistant/agent";
-import { isPersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent";
-import type { ModelId } from "@app/types/shared/model_id";
+import type { ToolErrorEvent } from "@app/types/assistant/agent";
+import {
+  isPersonalAuthenticationRequiredErrorContent,
+  type PersonalAuthenticationRequiredErrorContent,
+} from "@app/types/assistant/agent_error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
@@ -45,44 +32,20 @@ export type ActionApprovalStateType =
   | "rejected"
   | "always_approved";
 
-export type BaseMCPServerConfigurationType = {
-  id: ModelId;
+// Schemas are in mcp_schemas.ts to avoid pulling zod + heavy dependencies
+// into the Temporal workflow sandbox (which doesn't have Buffer, etc.).
+// Import schemas from "@app/lib/actions/mcp_schemas" directly.
+import type {
+  ClientSideMCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp_schemas";
 
-  sId: string;
-
-  type: "mcp_server_configuration";
-
-  name: string;
-
-  description: string | null;
-  icon?: CustomResourceIconType | InternalAllowedIconType;
-};
-
-// Server-side MCP server = Remote MCP Server OR our own MCP server.
-export type ServerSideMCPServerConfigurationType =
-  BaseMCPServerConfigurationType & {
-    dataSources: DataSourceConfiguration[] | null;
-    tables: TableDataSourceConfiguration[] | null;
-    childAgentId: string | null;
-    timeFrame: TimeFrame | null;
-    jsonSchema: JSONSchema | null;
-    additionalConfiguration: AdditionalConfigurationType;
-    mcpServerViewId: string;
-    dustAppConfiguration: DustAppRunConfigurationType | null;
-    secretName: string | null;
-    dustProject: ProjectConfiguration | null;
-    // Out of convenience, we hold the sId of the internal server if it is an internal server.
-    internalMCPServerId: string | null;
-  };
-
-export type ClientSideMCPServerConfigurationType =
-  BaseMCPServerConfigurationType & {
-    clientSideMcpServerId: string;
-  };
-
-export type MCPServerConfigurationType =
-  | ServerSideMCPServerConfigurationType
-  | ClientSideMCPServerConfigurationType;
+export type {
+  BaseMCPServerConfigurationType,
+  ClientSideMCPServerConfigurationType,
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp_schemas";
 
 export type ServerSideMCPToolType = Omit<
   ServerSideMCPServerConfigurationType,

@@ -76,8 +76,10 @@ import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
+  ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
+  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -94,6 +96,11 @@ import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboardin
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
+import {
+  ProjectTodoConversationModel,
+  ProjectTodoModel,
+  ProjectTodoSourceModel,
+} from "@app/lib/resources/storage/models/project_todo";
 import {
   RunModel,
   RunUsageModel,
@@ -115,7 +122,7 @@ import { sendInitDbMessage } from "@app/types/shared/deployment";
 
 /**
  * Loads all Sequelize models, useful for some tests
- * ⚠️ Order matters here.
+ * /!\ Order matters here.
  */
 export function loadAllModels() {
   return [
@@ -137,6 +144,8 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     ShareableFileModel,
+    SharingGrantModel,
+    ExternalViewerSessionModel,
     DustAppSecretModel,
     GroupSpaceModel,
     WebhookSourceModel,
@@ -211,6 +220,9 @@ export function loadAllModels() {
     SandboxModel,
     ConversationButlerSuggestionModel,
     ConversationBranchModel,
+    ProjectTodoModel,
+    ProjectTodoConversationModel,
+    ProjectTodoSourceModel,
   ];
 }
 

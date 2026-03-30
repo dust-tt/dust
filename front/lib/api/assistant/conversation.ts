@@ -514,6 +514,7 @@ export function isUserMessageContextValid(
     case "agent_sidekick":
     case "project_kickoff":
     case "reinforced_agent_notification":
+    case "reinforcement":
     case "web":
       return false;
     default:
@@ -1854,6 +1855,11 @@ async function checkMessagesLimit(
     context: UserMessageContext;
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
+  // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
+  if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
+    return new Ok(undefined);
+  }
+
   const messageLimit = await isMessagesLimitReached(auth, {
     mentions,
     context,

@@ -184,7 +184,7 @@ describe("FileResource", () => {
       expect(result).not.toBeNull();
       expect(result?.file.id).toBe(frameFile.id);
       expect(result?.content).toEqual(expectedContent);
-      expect(result?.shareScope).toBe("workspace");
+      expect(result?.shareScope).toBe("workspace_and_emails");
     });
   });
 

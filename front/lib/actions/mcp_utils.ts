@@ -1,6 +1,6 @@
 // All mime types are okay to use from the public API.
 
-import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
+import { FILE_OFFLOAD_RESOURCE_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import {
   isBlobResource,
   isRunAgentQueryResourceType,
@@ -17,8 +17,8 @@ import {
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
 import type {
   FileUseCase,
@@ -27,6 +27,7 @@ import type {
   SupportedImageContentType,
 } from "@app/types/files";
 import { isSupportedFileContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
@@ -53,9 +54,14 @@ export function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
-}: AgentMCPActionOutputItemModel): CallToolResult["content"][number] | null {
+}: {
+  file: FileModel | null;
+  fileId: ModelId | null;
+  content: CallToolResult["content"][number] | null;
+  workspaceId: ModelId;
+}): CallToolResult["content"][number] | null {
   // For tool-generated files and non-file content, we keep the resource as is.
-  if (!fileId || isToolGeneratedFile(content)) {
+  if (!fileId || isToolGeneratedFile(content) || !content) {
     return content;
   }
   // We want to hide the original file url from the model.
@@ -175,7 +181,7 @@ export async function handleBase64Upload(
     };
   }
 
-  if (base64Data.length > MAX_RESOURCE_CONTENT_SIZE) {
+  if (base64Data.length > FILE_OFFLOAD_RESOURCE_SIZE_BYTES) {
     return {
       content: {
         type: "text",

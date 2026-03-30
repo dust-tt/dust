@@ -5,7 +5,6 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
 import "@app/styles/components.css";
 
-import { datadogLogs } from "@datadog/browser-logs";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import Script from "next/script";
@@ -25,37 +24,17 @@ import { PostHogTracker } from "@app/components/app/PostHogTracker";
 import { NextLinkWrapper } from "@app/lib/platform/NextLinkWrapper";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
+import { initDatadogLogs } from "@app/logger/datadogLogger";
 import { SparkleContext } from "@dust-tt/sparkle";
 
 if (DATADOG_CLIENT_TOKEN) {
-  datadogLogs.init({
+  initDatadogLogs({
     clientToken: DATADOG_CLIENT_TOKEN,
     env: NODE_ENV === "production" ? "prod" : "dev",
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     service: `${DATADOG_SERVICE || "front"}-browser`,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     version: COMMIT_HASH || "",
-    site: "datadoghq.eu",
-    forwardErrorsToLogs: true,
-    sessionSampleRate: 100,
-    beforeSend: (log) => {
-      // Filter out benign ResizeObserver errors that have no user impact.
-      // Different browsers use different messages:
-      // - Safari/Firefox: "ResizeObserver loop completed with undelivered notifications"
-      // - Chrome: "ResizeObserver loop limit exceeded"
-      // See: https://github.com/DataDog/browser-sdk/issues/1616
-      if (log.message && typeof log.message === "string") {
-        if (
-          log.message.includes(
-            "ResizeObserver loop completed with undelivered notifications"
-          ) ||
-          log.message.includes("ResizeObserver loop limit exceeded")
-        ) {
-          return false;
-        }
-      }
-      return true;
-    },
   });
 }
 

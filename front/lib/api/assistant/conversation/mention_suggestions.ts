@@ -26,7 +26,8 @@ export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
   users: RichUserMentionInConversation[],
   lowerCaseQuery: string = "",
-  lastMentionedId: string | null = null
+  lastMentionedId: string | null = null,
+  conversationId: string | null = null
 ): RichMention[] {
   if (users.length === 0) {
     return [...agents];
@@ -72,7 +73,7 @@ export function interleaveMentionsPreservingAgentOrder(
       lowerCaseQuery &&
       nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery);
 
-    // Our high priority agents first, then users, then other agents
+    // Our high priority agents first
     if (
       nextAgentStartsWithQuery &&
       SUGGESTION_PRIORITY[nextAgent.id] !== undefined
@@ -81,15 +82,30 @@ export function interleaveMentionsPreservingAgentOrder(
       agentIndex += 1;
       continue;
     }
-    if (nextUserStartsWithQuery) {
-      result.push(nextUser);
-      userIndex += 1;
-      continue;
-    }
-    if (nextAgentStartsWithQuery) {
-      result.push(nextAgent);
-      agentIndex += 1;
-      continue;
+    if (conversationId) {
+      // In a conversation, prioritize users over agents.
+      if (nextUserStartsWithQuery) {
+        result.push(nextUser);
+        userIndex += 1;
+        continue;
+      }
+      if (nextAgentStartsWithQuery) {
+        result.push(nextAgent);
+        agentIndex += 1;
+        continue;
+      }
+    } else {
+      // Outside a conversation, prioritize agents over users.
+      if (nextAgentStartsWithQuery) {
+        result.push(nextAgent);
+        agentIndex += 1;
+        continue;
+      }
+      if (nextUserStartsWithQuery) {
+        result.push(nextUser);
+        userIndex += 1;
+        continue;
+      }
     }
 
     // Then interleave agents and users
@@ -321,6 +337,7 @@ export const suggestionsOfMentions = async (
     selectedAgents,
     userSuggestions,
     normalizedQuery,
-    lastMentionedId
+    lastMentionedId,
+    conversationId
   );
 };

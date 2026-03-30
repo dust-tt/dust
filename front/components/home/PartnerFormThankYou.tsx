@@ -15,26 +15,25 @@ export function PartnerFormThankYou() {
           <CheckCircleIcon className="h-6 w-6 text-green-600" />
         </div>
         <h2 className="text-2xl font-semibold text-foreground">
-          Thank you{firstName ? `, ${firstName}` : ""}!
+          Thank you{firstName ? `, ${firstName}` : ""} for trusting Dust!
         </h2>
       </div>
 
       <p className="text-lg text-muted-foreground">
-        We've received your partnership application. Our team will review your
-        information and reach out to you soon.
+        At the moment, we are gradually onboarding new partners to ensure
+        high-quality support and co-selling. We&apos;ll let you know as soon as
+        you&apos;re next.
       </p>
 
       <p className="text-muted-foreground">
-        In the meantime, feel free to explore our{" "}
+        For any urgent inquiries, please contact{" "}
         <a
-          href="https://docs.dust.tt"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="mailto:partnerships@dust.tt"
           className="underline hover:text-foreground"
         >
-          documentation
-        </a>{" "}
-        to learn more about Dust.
+          partnerships@dust.tt
+        </a>
+        .
       </p>
     </div>
   );

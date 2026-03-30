@@ -10,7 +10,7 @@ import {
   NotificationInteractiveContentFileContentSchema,
   OAuthProviderSchema,
 } from "./output_schemas";
-import { CallToolResultSchema } from "./raw_mcp_types";
+import { CallToolResultSchema, ContentBlockSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
 const ModelProviderIdSchema = FlexibleEnumSchema<
@@ -342,6 +342,7 @@ const USER_MESSAGE_ORIGINS = [
   "project_butler",
   "project_kickoff",
   "reinforced_agent_notification",
+  "reinforcement",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -676,6 +677,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
@@ -735,6 +737,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
+  | "email_restricted_sharing"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3293,15 +3296,10 @@ export type CallMCPToolRequestBodyType = z.infer<
   typeof CallMCPToolRequestBodySchema
 >;
 
-const CallMCPToolContentBlockSchema = z.object({
-  type: z.string(),
-  text: z.string().optional(),
-});
-
 export const CallMCPToolResponseSchema = z.object({
   success: z.literal(true),
   result: z.object({
-    content: z.array(CallMCPToolContentBlockSchema),
+    content: z.array(ContentBlockSchema),
     isError: z.boolean(),
   }),
 });

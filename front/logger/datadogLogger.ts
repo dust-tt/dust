@@ -3,6 +3,54 @@ import { datadogLogs } from "@datadog/browser-logs";
 // Keep the exported Logger type for compatibility with existing imports.
 export type { Logger } from "pino";
 
+// Benign error messages that should not be forwarded to Datadog.
+// - ResizeObserver: https://github.com/DataDog/browser-sdk/issues/1616
+// - "No activity within": EventSource polyfill heartbeat timeout (normal reconnection)
+export const IGNORED_LOG_MESSAGES = [
+  "ResizeObserver loop completed with undelivered notifications",
+  "ResizeObserver loop limit exceeded",
+  "No activity within",
+];
+
+interface InitDatadogLogsOptions {
+  clientToken: string;
+  service: string;
+  env?: string;
+  version?: string;
+  forwardConsoleLogs?: ("error" | "warn" | "info" | "debug" | "log")[];
+}
+
+/**
+ * Shared Datadog Logs initialization used by front, front-spa, and extensions.
+ */
+export function initDatadogLogs({
+  clientToken,
+  service,
+  env,
+  version,
+  forwardConsoleLogs,
+}: InitDatadogLogsOptions) {
+  datadogLogs.init({
+    clientToken,
+    site: "datadoghq.eu",
+    service,
+    env,
+    version,
+    forwardErrorsToLogs: true,
+    sessionSampleRate: 100,
+    forwardConsoleLogs,
+    beforeSend: (log) => {
+      if (
+        typeof log.message === "string" &&
+        IGNORED_LOG_MESSAGES.some((m) => log.message.includes(m))
+      ) {
+        return false;
+      }
+      return true;
+    },
+  });
+}
+
 // Pino-like levels we expose
 type Level = "trace" | "debug" | "info" | "warn" | "error";
 

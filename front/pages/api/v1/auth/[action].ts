@@ -12,6 +12,7 @@ const ALLOWED_CALLBACK_URL_PATTERNS: RegExp[] = [
   // Zendesk app: https://1073173.apps.zdusercontent.com/1073173/assets/<hash>/oauth-callback.html
   /^https:\/\/1073173\.apps\.zdusercontent\.com\/1073173\/assets\/[a-f0-9-]+\/oauth-callback\.html$/,
   /^https:\/\/1070957\.apps\.zdusercontent\.com\/1070957\/assets\/[a-f0-9-]+\/oauth-callback\.html$/,
+  /^https:\/\/dust-for-outlook\.vercel\.app\/oauth-callback\.html$/,
 ];
 
 const workosConfig = {

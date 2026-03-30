@@ -127,6 +127,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
   });
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "data_sources_file_system",
     version: "1.0.0",
@@ -134,9 +135,6 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
-    // TODO(2026-02-09 aubin): clean this up once global agents are moved to
-    //  using the Discover Knowledge skill.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => ({

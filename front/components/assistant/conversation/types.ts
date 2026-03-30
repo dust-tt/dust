@@ -4,16 +4,23 @@ import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_inter
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { DustError } from "@app/lib/error";
-import type { AgentMCPActionType } from "@app/types/actions";
+import type {
+  AgentMCPActionType,
+  AgentMCPActionWithOutputType,
+} from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationWithoutContentType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
+  LightMessageType,
   UserMessageOrigin,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import {
+  isLightAgentMessageWithActionsType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
@@ -39,6 +46,10 @@ export type ActionProgressState = Map<
   }
 >;
 
+export type InlineActivityStep =
+  | { type: "thinking"; content: string; id: string }
+  | { type: "action"; action: AgentMCPActionWithOutputType; id: string };
+
 export type MessageTemporaryState = LightAgentMessageWithActionsType & {
   streaming: {
     agentState: AgentStateClassification;
@@ -46,6 +57,7 @@ export type MessageTemporaryState = LightAgentMessageWithActionsType & {
     lastUpdated: Date;
     actionProgress: ActionProgressState;
     useFullChainOfThought: boolean;
+    inlineActivitySteps: InlineActivityStep[];
   };
 };
 
@@ -153,6 +165,7 @@ export const makeInitialMessageStreamState = (
     streaming: {
       actionProgress: new Map(),
       agentState: message.status === "created" ? "thinking" : "done",
+      inlineActivitySteps: [],
       isRetrying: false,
       lastUpdated: new Date(),
       useFullChainOfThought: false,
@@ -168,3 +181,12 @@ export const isSidekickBootstrapMessage = (
 ): boolean => {
   return message.context.origin === "agent_sidekick" && message.rank === 0;
 };
+
+export const convertLightMessageTypeToVirtuosoMessages = (
+  messages: LightMessageType[]
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );

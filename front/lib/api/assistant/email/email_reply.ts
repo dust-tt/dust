@@ -33,18 +33,21 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
   return {
     subject: context.subject,
     text: context.originalText,
-    auth: { SPF: "", dkim: "" },
+    auth: { SPF: "", dkim: [], dkimRaw: "" },
     threadingHeaders: {
       messageId: context.threadingMessageId,
       inReplyTo: context.threadingInReplyTo,
       references: context.threadingReferences,
+    },
+    sender: {
+      email: context.fromEmail,
+      full: context.fromFull,
     },
     envelope: {
       to: [],
       cc: [],
       bcc: [],
       from: context.fromEmail,
-      full: context.fromFull,
     },
     attachments: [],
   };
@@ -254,7 +257,19 @@ export async function sendEmailReplyOnCompletion(
       undefined,
       config.getAppUrl()
     );
-    const fullHtmlContent = `<div><div>${htmlContent}</div><br/><a href="${conversationLink}">Open in Dust</a></div>`;
+    const agentName = agentConfiguration
+      ? sanitizeHtml(agentConfiguration.name, {
+          allowedTags: [],
+          allowedAttributes: {},
+        })
+      : null;
+    const attribution = agentName
+      ? `Answered by <strong>${agentName}</strong>`
+      : "Answered";
+    const fullHtmlContent =
+      `<div><div>${htmlContent}</div>` +
+      `<p style="color: #666; font-size: 13px; margin-top: 16px;">${attribution} · <a href="${conversationLink}" style="color: #2563eb;">View full conversation</a></p>` +
+      `</div>`;
 
     // Reconstruct the email and send reply.
     const email = reconstructEmailFromContext(context);
@@ -262,18 +277,14 @@ export async function sendEmailReplyOnCompletion(
       email,
       agentConfiguration: agentConfiguration ?? undefined,
       htmlContent: fullHtmlContent,
-      recipients: {
-        to: context.replyTo,
-        cc: context.replyCc,
-      },
+      recipient: context.fromEmail,
     });
 
     logger.info(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         conversationId: conversation.sId,
-        to: context.replyTo,
-        cc: context.replyCc,
+        to: context.fromEmail,
       },
       "[email] Sent email reply on agent completion"
     );
@@ -331,10 +342,7 @@ export async function sendEmailReplyOnError(
     await replyToEmail({
       email,
       htmlContent,
-      recipients: {
-        to: [context.fromEmail],
-        cc: [],
-      },
+      recipient: context.fromEmail,
     });
 
     logger.info(

@@ -95,12 +95,16 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { MessageType } from "@app/types/assistant/conversation";
+import type {
+  LightMessageType,
+  MessageType,
+} from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -108,11 +112,17 @@ export type FetchConversationMessageResponse = {
   message: MessageType;
 };
 
+export type FetchConversationMessageResponseLight = {
+  message: LightMessageType;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      FetchConversationMessageResponse | { success: boolean }
+      | FetchConversationMessageResponse
+      | FetchConversationMessageResponseLight
+      | { success: boolean }
     >
   >,
   auth: Authenticator
@@ -169,11 +179,13 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const viewType = req.query.viewType === "light" ? "light" : "full";
+
       const renderedMessages = await batchRenderMessages(
         auth,
         conversation,
         [message],
-        "full"
+        viewType
       );
 
       if (renderedMessages.isErr()) {
@@ -186,7 +198,23 @@ async function handler(
         });
       }
 
-      res.status(200).json({ message: renderedMessages.value[0] });
+      switch (viewType) {
+        case "light": {
+          res
+            .status(200)
+            .json({ message: renderedMessages.value[0] as LightMessageType });
+          return;
+        }
+        case "full": {
+          res
+            .status(200)
+            .json({ message: renderedMessages.value[0] as MessageType });
+          return;
+        }
+        default:
+          assertNever(viewType);
+      }
+
       return;
     }
 

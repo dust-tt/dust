@@ -1,5 +1,6 @@
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientEventSource } from "@app/lib/egress/client";
+import logger from "@app/logger/logger";
 import {
   EventSourcePolyfill,
   type Event as PolyfillEvent,
@@ -155,15 +156,12 @@ export function useEventSource(
       };
 
       source.onerror = (event: PolyfillEvent) => {
-        console.error("EventSource error", event);
         source.close();
 
         reconnectAttempts.current++;
 
         if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
-          console.log(
-            "Too many errors, not reconnecting. Please refresh the page."
-          );
+          logger.error("EventSource: too many errors, not reconnecting.");
           setIsError(new Error("Too many errors, closing connection."));
 
           return;
@@ -173,8 +171,9 @@ export function useEventSource(
         const reconnectDelayMs =
           RECONNECT_DELAY_BASE_MS + Math.random() * RECONNECT_DELAY_JITTER_MS;
 
-        console.error(
-          `Connection error. Attempting to reconnect in ${Math.round(reconnectDelayMs)}ms`
+        logger.warn(
+          { event, reconnectDelayMs: Math.round(reconnectDelayMs) },
+          "EventSource connection error, reconnecting."
         );
 
         // Set timeout to reconnect after a jittered delay.

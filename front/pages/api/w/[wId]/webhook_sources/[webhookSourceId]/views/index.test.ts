@@ -15,11 +15,10 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role,
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
 
   const adminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
@@ -29,15 +28,12 @@ async function setupTest(
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
   it("should return all views for an existing webhook source", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "GET"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
     const webhookSource = await webhookSourceFactory.create({
@@ -48,7 +44,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
 
     // Create additional views for the webhook source
     // Get the existing global space instead of creating a new one
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");
@@ -205,7 +201,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const { req, res } = await setupTest("admin", "GET");
 
     // Create a separate workspace that the authenticated user doesn't have access to
-    const { workspace: otherWorkspace, authenticator: otherAuth } =
+    const { workspace: otherWorkspace, auth: otherAuth } =
       await createPrivateApiMockRequest({
         role: "admin",
       });

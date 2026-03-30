@@ -13,7 +13,10 @@ import {
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isMcpTimeoutError,
+} from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
   getInternalMCPServerInfo,
@@ -57,7 +60,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { McpError, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
@@ -78,6 +81,9 @@ interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
   oAuthUseCase: MCPOAuthUseCase | null;
+  // Admin-configured scope restriction stored on the MCP server view. When set,
+  // this overrides the hardcoded metadata scope for personal connection prompts.
+  oauthScope?: string | null;
 }
 
 export function isConnectViaMCPServerId(
@@ -458,7 +464,10 @@ export async function connectToMCPServer(
                   "Internal server workspace authentication failed"
                 );
 
-                const scope = serverInfo.authorization.scope;
+                // Use the admin-configured scope restriction if set, otherwise
+                // fall back to the full scope from server metadata.
+                const scope =
+                  params.oauthScope ?? serverInfo.authorization.scope;
 
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
@@ -663,13 +672,20 @@ export async function connectToMCPServer(
           timeout: CLIENT_SIDE_CONNECT_TIMEOUT_MS,
         });
       } catch (e: unknown) {
-        logger.error(
+        const isTimeout = isMcpTimeoutError(e);
+
+        logger[isTimeout ? "warn" : "error"](
           {
             connectionType,
             workspaceId: auth.getNonNullableWorkspace().sId,
+            mcpServerId: params.mcpServerId,
+            isTimeout,
+            errorCode: e instanceof McpError ? e.code : undefined,
             error: e,
           },
-          "Error establishing connection to client side MCP server"
+          isTimeout
+            ? "Client-side MCP server timed out (browser likely disconnected)"
+            : "Error establishing connection to client-side MCP server"
         );
 
         return new Err(

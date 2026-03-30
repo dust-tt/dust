@@ -518,8 +518,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
       const params = new URLSearchParams();
 
-      // Use sanitizedReturnTo if available, otherwise default to "/"
-      const returnTo = sanitizedReturnTo ?? "/";
+      // Use sanitizedReturnTo if available, otherwise default to "/api/login"
+      // so that the target region creates the user in its database.
+      const returnTo = sanitizedReturnTo ?? "/api/login";
 
       params.set("returnTo", returnTo);
       if (organizationId) {

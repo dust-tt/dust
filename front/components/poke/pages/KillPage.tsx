@@ -31,6 +31,11 @@ const killSwitchMap: Record<
     title: "Global Blacklist OpenAI",
     description: "Disable OpenAI models in global agents",
   },
+  global_disable_firecrawl: {
+    title: "Global Disable Firecrawl",
+    description:
+      "Disable Firecrawl for webbrowse tool, use Spider.cloud instead",
+  },
 };
 
 export function KillPage() {

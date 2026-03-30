@@ -36,6 +36,9 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare remoteToolsMetadata: NonAttribute<RemoteMCPServerToolMetadataModel[]>;
 
   declare oAuthUseCase: MCPOAuthUseCase | null;
+  // Admin-configured scope restriction. When set, overrides the default scope
+  // from server metadata for both platform OAuth setup and personal connections.
+  declare oauthScope: string | null;
 }
 MCPServerViewModel.init(
   {
@@ -90,6 +93,10 @@ MCPServerViewModel.init(
       validate: {
         isIn: [["platform_actions", "personal_actions"]],
       },
+    },
+    oauthScope: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {

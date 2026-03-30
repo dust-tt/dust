@@ -107,6 +107,7 @@ export class Authenticator {
   _workspace: WorkspaceResource | null;
   _authMethod: AuthMethodType;
   _providersHealth: ProvidersHealth | null;
+  _clientIp?: string;
 
   // Should only be called from the static methods below.
   constructor({
@@ -885,7 +886,7 @@ export class Authenticator {
   }
 
   exchangeKey(key: KeyAuthType) {
-    return new Authenticator({
+    const auth = new Authenticator({
       authMethod: this.authMethod(),
       key,
       role: this._role,
@@ -894,10 +895,22 @@ export class Authenticator {
       subscription: this._subscription,
       workspace: this._workspace,
     });
+    if (this._clientIp) {
+      auth.setClientIp(this._clientIp);
+    }
+    return auth;
   }
 
   providersHealth(): ProvidersHealth | null {
     return this._providersHealth;
+  }
+
+  clientIp(): string | undefined {
+    return this._clientIp;
+  }
+
+  setClientIp(ip: string) {
+    this._clientIp = ip;
   }
 
   role(): RoleType {
@@ -946,6 +959,7 @@ export class Authenticator {
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
           metadata: this._workspace.metadata,
+          sharingPolicy: this._workspace.sharingPolicy ?? "all_scopes",
         }
       : null;
   }
@@ -1534,13 +1548,8 @@ export async function hasFeatureFlag(
   return flags.includes(flag);
 }
 
-export function invalidateFeatureFlagsCache(
-  authOrWorkspace: Authenticator | LightWorkspaceType
-): void {
-  const workspace =
-    authOrWorkspace instanceof Authenticator
-      ? authOrWorkspace.getNonNullableWorkspace()
-      : authOrWorkspace;
+export function invalidateFeatureFlagsCache(auth: Authenticator): void {
+  const workspace = auth.getNonNullableWorkspace();
   _getFeatureFlags.del(workspace);
 }
 

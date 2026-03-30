@@ -10,7 +10,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
-const DSBX_CLI_VERSION = "0.1.1";
+const DSBX_CLI_VERSION = "0.1.3";
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
@@ -253,7 +253,7 @@ SHELLEOF`)
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.5.0",
+    tag: "0.5.2",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];

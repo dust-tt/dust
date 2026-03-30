@@ -93,7 +93,7 @@ export const getConfig = async ({
     entry: {
       main: resolvePath("./main.tsx"),
       background: resolvePath("./background.ts"),
-      page: resolvePath("./page.ts"),
+      page: resolvePath("./../../shared/page.ts"),
       "content-script": resolvePath("./content-script.ts"),
     },
     output: {
@@ -105,6 +105,10 @@ export const getConfig = async ({
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
+        "@app/logger/logger": path.resolve(
+          __dirname,
+          "../../../front/logger/datadogLogger.ts"
+        ),
         "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
         redis: false,

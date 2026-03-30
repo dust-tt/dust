@@ -1,6 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { createRequire } from "module";
 import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
 
@@ -261,6 +262,20 @@ export default defineConfig(({ mode }) => {
   const enableReactScan =
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
+  const enableAnalyzer = env.ANALYZE === "true";
+  type AnalyzerTemplate =
+    | "treemap"
+    | "sunburst"
+    | "network"
+    | "raw-data"
+    | "list";
+  const isAnalyzerTemplate = (value: string): value is AnalyzerTemplate =>
+    ["treemap", "sunburst", "network", "raw-data", "list"].includes(value);
+  const templateValue = env.ANALYZE_TEMPLATE ?? "treemap";
+  const analyzerTemplate: AnalyzerTemplate = isAnalyzerTemplate(templateValue)
+    ? templateValue
+    : "treemap";
+
   return {
     cacheDir: path.resolve(__dirname, ".vite"),
     base: basePath,
@@ -272,6 +287,14 @@ export default defineConfig(({ mode }) => {
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
       react(),
+      enableAnalyzer &&
+        visualizer({
+          open: true,
+          filename: `dist/${appName}/stats.html`,
+          template: analyzerTemplate,
+          gzipSize: true,
+          brotliSize: true,
+        }),
     ].flat() as PluginOption[],
     define: {
       ...envVarDefines,

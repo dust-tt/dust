@@ -18,7 +18,7 @@ export type UseCaptureActionsHook = (
   isCapturing: boolean
 ) => CaptureActions | undefined;
 
-const PLATFORM_TYPES = ["chrome", "front"] as const;
+const PLATFORM_TYPES = ["chrome", "front", "firefox"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 export interface BrowserMessagingService {
@@ -56,6 +56,8 @@ export abstract class PlatformService {
     this.capture = capture;
     this.mcp = mcp;
   }
+
+  abstract captureVisibleTab(): Promise<string>;
 
   async clearStoredData(): Promise<void> {
     await Promise.all([

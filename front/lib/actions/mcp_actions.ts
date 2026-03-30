@@ -2,8 +2,8 @@
 
 import {
   calculateContentSize,
-  getMaxSize,
-  isValidContentSize,
+  getRemoteContentMaxSize,
+  isWithinRemoteContentLimit,
 } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -27,7 +27,10 @@ import {
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isMcpTimeoutError,
+} from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
@@ -97,7 +100,6 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   CallToolResultSchema,
-  McpError,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -258,7 +260,7 @@ function makeClientSideMCPToolConfigurations(
   }));
 }
 
-function generateContentMetadata(content: CallToolResult["content"]): {
+function generateRemoteContentMetadata(content: CallToolResult["content"]): {
   type: "text" | "image" | "resource" | "audio" | "resource_link";
   byteSize: number;
   maxSize: number;
@@ -266,7 +268,7 @@ function generateContentMetadata(content: CallToolResult["content"]): {
   const result = [];
   for (const item of content) {
     const byteSize = calculateContentSize(item);
-    const maxSize = getMaxSize(item);
+    const maxSize = getRemoteContentMaxSize(item);
 
     result.push({ type: item.type, byteSize, maxSize });
 
@@ -550,10 +552,9 @@ export async function* tryCallMCPTool(
     }
 
     if (serverType === "remote") {
-      const isValid = isValidContentSize(content);
-
+      const isValid = isWithinRemoteContentLimit(content);
       if (!isValid) {
-        const contentMetadata = generateContentMetadata(content);
+        const contentMetadata = generateRemoteContentMetadata(content);
         logger.info(
           { contentMetadata, isValid },
           "Information on MCP tool result"
@@ -603,8 +604,7 @@ export async function* tryCallMCPTool(
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    const isMCPTimeoutError =
-      error instanceof McpError && error.code === -32001;
+    const isMCPTimeoutError = isMcpTimeoutError(error);
 
     if (isMCPTimeoutError) {
       // If the tool should not be retried on interrupt, the error is returned
@@ -692,6 +692,7 @@ function makeServerSideMCPConnectionParams(
     type: "mcpServerId",
     mcpServerId: mcpServerView.mcpServerId,
     oAuthUseCase: mcpServerView.oAuthUseCase,
+    oauthScope: mcpServerView.oauthScope,
   };
 }
 

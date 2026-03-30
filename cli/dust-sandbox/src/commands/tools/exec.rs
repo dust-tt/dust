@@ -1,6 +1,6 @@
 use anyhow::bail;
 
-use crate::api::DustApiClient;
+use crate::api::{ContentBlock, DustApiClient};
 
 pub async fn cmd_exec(
     client: &DustApiClient,
@@ -33,8 +33,33 @@ pub async fn cmd_exec(
         .await?;
 
     for block in &resp.result.content {
-        if let Some(text) = &block.text {
-            println!("{text}");
+        match block {
+            ContentBlock::Text { text } => {
+                println!("{text}");
+            }
+            ContentBlock::Image { mime_type, .. } => {
+                eprintln!("[image: {mime_type}]");
+            }
+            ContentBlock::Audio { mime_type, .. } => {
+                eprintln!("[audio: {mime_type}]");
+            }
+            ContentBlock::Resource { resource } => {
+                if let Some(text) = &resource.text {
+                    println!("{text}");
+                } else if resource.blob.is_some() {
+                    eprintln!("[binary resource: {}]", resource.uri);
+                } else {
+                    eprintln!("[resource: {}]", resource.uri);
+                }
+            }
+            ContentBlock::ResourceLink { uri, name } => {
+                if let Some(name) = name {
+                    eprintln!("[resource link: {name} — {uri}]");
+                } else {
+                    eprintln!("[resource link: {uri}]");
+                }
+            }
+            ContentBlock::Unknown => {}
         }
     }
 

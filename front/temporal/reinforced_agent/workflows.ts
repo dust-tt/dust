@@ -7,25 +7,18 @@ import {
 import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import {
   ApplicationFailure,
+  executeChild,
   ParentClosePolicy,
   proxyActivities,
-  setHandler,
   sleep,
-  startChild,
 } from "@temporalio/workflow";
 import { concurrentExecutor } from "../utils";
-
-import { runSignal } from "./signals";
 
 // Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
 export const interceptors: WorkflowInterceptorsFactory = () => ({
   inbound: [new OpenTelemetryInboundInterceptor()],
   outbound: [new OpenTelemetryOutboundInterceptor()],
   internals: [new OpenTelemetryInternalsInterceptor()],
-});
-
-const { getFlaggedWorkspacesActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
 });
 
 const { getAgentConfigurationsActivity } = proxyActivities<typeof activities>({
@@ -72,11 +65,6 @@ const { processAggregationBatchResultActivity } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
-// Note on concurrency: we can reach (WORKSPACE_CONCURRENCY x AGENT_CONCURRENCY) simulateneous workflows
-// and it may be way higher than the worker's maxConcurrentActivityTaskExecutions but this is OK
-// as a lot of the time will be spent waiting for the batch to finish so many workflows should not
-// have any activity running.
-const WORKSPACE_CONCURRENCY = 8;
 const AGENT_CONCURRENCY = 8;
 const CONVERSATION_ANALYSIS_CONCURRENCY = 4;
 
@@ -85,44 +73,49 @@ const BATCH_POLL_INTERVAL_MAX_MS = 5 * 60_000; // 5 minutes (linear backoff cap)
 const BATCH_POLL_INTERVAL_STEP_MS = 10_000; // 10 seconds (linear backoff step).
 const BATCH_TIMEOUT_MS = 6 * 60 * 60_000; // 6 hours.
 
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
 /**
- * Top-level workflow: find flagged workspaces and start a child workflow for each.
+ * Compute a deterministic delay (0 to 2 hours) from a workspace ID string.
+ * This spreads cron-triggered executions across the midnight–2am window
+ * without using non-deterministic APIs (safe for Temporal replay).
  */
-export async function reinforcedAgentWorkflow(): Promise<void> {
-  setHandler(runSignal, () => {
-    // Empty handler — receiving the signal triggers a workflow execution.
-  });
-
-  const workspaceIds = await getFlaggedWorkspacesActivity();
-
-  await concurrentExecutor(
-    workspaceIds,
-    (workspaceId) =>
-      startChild(reinforcedAgentWorkspaceWorkflow, {
-        workflowId: `reinforced-agent-workspace-${workspaceId}`,
-        args: [{ workspaceId, useBatchMode: true }],
-        parentClosePolicy: ParentClosePolicy.ABANDON,
-      }),
-    { concurrency: WORKSPACE_CONCURRENCY }
-  );
+function computeWorkspaceDelayMs(workspaceId: string): number {
+  let hash = 0;
+  for (const ch of workspaceId) {
+    hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
+  }
+  return Math.abs(hash) % TWO_HOURS_MS;
 }
 
 /**
- * Workspace-level workflow: list active agents and start a child workflow for each.
+ * Workspace-level workflow (one per workspace, cron-scheduled).
+ * When `skipDelay` is false (cron runs), sleeps a deterministic delay derived
+ * from the workspace ID to spread load across the midnight–2am window.
+ * When `skipDelay` is true (manual runs), starts immediately.
  */
 export async function reinforcedAgentWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
+  skipDelay = false,
 }: {
   workspaceId: string;
   useBatchMode: boolean;
+  skipDelay?: boolean;
 }): Promise<void> {
+  if (!skipDelay) {
+    const delayMs = computeWorkspaceDelayMs(workspaceId);
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+  }
+
   const agentIds = await getAgentConfigurationsActivity({ workspaceId });
 
   await concurrentExecutor(
     agentIds,
     (agentConfigurationId) =>
-      startChild(reinforcedAgentForAgentWorkflow, {
+      executeChild(reinforcedAgentForAgentWorkflow, {
         workflowId: `reinforced-agent-${workspaceId}-${agentConfigurationId}`,
         args: [{ workspaceId, agentConfigurationId, useBatchMode }],
         parentClosePolicy: ParentClosePolicy.ABANDON,
@@ -193,36 +186,41 @@ export async function reinforcedAgentForAgentWorkflow({
   if (useBatchMode) {
     // Phase 1: Batch-analyze all conversations.
     if (conversationIds.length > 0) {
-      const analysisBatchId = await startConversationAnalysisBatchActivity({
+      const analysisResult = await startConversationAnalysisBatchActivity({
         workspaceId,
         agentConfigurationId,
-        conversationIds,
+        analysedConversationIds: conversationIds,
       });
 
-      if (analysisBatchId) {
-        await waitForBatch({ workspaceId, batchId: analysisBatchId });
+      if (analysisResult) {
+        await waitForBatch({ workspaceId, batchId: analysisResult.batchId });
 
         await processConversationAnalysisBatchResultActivity({
           workspaceId,
           agentConfigurationId,
-          batchId: analysisBatchId,
+          batchId: analysisResult.batchId,
+          reinforcementConversationIds:
+            analysisResult.reinforcementConversationIds,
+          analysedConversationIds: analysisResult.analysedConversationIds,
         });
       }
     }
 
     // Phase 2: Batch-aggregate synthetic suggestions into pending.
-    const aggregationBatchId = await startAggregationBatchActivity({
+    const aggregationResult = await startAggregationBatchActivity({
       workspaceId,
       agentConfigurationId,
     });
 
-    if (aggregationBatchId) {
-      await waitForBatch({ workspaceId, batchId: aggregationBatchId });
+    if (aggregationResult) {
+      await waitForBatch({ workspaceId, batchId: aggregationResult.batchId });
 
       await processAggregationBatchResultActivity({
         workspaceId,
         agentConfigurationId,
-        batchId: aggregationBatchId,
+        batchId: aggregationResult.batchId,
+        reinforcementConversationIds:
+          aggregationResult.reinforcementConversationIds,
         disableNotifications,
       });
     }

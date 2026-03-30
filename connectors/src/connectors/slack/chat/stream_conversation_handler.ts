@@ -899,10 +899,9 @@ async function postThreadFollowUpMessages(
   followUpMessages: string[],
   conversationData: StreamConversationToSlackParams
 ): Promise<void> {
-  const { slack, connector, conversation, mainMessage, streamHandler } =
-    conversationData;
-  const { slackChannelId, slackClient } = slack;
-  const threadTs = mainMessage?.ts ?? streamHandler?.messageTs;
+  const { slack, connector, conversation, mainMessage } = conversationData;
+  const { slackChannelId, slackClient, slackMessageTs } = slack;
+  const threadTs = mainMessage?.message?.thread_ts ?? slackMessageTs;
 
   for (let i = 0; i < followUpMessages.length; i++) {
     const threadResponse = await slackClient.chat.postMessage({

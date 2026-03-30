@@ -1,0 +1,19 @@
+engine biome(1.0)
+language js
+
+// Forbids deep imports from @dust-tt/client subpaths (e.g. @dust-tt/client/src,
+// @dust-tt/client/src/toto.ts) in front/ code. Only the package root
+// @dust-tt/client should be imported.
+pattern client_deep_import() {
+    `"@dust-tt/client/$_"` where {
+        $filename <: r".*/front/.*"
+    }
+}
+
+client_deep_import() as $source where {
+    register_diagnostic(
+        span = $source,
+        message = "Deep imports from '@dust-tt/client/*' are not allowed. Import from '@dust-tt/client' instead.",
+        severity = "error"
+    )
+}

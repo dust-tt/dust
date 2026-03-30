@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { normalizeError } from "@extension/shared/lib/utils";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
@@ -25,7 +26,7 @@ export function useMcpServer() {
         await platform.mcp.disconnect();
         setIsConnected(false);
       } catch (err) {
-        console.error("Error disconnecting MCP server:", err);
+        logger.error({ err }, "Error disconnecting MCP server.");
       }
     }
   }, [platform.mcp]);
@@ -80,7 +81,7 @@ export function useMcpServer() {
         setIsConnected(true);
         setError(null);
       } catch (err) {
-        console.error("Error setting up MCP server:", err);
+        logger.error({ err }, "Error setting up MCP server.");
         if (isMounted) {
           setError(normalizeError(err));
           setIsConnected(false);

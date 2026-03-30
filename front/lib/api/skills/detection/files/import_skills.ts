@@ -4,11 +4,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
 
 const IMPORT_CONCURRENCY = 4;
+
+type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 
 type ImportSkillsResult = {
   imported: SkillResource[];
@@ -25,9 +28,11 @@ export async function importSkillsFromFiles(
   {
     uploadedFiles,
     names,
+    source = "local_file",
   }: {
     uploadedFiles: formidable.File[];
-    names: string[];
+    names?: string[];
+    source?: FileImportSource;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
@@ -36,14 +41,26 @@ export async function importSkillsFromFiles(
   }
 
   const detectedSkills = detectResult.value;
+  if (detectedSkills.length === 0) {
+    return new Err(
+      new Error(
+        "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification)."
+      )
+    );
+  }
 
-  const requestedNames = new Set(names);
+  const requestedNames = names ? new Set(names) : null;
   const selectedSkills = detectedSkills.filter(
     (skill) =>
-      skill.name && skill.instructions.trim() && requestedNames.has(skill.name)
+      skill.name &&
+      skill.instructions.trim() &&
+      (!requestedNames || requestedNames.has(skill.name))
   );
+  if (selectedSkills.length === 0) {
+    return new Err(new Error("No matching importable skills found."));
+  }
 
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const errored: { name: string; message: string }[] = [];
@@ -53,7 +70,7 @@ export async function importSkillsFromFiles(
     async (skill) => {
       const existing = await SkillResource.fetchActiveByName(auth, skill.name);
 
-      if (existing && existing.source !== "local_file") {
+      if (existing && existing.source !== source) {
         errored.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
@@ -73,7 +90,7 @@ export async function importSkillsFromFiles(
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
-          source: "local_file",
+          source,
           sourceMetadata: { filePath: skill.skillMdPath },
         });
 
@@ -102,11 +119,11 @@ export async function importSkillsFromFiles(
             agentFacingDescription: skill.description,
             userFacingDescription: skill.description,
             instructions: skill.instructions,
-            editedBy: user.id,
+            editedBy: user?.id ?? null,
             requestedSpaceIds: [],
             extendedSkillId: null,
             icon,
-            source: "local_file",
+            source,
             sourceMetadata: { filePath: skill.skillMdPath },
             isDefault: false,
           },

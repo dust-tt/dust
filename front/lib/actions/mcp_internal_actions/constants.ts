@@ -212,8 +212,7 @@ export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
 
 // Whether the server is available by default in the global space.
 // Hidden servers are available by default in the global space but are not visible in the assistant builder.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MCP_SERVER_AVAILABILITY = [
+export const MCP_SERVER_AVAILABILITY = [
   "manual",
   "auto",
   "auto_hidden_builder",
@@ -299,6 +298,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: INCLUDE_DATA_SERVER,
   },
   run_dust_app: {
@@ -358,7 +358,9 @@ export const INTERNAL_MCP_SERVERS = {
       return !isAvailable;
     },
     isPreview: false,
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      update_object: ["objectName"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SALESFORCE_SERVER,
@@ -535,10 +537,9 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: {
       ...SLIDESHOW_SERVER,
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       serverInfo: {
         ...SLIDESHOW_SERVER.serverInfo,
-        // TBD if turned into a global skill or not.
-        // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
         instructions: SLIDESHOW_INSTRUCTIONS,
       },
     },
@@ -610,20 +611,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_DRIVE_SERVER,
-      serverInfo: {
-        ...MICROSOFT_DRIVE_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
-        },
-        documentationUrl:
-          "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
-      },
-    },
+    metadata: MICROSOFT_DRIVE_SERVER,
   },
   microsoft_teams: {
     id: 36,
@@ -645,20 +633,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_TEAMS_SERVER,
-      serverInfo: {
-        ...MICROSOFT_TEAMS_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
-        },
-        documentationUrl:
-          "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-      },
-    },
+    metadata: MICROSOFT_TEAMS_SERVER,
   },
   sound_studio: {
     id: 37,
@@ -680,18 +655,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_EXCEL_SERVER,
-      serverInfo: {
-        ...MICROSOFT_EXCEL_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
-        },
-      },
-    },
+    metadata: MICROSOFT_EXCEL_SERVER,
   },
   http_client: {
     id: 39,
@@ -876,6 +840,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SEARCH_SERVER,
   },
   run_agent: {
@@ -898,6 +863,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: QUERY_TABLES_V2_SERVER,
   },
   data_sources_file_system: {
@@ -935,6 +901,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: DATA_WAREHOUSES_SERVER,
   },
   toolsets: {
@@ -1005,6 +972,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SKILL_MANAGEMENT_SERVER,
   },
   schedules_management: {
@@ -1016,6 +984,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
   project_manager: {
@@ -1065,6 +1034,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
+    availableInDirectExecution: false,
   },
   project_conversation: {
     id: 1025,
@@ -1125,6 +1095,9 @@ type InternalMCPServerEntryCommon = {
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
   requiresBearerToken?: boolean;
+  // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
+  // Defaults to true.
+  availableInDirectExecution?: boolean;
 };
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
@@ -1353,4 +1326,11 @@ export function getInternalMCPServerMetadata(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
+}
+
+export function isInternalMCPServerAvailableInDirectExecution(
+  name: InternalMCPServerNameType
+): boolean {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  return server.availableInDirectExecution !== false;
 }

@@ -2,6 +2,8 @@ FROM node:22.22.0 AS viz
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
+RUN npm install -g npm@11.11.0
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY viz/package.json ./viz/

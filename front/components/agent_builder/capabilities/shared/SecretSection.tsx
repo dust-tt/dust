@@ -3,7 +3,14 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
-import { Button, Card, DataTable, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  Card,
+  ContentMessage,
+  DataTable,
+  InformationCircleIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
@@ -99,13 +106,15 @@ export function SecretSection({
 
   if (isSecretsError) {
     return (
-      <ConfigurationSectionContainer
-        title="Select a Secret"
-        error={`Failed to load secrets: ${isSecretsError}`}
-      >
-        <div className="flex h-40 w-full items-center justify-center text-red-500">
-          Error loading secrets
-        </div>
+      <ConfigurationSectionContainer title="Select a Secret">
+        <ContentMessage
+          title="Failed to load secrets"
+          icon={InformationCircleIcon}
+          variant="warning"
+          size="sm"
+        >
+          {isSecretsError.message}
+        </ContentMessage>
       </ConfigurationSectionContainer>
     );
   }

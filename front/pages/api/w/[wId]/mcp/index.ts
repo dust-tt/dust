@@ -82,6 +82,7 @@ const PostQueryParamsSchema = t.union([
       t.undefined,
     ]),
     viewName: t.union([t.string, t.undefined]),
+    oauthScope: t.union([t.string, t.undefined]),
   }),
 ]);
 
@@ -418,6 +419,7 @@ async function handler(
               name,
               useCase: body.useCase ?? null,
               viewName,
+              oauthScope: body.oauthScope ?? null,
             });
 
           if (body.connectionId) {

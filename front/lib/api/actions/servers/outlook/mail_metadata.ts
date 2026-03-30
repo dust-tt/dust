@@ -257,7 +257,44 @@ export const OUTLOOK_MAIL_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
       scope:
-        "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access",
+        "Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access",
+      availableScopes: [
+        {
+          value: "Mail.ReadWrite",
+          label: "Read & write mail",
+          description: "Read and modify emails in the mailbox.",
+          required: true,
+          impliedBy: "Mail.ReadWrite.Shared",
+        },
+        {
+          value: "Mail.ReadWrite.Shared",
+          label: "Read & write shared mail",
+          description: "Access shared and delegated mailboxes.",
+          fallbackScope: "Mail.ReadWrite",
+        },
+        {
+          value: "Contacts.ReadWrite",
+          label: "Read & write contacts",
+          description: "Read and modify contacts in the address book.",
+        },
+        {
+          value: "Contacts.ReadWrite.Shared",
+          label: "Read & write shared contacts",
+          description: "Access shared and delegated contact folders.",
+        },
+        {
+          value: "User.Read",
+          label: "Read user profile",
+          description: "Read basic user profile information.",
+          required: true,
+        },
+        {
+          value: "offline_access",
+          label: "Offline access",
+          description: "Maintain access without requiring re-authentication.",
+          required: true,
+        },
+      ],
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",

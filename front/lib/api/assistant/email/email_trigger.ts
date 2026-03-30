@@ -30,7 +30,8 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString, isStringArray } from "@app/types/shared/utils/general";
+import { isString } from "@app/types/shared/utils/general";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import fs from "fs";
 import sanitizeHtml from "sanitize-html";
@@ -38,6 +39,7 @@ import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { toFileContentFragment } from "../conversation/content_fragment";
+import type { InboundEmailDkimResult } from "./inbound_auth";
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
@@ -52,8 +54,6 @@ export type EmailReplyContext = {
   originalText: string;
   fromEmail: string;
   fromFull: string;
-  replyTo: string[];
-  replyCc: string[];
   threadingMessageId: string | null;
   threadingInReplyTo: string | null;
   threadingReferences: string | null;
@@ -79,10 +79,6 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
     isString(value.fromEmail) &&
     "fromFull" in value &&
     isString(value.fromFull) &&
-    "replyTo" in value &&
-    isStringArray(value.replyTo) &&
-    "replyCc" in value &&
-    isStringArray(value.replyCc) &&
     "threadingMessageId" in value &&
     isNullableString(value.threadingMessageId) &&
     "threadingInReplyTo" in value &&
@@ -128,7 +124,7 @@ export async function storeEmailReplyContext(
 /**
  * Parse and validate a raw Redis value into an EmailReplyContext.
  */
-function parseEmailReplyContext(
+export function parseEmailReplyContext(
   value: string,
   agentMessageId: string,
   key: string
@@ -152,7 +148,18 @@ function parseEmailReplyContext(
     return null;
   }
 
-  return parsed;
+  return {
+    subject: parsed.subject,
+    originalText: parsed.originalText,
+    fromEmail: parsed.fromEmail,
+    fromFull: parsed.fromFull,
+    threadingMessageId: parsed.threadingMessageId,
+    threadingInReplyTo: parsed.threadingInReplyTo,
+    threadingReferences: parsed.threadingReferences,
+    agentConfigurationId: parsed.agentConfigurationId,
+    workspaceId: parsed.workspaceId,
+    conversationId: parsed.conversationId,
+  };
 }
 
 /**
@@ -204,14 +211,19 @@ export type EmailThreadingHeaders = {
 export type InboundEmail = {
   subject: string;
   text: string;
-  auth: { SPF: string; dkim: string };
+  auth: { SPF: string; dkim: InboundEmailDkimResult[]; dkimRaw: string };
   threadingHeaders: EmailThreadingHeaders;
+  // Human-visible RFC 5322 From header.
+  sender: {
+    email: string;
+    full: string;
+  };
+  // SMTP envelope sender (MAIL FROM / return-path).
   envelope: {
     to: string[];
     cc: string[];
     bcc: string[];
     from: string;
-    full: string;
   };
   attachments: EmailAttachment[];
 };
@@ -253,6 +265,49 @@ function deduplicateEmailAddresses(emails: string[]): string[] {
 
 function isAssistantRecipient(email: string): boolean {
   return normalizeEmailAddress(email).endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`);
+}
+
+function formatEmailRecipients(recipients: string[]): string {
+  return recipients.length > 0 ? recipients.join(", ") : "(none)";
+}
+
+function formatEmailHeaderValue(value: string): string {
+  return value.replace(/\s*\n+\s*/g, " ").trim();
+}
+
+function escapeTagContent(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function buildEmailAdditionalContext({
+  hasThreadHistory,
+  attachmentCount,
+}: {
+  hasThreadHistory: boolean;
+  attachmentCount: number;
+}): string[] {
+  const additionalContext: string[] = [];
+
+  if (!hasThreadHistory && attachmentCount === 0) {
+    return additionalContext;
+  }
+
+  if (hasThreadHistory) {
+    additionalContext.push(
+      "<email_thread_history_may_be_available_in_conversation>true</email_thread_history_may_be_available_in_conversation>"
+    );
+  }
+
+  if (attachmentCount > 0) {
+    additionalContext.push(
+      `<email_attachment_count_may_be_available_in_conversation>${attachmentCount}</email_attachment_count_may_be_available_in_conversation>`
+    );
+  }
+
+  return additionalContext;
 }
 
 function buildReferencesHeaderValue({
@@ -305,27 +360,61 @@ function buildSendgridThreadingHeaders(
   };
 }
 
-export function buildSuccessReplyRecipients(email: InboundEmail): {
-  to: string[];
-  cc: string[];
-} {
-  const to = deduplicateEmailAddresses(
-    [email.envelope.from, ...email.envelope.to].filter(
-      (recipient) => !isAssistantRecipient(recipient)
+export function buildEmailUserMessage({
+  email,
+  userMessage,
+  hasThreadHistory,
+  attachmentCount,
+}: {
+  email: InboundEmail;
+  userMessage: string;
+  hasThreadHistory: boolean;
+  attachmentCount: number;
+}): string {
+  const assistantRecipients = deduplicateEmailAddresses(
+    [...email.envelope.to, ...email.envelope.cc, ...email.envelope.bcc].filter(
+      isAssistantRecipient
     )
   );
+  const toRecipients = deduplicateEmailAddresses(email.envelope.to);
+  const ccRecipients = deduplicateEmailAddresses(email.envelope.cc);
+  const additionalContext = buildEmailAdditionalContext({
+    hasThreadHistory,
+    attachmentCount,
+  });
 
-  const toSet = new Set(to.map(normalizeEmailAddress));
-  const cc = deduplicateEmailAddresses(
-    email.envelope.cc.filter((recipient) => {
-      const normalizedRecipient = normalizeEmailAddress(recipient);
-      return (
-        !isAssistantRecipient(recipient) && !toSet.has(normalizedRecipient)
-      );
-    })
-  );
-
-  return { to, cc };
+  return [
+    "I sent the following email:",
+    "",
+    "<email_message>",
+    `  <email_from>${escapeTagContent(
+      formatEmailHeaderValue(email.sender.full)
+    )}</email_from>`,
+    `  <email_subject>${escapeTagContent(
+      formatEmailHeaderValue(email.subject)
+    )}</email_subject>`,
+    `  <email_to>${escapeTagContent(
+      formatEmailRecipients(toRecipients)
+    )}</email_to>`,
+    ...(ccRecipients.length > 0
+      ? [
+          `  <email_cc>${escapeTagContent(
+            formatEmailRecipients(ccRecipients)
+          )}</email_cc>`,
+        ]
+      : []),
+    `  <dust_agent_recipients>${escapeTagContent(
+      formatEmailRecipients(assistantRecipients)
+    )}</dust_agent_recipients>`,
+    "  <email_body>",
+    escapeTagContent(userMessage),
+    "  </email_body>",
+    ...additionalContext.map((line) => `  ${line}`),
+    `  <email_response_to>${escapeTagContent(email.sender.email)}</email_response_to>`,
+    "</email_message>",
+    "",
+    "You are in the recipients. Answer appropriately. Your full response will be emailed automatically as-is only to me, the sender above.",
+  ].join("\n");
 }
 export async function userAndWorkspaceFromEmail({
   email,
@@ -606,6 +695,7 @@ export async function triggerFromEmail({
   }
 
   // Process email attachments as content fragments.
+  let attachedContentCount = 0;
   for (const attachment of email.attachments) {
     try {
       const file = await FileResource.makeNew({
@@ -665,6 +755,7 @@ export async function triggerFromEmail({
         continue;
       }
 
+      attachedContentCount += 1;
       localLogger.info(
         { filename: attachment.filename },
         "[email] Added attachment as content fragment."
@@ -698,7 +789,12 @@ export async function triggerFromEmail({
       })
       .join(" ") +
     " " +
-    userMessage;
+    buildEmailUserMessage({
+      email,
+      userMessage,
+      hasThreadHistory: restOfThread.length > 0,
+      attachmentCount: attachedContentCount,
+    });
 
   const mentions = agentConfigurations.map((agent) => {
     return { configurationId: agent.sId };
@@ -731,7 +827,6 @@ export async function triggerFromEmail({
   }
 
   const { agentMessages } = messageRes.value;
-  const successReplyRecipients = buildSuccessReplyRecipients(email);
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
@@ -744,10 +839,8 @@ export async function triggerFromEmail({
       await storeEmailReplyContext(agentMessage.sId, {
         subject: email.subject,
         originalText: email.text,
-        fromEmail: email.envelope.from,
-        fromFull: email.envelope.full,
-        replyTo: successReplyRecipients.to,
-        replyCc: successReplyRecipients.cc,
+        fromEmail: email.sender.email,
+        fromFull: email.sender.full,
         threadingMessageId: email.threadingHeaders.messageId,
         threadingInReplyTo: email.threadingHeaders.inReplyTo,
         threadingReferences: email.threadingHeaders.references,
@@ -792,7 +885,7 @@ export async function sendToolValidationEmail({
     agentName: agentConfiguration.name,
   });
 
-  const name = `Dust Agent (${agentConfiguration.name})`;
+  const name = `${agentConfiguration.name} (Dust agent)`;
   const sender = `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   const subject = email.subject
@@ -822,23 +915,22 @@ export async function sendToolValidationEmail({
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    const toolName = sanitizeHtml(action.metadata.toolName, {
+    const toolName = sanitizeHtml(asDisplayName(action.metadata.toolName), {
       allowedTags: [],
       allowedAttributes: {},
     });
-    const serverName = sanitizeHtml(action.metadata.mcpServerName, {
-      allowedTags: [],
-      allowedAttributes: {},
-    });
+    const serverName = sanitizeHtml(
+      asDisplayName(action.metadata.mcpServerName),
+      { allowedTags: [], allowedAttributes: {} }
+    );
 
     return `
       <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
-        <h3 style="margin: 0 0 8px 0; color: #333;">${toolName}</h3>
-        <p style="margin: 0 0 8px 0; color: #666;">Server: ${serverName}</p>
+        <h3 style="margin: 0 0 8px 0; color: #333;">Allow ${serverName} to ${toolName}?</h3>
         <pre style="background-color: #fff; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid #eee;">${inputsJson}</pre>
         <div style="margin-top: 12px;">
-          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Approve</a>
-          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Reject</a>
+          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Allow</a>
+          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Decline</a>
         </div>
       </div>
     `;
@@ -846,8 +938,7 @@ export async function sendToolValidationEmail({
 
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <h2 style="color: #333;">Tool Approval Required</h2>
-      <p>The agent <strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs your approval to execute the following tool(s):</p>
+      <p><strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs permission to use the following tool(s):</p>
       ${actionBlocks.join("")}
       <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
       <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>
@@ -864,7 +955,7 @@ export async function sendToolValidationEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.sender.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +
@@ -884,7 +975,7 @@ export async function sendToolValidationEmail({
   };
 
   try {
-    await sendEmail(email.envelope.from, msg);
+    await sendEmail(email.sender.email, msg);
     localLogger.info(
       { actionsCount: blockedActions.length },
       "[email] Sent tool validation email."
@@ -901,19 +992,16 @@ export async function replyToEmail({
   email,
   agentConfiguration,
   htmlContent,
-  recipients,
+  recipient,
 }: {
   email: InboundEmail;
   agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
-  recipients: {
-    to: string[];
-    cc: string[];
-  };
+  recipient: string;
 }) {
   const name = agentConfiguration
-    ? `Dust Agent (${agentConfiguration.name})`
-    : "Dust Agent";
+    ? `${agentConfiguration.name} (Dust agent)`
+    : "Dust agent";
   const sender = agentConfiguration
     ? `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
     : `assistants@${ASSISTANT_EMAIL_SUBDOMAIN}`;
@@ -936,7 +1024,7 @@ export async function replyToEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.sender.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +
@@ -956,8 +1044,8 @@ export async function replyToEmail({
   };
 
   await sendEmailToRecipients({
-    to: recipients.to,
-    cc: recipients.cc,
+    to: [recipient],
+    cc: [],
     message: msg,
   });
 }

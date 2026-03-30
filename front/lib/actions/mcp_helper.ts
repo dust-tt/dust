@@ -31,6 +31,21 @@ import {
   asDisplayName,
   asDisplayToolName,
 } from "@app/types/shared/utils/string_utils";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
+
+/**
+ * JSON-RPC error code for request timeout (MCP RequestTimeout).
+ * @see https://github.com/modelcontextprotocol/typescript-sdk/pull/103
+ */
+const MCP_REQUEST_TIMEOUT_ERROR_CODE = -32001;
+
+/**
+ * Type guard for MCP request timeout errors.
+ * Use when handling errors from MCP client operations (connect, listTools, callTool).
+ */
+export function isMcpTimeoutError(e: unknown): e is McpError {
+  return e instanceof McpError && e.code === MCP_REQUEST_TIMEOUT_ERROR_CODE;
+}
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string

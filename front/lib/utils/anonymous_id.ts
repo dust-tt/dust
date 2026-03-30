@@ -9,7 +9,7 @@ const ANONYMOUS_ID_MAX_AGE_SECONDS = 31536000; // 1 year
  * On production (any *.dust.tt host) returns `.dust.tt`;
  * on localhost/dev returns null (no domain attribute needed).
  */
-function getRootCookieDomain(): string | null {
+export function getRootCookieDomain(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
@@ -19,6 +19,15 @@ function getRootCookieDomain(): string | null {
   }
 
   return ".dust.tt";
+}
+
+/**
+ * Returns the root cookie domain for PostHog cross-subdomain tracking.
+ * On production returns `.dust.tt`; on localhost/dev returns `undefined`.
+ */
+export function getPostHogCookieDomain(): string | undefined {
+  const domain = getRootCookieDomain();
+  return domain ?? undefined;
 }
 
 /**

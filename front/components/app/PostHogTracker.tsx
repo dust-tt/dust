@@ -11,8 +11,13 @@ import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import {
   DUST_ANONYMOUS_ID_COOKIE,
   getOrCreateAnonymousId,
+  getPostHogCookieDomain,
 } from "@app/lib/utils/anonymous_id";
-import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
+import {
+  getStoredReferrer,
+  getStoredUTMParams,
+  MARKETING_PARAMS,
+} from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
@@ -31,7 +36,7 @@ const EXCLUDED_PATHS = [
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
-  // When true, skip fetching user data and assume cookies are accepted.
+  // When true, assume cookies are accepted (logged in users).
   // Use in authenticated contexts (e.g. SPA) where the user is always logged in.
   authenticated?: boolean;
 }
@@ -76,9 +81,10 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     return stored.posthog_id ?? undefined;
   }, []);
 
-  const disabled = !posthogId && (!!authenticated || !hasSession);
-  // Skip useUser in authenticated contexts — user is always logged in so
-  // hasCookiesAccepted is always true and we don't need user data for consent.
+  // Fetch user data whenever there is a session (or posthogId). We need the
+  // user's sId for posthog.identify() in all contexts, including authenticated
+  // SPAs where hasCookiesAccepted is auto-true.
+  const disabled = !posthogId && !hasSession;
   const { user } = useUser({
     disabled,
   });
@@ -149,11 +155,25 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       return;
     }
 
+    const cookieDomain = getPostHogCookieDomain();
+
+    // Use the persistent _dust_aid cookie as the initial distinct_id so that
+    // anonymous events share a stable identity across page loads. Without this,
+    // memory persistence generates a new throwaway distinct_id on every page
+    // load, and only the last one gets stitched when identify() fires — all
+    // prior anonymous browsing events are orphaned.
+    const anonymousId = getOrCreateAnonymousId();
+
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       persistence: "memory",
+      ...(anonymousId ? { bootstrap: { distinctID: anonymousId } } : {}),
+      // Share PostHog cookies (including distinct_id) across all *.dust.tt
+      // subdomains so the same identity persists through dust.tt → signin →
+      // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
+      ...(cookieDomain ? { cookie_domain: cookieDomain } : {}),
       capture_pageview: true,
       capture_pageleave: false,
       autocapture: false,
@@ -169,11 +189,22 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
         // UTM params across page loads, and URLs may have been stripped by
         // useStripUtmParams.
         const storedParams = getStoredUTMParams();
+        const setOnceProps: Record<string, string> = {};
         for (const param of MARKETING_PARAMS) {
           const storedValue = storedParams[param];
           if (storedValue) {
             event.properties[param] = storedValue;
+            // Also populate PostHog's built-in "Initial UTM" person properties.
+            // The SDK normally reads these from the URL, but since we strip UTMs
+            // before PostHog sees them, we inject them via $set_once.
+            setOnceProps[`$initial_${param}`] = storedValue;
           }
+        }
+        if (Object.keys(setOnceProps).length > 0) {
+          event.properties["$set_once"] = {
+            ...event.properties["$set_once"],
+            ...setOnceProps,
+          };
         }
 
         // Inject the persistent anonymous device ID from the _dust_aid cookie
@@ -203,42 +234,16 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     hasInitialized.current = true;
   }, [isTrackablePage]);
 
-  // Phase 2: Upgrade to full cookie persistence and enable session recording
-  // once the user has accepted cookies (consent banner or login).
+  // Identify the user as soon as possible after auth completes — NOT gated on
+  // cookie consent. identify() is a first-party operation on an already-
+  // authenticated user. Per PostHog support: "call PostHog.identify from your
+  // front end as soon as possible after auth completes."
+  //
+  // This must run BEFORE the persistence upgrade (Phase 2) so that the current
+  // distinct_id (the _dust_aid bootstrap value) is correctly merged with the
+  // user's sId in the $identify event sent to PostHog's server.
   useEffect(() => {
-    if (
-      !posthog.__loaded ||
-      !hasInitialized.current ||
-      !hasAcceptedCookies ||
-      hasUpgradedPersistence.current
-    ) {
-      return;
-    }
-
-    posthog.set_config({
-      persistence: "localStorage+cookie",
-      disable_session_recording: false,
-    });
-    posthog.startSessionRecording();
-
-    // Register the anonymous device ID as a super property so it persists
-    // across events after persistence upgrade.
-    const anonymousId = getOrCreateAnonymousId();
-    if (anonymousId) {
-      posthog.register({ dust_anonymous_id: anonymousId });
-    }
-
-    hasUpgradedPersistence.current = true;
-  }, [hasAcceptedCookies]);
-
-  // Identify with posthog_id query param when present.
-  useEffect(() => {
-    if (
-      !posthog.__loaded ||
-      !hasInitialized.current ||
-      !hasAcceptedCookies ||
-      !user
-    ) {
+    if (!posthog.__loaded || !hasInitialized.current || !user) {
       return;
     }
 
@@ -260,11 +265,56 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
           firstTouchProps[`first_${param}`] = value;
         }
       }
+
+      // Include the original external referrer (from the _dust_referrer cookie).
+      const storedReferrer = getStoredReferrer();
+      if (storedReferrer) {
+        firstTouchProps["first_referrer"] = storedReferrer;
+        try {
+          firstTouchProps["first_referring_domain"] = new URL(
+            storedReferrer
+          ).hostname;
+        } catch {
+          // Ignore malformed referrer URLs.
+        }
+      }
+
       if (Object.keys(firstTouchProps).length > 0) {
         posthog.setPersonProperties({}, firstTouchProps);
       }
     }
-  }, [hasAcceptedCookies, user, posthogId]);
+  }, [user, posthogId]);
+
+  // Phase 2: Upgrade to full cookie persistence and enable session recording
+  // once the user has accepted cookies (consent banner or login).
+  useEffect(() => {
+    if (
+      !posthog.__loaded ||
+      !hasInitialized.current ||
+      !hasAcceptedCookies ||
+      hasUpgradedPersistence.current
+    ) {
+      return;
+    }
+
+    posthog.set_config({
+      persistence: "localStorage+cookie",
+      ...(getPostHogCookieDomain()
+        ? { cookie_domain: getPostHogCookieDomain() }
+        : {}),
+      disable_session_recording: false,
+    });
+    posthog.startSessionRecording();
+
+    // Register the anonymous device ID as a super property so it persists
+    // across events after persistence upgrade.
+    const anonymousId = getOrCreateAnonymousId();
+    if (anonymousId) {
+      posthog.register({ dust_anonymous_id: anonymousId });
+    }
+
+    hasUpgradedPersistence.current = true;
+  }, [hasAcceptedCookies]);
 
   // Group users by workspace and set workspace properties (admin only).
   const lastUserRole = useRef<string | null>(null);
