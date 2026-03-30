@@ -96,6 +96,8 @@ interface MCPServerAuthConnectionProps {
   // set and the parent manages scope selection in form state.
   selectedScopes?: string[];
   onSelectedScopesChange?: (scopes: string[]) => void;
+  // Used to render provider-specific setup instructions for generic providers
+  serverId?: number;
 }
 
 export function MCPServerAuthConnection({
@@ -105,6 +107,7 @@ export function MCPServerAuthConnection({
   staticCredentialConfig,
   selectedScopes,
   onSelectedScopesChange,
+  serverId,
 }: MCPServerAuthConnectionProps) {
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
@@ -252,6 +255,7 @@ export function MCPServerAuthConnection({
           inputs={inputs}
           authCredentials={authCredentials}
           onCredentialChange={handleCredentialChange}
+          serverId={serverId}
         />
       )}
 
@@ -296,6 +300,7 @@ interface OAuthCredentialFieldsProps {
   inputs: OAuthCredentialInputs | null;
   authCredentials: OAuthCredentials | null;
   onCredentialChange: (key: string, value: string) => void;
+  serverId?: number;
 }
 
 function OAuthCredentialFields({
@@ -304,12 +309,14 @@ function OAuthCredentialFields({
   inputs,
   authCredentials,
   onCredentialChange,
+  serverId,
 }: OAuthCredentialFieldsProps) {
   return (
     <>
       <ProviderSetupInstructions
         provider={authorization.provider}
         useCase={useCase}
+        serverId={serverId}
       />
 
       {inputs && (

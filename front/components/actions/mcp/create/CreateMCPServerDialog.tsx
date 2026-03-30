@@ -477,6 +477,7 @@ export function CreateMCPServerDialog({
                   onSelectedScopesChange={(scopes) =>
                     form.setValue("selectedScopes", scopes)
                   }
+                  serverId={defaultServerConfig?.id}
                 />
               )}
 
