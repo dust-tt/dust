@@ -6,7 +6,12 @@ import { z } from "zod";
 export const SKILL_STATUSES = ["active", "archived", "suggested"] as const;
 export type SkillStatus = (typeof SKILL_STATUSES)[number];
 
-export const SKILL_SOURCES = ["web_app", "github", "local_file"] as const;
+export const SKILL_SOURCES = [
+  "web_app",
+  "github",
+  "api",
+  "local_file",
+] as const;
 
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];
 
