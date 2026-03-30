@@ -1,5 +1,6 @@
 import type { InboundEmail } from "@app/lib/api/assistant/email/email_trigger";
 import logger from "@app/logger/logger";
+import { getDomain } from "tldts";
 
 const REPEATED_DKIM_ENTRY_SEPARATOR_PATTERN = /\}\s*,?\s*\{/g;
 const SENDGRID_DKIM_ENTRY_PATTERN = /^@([^:\s]+)\s*:\s*([^,\s}]+)$/;
@@ -81,23 +82,20 @@ function getEmailDomain(email: string): string {
 
 /**
  * Relaxed domain alignment per DMARC RFC 7489 §3.1.
- * Two domains are aligned when they share the same organizational domain,
- * i.e. one is a subdomain of the other or they are equal.
- *
- * Limitation: this is suffix-based, not PSL-aware — domains under public
- * suffixes like co.uk could incorrectly align (e.g. a.co.uk / b.co.uk).
- * TODO: replace with PSL-aware organizational-domain extraction.
+ * Two domains are aligned when they share the same organizational domain
+ * (registered domain under the Public Suffix List).
+ * Uses `tldts` for PSL-aware extraction, e.g. `a.co.uk` and `b.co.uk`
+ * correctly do NOT align.
  */
 export function domainsAlign(a: string, b: string): boolean {
-  const la = a.toLowerCase();
-  const lb = b.toLowerCase();
+  const orgA = getDomain(a, { allowPrivateDomains: true });
+  const orgB = getDomain(b, { allowPrivateDomains: true });
 
-  if (la === lb) {
-    return true;
+  if (!orgA || !orgB) {
+    return false;
   }
 
-  // One is a subdomain of the other: "mail.example.com" aligns with "example.com".
-  return la.endsWith(`.${lb}`) || lb.endsWith(`.${la}`);
+  return orgA.toLowerCase() === orgB.toLowerCase();
 }
 
 /**
