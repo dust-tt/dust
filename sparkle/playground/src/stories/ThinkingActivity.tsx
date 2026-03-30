@@ -1503,10 +1503,10 @@ export default function ThinkingActivity() {
       </div>
 
       <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
-        <div className="s-pointer-events-auto s-w-full s-max-w-2xl s-px-4">
-          <div className="s-flex s-flex-col">
+        <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
+          <div className="s-flex s-flex-col s-items-center">
             {phase === "asking" && introComplete && (
-              <FadeIn>
+              <FadeIn className="s-w-full s-max-w-3xl">
                 <AskUserQuestion
                   question={QUESTION}
                   options={QUESTION_OPTIONS}
@@ -1515,28 +1515,30 @@ export default function ThinkingActivity() {
                 />
               </FadeIn>
             )}
-            {phase === "idle" && inputValue ? (
-              <div onClick={handleSend}>
+            <div className={phase === "asking" && introComplete ? "s-w-full s-max-w-3xl" : "s-w-full"}>
+              {phase === "idle" && inputValue ? (
+                <div onClick={handleSend}>
+                  <InputBar
+                    key={inputValue}
+                    initialValue={inputValue}
+                    className={
+                      phase === "asking" && introComplete
+                        ? "s-rounded-none s-rounded-b-3xl"
+                        : ""
+                    }
+                  />
+                </div>
+              ) : (
                 <InputBar
-                  key={inputValue}
-                  initialValue={inputValue}
+                  placeholder="Reply..."
                   className={
                     phase === "asking" && introComplete
                       ? "s-rounded-none s-rounded-b-3xl"
                       : ""
                   }
                 />
-              </div>
-            ) : (
-              <InputBar
-                placeholder="Reply..."
-                className={
-                  phase === "asking" && introComplete
-                    ? "s-rounded-none s-rounded-b-3xl"
-                    : ""
-                }
-              />
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
