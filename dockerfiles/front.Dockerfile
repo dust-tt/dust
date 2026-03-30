@@ -126,9 +126,8 @@ RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
   --service=${svc} || exit 1; \
   done && \
   find .next -type f -name "*.map" -print -delete; \
-  fi
-
-RUN npm run sitemap
+  fi && \
+  npm run sitemap
 
 # Workers-specific build stage
 FROM base-deps AS workers-build
