@@ -78,7 +78,10 @@ export function SubscriptionPlanCards({
         </div>
         <div className="mb-4 border-t border-border" />
         <ul className="flex flex-1 flex-col gap-3">
-          {[...PRO_FEATURES, ...(isBusiness ? BUSINESS_EXTRA_FEATURES : [])].map((feature, index) => (
+          {[
+            ...PRO_FEATURES,
+            ...(isBusiness ? BUSINESS_EXTRA_FEATURES : []),
+          ].map((feature, index) => (
             <li key={index} className="flex items-start gap-2">
               <Icon
                 visual={CheckIcon}
