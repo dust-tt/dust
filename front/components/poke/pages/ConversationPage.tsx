@@ -157,8 +157,9 @@ const AgentMessageView = ({
             <div className="text-warning">{message.error.message}</div>
           )}
           <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            date: {new Date(message.created).toLocaleString()} • message version :{" "}
-            {message.version} • message sId : {message.sId} {" • "} agent sId :
+            date: {new Date(message.created).toLocaleString()} • message version
+            : {message.version} • message sId : {message.sId} {" • "} agent sId
+            :
             <LinkWrapper
               href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
               target="_blank"
@@ -175,7 +176,11 @@ const AgentMessageView = ({
                     key={`runId-${i}`}
                     className="inline-flex items-center space-x-1"
                   >
-                    <a href={url} target="_blank" className="text-highlight-500">
+                    <a
+                      href={url}
+                      target="_blank"
+                      className="text-highlight-500"
+                    >
                       {runId.substring(0, 16)}
                     </a>
                     {isLLM && (
@@ -207,7 +212,8 @@ const AgentMessageView = ({
             )}
             {message.completionDurationMs != null && (
               <>
-                {" • "}total: {(message.completionDurationMs / 1000).toFixed(1)}s
+                {" • "}total: {(message.completionDurationMs / 1000).toFixed(1)}
+                s
               </>
             )}
           </div>
@@ -235,7 +241,9 @@ const AgentMessageView = ({
                       onClick={() => toggleAction(i)}
                     />
                   )}
-                  {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
+                  {a.created && (
+                    <>{new Date(a.created).toLocaleTimeString()}: </>
+                  )}
                   step {a.step}: <b className="px-1">{a.functionCallName}()</b>
                   {"executionDurationMs" in a &&
                     typeof a.executionDurationMs === "number" && (
