@@ -371,6 +371,14 @@ export type LightConversationType = ConversationWithoutContentType & {
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
 
+export function isLightConversationType(
+  conversation: ConversationType | LightConversationType
+): conversation is LightConversationType {
+  // Content is not an array of arrays of messages, it's an array of messages.
+  // Just check that the item 0 is not an
+  return "content" in conversation && !Array.isArray(conversation.content[0]);
+}
+
 export const isProjectConversation = <T extends ConversationWithoutContentType>(
   conversation: T
 ): conversation is T & { spaceId: string } => !!conversation.spaceId;
