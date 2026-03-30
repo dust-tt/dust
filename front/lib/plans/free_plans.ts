@@ -54,6 +54,7 @@ export const FREE_NO_PLAN_DATA: PlanAttributes = {
   trialPeriodDays: 0,
   canUseProduct: false,
   isByok: false,
+  metronomePackageAlias: null,
 };
 
 /**
@@ -88,6 +89,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     trialPeriodDays: 0,
     canUseProduct: false,
     isByok: false,
+    metronomePackageAlias: null,
   },
   {
     code: FREE_UPGRADED_PLAN_CODE,
@@ -116,6 +118,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
+    metronomePackageAlias: null,
   },
   {
     code: FREE_TRIAL_PHONE_PLAN_CODE,
@@ -144,6 +147,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
+    metronomePackageAlias: null,
   },
 ];
 
