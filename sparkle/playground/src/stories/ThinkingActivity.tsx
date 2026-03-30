@@ -1322,6 +1322,20 @@ export default function ThinkingActivity() {
     setPhase("idle");
   }, []);
 
+  const handleRelaunch = useCallback(() => {
+    setPhase("idle");
+    setVisibleSteps([]);
+    setVisibleSteps2([]);
+    setSelectedOption(null);
+    setIntroStarted(false);
+    setIntroComplete(false);
+    setFinalStarted(false);
+    setIsPanelOpen(false);
+    setInputValue(
+      "@monitor I want to set up monitoring for our API. What approach do you recommend?"
+    );
+  }, []);
+
   const handleOptionSelect = (option: AskUserQuestionOption) => {
     setSelectedOption(option);
     setVisibleSteps2([]);
@@ -1334,6 +1348,16 @@ export default function ThinkingActivity() {
 
   const conversationContent = (
     <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
+      {phase !== "idle" && (
+        <div className="s-absolute s-right-4 s-top-3 s-z-10">
+          <Button
+            variant="ghost"
+            size="sm"
+            label="Relaunch"
+            onClick={handleRelaunch}
+          />
+        </div>
+      )}
       {phase === "idle" && (
         <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-3">
           <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
