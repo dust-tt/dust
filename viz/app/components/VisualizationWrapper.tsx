@@ -484,11 +484,9 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
       const suffix = allowed.slice("https://*".length); // e.g. ".preview.dust.tt"
       return origin.startsWith("https://") && origin.endsWith(suffix);
     }
-    // Support wildcard for browser extension origins in dev (e.g. "moz-extension://*").
-    // In production, use exact origins instead.
-    if (isDevelopment() && allowed.endsWith("://*")) {
-      const scheme = allowed.slice(0, -1); // e.g. "moz-extension://"
-      return origin.startsWith(scheme);
+    // Firefox Internal UUID is not stable, so we allow all moz-extension:// origins.
+    if (allowed === "moz-extension://*") {
+      return origin.startsWith("moz-extension://");
     }
     return origin === allowed;
   });

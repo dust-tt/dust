@@ -38,14 +38,16 @@ export const useAuthHook = () => {
         const accessToken = await platform.auth.getAccessToken();
         return {
           credentials: "omit",
-          headers: accessToken
-            ? { Authorization: `Bearer ${accessToken}` }
-            : {},
+          headers: {
+            "X-Extension-Id": chrome.runtime.id,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
         };
       });
     } else {
       setDefaultInitResolver(async () => ({
         credentials: "omit",
+        headers: { "X-Extension-Id": chrome.runtime.id },
       }));
     }
 

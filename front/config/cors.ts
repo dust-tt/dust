@@ -7,8 +7,6 @@ const STATIC_ALLOWED_ORIGINS = [
   // Chrome extension.
   "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
-  // Firefox extension.
-  "moz-extension://8513c13e-1050-4fe6-a548-34448bfa51af",
   // Documentation website.
   "https://docs.dust.tt",
   // Microsoft Power Automate.
@@ -28,7 +26,25 @@ const ALLOWED_ORIGIN_PATTERNS = [
   new RegExp("^https://.+\\.zendesk\\.com$"),
   // Staging apps - allow all builds from *.preview.dust.tt .
   new RegExp("^https://.*\\.preview\\.dust\\.tt$"),
+  // Firefox Internal UUID is not stable, allow all moz-extension origins.
+  new RegExp("^moz-extension://"),
 ] as const;
+
+// gecko.id values from the Firefox extension manifest.
+// Used to validate X-Extension-Id header on requests from moz-extension:// origins.
+export const FIREFOX_EXTENSION_IDS = [
+  "dust-dev@dust.tt",
+  "dust@dust.tt",
+] as const;
+
+export function isAllowedFirefoxExtensionId(
+  extensionId: string | null
+): boolean {
+  return (
+    extensionId !== null &&
+    (FIREFOX_EXTENSION_IDS as readonly string[]).includes(extensionId)
+  );
+}
 
 type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];
 
@@ -45,6 +61,7 @@ export const ALLOWED_HEADERS = [
   "x-commit-hash",
   "x-dust-extension-version",
   "x-build-date",
+  "x-extension-id",
   "x-hackerone-research",
   "x-request-origin",
   // Datadog RUM tracing headers (injected automatically by the browser SDK).
