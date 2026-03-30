@@ -22,6 +22,8 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
+import { addAllMembersAsProSeats } from "@app/lib/metronome/seats";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -311,6 +313,52 @@ async function handler(
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
               workspaceId,
             });
+
+            // Provision the Metronome customer at subscription time so usage
+            // events are matched. Stripe Checkout remains the entry point for
+            // payment method capture even after full Metronome migration.
+            const stripeCustomerIdForMetronome =
+              typeof session.customer === "string"
+                ? session.customer
+                : session.customer?.id;
+            const renderedPlan = renderPlanFromModel({ plan });
+            if (stripeCustomerIdForMetronome) {
+              const metronomeResult =
+                await provisionMetronomeCustomerAndContract({
+                  workspaceSId: workspace.sId,
+                  workspaceName: workspace.name,
+                  stripeCustomerId: stripeCustomerIdForMetronome,
+                  packageAlias:
+                    renderedPlan.metronomePackageAlias ?? "pro-plan",
+                });
+              if (metronomeResult.isOk()) {
+                await WorkspaceResource.updateMetronomeCustomerId(
+                  workspace.sId,
+                  metronomeResult.value.metronomeCustomerId
+                );
+
+                // Add all existing workspace members as Pro seats.
+                const refreshedWorkspace = await WorkspaceResource.fetchById(
+                  workspace.sId
+                );
+                if (refreshedWorkspace) {
+                  const adminAuth =
+                    await Authenticator.internalAdminForWorkspace(
+                      workspace.sId
+                    );
+                  const { members } = await getMembers(adminAuth, {
+                    activeOnly: true,
+                  });
+                  const memberSIds = members.map((m) => m.sId);
+                  if (memberSIds.length > 0) {
+                    void addAllMembersAsProSeats(
+                      refreshedWorkspace,
+                      memberSIds
+                    );
+                  }
+                }
+              }
+            }
 
             return res.status(200).json({ success: true });
           } catch (error) {

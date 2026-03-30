@@ -70,6 +70,7 @@ export type PlanType = {
   trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
+  metronomePackageAlias?: string | null;
 };
 
 export type SubscriptionType = {

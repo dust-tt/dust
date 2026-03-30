@@ -1,4 +1,6 @@
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { PRO_PLAN_METRONOME_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
@@ -10,6 +12,7 @@ export function PaymentProcessingPage() {
   const router = useAppRouter();
   const type = useSearchParam("type");
   const planCode = useSearchParam("plan_code");
+  const sessionId = useSearchParam("session_id");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
@@ -19,6 +22,18 @@ export function PaymentProcessingPage() {
         void router.replace(
           getConversationRoute(owner.sId, "new", "welcome=true")
         );
+      } else if (planCode === PRO_PLAN_METRONOME_CODE && sessionId) {
+        // Finalize the Metronome subscription using the Stripe checkout session.
+        void clientFetch(
+          `/api/w/${owner.sId}/subscriptions/metronome-finalize`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          }
+        ).then(() => {
+          setTimeout(() => void router.reload(), 2000);
+        });
       } else {
         // If the Stripe webhook is not yet received, we try waiting for it and reload the page every 5 seconds until it's done.
         setTimeout(() => {

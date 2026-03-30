@@ -1,6 +1,7 @@
 import { PlanModel } from "@app/lib/models/plan";
 import {
   FREE_BYOK_PLAN_CODE,
+  PRO_PLAN_METRONOME_CODE,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -9,8 +10,10 @@ import type { Attributes } from "sequelize";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
-  "id" | "createdAt" | "updatedAt"
->;
+  "id" | "createdAt" | "updatedAt" | "metronomePackageAlias"
+> & {
+  metronomePackageAlias?: string | null;
+};
 
 /**
  * We have 3 categories of plans:
@@ -77,6 +80,35 @@ if (isDevelopment() || isTest()) {
     isManagedWebCrawlerAllowed: true,
     isManagedSalesforceAllowed: false,
     isSSOAllowed: true,
+    isSCIMAllowed: false,
+    isAuditLogsAllowed: false,
+    maxDataSourcesCount: -1,
+    maxDataSourcesDocumentsCount: -1,
+    maxDataSourcesDocumentsSizeMb: 2,
+    trialPeriodDays: 14,
+    canUseProduct: true,
+    isByok: false,
+  });
+  PRO_PLANS_DATA.push({
+    code: PRO_PLAN_METRONOME_CODE,
+    name: "Pro (Metronome)",
+    metronomePackageAlias: "pro-plan",
+    maxMessages: -1,
+    maxMessagesTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
+    maxImagesPerWeek: 100,
+    maxUsersInWorkspace: 1000,
+    maxVaultsInWorkspace: 1,
+    isSlackbotAllowed: true,
+    isManagedSlackAllowed: true,
+    isManagedConfluenceAllowed: true,
+    isManagedNotionAllowed: true,
+    isManagedGoogleDriveAllowed: true,
+    isManagedGithubAllowed: true,
+    isManagedIntercomAllowed: true,
+    isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: false,
+    isSSOAllowed: false,
     isSCIMAllowed: false,
     isAuditLogsAllowed: false,
     maxDataSourcesCount: -1,

@@ -25,6 +25,7 @@ export type PokeGetWorkspaceInfo = {
   activeSubscription: SubscriptionType;
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
+  metronomeCustomerId: string | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
@@ -100,6 +101,7 @@ async function handler(
 
       return res.status(200).json({
         activeSubscription,
+        metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
         stripeSubscription,
         subscriptions,
         whitelistableFeatures: WHITELISTABLE_FEATURES,

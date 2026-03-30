@@ -9,8 +9,10 @@ import type { Attributes } from "sequelize";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
-  "id" | "createdAt" | "updatedAt"
->;
+  "id" | "createdAt" | "updatedAt" | "metronomePackageAlias"
+> & {
+  metronomePackageAlias?: string | null;
+};
 
 /**
  * We have 3 categories of plans:
