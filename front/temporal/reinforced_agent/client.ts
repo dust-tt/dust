@@ -38,10 +38,17 @@ async function getFlaggedWorkspaceIds(): Promise<string[]> {
   const flaggedIds: string[] = [];
 
   for (const workspace of allWorkspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("reinforced_agents")) {
-      flaggedIds.push(workspace.sId);
+    try {
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const featureFlags = await getFeatureFlags(auth);
+      if (featureFlags.includes("reinforced_agents")) {
+        flaggedIds.push(workspace.sId);
+      }
+    } catch (e) {
+      logger.error(
+        { error: e, workspaceId: workspace.sId },
+        "[ReinforcedAgent] Error checking feature flags for workspace."
+      );
     }
   }
 
