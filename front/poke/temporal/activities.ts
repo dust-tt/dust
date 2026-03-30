@@ -240,9 +240,7 @@ async function deleteSpaceConversations(
   await concurrentExecutor(
     conversations,
     async (conversation) => {
-      const result = await destroyConversation(auth, {
-        conversationId: conversation.sId,
-      });
+      const result = await destroyConversation(auth, { conversation });
       if (result.isErr() && result.error.type !== "conversation_not_found") {
         throw result.error;
       }
