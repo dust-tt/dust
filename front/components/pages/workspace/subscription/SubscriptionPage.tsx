@@ -618,6 +618,7 @@ export function SubscriptionPage() {
                   billingPeriod={billingPeriod}
                   onSubscribe={handleSubscribePlan}
                   isProcessing={isProcessing}
+                  owner={owner}
                 />
               </div>
             </div>
