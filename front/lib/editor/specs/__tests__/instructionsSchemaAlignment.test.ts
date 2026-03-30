@@ -74,49 +74,55 @@ describe("INSTRUCTIONS_SCHEMA — block counting", () => {
 describe("validateNonRootInstructionReplaceHtml — single-block replace", () => {
   it("rejects bare div even though PM block count is 1 (typical p→div LLM mistake)", () => {
     expect(
-      validateNonRootInstructionReplaceHtml(
-        "6ff6ef20",
-        "<div>test1</div>"
-      ).isErr()
+      validateNonRootInstructionReplaceHtml({
+        targetBlockId: "6ff6ef20",
+        html: "<div>test1</div>",
+      }).isErr()
     ).toBe(true);
   });
 
   it("accepts paragraph", () => {
     expect(
-      validateNonRootInstructionReplaceHtml("6ff6ef20", "<p>test1</p>").isOk()
+      validateNonRootInstructionReplaceHtml({
+        targetBlockId: "6ff6ef20",
+        html: "<p>test1</p>",
+      }).isOk()
     ).toBe(true);
   });
 
   it("accepts instruction-block wrapper", () => {
     expect(
-      validateNonRootInstructionReplaceHtml(
-        "6ff6ef20",
-        `<div data-type="instruction-block"><p>x</p></div>`
-      ).isOk()
+      validateNonRootInstructionReplaceHtml({
+        targetBlockId: "6ff6ef20",
+        html: `<div data-type="instruction-block"><p>x</p></div>`,
+      }).isOk()
     ).toBe(true);
   });
 
   it("rejects several top-level blocks", () => {
     expect(
-      validateNonRootInstructionReplaceHtml(
-        "6ff6ef20",
-        "<p>a</p><p>b</p>"
-      ).isErr()
+      validateNonRootInstructionReplaceHtml({
+        targetBlockId: "6ff6ef20",
+        html: "<p>a</p><p>b</p>",
+      }).isErr()
     ).toBe(true);
   });
 
   it("rejects unknown outer wrapper despite PM collapsing to one inner block", () => {
     expect(
-      validateNonRootInstructionReplaceHtml(
-        "6ff6ef20",
-        "<section><p>Text</p></section>"
-      ).isErr()
+      validateNonRootInstructionReplaceHtml({
+        targetBlockId: "6ff6ef20",
+        html: "<section><p>Text</p></section>",
+      }).isErr()
     ).toBe(true);
   });
 
   it("accepts bare text (no element children)", () => {
     expect(
-      validateNonRootInstructionReplaceHtml("6ff6ef20", "Hello").isOk()
+      validateNonRootInstructionReplaceHtml({
+        targetBlockId: "6ff6ef20",
+        html: "Hello",
+      }).isOk()
     ).toBe(true);
   });
 });

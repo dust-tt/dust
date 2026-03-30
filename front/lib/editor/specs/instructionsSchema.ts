@@ -1,15 +1,14 @@
-import { Schema } from "prosemirror-model";
-import { nodes as basicNodes, marks } from "prosemirror-schema-basic";
-import { bulletList, listItem, orderedList } from "prosemirror-schema-list";
-
 import {
   INSTRUCTION_BLOCK_NODE_NAME,
   instructionBlockSpec,
-} from "./instructionBlockSpec";
+} from "@app/lib/editor/specs/instructionBlockSpec";
 import {
   INSTRUCTIONS_ROOT_NODE_NAME,
   instructionsRootSpec,
-} from "./instructionsRootSpec";
+} from "@app/lib/editor/specs/instructionsRootSpec";
+import { Schema } from "prosemirror-model";
+import { nodes as basicNodes, marks } from "prosemirror-schema-basic";
+import { bulletList, listItem, orderedList } from "prosemirror-schema-list";
 
 /**
  * ProseMirror schema for the agent instructions editor.
