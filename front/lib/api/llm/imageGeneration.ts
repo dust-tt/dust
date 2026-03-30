@@ -31,7 +31,7 @@ export type ImageGenerationOutput = {
 export abstract class ImageGenerationLLM {
   abstract readonly supportedContentTypes: string[];
   protected readonly auth: Authenticator;
-  protected readonly modelId: ImageModelIdType;
+  readonly modelId: ImageModelIdType;
   abstract readonly providerId: ModelProviderIdType;
 
   constructor(
@@ -51,4 +51,8 @@ export abstract class ImageGenerationLLM {
   abstract generateImage(
     params: ImageGenerationInput
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>>;
+
+  abstract getModelParameters(
+    params: ImageGenerationInput
+  ): Record<string, string | number>;
 }

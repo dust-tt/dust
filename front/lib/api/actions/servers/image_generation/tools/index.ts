@@ -9,18 +9,17 @@ import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
   processImageFileIds,
-  QUALITY_TO_IMAGE_SIZE,
   sendImageProgressNotification,
   trackTokenUsage,
   uploadAndFormatImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { getImageGenerationLLM } from "@app/lib/api/llm/getImageGenerationLLM";
+import type { ImageGenerationInput } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { startObservation } from "@langfuse/tracing";
@@ -42,35 +41,31 @@ export function createImageGenerationTools(
         "Generating image..."
       );
 
+      const imageGenerationModel = await getImageGenerationLLM(auth);
+
+      if (!imageGenerationModel) {
+        const errorMessage =
+          "No image generation model available for this workspace.";
+        logger.error({ workspaceId: workspace.sId }, errorMessage);
+        return new Err(new MCPError(errorMessage, { tracked: false }));
+      }
+
+      const { providerId } = imageGenerationModel;
+
       getStatsDClient().increment("tools.image_generation.generated", 1, [
         `aspect_ratio:${aspectRatio}`,
         `image_count:${referenceImages?.length ?? 0}`,
         `quality:${quality}`,
-        "provider:gemini",
+        `provider:${providerId}`,
       ]);
 
       const rateLimitResult = await checkImageGenerationRateLimit(
         auth,
-        workspace
+        workspace,
+        providerId
       );
       if (rateLimitResult.isErr()) {
         return rateLimitResult;
-      }
-
-      const imageGenerationModel = await getImageGenerationLLM(auth);
-
-      if (!imageGenerationModel) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-          },
-          "No image generation model available for this workspace."
-        );
-        return new Err(
-          new MCPError(
-            "No image generation model available for this workspace."
-          )
-        );
       }
 
       let referenceFileResources: FileResource[] = [];
@@ -80,6 +75,7 @@ export function createImageGenerationTools(
           imageFileIds: referenceImages,
           agentLoopContext,
           supportedContentTypes: imageGenerationModel.supportedContentTypes,
+          providerId,
         });
         if (processResult.isErr()) {
           return processResult;
@@ -87,7 +83,12 @@ export function createImageGenerationTools(
         referenceFileResources = processResult.value;
       }
 
-      const imageSize = QUALITY_TO_IMAGE_SIZE[quality];
+      const generationInput = {
+        prompt,
+        aspectRatio,
+        fileResources: referenceFileResources,
+        quality,
+      } satisfies ImageGenerationInput;
 
       const generation = startObservation(
         "image-generation",
@@ -99,8 +100,9 @@ export function createImageGenerationTools(
             imageFileIds: referenceImages,
             quality,
           },
-          model: GEMINI_3_PRO_IMAGE_MODEL_ID,
-          modelParameters: { aspectRatio, imageSize, temperature: 0.7 },
+          model: imageGenerationModel.modelId,
+          modelParameters:
+            imageGenerationModel.getModelParameters(generationInput),
         },
         { asType: "generation" }
       );
@@ -117,17 +119,16 @@ export function createImageGenerationTools(
         userId: workspace.sId,
       });
 
-      const generationResult = await imageGenerationModel.generateImage({
-        prompt,
-        aspectRatio,
-        fileResources: referenceFileResources,
-        quality,
-      });
+      const generationResult =
+        await imageGenerationModel.generateImage(generationInput);
 
       if (generationResult.isErr()) {
+        const genError = generationResult.error;
+        const tracked = genError.code !== "safety_blocked";
+
         logger.error(
           {
-            error: generationResult.error,
+            error: genError,
           },
           "Error generating image."
         );
@@ -135,12 +136,14 @@ export function createImageGenerationTools(
           level: "ERROR",
           statusMessage: "Error generating image",
           metadata: {
-            error: normalizeError(generationResult.error),
+            error: normalizeError(genError),
           },
         });
         generation.end();
 
-        return new Err(new MCPError("Error generating image."));
+        return new Err(
+          new MCPError(genError.message, { tracked, cause: genError })
+        );
       }
 
       const { images, usageMetadata } = generationResult.value;
@@ -151,7 +154,10 @@ export function createImageGenerationTools(
       });
 
       const { inputTokens, outputTokens, totalTokens, costDetails } =
-        computeImageGenerationCostDetails(usageMetadata);
+        computeImageGenerationCostDetails(
+          usageMetadata,
+          imageGenerationModel.modelId
+        );
 
       generation.update({
         usageDetails: {

@@ -111,12 +111,9 @@ export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
       });
     } catch (error) {
       return new Err(
-        new ImageGenerationError(
-          "Failed to generate image",
-          error instanceof Error
-            ? { message: error.message, stack: error.stack }
-            : undefined
-        )
+        new ImageGenerationError("api_error", "Failed to generate image", {
+          cause: error,
+        })
       );
     }
 
@@ -161,26 +158,28 @@ export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
       if (response.promptFeedback?.blockReason) {
         return new Err(
           new ImageGenerationError(
-            `Image ${operationType} blocked by safety filters: ${response.promptFeedback.blockReason}`,
-            {
-              blockReason: response.promptFeedback.blockReason,
-              safetyRatings: response.promptFeedback.safetyRatings,
-              prompt: promptText,
-            }
+            "safety_blocked",
+            `Image ${operationType} blocked by safety filters: ${response.promptFeedback.blockReason}`
           )
         );
       }
-      return new Err(new ImageGenerationError("No image generated."));
+      return new Err(
+        new ImageGenerationError("empty_response", "No image generated.")
+      );
     }
 
     const content = response.candidates[0].content;
     if (!content || !content.parts) {
-      return new Err(new ImageGenerationError("No image data in response"));
+      return new Err(
+        new ImageGenerationError("empty_response", "No image data in response.")
+      );
     }
 
     const imageParts = content.parts.filter(this.isValidInlineDataPart);
     if (imageParts.length === 0) {
-      return new Err(new ImageGenerationError("No image data in response."));
+      return new Err(
+        new ImageGenerationError("empty_response", "No image data in response.")
+      );
     }
 
     return new Ok(imageParts);
@@ -193,6 +192,16 @@ export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
       base64: part.inlineData.data,
       mimeType: part.inlineData.mimeType,
     }));
+  }
+
+  getModelParameters(
+    params: ImageGenerationInput
+  ): Record<string, string | number> {
+    return {
+      aspectRatio: params.aspectRatio,
+      imageSize: QUALITY_TO_IMAGE_SIZE[params.quality],
+      temperature: 0.7,
+    };
   }
 
   private isValidInlineDataPart(part: unknown): part is GeminiInlineDataPart {
