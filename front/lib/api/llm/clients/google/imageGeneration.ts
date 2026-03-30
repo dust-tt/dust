@@ -3,10 +3,12 @@ import {
   ImageGenerationError,
   QUALITY_TO_IMAGE_SIZE,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
-import type { ImageGenerationToolInput } from "@app/lib/api/actions/servers/image_generation/metadata";
-import { ImageGenerationLLM } from "@app/lib/api/llm/imageGeneration";
+import {
+  type ImageGenerationInput,
+  ImageGenerationLLM,
+  type ImageGenerationOutput,
+} from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/temporal/utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -29,24 +31,6 @@ const geminiInlineDataPartSchema = z.object({
 });
 
 type GeminiInlineDataPart = z.infer<typeof geminiInlineDataPartSchema>;
-
-type TokenCountDetails = {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-};
-
-type ImageGenerationInput = Omit<
-  ImageGenerationToolInput,
-  "referenceImages" | "outputName"
-> & {
-  fileResources?: FileResource[];
-};
-
-type ImageGenerationOutput = {
-  images: Base64ImageData[];
-  usageMetadata: TokenCountDetails;
-};
 
 export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
   readonly supportedContentTypes: string[];

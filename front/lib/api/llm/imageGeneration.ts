@@ -10,20 +10,20 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 
-type TokenCountDetails = {
+export type TokenCountDetails = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
 };
 
-type ImageGenerationInput = Omit<
+export type ImageGenerationInput = Omit<
   ImageGenerationToolInput,
   "referenceImages" | "outputName"
 > & {
   fileResources?: FileResource[];
 };
 
-type ImageGenerationOutput = {
+export type ImageGenerationOutput = {
   images: Base64ImageData[];
   usageMetadata: TokenCountDetails;
 };
