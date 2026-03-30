@@ -1158,7 +1158,7 @@ type Phase =
   | "thinking2"
   | "done";
 
-export default function AskUserQuestionInConversation() {
+export default function ThinkingActivity() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [selectedOption, setSelectedOption] =
     useState<AskUserQuestionOption | null>(null);
