@@ -767,6 +767,7 @@ export async function deleteTranscriptsActivity({
 
   await LabsTranscriptsHistoryModel.destroy({
     where: {
+      workspaceId: workspace.id,
       configurationId: {
         [Op.in]: configs.map((c) => c.id),
       },

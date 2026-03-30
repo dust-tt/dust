@@ -649,7 +649,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     // Upgrade to Pro is allowed only if the workspace is already subscribed to a Pro plan.
     // This is a way to change the plan limitations but stay on Pro.
-    if (isProPlanPrefix(newPlan.code)) {
+    // Metronome-billed plans (metronomePackageAlias set) are exempt from this path: they
+    // don't share a Stripe subscription and need a fresh subscription record without
+    // stripeSubscriptionId.
+    if (isProPlanPrefix(newPlan.code) && !newPlan.metronomePackageAlias) {
       if (
         !activeSubscription ||
         !activeSubscription.sId ||

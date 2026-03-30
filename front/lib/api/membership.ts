@@ -4,9 +4,11 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { removeMetronomeSeat } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -42,6 +44,13 @@ export async function revokeAndTrackMembership(
     }
 
     await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
+
+    // Remove the user's seat from Metronome (fire-and-forget).
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    if (workspaceResource) {
+      void removeMetronomeSeat(workspaceResource, user.sId);
+    }
+
     void ServerSideTracking.trackRevokeMembership({
       user: user.toJSON(),
       workspace,

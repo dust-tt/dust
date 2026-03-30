@@ -3,6 +3,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import {
   cancelSubscriptionAtPeriodEnd,
+  createMetronomeCheckoutSession,
   skipSubscriptionFreeTrial,
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -23,6 +24,7 @@ export type PostSubscriptionResponseBody = {
 
 type PatchSubscriptionResponseBody = {
   success: boolean;
+  checkoutUrl?: string;
 };
 
 export type GetSubscriptionsResponseBody = {
@@ -38,6 +40,7 @@ export const PatchSubscriptionRequestBody = t.type({
     t.literal("cancel_free_trial"),
     t.literal("pay_now"),
     t.literal("upgrade_to_business"),
+    t.literal("subscribe_metronome"),
   ]),
 });
 
@@ -216,6 +219,18 @@ async function handler(
             }
           }
           break;
+
+        case "subscribe_metronome": {
+          const owner = auth.getNonNullableWorkspace();
+          const user = auth.getNonNullableUser();
+          const checkoutUrl = await createMetronomeCheckoutSession({
+            owner,
+            user: user.toJSON(),
+          });
+          return res
+            .status(200)
+            .json({ success: true, checkoutUrl: checkoutUrl ?? undefined });
+        }
 
         default:
           assertNever(action);

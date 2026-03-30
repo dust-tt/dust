@@ -1,9 +1,20 @@
+import config from "@app/lib/api/config";
 import {
   isProgrammaticUsage,
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type { MetronomeEvent } from "@app/lib/metronome/client";
+import { ingestMetronomeEvents } from "@app/lib/metronome/client";
+import {
+  buildLlmUsageEvents,
+  buildMauGaugeEvent,
+  buildRegisteredUsersGaugeEvent,
+  buildToolUseEvents,
+  classifyMessageTier,
+  getToolCategory,
+} from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
   MessageModel,
@@ -13,13 +24,20 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
+import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -87,6 +105,14 @@ export async function recordUsageActivity(workspaceId: string) {
     stripeSubscription,
     renderLightWorkspaceType({ workspace })
   );
+
+  // Emit Metronome gauge events for seats and MAU.
+  await emitMetronomeGaugeEvents({
+    workspace,
+    periodStartSeconds: stripeSubscription.current_period_start,
+    periodEndSeconds: stripeSubscription.current_period_end,
+    logger,
+  });
 }
 
 export async function trackProgrammaticUsageActivity(
@@ -132,6 +158,7 @@ export async function trackProgrammaticUsageActivity(
         model: UserMessageModel,
         as: "userMessage",
         required: true,
+        include: [{ model: UserModel, required: false }],
       },
     ],
   });
@@ -143,11 +170,30 @@ export async function trackProgrammaticUsageActivity(
   }
 
   const userMessageOrigin = userMessage.userContextOrigin;
+  const programmaticUsage = isProgrammaticUsage(auth, {
+    userMessageOrigin,
+  });
+  // Emit Metronome events for all usage (programmatic and user).
+  if (
+    AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
+    agentMessage.runIds
+  ) {
+    await emitMetronomeUsageEvents(auth, {
+      userId: userMessage.user?.sId ?? null,
+      agentMessageSId: agentMessageId,
+      agentMessageModelId: agentMessage.id,
+      dustRunIds: agentMessage.runIds,
+      userMessageOrigin,
+      isProgrammaticUsage: programmaticUsage,
+      isSubAgentMessage: userMessage.agenticMessageType !== null,
+    });
+  }
 
+  // Track programmatic credit consumption (existing behavior, unchanged).
   if (
     AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
     agentMessage.runIds &&
-    isProgrammaticUsage(auth, { userMessageOrigin })
+    programmaticUsage
   ) {
     const localLogger = logger.child({
       workspaceId: workspace.sId,
@@ -174,4 +220,194 @@ export async function trackProgrammaticUsageActivity(
   }
 
   return { tracked: false, origin: userMessageOrigin };
+}
+
+async function emitMetronomeUsageEvents(
+  auth: Authenticator,
+  {
+    userId,
+    agentMessageSId,
+    agentMessageModelId,
+    dustRunIds,
+    userMessageOrigin,
+    isProgrammaticUsage,
+    isSubAgentMessage,
+  }: {
+    userId: string | null;
+    agentMessageSId: string;
+    agentMessageModelId: number;
+    dustRunIds: string[];
+    userMessageOrigin: UserMessageOrigin;
+    isProgrammaticUsage: boolean;
+    isSubAgentMessage: boolean;
+  }
+): Promise<void> {
+  if (!config.isMetronomeEnabled()) {
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const timestamp = new Date().toISOString();
+
+  try {
+    // Fetch run usages for LLM token events.
+    const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
+    const runUsages = await concurrentExecutor(
+      runs,
+      (run) => run.listRunUsages(auth),
+      { concurrency: 10 }
+    );
+
+    // Fetch MCP actions for tool use events.
+    const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+      agentMessageModelId,
+    ]);
+
+    // Classify message tier based on models and tools used (AWU).
+    const flatUsages = runUsages.flat();
+    const toolCategories = actions.map((a) =>
+      getToolCategory(a.toJSON().internalMCPServerName)
+    );
+    const messageTier = classifyMessageTier({
+      modelIds: flatUsages.map((u) => u.modelId),
+      toolCategories,
+    });
+
+    const llmEvents = buildLlmUsageEvents({
+      workspaceSId: workspace.sId,
+      userId,
+      agentMessageSId,
+      runUsages: flatUsages,
+      origin: userMessageOrigin,
+      isProgrammaticUsage,
+      messageTier,
+      isSubAgentMessage,
+      timestamp,
+    });
+
+    const toolEvents = buildToolUseEvents({
+      workspaceSId: workspace.sId,
+      userId,
+      agentMessageSId,
+      actions,
+      origin: userMessageOrigin,
+      isProgrammaticUsage,
+      messageTier,
+      isSubAgentMessage,
+      timestamp,
+    });
+
+    await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
+  } catch (err) {
+    logger.warn(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "[Metronome] Failed to emit usage events"
+    );
+  }
+}
+
+/**
+ * Emit Metronome gauge events (seats + MAU) for all active workspaces.
+ * Runs on a schedule (daily in prod, every 10 min in dev).
+ */
+export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
+  if (!config.isMetronomeEnabled()) {
+    return;
+  }
+
+  const workspaces = await WorkspaceResource.listAll();
+
+  await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
+      try {
+        await emitMetronomeGaugeEventsForWorkspace(workspace);
+      } catch (err) {
+        mainLogger.warn(
+          { workspaceId: workspace.sId, error: normalizeError(err) },
+          "[Metronome] Failed to emit gauge events for workspace"
+        );
+      }
+    },
+    { concurrency: 8 }
+  );
+}
+
+async function emitMetronomeGaugeEventsForWorkspace(
+  workspace: WorkspaceResource
+): Promise<void> {
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+  // Use start-of-day UTC timestamp so Metronome can prorate by day.
+  // Daily snapshots with LATEST aggregation in Metronome give a time-weighted
+  // average (e.g., 5 seats for 15 days + 10 seats for 15 days → ~7.5 seats billed).
+  const now = new Date();
+  const startOfDayUtc = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  // YYYY-MM-DD for use in idempotent transaction IDs — re-running on the same
+  // day will produce the same transaction_id and be deduplicated by Metronome.
+  const dateKey = startOfDayUtc.toISOString().slice(0, 10);
+  const timestamp = startOfDayUtc.toISOString();
+
+  const events: MetronomeEvent[] = [];
+
+  // Registered users gauge — current active member count.
+  const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
+  events.push(
+    buildRegisteredUsersGaugeEvent({
+      workspaceSId: workspace.sId,
+      memberCount,
+      timestamp,
+      dateKey,
+    })
+  );
+
+  // MAU gauge — rolling 30-day window (definition of Monthly Active Users).
+  const thirtyDaysAgo = new Date(
+    startOfDayUtc.getTime() - 30 * 24 * 60 * 60 * 1000
+  );
+  const mauCount = await countActiveUsersForPeriodInWorkspace({
+    messagesPerMonthForMau: 1,
+    since: thirtyDaysAgo,
+    to: now,
+    workspace: lightWorkspace,
+  });
+  events.push(
+    buildMauGaugeEvent({
+      workspaceSId: workspace.sId,
+      mauCount,
+      timestamp,
+      dateKey,
+    })
+  );
+
+  await ingestMetronomeEvents(events);
+}
+
+async function emitMetronomeGaugeEvents({
+  workspace,
+  periodStartSeconds,
+  periodEndSeconds,
+  logger: parentLogger,
+}: {
+  workspace: WorkspaceResource;
+  periodStartSeconds: number;
+  periodEndSeconds: number;
+  logger: typeof mainLogger;
+}): Promise<void> {
+  if (!config.isMetronomeEnabled()) {
+    return;
+  }
+
+  try {
+    await emitMetronomeGaugeEventsForWorkspace(workspace);
+  } catch (err) {
+    parentLogger.warn(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "[Metronome] Failed to emit gauge events"
+    );
+  }
 }

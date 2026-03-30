@@ -1,3 +1,4 @@
+import { MetronomeSubscriptionSection } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionSection";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -240,6 +241,34 @@ export function SubscriptionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally passing an empty dependency array to execute only once
 
+  const {
+    submit: handleSubscribeMetronome,
+    isSubmitting: isSubscribingMetronome,
+  } = useSubmitFunction(async () => {
+    const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "subscribe_metronome",
+      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+    });
+
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Subscription failed",
+        description: "Failed to subscribe to the Pro plan.",
+      });
+    } else {
+      const body = await res.json();
+      if (body.checkoutUrl) {
+        window.location.href = body.checkoutUrl;
+      }
+    }
+  });
+
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
       const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
@@ -384,7 +413,10 @@ export function SubscriptionPage() {
     isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
 
   const isProcessing =
-    isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
+    isSubscribingPlan ||
+    isGoingToStripePortal ||
+    isUpgradingToBusiness ||
+    isSubscribingMetronome;
 
   const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
@@ -393,7 +425,13 @@ export function SubscriptionPage() {
       ? plan.name
       : `${plan.name}: ${trialDaysRemaining} days of trial remaining`;
 
-  const displayPricingTable = subscription.stripeSubscriptionId === null;
+  const isMetronomeBilled = !!subscription.plan.metronomePackageAlias;
+  // Show the pricing table only for workspaces that are not yet on any paid plan.
+  const displayPricingTable =
+    !isMetronomeBilled && subscription.stripeSubscriptionId === null;
+  // Show the Metronome option for free and trialing workspaces.
+  const showMetronomeOption =
+    !isMetronomeBilled && (!isUpgraded(plan) || subscription.trialing);
 
   const endDate = subscription.endDate
     ? new Date(subscription.endDate).toLocaleDateString("en-US", {
@@ -472,6 +510,7 @@ export function SubscriptionPage() {
                 <Page.Horizontal gap="sm">
                   <Chip size="sm" color={chipColor} label={planLabel} />
                   {!subscription.trialing &&
+                    !isMetronomeBilled &&
                     subscription.stripeSubscriptionId && (
                       <Button
                         label="Manage my subscription"
@@ -516,7 +555,8 @@ export function SubscriptionPage() {
               </Page.Horizontal>
             </Page.Vertical>
           )}
-          {subscription.stripeSubscriptionId && (
+          {isMetronomeBilled && <MetronomeSubscriptionSection />}
+          {!isMetronomeBilled && subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>
               {perSeatPricing !== null && (
@@ -618,6 +658,31 @@ export function SubscriptionPage() {
                   billingPeriod={billingPeriod}
                   onSubscribe={handleSubscribePlan}
                   isProcessing={isProcessing}
+                />
+              </div>
+            </div>
+          )}
+          {showMetronomeOption && (
+            <div className="rounded-xl border border-border-dark/20 p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <Page.H variant="h5">Pro — Usage-based billing</Page.H>
+                  <Page.P>
+                    $29/user/month · 200 credits per user · billed monthly based
+                    on usage.
+                  </Page.P>
+                </div>
+                <Button
+                  label="Subscribe"
+                  variant="primary"
+                  disabled={isProcessing || isSubscribingMetronome}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_subscribe_metronome",
+                    () => {
+                      void handleSubscribeMetronome();
+                    }
+                  )}
                 />
               </div>
             </div>

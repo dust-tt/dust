@@ -499,3 +499,84 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
 
   return new Ok(undefined);
 }
+
+/**
+ * Grant monthly free programmatic credits to a workspace on the Metronome plan.
+ * Called at checkout finalization and again each month (via Metronome webhook).
+ * Idempotent: uses a month key so re-runs in the same month are no-ops.
+ */
+/**
+ * Sync Metronome-granted programmatic credits into the Dust DB.
+ * Called from the Metronome webhook when a credit grant is applied by Metronome
+ * (triggered by the registered_users gauge metric in the rate card).
+ * Idempotent: uses the Metronome grant ID as the invoiceOrLineItemId.
+ */
+export async function syncMetronomeCreditGrantToDb({
+  auth,
+  metronomeGrantId,
+  amountMicroUsd,
+  effectiveAt,
+  expiresAt,
+}: {
+  auth: Authenticator;
+  metronomeGrantId: string;
+  amountMicroUsd: number;
+  effectiveAt: Date;
+  expiresAt: Date;
+}): Promise<Result<undefined, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceSId = workspace.sId;
+
+  const existingCredit = await CreditResource.fetchByInvoiceOrLineItemId(
+    auth,
+    metronomeGrantId
+  );
+  if (existingCredit) {
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        creditId: existingCredit.id,
+        metronomeGrantId,
+      },
+      "[Free Credits Metronome] Credit already synced, skipping"
+    );
+    return new Ok(undefined);
+  }
+
+  const credit = await CreditResource.makeNew(auth, {
+    type: "free",
+    initialAmountMicroUsd: amountMicroUsd,
+    consumedAmountMicroUsd: 0,
+    discount: null,
+    invoiceOrLineItemId: metronomeGrantId,
+  });
+
+  const startResult = await credit.start(auth, {
+    startDate: effectiveAt,
+    expirationDate: expiresAt,
+  });
+
+  if (startResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspaceSId,
+        creditId: credit.id,
+        error: startResult.error,
+      },
+      "[Free Credits Metronome] Error starting synced credit"
+    );
+    return new Err(startResult.error);
+  }
+
+  logger.info(
+    {
+      workspaceId: workspaceSId,
+      creditId: credit.id,
+      amountMicroUsd,
+      metronomeGrantId,
+    },
+    "[Free Credits Metronome] Synced credit grant from Metronome"
+  );
+
+  return new Ok(undefined);
+}

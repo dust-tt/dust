@@ -13,10 +13,12 @@ import {
   useWorkspaceSubscriptions,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
+import type * as t from "io-ts";
 import React, { useEffect } from "react";
 
 export function SubscribePage() {
@@ -31,6 +33,34 @@ export function SubscribePage() {
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
+
+  const {
+    submit: handleSubscribeMetronome,
+    isSubmitting: isSubscribingMetronome,
+  } = useSubmitFunction(async () => {
+    const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "subscribe_metronome",
+      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+    });
+
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Subscription failed",
+        description: "Failed to subscribe to the Pro plan.",
+      });
+    } else {
+      const body = await res.json();
+      if (body.checkoutUrl) {
+        window.location.href = body.checkoutUrl;
+      }
+    }
+  });
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
@@ -234,6 +264,32 @@ export function SubscribePage() {
                     }
                   )}
                 />
+                <div className="mt-4 rounded-xl border border-border-dark/20 p-4">
+                  <Page.P>
+                    <span className="font-bold">
+                      Or subscribe with usage-based billing.
+                    </span>
+                  </Page.P>
+                  <Page.P>
+                    $29/user/month · 200 credits per user · no upfront
+                    commitment.
+                  </Page.P>
+                  <div className="mt-3">
+                    <Button
+                      variant="outline"
+                      label="Subscribe (usage-based)"
+                      size="sm"
+                      disabled={isSubscribingMetronome}
+                      onClick={withTracking(
+                        TRACKING_AREAS.AUTH,
+                        "subscription_subscribe_metronome",
+                        () => {
+                          void handleSubscribeMetronome();
+                        }
+                      )}
+                    />
+                  </div>
+                </div>
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
                 <ProPlansTable

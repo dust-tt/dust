@@ -9,6 +9,7 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
+import { addMetronomeProSeat } from "@app/lib/metronome/seats";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -76,6 +77,11 @@ export async function createAndLogMembership({
 
   // Update workspace subscription usage when a new user joins.
   await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
+
+  // Add a Pro seat in Metronome for the new member (fire-and-forget).
+  if (workspace instanceof WorkspaceResource) {
+    void addMetronomeProSeat(workspace, user.sId);
+  }
 
   return m;
 }
