@@ -11,9 +11,30 @@ import {
   jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import config from "@app/lib/api/config";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getPokeConversation } from "@app/lib/poke/conversation";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { Err } from "@app/types/shared/result";
+
+// Redact sensitive fields (sharedSecret, customHeaders values) before exposing
+// the MCP server view to the poke agent.
+function sanitizeMCPServerView(view: MCPServerViewType): MCPServerViewType {
+  return {
+    ...view,
+    server: {
+      ...view.server,
+      sharedSecret: view.server.sharedSecret != null ? "<redacted>" : null,
+      customHeaders: view.server.customHeaders
+        ? Object.fromEntries(
+            Object.keys(view.server.customHeaders).map((key) => [
+              key,
+              "<redacted>",
+            ])
+          )
+        : null,
+    },
+  };
+}
 
 type ConversationHandlers = Pick<
   ToolHandlers<typeof POKE_TOOLS_METADATA>,
@@ -95,7 +116,7 @@ export const conversationHandlers: ConversationHandlers = {
       }
       return jsonResponse({
         workspace_id,
-        mcpServerView: mcpServerView.toJSON(),
+        mcpServerView: sanitizeMCPServerView(mcpServerView.toJSON()),
       });
     }
 
@@ -107,7 +128,9 @@ export const conversationHandlers: ConversationHandlers = {
     return jsonResponse({
       workspace_id,
       count: mcpServerViews.length,
-      mcpServerViews: mcpServerViews.map((v) => v.toJSON()),
+      mcpServerViews: mcpServerViews.map((v) =>
+        sanitizeMCPServerView(v.toJSON())
+      ),
       poke_url: `${config.getPokeAppUrl()}/${workspace_id}`,
     });
   },
