@@ -11,6 +11,10 @@
   "metadata": {
     "spaceName": "string",
     "managementMode": "string",
-    "isRestricted": "string"
+    "isRestricted": "string",
+    "memberIds": "string",
+    "editorIds": "string",
+    "groupIds": "string",
+    "editorGroupIds": "string"
   }
 }

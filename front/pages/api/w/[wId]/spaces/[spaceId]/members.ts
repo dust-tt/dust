@@ -209,6 +209,15 @@ export async function handler(
           spaceName: space.name,
           managementMode: body.managementMode,
           isRestricted: String(body.isRestricted),
+          ...(body.managementMode === "manual"
+            ? {
+                memberIds: body.memberIds.join(","),
+                editorIds: body.editorIds.join(","),
+              }
+            : {
+                groupIds: body.groupIds.join(","),
+                editorGroupIds: body.editorGroupIds.join(","),
+              }),
         },
       });
 

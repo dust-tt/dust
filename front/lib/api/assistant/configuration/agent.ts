@@ -856,26 +856,27 @@ export async function createAgentConfiguration(
       }
     }
 
-    // Emit audit log: agent.created for new agents (no agentConfigurationId, or
-    // pending→active transition); agent.updated for version bumps of existing agents.
-    const isCreate = !agentConfigurationId || agentConfiguration.version === 0;
-    void emitAuditLogEvent({
-      auth,
-      action: isCreate ? "agent.created" : "agent.updated",
-      targets: [
-        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-        {
-          type: "agent",
-          id: agentConfiguration.sId,
-          name: agentConfiguration.name,
+    if (agentConfiguration.status === "active") {
+      const isCreate =
+        !agentConfigurationId || agentConfiguration.version === 0;
+      void emitAuditLogEvent({
+        auth,
+        action: isCreate ? "agent.created" : "agent.updated",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          {
+            type: "agent",
+            id: agentConfiguration.sId,
+            name: agentConfiguration.name,
+          },
+        ],
+        metadata: {
+          agentName: agentConfiguration.name,
+          scope: scope,
+          model: `${model.providerId}/${model.modelId}`,
         },
-      ],
-      metadata: {
-        agentName: agentConfiguration.name,
-        scope: scope,
-        model: `${model.providerId}/${model.modelId}`,
-      },
-    });
+      });
+    }
 
     return new Ok(agentConfiguration);
   } catch (error) {
@@ -1390,6 +1391,24 @@ export async function restoreAgentConfiguration(
         );
       }
     }
+  }
+
+  if (updated[0] > 0) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.restored",
+      targets: [
+        buildWorkspaceTarget(owner),
+        {
+          type: "agent",
+          id: latestConfig.sId,
+          name: latestConfig.name,
+        },
+      ],
+      metadata: {
+        agentName: latestConfig.name,
+      },
+    });
   }
 
   return new Ok({ restored: updated[0] > 0 });

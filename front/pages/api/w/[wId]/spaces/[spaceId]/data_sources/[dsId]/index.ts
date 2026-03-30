@@ -121,7 +121,7 @@ async function handler(
         context: getAuditLogContext(auth, req),
         metadata: {
           dataSourceName: dataSource.name,
-          field: "description",
+          field: Object.keys(bodyValidation.right).join(","),
         },
       });
 
