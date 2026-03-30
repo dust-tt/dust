@@ -32,7 +32,6 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
   declare conversationsRetentionDays: number | null;
-  declare metronomeCustomerId: string | null;
 }
 WorkspaceModel.init(
   {
@@ -72,11 +71,6 @@ WorkspaceModel.init(
     conversationsRetentionDays: {
       type: DataTypes.INTEGER,
       allowNull: true,
-    },
-    metronomeCustomerId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      defaultValue: null,
     },
     whiteListedProviders: {
       type: DataTypes.ARRAY(DataTypes.STRING),
