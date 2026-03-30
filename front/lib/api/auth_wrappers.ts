@@ -502,9 +502,6 @@ export function withPublicAPIAuthentication<T>(
       }
       setClientIpOnAuth(workspaceAuth, req);
 
-      // TODO(audit): api_key.used deferred — needs rate-limiting or sampling
-      // strategy before enabling at per-request granularity.
-
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming

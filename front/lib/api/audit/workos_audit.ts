@@ -31,7 +31,6 @@ type AuditAction =
   | "api_key.created"
   | "api_key.revoked"
   | "api_key.updated"
-  | "api_key.used"
   // Membership & Invitations.
   | "membership.role_updated"
   | "membership.origin_updated"
