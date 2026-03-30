@@ -318,11 +318,10 @@ export default function AgentBuilder({
     void removeParamFromRouter(router, "showCreatedDialog");
   }, [agentConfiguration, router, router.query.showCreatedDialog]);
 
-  // Create pending agent on mount for NEW agents only
+  // Create pending agent on mount for NEW agents and DUPLICATES.
   useEffect(() => {
     if (
-      agentConfiguration ||
-      duplicateAgentId ||
+      (agentConfiguration && !duplicateAgentId) ||
       pendingAgentId ||
       hasPendingCreationRef.current
     ) {
@@ -510,7 +509,7 @@ export default function AgentBuilder({
 
   // Only load suggestions when not duplicating an existing agent.
   const suggestionsAgentId = duplicateAgentId
-    ? null
+    ? pendingAgentId
     : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
   return (
@@ -692,7 +691,11 @@ function AgentBuilderContent({
         rightPanel={
           <SidekickPanelProvider
             targetAgentConfigurationId={
-              agentConfiguration?.sId ?? pendingAgentId ?? null
+              // For duplicates, use the pending agent sId (not the source agent's sId).
+              // Targeting the source would store suggestions against the original agent.
+              isDuplicate
+                ? pendingAgentId
+                : (agentConfiguration?.sId ?? pendingAgentId ?? null)
             }
             targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
             clientSideMCPServerIds={clientSideMCPServerIds}
