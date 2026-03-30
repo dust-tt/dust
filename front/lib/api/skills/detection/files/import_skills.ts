@@ -4,13 +4,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
 
 const IMPORT_CONCURRENCY = 4;
 
-type FileImportSource = "api" | "local_file";
+type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 
 type ImportSkillsResult = {
   imported: SkillResource[];
