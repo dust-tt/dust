@@ -5,16 +5,57 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
 
 const IMPORT_CONCURRENCY = 4;
+const NO_DETECTED_SKILLS_ERROR_MESSAGE =
+  "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).";
+
+type FileImportSource = "github_action" | "local_file";
 
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
   errored: { name: string; message: string }[];
 };
+
+function isSkillFromFileImportSource(
+  skill: SkillResource,
+  {
+    source,
+    repoUrl,
+  }: {
+    source: FileImportSource;
+    repoUrl?: string;
+  }
+): boolean {
+  if (skill.source !== source) {
+    return false;
+  }
+
+  if (source !== "github_action" || !repoUrl) {
+    return true;
+  }
+
+  return skill.sourceMetadata?.repoUrl === repoUrl;
+}
+
+function buildSourceMetadata({
+  filePath,
+  repoUrl,
+  source,
+}: {
+  filePath: string;
+  repoUrl?: string;
+  source: FileImportSource;
+}) {
+  if (source === "github_action" && repoUrl) {
+    return { filePath, repoUrl };
+  }
+
+  return { filePath };
+}
 
 /**
  * Imports skills from uploaded files. Detects skills from the files,
@@ -25,9 +66,13 @@ export async function importSkillsFromFiles(
   {
     uploadedFiles,
     names,
+    source = "local_file",
+    repoUrl,
   }: {
     uploadedFiles: formidable.File[];
-    names: string[];
+    names?: string[];
+    source?: FileImportSource;
+    repoUrl?: string;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
@@ -36,12 +81,20 @@ export async function importSkillsFromFiles(
   }
 
   const detectedSkills = detectResult.value;
+  if (detectedSkills.length === 0) {
+    return new Err(new Error(NO_DETECTED_SKILLS_ERROR_MESSAGE));
+  }
 
-  const requestedNames = new Set(names);
+  const requestedNames = names ? new Set(names) : null;
   const selectedSkills = detectedSkills.filter(
     (skill) =>
-      skill.name && skill.instructions.trim() && requestedNames.has(skill.name)
+      skill.name &&
+      skill.instructions.trim() &&
+      (!requestedNames || requestedNames.has(skill.name))
   );
+  if (selectedSkills.length === 0) {
+    return new Err(new Error("No matching importable skills found."));
+  }
 
   const user = auth.getNonNullableUser();
   const imported: SkillResource[] = [];
@@ -53,7 +106,10 @@ export async function importSkillsFromFiles(
     async (skill) => {
       const existing = await SkillResource.fetchActiveByName(auth, skill.name);
 
-      if (existing && existing.source !== "local_file") {
+      if (
+        existing &&
+        !isSkillFromFileImportSource(existing, { source, repoUrl })
+      ) {
         errored.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
@@ -73,8 +129,12 @@ export async function importSkillsFromFiles(
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
-          source: "local_file",
-          sourceMetadata: { filePath: skill.skillMdPath },
+          source,
+          sourceMetadata: buildSourceMetadata({
+            filePath: skill.skillMdPath,
+            repoUrl,
+            source,
+          }),
         });
 
         updated.push(existing);
@@ -106,8 +166,12 @@ export async function importSkillsFromFiles(
             requestedSpaceIds: [],
             extendedSkillId: null,
             icon,
-            source: "local_file",
-            sourceMetadata: { filePath: skill.skillMdPath },
+            source,
+            sourceMetadata: buildSourceMetadata({
+              filePath: skill.skillMdPath,
+              repoUrl,
+              source,
+            }),
             isDefault: false,
           },
           { mcpServerViews: [] }

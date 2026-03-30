@@ -4,7 +4,12 @@ import type { UserType } from "@app/types/user";
 
 export type SkillStatus = "active" | "archived" | "suggested";
 
-export const SKILL_SOURCES = ["web_app", "github", "local_file"] as const;
+export const SKILL_SOURCES = [
+  "web_app",
+  "github",
+  "github_action",
+  "local_file",
+] as const;
 
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];
 
