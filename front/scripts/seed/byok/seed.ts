@@ -36,6 +36,7 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   trialPeriodDays: 0,
   canUseProduct: true,
   isByok: true,
+  metronomePackageAlias: null,
 };
 
 makeScript({}, async ({ execute }, logger) => {
