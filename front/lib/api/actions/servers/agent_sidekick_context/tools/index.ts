@@ -250,10 +250,10 @@ export async function createInstructionSuggestions({
   // not in the schema (e.g. bare <div> — parses as one block but is invalid).
   for (const suggestion of suggestions) {
     if (suggestion.targetBlockId !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      const validation = validateNonRootInstructionReplaceHtml(
-        suggestion.targetBlockId,
-        suggestion.content
-      );
+      const validation = validateNonRootInstructionReplaceHtml({
+        targetBlockId: suggestion.targetBlockId,
+        html: suggestion.content,
+      });
       if (validation.isErr()) {
         return validation;
       }

@@ -17,10 +17,13 @@ const instructionsParser = PMDOMParser.fromSchema(INSTRUCTIONS_SCHEMA);
  *   count stays 1 even though the outer tag is wrong (`<div>test1</div>` after
  *   a `<p>` target is not a real “tag change”).
  */
-export function validateNonRootInstructionReplaceHtml(
-  targetBlockId: string,
-  html: string
-): Result<void, string> {
+export function validateNonRootInstructionReplaceHtml({
+  targetBlockId,
+  html,
+}: {
+  targetBlockId: string;
+  html: string;
+}): Result<void, string> {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>");
   const tempDiv = dom.window.document.createElement("div");
   tempDiv.innerHTML = html;
