@@ -24,7 +24,7 @@ import { auditLog } from "@app/logger/logger";
 import type {
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  ConversationType,
+  ConversationWithoutContentType,
   RichMentionWithStatus,
   UserMessageType,
   UserMessageTypeWithoutMentions,
@@ -55,7 +55,7 @@ import { getConversation } from "./fetch";
 export async function getMentionStatus(
   auth: Authenticator,
   data: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     message: UserMessageTypeWithoutMentions | AgentMessageTypeWithoutMentions;
     isParticipant: boolean;
     mentionedUser: UserResource;
@@ -123,7 +123,7 @@ export const createUserMentions = async (
   }: {
     mentions: MentionType[];
     message: AgentMessageTypeWithoutMentions | UserMessageTypeWithoutMentions;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     transaction?: Transaction;
   }
 ): Promise<RichMentionWithStatus[]> => {

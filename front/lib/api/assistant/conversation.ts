@@ -1262,7 +1262,7 @@ export async function handleAgentMessage(
     conversation,
     agentMessage,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageTypeWithoutMentions;
   }
 ) {
