@@ -274,9 +274,9 @@ describe("destroyConversation", () => {
       userMessageDestroySpy.mock.calls as unknown[][]
     );
     expect(userMessageDestroyCounts).toHaveLength(2);
-    expect(userMessageDestroyCounts.reduce((sum, count) => sum + count, 0)).toBe(
-      30
-    );
+    expect(
+      userMessageDestroyCounts.reduce((sum, count) => sum + count, 0)
+    ).toBe(30);
     expect(Math.max(...userMessageDestroyCounts)).toBeLessThan(30);
 
     const agentMessageDestroyCounts = getDestroyIdCounts(
