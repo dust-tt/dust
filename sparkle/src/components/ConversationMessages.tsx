@@ -19,11 +19,11 @@ const wrapperVariants = cva("s-flex s-flex-col s-@container @xs:s-flex-row", {
     messageType: "agent",
   },
 });
-const messageVariants = cva("s-flex s-max-w-full", {
+const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   variants: {
     type: {
-      user: "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit",
-      agent: "s-rounded-2xl s-w-full s-gap-3 s-py-4 s-flex-col",
+      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit",
+      agent: "s-w-full s-gap-3 s-py-4 s-flex-col",
     },
   },
   defaultVariants: {
