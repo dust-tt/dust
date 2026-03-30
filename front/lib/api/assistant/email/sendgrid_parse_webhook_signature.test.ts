@@ -1,6 +1,7 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import {
   createBufferedRequestFromRawBody,
+  isSendgridParseFormRequest,
   validateSendgridParseWebhookSignature,
   verifySendgridParseWebhookSignature,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
@@ -102,6 +103,9 @@ describe("verifySendgridParseWebhookSignature", () => {
       "content-length": `${multipartPayload.length}`,
       "content-type": "multipart/form-data; boundary=boundary",
     });
+    if (!isSendgridParseFormRequest(req)) {
+      throw new Error("Expected replayed raw body to be parseable by formidable");
+    }
     const form = new IncomingForm();
     const [fields, files] = await form.parse(req);
 
