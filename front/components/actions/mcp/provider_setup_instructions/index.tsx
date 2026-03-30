@@ -1,11 +1,13 @@
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import { Icon, InformationCircleIcon } from "@dust-tt/sparkle";
 
+import { PowerBiSetupInstructions } from "./PowerBiSetupInstructions";
 import { SnowflakeSetupInstructions } from "./SnowflakeSetupInstructions";
 
 interface ProviderSetupInstructionsProps {
   provider: OAuthProvider;
   useCase: MCPOAuthUseCase | null;
+  serverName?: string;
 }
 
 /**
@@ -18,10 +20,16 @@ interface ProviderSetupInstructionsProps {
 export function ProviderSetupInstructions({
   provider,
   useCase,
+  serverName,
 }: ProviderSetupInstructionsProps) {
   switch (provider) {
     case "snowflake":
       return <SnowflakeSetupInstructions useCase={useCase} />;
+    case "mcp_static":
+      if (serverName === "Power BI") {
+        return <PowerBiSetupInstructions />;
+      }
+      return null;
     default:
       return null;
   }
