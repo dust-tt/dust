@@ -283,7 +283,7 @@ async function handler(
         metadata: {
           spaceName: space.name,
           spaceKind: space.kind,
-          isRestricted: String(space.isRestricted),
+          isRestricted: String(requestBody.isRestricted),
         },
       });
 
