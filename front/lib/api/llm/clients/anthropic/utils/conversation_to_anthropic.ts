@@ -10,9 +10,17 @@ import type {
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
+  CONFLUENCE_TOOL_NAME,
+  CONFLUENCE_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/confluence/metadata";
+import {
   FILE_GENERATION_TOOL_NAME,
   FILE_GENERATION_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/file_generation/metadata";
+import {
+  GOOGLE_DRIVE_TOOL_NAME,
+  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/google_drive/metadata";
 import {
   INTERACTIVE_CONTENT_SERVER_NAME,
   INTERACTIVE_CONTENT_TOOLS_METADATA,
@@ -183,6 +191,12 @@ const TOOLS_WITH_POTENTIAL_LARGE_INPUTS = new Set<string>([
   `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["create_interactive_content_file"].name}`,
   `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["edit_interactive_content_file"].name}`,
   `${SANDBOX_TOOL_NAME}${TOOL_NAME_SEPARATOR}${SANDBOX_TOOLS_METADATA["bash"].name}`,
+  `${CONFLUENCE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${CONFLUENCE_TOOLS_METADATA["create_page"].name}`,
+  `${CONFLUENCE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${CONFLUENCE_TOOLS_METADATA["update_page"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["update_document"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["append_to_spreadsheet"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["update_spreadsheet"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["update_presentation"].name}`,
 ]);
 
 export function toTool(tool: AgentActionSpecification): Tool {
