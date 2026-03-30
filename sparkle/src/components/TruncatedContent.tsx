@@ -2,7 +2,7 @@ import { Button } from "@sparkle/components/Button";
 import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const contentVariants = cva("s-relative", {
   variants: {
@@ -43,10 +43,10 @@ export function TruncatedContent({
   buttonClassName,
 }: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [exceedsThreshold, setExceedsThreshold] = useState(false);
+  const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const el = contentRef.current;
     if (el) {
       setExceedsThreshold(el.scrollHeight > thresholdPx);
