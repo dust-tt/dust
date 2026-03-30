@@ -1,8 +1,8 @@
 import type { EmojiMartData } from "@emoji-mart/data";
-import emojiData from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
-import React from "react";
+import { preloadEmojiData } from "@sparkle/lib/avatar/utils";
+import React, { useEffect, useState } from "react";
 
 interface EmojiPickerProps {
   data?: EmojiMartData;
@@ -16,19 +16,39 @@ EmojiPicker.defaults = {
 };
 
 function EmojiPicker({
-  data = emojiData as EmojiMartData,
+  data,
   onEmojiSelect,
   previewPosition,
   theme,
 }: EmojiPickerProps) {
+  const [loadedData, setLoadedData] = useState<EmojiMartData | undefined>(data);
+
+  useEffect(() => {
+    if (!data) {
+      preloadEmojiData().then((d) => setLoadedData(d as EmojiMartData));
+    }
+  }, [data]);
+
+  if (!loadedData) {
+    return null;
+  }
+
   return (
     <Picker
       theme={theme}
       previewPosition={previewPosition}
-      data={data}
+      data={loadedData}
       onEmojiSelect={onEmojiSelect}
     />
   );
 }
 
-export { emojiData as DataEmojiMart, EmojiMartData, EmojiPicker };
+/**
+ * Async getter for emoji mart data. Use in contexts where you need the raw data.
+ */
+async function getEmojiMartData(): Promise<EmojiMartData> {
+  const data = await preloadEmojiData();
+  return data as EmojiMartData;
+}
+
+export { EmojiMartData, EmojiPicker, getEmojiMartData };

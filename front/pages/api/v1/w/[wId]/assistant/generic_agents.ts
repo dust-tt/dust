@@ -31,13 +31,13 @@ function assistantHandleIsValid(handle: string) {
   return /^[a-zA-Z0-9_-]{1,30}$/.test(handle);
 }
 
-function getAgentPictureUrl(
+async function getAgentPictureUrl(
   emoji: string | undefined,
   backgroundColor: `bg-${string}`
-): string {
+): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const selectedEmoji = emoji || "🤖";
-  const emojiData = buildSelectedEmojiType(selectedEmoji);
+  const emojiData = await buildSelectedEmojiType(selectedEmoji);
 
   if (emojiData) {
     return makeUrlForEmojiAndBackground(
@@ -195,7 +195,7 @@ async function handler(
         reasoningEffort: model.defaultReasoningEffort,
       };
 
-      const agentPictureUrl = getAgentPictureUrl(emoji, "bg-blue-200");
+      const agentPictureUrl = await getAgentPictureUrl(emoji, "bg-blue-200");
 
       // Prepare sub-agent configuration if requested
       let subAgentConfig = undefined;
@@ -211,7 +211,7 @@ async function handler(
           });
         }
 
-        const subAgentPictureUrl = getAgentPictureUrl(
+        const subAgentPictureUrl = await getAgentPictureUrl(
           subAgentEmoji,
           "bg-green-200"
         );

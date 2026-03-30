@@ -1,7 +1,7 @@
 import type { SelectedEmojiType } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { EMOJI_AVATAR_BASE_URL } from "@app/components/agent_builder/settings/avatar_picker/types";
 import type { EmojiMartData as EmojiData } from "@dust-tt/sparkle";
-import { avatarUtils, DataEmojiMart } from "@dust-tt/sparkle";
+import { avatarUtils, getEmojiMartData } from "@dust-tt/sparkle";
 
 export function makeUrlForEmojiAndBackground(
   emoji: SelectedEmojiType,
@@ -18,10 +18,10 @@ export function makeUrlForEmojiAndBackground(
   return `${EMOJI_AVATAR_BASE_URL}${avatarUrlSuffix}`;
 }
 
-export function buildSelectedEmojiType(
+export async function buildSelectedEmojiType(
   emojiString: string
-): SelectedEmojiType | null {
-  const emojiData: EmojiData = DataEmojiMart as EmojiData;
+): Promise<SelectedEmojiType | null> {
+  const emojiData: EmojiData = await getEmojiMartData();
 
   const emoji = Object.values(emojiData.emojis).find(
     (e) => e.skins[0].native === emojiString

@@ -1,7 +1,6 @@
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
-import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -26,8 +25,28 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Button, Card, LightbulbIcon, Page, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Card,
+  LightbulbIcon,
+  Page,
+  SafeSuspense,
+  safeLazy,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
+
+const InputBar = safeLazy(() =>
+  import("@app/components/assistant/conversation/input_bar/InputBar").then(
+    (mod) => ({ default: mod.InputBar })
+  )
+);
+
+function InputBarFallback() {
+  return (
+    <div className="h-16 w-full animate-pulse rounded-2xl bg-muted-background dark:bg-muted-background-night" />
+  );
+}
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -190,13 +209,15 @@ export function ConversationContainerVirtuoso({
               "sm:w-full sm:max-w-3xl sm:pb-4"
             )}
           >
-            <InputBar
-              owner={owner}
-              user={user}
-              onSubmit={handleConversationCreation}
-              draftKey="home-new-conversation"
-              disableAutoFocus={false}
-            />
+            <SafeSuspense fallback={<InputBarFallback />}>
+              <InputBar
+                owner={owner}
+                user={user}
+                onSubmit={handleConversationCreation}
+                draftKey="home-new-conversation"
+                disableAutoFocus={false}
+              />
+            </SafeSuspense>
           </div>
 
           {suggestion && (
