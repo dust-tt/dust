@@ -3,16 +3,9 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/request/chat";
 
-// Single task id reused for every task so only the latest is visible.
-// Later, if we adapt the tool call output a bit further, we can use this
-// to show multiple tasks in a single plan block (see: https://docs.slack.dev/reference/block-kit/blocks/plan-block).
-const ACTIVE_TASK_ID = "active-task-id";
-
 export class SlackStreamHandler {
   private streamer: ChatStreamer;
-  private hasTask = false;
   private stopped = false;
-  private streaming = false;
   private channelId: string;
   private slackMessageTs: string;
   private threadTs: string | undefined;
@@ -20,10 +13,6 @@ export class SlackStreamHandler {
 
   get isStopped(): boolean {
     return this.stopped;
-  }
-
-  get isStreaming(): boolean {
-    return this.streaming;
   }
 
   constructor(
@@ -74,47 +63,16 @@ export class SlackStreamHandler {
       () => this.streamer.append(payload),
       {}
     );
-    if (!this.streaming) {
-      this.streaming = true;
-    }
     if (!this.messageTs && res?.ts) {
       this.messageTs = res.ts;
     }
   }
 
-  async startTask(title: string) {
-    this.hasTask = true;
-    await this.append({
-      chunks: [
-        {
-          type: "task_update",
-          id: ACTIVE_TASK_ID,
-          title,
-          status: "in_progress",
-        },
-      ],
-    });
-  }
-
   async appendText(text: string) {
-    if (this.hasTask) {
-      this.hasTask = false;
-      await this.append({
-        chunks: [
-          {
-            type: "task_update",
-            id: ACTIVE_TASK_ID,
-            title: "Done",
-            status: "complete",
-          },
-        ],
-      });
-    }
     await this.append({ markdown_text: text });
   }
 
   async stop() {
-    this.hasTask = false;
     this.stopped = true;
     const res = await this.streamer.stop();
     if (!this.messageTs && res?.ts) {

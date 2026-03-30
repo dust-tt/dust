@@ -331,13 +331,62 @@ export function makeErrorBlock(
   };
 }
 
-export function makeTaskCardBlocks({
-  taskTitle,
+export type TaskCardStatus = "pending" | "in_progress" | "complete" | "error";
+
+export interface TaskCardSource {
+  url: string;
+  text: string;
+}
+
+export interface TaskCardState {
+  taskId: string;
+  title: string;
+  status: TaskCardStatus;
+  details?: string;
+  sources?: TaskCardSource[];
+}
+
+function makeRichTextBlock(text: string) {
+  return {
+    type: "rich_text",
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [{ type: "text", text }],
+      },
+    ],
+  };
+}
+
+function makeTaskCardBlock(t: TaskCardState) {
+  const card: Record<string, unknown> = {
+    type: "task_card",
+    task_id: t.taskId,
+    title: t.title,
+    status: t.status,
+  };
+  if (t.details) {
+    card.details = makeRichTextBlock(t.details);
+  }
+  if (t.sources && t.sources.length > 0) {
+    card.sources = t.sources.map((s) => ({
+      type: "url",
+      url: s.url,
+      text: s.text,
+    }));
+  }
+  return card;
+}
+
+export function makePlanMessage({
+  planTitle,
+  tasks,
   conversationUrl,
   assistantName,
   workspaceId,
 }: {
-  taskTitle: string;
+  planTitle: string;
+  tasks: TaskCardState[];
   conversationUrl: string | null;
   assistantName: string;
   workspaceId: string;
@@ -345,10 +394,10 @@ export function makeTaskCardBlocks({
   return {
     blocks: [
       {
-        type: "task_card",
-        task_id: "active-task",
-        title: taskTitle,
-        status: "in_progress",
+        type: "plan",
+        block_id: "agent-plan",
+        title: planTitle,
+        tasks: tasks.map(makeTaskCardBlock),
       },
       makeDividerBlock(),
       makeFooterBlock({
@@ -358,7 +407,7 @@ export function makeTaskCardBlocks({
         workspaceId,
       }),
     ],
-    text: taskTitle,
+    text: planTitle,
     mrkdwn: true,
     unfurl_links: false,
   };

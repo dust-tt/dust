@@ -1,12 +1,13 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
 import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
-  makeTaskCardBlocks,
+  makePlanMessage,
   makeToolAuthenticationBlock,
   makeToolValidationBlock,
+  type SlackMessageUpdate,
+  type TaskCardSource,
+  type TaskCardState,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
@@ -26,15 +27,19 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type {
   AgentActionPublicType,
+  AgentEvent,
   ConversationPublicType,
   LightAgentConfigurationType,
+  NotificationRunAgentContent,
   Result,
+  ToolNotificationEvent,
   UserMessageType,
 } from "@dust-tt/client";
 import {
   assertNever,
   DustAPI,
   Err,
+  NotificationRunAgentContentSchema,
   Ok,
   removeNulls,
   TOOL_RUNNING_LABEL,
@@ -43,25 +48,81 @@ import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 import throttle from "lodash/throttle";
 import slackifyMarkdown from "slackify-markdown";
+import { z } from "zod";
 
 const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
 const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
 
-const TASK_CARD_FALLBACK_DELAY_MS = 30_000;
-const TASK_CARD_FALLBACK_DELETE_DELAY_MS = 3_000;
+// run_agent actions have null displayLabels due to a gap in the server-side
+// tool type system (ServerSideMCPToolType doesn't carry displayLabels).
+// Fall back to the label defined in the run_agent server metadata.
+const RUN_AGENT_RUNNING_LABEL = "Running agent";
 
-// run_agent displayLabels are null due to dynamic tool name (ie. "run_dust-task")
-// not matching the placeholder key "run_agent" in the metadata lookup.
-// Hardcode a fallback until that's fixed.
 function getActionRunningLabel(action: AgentActionPublicType): string {
   if (action.displayLabels?.running) {
     return action.displayLabels.running;
   }
   if (action.internalMCPServerName === "run_agent") {
-    return "Deep diving"; // most common case is deep-dive/go-deep
+    return RUN_AGENT_RUNNING_LABEL;
   }
   return TOOL_RUNNING_LABEL;
+}
+
+function getActionDoneLabel(action: AgentActionPublicType): string {
+  return action.displayLabels?.done ?? "Done";
+}
+
+const SearchParamsSchema = z.object({ query: z.string() });
+const BrowseParamsSchema = z.object({ urls: z.array(z.string().url()) });
+const SourceResourceSchema = z.object({
+  uri: z.string().url(),
+  title: z.string(),
+});
+
+function getActionDetails(action: AgentActionPublicType): string | undefined {
+  const search = SearchParamsSchema.safeParse(action.params);
+  if (search.success) {
+    return search.data.query;
+  }
+  const browse = BrowseParamsSchema.safeParse(action.params);
+  if (browse.success) {
+    return browse.data.urls.map((url) => new URL(url).hostname).join(", ");
+  }
+  return undefined;
+}
+
+function getActionSources(
+  action: AgentActionPublicType
+): TaskCardSource[] | undefined {
+  if (!action.output) {
+    return undefined;
+  }
+  const sources: TaskCardSource[] = [];
+  for (const block of action.output) {
+    if (block.type === "resource" && "resource" in block) {
+      const result = SourceResourceSchema.safeParse(block.resource);
+      if (result.success) {
+        sources.push({ url: result.data.uri, text: result.data.title });
+      }
+    }
+  }
+  return sources.length > 0 ? sources : undefined;
+}
+
+function getRunAgentNotificationOutput(
+  event: ToolNotificationEvent
+): NotificationRunAgentContent | null {
+  if (event.action.internalMCPServerName !== "run_agent") {
+    return null;
+  }
+  const result = NotificationRunAgentContentSchema.safeParse(
+    event.notification._meta.data.output
+  );
+  if (!result.success || !result.data.agentMessageId) {
+    return null;
+  }
+  return result.data;
 }
 
 const getThrottleDelay = (textLength: number): number => {
@@ -218,65 +279,150 @@ async function streamAgentAnswerToSlack(
 
   const { streamHandler } = conversationData;
 
-  let taskCardMessageTs: string | undefined;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
     conversation.sId
   );
 
-  const upsertTaskCardMessage = async (taskTitle: string) => {
-    if (taskCardMessageTs) {
+  // -- Plan message: standalone message with plan block + task cards --
+  // Only used when native streaming (streamHandler) is enabled.
+  // Deleted on terminal events.
+
+  const taskCards = new Map<string, TaskCardState>();
+  let planMessageTs: string | undefined;
+
+  async function upsertPlanMessage(title: string) {
+    const payload = makePlanMessage({
+      planTitle: title,
+      tasks: [...taskCards.values()],
+      conversationUrl,
+      assistantName,
+      workspaceId: connector.workspaceId,
+    });
+
+    if (planMessageTs) {
       await slackClient.chat.update({
-        ...makeTaskCardBlocks({
-          taskTitle,
-          conversationUrl,
-          assistantName,
-          workspaceId: connector.workspaceId,
-        }),
+        ...payload,
         channel: slackChannelId,
-        ts: taskCardMessageTs,
+        ts: planMessageTs,
       });
     } else {
       const res = await slackClient.chat.postMessage({
-        ...makeTaskCardBlocks({
-          taskTitle,
-          conversationUrl,
-          assistantName,
-          workspaceId: connector.workspaceId,
-        }),
+        ...payload,
         channel: slackChannelId,
         thread_ts: slackMessageTs,
       });
-      taskCardMessageTs = res.ts;
+      planMessageTs = res.ts;
     }
-  };
+  }
 
-  // Brief delay to avoid flicker when tool → tokens is fast.
-  const deleteTaskCardMessage = async () => {
-    if (!taskCardMessageTs) {
+  async function deletePlanMessage() {
+    if (!planMessageTs) {
       return;
     }
-
-    const ts = taskCardMessageTs;
-    taskCardMessageTs = undefined;
-    setTimeout(() => {
-      void slackClient.chat.delete({ channel: slackChannelId, ts });
-    }, TASK_CARD_FALLBACK_DELETE_DELAY_MS);
-  };
-
-  let fallbackTimer: NodeJS.Timeout | undefined;
-  if (streamHandler) {
-    fallbackTimer = setTimeout(() => {
-      fallbackTimer = undefined;
-      void upsertTaskCardMessage("Thinking deeper…");
-    }, TASK_CARD_FALLBACK_DELAY_MS);
+    const ts = planMessageTs;
+    planMessageTs = undefined;
+    await slackClient.chat.delete({ channel: slackChannelId, ts });
   }
-  const clearFallbackTimer = () => {
-    if (fallbackTimer) {
-      clearTimeout(fallbackTimer);
-      fallbackTimer = undefined;
+
+  // -- Child stream tracking for run_agent actions --
+  // Only used when native streaming (streamHandler) is enabled.
+
+  const childStreamControllers = new Map<string, AbortController>();
+
+  async function handleChildStreamEvent(
+    taskId: string,
+    event: AgentEvent
+  ): Promise<"continue" | "complete" | "error"> {
+    switch (event.type) {
+      case "tool_params":
+      case "tool_notification": {
+        const label = getActionRunningLabel(event.action);
+        taskCards.set(taskId, {
+          taskId,
+          title: label,
+          status: "in_progress",
+          details: getActionDetails(event.action),
+        });
+        await upsertPlanMessage(label);
+        return "continue";
+      }
+      case "agent_action_success": {
+        const label = getActionDoneLabel(event.action);
+        taskCards.set(taskId, {
+          taskId,
+          title: label,
+          status: "complete",
+          details: getActionDetails(event.action),
+          sources: getActionSources(event.action),
+        });
+        await upsertPlanMessage(label);
+        return "continue";
+      }
+      case "agent_message_success":
+      case "agent_generation_cancelled":
+        return "complete";
+      case "agent_error":
+        return "error";
+      default:
+        return "continue";
     }
-  };
+  }
+
+  async function startChildStream(output: NotificationRunAgentContent) {
+    if (!streamHandler || !output.agentMessageId) {
+      return false;
+    }
+
+    const controller = new AbortController();
+    const { conversationId, agentMessageId } = output;
+    childStreamControllers.set(conversationId, controller);
+
+    // One task card per child agent, keyed by conversationId.
+    const taskId = conversationId;
+
+    // Consume child stream in background.
+    void (async () => {
+      const streamRes = await dustAPI.streamAgentMessageEvents({
+        conversation: { sId: conversationId },
+        agentMessage: { sId: agentMessageId },
+        signal: controller.signal,
+        options: {
+          maxReconnectAttempts: 10,
+          reconnectDelay: 5_000,
+          autoReconnect: true,
+        },
+      });
+      if (streamRes.isErr()) {
+        logger.error(
+          { conversationId, error: streamRes.error },
+          "Failed to open child agent stream"
+        );
+        return;
+      }
+      try {
+        for await (const event of streamRes.value.eventStream) {
+          const result = await handleChildStreamEvent(taskId, event);
+          if (result === "complete" || result === "error") {
+            break;
+          }
+        }
+      } catch {
+        // AbortError or stream failure — handled by cleanup.
+      } finally {
+        childStreamControllers.delete(conversationId);
+      }
+    })();
+
+    return true;
+  }
+
+  function abortAllChildStreams() {
+    for (const [, controller] of childStreamControllers) {
+      controller.abort();
+    }
+    childStreamControllers.clear();
+  }
 
   let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
   let throttledPostSlackMessageUpdate = throttle(
@@ -288,8 +434,30 @@ async function streamAgentAnswerToSlack(
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
+        const isRunAgent = event.action.internalMCPServerName === "run_agent";
+
+        // For run_agent, skip tool_params and early notifications:
+        // the child stream handles progress.
+        if (isRunAgent && event.type === "tool_notification") {
+          const output = getRunAgentNotificationOutput(event);
+          if (output) {
+            await startChildStream(output);
+          }
+          break;
+        }
+
+        // For all other tools, rotate a single default task card.
         const thinkingAction = getActionRunningLabel(event.action);
-        if (!streamHandler) {
+
+        if (streamHandler) {
+          taskCards.set("default", {
+            taskId: "default",
+            title: thinkingAction,
+            status: "in_progress",
+            details: getActionDetails(event.action),
+          });
+          await upsertPlanMessage(thinkingAction);
+        } else {
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
               isThinking: true,
@@ -305,14 +473,6 @@ async function streamAgentAnswerToSlack(
               eventType: event.type,
             },
           });
-          break;
-        }
-
-        if (streamHandler.isStreaming) {
-          await streamHandler.startTask(thinkingAction);
-        } else {
-          clearFallbackTimer();
-          await upsertTaskCardMessage(thinkingAction);
         }
         break;
       }
@@ -393,7 +553,12 @@ async function streamAgentAnswerToSlack(
         }
 
         if (streamHandler) {
-          await streamHandler.startTask("Waiting for authentication…");
+          taskCards.set("default", {
+            taskId: "default",
+            title: "Waiting for authentication…",
+            status: "pending",
+          });
+          await upsertPlanMessage("Waiting for authentication…");
         } else {
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
@@ -433,6 +598,8 @@ async function streamAgentAnswerToSlack(
         );
       }
       case "agent_error": {
+        abortAllChildStreams();
+        await deletePlanMessage();
         return new Err(
           new Error(
             `Agent message error: code: ${event.error.code} message: ${event.error.message}`
@@ -451,6 +618,23 @@ async function streamAgentAnswerToSlack(
           );
           pendingPersonalAuth = null;
         }
+
+        // Mark default task complete (for non-run_agent tools).
+        if (
+          streamHandler &&
+          event.action.internalMCPServerName !== "run_agent"
+        ) {
+          const doneLabel = getActionDoneLabel(event.action);
+          taskCards.set("default", {
+            taskId: "default",
+            title: doneLabel,
+            status: "complete",
+            details: getActionDetails(event.action),
+            sources: getActionSources(event.action),
+          });
+          await upsertPlanMessage(doneLabel);
+        }
+
         actions.push(event.action);
         break;
       }
@@ -467,10 +651,6 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (streamHandler && answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
-          // First tokens: clean up the pre-stream task card (if any) and
-          // the fallback timer before opening the stream.
-          clearFallbackTimer();
-          await deleteTaskCardMessage();
           await streamHandler.appendText(event.text);
           break;
         }
@@ -478,6 +658,7 @@ async function streamAgentAnswerToSlack(
           // Message too long for streaming: stop and fall back to chat.update
           // with truncated content + footer.
           await streamHandler.stop();
+          await deletePlanMessage();
           const { formattedContent, footnotes } = annotateCitations(
             answer,
             actions
@@ -550,8 +731,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_message_success": {
-        clearFallbackTimer();
-        await deleteTaskCardMessage();
+        abortAllChildStreams();
+        await deletePlanMessage();
 
         const finalAnswer = event.message.content ?? "";
         const actions = event.message.actions;
@@ -698,6 +879,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_generation_cancelled": {
+        abortAllChildStreams();
+        await deletePlanMessage();
         if (streamHandler && !streamHandler.isStopped) {
           await streamHandler.stop();
         }
@@ -740,7 +923,8 @@ async function streamAgentAnswerToSlack(
   }
 
   // Clean up if the event stream ended without a terminal event.
-  clearFallbackTimer();
+  abortAllChildStreams();
+  await deletePlanMessage();
   if (streamHandler && !streamHandler.isStopped) {
     await streamHandler.stop();
   }
