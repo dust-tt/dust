@@ -74,12 +74,15 @@ function applyColorScheme(): void {
   }
 
   if (closeButton) {
-    closeButton.style.background = colors.closeBg;
-    closeButton.style.color = colors.closeColor;
+    const hovered = closeButton.matches(":hover");
+    closeButton.style.background = hovered
+      ? colors.closeBgHover
+      : colors.closeBg;
+    closeButton.style.color = hovered
+      ? colors.closeColorHover
+      : colors.closeColor;
   }
 }
-
-darkModeQuery.addEventListener("change", applyColorScheme);
 
 // Track sidebar state
 let sidebarVisible = false;
@@ -297,6 +300,9 @@ function createSidebar(): void {
   // Add global mouse listeners for resizing
   document.addEventListener("mousemove", handleResizeMove);
   document.addEventListener("mouseup", handleResizeEnd);
+
+  // Listen for color scheme changes while sidebar exists
+  darkModeQuery.addEventListener("change", applyColorScheme);
 }
 
 function showSidebar(): void {
@@ -376,6 +382,7 @@ function removeSidebar(): void {
   // Clean up event listeners
   document.removeEventListener("mousemove", handleResizeMove);
   document.removeEventListener("mouseup", handleResizeEnd);
+  darkModeQuery.removeEventListener("change", applyColorScheme);
 }
 
 async function init(): Promise<void> {
