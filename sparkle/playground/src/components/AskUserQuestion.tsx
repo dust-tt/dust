@@ -44,7 +44,7 @@ export function AskUserQuestion({
     return (
       <div
         className={cn(
-          "s-w-full s-flex s-flex-col s-gap-3 s-rounded-t-xl s-border-t s-border-border s-bg-background s-p-4 dark:s-border-border-night dark:s-bg-background-night",
+          "s-w-full s-flex s-flex-col s-gap-3 s-rounded-t-xl s-border s-border-b-0 s-border-border s-bg-background s-p-4 dark:s-border-border-night dark:s-bg-background-night",
           className
         )}
       >
@@ -70,7 +70,7 @@ export function AskUserQuestion({
   return (
     <div
       className={cn(
-        "s-w-full s-flex s-flex-col s-gap-3 s-rounded-t-xl s-border-t s-border-border s-bg-background s-p-4 dark:s-border-border-night dark:s-bg-background-night",
+        "s-w-full s-flex s-flex-col s-gap-3 s-rounded-t-xl s-border s-border-b-0 s-border-border s-bg-background s-p-4 dark:s-border-border-night dark:s-bg-background-night",
         className
       )}
     >
