@@ -41,7 +41,11 @@ export async function importSkillsFromFiles(
 
   const detectedSkills = detectResult.value;
   if (detectedSkills.length === 0) {
-    return new Err(new Error("No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification)."));
+    return new Err(
+      new Error(
+        "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification)."
+      )
+    );
   }
 
   const requestedNames = names ? new Set(names) : null;
@@ -55,7 +59,7 @@ export async function importSkillsFromFiles(
     return new Err(new Error("No matching importable skills found."));
   }
 
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const errored: { name: string; message: string }[] = [];
@@ -114,7 +118,7 @@ export async function importSkillsFromFiles(
             agentFacingDescription: skill.description,
             userFacingDescription: skill.description,
             instructions: skill.instructions,
-            editedBy: user.id,
+            editedBy: user?.id ?? null,
             requestedSpaceIds: [],
             extendedSkillId: null,
             icon,
