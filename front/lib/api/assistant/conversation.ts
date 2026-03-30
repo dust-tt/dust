@@ -1855,6 +1855,11 @@ async function checkMessagesLimit(
     context: UserMessageContext;
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
+  // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
+  if (!auth.user() && !auth.key()) {
+    return new Ok(undefined);
+  }
+
   const messageLimit = await isMessagesLimitReached(auth, {
     mentions,
     context,
