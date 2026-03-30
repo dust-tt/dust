@@ -1,43 +1,11 @@
-import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
-
-type MockSkillResource = {
-  toJSON: (auth: Authenticator) => SkillType;
-};
-
-const serializedSkill: SkillType = {
-  id: 1,
-  sId: "skill_new",
-  createdAt: null,
-  updatedAt: null,
-  editedBy: null,
-  status: "active",
-  name: "Release Notes",
-  agentFacingDescription: "Summarize releases",
-  userFacingDescription: "Summarize releases",
-  instructions: "Use the changelog.",
-  icon: null,
-  source: "api",
-  sourceMetadata: {
-    filePath: "skills/release-notes/SKILL.md",
-  },
-  requestedSpaceIds: [],
-  tools: [],
-  fileAttachments: [],
-  canWrite: true,
-  isExtendable: true,
-  isDefault: false,
-  extendedSkillId: null,
-};
 
 const { mockFormidable, mockImportSkillsFromFiles, mockParse } = vi.hoisted(
   () => ({
