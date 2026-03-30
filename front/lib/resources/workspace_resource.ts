@@ -69,6 +69,7 @@ type CachedWorkspaceData = {
   metadata: Record<string, string | number | boolean | object> | null;
   sharingPolicy: WorkspaceSharingPolicy;
   conversationsRetentionDays: number | null;
+  metronomeCustomerId: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -197,6 +198,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       metadata: workspace.metadata,
       sharingPolicy: workspace.sharingPolicy,
       conversationsRetentionDays: workspace.conversationsRetentionDays,
+      metronomeCustomerId: workspace.metronomeCustomerId ?? null,
       createdAt: workspace.createdAt.getTime(),
       updatedAt: workspace.updatedAt.getTime(),
     };
@@ -228,6 +230,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       metadata: data.metadata,
       sharingPolicy: data.sharingPolicy,
       conversationsRetentionDays: data.conversationsRetentionDays,
+      metronomeCustomerId: data.metronomeCustomerId ?? null,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     };
@@ -649,6 +652,15 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
+  }
+
+  static async updateMetronomeCustomerId(
+    id: ModelId,
+    metronomeCustomerId: string
+  ): Promise<Result<void, Error>> {
+    return this.updateByModelIdAndCheckExistence(id, {
+      metronomeCustomerId,
+    });
   }
 
   async updateConversationKillSwitch({

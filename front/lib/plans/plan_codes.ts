@@ -64,6 +64,10 @@ export function isProOrBusinessPlanCode(plan?: PlanType) {
   return isProPlan(plan) || isBusinessPlan(plan);
 }
 
+export function isMetronomeBilled(plan: PlanType): boolean {
+  return plan.metronomePackageAlias != null;
+}
+
 /**
  * `isUpgraded` returns true if the plan has access to all features of Dust, including large
  * language models (meaning it's either a paid plan or free plan with (eg friends and family, or
