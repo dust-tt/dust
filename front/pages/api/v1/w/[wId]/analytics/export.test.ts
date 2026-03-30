@@ -87,8 +87,8 @@ async function setupTest({
   endDate?: string;
   timezone?: string;
 } = {}) {
-  const result = await createPublicApiMockRequest();
-  await FeatureFlagFactory.basic("analytics_csv_export", result.workspace);
+  const result = await createPublicApiMockRequest({ systemKey: true });
+  await FeatureFlagFactory.basic(result.auth, "analytics_csv_export");
 
   const query: Record<string, string> = {
     wId: result.workspace.sId,
@@ -105,8 +105,24 @@ async function setupTest({
 }
 
 describe("GET /api/v1/w/[wId]/analytics/export", () => {
-  it("returns 403 without analytics_csv_export feature flag", async () => {
+  it("returns 403 for non-admin API key", async () => {
     const { req, res } = await createPublicApiMockRequest();
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
+      },
+    });
+  });
+
+  it("returns 403 without analytics_csv_export feature flag", async () => {
+    const { req, res } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
 
     await handler(req, res);
 
@@ -121,8 +137,10 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
   });
 
   it("returns 400 for missing required query params", async () => {
-    const { req, res, workspace } = await createPublicApiMockRequest();
-    await FeatureFlagFactory.basic("analytics_csv_export", workspace);
+    const { req, res, auth, workspace } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    await FeatureFlagFactory.basic(auth, "analytics_csv_export");
     req.query = { wId: workspace.sId };
 
     await handler(req, res);
@@ -159,8 +177,11 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
 
   it("returns 405 for unsupported methods", async () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
-      const result = await createPublicApiMockRequest({ method });
-      await FeatureFlagFactory.basic("analytics_csv_export", result.workspace);
+      const result = await createPublicApiMockRequest({
+        method,
+        systemKey: true,
+      });
+      await FeatureFlagFactory.basic(result.auth, "analytics_csv_export");
       result.req.query = {
         wId: result.workspace.sId,
         table: "usage_metrics",
