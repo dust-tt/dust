@@ -119,16 +119,19 @@ export function InputBar({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current = 0;
-    setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files?.length) {
-      addFiles(files);
-    }
-  }, [addFiles]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+      const files = e.dataTransfer.files;
+      if (files?.length) {
+        addFiles(files);
+      }
+    },
+    [addFiles]
+  );
 
   const handleFileInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
