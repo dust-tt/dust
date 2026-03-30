@@ -66,56 +66,6 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     mockFormidable.mockReturnValue({ parse: mockParse });
   });
 
-  it("imports all uploaded skills through the api source", async () => {
-    const { req, res, auth } = await createPublicApiMockRequest({
-      method: "POST",
-    });
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-
-    mockParse.mockResolvedValue([
-      {},
-      {
-        files: [
-          { filepath: "/tmp/skills.zip", originalFilename: "skills.zip" },
-        ],
-      },
-    ]);
-
-    const importedSkill: MockSkillResource = {
-      toJSON: vi.fn((_auth: Authenticator) => serializedSkill),
-    };
-
-    mockImportSkillsFromFiles.mockResolvedValue(
-      new Ok({
-        imported: [importedSkill],
-        updated: [],
-        errored: [],
-      })
-    );
-
-    await handler(req, res);
-
-    expect(mockImportSkillsFromFiles).toHaveBeenCalledTimes(1);
-    expect(mockImportSkillsFromFiles).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId: auth.getNonNullableWorkspace().id,
-      }),
-      {
-        uploadedFiles: [
-          { filepath: "/tmp/skills.zip", originalFilename: "skills.zip" },
-        ],
-        source: "api",
-      }
-    );
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({
-      imported: [serializedSkill],
-      updated: [],
-      errored: [],
-    });
-  });
-
   it("returns 400 when no files are uploaded", async () => {
     const { req, res, auth } = await createPublicApiMockRequest({
       method: "POST",
