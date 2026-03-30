@@ -21,6 +21,10 @@ import {
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
 import {
+  createBufferedRequestFromRawBody,
+  validateSendgridParseWebhookSignature,
+} from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
+import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
@@ -39,6 +43,9 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
+import getRawBody from "raw-body";
+
+const SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb";
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -187,10 +194,12 @@ function parseThreadingHeaders(rawHeaders: string | null) {
 
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
-  req: NextApiRequest
+  rawBody: Buffer,
+  headers: NextApiRequest["headers"]
 ): Promise<Result<InboundEmail, Error>> => {
+  const req = createBufferedRequestFromRawBody(rawBody, headers);
   const form = new IncomingForm();
-  const [fields, files] = await form.parse(req);
+  const [fields, files] = await form.parse(req as never);
 
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
@@ -347,7 +356,44 @@ async function handler(
         });
       }
 
-      const emailRes = await parseSendgridWebhookContent(req);
+      // SendGrid signs the exact multipart bytes, so we must verify the raw body
+      // before formidable parses or rewrites anything.
+      let rawBody: Buffer;
+      try {
+        rawBody = await getRawBody(req, {
+          limit: SENDGRID_PARSE_WEBHOOK_MAX_SIZE,
+        });
+      } catch {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to read raw request body.",
+          },
+        });
+      }
+
+      const signatureValidationRes = validateSendgridParseWebhookSignature({
+        mode: apiConfig.getSendgridParseWebhookSignatureMode(),
+        publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
+        headers: req.headers,
+        rawBody,
+      });
+      if (signatureValidationRes.isErr()) {
+        logger.warn(
+          {
+            errorType: signatureValidationRes.error.apiError.type,
+            message: signatureValidationRes.error.apiError.message,
+          },
+          "[email] Rejected SendGrid Parse webhook before multipart parsing"
+        );
+        return apiError(req, res, {
+          status_code: signatureValidationRes.error.statusCode,
+          api_error: signatureValidationRes.error.apiError,
+        });
+      }
+
+      const emailRes = await parseSendgridWebhookContent(rawBody, req.headers);
       if (emailRes.isErr()) {
         return apiError(req, res, {
           status_code: 401,

@@ -453,6 +453,28 @@ const config = {
   getEmailWebhookSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
   },
+  getSendgridParseWebhookPublicKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY"
+    );
+  },
+  getSendgridParseWebhookSignatureMode: ():
+    | "disabled"
+    | "optional"
+    | "required" => {
+    const mode =
+      EnvironmentConfig.getOptionalEnvVariable(
+        "SENDGRID_PARSE_WEBHOOK_SIGNATURE_MODE"
+      ) ?? "disabled";
+
+    if (mode !== "disabled" && mode !== "optional" && mode !== "required") {
+      throw new Error(
+        "SENDGRID_PARSE_WEBHOOK_SIGNATURE_MODE must be one of: disabled, optional, required."
+      );
+    }
+
+    return mode;
+  },
   getProductionDustWorkspaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "PRODUCTION_DUST_WORKSPACE_ID"
