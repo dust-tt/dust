@@ -1,6 +1,6 @@
 import { useExtensionConfig } from "@app/lib/swr/extension";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCurrentUrlAndDomain } from "@extension/platforms/chrome/hooks/useCurrentDomain";
+import { useCurrentUrlAndDomain } from "@extension/shared/hooks/useCurrentDomain";
 import type { CaptureActions } from "@extension/shared/services/platform";
 import { useCallback, useMemo } from "react";
 
@@ -34,7 +34,7 @@ export function useCaptureActions(
   );
 
   const isEnabled = useMemo(() => {
-    if (currentDomain === "chrome") {
+    if (currentDomain === "chrome" || currentDomain === "firefox-internal") {
       return false;
     }
 

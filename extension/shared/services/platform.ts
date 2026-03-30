@@ -18,7 +18,7 @@ export type UseCaptureActionsHook = (
   isCapturing: boolean
 ) => CaptureActions | undefined;
 
-const PLATFORM_TYPES = ["chrome", "front"] as const;
+const PLATFORM_TYPES = ["chrome", "front", "firefox"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 export interface BrowserMessagingService {

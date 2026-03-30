@@ -1,6 +1,6 @@
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { ensureDustPageUtils } from "./pageUtils";
+import { ensureDustPageUtils } from "@extension/shared/pageUtils";
 
 type ElementSnapshot = {
   elementId: string;

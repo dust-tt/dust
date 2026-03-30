@@ -5,8 +5,8 @@ import {
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type { AttachSelectionMessage } from "@extension/shared/messages";
 import { useSearchParam } from "@extension/shared/platform";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import type { ReactNode } from "react";
