@@ -1,6 +1,4 @@
-import { QueryTypes } from "sequelize";
-
-import { frontSequelize } from "@app/lib/resources/storage";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { makeScript } from "@app/scripts/helpers";
 import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -23,17 +21,9 @@ makeScript(
       );
     }
 
-    const [{ count }] = await frontSequelize.query<{ count: number }>(
-      `
-      SELECT COUNT(*)::int AS count
-      FROM feature_flags
-      WHERE name = :featureFlag
-    `,
-      {
-        replacements: { featureFlag },
-        type: QueryTypes.SELECT,
-      }
-    );
+    const count = await FeatureFlagModel.count({
+      where: { name: featureFlag },
+    });
 
     logger.info(
       { featureFlag, workspaceCount: count },
@@ -52,15 +42,9 @@ makeScript(
       return;
     }
 
-    await frontSequelize.query(
-      `
-      DELETE FROM feature_flags
-      WHERE name = :featureFlag
-    `,
-      {
-        replacements: { featureFlag },
-      }
-    );
+    await FeatureFlagModel.destroy({
+      where: { name: featureFlag },
+    });
 
     logger.info(
       { featureFlag, workspaceCount: count },
