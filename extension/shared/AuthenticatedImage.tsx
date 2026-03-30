@@ -15,7 +15,10 @@ function isDustApiUrl(url: string): boolean {
   }
 
   const baseUrl = getBaseUrl();
-  if (baseUrl && url.startsWith(`${baseUrl}/api/`)) {
+  const normalizedBase = baseUrl?.endsWith("/")
+    ? baseUrl.slice(0, -1)
+    : baseUrl;
+  if (normalizedBase && url.startsWith(`${normalizedBase}/api/`)) {
     return true;
   }
 
@@ -90,7 +93,7 @@ export const AuthenticatedImage: SparkleContextImageType = forwardRef<
     const baseUrl = getBaseUrl();
     const resolvedSrc =
       baseUrl && isString(src) && src?.startsWith("/")
-        ? `${baseUrl}${src}`
+        ? `${baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl}${src}`
         : src;
     return <img ref={ref} src={resolvedSrc} {...props} />;
   }
