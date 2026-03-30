@@ -222,6 +222,8 @@ async function handler(
                 `Cannot subscribe to plan ${planCode}: not found.`
               );
             }
+            const checkoutStripeSubscription =
+              await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
             await withTransaction(async (t) => {
               const activeSubscription =
@@ -274,8 +276,6 @@ async function handler(
               if (activeSubscription) {
                 await activeSubscription.markAsEnded("ended", t);
               }
-              const stripeSubscription =
-                await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
               await SubscriptionResource.makeNew(
                 {
@@ -283,7 +283,7 @@ async function handler(
                   workspaceId: workspace.id,
                   planId: plan.id,
                   status: "active",
-                  trialing: stripeSubscription.status === "trialing",
+                  trialing: checkoutStripeSubscription.status === "trialing",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                 },
@@ -291,6 +291,31 @@ async function handler(
                 t
               );
             });
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+            const shouldGrantFreeCreditsOnCheckoutCompletion =
+              checkoutStripeSubscription.status === "active" ||
+              checkoutStripeSubscription.status === "trialing";
+
+            if (shouldGrantFreeCreditsOnCheckoutCompletion) {
+              const freeCreditsResult = await grantFreeCreditsForSubscription({
+                auth,
+                stripeSubscription: checkoutStripeSubscription,
+              });
+
+              if (freeCreditsResult.isErr()) {
+                logger.error(
+                  {
+                    error: freeCreditsResult.error,
+                    subscriptionId: checkoutStripeSubscription.id,
+                    workspaceId: workspace.sId,
+                  },
+                  "[Stripe Webhook] Error granting free credits on checkout.session.completed"
+                );
+              }
+            }
+
             if (userId) {
               const workspaceSeats =
                 await MembershipResource.countActiveSeatsInWorkspace(
@@ -304,9 +329,7 @@ async function handler(
                 subscriptionStartAt: now,
               });
             }
-            await restoreWorkspaceAfterSubscription(
-              await Authenticator.internalAdminForWorkspace(workspace.sId)
-            );
+            await restoreWorkspaceAfterSubscription(auth);
 
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
               workspaceId,

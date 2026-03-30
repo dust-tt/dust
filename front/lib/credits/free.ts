@@ -254,13 +254,26 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
   const periodStart = new Date(stripeSubscription.current_period_start * 1000);
   const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
-  const credit = await CreditResource.makeNew(auth, {
-    type: "free",
-    initialAmountMicroUsd: creditAmountMicroUsd,
-    consumedAmountMicroUsd: 0,
-    discount: null,
-    invoiceOrLineItemId: idempotencyKey,
-  });
+  const { credit, created } =
+    await CreditResource.makeNewOrFetchByInvoiceOrLineItemId(auth, {
+      type: "free",
+      initialAmountMicroUsd: creditAmountMicroUsd,
+      consumedAmountMicroUsd: 0,
+      discount: null,
+      invoiceOrLineItemId: idempotencyKey,
+    });
+
+  if (!created) {
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        creditId: credit.id,
+        subscriptionId: stripeSubscription.id,
+      },
+      "[Free Credits] Credit already exists for this billing cycle, skipping"
+    );
+    return new Ok(undefined);
+  }
 
   logger.info(
     {
@@ -413,13 +426,26 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
   const periodStart = new Date(stripeSubscription.current_period_start * 1000);
   const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
-  const credit = await CreditResource.makeNew(auth, {
-    type: "free",
-    initialAmountMicroUsd: creditAmountMicroUsd,
-    consumedAmountMicroUsd: 0,
-    discount: null,
-    invoiceOrLineItemId: idempotencyKey,
-  });
+  const { credit, created } =
+    await CreditResource.makeNewOrFetchByInvoiceOrLineItemId(auth, {
+      type: "free",
+      initialAmountMicroUsd: creditAmountMicroUsd,
+      consumedAmountMicroUsd: 0,
+      discount: null,
+      invoiceOrLineItemId: idempotencyKey,
+    });
+
+  if (!created) {
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        creditId: credit.id,
+        subscriptionId: stripeSubscription.id,
+      },
+      "[Free Credits Yearly] Credit already exists for this billing cycle, skipping"
+    );
+    return new Ok(undefined);
+  }
 
   logger.info(
     {

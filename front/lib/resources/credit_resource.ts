@@ -75,6 +75,33 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new this(this.model, credit.get());
   }
 
+  static async makeNewOrFetchByInvoiceOrLineItemId(
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<CreditModel>, "boughtByUserId"> & {
+      boughtByUserId?: number | null;
+      invoiceOrLineItemId: string;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{ credit: CreditResource; created: boolean }> {
+    try {
+      const credit = await this.makeNew(auth, blob, { transaction });
+      return { credit, created: true };
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        const existingCredit = await this.fetchByInvoiceOrLineItemId(
+          auth,
+          blob.invoiceOrLineItemId
+        );
+        assert(
+          existingCredit,
+          "Credit not found after duplicate invoiceOrLineItemId create attempt"
+        );
+        return { credit: existingCredit, created: false };
+      }
+      throw error;
+    }
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<CreditModel>
