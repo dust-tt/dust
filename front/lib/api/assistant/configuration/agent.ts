@@ -19,6 +19,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import {
   buildWorkspaceTarget,
   emitAuditLogEvent,
+  getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -870,6 +871,7 @@ export async function createAgentConfiguration(
             name: agentConfiguration.name,
           },
         ],
+        context: getAuditLogContext(auth),
         metadata: {
           agentName: agentConfiguration.name,
           scope: scope,
@@ -1281,6 +1283,7 @@ export async function archiveAgentConfiguration(
         buildWorkspaceTarget(auth.getNonNullableWorkspace()),
         { type: "agent", id: agentConfig.sId, name: agentConfig.name },
       ],
+      context: getAuditLogContext(auth),
       metadata: {
         agentName: agentConfig.name,
       },
@@ -1405,6 +1408,7 @@ export async function restoreAgentConfiguration(
           name: latestConfig.name,
         },
       ],
+      context: getAuditLogContext(auth),
       metadata: {
         agentName: latestConfig.name,
       },
@@ -1434,6 +1438,7 @@ export async function unsafeHardDeleteAgentConfiguration(
         name: agentConfiguration.name,
       },
     ],
+    context: getAuditLogContext(auth),
     metadata: {
       agentName: agentConfiguration.name,
     },
@@ -1740,6 +1745,7 @@ export async function updateAgentConfigurationScope(
       buildWorkspaceTarget(auth.getNonNullableWorkspace()),
       { type: "agent", id: agentConfig.sId, name: agentConfig.name },
     ],
+    context: getAuditLogContext(auth),
     metadata: {
       agentName: agentConfig.name,
       previousScope: previousScope,
