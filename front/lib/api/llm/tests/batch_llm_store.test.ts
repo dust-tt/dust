@@ -179,8 +179,8 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           agentConfigurationId
         );
 
-        expect(results.size).toBe(1);
-        const events = results.get(conversationId);
+        expect(results.events.size).toBe(1);
+        const events = results.events.get(conversationId);
         expect(events).toBeDefined();
 
         // Verify the response contains "2".
@@ -383,7 +383,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         );
 
         // The model should recall "42" from the previous turn.
-        const events2 = results2.get(conversationId);
+        const events2 = results2.events.get(conversationId);
         expect(events2).toBeDefined();
         const textEvent2 = events2?.find((e) => e.type === "text_generated");
         expect(textEvent2).toBeDefined();

@@ -11,13 +11,19 @@ import {
   writeBatchUserMessages,
 } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
-import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMEvent, ToolCallEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { ReinforcedOperationType } from "@app/lib/reinforced_agent/types";
-import { getReinforcementMetadata } from "@app/lib/reinforced_agent/types";
+import {
+  type ExploratoryToolCallInfo,
+  type ExploratoryToolName,
+  getReinforcementMetadata,
+  type TerminalToolCallInfo,
+  type TerminalToolName,
+} from "@app/lib/reinforced_agent/types";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -28,15 +34,20 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const SUPPORTED_TOOLS = [
+const TERMINAL_TOOLS: TerminalToolName[] = [
   "suggest_prompt_edits",
   "suggest_tools",
   "suggest_skills",
-] as const;
+];
 
-type SupportedToolName = (typeof SUPPORTED_TOOLS)[number];
+const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
+  "get_available_skills",
+  "get_available_tools",
+];
 
-const TOOL_SCHEMAS: Record<SupportedToolName, z.ZodObject<z.ZodRawShape>> = {
+const ALL_TOOLS = [...TERMINAL_TOOLS, ...EXPLORATORY_TOOLS];
+
+const TOOL_SCHEMAS: Record<TerminalToolName, z.ZodObject<z.ZodRawShape>> = {
   suggest_prompt_edits: z.object(
     AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.schema
   ),
@@ -48,12 +59,50 @@ const TOOL_SCHEMAS: Record<SupportedToolName, z.ZodObject<z.ZodRawShape>> = {
   ),
 };
 
-function buildSpecifications(): AgentActionSpecification[] {
-  return SUPPORTED_TOOLS.map((toolName) => ({
-    name: AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[toolName].name,
-    description: AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[toolName].description,
-    inputSchema: zodToJsonSchema(TOOL_SCHEMAS[toolName]) as JSONSchema,
-  }));
+export function buildReinforcedSpecifications(): AgentActionSpecification[] {
+  return ALL_TOOLS.map((toolName) => {
+    const meta = AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[toolName];
+    const schema = z.object(meta.schema);
+    return {
+      name: meta.name,
+      description: meta.description,
+      inputSchema: zodToJsonSchema(schema) as JSONSchema,
+    };
+  });
+}
+
+interface ClassifiedToolCalls {
+  exploratoryToolCalls: ExploratoryToolCallInfo[];
+  terminalToolCalls: TerminalToolCallInfo[];
+}
+
+export function classifyToolCalls(events: LLMEvent[]): ClassifiedToolCalls {
+  const terminalToolNames = new Set<string>(TERMINAL_TOOLS);
+  const exploratoryToolNames = new Set<string>(EXPLORATORY_TOOLS);
+
+  const toolCallEvents = events.filter(
+    (e): e is ToolCallEvent =>
+      e.type === "tool_call" &&
+      (terminalToolNames.has(e.content.name) ||
+        exploratoryToolNames.has(e.content.name))
+  );
+
+  return {
+    exploratoryToolCalls: toolCallEvents
+      .filter((e) => exploratoryToolNames.has(e.content.name))
+      .map((e) => ({
+        id: e.content.id,
+        name: e.content.name as ExploratoryToolName,
+        arguments: e.content.arguments,
+      })),
+    terminalToolCalls: toolCallEvents
+      .filter((e) => terminalToolNames.has(e.content.name))
+      .map((e) => ({
+        id: e.content.id,
+        name: e.content.name as TerminalToolName,
+        arguments: e.content.arguments,
+      })),
+  };
 }
 
 export const REINFORCEMENT_AGENT_ID = "reinforcement";
@@ -114,7 +163,7 @@ export function buildReinforcedLLMParams({
       ],
     },
     prompt: systemPrompt,
-    specifications: buildSpecifications(),
+    specifications: buildReinforcedSpecifications(),
   };
 }
 
@@ -182,9 +231,9 @@ export async function processReinforcedEvents({
     return 0;
   }
 
-  const supportedToolNames = new Set<string>(SUPPORTED_TOOLS);
+  const terminalToolNames = new Set<string>(TERMINAL_TOOLS);
   const toolCallEvents = events.filter(
-    (e) => e.type === "tool_call" && supportedToolNames.has(e.content.name)
+    (e) => e.type === "tool_call" && terminalToolNames.has(e.content.name)
   );
   if (toolCallEvents.length === 0) {
     logger.warn(
@@ -342,7 +391,12 @@ async function createSuggestionsFromToolCall({
 
 /**
  * Shared helper for both analyze and aggregate phases of reinforced agents.
- * Calls the LLM with the given prompt, parses suggestions, and creates them.
+ * Calls the LLM once with the given prompt, stores the result, and processes
+ * any terminal suggestion tool calls.
+ *
+ * For multi-step conversations (exploratory tools), the loop is handled at the
+ * Temporal workflow level via analyzeConversationStepActivity + runRetryableToolActivity.
+ *
  * Returns the number of suggestions created.
  */
 export async function runReinforcedAnalysis({

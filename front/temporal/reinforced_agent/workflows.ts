@@ -31,10 +31,6 @@ const { getRecentConversationsForAgentActivity } = proxyActivities<
   startToCloseTimeout: "5 minutes",
 });
 
-const { analyzeConversationActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
-});
-
 const { aggregateSuggestionsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -64,6 +60,22 @@ const { processAggregationBatchResultActivity } = proxyActivities<
 >({
   startToCloseTimeout: "30 minutes",
 });
+
+const { analyzeConversationStepActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
+
+// runToolActivity is re-exported from the agent loop so the reinforced agent
+// worker registers it. We proxy it with retry for durability.
+const { runToolActivity: runRetryableToolActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "10 minutes",
+  retry: { maximumAttempts: 3 },
+});
+
+// Duplicated here because Temporal workflow sandbox can't resolve @app/lib imports.
+const MAX_REINFORCED_ANALYSIS_STEPS = 4;
 
 const AGENT_CONCURRENCY = 8;
 const CONVERSATION_ANALYSIS_CONCURRENCY = 4;
@@ -184,26 +196,63 @@ export async function reinforcedAgentForAgentWorkflow({
   });
 
   if (useBatchMode) {
-    // Phase 1: Batch-analyze all conversations.
-    if (conversationIds.length > 0) {
-      const analysisResult = await startConversationAnalysisBatchActivity({
+    // Phase 1: Batch-analyze all conversations with multi-step loop.
+    // Each iteration: submit batch → wait → process results → execute tools.
+    // Conversations that called terminal tools are done; the rest continue.
+    let pendingConversationIds = conversationIds;
+    let reinforcementConversationMap: Record<string, string> | undefined;
+    let step = 0;
+
+    while (
+      step < MAX_REINFORCED_ANALYSIS_STEPS &&
+      pendingConversationIds.length > 0
+    ) {
+      const batchResult = await startConversationAnalysisBatchActivity({
         workspaceId,
         agentConfigurationId,
-        analysedConversationIds: conversationIds,
+        analysedConversationIds: pendingConversationIds,
+        existingReinforcementConversationMap: reinforcementConversationMap,
       });
 
-      if (analysisResult) {
-        await waitForBatch({ workspaceId, batchId: analysisResult.batchId });
+      if (!batchResult) {
+        break;
+      }
 
+      await waitForBatch({ workspaceId, batchId: batchResult.batchId });
+
+      reinforcementConversationMap = batchResult.reinforcementConversationMap;
+
+      const continuations =
         await processConversationAnalysisBatchResultActivity({
           workspaceId,
           agentConfigurationId,
-          batchId: analysisResult.batchId,
-          reinforcementConversationIds:
-            analysisResult.reinforcementConversationIds,
-          analysedConversationIds: analysisResult.analysedConversationIds,
+          batchId: batchResult.batchId,
+          reinforcementConversationMap,
         });
+
+      if (continuations.length === 0) {
+        break;
       }
+
+      // Execute exploratory tools via the agent loop's retryable tool activity.
+      // Results are stored in the reinforcement conversations in DB.
+      for (const c of continuations) {
+        const { authType, agentLoopArgs, actionIds } = c.toolActionInfo;
+        for (const actionId of actionIds) {
+          await runRetryableToolActivity(authType, {
+            actionId,
+            runAgentArgs: agentLoopArgs,
+            step: 0,
+          });
+        }
+      }
+
+      // Next iteration will re-submit only the continuing conversations,
+      // reusing their reinforcement conversations (which now include tool results).
+      pendingConversationIds = continuations.map(
+        (c) => c.analysedConversationId
+      );
+      step++;
     }
 
     // Phase 2: Batch-aggregate synthetic suggestions into pending.
@@ -225,11 +274,11 @@ export async function reinforcedAgentForAgentWorkflow({
       });
     }
   } else {
-    // Phase 1: Analyze all conversations in parallel via streaming.
+    // Phase 1: Analyze all conversations in parallel via streaming (multi-step).
     await concurrentExecutor(
       conversationIds,
       (conversationId) =>
-        analyzeConversationActivity({
+        analyzeConversationWithMultiStep({
           workspaceId,
           agentConfigurationId,
           conversationId,
@@ -243,5 +292,55 @@ export async function reinforcedAgentForAgentWorkflow({
       agentConfigurationId,
       disableNotifications,
     });
+  }
+}
+
+/**
+ * Multi-step streaming analysis of a single conversation.
+ * Calls the step activity, executes exploratory tools via the agent loop's
+ * runRetryableToolActivity, and continues until terminal tools are called.
+ *
+ * Tool results are stored in the reinforcement conversation by runRetryableToolActivity.
+ * On the next step, the step activity renders the full conversation from DB via
+ * renderConversationForModel — no need to pass continuation messages explicitly.
+ */
+async function analyzeConversationWithMultiStep({
+  workspaceId,
+  agentConfigurationId,
+  conversationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  conversationId: string;
+}): Promise<void> {
+  let reinforcementConversationId: string | undefined;
+
+  for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
+    const result = await analyzeConversationStepActivity({
+      workspaceId,
+      agentConfigurationId,
+      conversationId,
+      reinforcementConversationId,
+    });
+
+    reinforcementConversationId = result.reinforcementConversationId;
+
+    if (result.isTerminal || !result.toolActionInfo) {
+      return;
+    }
+
+    const { authType, agentLoopArgs, actionIds } = result.toolActionInfo;
+
+    // Execute each exploratory tool via the agent loop's retryable tool activity.
+    // Results are stored in the reinforcement conversation DB.
+    for (const actionId of actionIds) {
+      await runRetryableToolActivity(authType, {
+        actionId,
+        runAgentArgs: agentLoopArgs,
+        step: 0,
+      });
+    }
+
+    // Next iteration will render the conversation from DB, picking up the tool results.
   }
 }

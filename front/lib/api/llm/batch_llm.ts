@@ -28,6 +28,7 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
@@ -149,69 +150,89 @@ export async function writeBatchUserMessages(
  * - Creates a `MessageModel` at the next rank, parented to the last user message.
  * - Creates `AgentStepContentModel` entries for text, tool calls, reasoning, errors.
  */
+export interface StoreLlmResultInfo {
+  agentMessageModelId: ModelId;
+  agentMessageSId: string;
+  userMessageSId: string;
+}
+
 export async function storeLlmResult(
   auth: Authenticator,
   conversation: ConversationResource,
   events: LLMEvent[],
   agentConfigurationId: string
-): Promise<void> {
+): Promise<StoreLlmResultInfo> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const agentMessage = await withTransaction(async (t: Transaction) => {
-    // Find the last user message in this conversation to use as parent.
-    const parentMessage = await MessageModel.findOne({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: workspace.id,
-      },
-      include: [
-        {
-          model: UserMessageModel,
-          as: "userMessage",
-          required: true,
+  const { agentMessageModel, agentMessageSId, userMessageSId } =
+    await withTransaction(async (t: Transaction) => {
+      // Find the last user message in this conversation to use as parent.
+      const parentMessage = await MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
         },
-      ],
-      order: [["rank", "DESC"]],
-      transaction: t,
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+        order: [["rank", "DESC"]],
+        transaction: t,
+      });
+
+      const maxRank = await MessageModel.max<number, MessageModel>("rank", {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        transaction: t,
+      });
+      const nextRank = typeof maxRank === "number" ? maxRank + 1 : 0;
+
+      // Determine status from events.
+      const hasError = events.some((e) => e instanceof EventError);
+      const status: AgentMessageStatus = hasError ? "failed" : "succeeded";
+
+      const firstError = events.find(
+        (e): e is EventError => e instanceof EventError
+      );
+
+      const msg = await AgentMessageModel.create(
+        {
+          status,
+          agentConfigurationId,
+          agentConfigurationVersion: 0,
+          workspaceId: workspace.id,
+          skipToolsValidation: false,
+          errorCode: firstError ? firstError.content.type : null,
+          errorMessage: firstError ? firstError.content.message : null,
+          completedAt: new Date(),
+        },
+        { transaction: t }
+      );
+
+      const messageSId = generateRandomModelSId();
+      await MessageModel.create(
+        {
+          sId: messageSId,
+          rank: nextRank,
+          conversationId: conversation.id,
+          parentId: parentMessage?.id ?? null,
+          agentMessageId: msg.id,
+          workspaceId: workspace.id,
+        },
+        { transaction: t }
+      );
+
+      return {
+        agentMessageModel: msg,
+        agentMessageSId: messageSId,
+        userMessageSId: parentMessage?.sId ?? "",
+      };
     });
-    const nextRank = parentMessage ? parentMessage.rank + 1 : 0;
-
-    // Determine status from events.
-    const hasError = events.some((e) => e instanceof EventError);
-    const status: AgentMessageStatus = hasError ? "failed" : "succeeded";
-
-    const firstError = events.find(
-      (e): e is EventError => e instanceof EventError
-    );
-
-    const msg = await AgentMessageModel.create(
-      {
-        status,
-        agentConfigurationId,
-        agentConfigurationVersion: 0,
-        workspaceId: workspace.id,
-        skipToolsValidation: false,
-        errorCode: firstError ? firstError.content.type : null,
-        errorMessage: firstError ? firstError.content.message : null,
-        completedAt: new Date(),
-      },
-      { transaction: t }
-    );
-
-    await MessageModel.create(
-      {
-        sId: generateRandomModelSId(),
-        rank: nextRank,
-        conversationId: conversation.id,
-        parentId: parentMessage?.id ?? null,
-        agentMessageId: msg.id,
-        workspaceId: workspace.id,
-      },
-      { transaction: t }
-    );
-
-    return msg;
-  });
 
   // Create step content entries from LLM events.
   let index = 0;
@@ -219,7 +240,7 @@ export async function storeLlmResult(
     const stepContent = eventToStoredStepContent(event);
     if (stepContent) {
       await AgentStepContentResource.createNewVersion({
-        agentMessageId: agentMessage.id,
+        agentMessageId: agentMessageModel.id,
         workspaceId: workspace.id,
         step: 0,
         index,
@@ -229,6 +250,12 @@ export async function storeLlmResult(
       index++;
     }
   }
+
+  return {
+    agentMessageModelId: agentMessageModel.id,
+    agentMessageSId,
+    userMessageSId,
+  };
 }
 
 /**
@@ -305,6 +332,11 @@ export async function sendBatchCallToLlm(
   return new Ok({ batchId, conversationIds });
 }
 
+export interface BatchDownloadResult {
+  events: Map<string, LLMEvent[]>;
+  storedResultInfo: Map<string, StoreLlmResultInfo>;
+}
+
 /**
  * Download batch results from the LLM and store them as agent messages in the
  * corresponding conversations.
@@ -315,8 +347,8 @@ export async function downloadBatchResultFromLlm(
   batchId: string,
   conversationIds: string[],
   agentConfigurationId: string
-): Promise<Map<string, LLMEvent[]>> {
-  const results = await llm.getBatchResult(batchId);
+): Promise<BatchDownloadResult> {
+  const events = await llm.getBatchResult(batchId);
 
   const conversationResources = await ConversationResource.fetchByIds(
     auth,
@@ -326,15 +358,22 @@ export async function downloadBatchResultFromLlm(
     conversationResources.map((c) => [c.sId, c])
   );
 
-  for (const [conversationId, events] of results) {
+  const storedResultInfo = new Map<string, StoreLlmResultInfo>();
+  for (const [conversationId, convEvents] of events) {
     const conversation = conversationById.get(conversationId);
     if (!conversation) {
       continue;
     }
-    await storeLlmResult(auth, conversation, events, agentConfigurationId);
+    const info = await storeLlmResult(
+      auth,
+      conversation,
+      convEvents,
+      agentConfigurationId
+    );
+    storedResultInfo.set(conversationId, info);
   }
 
-  return results;
+  return { events, storedResultInfo };
 }
 
 /**

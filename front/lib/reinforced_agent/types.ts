@@ -1,3 +1,30 @@
+export const MAX_REINFORCED_ANALYSIS_STEPS = 4;
+
+export type ExploratoryToolName =
+  | "get_available_skills"
+  | "get_available_tools";
+
+export type TerminalToolName =
+  | "suggest_prompt_edits"
+  | "suggest_tools"
+  | "suggest_skills";
+
+export interface ExploratoryToolCallInfo {
+  id: string;
+  name: ExploratoryToolName;
+  arguments: Record<string, unknown>;
+}
+
+export interface TerminalToolCallInfo {
+  id: string;
+  name: TerminalToolName;
+  arguments: Record<string, unknown>;
+}
+
+export type ReinforcedToolCallInfo =
+  | ExploratoryToolCallInfo
+  | TerminalToolCallInfo;
+
 export type ReinforcedOperationType =
   | "reinforced_agent_analyze_conversation"
   | "reinforced_agent_aggregate_suggestions";
