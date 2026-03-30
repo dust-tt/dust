@@ -17,6 +17,10 @@ import {
   INTERACTIVE_CONTENT_SERVER_NAME,
   INTERACTIVE_CONTENT_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import {
+  SANDBOX_TOOL_NAME,
+  SANDBOX_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
@@ -178,6 +182,7 @@ const TOOLS_WITH_POTENTIAL_LARGE_INPUTS = new Set<string>([
   `${FILE_GENERATION_TOOL_NAME}${TOOL_NAME_SEPARATOR}${FILE_GENERATION_TOOLS_METADATA["generate_file"].name}`,
   `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["create_interactive_content_file"].name}`,
   `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["edit_interactive_content_file"].name}`,
+  `${SANDBOX_TOOL_NAME}${TOOL_NAME_SEPARATOR}${SANDBOX_TOOLS_METADATA["bash"].name}`,
 ]);
 
 export function toTool(tool: AgentActionSpecification): Tool {
