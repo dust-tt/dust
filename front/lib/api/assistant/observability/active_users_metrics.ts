@@ -86,7 +86,7 @@ export async function fetchActiveUsersMetrics(
       filter: [
         { term: { workspace_id: workspaceId } },
         { range: { timestamp: { gte: `now-${extendedDays}d/d` } } },
-        { exists: { field: "user_id" } }, // Exclude programmatic usage
+        { bool: { must_not: { term: { user_id: "unknown" } } } }, // Exclude programmatic usage
       ],
     },
   };
