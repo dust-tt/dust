@@ -246,6 +246,7 @@ async function exportActiveUsers({
 async function exportSource({
   startDate,
   endDate,
+  timezone,
   owner,
 }: {
   startDate: string;
@@ -259,7 +260,7 @@ async function exportSource({
     endDate,
   });
 
-  const result = await fetchContextOriginDailyBreakdown(baseQuery);
+  const result = await fetchContextOriginDailyBreakdown(baseQuery, timezone);
 
   if (result.isErr()) {
     return new Err(
