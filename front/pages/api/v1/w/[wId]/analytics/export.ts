@@ -41,6 +41,16 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<string>>,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
+      },
+    });
+  }
+
   const flags = await getFeatureFlags(auth);
   if (!flags.includes("analytics_csv_export")) {
     return apiError(req, res, {
