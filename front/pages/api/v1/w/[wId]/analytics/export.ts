@@ -4,6 +4,7 @@ import {
   AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
 } from "@app/lib/api/analytics/agents_export";
+import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
 import {
   fetchUserExportRows,
   USER_EXPORT_HEADERS,
@@ -122,14 +123,6 @@ interface ToolUsageExportRow {
   toolName: string;
   executions: number;
   uniqueUsers: number;
-}
-
-// Sanitize CSV cells to prevent formula injection when opened in spreadsheets.
-function sanitizeCsvCell(value: string | number): string | number {
-  if (typeof value === "string" && /^[=+\-@]/.test(value)) {
-    return `'${value}`;
-  }
-  return value;
 }
 
 async function exportTable({
