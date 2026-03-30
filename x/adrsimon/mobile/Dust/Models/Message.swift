@@ -68,13 +68,17 @@ struct AgentMessage: Codable, Identifiable {
 
 // MARK: - Agent streaming state
 
+struct ActiveAction: Equatable, Identifiable {
+    let id: Int
+    let label: String
+    let serverName: String?
+}
+
 enum AgentStreamingPhase: Equatable {
     /// Not streaming (completed, failed, cancelled, or not started)
     case idle
     /// Agent is thinking (chain of thought being generated)
     case thinking
-    /// Agent is executing an action/tool
-    case acting(label: String)
     /// Agent is generating response tokens
     case generating
     /// Agent is waiting for the user to authenticate on a third-party service

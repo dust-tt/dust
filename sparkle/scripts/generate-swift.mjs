@@ -8,7 +8,7 @@
  * Output: x/adrsimon/mobile/SparkleTokens/Sources/SparkleTokens/Generated/
  */
 
-import { writeFileSync, mkdirSync, cpSync, existsSync, unlinkSync, readdirSync } from "fs";
+import { writeFileSync, mkdirSync, cpSync, existsSync, unlinkSync, readdirSync, readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
@@ -84,6 +84,7 @@ const ICONS_XCASSETS_DIR = resolve(
 const ICONS_APP_SRC_DIR = resolve(__dirname, "../src/icons/src/app");
 const ICONS_ACTIONS_SRC_DIR = resolve(__dirname, "../src/icons/src/actions");
 const PLATFORM_LOGOS_SRC_DIR = resolve(__dirname, "../src/logo/src/platforms");
+const MCP_SERVERS_DIR = resolve(__dirname, "../../front/lib/api/actions/servers");
 
 const HEADER = `// DO NOT EDIT — Generated from Sparkle (tailwind.config.js)
 // Run: cd sparkle && node scripts/generate-swift.mjs\n\n`;
@@ -509,6 +510,89 @@ function generateIcons() {
   return { swift: lines.join("\n") + "\n", count: icons.length };
 }
 
+// --- MCP Server Icon Mapping ---
+
+function generateMCPServerIcons() {
+  // Build a lookup from PascalCase icon name -> Swift case name using actual SparkleIcon cases.
+  // This handles mismatches like "UkgLogo" (metadata) vs "UKGLogo" (SVG filename).
+  const iconCaseLookup = new Map();
+  const allIconDirs = [ICONS_APP_SRC_DIR, ICONS_ACTIONS_SRC_DIR, PLATFORM_LOGOS_SRC_DIR];
+  for (const dir of allIconDirs) {
+    const isActions = dir === ICONS_ACTIONS_SRC_DIR;
+    const isLogos = dir === PLATFORM_LOGOS_SRC_DIR;
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".svg"))) {
+      let name = toPascalCase(file);
+      if (isActions) name = "Action" + name;
+      if (isLogos) name = name + "Logo";
+      const caseName = name.charAt(0).toLowerCase() + name.slice(1);
+      // Index by lowercase for case-insensitive lookup
+      iconCaseLookup.set(name.toLowerCase(), caseName);
+      // Also index without "Icon" suffix for action icons referenced as "ActionTableIcon"
+      const withSuffix = name + "Icon";
+      iconCaseLookup.set(withSuffix.toLowerCase(), caseName);
+    }
+  }
+
+  const entries = [];
+
+  for (const entry of readdirSync(MCP_SERVERS_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const serverDir = resolve(MCP_SERVERS_DIR, entry.name);
+
+    for (const file of readdirSync(serverDir).filter((f) => f.endsWith("metadata.ts"))) {
+      const content = readFileSync(resolve(serverDir, file), "utf-8");
+      const match = content.match(/icon:\s*"([^"]+)"/);
+      if (!match) continue;
+
+      const iconName = match[1]; // e.g. "SlackLogo", "ActionTableIcon"
+      const swiftCase = iconCaseLookup.get(iconName.toLowerCase());
+      if (!swiftCase) {
+        console.warn(`  Warning: icon "${iconName}" not found in SparkleIcon, skipping ${entry.name}`);
+        continue;
+      }
+
+      let serverName = entry.name;
+      if (file !== "metadata.ts") {
+        const prefix = file.replace(/_?metadata\.ts$/, "");
+        if (prefix) serverName = `${entry.name}_${prefix}`;
+      }
+
+      entries.push({ serverName, swiftCase });
+    }
+  }
+
+  // Sort for deterministic output
+  entries.sort((a, b) => a.serverName.localeCompare(b.serverName));
+
+  let lines = [];
+  lines.push(HEADER);
+  lines.push("import SwiftUI\n");
+  lines.push("/// Maps internal MCP server names to their SparkleIcon.");
+  lines.push("/// Generated from front/lib/api/actions/servers/*/metadata.ts");
+  lines.push("public enum MCPServerIcon {");
+  lines.push("    public static func icon(for serverName: String) -> SparkleIcon? {");
+  lines.push("        switch serverName {");
+
+  // Group entries that share the same swiftCase for compact output
+  const byIcon = new Map();
+  for (const { serverName, swiftCase } of entries) {
+    if (!byIcon.has(swiftCase)) byIcon.set(swiftCase, []);
+    byIcon.get(swiftCase).push(serverName);
+  }
+
+  for (const [swiftCase, serverNames] of byIcon) {
+    const cases = serverNames.map((n) => `"${n}"`).join(", ");
+    lines.push(`        case ${cases}: .${swiftCase}`);
+  }
+
+  lines.push("        default: nil");
+  lines.push("        }");
+  lines.push("    }");
+  lines.push("}");
+
+  return { swift: lines.join("\n") + "\n", count: entries.length };
+}
+
 // --- Main ---
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -527,6 +611,10 @@ console.log("Generating Icons...");
 const iconResult = generateIcons();
 writeFileSync(resolve(OUTPUT_DIR, "SparkleIcon.swift"), iconResult.swift);
 
+console.log("Generating MCP Server Icon mapping...");
+const mcpResult = generateMCPServerIcons();
+writeFileSync(resolve(OUTPUT_DIR, "MCPServerIcon.swift"), mcpResult.swift);
+
 console.log(
   `Done! Generated tokens in ${OUTPUT_DIR}\n` +
     `  - Colors.swift\n` +
@@ -534,5 +622,6 @@ console.log(
     `  - DustLogo.swift (${logoResult.count} logo variants)\n` +
     `  - Logos.xcassets (${logoResult.count} image sets)\n` +
     `  - SparkleIcon.swift (${iconResult.count} icons)\n` +
-    `  - Icons.xcassets (${iconResult.count} image sets)`
+    `  - Icons.xcassets (${iconResult.count} image sets)\n` +
+    `  - MCPServerIcon.swift (${mcpResult.count} server mappings)`
 );

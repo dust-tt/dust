@@ -6,6 +6,7 @@ struct MessageBubbleView: View {
     let message: ConversationMessage
     let currentUserEmail: String
     var streamingPhase: AgentStreamingPhase = .idle
+    var activeActions: [ActiveAction] = []
 
     var body: some View {
         switch message {
@@ -16,7 +17,11 @@ struct MessageBubbleView: View {
                 OtherUserMessageBubble(message: msg)
             }
         case let .agent(msg):
-            AgentMessageBubble(message: msg, streamingPhase: streamingPhase)
+            AgentMessageBubble(
+                message: msg,
+                streamingPhase: streamingPhase,
+                activeActions: activeActions
+            )
         }
     }
 }
@@ -66,6 +71,7 @@ struct OtherUserMessageBubble: View {
 struct AgentMessageBubble: View {
     let message: AgentMessage
     var streamingPhase: AgentStreamingPhase = .idle
+    var activeActions: [ActiveAction] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -77,17 +83,12 @@ struct AgentMessageBubble: View {
                     .foregroundStyle(Color.dustForeground)
             }
 
-            // Show chain of thought while streaming
-            if message.isStreaming,
-               let chainOfThought = message.chainOfThought,
-               !chainOfThought.isEmpty
-            {
-                ThinkingBubble(text: chainOfThought)
-            }
-
-            // Activity chip for streaming state
             if message.isStreaming {
-                ActivityChip(phase: streamingPhase)
+                StreamingStatusView(
+                    phase: streamingPhase,
+                    activeActions: activeActions,
+                    chainOfThought: message.chainOfThought
+                )
             }
 
             // Show content (streamed or final)
@@ -103,129 +104,154 @@ struct AgentMessageBubble: View {
     }
 }
 
-// MARK: - Activity Chip
+// MARK: - Streaming Status
 
-struct ActivityChip: View {
+struct StreamingStatusView: View {
     let phase: AgentStreamingPhase
+    let activeActions: [ActiveAction]
+    let chainOfThought: String?
 
     var body: some View {
-        if phase != .idle {
-            HStack(spacing: 6) {
-                icon
-
-                Text(label)
-                    .sparkleCopyXs()
-                    .foregroundStyle(labelColor)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(backgroundColor)
-            .clipShape(Capsule())
+        if isBlockingState {
+            blockingChip
+        } else {
+            statusArea
         }
     }
 
+    // MARK: - Thinking / Acting / Generating
+
+    private var statusArea: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Chain of thought text, visible while it streams in
+            if let text = chainOfThought, !text.isEmpty {
+                Text(text)
+                    .sparkleCopyXs()
+                    .foregroundStyle(Color.dustFaint)
+                    .lineSpacing(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Active actions
+            if !activeActions.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(activeActions) { action in
+                        ActionRow(action: action)
+                    }
+                }
+                .padding(.top, chainOfThought?.isEmpty == false ? 6 : 0)
+            } else {
+                // Thinking or generating (no active actions)
+                HStack(spacing: 6) {
+                    PulsingDot()
+                        .frame(width: 14, height: 14)
+
+                    Text(phase == .generating ? "Writing…" : "Thinking…")
+                        .sparkleCopyXs()
+                        .foregroundStyle(Color.dustFaint)
+                        .lineLimit(1)
+                }
+                .padding(.top, chainOfThought?.isEmpty == false ? 6 : 0)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Blocking states
+
+    private var blockingChip: some View {
+        HStack(spacing: 6) {
+            blockingIcon
+                .frame(width: 14, height: 14)
+
+            Text(blockingLabel)
+                .sparkleCopyXs()
+                .foregroundStyle(Color.warning600)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.warning100)
+        .clipShape(Capsule())
+    }
+
     @ViewBuilder
-    private var icon: some View {
-        if isBlockingState {
-            sparkleIcon.image
+    private var blockingIcon: some View {
+        switch phase {
+        case .approvalRequired:
+            SparkleIcon.stopSign.image
                 .resizable()
-                .frame(width: 12, height: 12)
-                .foregroundStyle(labelColor)
-        } else {
-            ProgressView()
-                .scaleEffect(0.6)
+                .scaledToFit()
+                .foregroundStyle(Color.warning600)
+        default:
+            SparkleIcon.lock.image
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.warning600)
+        }
+    }
+
+    private var blockingLabel: String {
+        switch phase {
+        case let .personalAuthRequired(provider): "Authentication required (\(provider))"
+        case let .fileAuthRequired(fileName): "File access required (\(fileName))"
+        case .approvalRequired: "Approval required"
+        default: ""
         }
     }
 
     private var isBlockingState: Bool {
         switch phase {
-        case .personalAuthRequired, .fileAuthRequired, .approvalRequired:
-            true
-        default:
-            false
-        }
-    }
-
-    private var sparkleIcon: SparkleIcon {
-        switch phase {
-        case .personalAuthRequired:
-            .lock
-        case .fileAuthRequired:
-            .lock
-        case .approvalRequired:
-            .stopSign
-        default:
-            .arrowPath
-        }
-    }
-
-    private var labelColor: Color {
-        isBlockingState ? Color.warning600 : Color.dustFaint
-    }
-
-    private var backgroundColor: Color {
-        isBlockingState ? Color.warning100 : Color.dustMutedBackground
-    }
-
-    private var label: String {
-        switch phase {
-        case .idle:
-            ""
-        case .thinking:
-            "Thinking…"
-        case let .acting(label):
-            label
-        case .generating:
-            "Writing…"
-        case let .personalAuthRequired(provider):
-            "Authentication required (\(provider))"
-        case let .fileAuthRequired(fileName):
-            "File access required (\(fileName))"
-        case .approvalRequired:
-            "Approval required"
+        case .personalAuthRequired, .fileAuthRequired, .approvalRequired: true
+        default: false
         }
     }
 }
 
-// MARK: - Thinking Bubble
+// MARK: - Action Row
 
-struct ThinkingBubble: View {
-    let text: String
-    @State private var isExpanded = false
+struct ActionRow: View {
+    let action: ActiveAction
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    SparkleIcon.brain.image
-                        .resizable()
-                        .frame(width: 11, height: 11)
-                    Text("Thinking")
-                        .sparkleCopyXs()
-                    (isExpanded ? SparkleIcon.chevronUp : SparkleIcon.chevronDown).image
-                        .resizable()
-                        .frame(width: 9, height: 9)
-                }
-                .foregroundStyle(Color.dustFaint)
-            }
-            .buttonStyle(.plain)
+        HStack(spacing: 6) {
+            icon
+                .frame(width: 14, height: 14)
 
-            if isExpanded {
-                Text(text)
-                    .sparkleCopyXs()
-                    .foregroundStyle(Color.dustFaint)
-                    .lineSpacing(3)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(Color.dustFaint.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
+            Text(action.label)
+                .sparkleCopyXs()
+                .foregroundStyle(Color.dustFaint)
+                .lineLimit(1)
         }
-        .padding(.leading, 4)
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        if let serverIcon = action.serverName.flatMap(MCPServerIcon.icon(for:)) {
+            serverIcon.image
+                .resizable()
+                .scaledToFit()
+        } else {
+            PulsingDot()
+        }
+    }
+}
+
+// MARK: - Pulsing Dot
+
+struct PulsingDot: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        Circle()
+            .fill(Color.dustFaint)
+            .frame(width: 6, height: 6)
+            .opacity(isAnimating ? 0.3 : 1.0)
+            .animation(
+                .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                value: isAnimating
+            )
+            .onAppear { isAnimating = true }
     }
 }
 

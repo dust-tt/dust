@@ -17,6 +17,8 @@ final class ConversationDetailViewModel: ObservableObject {
 
     /// Streaming phase for the currently streaming agent message (if any).
     @Published var streamingPhase: AgentStreamingPhase = .idle
+    /// Currently running actions (tools executing in parallel).
+    @Published var activeActions: [ActiveAction] = []
     /// sId of the message currently being streamed.
     @Published var streamingMessageId: String?
 
@@ -209,13 +211,20 @@ final class ConversationDetailViewModel: ObservableObject {
             handleGenerationTokens(tokens, messageId: messageId)
 
         case let .toolParams(params):
-            let label = params.action.displayLabels?.running
-                ?? params.action.toolName
-                ?? "Working…"
-            streamingPhase = .acting(label: label)
+            let action = ActiveAction(
+                id: params.action.id,
+                label: params.action.displayLabels?.running ?? params.action.toolName ?? "Working…",
+                serverName: params.action.internalMCPServerName
+            )
+            if !activeActions.contains(where: { $0.id == action.id }) {
+                activeActions.append(action)
+            }
 
-        case .agentActionSuccess:
-            streamingPhase = .thinking
+        case let .agentActionSuccess(event):
+            activeActions.removeAll { $0.id == event.action.id }
+            if activeActions.isEmpty {
+                streamingPhase = .thinking
+            }
 
         case let .agentMessageSuccess(success):
             finalizeMessage(messageId: messageId, status: .succeeded, from: success.message)
@@ -270,6 +279,7 @@ final class ConversationDetailViewModel: ObservableObject {
             msg.status = status
         }
         streamingPhase = .idle
+        activeActions = []
         streamingMessageId = nil
     }
 
