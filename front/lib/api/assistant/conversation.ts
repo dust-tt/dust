@@ -891,7 +891,7 @@ export async function postUserMessage(
     }
   }
   // API key invocations are not audit-logged for agent.executed — the key id
-  // is already captured by api_key.used if enabled.
+  // can be captured by api_key.used once that event is enabled.
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
   if (agentMessages.length > 0) {
