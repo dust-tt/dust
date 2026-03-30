@@ -9,8 +9,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
 
 const IMPORT_CONCURRENCY = 4;
-const NO_DETECTED_SKILLS_ERROR_MESSAGE =
-  "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).";
 
 type FileImportSource = "api" | "local_file";
 
@@ -43,7 +41,7 @@ export async function importSkillsFromFiles(
 
   const detectedSkills = detectResult.value;
   if (detectedSkills.length === 0) {
-    return new Err(new Error(NO_DETECTED_SKILLS_ERROR_MESSAGE));
+    return new Err(new Error("No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification)."));
   }
 
   const requestedNames = names ? new Set(names) : null;
