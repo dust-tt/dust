@@ -28,9 +28,9 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Avatar,
   BoltIcon,
   Button,
-  ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
@@ -123,6 +123,7 @@ interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
   currentUserId: string;
+  isFirstInGroup: boolean;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
@@ -133,6 +134,7 @@ export function UserMessage({
   citations,
   conversationId,
   currentUserId,
+  isFirstInGroup,
   isLastMessage,
   message,
   owner,
@@ -287,24 +289,20 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <ConversationMessageContainer
-          messageType={isCurrentUser ? "me" : "user"}
-          type="user"
+        <div
           className={cn(
-            isCurrentUser ? "ml-auto" : undefined,
-            "relative min-w-60 max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
-            actionMenuBottomMargin
+            "flex flex-col",
+            isCurrentUser ? "flex-end gap-1" : "flex-start"
           )}
-          ref={userMessageHoveredRef}
         >
-          <ConversationMessageAvatar
-            className="flex"
-            avatarUrl={pictureUrl}
-            name={name}
-            type="user"
-          />
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="inline-flex items-center justify-between gap-0.5">
+          {!isCurrentUser && isFirstInGroup && (
+            <div className="mb-1 flex items-center gap-1.5">
+              <Avatar
+                visual={pictureUrl}
+                name={name ?? ""}
+                isRounded
+                size="xs"
+              />
               <ConversationMessageTitle
                 name={name}
                 timestamp={timestamp}
@@ -327,24 +325,79 @@ export function UserMessage({
                 renderName={renderName}
               />
             </div>
-            <ConversationMessageContent
-              citations={citations}
-              type="user"
-              className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
-            >
-              {isDeleted ? (
-                <DeletedMessage />
-              ) : (
-                <UserMessageMarkdown
-                  owner={owner}
+          )}
+          {isCurrentUser && isFirstInGroup && (
+            <div className="inline-flex items-center justify-between gap-0.5 self-end">
+              <ConversationMessageTitle
+                name={undefined}
+                timestamp={timestamp}
+                infoChip={
+                  displayChip ? (
+                    <>
+                      {isTriggeredOrigin(message.context.origin) && (
+                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                          <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {message.version > 0 && !isDeleted && (
+                        <span className="text-xs text-faint dark:text-muted-foreground-night">
+                          (edited)
+                        </span>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                renderName={() => null}
+              />
+            </div>
+          )}
+          <ConversationMessageContainer
+            messageType={isCurrentUser ? "me" : "user"}
+            type="user"
+            className={cn(
+              isCurrentUser ? "ml-auto" : undefined,
+              "relative max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
+              actionMenuBottomMargin
+            )}
+            ref={userMessageHoveredRef}
+          >
+            <div className="flex min-w-0 flex-col gap-1">
+              <ConversationMessageContent
+                citations={citations}
+                type="user"
+                className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+              >
+                {isDeleted ? (
+                  <DeletedMessage />
+                ) : (
+                  <UserMessageMarkdown
+                    owner={owner}
+                    message={message}
+                    isLastMessage={isLastMessage}
+                  />
+                )}
+              </ConversationMessageContent>
+              {showBottomActionMenu && (
+                <ActionMenu
+                  mode="bottom"
+                  isCurrentUser={isCurrentUser}
+                  isDeleted={isDeleted}
+                  showActions={showActions}
+                  isUserMessageHovered={isUserMessageHovered}
                   message={message}
-                  isLastMessage={isLastMessage}
+                  onReactionToggle={onReactionToggle}
+                  handleEditMessage={handleEditMessage}
+                  handleDeleteMessage={handleDeleteMessage}
+                  canDelete={canDelete}
+                  canEdit={canEdit}
+                  conversationId={conversationId}
+                  owner={owner}
                 />
               )}
-            </ConversationMessageContent>
-            {showBottomActionMenu && (
+            </div>
+            {showSideActionMenu && (
               <ActionMenu
-                mode="bottom"
+                mode="side"
                 isCurrentUser={isCurrentUser}
                 isDeleted={isDeleted}
                 showActions={showActions}
@@ -359,25 +412,8 @@ export function UserMessage({
                 owner={owner}
               />
             )}
-          </div>
-          {showSideActionMenu && (
-            <ActionMenu
-              mode="side"
-              isCurrentUser={isCurrentUser}
-              isDeleted={isDeleted}
-              showActions={showActions}
-              isUserMessageHovered={isUserMessageHovered}
-              message={message}
-              onReactionToggle={onReactionToggle}
-              handleEditMessage={handleEditMessage}
-              handleDeleteMessage={handleDeleteMessage}
-              canDelete={canDelete}
-              canEdit={canEdit}
-              conversationId={conversationId}
-              owner={owner}
-            />
-          )}
-        </ConversationMessageContainer>
+          </ConversationMessageContainer>
+        </div>
       )}
 
       {showAgentSuggestions && (
@@ -430,7 +466,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={BoltIcon} />}
+      trigger={<Icon size="xs" visual={BoltIcon} className="h-3.5 w-3.5" />}
     />
   );
 }
@@ -443,7 +479,7 @@ const actionMenuContainerVariants = cva(
     variants: {
       mode: {
         side: "",
-        bottom: "translate-y-[calc(100%+2px)]",
+        bottom: "translate-y-[calc(100%+4px)]",
       },
       isCurrentUser: {
         true: "",
@@ -497,6 +533,7 @@ function ActionMenu({
   owner,
 }: ActionMenuProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const sendNotification = useSendNotification();
   const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
     useHover();
@@ -506,7 +543,8 @@ function ActionMenu({
     mode === "side" &&
     !isUserMessageHovered &&
     !isReactionsHovered &&
-    !isMenuOpen;
+    !isMenuOpen &&
+    !isEmojiPickerOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -573,6 +611,7 @@ function ActionMenu({
           <MessageEmojiPicker
             key="emoji-picker"
             onEmojiSelect={onReactionToggle}
+            onOpenChange={setIsEmojiPickerOpen}
           />
           {actions.length > 0 && (
             <DropdownMenu
