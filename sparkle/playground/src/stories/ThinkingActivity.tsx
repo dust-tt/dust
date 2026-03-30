@@ -1517,17 +1517,10 @@ export default function ThinkingActivity() {
             )}
             {phase === "idle" && inputValue ? (
               <div onClick={handleSend}>
-                <InputBar
-                  key={inputValue}
-                  initialValue={inputValue}
-                  className={phase === "asking" && introComplete ? "s-rounded-t-none" : ""}
-                />
+                <InputBar key={inputValue} initialValue={inputValue} />
               </div>
             ) : (
-              <InputBar
-                placeholder="Reply..."
-                className={phase === "asking" && introComplete ? "s-rounded-t-none" : ""}
-              />
+              <InputBar placeholder="Reply..." />
             )}
           </div>
         </div>
