@@ -479,7 +479,7 @@ const actionMenuContainerVariants = cva(
     variants: {
       mode: {
         side: "",
-        bottom: "translate-y-[calc(100%+4px)] px-4",
+        bottom: "translate-y-[calc(100%+4px)]",
       },
       isCurrentUser: {
         true: "",
