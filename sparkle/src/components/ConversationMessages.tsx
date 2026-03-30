@@ -160,7 +160,9 @@ export const ConversationMessageTitle = React.forwardRef<
             {timestamp}
           </span>
           {infoChip && (
-            <div className="s-inline-flex s-self-[anchor-center]">{infoChip}</div>
+            <div className="s-inline-flex s-self-[anchor-center]">
+              {infoChip}
+            </div>
           )}
         </div>
         <div className="s-ml-1 s-inline-flex s-items-center">

@@ -466,7 +466,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={BoltIcon} className="h-3.5 w-3.5"/>}
+      trigger={<Icon size="xs" visual={BoltIcon} className="h-3.5 w-3.5" />}
     />
   );
 }
