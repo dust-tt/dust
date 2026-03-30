@@ -20,6 +20,8 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;
 
+  declare groupIds: number[];
+
   declare name: string;
   declare monthlyCapMicroUsd: number | null;
   declare user: NonAttribute<UserModel>;
@@ -71,6 +73,10 @@ KeyModel.init(
       type: DataTypes.BIGINT,
       allowNull: true,
     },
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+    },
   },
   {
     modelName: "keys",
@@ -79,6 +85,7 @@ KeyModel.init(
       { unique: true, fields: ["secret"] },
       { fields: ["userId"] },
       { fields: ["workspaceId"] },
+      { fields: ["groupIds"], using: "gin" },
     ],
   }
 );
