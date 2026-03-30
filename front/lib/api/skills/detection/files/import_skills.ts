@@ -69,7 +69,6 @@ export async function importSkillsFromFiles(
     }
     const reader = readerResult.value;
 
-  
     for (const skill of detectResult.value) {
       allSkills.push(skill);
       readerBySkill.set(skill, reader);
