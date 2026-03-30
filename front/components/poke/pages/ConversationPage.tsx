@@ -20,10 +20,7 @@ import {
   ClipboardCheckIcon,
   ClipboardIcon,
   CodeBlock,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
+  ConversationMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -51,44 +48,41 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
   return (
     <div className="flex flex-grow flex-col">
       <div className="max-w-full self-end">
-        <ConversationMessageContainer messageType="user" type="user">
-          <ConversationMessageAvatar
-            avatarUrl={message.user?.image}
-            name={message.user?.fullName ?? message.user?.username}
-            type="user"
-          />
-          <ConversationMessageContent type="user">
-            {hasDustSystemTag && !isExpanded ? (
-              <button
-                onClick={() => setIsExpanded(true)}
-                className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
-              >
-                <ChevronDownIcon className="h-4 w-4" />
-                <span>Hidden System Message (click to expand)</span>
-              </button>
-            ) : (
-              <>
-                {hasDustSystemTag && (
-                  <button
-                    onClick={() => setIsExpanded(false)}
-                    className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                    <span>Hide System Message</span>
-                  </button>
-                )}
-                {useMarkdown ? (
-                  <Markdown content={message.content} />
-                ) : (
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                )}
-              </>
-            )}
-            <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-              date: {new Date(message.created).toLocaleString()}
-            </div>
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
+        <ConversationMessage
+          pictureUrl={message.user?.image}
+          name={message.user?.fullName ?? message.user?.username}
+          type="user"
+        >
+          {hasDustSystemTag && !isExpanded ? (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+            >
+              <ChevronDownIcon className="h-4 w-4" />
+              <span>Hidden System Message (click to expand)</span>
+            </button>
+          ) : (
+            <>
+              {hasDustSystemTag && (
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  <span>Hide System Message</span>
+                </button>
+              )}
+              {useMarkdown ? (
+                <Markdown content={message.content} />
+              ) : (
+                <div className="whitespace-pre-wrap">{message.content}</div>
+              )}
+            </>
+          )}
+          <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            date: {new Date(message.created).toLocaleString()}
+          </div>
+        </ConversationMessage>
       </div>
     </div>
   );
@@ -125,166 +119,152 @@ const AgentMessageView = ({
 
   return (
     <div className="w-full">
-      <ConversationMessageContainer messageType="agent" type="agent">
-        <ConversationMessageAvatar
-          avatarUrl={message.configuration.pictureUrl}
-          name={message.configuration.name}
-          type="agent"
-        />
-        <ConversationMessageTitle
-          name={message.configuration.name}
-          renderName={() => (
-            <>
-              {message.configuration.name}{" "}
-              <LinkWrapper
-                href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
-                target="_blank"
-                className="text-highlight-500"
-              >
-                ({message.configuration.sId})
-              </LinkWrapper>
-            </>
-          )}
-        />
-        <ConversationMessageContent type="agent">
-          {message.content &&
-            (useMarkdown ? (
-              <Markdown content={message.content} />
-            ) : (
-              <div className="whitespace-pre-wrap">{message.content}</div>
-            ))}
-          {message.error && (
-            <div className="text-warning">{message.error.message}</div>
-          )}
-          <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            date: {new Date(message.created).toLocaleString()} • message version
-            : {message.version} • message sId : {message.sId} {" • "} agent sId
-            :
+      <ConversationMessage
+        pictureUrl={message.configuration.pictureUrl}
+        name={message.configuration.name}
+        renderName={() => (
+          <>
+            {message.configuration.name}{" "}
             <LinkWrapper
               href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
               target="_blank"
               className="text-highlight-500"
             >
-              {message.configuration.sId}
+              ({message.configuration.sId})
             </LinkWrapper>
-            {message.runUrls && (
-              <>
-                {" • "}
-                agent logs :{" "}
-                {message.runUrls.map(({ runId, url, isLLM }, i) => (
-                  <span
-                    key={`runId-${i}`}
-                    className="inline-flex items-center space-x-1"
-                  >
+          </>
+        )}
+        type="agent"
+      >
+        {message.content &&
+          (useMarkdown ? (
+            <Markdown content={message.content} />
+          ) : (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ))}
+        {message.error && (
+          <div className="text-warning">{message.error.message}</div>
+        )}
+        <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          date: {new Date(message.created).toLocaleString()} • message version :{" "}
+          {message.version} • message sId : {message.sId} {" • "} agent sId :
+          <LinkWrapper
+            href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
+            target="_blank"
+            className="text-highlight-500"
+          >
+            {message.configuration.sId}
+          </LinkWrapper>
+          {message.runUrls && (
+            <>
+              {" • "}
+              agent logs :{" "}
+              {message.runUrls.map(({ runId, url, isLLM }, i) => (
+                <span
+                  key={`runId-${i}`}
+                  className="inline-flex items-center space-x-1"
+                >
+                  <a href={url} target="_blank" className="text-highlight-500">
+                    {runId.substring(0, 16)}
+                  </a>
+                  {isLLM && (
+                    <>
+                      <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
+                        LLM
+                      </span>
+                      {langfuseUiBaseUrl && (
+                        <a
+                          href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BdustTraceId%3B%3D%3B${runId}`}
+                          target="_blank"
+                          className="text-highlight-500"
+                          title="View in Langfuse"
+                        >
+                          [LF]
+                        </a>
+                      )}
+                    </>
+                  )}{" "}
+                </span>
+              ))}
+            </>
+          )}
+          {message.modelInteractionDurationMs != null && (
+            <>
+              {" • "}LLM:{" "}
+              {(message.modelInteractionDurationMs / 1000).toFixed(1)}s
+            </>
+          )}
+          {message.completionDurationMs != null && (
+            <>
+              {" • "}total: {(message.completionDurationMs / 1000).toFixed(1)}s
+            </>
+          )}
+        </div>
+        {message.actions.map((a, i) => {
+          const isExpanded = expandedActions.has(i);
+          return (
+            <div key={`action-${i}`} className="mt-1">
+              <div
+                className={classNames(
+                  "flex items-center pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
+                )}
+              >
+                {a.mcpIO && (
+                  <Button
+                    variant={a.mcpIO?.isError ? "warning" : "primary"}
+                    size="xs"
+                    icon={
+                      isExpanded
+                        ? ChevronDownIcon
+                        : a.mcpIO?.isError
+                          ? XMarkIcon
+                          : CheckIcon
+                    }
+                    className="mr-2"
+                    onClick={() => toggleAction(i)}
+                  />
+                )}
+                {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
+                step {a.step}: <b className="px-1">{a.functionCallName}()</b>
+                {"executionDurationMs" in a &&
+                  typeof a.executionDurationMs === "number" && (
+                    <span className="ml-1 text-xs">
+                      ({(a.executionDurationMs / 1000).toFixed(1)}s)
+                    </span>
+                  )}
+                {a.runId && (
+                  <>
+                    log:{" "}
                     <a
-                      href={url}
+                      key={`runId-${i}`}
+                      href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
                       target="_blank"
                       className="text-highlight-500"
                     >
-                      {runId.substring(0, 16)}
+                      {a.runId.substring(0, 8)}{" "}
                     </a>
-                    {isLLM && (
-                      <>
-                        <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
-                          LLM
-                        </span>
-                        {langfuseUiBaseUrl && (
-                          <a
-                            href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BdustTraceId%3B%3D%3B${runId}`}
-                            target="_blank"
-                            className="text-highlight-500"
-                            title="View in Langfuse"
-                          >
-                            [LF]
-                          </a>
-                        )}
-                      </>
-                    )}{" "}
-                  </span>
-                ))}
-              </>
-            )}
-            {message.modelInteractionDurationMs != null && (
-              <>
-                {" • "}LLM:{" "}
-                {(message.modelInteractionDurationMs / 1000).toFixed(1)}s
-              </>
-            )}
-            {message.completionDurationMs != null && (
-              <>
-                {" • "}total: {(message.completionDurationMs / 1000).toFixed(1)}
-                s
-              </>
-            )}
-          </div>
-          {message.actions.map((a, i) => {
-            const isExpanded = expandedActions.has(i);
-            return (
-              <div key={`action-${i}`} className="mt-1">
-                <div
-                  className={classNames(
-                    "flex items-center pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
-                  )}
-                >
-                  {a.mcpIO && (
-                    <Button
-                      variant={a.mcpIO?.isError ? "warning" : "primary"}
-                      size="xs"
-                      icon={
-                        isExpanded
-                          ? ChevronDownIcon
-                          : a.mcpIO?.isError
-                            ? XMarkIcon
-                            : CheckIcon
-                      }
-                      className="mr-2"
-                      onClick={() => toggleAction(i)}
-                    />
-                  )}
-                  {a.created && (
-                    <>{new Date(a.created).toLocaleTimeString()}: </>
-                  )}
-                  step {a.step}: <b className="px-1">{a.functionCallName}()</b>
-                  {"executionDurationMs" in a &&
-                    typeof a.executionDurationMs === "number" && (
-                      <span className="ml-1 text-xs">
-                        ({(a.executionDurationMs / 1000).toFixed(1)}s)
-                      </span>
-                    )}
-                  {a.runId && (
-                    <>
-                      log:{" "}
-                      <a
-                        key={`runId-${i}`}
-                        href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
-                        target="_blank"
-                        className="text-highlight-500"
-                      >
-                        {a.runId.substring(0, 8)}{" "}
-                      </a>
-                    </>
-                  )}
-                </div>
-                {a.mcpIO && isExpanded && (
-                  <div className="ml-8 mt-2">
-                    <CodeBlock wrapLongLines className="language-json">
-                      {JSON.stringify(
-                        {
-                          params: a.mcpIO.params,
-                          output: a.mcpIO.output,
-                          generatedFiles: a.mcpIO.generatedFiles,
-                        },
-                        undefined,
-                        2
-                      ) ?? ""}
-                    </CodeBlock>
-                  </div>
+                  </>
                 )}
               </div>
-            );
-          })}
-        </ConversationMessageContent>
-      </ConversationMessageContainer>
+              {a.mcpIO && isExpanded && (
+                <div className="ml-8 mt-2">
+                  <CodeBlock wrapLongLines className="language-json">
+                    {JSON.stringify(
+                      {
+                        params: a.mcpIO.params,
+                        output: a.mcpIO.output,
+                        generatedFiles: a.mcpIO.generatedFiles,
+                      },
+                      undefined,
+                      2
+                    ) ?? ""}
+                  </CodeBlock>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </ConversationMessage>
     </div>
   );
 };

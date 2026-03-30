@@ -59,6 +59,10 @@ export type {
 } from "./ConversationListItem";
 export { ConversationListItem, ReplySection } from "./ConversationListItem";
 export {
+  ConversationContainer,
+  ConversationMessage,
+} from "./ConversationMessage";
+export {
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
