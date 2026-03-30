@@ -26,6 +26,7 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -92,9 +93,19 @@ async function verifyWorkOSWorkspace<E extends object, R>(
     }
   }
 
-  // For dsync events, verify the directoryId matches the current organization's
-  // active directory. Events from disconnected directories should be ignored.
+  // For dsync events, verify the plan allows SCIM and the directoryId matches
+  // the current organization's active directory.
   if (isRecord(event) && typeof event.directoryId === "string") {
+    const subscription =
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+    if (!subscription?.getPlan().limits.users.isSCIMAllowed) {
+      logger.warn(
+        { workspaceId: workspace.sId, organizationId },
+        "SCIM event received but workspace plan does not allow SCIM, skipping"
+      );
+      return;
+    }
+
     const directoriesResult = await getWorkOSOrganizationDSyncDirectories({
       workspace,
     });

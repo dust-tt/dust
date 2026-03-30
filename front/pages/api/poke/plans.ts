@@ -4,6 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
 import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -128,8 +129,7 @@ async function handler(
         });
       }
 
-      await PlanModel.upsert({
-        code: body.code,
+      const planFields = {
         name: body.name,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxImagesPerWeek: body.limits.capabilities.images.maxImagesPerWeek,
@@ -156,7 +156,19 @@ async function handler(
         trialPeriodDays: body.trialPeriodDays,
         canUseProduct: body.limits.canUseProduct,
         isByok: body.isByok,
-      });
+      };
+
+      let plan = await PlanModel.findOne({ where: { code: body.code } });
+      if (plan) {
+        await plan.update(planFields);
+      } else {
+        plan = await PlanModel.create({ code: body.code, ...planFields });
+      }
+
+      // Invalidate subscription caches for all workspaces on this plan,
+      // since the cached subscription includes a snapshot of plan data.
+      await SubscriptionResource.invalidateSubscriptionCacheForPlan(plan.id);
+
       res.status(200).json({
         plan: body,
       });
