@@ -4,6 +4,7 @@ import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { PortProvider } from "@extension/platforms/firefox/context/PortContext";
 import { FirefoxPlatformService } from "@extension/platforms/firefox/services/platform";
+import { AuthenticatedImage } from "@extension/shared/AuthenticatedImage";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
 import { useCaptureActions } from "@extension/shared/hooks/useCaptureActions";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
@@ -26,7 +27,12 @@ export const FirefoxApp = () => {
             <ExtensionAuthProvider>
               <ExtensionFetcherProvider>
                 <SparkleContext.Provider
-                  value={{ components: { link: ReactRouterLinkWrapper } }}
+                  value={{
+                    components: {
+                      link: ReactRouterLinkWrapper,
+                      image: AuthenticatedImage,
+                    },
+                  }}
                 >
                   <RootLayout>
                     <FirefoxExtensionWrapper>

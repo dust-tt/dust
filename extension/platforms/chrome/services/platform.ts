@@ -27,6 +27,10 @@ export class ChromePlatformService extends PlatformService {
     );
   }
 
+  captureVisibleTab(): Promise<string> {
+    return chrome.tabs.captureVisibleTab();
+  }
+
   // Chrome specific helpers.
 
   // Store version for force update.

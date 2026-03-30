@@ -21,4 +21,8 @@ export class FrontPlatformService extends PlatformService {
       mcpService
     );
   }
+
+  captureVisibleTab(): Promise<string> {
+    throw new Error("captureVisibleTab is not supported on this platform.");
+  }
 }
