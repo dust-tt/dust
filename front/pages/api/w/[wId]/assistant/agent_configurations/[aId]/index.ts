@@ -10,16 +10,24 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { AgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
-};
-export type DeleteAgentConfigurationResponseBody = {
-  success: boolean;
-};
+export const GetAgentConfigurationResponseBodySchema = z.object({
+  agentConfiguration: AgentConfigurationSchema,
+});
+export type GetAgentConfigurationResponseBody = z.infer<
+  typeof GetAgentConfigurationResponseBodySchema
+>;
+
+export const DeleteAgentConfigurationResponseBodySchema = z.object({
+  success: z.boolean(),
+});
+export type DeleteAgentConfigurationResponseBody = z.infer<
+  typeof DeleteAgentConfigurationResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

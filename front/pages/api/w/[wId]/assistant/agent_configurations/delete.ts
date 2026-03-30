@@ -10,9 +10,12 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type PostAgentConfigurationArchiveResponseBody = {
-  archived: number;
-};
+export const PostAgentConfigurationArchiveResponseBodySchema = z.object({
+  archived: z.number(),
+});
+export type PostAgentConfigurationArchiveResponseBody = z.infer<
+  typeof PostAgentConfigurationArchiveResponseBodySchema
+>;
 
 export const PostAgentConfigurationArchive = z.object({
   agentConfigurationIds: z.array(z.string()),

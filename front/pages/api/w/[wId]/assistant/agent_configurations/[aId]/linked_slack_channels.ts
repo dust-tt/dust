@@ -12,9 +12,12 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type PatchLinkedSlackChannelsResponseBody = {
-  success: true;
-};
+export const PatchLinkedSlackChannelsResponseBodySchema = z.object({
+  success: z.literal(true),
+});
+export type PatchLinkedSlackChannelsResponseBody = z.infer<
+  typeof PatchLinkedSlackChannelsResponseBodySchema
+>;
 
 export const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),

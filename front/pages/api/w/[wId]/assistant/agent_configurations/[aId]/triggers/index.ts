@@ -7,19 +7,28 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import { TriggerSchema } from "@app/types/assistant/triggers";
+import {
+  FullTriggerSchema,
+  TriggerSchema,
+} from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export interface GetTriggersResponseBody {
-  triggers: (TriggerType & {
-    isSubscriber: boolean;
-    isEditor: boolean;
-    editorName?: string;
-  })[];
-}
+export const GetTriggersResponseBodySchema = z.object({
+  triggers: z.array(
+    FullTriggerSchema.and(
+      z.object({
+        isSubscriber: z.boolean(),
+        isEditor: z.boolean(),
+        editorName: z.string().optional(),
+      })
+    )
+  ),
+});
+export type GetTriggersResponseBody = z.infer<
+  typeof GetTriggersResponseBodySchema
+>;
 
 const DeleteTriggersRequestBodyCodec = z.object({
   triggerIds: z.array(z.string()),

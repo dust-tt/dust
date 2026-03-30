@@ -11,9 +11,10 @@ const GetLookupRequestSchema = z.object({
   handle: z.string(),
 });
 
-type GetLookupResponseBody = {
-  sId: string;
-};
+const GetLookupResponseBodySchema = z.object({
+  sId: z.string(),
+});
+type GetLookupResponseBody = z.infer<typeof GetLookupResponseBodySchema>;
 
 async function handler(
   req: NextApiRequest,
