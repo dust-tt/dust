@@ -46,7 +46,7 @@ export function TruncatedContent({
   const [exceedsThreshold, setExceedsThreshold] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = contentRef.current;
     if (el) {
       setExceedsThreshold(el.scrollHeight > thresholdPx);
