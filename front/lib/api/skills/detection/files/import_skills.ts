@@ -12,7 +12,7 @@ const IMPORT_CONCURRENCY = 4;
 const NO_DETECTED_SKILLS_ERROR_MESSAGE =
   "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).";
 
-type FileImportSource = "github_action" | "local_file";
+type FileImportSource = "api" | "local_file";
 
 type ImportSkillsResult = {
   imported: SkillResource[];
@@ -34,7 +34,7 @@ function isSkillFromFileImportSource(
     return false;
   }
 
-  if (source !== "github_action" || !repoUrl) {
+  if (source !== "api" || !repoUrl) {
     return true;
   }
 
@@ -50,7 +50,7 @@ function buildSourceMetadata({
   repoUrl?: string;
   source: FileImportSource;
 }) {
-  if (source === "github_action" && repoUrl) {
+  if (source === "api" && repoUrl) {
     return { filePath, repoUrl };
   }
 

@@ -7,7 +7,7 @@ export type SkillStatus = "active" | "archived" | "suggested";
 export const SKILL_SOURCES = [
   "web_app",
   "github",
-  "github_action",
+  "api",
   "local_file",
 ] as const;
 

@@ -85,7 +85,7 @@ function makeSerializedSkill(): SkillType {
     userFacingDescription: "Summarize releases",
     instructions: "Use the changelog.",
     icon: null,
-    source: "github_action",
+    source: "api",
     sourceMetadata: {
       repoUrl: "https://github.com/dust-tt/dust",
       filePath: "skills/release-notes/SKILL.md",
@@ -134,7 +134,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     mockGetFeatureFlags.mockResolvedValue(["sandbox_tools"]);
   });
 
-  it("imports all uploaded skills through the github_action source", async () => {
+  it("imports all uploaded skills through the api source", async () => {
     const { req, res } = makeRequest();
 
     mockParse.mockResolvedValue([
@@ -162,7 +162,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     expect(mockImportSkillsFromFiles).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        source: "github_action",
+        source: "api",
         repoUrl: "https://github.com/dust-tt/dust",
       })
     );

@@ -7,9 +7,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import formidable from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {isString} from "@app/types/shared/utils/general";
 
 export const config = {
   api: {
@@ -82,12 +82,13 @@ async function handler(
     });
   }
 
-  const repoUrl =
-    isString(fields.repoUrl) ? fields.repoUrl : fields.repoUrl?.[0];
+  const repoUrl = isString(fields.repoUrl)
+    ? fields.repoUrl
+    : fields.repoUrl?.[0];
 
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
-    source: "github_action",
+    source: "api",
     repoUrl,
   });
   if (result.isErr()) {
