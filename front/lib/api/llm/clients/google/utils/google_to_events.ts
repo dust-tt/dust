@@ -8,13 +8,11 @@ import type {
 } from "@google/genai";
 import { FinishReason } from "@google/genai";
 import assert from "assert";
-import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 import flatMap from "lodash/flatMap";
 
 export function newId(): string {
-  const uuid = crypto.randomUUID();
-  return blake3(uuid).toString("hex");
+  return crypto.randomUUID().replace(/-/g, "");
 }
 
 type StateContainer = {

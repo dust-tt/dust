@@ -1,5 +1,5 @@
 import assert from "assert";
-import { hash as blake3 } from "blake3/esm/node/hash-fn";
+import { createHash } from "crypto";
 import { join } from "path";
 
 export const GITHUB_CONTENT_NODE_TYPES = [
@@ -134,20 +134,14 @@ export function getCodeDirInternalId(
   codePath: string
 ): string {
   const p = `github-code-${repoId}-dir-${codePath}`;
-  return `github-code-${repoId}-dir-${blake3(p)
-    .toString("hex")
-    .substring(0, 16)}`;
+  return `github-code-${repoId}-dir-${createHash("sha256").update(p).digest("hex").substring(0, 16)}`;
 }
 
 export function getCodeFileInternalId(
   repoId: string | number,
   codePath: string
 ): string {
-  return `github-code-${repoId}-file-${blake3(
-    `github-code-${repoId}-file-${codePath}`
-  )
-    .toString("hex")
-    .substring(0, 16)}`;
+  return `github-code-${repoId}-file-${createHash("sha256").update(`github-code-${repoId}-file-${codePath}`).digest("hex").substring(0, 16)}`;
 }
 
 // Must match https://docs.github.com/en/rest/apps/installations

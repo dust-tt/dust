@@ -2,9 +2,8 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { hash as blake3 } from "blake3";
+import { randomBytes } from "crypto";
 import Sqids from "sqids";
-import { v4 as uuidv4 } from "uuid";
 
 const RESOURCE_S_ID_MIN_LENGTH = 10;
 
@@ -265,8 +264,7 @@ export function getResourceNameAndIdFromSId(sId: string): {
  * Generates 10-character long model SId from [A-Za-z0-9] characters.
  */
 export function generateRandomModelSId(prefix?: string): string {
-  const u = uuidv4();
-  const b = blake3(u, { length: 10 });
+  const b = randomBytes(10);
   const sId = Buffer.from(b)
     .map(uniformByteToCode62)
     .map(alphanumFromCode62)
@@ -286,7 +284,7 @@ export function generateRandomModelSId(prefix?: string): string {
  * length: number of characters to return (default 64).
  */
 export function generateSecureSecret(length = 64): string {
-  const digest = blake3(uuidv4(), { length });
+  const digest = randomBytes(length);
   return Buffer.from(digest)
     .map(uniformByteToCode62)
     .map(alphanumFromCode62)

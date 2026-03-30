@@ -19,10 +19,9 @@ import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, RoleType } from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
-import { hash as blake3 } from "blake3";
+import { createHash, randomBytes } from "crypto";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
 
 type CachedKeyData = Omit<
   Attributes<KeyModel>,
@@ -53,7 +52,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   private user?: UserModel;
 
   static readonly keyCacheKeyResolver = (secret: string) =>
-    `key:secret:${Buffer.from(blake3(secret)).toString("hex")}`;
+    `key:secret:${createHash("sha256").update(secret).digest("hex")}`;
 
   private static async _fetchBySecretUncached(
     secret: string
@@ -150,7 +149,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static createNewSecret() {
-    return `${SECRET_KEY_PREFIX}${Buffer.from(blake3(uuidv4())).toString("hex").slice(0, 32)}`;
+    return `${SECRET_KEY_PREFIX}${randomBytes(16).toString("hex")}`;
   }
 
   static async fetchSystemKeyForWorkspace(workspace: LightWorkspaceType) {

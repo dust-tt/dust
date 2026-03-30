@@ -15,11 +15,11 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import assert from "assert";
-import { hash as blake3 } from "blake3";
+import { createHash } from "crypto";
 import { extname } from "path";
 
 export function hashFileContent(content: Buffer): string {
-  return blake3(content).toString("hex");
+  return createHash("sha256").update(content).digest("hex");
 }
 
 export async function formatCodeContentForUpsert(

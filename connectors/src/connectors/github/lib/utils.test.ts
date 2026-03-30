@@ -3,20 +3,20 @@ import { describe, expect, it } from "vitest";
 import { getCodeDirInternalId, getCodeFileInternalId } from "./utils";
 
 describe("getCodeDirInternalId", () => {
-  // These expected values are computed with blake3 and serve as regression
-  // tests. If blake3 is replaced with a different hash function, these tests
-  // will fail, signaling that all persisted directory IDs would become
-  // inconsistent with the data stored in the database.
+  // These expected values are computed with sha256 and serve as regression
+  // tests. If the hash function is replaced, these tests will fail, signaling
+  // that all persisted directory IDs would become inconsistent with the data
+  // stored in the database.
 
   it("generates a stable id for a nested directory path", () => {
     expect(getCodeDirInternalId(12345678, "src/lib")).toBe(
-      "github-code-12345678-dir-6437271cdac5c663"
+      "github-code-12345678-dir-c1be78f82e917860"
     );
   });
 
   it("generates a stable id for a top-level directory", () => {
     expect(getCodeDirInternalId(12345678, "src")).toBe(
-      "github-code-12345678-dir-ae9f2331f8d32459"
+      "github-code-12345678-dir-bbf5fe09dd6c616c"
     );
   });
 
@@ -45,20 +45,20 @@ describe("getCodeDirInternalId", () => {
 });
 
 describe("getCodeFileInternalId", () => {
-  // These expected values are computed with blake3 and serve as regression
-  // tests. If blake3 is replaced with a different hash function, these tests
-  // will fail, signaling that all persisted file IDs would become inconsistent
-  // with the data stored in the database.
+  // These expected values are computed with sha256 and serve as regression
+  // tests. If the hash function is replaced, these tests will fail, signaling
+  // that all persisted file IDs would become inconsistent with the data stored
+  // in the database.
 
   it("generates a stable id for a nested file path", () => {
     expect(getCodeFileInternalId(12345678, "src/index.ts")).toBe(
-      "github-code-12345678-file-034fa4d252023108"
+      "github-code-12345678-file-1ef397b50b4c8a4c"
     );
   });
 
   it("generates a stable id for a root-level file", () => {
     expect(getCodeFileInternalId(12345678, "README.md")).toBe(
-      "github-code-12345678-file-d104b37c5e461a47"
+      "github-code-12345678-file-34b2cc935e7f9daf"
     );
   });
 

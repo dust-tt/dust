@@ -1,6 +1,6 @@
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import type { LightWorkspaceType } from "@app/types/user";
-import { hash as blake3 } from "blake3";
+import { createHash } from "crypto";
 import { describe, expect, it } from "vitest";
 
 // The function only accesses workspace.sId, so only that field matters here.
@@ -30,13 +30,13 @@ describe("isWorkspaceUsingStaticIP", () => {
     ).toBe(false);
   });
 
-  // Regression test: verifies that blake3 produces the expected deterministic
-  // output for a known input. If blake3 is replaced with a different hash
-  // function, this test will fail, signaling that the hardcoded hash in the
-  // source file must be recomputed with the new algorithm.
-  it("blake3 produces a known deterministic output for a test sId", () => {
-    expect(blake3("test-workspace-sid").toString("hex")).toBe(
-      "cef767c5f6c06be34a6bc6abcded9d1a8dd23985bba73f31143cb2b76ac871ba"
-    );
+  // Regression test: verifies that sha256 produces the expected deterministic
+  // output for a known input. If the hash function is replaced, this test will
+  // fail, signaling that the hardcoded hash in the source file must be
+  // recomputed with the new algorithm.
+  it("sha256 produces a known deterministic output for a test sId", () => {
+    expect(
+      createHash("sha256").update("test-workspace-sid").digest("hex")
+    ).toBe("fcd35684f8fccae8f922ff536688c3fea4729c9b09a700f85b4513d8023bdec4");
   });
 });

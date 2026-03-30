@@ -149,9 +149,9 @@ describe("shouldCrawlLink", () => {
 });
 
 describe("stableIdForUrl", () => {
-  // These expected values are computed with blake3 and serve as regression tests.
-  // If blake3 is replaced with a different hash function, these tests will fail,
-  // signaling that all persisted document IDs would become inconsistent.
+  // These expected values are computed with sha256 and serve as regression tests.
+  // If the hash function is replaced, these tests will fail, signaling that all
+  // persisted document IDs would become inconsistent.
 
   test("generates a stable hex id for a document URL", () => {
     const id = stableIdForUrl({
@@ -159,7 +159,7 @@ describe("stableIdForUrl", () => {
       ressourceType: "document",
     });
     expect(id).toBe(
-      "37c116c576407985ebab61057ebbe2bef272d763a7fd24615323d2db80aeb2c3"
+      "0a27ab9f1e20977651ac525a454216aa9cdb9c10aa83f2431886da1e8d9cb46f"
     );
   });
 
@@ -169,7 +169,7 @@ describe("stableIdForUrl", () => {
       ressourceType: "folder",
     });
     expect(id).toBe(
-      "5c52da5148ba2a5de7d048f860e055ad719ac6e38c03fdf3abccb6701c84e527"
+      "91454800df973a62898c31983f4eb8151eeee4e14cf4c8542372f3d2b76fe7fd"
     );
   });
 
@@ -179,7 +179,7 @@ describe("stableIdForUrl", () => {
       ressourceType: "table",
     });
     expect(id).toBe(
-      "a5a24193f2893d414e7db5ab19dbad21f897c62c40b233cb25ec3ee4b996afc9"
+      "1567a8d6cc0c6b8e298db39ac378162647029ea40db05a0ec106319332003879"
     );
   });
 

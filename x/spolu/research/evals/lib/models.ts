@@ -1,4 +1,4 @@
-import { hash as blake3 } from "blake3";
+import { createHash } from "crypto";
 
 export const ValidProviderTypes = [
   "openai",
@@ -35,8 +35,7 @@ export type ChatQuery = {
 };
 
 export function hashQuery(query: ChatQuery): string {
-  const b = blake3(JSON.stringify(query));
-  return Buffer.from(b).toString("hex");
+  return createHash("sha256").update(JSON.stringify(query)).digest("hex");
 }
 
 export abstract class Model {

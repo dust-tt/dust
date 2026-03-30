@@ -21,7 +21,6 @@ async function buildWorker() {
       external: [
         "@temporalio/worker",
         "@temporalio/common",
-        "blake3",
         "dd-trace",
         "isomorphic-dompurify",
         "tsconfig-paths-webpack-plugin",
