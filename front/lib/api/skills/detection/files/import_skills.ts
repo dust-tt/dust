@@ -1,6 +1,12 @@
-import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/files/detect_skills";
+import { uploadBase64DataToFileStorage } from "@app/lib/api/files/upload";
+import {
+  createZipAttachmentReader,
+  detectSkillsFromZip,
+} from "@app/lib/api/skills/detection/zip/detect_skills";
+import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -8,6 +14,8 @@ import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type formidable from "formidable";
+import { readFile, unlink } from "fs/promises";
+import path from "path";
 
 const IMPORT_CONCURRENCY = 4;
 
@@ -21,7 +29,7 @@ type ImportSkillsResult = {
 
 /**
  * Imports skills from uploaded files. Detects skills from the files,
- * then creates or updates SkillResource objects.
+ * uploads their attachments, then creates or updates SkillResource objects.
  */
 export async function importSkillsFromFiles(
   auth: Authenticator,
@@ -35,22 +43,40 @@ export async function importSkillsFromFiles(
     source?: FileImportSource;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
-  const detectResult = await detectSkillsFromUploadedFiles(uploadedFiles);
-  if (detectResult.isErr()) {
-    return detectResult;
-  }
+  const allSkills: ZipDetectedSkill[] = [];
 
-  const detectedSkills = detectResult.value;
-  if (detectedSkills.length === 0) {
-    return new Err(
-      new Error(
-        "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification)."
-      )
-    );
+  // Readers are keyed by skill to avoid re-opening the same zip for each
+  // attachment. Each zip buffer produces one reader shared across its skills.
+  const readerBySkill = new Map<
+    ZipDetectedSkill,
+    (originalEntryName: string) => Result<Buffer, Error>
+  >();
+
+  for (const file of uploadedFiles) {
+    const buffer = await readFile(file.filepath);
+    await unlink(file.filepath).catch(() => {});
+
+    const detectResult = detectSkillsFromZip({ zipBuffer: buffer });
+    if (detectResult.isErr()) {
+      await cleanupTempFiles(uploadedFiles);
+      return new Err(new Error(detectResult.error.message));
+    }
+
+    const readerResult = createZipAttachmentReader(buffer);
+    if (readerResult.isErr()) {
+      await cleanupTempFiles(uploadedFiles);
+      return new Err(readerResult.error);
+    }
+    const reader = readerResult.value;
+
+    for (const skill of detectResult.value) {
+      allSkills.push(skill);
+      readerBySkill.set(skill, reader);
+    }
   }
 
   const requestedNames = names ? new Set(names) : null;
-  const selectedSkills = detectedSkills.filter(
+  const selectedSkills = allSkills.filter(
     (skill) =>
       skill.name &&
       skill.instructions.trim() &&
@@ -78,6 +104,32 @@ export async function importSkillsFromFiles(
         return;
       }
 
+      const readEntry = readerBySkill.get(skill);
+      if (!readEntry) {
+        errored.push({
+          name: skill.name,
+          message: "Internal error: no zip reader for skill.",
+        });
+        return;
+      }
+
+      const skillDirPath = path.dirname(skill.skillMdPath);
+      const uploadResults = await concurrentExecutor(
+        skill.attachments,
+        (attachment) =>
+          uploadAttachment(auth, {
+            originalEntryName: attachment.originalEntryName,
+            contentType: attachment.contentType,
+            fileName: path.relative(skillDirPath, attachment.path),
+            readEntry,
+          }),
+        { concurrency: IMPORT_CONCURRENCY }
+      );
+
+      const fileAttachments = uploadResults.filter(
+        (r): r is FileResource => r !== null
+      );
+
       if (existing) {
         const attachedKnowledge = await existing.getAttachedKnowledge(auth);
 
@@ -90,8 +142,13 @@ export async function importSkillsFromFiles(
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
+          fileAttachments,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
+        });
+
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: existing.sId,
         });
 
         updated.push(existing);
@@ -127,8 +184,12 @@ export async function importSkillsFromFiles(
             sourceMetadata: { filePath: skill.skillMdPath },
             isDefault: false,
           },
-          { mcpServerViews: [] }
+          { mcpServerViews: [], fileAttachments }
         );
+
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: skillResource.sId,
+        });
 
         imported.push(skillResource);
       }
@@ -137,4 +198,50 @@ export async function importSkillsFromFiles(
   );
 
   return new Ok({ imported, updated, errored });
+}
+
+async function uploadAttachment(
+  auth: Authenticator,
+  {
+    originalEntryName,
+    contentType,
+    fileName,
+    readEntry,
+  }: {
+    originalEntryName: string;
+    contentType: ZipDetectedSkill["attachments"][number]["contentType"];
+    fileName: string;
+    readEntry: (originalEntryName: string) => Result<Buffer, Error>;
+  }
+): Promise<FileResource | null> {
+  const contentResult = readEntry(originalEntryName);
+  if (contentResult.isErr()) {
+    logger.error(
+      { error: contentResult.error, originalEntryName },
+      "Failed to read attachment from ZIP."
+    );
+    return null;
+  }
+
+  const uploadResult = await uploadBase64DataToFileStorage(auth, {
+    base64: contentResult.value.toString("base64"),
+    contentType,
+    fileName,
+    useCase: "skill_attachment",
+  });
+  if (uploadResult.isErr()) {
+    logger.error(
+      { error: uploadResult.error, originalEntryName },
+      "Failed to upload attachment to file storage."
+    );
+    return null;
+  }
+
+  return uploadResult.value;
+}
+
+async function cleanupTempFiles(files: formidable.File[]): Promise<void> {
+  await concurrentExecutor(files, (f) => unlink(f.filepath).catch(() => {}), {
+    concurrency: 8,
+  });
 }
