@@ -15,6 +15,7 @@ import {
   Label,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 function getAuthMethodLabel(
@@ -74,6 +75,17 @@ export function RemoteMCPServerConfigurationSection({
 
   const authMethodLabel = getAuthMethodLabel(authMethod, defaultServerConfig);
 
+  // When preset uses static OAuth, set authorization so the dialog shows the credential form.
+  useEffect(() => {
+    if (defaultServerConfig?.authMethod === "oauth-static") {
+      authMethodField.onChange("oauth-static");
+      onAuthorizationChange({
+        provider: "mcp_static",
+        supported_use_cases: ["platform_actions", "personal_actions"],
+      });
+    }
+  }, [defaultServerConfig?.authMethod, authMethodField, onAuthorizationChange]);
+
   return (
     <>
       {defaultServerConfig && (
@@ -97,6 +109,12 @@ export function RemoteMCPServerConfigurationSection({
           {defaultServerConfig.connectionInstructions && (
             <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               {defaultServerConfig.connectionInstructions}
+            </p>
+          )}
+          {defaultServerConfig.authMethod === "oauth-static" && (
+            <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Enter your OAuth credentials below. The redirect URI to allow is{" "}
+              <strong>{finalizeUriForProvider("mcp_static")}</strong>
             </p>
           )}
         </div>

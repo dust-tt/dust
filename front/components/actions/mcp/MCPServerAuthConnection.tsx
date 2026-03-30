@@ -3,6 +3,8 @@ import {
   ProviderAuthNote,
   ProviderSetupInstructions,
 } from "@app/components/actions/mcp/provider_setup_instructions";
+import type { RemoteMCPServerOAuthConfigComponentProps } from "@app/components/actions/mcp/remote_mcp_oauth_config_registry";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
@@ -32,6 +34,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import type {
+  ComponentType,
   ForwardRefExoticComponent,
   RefAttributes,
   RefObject,
@@ -91,6 +94,12 @@ interface MCPServerAuthConnectionProps {
   // OAuth credential inputs. The parent resolves the component (e.g. via a
   // registry) and passes it here — no provider-specific logic in this file.
   staticCredentialConfig?: StaticCredentialConfig;
+  // When adding a remote MCP with oauth-static preset (e.g. Box), use this
+  // custom component instead of the generic mcp_static credential fields.
+  remoteMcpOAuthConfig?: {
+    defaultServerConfig: DefaultRemoteMCPServerConfig;
+    component: ComponentType<RemoteMCPServerOAuthConfigComponentProps>;
+  };
 }
 
 export function MCPServerAuthConnection({
@@ -98,6 +107,7 @@ export function MCPServerAuthConnection({
   authorization,
   documentationUrl,
   staticCredentialConfig,
+  remoteMcpOAuthConfig,
 }: MCPServerAuthConnectionProps) {
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
@@ -186,6 +196,7 @@ export function MCPServerAuthConnection({
 
   // The parent resolves the form component and includes it in the config.
   const StaticFormComp = staticCredentialConfig?.FormComponent ?? null;
+  const RemoteOAuthConfigComp = remoteMcpOAuthConfig?.component ?? null;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -216,6 +227,11 @@ export function MCPServerAuthConnection({
           ref={staticCredentialConfig.formRef}
           owner={staticCredentialConfig.owner}
           onValidityChange={staticCredentialConfig.onValidityChange}
+        />
+      ) : RemoteOAuthConfigComp && remoteMcpOAuthConfig ? (
+        <RemoteOAuthConfigComp
+          defaultServerConfig={remoteMcpOAuthConfig.defaultServerConfig}
+          onValidityChange={() => {}}
         />
       ) : (
         <OAuthCredentialFields

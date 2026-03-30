@@ -10,7 +10,9 @@ export type DefaultRemoteMCPServerConfig = {
   icon: InternalAllowedIconType;
   documentationUrl?: string;
   connectionInstructions?: string;
-  authMethod: "bearer" | "oauth-dynamic" | null;
+  authMethod: "bearer" | "oauth-dynamic" | "oauth-static" | null;
+  /** When authMethod is "oauth-static", which custom OAuth config component to use. Omitted = generic mcp_static fields. */
+  oauthStaticPresetKey?: string;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
@@ -907,6 +909,20 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
         done: "Execute report on Semrush",
       },
     },
+  },
+  {
+    id: 10014,
+    name: "Box",
+    description:
+      "Box tools for secure file storage, sharing, and collaboration.",
+    url: "https://mcp.box.com/",
+    icon: "ActionDocumentTextIcon",
+    documentationUrl: "https://developer.box.com/guides/box-mcp/remote",
+    connectionInstructions:
+      "Create a Box app in the Box Developer Console and use its Client ID and Client Secret below. OAuth URLs are fixed for Box.",
+    authMethod: "oauth-static",
+    oauthStaticPresetKey: "box",
+    toolStakes: {},
   },
   //Removed temporaly gitlab server
   /*
