@@ -10,9 +10,9 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/reinforced_agent/activities";
+import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import type { Context } from "@temporalio/activity";
 import {
   makeWorkflowExporter,
@@ -30,7 +30,7 @@ export async function runReinforcedAgentWorker() {
     serviceName: "dust-reinforced-agent",
   });
 
-  const spanExporter = new InMemorySpanExporter();
+  const spanExporter = new NoopSpanExporter();
 
   const worker = await Worker.create({
     ...getWorkflowConfig({

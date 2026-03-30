@@ -17,9 +17,9 @@ import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import type { Context } from "@temporalio/activity";
 import {
   makeWorkflowExporter,
@@ -38,7 +38,7 @@ export async function runAgentLoopWorker() {
   // Initialize LLMs instrumentation for the worker.
   initializeOpenTelemetryInstrumentation({ serviceName: "dust-agent-loop" });
 
-  const spanExporter = new InMemorySpanExporter();
+  const spanExporter = new NoopSpanExporter();
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
@@ -98,27 +98,6 @@ export async function runAgentLoopWorker() {
       ignoreModules: ["child_process", "crypto", "stream"],
     },
   });
-
-  // Monitor InMemorySpanExporter growth to detect potential memory leaks.
-  // TODO(fabien): remove when we have enough data
-  const SPAN_SAMPLE_SIZE = 100;
-  const MONITOR_INTERVAL_MS = 60_000;
-  setInterval(() => {
-    const spans = spanExporter.getFinishedSpans();
-    const spanCount = spans.length;
-    const sampleSize = Math.min(SPAN_SAMPLE_SIZE, spanCount);
-    const sampleBytes =
-      sampleSize > 0
-        ? Buffer.byteLength(JSON.stringify(spans.slice(0, sampleSize)), "utf8")
-        : 0;
-    const estimatedTotalBytes =
-      spanCount > 0 ? Math.round((sampleBytes / sampleSize) * spanCount) : 0;
-
-    logger.info(
-      { spanCount, estimatedTotalBytes },
-      "InMemorySpanExporter span count for agent loop worker"
-    );
-  }, MONITOR_INTERVAL_MS).unref();
 
   // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
   process.on("SIGTERM", () => worker.shutdown());
