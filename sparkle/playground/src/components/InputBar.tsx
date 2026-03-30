@@ -3,8 +3,13 @@ import {
   AttachmentIcon,
   BoltIcon,
   Button,
+  ChevronDownIcon,
   cn,
   DocumentIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   ImageIcon,
   ImageZoomDialog,
@@ -18,6 +23,8 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+type InputMode = "Plan" | "Agent" | "Ask";
 
 import { NewCitation, NewCitationGrid } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
@@ -39,6 +46,7 @@ export function InputBar({
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [inputMode, setInputMode] = useState<InputMode>("Plan");
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [selectedDroppedFile, setSelectedDroppedFile] =
     useState<DroppedFile | null>(null);
@@ -282,6 +290,23 @@ export function InputBar({
               tooltip="Mention an Agent"
             />
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="s-flex s-items-center s-gap-1 s-rounded-lg s-px-2 s-py-1 s-text-xs s-font-medium s-text-muted-foreground s-transition-colors hover:s-bg-muted-background dark:s-text-muted-foreground-night dark:hover:s-bg-muted-background-night">
+                {inputMode}
+                <ChevronDownIcon className="s-h-3 s-w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {(["Plan", "Agent", "Ask"] as InputMode[]).map((mode) => (
+                <DropdownMenuItem
+                  key={mode}
+                  label={mode}
+                  onClick={() => setInputMode(mode)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="s-grow" />
           <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
             <Button

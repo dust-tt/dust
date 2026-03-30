@@ -3,6 +3,20 @@ import {
   Bar,
   Button,
   ChatBubbleLeftRightIcon,
+  ChatBubbleThoughtIcon,
+  CheckIcon,
+  CodeBlockIcon,
+  DocumentTextIcon,
+  BigQueryLogo,
+  ConfluenceLogo,
+  DatadogLogo,
+  DriveLogo,
+  GcalLogo,
+  GithubLogo,
+  GmailLogo,
+  JiraLogo,
+  NotionLogo,
+  SlackLogo,
   Citation,
   CitationDescription,
   CitationGrid,
@@ -29,15 +43,6 @@ import {
   SidebarLeftOpenIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import {
-  IconCircleCheck,
-  IconCode,
-  IconFileText,
-  IconLock,
-  IconSearch,
-  IconServer,
-  IconWorld,
-} from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -100,6 +105,77 @@ function StreamingMarkdown({
       {displayed}
     </p>
   );
+}
+
+function StreamingPlainText({
+  content,
+  charDelay = 18,
+  className,
+}: {
+  content: string;
+  charDelay?: number;
+  className?: string;
+}) {
+  const [displayed, setDisplayed] = useState("");
+  const posRef = useRef(0);
+
+  useEffect(() => {
+    setDisplayed("");
+    posRef.current = 0;
+
+    let handle: number;
+    const tick = () => {
+      posRef.current = Math.min(posRef.current + 2, content.length);
+      setDisplayed(content.slice(0, posRef.current));
+      if (posRef.current < content.length) {
+        handle = window.setTimeout(tick, charDelay);
+      }
+    };
+    handle = window.setTimeout(tick, charDelay);
+    return () => window.clearTimeout(handle);
+  }, [content, charDelay]);
+
+  const paragraphs = displayed.split("\n\n");
+  return (
+    <div className={className}>
+      {paragraphs.map((p, i) => (
+        <p
+          key={i}
+          className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-mb-3 last:s-mb-0"
+        >
+          {p}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function StreamingInlineText({
+  content,
+  charDelay = 18,
+}: {
+  content: string;
+  charDelay?: number;
+}) {
+  const [displayed, setDisplayed] = useState("");
+  const posRef = useRef(0);
+
+  useEffect(() => {
+    setDisplayed("");
+    posRef.current = 0;
+    let handle: number;
+    const tick = () => {
+      posRef.current = Math.min(posRef.current + 2, content.length);
+      setDisplayed(content.slice(0, posRef.current));
+      if (posRef.current < content.length) {
+        handle = window.setTimeout(tick, charDelay);
+      }
+    };
+    handle = window.setTimeout(tick, charDelay);
+    return () => window.clearTimeout(handle);
+  }, [content, charDelay]);
+
+  return <>{displayed}</>;
 }
 
 function FadeIn({
@@ -189,7 +265,7 @@ type ThinkingStep = {
 };
 
 const INITIAL_THINKING_TEXT =
-  "The user wants to set up API monitoring. Let me analyze their current infrastructure, review what tooling is already in place, and figure out what's missing before I recommend anything.";
+  "The user wants to set up API monitoring for their production environment. Before jumping to recommendations, I need to understand what's already in place — there may be partial Datadog or Prometheus configs buried in infra/, or health check scripts that haven't been extended. I also need to map the full service topology so I know which endpoints actually need coverage.\n\nMost teams in this situation have the basics (HTTP 200 checks, maybe some CPU/memory graphs) but are missing the high-signal stuff: latency percentiles per endpoint, structured error classification with stack trace grouping, and deep dependency health checks that validate database and cache connectivity — not just process liveness. The gap between \"we have some monitoring\" and \"we have actionable observability\" is usually larger than expected.\n\nI'll run a few parallel searches — internal docs for existing setup, web for current best practices, and a scan of the infra configs — then cross-reference to identify the specific blind spots. Once I have that picture, I can give a prioritized recommendation rather than a generic \"add Datadog\" answer.";
 const INITIAL_THINKING_SUMMARY =
   "Analyzed current infrastructure and identified 3 monitoring areas to prioritize.";
 const INITIAL_THINKING_STEPS: ThinkingStep[] = [
@@ -197,8 +273,8 @@ const INITIAL_THINKING_STEPS: ThinkingStep[] = [
     id: "docs",
     thinkingLabel:
       "Searching internal documentation for any existing monitoring setup — checking infra/, ops/, and monitoring/ directories for Datadog, Prometheus, or Grafana configs",
-    icon: IconSearch,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    icon: ConfluenceLogo,
+    iconBg: "s-bg-white dark:s-bg-white",
     title: "Documentation Search",
     description:
       'Searched internal docs for "API monitoring" — 8 results across infra/, ops/, and monitoring/ directories. Found existing Datadog integration covering basic health checks on 3 of 7 services.',
@@ -237,8 +313,8 @@ LIMIT 20`,
     id: "websearch",
     thinkingLabel:
       "Searching the web for current monitoring best practices, comparing Datadog vs Grafana vs OpenTelemetry for API latency and error tracking in production environments",
-    icon: IconWorld,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    icon: GmailLogo,
+    iconBg: "s-bg-white dark:s-bg-white",
     title: "Web Search",
     description:
       'Searched "API monitoring best practices 2026" — 11 results from Datadog, Grafana, and OpenTelemetry docs. Key finding: OpenTelemetry is now the standard instrumentation layer, with vendor-agnostic export to Datadog/Grafana.',
@@ -265,8 +341,8 @@ LIMIT 20`,
     id: "infra",
     thinkingLabel:
       "Scanning infrastructure configuration files to map the full service topology — parsing docker-compose.yaml, Kubernetes manifests, and Terraform modules to understand service dependencies",
-    icon: IconServer,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    icon: GithubLogo,
+    iconBg: "s-bg-white dark:s-bg-white",
     title: "Infrastructure Scan",
     description:
       "Parsed infra/docker-compose.yaml, k8s manifests in deploy/, and Terraform modules — mapped 7 services, 3 databases (PostgreSQL, Redis, Elasticsearch), and 2 external dependencies (Stripe API, SendGrid).",
@@ -282,8 +358,8 @@ LIMIT 20`,
     id: "security",
     thinkingLabel:
       "Reviewing IAM roles, network policies, and security groups to verify the monitoring agent will have the right permissions without opening unnecessary access",
-    icon: IconLock,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    icon: NotionLogo,
+    iconBg: "s-bg-white dark:s-bg-white",
     title: "Security Review",
     description:
       "Audited IAM roles in terraform/iam.tf and Kubernetes NetworkPolicies. The monitoring agent needs read access to CloudWatch and X-Ray APIs. Current role 'monitoring-reader' has CloudWatch:Get* but is missing xray:GetTraceSummaries and xray:BatchGetTraces.",
@@ -317,8 +393,8 @@ LIMIT 20`,
     id: "analysis",
     thinkingLabel:
       "Cross-referencing the current monitoring setup with industry best practices to identify blind spots — focusing on latency percentiles, error classification, and uptime SLAs",
-    icon: IconCode,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    icon: DatadogLogo,
+    iconBg: "s-bg-white dark:s-bg-white",
     title: "Gap Analysis",
     description:
       "Compared current setup against best practices. Found 3 critical gaps: no latency percentile tracking (only avg response time), no structured error classification (errors logged but not categorized), and health checks are shallow (HTTP 200 only, no dependency validation).",
@@ -345,8 +421,8 @@ LIMIT 20`,
     id: "summary",
     thinkingLabel:
       "Compiling all findings into a prioritized list of recommendations with estimated effort, risk assessment, and expected impact on reliability metrics",
-    icon: IconFileText,
-    iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+    icon: SlackLogo,
+    iconBg: "s-bg-white dark:s-bg-white",
     title: "Recommendation Summary",
     description:
       "Synthesized findings from documentation search, web research, infrastructure scan, security audit, and gap analysis into 3 prioritized recommendations.",
@@ -381,8 +457,8 @@ function getSecondThinkingSteps(optionId: string): ThinkingStep[] {
         id: "t2-otel",
         thinkingLabel:
           "Researching OpenTelemetry middleware options compatible with the current Node.js stack — comparing @opentelemetry/instrumentation-http, auto-instrumentation, and manual span creation approaches",
-        icon: IconSearch,
-        iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+        icon: DriveLogo,
+        iconBg: "s-bg-white dark:s-bg-white",
         title: "OpenTelemetry Research",
         description:
           "Found 3 compatible middleware packages for the current Node.js stack. @opentelemetry/instrumentation-http provides automatic span creation for all HTTP requests with zero code changes. The auto-instrumentation agent supports Express, Fastify, and Koa.",
@@ -409,8 +485,8 @@ function getSecondThinkingSteps(optionId: string): ThinkingStep[] {
         id: "t2-grafana",
         thinkingLabel:
           "Generating a Grafana dashboard configuration with p50/p95/p99 latency panels, a top-10 slow endpoints breakdown, and a 7-day trend chart with alerting thresholds",
-        icon: IconCode,
-        iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+        icon: BigQueryLogo,
+        iconBg: "s-bg-white dark:s-bg-white",
         title: "Dashboard Generation",
         description:
           "Generated a complete Grafana dashboard with 4 panels: latency overview (p50/p95/p99 timeseries), top-10 slow endpoints (bar chart), 7-day trend comparison, and real-time request rate. Also configured alert rules for p95 > 500ms and p99 > 2s.",
@@ -446,8 +522,8 @@ function getSecondThinkingSteps(optionId: string): ThinkingStep[] {
         id: "t2-sentry",
         thinkingLabel:
           "Auditing the existing Sentry error tracking setup in infra/ — checking for missing stack trace grouping rules, source map uploads, and PagerDuty webhook integration",
-        icon: IconSearch,
-        iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+        icon: JiraLogo,
+        iconBg: "s-bg-white dark:s-bg-white",
         title: "Error Tracking Audit",
         description:
           "Found partial Sentry setup in infra/sentry.config.js. DSN is configured for api-gateway only. Missing: stack trace fingerprinting rules, source map uploads in CI, and PagerDuty webhook for critical alerts.",
@@ -484,8 +560,8 @@ Sentry.init({
         id: "t2-alerts",
         thinkingLabel:
           "Configuring PagerDuty alert thresholds based on error rate patterns — setting warning at 1% and critical at 5% with 5-minute evaluation windows and auto-resolve",
-        icon: IconCode,
-        iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+        icon: GcalLogo,
+        iconBg: "s-bg-white dark:s-bg-white",
         title: "Alert Configuration",
         description:
           "Generated PagerDuty integration config with tiered error-rate thresholds. Warning triggers at 1% error rate (5-min window), critical at 5%. Auto-resolve after 10 minutes below threshold. Escalation policy routes to on-call engineer after 5 minutes.",
@@ -502,8 +578,8 @@ Sentry.init({
         id: "t2-healthcheck",
         thinkingLabel:
           "Designing health check endpoints for all 12 critical API routes — implementing /health for shallow checks and /ready for deep dependency validation including database and cache connectivity",
-        icon: IconSearch,
-        iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+        icon: GmailLogo,
+        iconBg: "s-bg-white dark:s-bg-white",
         title: "Health Check Design",
         description:
           "Mapped 12 critical API routes across 7 services for health check coverage. Designed a two-tier system: /health for fast liveness probes (< 50ms) and /ready for deep readiness checks validating PostgreSQL, Redis, and Elasticsearch connectivity.",
@@ -530,8 +606,8 @@ Sentry.init({
         id: "t2-statuspage",
         thinkingLabel:
           "Setting up Statuspage.io component configuration — mapping each internal service to a public-facing component with automated incident creation based on health check failures",
-        icon: IconWorld,
-        iconBg: "s-bg-slate-100 dark:s-bg-slate-800",
+        icon: SlackLogo,
+        iconBg: "s-bg-white dark:s-bg-white",
         title: "Status Page Setup",
         description:
           "Generated Statuspage.io component config mapping 7 internal services to 4 public-facing components (API, Authentication, Payments, Search). Configured automated incident creation when health checks fail for > 2 minutes.",
@@ -753,7 +829,6 @@ function ThinkingIndicator({
       onClick={onToggle}
       className="s-flex s-w-full s-items-center s-gap-1.5 s-text-left s-text-sm s-font-medium s-text-muted-foreground s-transition-colors dark:s-text-muted-foreground-night hover:s-text-foreground dark:hover:s-text-foreground-night"
     >
-      {!done && <Spinner size="xs" variant="dark" />}
       <span className="s-flex-1">
         {label ?? (
           <>
@@ -814,9 +889,26 @@ function AgentThinkingBlock({
       >
         <div className="s-overflow-hidden">
           <div className="s-flex s-flex-col s-pt-5">
-            <p className="s-pb-5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {phase1Text}
-            </p>
+            {/* Thought item */}
+            <div className="s-flex">
+              <div className="s-flex s-w-4 s-flex-shrink-0 s-flex-col s-items-center s-pt-0.5">
+                <div className="s-p-px s-my-0.5">
+                  <ChatBubbleThoughtIcon
+                    width={16}
+                    height={16}
+                    className="s-flex-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night"
+                  />
+                </div>
+                {steps.length > 0 && (
+                  <div className="s-w-px s-flex-1 s-min-h-3 s-bg-border dark:s-bg-border-night" />
+                )}
+              </div>
+              <div className="s-ml-2.5 s-min-w-0 s-flex-1 s-pb-5">
+                <StreamingPlainText
+                  content={phase1Text}
+                />
+              </div>
+            </div>
 
             {steps.map((step, i, arr) => {
               const isLastOverall = i === arr.length - 1 && !done;
@@ -830,11 +922,25 @@ function AgentThinkingBlock({
                 <FadeIn key={step.id}>
                   <div className="s-flex">
                     <div className="s-flex s-w-4 s-flex-shrink-0 s-flex-col s-items-center s-pt-0.5">
-                      <step.icon
-                        size={16}
-                        stroke={1.5}
-                        className="s-flex-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night"
-                      />
+                      {step.status === "running" ? (
+                        <Spinner size="xs" variant="dark" />
+                      ) : step.status === "done" ? (
+                        <div className="s-p-px s-my-0.5">
+                          <CheckIcon
+                            width={16}
+                            height={16}
+                            className="s-flex-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night"
+                          />
+                        </div>
+                      ) : (
+                        <div className="s-p-px s-my-0.5">
+                          <step.icon
+                            width={16}
+                            height={16}
+                            className="s-flex-shrink-0"
+                          />
+                        </div>
+                      )}
                       {showLine && (
                         <div className="s-w-px s-flex-1 s-bg-border dark:s-bg-border-night" />
                       )}
@@ -851,10 +957,10 @@ function AgentThinkingBlock({
                           {step.status === "running" ? (
                             <>
                               <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                {step.thinkingLabel}
+                                <StreamingInlineText content={step.thinkingLabel} />
                               </span>
                               <span className="s-absolute s-inset-0 s-animate-shiny-text s-truncate s-bg-gradient-to-r s-from-transparent s-via-foreground s-via-50% s-to-transparent s-bg-clip-text s-bg-no-repeat s-text-black/0 [background-position:0_0] [background-size:50%_100%] dark:s-via-foreground-night">
-                                {step.thinkingLabel}
+                                <StreamingInlineText content={step.thinkingLabel} />
                               </span>
                             </>
                           ) : (
@@ -873,13 +979,15 @@ function AgentThinkingBlock({
                 </FadeIn>
               );
             })}
-            {done && (
+            {!done ? (
+              <div className="s-flex s-w-4 s-justify-center s-pt-1">
+                <Spinner size="xs" variant="dark" />
+              </div>
+            ) : (
               <FadeIn>
                 <div className="s-flex s-items-center">
                   <div className="s-flex s-w-4 s-flex-shrink-0 s-justify-center">
-                    <IconCircleCheck
-                      size={16}
-                      stroke={1.5}
+                    <CheckIcon
                       className="s-text-muted-foreground dark:s-text-muted-foreground-night"
                     />
                   </div>
@@ -935,9 +1043,9 @@ function TimelineStepContent({
           {step.codeBlock && (
             <div className="s-mt-3">
               <div className="s-mb-1 s-flex s-items-center s-gap-1.5 s-text-xs s-font-medium s-text-foreground dark:s-text-foreground-night">
-                <IconCode
-                  size={14}
-                  stroke={1.5}
+                <CodeBlockIcon
+                  width={14}
+                  height={14}
                   className="s-text-muted-foreground dark:s-text-muted-foreground-night"
                 />
                 {step.codeBlock.label}
@@ -1087,11 +1195,13 @@ function MessageBreakdownPanel({
                   <Avatar
                     size="xs"
                     visual={
-                      <s.icon
-                        size={14}
-                        stroke={1.5}
-                        className="s-text-muted-foreground dark:s-text-muted-foreground-night"
-                      />
+                      <div className="s-p-px s-my-0.5">
+                        <s.icon
+                          width={14}
+                          height={14}
+                          className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+                        />
+                      </div>
                     }
                     backgroundColor={s.iconBg}
                   />
