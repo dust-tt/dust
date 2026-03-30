@@ -673,7 +673,7 @@ function PlanCard({
   }, [secondsLeft, onStart]);
 
   return (
-    <div className="s-flex s-flex-col s-gap-4 s-rounded-2xl s-border s-border-border s-px-5 s-py-4 dark:s-border-border-night">
+    <div className="s-flex s-flex-col s-gap-4 s-rounded-t-xl s-border s-border-b-0 s-border-border s-bg-background s-px-5 s-py-4 dark:s-border-border-night dark:s-bg-background-night">
       <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
         {PLAN_TITLE}
       </span>
@@ -1428,31 +1428,6 @@ export default function ThinkingActivity() {
             </FadeIn>
           )}
 
-          {phase === "planning" && (
-            <FadeIn delay={150}>
-              <NewConversationMessageGroup
-                type="agent"
-                avatar={{
-                  emoji: agent.emoji,
-                  backgroundColor: agent.backgroundColor,
-                }}
-                name={`@${agent.name}`}
-                timestamp="10:01"
-              >
-                <NewConversationAgentMessage
-                  isLastMessage
-                  hideActions
-                  className="s-pl-0"
-                >
-                  <PlanCard
-                    onStart={handlePlanStart}
-                    onEdit={handlePlanEdit}
-                    onCancel={handlePlanCancel}
-                  />
-                </NewConversationAgentMessage>
-              </NewConversationMessageGroup>
-            </FadeIn>
-          )}
 
           {phase !== "idle" && phase !== "sent" && phase !== "planning" && (
             <FadeIn delay={150}>
@@ -1529,6 +1504,15 @@ export default function ThinkingActivity() {
       <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
         <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
           <div className="s-flex s-flex-col">
+            {phase === "planning" && (
+              <FadeIn className="s-mx-auto s-w-[96%]">
+                <PlanCard
+                  onStart={handlePlanStart}
+                  onEdit={handlePlanEdit}
+                  onCancel={handlePlanCancel}
+                />
+              </FadeIn>
+            )}
             {phase === "asking" && introComplete && (
               <FadeIn className="s-mx-auto s-w-[96%]">
                 <AskUserQuestion
