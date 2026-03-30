@@ -78,7 +78,7 @@ export function AskUserQuestion({
         {question}
       </p>
 
-      <div className="s-grid s-w-full s-grid-cols-2 s-gap-2">
+      <div className="s-flex s-w-full s-flex-col s-gap-2">
         {options.map((opt, idx) => (
           <Card
             key={opt.id}

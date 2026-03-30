@@ -1503,10 +1503,10 @@ export default function ThinkingActivity() {
       </div>
 
       <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
-        <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
+        <div className="s-pointer-events-auto s-w-full s-max-w-2xl s-px-4">
           <div className="s-flex s-flex-col">
             {phase === "asking" && introComplete && (
-              <FadeIn className="s-shadow-xl">
+              <FadeIn>
                 <AskUserQuestion
                   question={QUESTION}
                   options={QUESTION_OPTIONS}
@@ -1523,7 +1523,7 @@ export default function ThinkingActivity() {
                   className={
                     phase === "asking" && introComplete
                       ? "s-rounded-none s-rounded-b-3xl"
-                      : "s-shadow-xl"
+                      : ""
                   }
                 />
               </div>
@@ -1533,7 +1533,7 @@ export default function ThinkingActivity() {
                 className={
                   phase === "asking" && introComplete
                     ? "s-rounded-none s-rounded-b-3xl"
-                    : "s-shadow-xl"
+                    : ""
                 }
               />
             )}
