@@ -7,7 +7,7 @@ import type { WebCrawlerConfigurationResource } from "@connectors/resources/webc
 import type { ContentNodeType } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import { hash as blake3 } from "blake3";
+import { blake3 } from "@napi-rs/blake-hash";
 import { NonRetryableError } from "crawlee";
 import dns from "dns";
 
@@ -48,7 +48,7 @@ export function stableIdForUrl({
       : ressourceType === "table"
         ? "database"
         : "folder";
-  return Buffer.from(blake3(`${typePrefix}-${url}`)).toString("hex");
+  return blake3(`${typePrefix}-${url}`).toString("hex");
 }
 
 export function getParentsForPage(url: string, pageInItsOwnFolder: boolean) {

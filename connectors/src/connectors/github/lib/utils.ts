@@ -1,5 +1,5 @@
+import { blake3 } from "@napi-rs/blake-hash";
 import assert from "assert";
-import { hash as blake3 } from "blake3/esm/node/hash-fn";
 import { join } from "path";
 
 export const GITHUB_CONTENT_NODE_TYPES = [
