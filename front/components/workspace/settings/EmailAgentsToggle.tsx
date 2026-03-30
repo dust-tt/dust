@@ -59,7 +59,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
               <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
             </span>
             <a
-              href="https://dust-tt.notion.site/Email-Agents-32028599d94181209594fbf1402b720d"
+              href="https://docs.dust.tt/docs/email-agents"
               target="_blank"
               rel="noopener noreferrer"
               className="text-action-400 hover:text-action-500 text-sm"

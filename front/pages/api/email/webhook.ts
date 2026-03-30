@@ -21,7 +21,7 @@ import {
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
 import apiConfig from "@app/lib/api/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -304,16 +304,6 @@ async function handler(
         user.sId,
         workspace.sId
       );
-
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("email_agents")) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            "Email interactions with agents are not enabled for your workspace.",
-        });
-        return;
-      }
 
       if (workspace.metadata?.allowEmailAgents !== true) {
         await replyToError(email, {
