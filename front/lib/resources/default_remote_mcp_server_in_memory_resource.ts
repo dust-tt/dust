@@ -7,6 +7,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 
 export class DefaultRemoteMCPServerInMemoryResource {
   readonly id: string;
@@ -38,8 +39,13 @@ export class DefaultRemoteMCPServerInMemoryResource {
     auth: Authenticator
   ): Promise<DefaultRemoteMCPServerInMemoryResource[]> {
     const resources: DefaultRemoteMCPServerInMemoryResource[] = [];
+    const featureFlags = await getFeatureFlags(auth);
 
     for (const config of DEFAULT_REMOTE_MCP_SERVERS) {
+      if (config.featureFlag && !featureFlags.includes(config.featureFlag)) {
+        continue;
+      }
+
       const resource = await DefaultRemoteMCPServerInMemoryResource.init(
         auth,
         config.id
