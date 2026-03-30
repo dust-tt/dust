@@ -130,6 +130,7 @@ import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -597,22 +598,21 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     logger.error({ error }, "Error during WorkOS callback");
 
     // Emit user.login_failed if workspace context is available.
+    // Login failures without a workspace context are not audit-logged — WorkOS captures those.
     if (callbackWorkspaceId) {
-      try {
-        const auth =
-          await Authenticator.internalAdminForWorkspace(callbackWorkspaceId);
-        void emitAuditLogEvent({
-          auth,
-          action: "user.login_failed",
-          targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
-          metadata: {
-            reason: normalizeError(error).message,
-            authenticationMethod: "workos",
-          },
-        });
-      } catch {
-        // Best-effort audit logging.
-      }
+      const loginFailedAuth =
+        await Authenticator.internalAdminForWorkspace(callbackWorkspaceId);
+      void emitAuditLogEvent({
+        auth: loginFailedAuth,
+        action: "user.login_failed",
+        targets: [
+          buildWorkspaceTarget(loginFailedAuth.getNonNullableWorkspace()),
+        ],
+        metadata: {
+          reason: normalizeError(error).message,
+          authenticationMethod: "workos",
+        },
+      });
     }
     // Login failures without a workspace context are not audit-logged.
     // WorkOS captures these on their side.
@@ -628,38 +628,26 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   if (session && session.type === "workos") {
     // Emit audit log before revoking the session.
     if (session.workspaceId) {
-      try {
-        const workspace = await WorkspaceResource.fetchById(
-          session.workspaceId
-        );
-        if (workspace) {
-          const user = await fetchUserFromSession(session);
-          const forwarded = req.headers["x-forwarded-for"];
-          const ip = forwarded
-            ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
-                .split(",")[0]
-                .trim()
-            : req.socket?.remoteAddress;
-          void emitAuditLogEventDirect({
-            workspace: renderLightWorkspaceType({ workspace }),
-            action: "user.logout",
-            actor: {
+      const workspace = await WorkspaceResource.fetchById(session.workspaceId);
+      if (workspace) {
+        const user = await fetchUserFromSession(session);
+        void emitAuditLogEventDirect({
+          workspace: renderLightWorkspaceType({ workspace }),
+          action: "user.logout",
+          actor: {
+            type: "user",
+            id: user?.sId ?? "unknown",
+            name: user?.name ?? session.user.name,
+          },
+          targets: [
+            {
               type: "user",
               id: user?.sId ?? "unknown",
               name: user?.name ?? session.user.name,
             },
-            targets: [
-              {
-                type: "user",
-                id: user?.sId ?? "unknown",
-                name: user?.name ?? session.user.name,
-              },
-            ],
-            context: { location: ip ?? "internal" },
-          });
-        }
-      } catch (error) {
-        logger.error({ error }, "Error emitting audit log for logout");
+          ],
+          context: { location: getClientIp(req) },
+        });
       }
     }
 

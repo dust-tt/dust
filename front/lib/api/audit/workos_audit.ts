@@ -7,6 +7,7 @@ import { createAuditLogEvent } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -31,8 +32,6 @@ type AuditAction =
   | "api_key.revoked"
   | "api_key.updated"
   | "api_key.used"
-  | "dust_app_secret.created"
-  | "dust_app_secret.deleted"
   // Membership & Invitations.
   | "membership.role_updated"
   | "membership.origin_updated"
@@ -220,13 +219,7 @@ export function getAuditLogContext(
   }
 ): AuditLogContext {
   if (req) {
-    const forwarded = req.headers["x-forwarded-for"];
-    const ip = forwarded
-      ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
-          .split(",")[0]
-          .trim()
-      : req.socket?.remoteAddress;
-    return { location: ip ?? "internal" };
+    return { location: getClientIp(req) };
   }
   return { location: auth.clientIp() ?? "internal" };
 }
