@@ -1,5 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
-import { default as cls } from "cls-hooked";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
@@ -527,7 +527,7 @@ describe("GroupResource", () => {
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
       // Get the test's transaction from CLS namespace to create a nested transaction
-      const namespace = cls.getNamespace("test-namespace");
+      const namespace = getNamespace("test-namespace");
       const parentTransaction = namespace?.get("transaction");
       expect(parentTransaction).toBeDefined();
 
