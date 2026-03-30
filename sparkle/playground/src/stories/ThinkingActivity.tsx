@@ -1479,16 +1479,6 @@ export default function ThinkingActivity() {
                             />
                           )}
                         </div>
-                        {introComplete && (
-                          <FadeIn>
-                            <AskUserQuestion
-                              question={QUESTION}
-                              options={QUESTION_OPTIONS}
-                              onSelect={handleOptionSelect}
-                              onSkip={() => setPhase("done")}
-                            />
-                          </FadeIn>
-                        )}
                       </div>
                     )}
 
@@ -1514,17 +1504,40 @@ export default function ThinkingActivity() {
 
       <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
         <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
-          {phase === "idle" && inputValue ? (
-            <div onClick={handleSend}>
+          <div className="s-flex s-flex-col">
+            {phase === "asking" && introComplete && (
+              <FadeIn className="s-shadow-xl">
+                <AskUserQuestion
+                  question={QUESTION}
+                  options={QUESTION_OPTIONS}
+                  onSelect={handleOptionSelect}
+                  onSkip={() => setPhase("done")}
+                />
+              </FadeIn>
+            )}
+            {phase === "idle" && inputValue ? (
+              <div onClick={handleSend}>
+                <InputBar
+                  key={inputValue}
+                  initialValue={inputValue}
+                  className={
+                    phase === "asking" && introComplete
+                      ? "s-rounded-none s-rounded-b-3xl"
+                      : "s-shadow-xl"
+                  }
+                />
+              </div>
+            ) : (
               <InputBar
-                key={inputValue}
-                initialValue={inputValue}
-                className="s-shadow-xl"
+                placeholder="Reply..."
+                className={
+                  phase === "asking" && introComplete
+                    ? "s-rounded-none s-rounded-b-3xl"
+                    : "s-shadow-xl"
+                }
               />
-            </div>
-          ) : (
-            <InputBar placeholder="Reply..." className="s-shadow-xl" />
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

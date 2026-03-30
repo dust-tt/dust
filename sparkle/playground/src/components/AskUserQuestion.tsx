@@ -42,21 +42,17 @@ export function AskUserQuestion({
   if (isLocked) {
     const selected = options.find((o) => o.id === selectedOptionId);
     return (
-      <Card
-        variant="secondary"
-        size="md"
-        containerClassName="s-w-full"
-        className={cn("s-w-full s-flex-col s-gap-3", className)}
+      <div
+        className={cn(
+          "s-w-full s-flex s-flex-col s-gap-3 s-rounded-t-xl s-border s-border-border s-bg-background s-p-4 dark:s-border-border-night dark:s-bg-background-night",
+          className
+        )}
       >
         <p className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
           {question}
         </p>
         {selected && (
-          <Card
-            variant="primary"
-            size="sm"
-            className="s-w-full s-flex-col s-gap-0.5"
-          >
+          <div className="s-flex s-flex-col s-gap-0.5 s-rounded s-border s-border-border s-bg-highlight-100 s-p-3 dark:s-border-border-night dark:s-bg-highlight-900">
             <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
               {selected.label}
             </span>
@@ -65,37 +61,42 @@ export function AskUserQuestion({
                 {selected.description}
               </span>
             )}
-          </Card>
+          </div>
         )}
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card
-      variant="secondary"
-      size="md"
-      containerClassName="s-w-full"
-      className={cn("s-w-full s-flex-col s-gap-3", className)}
+    <div
+      className={cn(
+        "s-w-full s-flex s-flex-col s-gap-3 s-rounded-t-xl s-border s-border-border s-bg-background s-p-4 dark:s-border-border-night dark:s-bg-background-night",
+        className
+      )}
     >
       <p className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
         {question}
       </p>
 
-      <div className="s-flex s-w-full s-flex-col s-gap-2">
-        {options.map((opt) => (
+      <div className="s-grid s-w-full s-grid-cols-2 s-gap-2">
+        {options.map((opt, idx) => (
           <Card
             key={opt.id}
             variant="secondary"
             size="sm"
             onClick={() => onSelect?.(opt)}
-            className="s-w-full s-flex-col s-gap-0.5"
+            className="s-flex-col s-gap-0.5"
           >
-            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-              {opt.label}
-            </span>
+            <div className="s-flex s-items-center s-gap-2">
+              <span className="s-inline-flex s-h-5 s-w-5 s-items-center s-justify-center s-rounded s-bg-muted-background s-text-xs s-font-semibold s-text-foreground dark:s-bg-muted-background-night dark:s-text-foreground-night">
+                {String.fromCharCode(65 + idx)}
+              </span>
+              <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                {opt.label}
+              </span>
+            </div>
             {opt.description && (
-              <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
                 {opt.description}
               </span>
             )}
@@ -148,6 +149,6 @@ export function AskUserQuestion({
           />
         )}
       </div>
-    </Card>
+    </div>
   );
 }
