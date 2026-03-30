@@ -1401,7 +1401,7 @@ export async function restoreAgentConfiguration(
       auth,
       action: "agent.restored",
       targets: [
-        buildWorkspaceTarget(owner),
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
         {
           type: "agent",
           id: latestConfig.sId,
