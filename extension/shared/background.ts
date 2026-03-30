@@ -45,7 +45,7 @@ const EXTENSION_CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 let extensionConfigCache: {
   key: string;
   blacklistedDomains: string[];
-  timestamp: number;
+  timestampMs: number;
 } | null = null;
 
 function withTimeout<T>(
@@ -107,7 +107,7 @@ const shouldDisableContextMenuForDomain = async (
     if (
       extensionConfigCache &&
       extensionConfigCache.key === cacheKey &&
-      Date.now() - extensionConfigCache.timestamp <
+      Date.now() - extensionConfigCache.timestampMs <
         EXTENSION_CONFIG_CACHE_TTL_MS
     ) {
       blacklistedDomains = extensionConfigCache.blacklistedDomains;
@@ -127,7 +127,7 @@ const shouldDisableContextMenuForDomain = async (
       extensionConfigCache = {
         key: cacheKey,
         blacklistedDomains,
-        timestamp: Date.now(),
+        timestampMs: Date.now(),
       };
     }
 
