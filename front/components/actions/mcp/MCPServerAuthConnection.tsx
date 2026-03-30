@@ -97,7 +97,7 @@ interface MCPServerAuthConnectionProps {
   selectedScopes?: string[];
   onSelectedScopesChange?: (scopes: string[]) => void;
   // Used to render provider-specific setup instructions for generic providers
-  serverName?: string;
+  serverId?: number;
 }
 
 export function MCPServerAuthConnection({
@@ -107,7 +107,7 @@ export function MCPServerAuthConnection({
   staticCredentialConfig,
   selectedScopes,
   onSelectedScopesChange,
-  serverName,
+  serverId,
 }: MCPServerAuthConnectionProps) {
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
@@ -255,7 +255,7 @@ export function MCPServerAuthConnection({
           inputs={inputs}
           authCredentials={authCredentials}
           onCredentialChange={handleCredentialChange}
-          serverName={serverName}
+          serverId={serverId}
         />
       )}
 
@@ -300,7 +300,7 @@ interface OAuthCredentialFieldsProps {
   inputs: OAuthCredentialInputs | null;
   authCredentials: OAuthCredentials | null;
   onCredentialChange: (key: string, value: string) => void;
-  serverName?: string;
+  serverId?: number;
 }
 
 function OAuthCredentialFields({
@@ -309,14 +309,14 @@ function OAuthCredentialFields({
   inputs,
   authCredentials,
   onCredentialChange,
-  serverName,
+  serverId,
 }: OAuthCredentialFieldsProps) {
   return (
     <>
       <ProviderSetupInstructions
         provider={authorization.provider}
         useCase={useCase}
-        serverName={serverName}
+        serverId={serverId}
       />
 
       {inputs && (

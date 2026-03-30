@@ -7,7 +7,7 @@ import { SnowflakeSetupInstructions } from "./SnowflakeSetupInstructions";
 interface ProviderSetupInstructionsProps {
   provider: OAuthProvider;
   useCase: MCPOAuthUseCase | null;
-  serverName?: string;
+  serverId?: number;
 }
 
 /**
@@ -20,13 +20,13 @@ interface ProviderSetupInstructionsProps {
 export function ProviderSetupInstructions({
   provider,
   useCase,
-  serverName,
+  serverId,
 }: ProviderSetupInstructionsProps) {
   switch (provider) {
     case "snowflake":
       return <SnowflakeSetupInstructions useCase={useCase} />;
     case "mcp_static":
-      if (serverName === "Power BI") {
+      if (serverId === 10015) {
         return <PowerBiSetupInstructions />;
       }
       return null;
