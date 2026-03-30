@@ -1856,7 +1856,7 @@ async function checkMessagesLimit(
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
-  if (auth.authMethod() === "internal") {
+  if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);
   }
 
