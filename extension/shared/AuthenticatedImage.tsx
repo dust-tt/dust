@@ -1,5 +1,6 @@
 import { getBaseUrl } from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
+import { isString } from "@app/types/shared/utils/general";
 import type { SparkleContextImageType } from "@dust-tt/sparkle";
 import { forwardRef, type ImgHTMLAttributes, useEffect, useState } from "react";
 
@@ -14,7 +15,10 @@ function isDustApiUrl(url: string): boolean {
   }
 
   const baseUrl = getBaseUrl();
-  if (baseUrl && url.startsWith(baseUrl)) {
+  const normalizedBase = baseUrl?.endsWith("/")
+    ? baseUrl.slice(0, -1)
+    : baseUrl;
+  if (normalizedBase && url.startsWith(`${normalizedBase}/api/`)) {
     return true;
   }
 
@@ -86,7 +90,12 @@ export const AuthenticatedImage: SparkleContextImageType = forwardRef<
 
   // For non-API URLs (external images, data:, blob:), render a plain img.
   if (!needsAuth) {
-    return <img ref={ref} src={src} {...props} />;
+    const baseUrl = getBaseUrl();
+    const resolvedSrc =
+      baseUrl && isString(src) && src?.startsWith("/")
+        ? `${baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl}${src}`
+        : src;
+    return <img ref={ref} src={resolvedSrc} {...props} />;
   }
 
   // While fetching or on error, render an img without src so the layout is preserved.

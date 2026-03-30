@@ -14,21 +14,23 @@ import browser from "webextension-polyfill";
 import { FirefoxApp } from "./FirefoxApp";
 
 if (process.env.DATADOG_CLIENT_TOKEN) {
-  void browser.permissions.getAll().then((permissions) => {
-    if (permissions?.data_collection && process.env.DATADOG_CLIENT_TOKEN) {
-      initDatadogLogs({
-        clientToken: process.env.DATADOG_CLIENT_TOKEN,
-        service: "dust-firefox-extension",
-        env: process.env.DATADOG_ENV,
-        version: process.env.DUST_EXTENSION_VERSION,
-        forwardConsoleLogs: ["error"],
-      });
-      datadogLogs.setGlobalContext({
-        extensionVersion: process.env.DUST_EXTENSION_VERSION,
-        commitHash: process.env.COMMIT_HASH,
-      });
-    }
-  });
+  void browser.permissions
+    .contains({ data_collection: ["technicalAndInteraction"] })
+    .then((granted) => {
+      if (granted && process.env.DATADOG_CLIENT_TOKEN) {
+        initDatadogLogs({
+          clientToken: process.env.DATADOG_CLIENT_TOKEN,
+          service: "dust-firefox-extension",
+          env: process.env.DATADOG_ENV,
+          version: process.env.DUST_EXTENSION_VERSION,
+          forwardConsoleLogs: ["error"],
+        });
+        datadogLogs.setGlobalContext({
+          extensionVersion: process.env.DUST_EXTENSION_VERSION,
+          commitHash: process.env.COMMIT_HASH,
+        });
+      }
+    });
 }
 
 const rootElement = document.getElementById("root");
