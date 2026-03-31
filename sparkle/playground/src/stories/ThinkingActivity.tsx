@@ -924,14 +924,6 @@ function AgentThinkingBlock({
                     <div className="s-flex s-w-4 s-flex-shrink-0 s-flex-col s-items-center s-pt-0.5">
                       {step.status === "running" ? (
                         <Spinner size="xs" variant="dark" />
-                      ) : step.status === "done" ? (
-                        <div className="s-p-px s-my-0.5">
-                          <CheckIcon
-                            width={16}
-                            height={16}
-                            className="s-flex-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night"
-                          />
-                        </div>
                       ) : (
                         <div className="s-p-px s-my-0.5">
                           <step.icon
@@ -958,9 +950,11 @@ function AgentThinkingBlock({
                             <>
                               <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
                                 <StreamingInlineText content={step.thinkingLabel} />
+                                <AnimatedDots />
                               </span>
                               <span className="s-absolute s-inset-0 s-animate-shiny-text s-truncate s-bg-gradient-to-r s-from-transparent s-via-foreground s-via-50% s-to-transparent s-bg-clip-text s-bg-no-repeat s-text-black/0 [background-position:0_0] [background-size:50%_100%] dark:s-via-foreground-night">
                                 <StreamingInlineText content={step.thinkingLabel} />
+                                <AnimatedDots />
                               </span>
                             </>
                           ) : (
