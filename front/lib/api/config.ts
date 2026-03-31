@@ -509,6 +509,10 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_NOVU_API_URL;
   },
+  // Metronome billing.
+  getMetronomeApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("METRONOME_API_KEY");
+  },
 };
 
 export default config;
