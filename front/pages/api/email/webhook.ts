@@ -110,30 +110,30 @@ function hasValidRelayAuthorization(
 async function relayEmailToOtherRegion(
   email: InboundEmail
 ): Promise<Result<void, Error>> {
-  const { url, name } = regionsConfig.getOtherRegionInfo();
-  const formData = new FormData();
-
-  formData.set("subject", email.subject);
-  formData.set("text", email.text);
-  formData.set("from", email.sender.full);
-  formData.set("SPF", email.auth.SPF);
-  formData.set("dkim", email.auth.dkimRaw);
-  formData.set("envelope", JSON.stringify(email.envelope));
-
-  if (email.rawHeaders) {
-    formData.set("headers", email.rawHeaders);
-  }
-
-  for (const [index, attachment] of email.attachments.entries()) {
-    const buffer = await readFile(attachment.filepath);
-    formData.append(
-      `attachment_${index}`,
-      new Blob([buffer], { type: attachment.contentType }),
-      attachment.filename
-    );
-  }
-
   try {
+    const { url, name } = regionsConfig.getOtherRegionInfo();
+    const formData = new FormData();
+
+    formData.set("subject", email.subject);
+    formData.set("text", email.text);
+    formData.set("from", email.sender.full);
+    formData.set("SPF", email.auth.SPF);
+    formData.set("dkim", email.auth.dkimRaw);
+    formData.set("envelope", JSON.stringify(email.envelope));
+
+    if (email.rawHeaders) {
+      formData.set("headers", email.rawHeaders);
+    }
+
+    for (const [index, attachment] of email.attachments.entries()) {
+      const buffer = await readFile(attachment.filepath);
+      formData.append(
+        `attachment_${index}`,
+        new Blob([buffer], { type: attachment.contentType }),
+        attachment.filename
+      );
+    }
+
     const response = await fetch(`${url}/api/email/webhook`, {
       method: "POST",
       headers: {
