@@ -16,6 +16,7 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "Auth")
 @MainActor
 final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
     @Published var state: AuthState = .loading
+    @Published var pendingFrameToken: String?
 
     private var pkcePair: AuthService.PKCEPair?
     private var webAuthSession: ASWebAuthenticationSession?
@@ -91,13 +92,14 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
     // MARK: - Handle deep link callback (fallback)
 
     func handleCallbackURL(_ url: URL) {
-        guard url.scheme == AppConfig.callbackURLScheme,
-              let code = AuthService.extractCode(from: url)
-        else {
-            return
-        }
+        guard let destination = DeepLinkRouter.resolve(url) else { return }
 
-        Task { await exchangeCode(code) }
+        switch destination {
+        case let .auth(code):
+            Task { await exchangeCode(code) }
+        case let .frame(token):
+            pendingFrameToken = token
+        }
     }
 
     // MARK: - Logout
