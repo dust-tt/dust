@@ -24,6 +24,7 @@ import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
 import { launchTrackProgrammaticUsage } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { signalButlerComplete } from "@app/temporal/butler/client";
+import { signalProjectTodoComplete } from "@app/temporal/project_todo/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
@@ -95,7 +96,11 @@ export async function finalizeSuccessfulAgentLoopActivity(
   const featureFlags = await getFeatureFlags(auth);
 
   let shouldSignalButler = false;
-  if (featureFlags.includes("conversation_butler")) {
+  let shouldSignalTodo = false;
+  if (
+    featureFlags.includes("conversation_butler") ||
+    featureFlags.includes("project_todo")
+  ) {
     const conversation = await ConversationResource.fetchById(
       auth,
       agentLoopArgs.conversationId
@@ -119,6 +124,13 @@ export async function finalizeSuccessfulAgentLoopActivity(
       : Promise.resolve(),
     shouldSignalButler
       ? linkButlerSuggestionResult(auth, agentLoopArgs)
+      : Promise.resolve(),
+    shouldSignalTodo
+      ? signalProjectTodoComplete({
+          authType,
+          conversationId: agentLoopArgs.conversationId,
+          messageId: agentLoopArgs.agentMessageId,
+        })
       : Promise.resolve(),
   ]);
 }

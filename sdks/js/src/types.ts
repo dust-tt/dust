@@ -684,6 +684,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversation_butler"
   | "conversation_branches"
   | "project_butler"
+  | "project_todo"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
