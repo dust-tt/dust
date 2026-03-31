@@ -90,22 +90,22 @@ export function DetectedSkillsList({
       )}
       {detectedSkills.length > 0 && (
         <>
-          {importableNames.length > 1 && (
-            <div className="flex items-center gap-2 pb-1">
-              <Checkbox
-                id="select-all-skills"
-                checked={allSelected}
-                onCheckedChange={toggleAll}
-              />
-              <Label
-                className="text-sm font-normal"
-                htmlFor="select-all-skills"
-              >
-                {allSelected ? "Unselect all" : "Select all"}
-              </Label>
-            </div>
-          )}
           <ContextItem.List>
+            {importableNames.length > 1 && (
+              <ContextItem
+                title=""
+                visual={
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all-skills"
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                    />
+                    <ContextItem.Visual visual={PuzzleIcon} />
+                  </div>
+                }
+              />
+            )}
             {detectedSkills.map((skill) => (
               <ContextItem
                 key={skill.name}
