@@ -9,7 +9,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
@@ -203,8 +203,11 @@ export async function runTriggeredAgentsActivity({
     auth,
     action: "trigger.fired",
     targets: [
-      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-      { type: "trigger", id: trigger.sId, name: trigger.name ?? trigger.sId },
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("trigger", {
+        sId: trigger.sId,
+        name: trigger.name ?? trigger.sId,
+      }),
     ],
     metadata: {
       triggerType: trigger.kind,

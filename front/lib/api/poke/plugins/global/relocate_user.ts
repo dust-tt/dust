@@ -1,4 +1,7 @@
-import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
@@ -86,7 +89,9 @@ export const relocateUserPlugin = createPlugin({
       void emitAuditLogEvent({
         auth,
         action: "user.relocated",
-        targets: [{ type: "user", id: userId, name: user.email }],
+        targets: [
+          buildAuditLogTarget("user", { sId: userId, name: user.email }),
+        ],
         metadata: {
           fromRegion: multiRegionsConfig.getCurrentRegion(),
           toRegion: String(newRegion[0]),

@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { createAndLogMembership } from "@app/lib/api/signup";
@@ -659,8 +659,8 @@ async function handleGroupUpsert(
       name: "Directory Sync",
     },
     targets: [
-      buildWorkspaceTarget(workspace),
-      { type: "group", id: group.sId, name: group.name },
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("group", group),
     ],
     context: { location: "system" },
     metadata: {
@@ -768,8 +768,11 @@ async function handleUserAddedToGroup(
         name: "Directory Sync",
       },
       targets: [
-        buildWorkspaceTarget(workspace),
-        { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("user", {
+          sId: user.sId,
+          name: user.fullName() ?? "unknown",
+        }),
       ],
       context: { location: "system" },
       metadata: {
@@ -788,9 +791,12 @@ async function handleUserAddedToGroup(
       name: "Directory Sync",
     },
     targets: [
-      buildWorkspaceTarget(workspace),
-      { type: "group", id: group.sId, name: group.name },
-      { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("group", group),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
     ],
     context: { location: "system" },
     metadata: {
@@ -879,9 +885,12 @@ async function handleUserRemovedFromGroup(
       name: "Directory Sync",
     },
     targets: [
-      buildWorkspaceTarget(workspace),
-      { type: "group", id: group.sId, name: group.name },
-      { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("group", group),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
     ],
     context: { location: "system" },
     metadata: {
@@ -995,12 +1004,11 @@ async function handleCreateOrUpdateWorkOSUser(
         name: "Directory Sync",
       },
       targets: [
-        buildWorkspaceTarget(workspace),
-        {
-          type: "user",
-          id: createdOrUpdatedUser.sId,
-          name: createdOrUpdatedUser.fullName() ?? undefined,
-        },
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("user", {
+          sId: createdOrUpdatedUser.sId,
+          name: createdOrUpdatedUser.fullName() ?? "unknown",
+        }),
       ],
       context: { location: "system" },
       metadata: {
@@ -1018,12 +1026,11 @@ async function handleCreateOrUpdateWorkOSUser(
         name: "Directory Sync",
       },
       targets: [
-        buildWorkspaceTarget(workspace),
-        {
-          type: "user",
-          id: createdOrUpdatedUser.sId,
-          name: createdOrUpdatedUser.fullName() ?? undefined,
-        },
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("user", {
+          sId: createdOrUpdatedUser.sId,
+          name: createdOrUpdatedUser.fullName() ?? "unknown",
+        }),
       ],
       context: { location: "system" },
       metadata: {
@@ -1053,12 +1060,11 @@ async function handleCreateOrUpdateWorkOSUser(
       name: "Directory Sync",
     },
     targets: [
-      buildWorkspaceTarget(workspace),
-      {
-        type: "user",
-        id: createdOrUpdatedUser.sId,
-        name: createdOrUpdatedUser.fullName() ?? undefined,
-      },
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("user", {
+        sId: createdOrUpdatedUser.sId,
+        name: createdOrUpdatedUser.fullName() ?? "unknown",
+      }),
     ],
     context: { location: "system" },
     metadata: {
@@ -1168,8 +1174,11 @@ async function handleDeleteWorkOSUser(
       name: "Directory Sync",
     },
     targets: [
-      buildWorkspaceTarget(workspace),
-      { type: "user", id: user.sId, name: user.fullName() ?? undefined },
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
     ],
     context: { location: "system" },
     metadata: {
@@ -1217,8 +1226,8 @@ async function handleGroupDelete(
       name: "Directory Sync",
     },
     targets: [
-      buildWorkspaceTarget(workspace),
-      { type: "group", id: groupSId, name: groupName },
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("group", { sId: groupSId, name: groupName }),
     ],
     context: { location: "system" },
     metadata: {

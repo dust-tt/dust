@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -54,8 +54,8 @@ export async function revokeAndTrackMembership(
       auth,
       action: "membership.revoked",
       targets: [
-        buildWorkspaceTarget(workspace),
-        { type: "user", id: user.sId, name: user.fullName() },
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("user", { sId: user.sId, name: user.fullName() }),
       ],
       context: getAuditLogContext(auth),
       metadata: {

@@ -218,14 +218,36 @@ export function buildAuditActor(auth: Authenticator): AuditLogActor {
   };
 }
 
+type AuditTargetType =
+  | "workspace"
+  | "user"
+  | "agent"
+  | "space"
+  | "data_source"
+  | "tool"
+  | "trigger"
+  | "api_key"
+  | "invitation"
+  | "group";
+
 /**
- * Builds a workspace audit target.
+ * Builds a typed audit log target.
+ */
+export function buildAuditLogTarget(
+  type: AuditTargetType,
+  resource: { sId: string; name: string }
+): AuditLogTarget {
+  return { type, id: resource.sId, name: resource.name };
+}
+
+/**
+ * @deprecated Use buildAuditLogTarget("workspace", workspace) instead.
  */
 export function buildWorkspaceTarget(workspace: {
   sId: string;
   name: string;
 }): AuditLogTarget {
-  return { type: "workspace", id: workspace.sId, name: workspace.name };
+  return buildAuditLogTarget("workspace", workspace);
 }
 
 /**

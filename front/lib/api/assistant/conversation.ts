@@ -34,7 +34,7 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
@@ -881,12 +881,8 @@ export async function postUserMessage(
         auth,
         action: "agent.executed",
         targets: [
-          buildWorkspaceTarget(conversation.owner),
-          {
-            type: "agent",
-            id: agentMessage.configuration.sId,
-            name: agentMessage.configuration.name,
-          },
+          buildAuditLogTarget("workspace", conversation.owner),
+          buildAuditLogTarget("agent", agentMessage.configuration),
         ],
         metadata: {
           conversationId: conversation.sId,

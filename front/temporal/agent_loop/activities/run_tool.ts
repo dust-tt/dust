@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEventDirect,
   getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
@@ -332,17 +332,12 @@ async function executeToolStreaming(
             name: agentConfiguration.name,
           },
           targets: [
-            buildWorkspaceTarget(conversation.owner),
-            {
-              type: "agent",
-              id: agentConfiguration.sId,
-              name: agentConfiguration.name,
-            },
-            {
-              type: "tool",
-              id: action.toolConfiguration.name,
+            buildAuditLogTarget("workspace", conversation.owner),
+            buildAuditLogTarget("agent", agentConfiguration),
+            buildAuditLogTarget("tool", {
+              sId: action.toolConfiguration.name,
               name: action.toolConfiguration.name,
-            },
+            }),
           ],
           context: { location: auth.clientIp() ?? "internal" },
           metadata: {

@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
@@ -223,7 +223,7 @@ export async function createConnectionAndGetSetupUrl(
   void emitAuditLogEvent({
     auth,
     action: "oauth.initiated",
-    targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+    targets: [buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())],
     metadata: {
       provider: String(provider),
       connectionId: connection.connection_id,
@@ -316,7 +316,9 @@ export async function finalizeConnection(
     void emitAuditLogEvent({
       auth,
       action: "oauth.authorized",
-      targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      ],
       metadata: {
         provider: String(provider),
         connectionId,

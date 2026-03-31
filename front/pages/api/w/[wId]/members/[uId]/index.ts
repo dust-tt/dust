@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -255,12 +255,11 @@ async function handler(
             auth,
             action: "membership.role_updated",
             targets: [
-              buildWorkspaceTarget(owner),
-              {
-                type: "user",
-                id: user.sId,
-                name: user.fullName() ?? undefined,
-              },
+              buildAuditLogTarget("workspace", owner),
+              buildAuditLogTarget("user", {
+                sId: user.sId,
+                name: user.fullName() ?? "unknown",
+              }),
             ],
             context: getAuditLogContext(auth, req),
             metadata: {

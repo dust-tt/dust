@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
@@ -100,7 +100,9 @@ export const inviteUser = createPlugin({
       void emitAuditLogEvent({
         auth,
         action: "member.bulk_invited",
-        targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        ],
         metadata: {
           invitedEmails: successes.map((r) => r.email).join(","),
           count: String(successes.length),
