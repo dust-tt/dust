@@ -102,6 +102,7 @@ import {
   ProjectTodoModel,
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
+import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
 import {
   RunModel,
   RunUsageModel,
@@ -225,6 +226,7 @@ export function loadAllModels() {
     ProjectTodoModel,
     ProjectTodoConversationModel,
     ProjectTodoSourceModel,
+    ProjectTodoStateModel,
   ];
 }
 
