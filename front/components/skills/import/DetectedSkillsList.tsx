@@ -12,6 +12,7 @@ import {
   InformationCircleIcon,
   Label,
   PuzzleIcon,
+  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -89,59 +90,63 @@ export function DetectedSkillsList({
         </div>
       )}
       {detectedSkills.length > 0 && (
-        <>
-          <ContextItem.List>
-            {importableNames.length > 1 && (
+        <div className="flex flex-col">
+          {importableNames.length > 1 && (
+            <ContextItem.List>
               <ContextItem
                 title=""
                 visual={
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="select-all-skills"
-                      checked={allSelected}
-                      onCheckedChange={toggleAll}
-                    />
-                    <ContextItem.Visual visual={PuzzleIcon} />
-                  </div>
+                  <Checkbox
+                    id="select-all-skills"
+                    checked={allSelected}
+                    onCheckedChange={toggleAll}
+                  />
                 }
               />
-            )}
-            {detectedSkills.map((skill) => (
-              <ContextItem
-                key={skill.name}
-                title={
-                  <Label className="text-sm font-normal" htmlFor={skill.name}>
-                    {skill.name}
-                  </Label>
-                }
-                visual={
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={skill.name}
-                      checked={selectedField.value.includes(skill.name)}
-                      disabled={!isImportableSkillStatus(skill.status)}
-                      onCheckedChange={() => toggleSkill(skill.name)}
-                    />
-                    <ContextItem.Visual visual={PuzzleIcon} />
-                  </div>
-                }
-                action={
-                  skill.status !== "ready" ? (
-                    <Chip
-                      label={STATUS_CHIP_LABEL[skill.status]}
-                      size="xs"
-                      color={
-                        skill.status === "skill_already_exists"
-                          ? "info"
-                          : "warning"
-                      }
-                    />
-                  ) : undefined
-                }
-              />
-            ))}
-          </ContextItem.List>
-        </>
+            </ContextItem.List>
+          )}
+          <ScrollArea className="max-h-64">
+            <ContextItem.List>
+              {detectedSkills.map((skill) => (
+                <ContextItem
+                  key={skill.name}
+                  title={
+                    <Label
+                      className="text-sm font-normal"
+                      htmlFor={skill.name}
+                    >
+                      {skill.name}
+                    </Label>
+                  }
+                  visual={
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={skill.name}
+                        checked={selectedField.value.includes(skill.name)}
+                        disabled={!isImportableSkillStatus(skill.status)}
+                        onCheckedChange={() => toggleSkill(skill.name)}
+                      />
+                      <ContextItem.Visual visual={PuzzleIcon} />
+                    </div>
+                  }
+                  action={
+                    skill.status !== "ready" ? (
+                      <Chip
+                        label={STATUS_CHIP_LABEL[skill.status]}
+                        size="xs"
+                        color={
+                          skill.status === "skill_already_exists"
+                            ? "info"
+                            : "warning"
+                        }
+                      />
+                    ) : undefined
+                  }
+                />
+              ))}
+            </ContextItem.List>
+          </ScrollArea>
+        </div>
       )}
     </>
   );
