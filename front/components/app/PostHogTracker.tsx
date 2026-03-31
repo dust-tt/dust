@@ -14,7 +14,7 @@ import {
   getPostHogCookieDomain,
 } from "@app/lib/utils/anonymous_id";
 import {
-  getStoredReferrer,
+  getStoredLandingContext,
   getStoredUTMParams,
   MARKETING_PARAMS,
 } from "@app/lib/utils/utm";
@@ -224,19 +224,23 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
           }
         }
 
-        // Inject stored referrer so the real external referrer (e.g.
-        // google.com) is preserved instead of the stale signin.dust.tt
-        // that posthog-js computes after the auth redirect.
-        const storedReferrer = getStoredReferrer();
-        if (storedReferrer) {
-          setOnceProps["$initial_referrer"] = storedReferrer;
-          try {
-            setOnceProps["$initial_referring_domain"] = new URL(
-              storedReferrer
-            ).hostname;
-          } catch {
-            // Malformed referrer URL — skip the domain.
+        // Inject first-touch landing context so the real values survive
+        // the dust.tt -> signin -> app.dust.tt auth redirect flow.
+        const landing = getStoredLandingContext();
+        if (landing) {
+          if (landing.referrer) {
+            setOnceProps["$initial_referrer"] = landing.referrer;
+            try {
+              setOnceProps["$initial_referring_domain"] = new URL(
+                landing.referrer
+              ).hostname;
+            } catch {
+              // Malformed referrer URL.
+            }
           }
+          setOnceProps["$initial_host"] = landing.host;
+          setOnceProps["$initial_current_url"] = landing.url;
+          setOnceProps["$initial_pathname"] = landing.pathname;
         }
 
         if (Object.keys(setOnceProps).length > 0) {
@@ -305,17 +309,22 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
         }
       }
 
-      // Include the original external referrer (from the _dust_referrer cookie).
-      const storedReferrer = getStoredReferrer();
-      if (storedReferrer) {
-        firstTouchProps["first_referrer"] = storedReferrer;
-        try {
-          firstTouchProps["first_referring_domain"] = new URL(
-            storedReferrer
-          ).hostname;
-        } catch {
-          // Ignore malformed referrer URLs.
+      // Include first-touch landing context.
+      const landing = getStoredLandingContext();
+      if (landing) {
+        if (landing.referrer) {
+          firstTouchProps["first_referrer"] = landing.referrer;
+          try {
+            firstTouchProps["first_referring_domain"] = new URL(
+              landing.referrer
+            ).hostname;
+          } catch {
+            // Malformed referrer URL.
+          }
         }
+        firstTouchProps["first_host"] = landing.host;
+        firstTouchProps["first_landing_url"] = landing.url;
+        firstTouchProps["first_landing_pathname"] = landing.pathname;
       }
 
       if (Object.keys(firstTouchProps).length > 0) {
