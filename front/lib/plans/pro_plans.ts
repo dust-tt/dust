@@ -1,7 +1,7 @@
 import { PlanModel } from "@app/lib/models/plan";
 import {
   FREE_BYOK_PLAN_CODE,
-  FREE_BYOK_TRANSITIONNING_PLAN_CODE,
+  FREE_BYOK_TRANSITIONING_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -119,7 +119,7 @@ if (isDevelopment() || isTest()) {
     metronomePackageAlias: null,
   });
   PRO_PLANS_DATA.push({
-    code: FREE_BYOK_TRANSITIONNING_PLAN_CODE,
+    code: FREE_BYOK_TRANSITIONING_PLAN_CODE,
     name: "Free (BYOK Transitioning)",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
