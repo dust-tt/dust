@@ -89,10 +89,9 @@ export function InlineActivitySteps({
   }
 
   return (
-    <div className="flex flex-col mt-2 gap-4 text-sm">
-      {/* Collapsible header */}
+    <div className={`flex flex-col mt-2 text-sm ${isCollapsed ? "" : "gap-4"}`}>
       <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1"
+        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center text-xs"
         onClick={() => setIsCollapsed((c) => !c)}
       >
         <span
@@ -110,10 +109,13 @@ export function InlineActivitySteps({
       </button>
 
       <div
-        className="grid transition-[grid-template-rows,opacity] duration-200 ease-out"
+        className="grid ease-out"
         style={{
           gridTemplateRows: isCollapsed ? "0fr" : "1fr",
           opacity: isCollapsed ? 0 : 1,
+          transition: isCollapsed
+            ? "grid-template-rows 200ms ease-out"
+            : "grid-template-rows 200ms ease-out, opacity 300ms",
         }}
       >
         <div className="overflow-hidden">
