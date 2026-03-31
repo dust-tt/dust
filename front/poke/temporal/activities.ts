@@ -209,6 +209,19 @@ export async function scrubSpaceActivity({
         throw metadataRes.error;
       }
     }
+    const projectTodoStates = await ProjectTodoResource.fetchBySpace(auth, {
+      spaceId: space.id,
+    });
+    await concurrentExecutor(
+      projectTodoStates,
+      async (todoState) => {
+        const result = await todoState.delete(auth, {});
+        if (result.isErr()) {
+          throw result.error;
+        }
+      },
+      { concurrency: 8 }
+    );
   }
 
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
