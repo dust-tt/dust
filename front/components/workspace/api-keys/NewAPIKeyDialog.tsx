@@ -6,6 +6,7 @@ import {
 } from "@app/components/workspace/api-keys/utils";
 import type { GroupType } from "@app/types/groups";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { ModelId } from "@app/types/shared/model_id";
 import {
   Button,
   DropdownMenu,
@@ -56,6 +57,10 @@ export const NewAPIKeyDialog = ({
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
+
+  const removeGroup = (groupId: ModelId) => {
+    setSelectedGroups((prev) => prev.filter((sg) => sg.id !== groupId));
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -145,11 +150,7 @@ export const NewAPIKeyDialog = ({
                         icon={XMarkIcon}
                         size="xs"
                         variant="outline"
-                        onClick={() =>
-                          setSelectedGroups((prev) =>
-                            prev.filter((sg) => sg.id !== g.id)
-                          )
-                        }
+                        onClick={() => removeGroup(g.id)}
                       />
                     ))}
                   </div>
@@ -182,9 +183,7 @@ export const NewAPIKeyDialog = ({
                               checked={isSelected}
                               onCheckedChange={() => {
                                 if (isSelected) {
-                                  setSelectedGroups((prev) =>
-                                    prev.filter((sg) => sg.id !== group.id)
-                                  );
+                                  removeGroup(group.id);
                                 } else {
                                   setSelectedGroups((prev) => [...prev, group]);
                                 }
