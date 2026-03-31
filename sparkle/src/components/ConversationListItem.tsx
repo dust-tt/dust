@@ -177,7 +177,7 @@ export function ConversationListItem({
             )}
           </div>
           <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            <span className="s-font-normal">{time}</span>
+            <span className="s-font-normal s-shrink-0">{time}</span>
           </div>
         </div>
         {conversation.description && (
