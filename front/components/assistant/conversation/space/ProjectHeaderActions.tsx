@@ -76,7 +76,7 @@ export function ProjectHeaderActions({
                 visual: member.image ?? undefined,
                 isRounded: true,
               }))}
-              nbVisibleItems={3}
+              nbVisibleItems={8}
               size="sm"
             />
           </div>

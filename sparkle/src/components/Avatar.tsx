@@ -394,8 +394,17 @@ Avatar.Stack = function ({
                     style={{
                       transform: `scale(${
                         onTop === "first"
-                          ? 1 - (visibleAvatars.length - 1 - i) * 0.06
-                          : 1 - (visibleAvatars.length - i) * 0.06
+                          ? 1 -
+                            (visibleAvatars.length +
+                              (remainingCount > 0 ? 1 : 0) -
+                              1 -
+                              i) *
+                              0.06
+                          : 1 -
+                            (visibleAvatars.length +
+                              (remainingCount > 0 ? 1 : 0) -
+                              i) *
+                              0.06
                       })`,
                     }}
                   >
@@ -420,14 +429,31 @@ Avatar.Stack = function ({
                   transition: transitionSettings,
                 }}
               >
-                <Avatar
-                  size={size}
-                  name={
-                    "+" +
-                    String(Number(remainingCount) < 10 ? remainingCount : "")
-                  }
-                  clickable
-                />
+                {hasMagnifier ? (
+                  <div
+                    style={{
+                      transform: `scale(${onTop === "first" ? 1 : 1 - 0.06})`,
+                    }}
+                  >
+                    <Avatar
+                      size={size}
+                      name={
+                        "+" +
+                        String(
+                          Number(remainingCount) < 10 ? remainingCount : ""
+                        )
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Avatar
+                    size={size}
+                    name={
+                      "+" +
+                      String(Number(remainingCount) < 10 ? remainingCount : "")
+                    }
+                  />
+                )}
               </div>
             )}
           </div>
