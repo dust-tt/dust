@@ -52,7 +52,7 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   private user?: UserModel;
 
-  private static readonly keyCacheKeyResolver = (secret: string) =>
+  static readonly keyCacheKeyResolver = (secret: string) =>
     `key:secret:${Buffer.from(blake3(secret)).toString("hex")}`;
 
   private static async _fetchBySecretUncached(

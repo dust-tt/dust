@@ -1354,7 +1354,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const instructions = def.fetchInstructions
-      ? await def.fetchInstructions(auth, requestedSpaceIds)
+      ? await def.fetchInstructions(auth, {
+          spaceIds: requestedSpaceIds,
+          agentLoopData,
+        })
       : def.instructions;
 
     return new SkillResource(

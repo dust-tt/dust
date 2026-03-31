@@ -56,6 +56,11 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
   { name: "lxml", version: "6.0.2", description: "XML processing" },
   { name: "pillow", version: "12.1.1", description: "Image processing" },
   { name: "sympy", version: "1.14.0", description: "Symbolic mathematics" },
+  {
+    name: "opencv-python",
+    version: "4.13.0.92",
+    description: "OpenCV package for python",
+  },
 ];
 
 function getPythonToolEntries(): ToolEntry[] {
@@ -237,14 +242,6 @@ SHELLEOF`)
       returns: "File/dir paths, limited to 200 entries",
       runtime: "system",
     },
-    {
-      name: "shell",
-      description: "Execute shell command. Combines stdout/stderr",
-      usage: "shell <command> [timeout_sec]",
-      returns:
-        "Command output, truncated to 50000 chars (full output saved to /tmp when truncated)",
-      runtime: "system",
-    },
   ])
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
@@ -253,7 +250,7 @@ SHELLEOF`)
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.5.2",
+    tag: "0.6.1",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
