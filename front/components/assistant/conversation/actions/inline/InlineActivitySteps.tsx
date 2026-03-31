@@ -138,7 +138,7 @@ export function InlineActivitySteps({
                       <Markdown
                         content={step.content}
                         isStreaming={false}
-                        forcedTextSize="text-sm"
+                        forcedTextSize="text-xs"
                         textColor="text-muted-foreground dark:text-muted-foreground-night"
                         isLastMessage={false}
                       />
@@ -185,7 +185,7 @@ export function InlineActivitySteps({
                     enableAnimation
                     animationDurationSeconds={0.3}
                     delimiter=" "
-                    forcedTextSize="text-sm"
+                    forcedTextSize="text-xs"
                     textColor="text-muted-foreground dark:text-muted-foreground-night"
                     isLastMessage={false}
                   />
@@ -208,7 +208,7 @@ export function InlineActivitySteps({
             )}
             {isDone && completedSteps.length > 0 && (
               <TimelineRow icon={CheckIcon} isLast>
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                   Done
                 </span>
               </TimelineRow>
