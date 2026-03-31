@@ -2,6 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { RoleType } from "@app/types/user";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -20,7 +21,7 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;
 
-  declare groupIds: number[];
+  declare groupIds: ModelId[];
 
   declare name: string;
   declare monthlyCapMicroUsd: number | null;

@@ -2,7 +2,7 @@
 -- Add groupIds array column to keys table for multi-space API key support
 
 -- Step 1: Add groupIds column (nullable for backfill)
-ALTER TABLE "keys" ADD COLUMN "groupIds" INTEGER[];
+ALTER TABLE "keys" ADD COLUMN "groupIds" BIGINT[];
 
 -- Step 2a: Backfill 'default' scope keys with [globalGroupId, groupId] (deduped)
 UPDATE "keys" SET "groupIds" = ARRAY(
@@ -18,6 +18,3 @@ WHERE "scope" = 'restricted_group_only';
 
 -- Step 3: Make NOT NULL
 ALTER TABLE "keys" ALTER COLUMN "groupIds" SET NOT NULL;
-
--- Step 4: Index
-CREATE INDEX CONCURRENTLY "keys_group_ids" ON "keys" ("groupIds");

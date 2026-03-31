@@ -31,7 +31,7 @@ type CachedKeyData = Omit<
   lastUsedAt: number | null;
   createdAt: number;
   updatedAt: number;
-  groupIds?: number[];
+  groupIds?: ModelId[];
 };
 
 export interface KeyAuthType {
