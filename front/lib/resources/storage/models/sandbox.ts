@@ -13,6 +13,7 @@ export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare providerId: string;
   declare status: SandboxStatus;
+  declare statusChangedAt: CreationOptional<Date>;
   declare lastActivityAt: Date;
 
   // Associations.
@@ -47,6 +48,10 @@ SandboxModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "running",
+    },
+    statusChangedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     lastActivityAt: {
       type: DataTypes.DATE,
