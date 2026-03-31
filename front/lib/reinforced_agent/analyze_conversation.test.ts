@@ -64,36 +64,21 @@ function makeAction(
 describe("buildAnalysisPrompt", () => {
   it("includes agent name in user message", () => {
     const agent = makeAgentConfig({ name: "SalesBot" });
-    const { userMessage } = buildAnalysisPrompt(
-      agent,
-      "User: hello",
-      "No tools.",
-      []
-    );
+    const { userMessage } = buildAnalysisPrompt(agent, "User: hello", []);
 
     expect(userMessage).toContain("Name: SalesBot");
   });
 
   it("includes description when present", () => {
     const agent = makeAgentConfig({ description: "Handles sales queries" });
-    const { userMessage } = buildAnalysisPrompt(
-      agent,
-      "User: hello",
-      "No tools.",
-      []
-    );
+    const { userMessage } = buildAnalysisPrompt(agent, "User: hello", []);
 
     expect(userMessage).toContain("Description: Handles sales queries");
   });
 
   it("omits description section when empty", () => {
     const agent = makeAgentConfig({ description: "" });
-    const { userMessage } = buildAnalysisPrompt(
-      agent,
-      "User: hello",
-      "No tools.",
-      []
-    );
+    const { userMessage } = buildAnalysisPrompt(agent, "User: hello", []);
 
     expect(userMessage).not.toContain("Description:");
   });
@@ -102,12 +87,7 @@ describe("buildAnalysisPrompt", () => {
     const agent = makeAgentConfig({
       instructionsHtml: "<p>Be polite</p>",
     });
-    const { userMessage } = buildAnalysisPrompt(
-      agent,
-      "User: hello",
-      "No tools.",
-      []
-    );
+    const { userMessage } = buildAnalysisPrompt(agent, "User: hello", []);
 
     expect(userMessage).toContain("### Current instructions");
     expect(userMessage).toContain("<p>Be polite</p>");
@@ -115,12 +95,7 @@ describe("buildAnalysisPrompt", () => {
 
   it("omits instructions section when null", () => {
     const agent = makeAgentConfig({ instructionsHtml: null });
-    const { userMessage } = buildAnalysisPrompt(
-      agent,
-      "User: hello",
-      "No tools.",
-      []
-    );
+    const { userMessage } = buildAnalysisPrompt(agent, "User: hello", []);
 
     expect(userMessage).not.toContain("### Current instructions");
   });
@@ -130,7 +105,6 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig(),
       conversationText,
-      "No tools.",
       []
     );
 
@@ -139,29 +113,18 @@ describe("buildAnalysisPrompt", () => {
     expect(userMessage).toContain("</conversation>");
   });
 
-  it("includes tools and skills context in user message", () => {
-    const toolsContext = "## Available tools\n- search\n- browse";
-    const { userMessage } = buildAnalysisPrompt(
-      makeAgentConfig(),
-      "User: hello",
-      toolsContext,
-      []
-    );
-
-    expect(userMessage).toContain(toolsContext);
-  });
-
-  it("system prompt mentions the three available tools", () => {
+  it("system prompt mentions exploratory and suggestion tools", () => {
     const { systemPrompt } = buildAnalysisPrompt(
       makeAgentConfig(),
       "User: hello",
-      "No tools.",
       []
     );
 
     expect(systemPrompt).toContain("suggest_prompt_edits");
     expect(systemPrompt).toContain("suggest_tools");
     expect(systemPrompt).toContain("suggest_skills");
+    expect(systemPrompt).toContain("get_available_skills");
+    expect(systemPrompt).toContain("get_available_tools");
   });
 
   it("includes agent configured tools in user message", () => {
@@ -169,7 +132,6 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig({ actions: [action] }),
       "User: hello",
-      "No tools.",
       []
     );
 
@@ -182,7 +144,6 @@ describe("buildAnalysisPrompt", () => {
     const { userMessage } = buildAnalysisPrompt(
       makeAgentConfig(),
       "User: hello",
-      "No tools.",
       [skill]
     );
 

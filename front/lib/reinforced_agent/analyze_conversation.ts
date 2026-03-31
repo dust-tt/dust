@@ -1,18 +1,13 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import { SHARED_PROMPT_SECTIONS } from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
-import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import {
   type AgentContextSkill,
   formatAgentContext,
 } from "@app/lib/reinforced_agent/format_agent_context";
-import {
-  buildReinforcedLLMParams,
-  runReinforcedAnalysis,
-} from "@app/lib/reinforced_agent/run_reinforced_analysis";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { buildReinforcedLLMParams } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -31,9 +26,22 @@ type SectionKey = (typeof ASSEMBLY_ORDER)[number];
 export const REINFORCED_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
   primary: `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
 
-You have access to the following tools to suggest improvements to the agent: suggest_prompt_edits, suggest_tools, and suggest_skills.
+You have access to the following tools:
 
-You MUST follow <analysis_workflow>. These steps are enirely focused on identifying potential agent improvements and calling the suggestion tools as an end result. You MUST call at least one tool. If after <analysis_workflow> you have determined no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
+## Exploration tools (optional - use these first if you need more context)
+- get_available_skills: Lists all skills available in the workspace. Use this to discover skills you could suggest adding.
+- get_available_tools: Lists all tools (MCP servers) available in the workspace. Use this to discover tools you could suggest adding.
+
+## Suggestion tools (terminal — the conversation ends after these)
+- suggest_prompt_edits: For suggesting instruction changes.
+- suggest_tools: For suggesting tools to add or remove.
+- suggest_skills: For suggesting skills to add or remove.
+
+You can either:
+1. Call exploration tools first to discover available skills/tools, then make informed suggestions.
+2. Go straight to calling suggestion tools if you already have enough context.
+
+You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result. You MUST eventually call at least one suggestion tool. You must do all the suggestions in parallel as after suggestions the conversation will be over. If after <analysis_workflow> you have determined no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
 
 The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.`,
 
@@ -71,7 +79,7 @@ This is the MOST important signal as it is directly provided by the user and an 
 Example: The user asks, "Create a Gmail draft replying to Thread X". The agent calls gmail__search_messages 4 times with different vague queries, then tries gmail__create_reply_draft twice with different ID fields (Message-ID header, then thread id) and finally succeeds only after trial-and-error.
 This pattern suggests instruction gaps (which identifier to pass, and the expected call chain).
 
-4. Missing capabilities the agent should have. Look at <tools_and_skills_context>. Determine if more information or actions could have been provided to the user to improve satisfaction and increase user productivity. When making these types of suggestions, you MUST ensure that they are inline with the goal/role of the agent.
+4. Missing capabilities the agent should have. Call get_available_tools and get_available_skills to discover what tools and skills are available in the workspace. Determine if more information or actions could have been provided to the user to improve satisfaction and increase user productivity. When making these types of suggestions, you MUST ensure that they are inline with the goal/role of the agent.
 
 A key consideration is that conversations can be user-specific, but agents are usually shared. You MUST ensure that the suggestions are useful for all users of the agent.`,
 
@@ -83,7 +91,7 @@ A key consideration is that conversations can be user-specific, but agents are u
     SHARED_PROMPT_SECTIONS.instructionSuggestionFormatting,
 };
 
-function buildAnalysisSystemPrompt(): string {
+export function buildAnalysisSystemPrompt(): string {
   return ASSEMBLY_ORDER.map((key) => {
     const body = REINFORCED_ANALYSIS_SECTIONS[key].trim();
     return `<${key}>\n${body}\n</${key}>`;
@@ -93,7 +101,6 @@ function buildAnalysisSystemPrompt(): string {
 export function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
   conversationText: string,
-  toolsAndSkillsContext: string,
   agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildAnalysisSystemPrompt();
@@ -101,10 +108,6 @@ export function buildAnalysisPrompt(
   const userMessage = `<agent_context>
 ${formatAgentContext(agentConfig, agentSkills)}
 </agent_context>
-
-<tools_and_skills_context>
-${toolsAndSkillsContext}
-</tools_and_skills_context>
 
 <conversation>
 ${conversationText}
@@ -136,10 +139,10 @@ export async function buildConversationAnalysisBatchMap(
     return null;
   }
 
-  const [toolsAndSkillsContext, agentSkills] = await Promise.all([
-    buildToolsAndSkillsContext(auth),
-    SkillResource.listByAgentConfiguration(auth, agentConfig),
-  ]);
+  const agentSkills = await SkillResource.listByAgentConfiguration(
+    auth,
+    agentConfig
+  );
 
   const batchMap = new Map<string, LLMStreamParameters>();
 
@@ -160,96 +163,10 @@ export async function buildConversationAnalysisBatchMap(
     const prompt = buildAnalysisPrompt(
       agentConfig,
       conversationRes.value.text,
-      toolsAndSkillsContext,
       agentSkills
     );
     batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
   }
 
   return batchMap.size > 0 ? batchMap : null;
-}
-
-/**
- * Analyze a single conversation for reinforcement suggestions.
- * Creates synthetic AgentSuggestion records.
- */
-export async function analyzeConversationForReinforcement(
-  auth: Authenticator,
-  {
-    conversationId,
-    agentConfigurationId,
-  }: {
-    conversationId: string;
-    agentConfigurationId: string;
-  }
-): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const [agentConfig] = await getAgentConfigurations(auth, {
-    agentIds: [agentConfigurationId],
-    variant: "full",
-  });
-  if (!agentConfig) {
-    logger.warn(
-      { agentConfigurationId, workspaceId: owner.sId },
-      "ReinforcedAgent: agent configuration not found"
-    );
-    return;
-  }
-  if (agentConfig.id < 0) {
-    return;
-  }
-
-  const [
-    conversationRes,
-    conversationResource,
-    toolsAndSkillsContext,
-    agentSkills,
-  ] = await Promise.all([
-    getShrinkWrappedConversation(auth, {
-      conversationId,
-      includeFeedback: true,
-    }),
-    ConversationResource.fetchById(auth, conversationId),
-    buildToolsAndSkillsContext(auth),
-    SkillResource.listByAgentConfiguration(auth, agentConfig),
-  ]);
-  if (conversationRes.isErr() || !conversationResource) {
-    logger.warn(
-      {
-        conversationId,
-        error: conversationRes.isErr() && conversationRes.error,
-      },
-      "ReinforcedAgent: conversation not found"
-    );
-    return;
-  }
-
-  const prompt = buildAnalysisPrompt(
-    agentConfig,
-    conversationRes.value.text,
-    toolsAndSkillsContext,
-    agentSkills
-  );
-
-  const createdCount = await runReinforcedAnalysis({
-    auth,
-    agentConfig,
-    prompt,
-    source: "synthetic",
-    operationType: "reinforced_agent_analyze_conversation",
-    contextId: conversationId,
-    conversation: conversationResource,
-  });
-
-  if (createdCount > 0) {
-    logger.info(
-      {
-        conversationId,
-        agentConfigurationId,
-        suggestionsCreated: createdCount,
-      },
-      "ReinforcedAgent: created synthetic suggestions from conversation analysis"
-    );
-  }
 }
