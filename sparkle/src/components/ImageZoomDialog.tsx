@@ -140,5 +140,5 @@ function ImageZoomDialog({
 
 ImageZoomDialog.displayName = "ImageZoomDialog";
 
-export { downloadFile, ImageZoomDialog };
 export type { ImageZoomDialogProps };
+export { downloadFile, ImageZoomDialog };

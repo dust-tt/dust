@@ -260,12 +260,12 @@ const MultiPageSheetContent = React.forwardRef<
 MultiPageSheetContent.displayName = "MultiPageSheetContent";
 
 export {
-  MultiPageSheetRoot as MultiPageSheet,
   MultiPageSheetClose,
   MultiPageSheetContent,
   MultiPageSheetFooter,
   type MultiPageSheetFooterProps,
   type MultiPageSheetPage,
   type MultiPageSheetProps,
+  MultiPageSheetRoot as MultiPageSheet,
   MultiPageSheetTrigger,
 };

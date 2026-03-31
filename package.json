@@ -29,9 +29,9 @@
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.0",
-    "knip": "^5.80.0",
+    "@biomejs/biome": "^2.4.8",
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",
+    "knip": "^5.80.0",
     "lefthook": "^2.1.0",
     "wrangler": "^4.67.0"
   },

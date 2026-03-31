@@ -183,5 +183,5 @@ function CheckBoxWithTextAndDescription({
   return tooltip ? <Tooltip label={tooltip} trigger={content} /> : content;
 }
 
-export { Checkbox, CheckboxWithText, CheckBoxWithTextAndDescription };
 export type { CheckboxProps };
+export { CheckBoxWithTextAndDescription, Checkbox, CheckboxWithText };

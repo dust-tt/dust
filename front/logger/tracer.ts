@@ -63,6 +63,6 @@ if (isDevelopment()) {
   tracer = require("dd-trace").default as TracerLike;
 }
 
+export type { DDSpan as Span, DDTracer as Tracer, SpanLike };
 export { tracer };
-export type { DDSpan as Span, SpanLike, DDTracer as Tracer };
 export default tracer;
