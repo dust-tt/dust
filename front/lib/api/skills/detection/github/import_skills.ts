@@ -66,10 +66,8 @@ export async function importSkillsFromGitHub(
   );
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
-  const existingByName = await SkillResource.fetchByNames(
-    auth,
-    uniqueNames
-  );
+  const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   const user = auth.getNonNullableUser();
   const imported: SkillResource[] = [];
@@ -79,7 +77,7 @@ export async function importSkillsFromGitHub(
   await concurrentExecutor(
     selectedSkills,
     async (skill) => {
-      const existing = existingByName.get(skill.name) ?? null;
+      const existing = existingSkillsMap.get(skill.name) ?? null;
 
       if (existing && !isSkillFromGitHubRepo(existing, { repoUrl })) {
         skipped.push({
