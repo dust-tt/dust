@@ -721,7 +721,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
   | "salesforce_synced_queries"
-  | "salesforce_tool_write"
   | "salesforce_tool"
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
