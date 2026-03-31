@@ -21,6 +21,7 @@ async function backfillApiKeys(
     const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
     if (systemGroup.isOk()) {
       await KeyResource.model.update(
+        // @ts-ignore -- Legacy migration: groupId column was removed.
         { groupId: systemGroup.value.id },
         {
           where: {
@@ -36,10 +37,10 @@ async function backfillApiKeys(
 
 makeScript({}, async ({ execute }, logger) => {
   const keys = await KeyModel.findAll({
-    // @ts-expect-error groupId is now not nullable in our database schema, even though we have some null values in the database.
     where: {
       isSystem: true,
       status: "active",
+      // @ts-ignore -- Legacy migration: groupId column was removed.
       groupId: null,
     },
   });

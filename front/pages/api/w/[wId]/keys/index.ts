@@ -29,7 +29,6 @@ export type PostKeysResponseBody = {
 
 const CreateKeyPostBodySchema = t.type({
   name: t.string,
-  group_id: t.union([t.string, t.undefined]),
   group_ids: t.union([t.array(t.string), t.undefined]),
   monthly_cap_micro_usd: t.union([t.number, t.null, t.undefined]),
 });
@@ -77,8 +76,7 @@ async function handler(
         });
       }
 
-      const { name, group_id, group_ids, monthly_cap_micro_usd } =
-        bodyValidation.right;
+      const { name, group_ids, monthly_cap_micro_usd } = bodyValidation.right;
       const trimmedName = name.trim();
 
       if (trimmedName.length === 0) {
@@ -138,9 +136,7 @@ async function handler(
 
       const additionalGroupIds = group_ids
         ? group_ids.filter((gId) => gId !== globalGroup.sId)
-        : group_id && group_id !== globalGroup.sId
-          ? [group_id]
-          : [];
+        : [];
 
       if (additionalGroupIds.length > 0) {
         const groupsRes = await GroupResource.fetchByIds(
