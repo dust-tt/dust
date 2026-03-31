@@ -82,6 +82,17 @@ final class ConversationListViewModel: ObservableObject {
         state = .loaded
     }
 
+    func markConversationsAsRead(_ ids: Set<String>) {
+        for index in conversations.indices where ids.contains(conversations[index].sId) {
+            conversations[index].unread = false
+            conversations[index].actionRequired = false
+        }
+    }
+
+    var unreadConversations: [Conversation] {
+        conversations.filter { $0.unread || $0.actionRequired }
+    }
+
     var filteredConversations: [Conversation] {
         guard !searchText.isEmpty else { return conversations }
         let query = searchText.lowercased()
@@ -130,12 +141,11 @@ final class ConversationListViewModel: ObservableObject {
         var result: [(String, [Conversation])] = []
 
         // Inbox section: unread or actionRequired conversations, shown first.
-        let inboxConversations = filtered.filter { $0.unread || $0.actionRequired }
+        let inboxIds = Set(unreadConversations.map(\.sId))
+        let inboxConversations = filtered.filter { inboxIds.contains($0.sId) }
         if !inboxConversations.isEmpty {
             result.append(("Inbox (\(inboxConversations.count))", inboxConversations))
         }
-
-        let inboxIds = Set(inboxConversations.map(\.sId))
         for group in ConversationDateGroup.allCases {
             guard let convos = groups[group], !convos.isEmpty else { continue }
             let filtered = convos.filter { !inboxIds.contains($0.sId) }

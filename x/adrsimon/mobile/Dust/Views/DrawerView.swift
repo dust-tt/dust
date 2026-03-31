@@ -12,6 +12,7 @@ struct DrawerView: View {
     let onSelectConversation: (Conversation) -> Void
     let onSwitchWorkspace: (Workspace) -> Void
     let onLogout: () -> Void
+    var onCatchUp: (() -> Void)?
     var onRefresh: (() async -> Void)?
 
     var body: some View {
@@ -26,7 +27,7 @@ struct DrawerView: View {
     // MARK: - Top: Search + New
 
     private var headerSection: some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 8) {
             HStack(spacing: 6) {
                 SparkleIcon.magnifyingGlass.image
                     .resizable()
@@ -40,19 +41,26 @@ struct DrawerView: View {
             .padding(.vertical, 8)
             .modifier(GlassSearchBarModifier())
 
-            Button(action: onNewConversation) {
-                HStack(spacing: 4) {
-                    SparkleIcon.chatBubbleBottomCenterPlus.image
-                        .resizable()
-                        .frame(width: 14, height: 14)
-                    Text("New")
-                        .sparkleLabelSm()
+            HStack(spacing: 8) {
+                if let onCatchUp {
+                    PillButton(
+                        icon: SparkleIcon.inbox,
+                        label: "Catch Up",
+                        foreground: Color.dustForeground,
+                        background: Color.dustMutedBackground,
+                        action: onCatchUp
+                    )
                 }
-                .foregroundStyle(Color.dustBackground)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.gray950)
-                .clipShape(RoundedRectangle(cornerRadius: 32))
+
+                PillButton(
+                    icon: SparkleIcon.chatBubbleBottomCenterPlus,
+                    label: "New",
+                    foreground: Color.dustBackground,
+                    background: Color.gray950,
+                    action: onNewConversation
+                )
+
+                Spacer()
             }
         }
         .padding(.horizontal, 12)
@@ -175,6 +183,31 @@ struct DrawerView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
+    }
+}
+
+private struct PillButton: View {
+    let icon: SparkleIcon
+    let label: String
+    let foreground: Color
+    let background: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                icon.image
+                    .resizable()
+                    .frame(width: 14, height: 14)
+                Text(label)
+                    .sparkleLabelSm()
+            }
+            .foregroundStyle(foreground)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 32))
+        }
     }
 }
 

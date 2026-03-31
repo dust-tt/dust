@@ -118,6 +118,23 @@ enum APIClient {
         }
     }
 
+    /// Sends an authenticated request with no response body decoding. Retries once on 401.
+    static func authenticatedSend(
+        _ endpoint: String,
+        method: String,
+        body: Data,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let _: Bool = try await withAuthRetry(tokenProvider: tokenProvider) { token in
+            var request = try buildRequest(endpoint: endpoint, accessToken: token)
+            request.httpMethod = method
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+            _ = try await performRequest(request)
+            return true
+        }
+    }
+
     /// Executes a closure with a valid access token, retrying once on 401 after refreshing.
     private static func withAuthRetry<T>(
         tokenProvider: TokenProvider,

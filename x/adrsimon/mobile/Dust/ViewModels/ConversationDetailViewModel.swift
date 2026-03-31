@@ -30,6 +30,7 @@ final class ConversationDetailViewModel: ObservableObject {
     // Streaming tasks
     private var conversationEventsTask: Task<Void, Never>?
     private var messageStreamTask: Task<Void, Never>?
+    private var markAsReadTask: Task<Void, Never>?
 
     init(conversation: Conversation, workspaceId: String, tokenProvider: TokenProvider) {
         self.conversation = conversation
@@ -40,6 +41,7 @@ final class ConversationDetailViewModel: ObservableObject {
     deinit {
         conversationEventsTask?.cancel()
         messageStreamTask?.cancel()
+        markAsReadTask?.cancel()
     }
 
     // MARK: - Message Loading
@@ -62,6 +64,8 @@ final class ConversationDetailViewModel: ObservableObject {
 
             // Start listening for conversation-level events (new messages, title changes)
             startConversationEvents()
+
+            markAsRead()
         } catch {
             logger.error("Failed to load messages: \(error)")
             state = .error(error.localizedDescription)
@@ -83,6 +87,25 @@ final class ConversationDetailViewModel: ObservableObject {
             self.lastValue = response.lastValue
         } catch {
             logger.error("Failed to load more messages: \(error)")
+        }
+    }
+
+    // MARK: - Mark as Read
+
+    private func markAsRead() {
+        guard conversation.unread else { return }
+
+        markAsReadTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await ConversationService.markAsRead(
+                    workspaceId: workspaceId,
+                    conversationId: conversation.sId,
+                    tokenProvider: tokenProvider
+                )
+            } catch {
+                logger.error("Failed to mark conversation as read: \(error)")
+            }
         }
     }
 
