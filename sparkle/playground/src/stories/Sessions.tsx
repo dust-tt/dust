@@ -84,6 +84,36 @@ type Collaborator =
   | { type: "agent"; data: Agent }
   | { type: "person"; data: User };
 
+function sidebarItemHash(input: string): number {
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) {
+    h = (h * 33) ^ input.charCodeAt(i);
+  }
+  return h >>> 0;
+}
+
+/** Fake pending DMs: 0–3. Activity key orders “most recent” first (deterministic). */
+function getAgentSidebarMeta(agent: Agent) {
+  const pending = sidebarItemHash(`sessions-agent-pending:${agent.id}`) % 4;
+  const activityKey = sidebarItemHash(`sessions-agent-activity:${agent.id}`);
+  return {
+    pending,
+    activityKey,
+    hasActivity: pending > 0,
+  };
+}
+
+/** Fake pending DMs: 0–8. Activity key orders “most recent” first (deterministic). */
+function getPersonSidebarMeta(person: User) {
+  const pending = sidebarItemHash(`sessions-person-pending:${person.id}`) % 9;
+  const activityKey = sidebarItemHash(`sessions-person-activity:${person.id}`);
+  return {
+    pending,
+    activityKey,
+    hasActivity: pending > 0,
+  };
+}
+
 function DustMain() {
   const [_activeTab, _setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
@@ -266,15 +296,35 @@ function DustMain() {
     return { count, hasActivity };
   };
 
-  const filteredAgentCollaborators = useMemo(
-    () => filteredCollaborators.filter((c) => c.type === "agent"),
-    [filteredCollaborators]
-  );
+  const filteredAgentCollaborators = useMemo(() => {
+    const agents = filteredCollaborators.filter((c) => c.type === "agent");
+    return [...agents].sort((a, b) => {
+      const ma = getAgentSidebarMeta(a.data);
+      const mb = getAgentSidebarMeta(b.data);
+      if (mb.activityKey !== ma.activityKey) {
+        return mb.activityKey - ma.activityKey;
+      }
+      if (mb.pending !== ma.pending) {
+        return mb.pending - ma.pending;
+      }
+      return a.data.name.localeCompare(b.data.name);
+    });
+  }, [filteredCollaborators]);
 
-  const filteredPeopleCollaborators = useMemo(
-    () => filteredCollaborators.filter((c) => c.type === "person"),
-    [filteredCollaborators]
-  );
+  const filteredPeopleCollaborators = useMemo(() => {
+    const people = filteredCollaborators.filter((c) => c.type === "person");
+    return [...people].sort((a, b) => {
+      const ma = getPersonSidebarMeta(a.data);
+      const mb = getPersonSidebarMeta(b.data);
+      if (mb.activityKey !== ma.activityKey) {
+        return mb.activityKey - ma.activityKey;
+      }
+      if (mb.pending !== ma.pending) {
+        return mb.pending - ma.pending;
+      }
+      return a.data.fullName.localeCompare(b.data.fullName);
+    });
+  }, [filteredCollaborators]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -739,7 +789,22 @@ function DustMain() {
         </div>
         {/* Collapsible Sections */}
         <NavigationList className="s-px-2">
-          {searchText.trim() ? (
+          {!searchText.trim() ? (
+            <NavigationListItem
+              label="Inbox"
+              icon={InboxIcon}
+              selected={selectedView === "inbox"}
+              count={unreadCount > 0 ? unreadCount : undefined}
+              onClick={() => {
+                setShowProfileView(false);
+                setSelectedView("inbox");
+                setSelectedSpaceId(null);
+                setSelectedConversationId(null);
+                setPreviousSpaceId(null);
+                setCameFromInbox(false);
+              }}
+            />
+          ) : (
             <div className="s-flex s-w-full s-justify-end s-gap-1.5">
               <Button
                 size="xs"
@@ -754,7 +819,7 @@ function DustMain() {
                 variant="highlight"
               />
             </div>
-          ) : null}
+          )}
           {(filteredSpaces.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="Projects"
@@ -810,23 +875,6 @@ function DustMain() {
                 </>
               }
             >
-              {!searchText.trim() ? (
-                <NavigationListItem
-                  key="inbox"
-                  label="Inbox"
-                  icon={InboxIcon}
-                  selected={selectedView === "inbox"}
-                  count={unreadCount > 0 ? unreadCount : undefined}
-                  onClick={() => {
-                    setShowProfileView(false);
-                    setSelectedView("inbox");
-                    setSelectedSpaceId(null);
-                    setSelectedConversationId(null);
-                    setPreviousSpaceId(null);
-                    setCameFromInbox(false);
-                  }}
-                />
-              ) : null}
               {filteredSpaces.map((space) => {
                 const isRestricted =
                   space.id.charCodeAt(space.id.length - 1) % 2 === 0;
@@ -979,6 +1027,7 @@ function DustMain() {
             >
               {filteredAgentCollaborators.map((collaborator) => {
                 const agent = collaborator.data;
+                const agentMeta = getAgentSidebarMeta(agent);
                 return (
                   <NavigationListItem
                     key={`agent-${agent.id}`}
@@ -987,6 +1036,10 @@ function DustMain() {
                       selectedCollaboratorId === agent.id &&
                       selectedCollaboratorType === "agent"
                     }
+                    count={
+                      agentMeta.pending > 0 ? agentMeta.pending : undefined
+                    }
+                    hasActivity={agentMeta.hasActivity}
                     avatar={
                       <Avatar
                         size="xxs"
@@ -1116,6 +1169,7 @@ function DustMain() {
             >
               {filteredPeopleCollaborators.map((collaborator) => {
                 const person = collaborator.data;
+                const personMeta = getPersonSidebarMeta(person);
                 return (
                   <NavigationListItem
                     key={`person-${person.id}`}
@@ -1124,6 +1178,10 @@ function DustMain() {
                       selectedCollaboratorId === person.id &&
                       selectedCollaboratorType === "person"
                     }
+                    count={
+                      personMeta.pending > 0 ? personMeta.pending : undefined
+                    }
+                    hasActivity={personMeta.hasActivity}
                     avatar={
                       <Avatar
                         size="xxs"
