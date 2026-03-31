@@ -1,11 +1,9 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
-import { getActionOneLineLabel } from "@app/components/assistant/conversation/actions/inline/types";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
+import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import type {
-  AgentStateClassification,
   InlineActivityStep,
-} from "@app/components/assistant/conversation/types";
-import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
@@ -119,7 +117,7 @@ export function InlineActivitySteps({
                 return (
                   <TimelineRow key={step.id} icon={CheckIcon} isLast={isLast}>
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      {getActionOneLineLabel(step.action)}
+                      {step.label}
                     </span>
                   </TimelineRow>
                 );
