@@ -15,6 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+import { getAgentAvatarProps } from "../data/agentAvatarProps";
 import type { Agent, Conversation, User } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
@@ -191,12 +192,7 @@ export function PersonAgentView({
   const collaboratorAvatar = useMemo(() => {
     if (collaborator.type === "agent") {
       const agent = collaborator.data as Agent;
-      return {
-        name: agent.name,
-        emoji: agent.emoji,
-        backgroundColor: agent.backgroundColor,
-        isRounded: false,
-      };
+      return getAgentAvatarProps(agent);
     } else {
       const person = collaborator.data as User;
       return {

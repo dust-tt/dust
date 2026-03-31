@@ -54,9 +54,10 @@ import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 const conversationCache = new Map<string, Conversation>();
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { GroupThreadConversationView } from "../components/GroupThreadConversationView";
+import { SoloConversationView } from "../components/SoloConversationView";
 import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -72,6 +73,7 @@ import {
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
+  getAgentAvatarProps,
   mockAgents,
   mockConversations,
   mockUsers,
@@ -79,6 +81,8 @@ import {
   type User,
 } from "../data";
 import TemplateSelection, { type Template } from "./TemplateSelection";
+import { inferConversationThreadKind } from "../utils/conversationThreadKind";
+import { createForkedConversation } from "../utils/createForkedConversation";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -1001,9 +1005,7 @@ function DustMain() {
                                     icon={
                                       <Avatar
                                         size="xxs"
-                                        name={agent.name}
-                                        emoji={agent.emoji}
-                                        backgroundColor={agent.backgroundColor}
+                                        {...getAgentAvatarProps(agent)}
                                       />
                                     }
                                     onClick={(e: MouseEvent) => {
@@ -1043,9 +1045,7 @@ function DustMain() {
                     avatar={
                       <Avatar
                         size="xxs"
-                        name={agent.name}
-                        emoji={agent.emoji}
-                        backgroundColor={agent.backgroundColor}
+                        {...getAgentAvatarProps(agent)}
                         isRounded={false}
                       />
                     }
@@ -1331,6 +1331,28 @@ function DustMain() {
     );
   };
 
+  const handleForkConversationWithContext = ({
+    newAgentId,
+    sourceConversation,
+  }: {
+    newAgentId: string;
+    sourceConversation: Conversation;
+  }) => {
+    if (!user) return;
+    const newConv = createForkedConversation({
+      source: sourceConversation,
+      newAgentId,
+      locutorUserId: user.id,
+    });
+    conversationCache.set(newConv.id, newConv);
+    setSelectedConversationId(newConv.id);
+    setSelectedView("conversation");
+    setSelectedCollaboratorId(newAgentId);
+    setSelectedCollaboratorType("agent");
+    setCameFromInbox(false);
+    setCameFromPersonAgent(false);
+  };
+
   // Main content
   const mainContent =
     // Priority 0: Show profile when opened from user menu
@@ -1341,18 +1363,37 @@ function DustMain() {
       selectedConversationId !== "new-conversation" &&
       selectedConversation &&
       user ? (
-      <ConversationView
-        conversation={selectedConversation}
-        locutor={user}
-        users={mockUsers}
-        agents={mockAgents}
-        conversationsWithMessages={conversationsWithMessages}
-        showBackButton={
-          !!previousSpaceId || cameFromInbox || cameFromPersonAgent
-        }
-        onBack={handleConversationBack}
-        projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
-      />
+      inferConversationThreadKind(selectedConversation, {
+        previousSpaceId,
+      }) === "solo" ? (
+        <SoloConversationView
+          conversation={selectedConversation}
+          locutor={user}
+          users={mockUsers}
+          agents={mockAgents}
+          conversationsWithMessages={conversationsWithMessages}
+          showBackButton={
+            !!previousSpaceId || cameFromInbox || cameFromPersonAgent
+          }
+          onBack={handleConversationBack}
+          projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
+          onForkConversationWithContext={handleForkConversationWithContext}
+        />
+      ) : (
+        <GroupThreadConversationView
+          conversation={selectedConversation}
+          locutor={user}
+          users={mockUsers}
+          agents={mockAgents}
+          conversationsWithMessages={conversationsWithMessages}
+          showBackButton={
+            !!previousSpaceId || cameFromInbox || cameFromPersonAgent
+          }
+          onBack={handleConversationBack}
+          projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
+          onForkConversationWithContext={handleForkConversationWithContext}
+        />
+      )
     ) : // Priority 2: Show inbox view if inbox is selected
     selectedView === "inbox" && user ? (
       <InboxView

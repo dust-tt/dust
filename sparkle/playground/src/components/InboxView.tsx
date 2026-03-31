@@ -14,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
+import { getAgentAvatarProps } from "../data/agentAvatarProps";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
 
@@ -90,12 +91,7 @@ function participantsToAvatarProps(
       };
     } else {
       const agent = participant.data as Agent;
-      return {
-        name: agent.name,
-        emoji: agent.emoji,
-        backgroundColor: agent.backgroundColor,
-        isRounded: false,
-      };
+      return getAgentAvatarProps(agent);
     }
   });
 }

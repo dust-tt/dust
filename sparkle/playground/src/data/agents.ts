@@ -3,6 +3,20 @@ import type { Agent } from "./types";
 // Diverse list of agents with emojis and Tailwind colors
 export const mockAgents: Agent[] = [
   {
+    id: "agent-dust",
+    name: "Dust",
+    emoji: "✨",
+    backgroundColor: "s-bg-primary-800 dark:s-bg-primary-800-night",
+    description: "Default workspace assistant",
+  },
+  {
+    id: "agent-deep-dive",
+    name: "Deep-dive",
+    emoji: "🤿",
+    backgroundColor: "s-bg-cyan-200",
+    description: "In-depth research and long-form analysis",
+  },
+  {
     id: "agent-1",
     name: "Translator",
     emoji: "💬",

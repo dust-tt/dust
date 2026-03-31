@@ -89,6 +89,7 @@ import {
   getRandomSpaces,
   getRandomUsers,
   getUserById,
+  getAgentAvatarProps,
   mockAgents,
   mockConversations,
   mockSpaces,
@@ -96,6 +97,7 @@ import {
   type Space,
   type User,
 } from "../data";
+import { createForkedConversation } from "../utils/createForkedConversation";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
 import type { DataSource } from "../data/types";
 import { AgentBuilderView } from "../components/AgentBuilderView";
@@ -829,9 +831,7 @@ function DustMain() {
                         ) : (
                           <Avatar
                             size="xxs"
-                            name={participant.data.name}
-                            emoji={participant.data.emoji}
-                            backgroundColor={participant.data.backgroundColor}
+                            {...getAgentAvatarProps(participant.data)}
                             isRounded={false}
                           />
                         )
@@ -1582,6 +1582,24 @@ function DustMain() {
     // For prototype, just log the update
   };
 
+  const handleForkConversationWithContext = ({
+    newAgentId,
+    sourceConversation,
+  }: {
+    newAgentId: string;
+    sourceConversation: Conversation;
+  }) => {
+    if (!user) return;
+    const newConv = createForkedConversation({
+      source: sourceConversation,
+      newAgentId,
+      locutorUserId: user.id,
+    });
+    setConversationsWithMessages((prev) => [...prev, newConv]);
+    setSelectedConversationId(newConv.id);
+    setSelectedView("conversation");
+  };
+
   // Main content
   const mainContent =
     // Priority 0: Show profile when opened from user menu
@@ -1601,6 +1619,7 @@ function DustMain() {
         showBackButton={!!previousSpaceId || cameFromInbox}
         onBack={handleConversationBack}
         projectTitle={previousSpaceId ? selectedProject?.name : undefined}
+        onForkConversationWithContext={handleForkConversationWithContext}
       />
     ) : // Priority 2: Show inbox view if inbox is selected
     selectedView === "inbox" && user ? (

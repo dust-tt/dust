@@ -74,12 +74,14 @@ import {
   getRandomSpaces,
   getRandomUsers,
   getUserById,
+  getAgentAvatarProps,
   mockAgents,
   mockConversations,
   mockUsers,
   type Space,
   type User,
 } from "../data";
+import { createForkedConversation } from "../utils/createForkedConversation";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -1088,9 +1090,7 @@ function DustMain() {
                                     icon={
                                       <Avatar
                                         size="xxs"
-                                        name={agent.name}
-                                        emoji={agent.emoji}
-                                        backgroundColor={agent.backgroundColor}
+                                        {...getAgentAvatarProps(agent)}
                                       />
                                     }
                                     onClick={(e: MouseEvent) => {
@@ -1170,9 +1170,7 @@ function DustMain() {
                       avatar={
                         <Avatar
                           size="xxs"
-                          name={agent.name}
-                          emoji={agent.emoji}
-                          backgroundColor={agent.backgroundColor}
+                          {...getAgentAvatarProps(agent)}
                           isRounded={false}
                         />
                       }
@@ -1468,6 +1466,28 @@ function DustMain() {
     setCameFromPersonAgent(false);
   }
 
+  const handleForkConversationWithContext = ({
+    newAgentId,
+    sourceConversation,
+  }: {
+    newAgentId: string;
+    sourceConversation: Conversation;
+  }) => {
+    if (!user) return;
+    const newConv = createForkedConversation({
+      source: sourceConversation,
+      newAgentId,
+      locutorUserId: user.id,
+    });
+    conversationCache.set(newConv.id, newConv);
+    setSelectedConversationId(newConv.id);
+    setSelectedView("conversation");
+    setSelectedCollaboratorId(newAgentId);
+    setSelectedCollaboratorType("agent");
+    setCameFromInbox(false);
+    setCameFromPersonAgent(false);
+  };
+
   // Main content
   const mainContent =
     // Priority 0: Show profile when opened from user menu
@@ -1489,6 +1509,7 @@ function DustMain() {
         }
         onBack={handleConversationBack}
         projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
+        onForkConversationWithContext={handleForkConversationWithContext}
       />
     ) : // Priority 2: Show inbox view if inbox is selected
     selectedView === "inbox" && user ? (

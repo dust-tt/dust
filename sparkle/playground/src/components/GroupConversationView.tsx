@@ -66,6 +66,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@sparkle/lib/utils";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { getAgentAvatarProps } from "../data/agentAvatarProps";
 import { getAgentById } from "../data/agents";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
 import type {
@@ -183,12 +184,7 @@ function participantsToAvatarProps(
       };
     } else {
       const agent = participant.data as Agent;
-      return {
-        name: agent.name,
-        emoji: agent.emoji,
-        backgroundColor: agent.backgroundColor,
-        isRounded: false,
-      };
+      return getAgentAvatarProps(agent);
     }
   });
 }
