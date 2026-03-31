@@ -889,7 +889,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
   }
 
-  static async listSpaceUnreadConversationsForUser(
+  static async listSpaceUnreadConversationsAndActivityForUser(
     auth: Authenticator,
     spaceIds: number[]
   ): Promise<{

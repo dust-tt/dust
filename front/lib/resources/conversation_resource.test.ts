@@ -1957,7 +1957,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     );
 
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -1985,7 +1985,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     );
 
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2017,7 +2017,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     assert(participation, "Participation not found");
 
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2057,7 +2057,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
 
     // This method explicitly filters by visibility="unlisted", so test conversations are excluded
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2084,7 +2084,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     });
 
     const spaceConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2100,7 +2100,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
   it("should return lastUserActivityBySpace with the user's last read date", async () => {
     // beforeEach set lastReadAt to dateFromDaysAgo(10) for conversationIds[0]
     const result =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2130,7 +2130,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     });
 
     const result =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2156,7 +2156,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     );
 
     const result =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         freshAuth,
         spaceModelIds
       );

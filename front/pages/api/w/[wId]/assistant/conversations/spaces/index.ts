@@ -62,10 +62,11 @@ async function handler(
         unreadConversations,
         nonParticipantUnreadConversations,
         lastUserActivityBySpace,
-      } = await ConversationResource.listSpaceUnreadConversationsForUser(
-        auth,
-        nonArchivedSpaces.map((s) => s.id)
-      );
+      } =
+        await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+          auth,
+          nonArchivedSpaces.map((s) => s.id)
+        );
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(
