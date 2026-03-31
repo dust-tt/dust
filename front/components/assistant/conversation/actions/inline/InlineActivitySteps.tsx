@@ -22,7 +22,7 @@ import {
   Icon,
   Markdown,
 } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -53,11 +53,9 @@ export function InlineActivitySteps({
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
   const [isCollapsed, setIsCollapsed] = useState(isDone);
-  const wasDoneRef = useRef(isDone);
 
   useEffect(() => {
-    if (isDone && !wasDoneRef.current) {
-      wasDoneRef.current = true;
+    if (isDone) {
       setIsCollapsed(true);
     }
   }, [isDone]);
@@ -91,7 +89,7 @@ export function InlineActivitySteps({
   return (
     <div className={`flex flex-col mt-2 text-sm ${isCollapsed ? "" : "gap-4"}`}>
       <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center text-xs"
+        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
         onClick={() => setIsCollapsed((c) => !c)}
       >
         <span
