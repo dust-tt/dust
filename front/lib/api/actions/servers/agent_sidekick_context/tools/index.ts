@@ -261,7 +261,7 @@ export async function createInstructionSuggestions({
       if (blockCount > 1) {
         return new Err(
           `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
-            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
+            `Keep it within a single tag, e.g. by wrapping everything in a <div>.`
         );
       }
     }
