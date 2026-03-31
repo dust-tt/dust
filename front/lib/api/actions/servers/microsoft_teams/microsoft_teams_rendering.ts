@@ -1,6 +1,7 @@
 import type {
   TeamsChannel,
   TeamsChat,
+  TeamsMeeting,
   TeamsUser,
 } from "@app/lib/api/actions/servers/microsoft/utils";
 
@@ -75,6 +76,39 @@ export function renderChats(chats: TeamsChat[]): string {
 
       if (chat.tenantId) {
         lines.push(`Tenant ID: ${chat.tenantId}`);
+      }
+
+      return lines.join("\n");
+    })
+    .join("\n-----\n");
+}
+
+export function renderMeetings(meetings: TeamsMeeting[]): string {
+  if (meetings.length === 0) {
+    return "No meetings found.";
+  }
+
+  return meetings
+    .map((meeting) => {
+      const lines = [
+        `ID: ${meeting.id}`,
+        `Subject: ${meeting.subject}`,
+        `Start: ${meeting.start.dateTime} (${meeting.start.timeZone})`,
+        `End: ${meeting.end.dateTime} (${meeting.end.timeZone})`,
+        `Organizer: ${meeting.organizer.emailAddress.name} (${meeting.organizer.emailAddress.address})`,
+      ];
+
+      if (meeting.attendees?.length > 0) {
+        const attendeeList = meeting.attendees
+          .map((a) => `${a.emailAddress.name} (${a.emailAddress.address})`)
+          .join(", ");
+        lines.push(`Attendees: ${attendeeList}`);
+      }
+
+      lines.push(`Web Link: ${meeting.webLink}`);
+
+      if (meeting.onlineMeeting?.joinUrl) {
+        lines.push(`Join URL: ${meeting.onlineMeeting.joinUrl}`);
       }
 
       return lines.join("\n");

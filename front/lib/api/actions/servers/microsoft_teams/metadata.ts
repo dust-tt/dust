@@ -200,6 +200,55 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       done: "Post Teams message",
     },
   },
+  list_meetings: {
+    description:
+      "List online meetings from the authenticated user's calendar within a date range. Returns meeting details including subject, organizer, attendees, times, and meeting ID. The meeting ID can be used with get_transcript_content to retrieve meeting transcripts. Supports filtering by subject and participant. Supports pagination to retrieve all results.",
+    schema: {
+      fromDate: z
+        .string()
+        .describe(
+          "ISO 8601 date string for the start of the date range (e.g., '2024-01-01T00:00:00Z')."
+        ),
+      toDate: z
+        .string()
+        .describe(
+          "ISO 8601 date string for the end of the date range (e.g., '2024-12-31T23:59:59Z')."
+        ),
+      subjectFilter: z
+        .string()
+        .optional()
+        .describe(
+          "Filter meetings by subject (case-insensitive partial match)."
+        ),
+      participantFilter: z
+        .string()
+        .optional()
+        .describe(
+          "Filter meetings by participant name or email (case-insensitive partial match on organizer or attendees)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams meetings",
+      done: "List Teams meetings",
+    },
+  },
+  get_transcript_content: {
+    description:
+      "Get the transcript content of a Microsoft Teams online meeting. Requires the join URL of the meeting (obtained from list_meetings). Returns the transcript text if available.",
+    schema: {
+      joinUrl: z
+        .string()
+        .describe(
+          "The join URL of the online meeting. Use list_meetings to get this value."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Fetching meeting transcript",
+      done: "Fetch meeting transcript",
+    },
+  },
 });
 
 export const MICROSOFT_TEAMS_SERVER = {
@@ -212,7 +261,7 @@ export const MICROSOFT_TEAMS_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
       scope:
-        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access",
+        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send OnlineMeetings.Read OnlineMeetingTranscript.Read.All offline_access",
       availableScopes: [
         {
           value: "Chat.Read",
@@ -261,6 +310,17 @@ export const MICROSOFT_TEAMS_SERVER = {
           value: "User.ReadBasic.All",
           label: "Read user directory",
           description: "List and search users in the organization.",
+        },
+        {
+          value: "OnlineMeetings.Read",
+          label: "Read online meetings",
+          description: "Read online meeting details to access transcripts.",
+        },
+        {
+          value: "OnlineMeetingTranscript.Read.All",
+          label: "Read meeting transcripts",
+          description:
+            "Read transcripts of online meetings the user has access to.",
         },
         {
           value: "User.Read",
