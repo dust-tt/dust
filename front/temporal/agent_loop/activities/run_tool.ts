@@ -1,6 +1,7 @@
 import {
   buildWorkspaceTarget,
-  emitAuditLogEvent,
+  emitAuditLogEventDirect,
+  getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -322,30 +323,35 @@ async function executeToolStreaming(
           { asType: "tool" }
         );
 
-        if (auth.user()) {
-          void emitAuditLogEvent({
-            auth,
-            action: "tool.executed",
-            targets: [
-              buildWorkspaceTarget(conversation.owner),
-              {
-                type: "agent",
-                id: agentConfiguration.sId,
-                name: agentConfiguration.name,
-              },
-              {
-                type: "tool",
-                id: action.toolConfiguration.name,
-                name: action.toolConfiguration.name,
-              },
-            ],
-            metadata: {
-              toolName: action.toolConfiguration.name,
-              toolType: action.toolConfiguration.mcpServerName,
-              conversationId: conversation.sId,
+        void emitAuditLogEventDirect({
+          workspace: conversation.owner,
+          action: "tool.executed",
+          actor: {
+            type: "agent",
+            id: agentConfiguration.sId,
+            name: agentConfiguration.name,
+          },
+          targets: [
+            buildWorkspaceTarget(conversation.owner),
+            {
+              type: "agent",
+              id: agentConfiguration.sId,
+              name: agentConfiguration.name,
             },
-          });
-        }
+            {
+              type: "tool",
+              id: action.toolConfiguration.name,
+              name: action.toolConfiguration.name,
+            },
+          ],
+          context: { location: auth.clientIp() ?? "internal" },
+          metadata: {
+            toolName: action.toolConfiguration.name,
+            toolType: action.toolConfiguration.mcpServerName,
+            conversationId: conversation.sId,
+            origin: getAuditLogOrigin(auth),
+          },
+        });
 
         await updateResourceAndPublishEvent(auth, {
           event: {

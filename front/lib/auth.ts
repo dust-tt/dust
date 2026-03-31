@@ -89,6 +89,7 @@ export interface AuthenticatorType {
   subscriptionId: string | null;
   isByok: boolean;
   key?: KeyAuthType;
+  clientIp?: string;
 }
 
 /**
@@ -1192,6 +1193,7 @@ export class Authenticator {
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
+      clientIp: this._clientIp,
     };
   }
 
@@ -1236,18 +1238,22 @@ export class Authenticator {
       subscription
     );
 
-    return new Ok(
-      new Authenticator({
-        authMethod: authType.authMethod,
-        workspace,
-        user,
-        role: authType.role,
-        groupModelIds: groupIds,
-        subscription,
-        key: authType.key,
-        providersHealth,
-      })
-    );
+    const auth = new Authenticator({
+      authMethod: authType.authMethod,
+      workspace,
+      user,
+      role: authType.role,
+      groupModelIds: groupIds,
+      subscription,
+      key: authType.key,
+      providersHealth,
+    });
+
+    if (authType.clientIp) {
+      auth.setClientIp(authType.clientIp);
+    }
+
+    return new Ok(auth);
   }
 }
 
