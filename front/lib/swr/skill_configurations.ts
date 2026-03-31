@@ -2,11 +2,7 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import {
-  emptyArray,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
@@ -284,12 +280,9 @@ export function useRestoreSkill({
       return false;
     }
     try {
-      await fetcher(
-        `/api/w/${owner.sId}/skills/${skill.sId}/restore`,
-        {
-          method: "POST",
-        }
-      );
+      await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/restore`, {
+        method: "POST",
+      });
 
       void mutateArchivedSkills();
       void mutateActiveSkills();
