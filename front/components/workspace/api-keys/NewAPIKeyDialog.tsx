@@ -28,12 +28,13 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
+  selectedGroupIds: z.array(z.number()),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,11 +57,6 @@ export const NewAPIKeyDialog = ({
   onCreate,
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
-
-  const removeGroup = (groupId: ModelId) => {
-    setSelectedGroups((prev) => prev.filter((sg) => sg.id !== groupId));
-  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -68,25 +64,55 @@ export const NewAPIKeyDialog = ({
     defaultValues: {
       name: "",
       monthlyCapDollars: "",
+      selectedGroupIds: [],
     },
   });
 
   const { handleSubmit, reset, formState } = form;
 
+  const {
+    field: { value: selectedGroupIds, onChange: setSelectedGroupIds },
+  } = useController<FormValues, "selectedGroupIds">({
+    name: "selectedGroupIds",
+    control: form.control,
+  });
+
+  const removeGroupId = (groupId: ModelId) => {
+    setSelectedGroupIds(selectedGroupIds.filter((id) => id !== groupId));
+  };
+
+  const groupsById = useMemo(() => {
+    const map: Record<ModelId, GroupType> = {};
+    for (const g of groups) {
+      map[g.id] = g;
+    }
+    return map;
+  }, [groups]);
+
   const nonGlobalGroups = useMemo(
-    () => groups.filter((g) => g.kind !== "global"),
+    () =>
+      groups
+        .filter((g) => g.kind !== "global")
+        .sort((a, b) =>
+          prettifyGroupName(a)
+            .toLowerCase()
+            .localeCompare(prettifyGroupName(b).toLowerCase())
+        ),
     [groups]
   );
 
   const handleClose = () => {
     reset();
-    setSelectedGroups([]);
     setIsOpen(false);
   };
 
   const onSubmit = async (data: FormValues) => {
     const dollars =
       data.monthlyCapDollars === "" ? null : parseFloat(data.monthlyCapDollars);
+
+    const selectedGroups = data.selectedGroupIds
+      .map((id) => groupsById[id])
+      .filter(Boolean);
 
     await onCreate({
       name: data.name,
@@ -141,18 +167,24 @@ export const NewAPIKeyDialog = ({
 
               <div className="flex flex-col gap-2">
                 <Label>Additional Spaces</Label>
-                {selectedGroups.length > 0 && (
+                {selectedGroupIds.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {selectedGroups.map((g) => (
-                      <Button
-                        key={g.id}
-                        label={prettifyGroupName(g)}
-                        icon={XMarkIcon}
-                        size="xs"
-                        variant="outline"
-                        onClick={() => removeGroup(g.id)}
-                      />
-                    ))}
+                    {selectedGroupIds.map((gId) => {
+                      const group = groupsById[gId];
+                      if (!group) {
+                        return null;
+                      }
+                      return (
+                        <Button
+                          key={gId}
+                          label={prettifyGroupName(group)}
+                          icon={XMarkIcon}
+                          size="xs"
+                          variant="outline"
+                          onClick={() => removeGroupId(gId)}
+                        />
+                      );
+                    })}
                   </div>
                 )}
                 <div>
@@ -166,31 +198,26 @@ export const NewAPIKeyDialog = ({
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
-                      {nonGlobalGroups
-                        .sort((a, b) =>
-                          prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase())
-                        )
-                        .map((group: GroupType) => {
-                          const isSelected = selectedGroups.some(
-                            (sg) => sg.id === group.id
-                          );
-                          return (
-                            <DropdownMenuCheckboxItem
-                              key={group.id}
-                              label={prettifyGroupName(group)}
-                              checked={isSelected}
-                              onCheckedChange={() => {
-                                if (isSelected) {
-                                  removeGroup(group.id);
-                                } else {
-                                  setSelectedGroups((prev) => [...prev, group]);
-                                }
-                              }}
-                            />
-                          );
-                        })}
+                      {nonGlobalGroups.map((group: GroupType) => {
+                        const isSelected = selectedGroupIds.includes(group.id);
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={group.id}
+                            label={prettifyGroupName(group)}
+                            checked={isSelected}
+                            onCheckedChange={() => {
+                              if (isSelected) {
+                                removeGroupId(group.id);
+                              } else {
+                                setSelectedGroupIds([
+                                  ...selectedGroupIds,
+                                  group.id,
+                                ]);
+                              }
+                            }}
+                          />
+                        );
+                      })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

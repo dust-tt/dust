@@ -198,7 +198,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          groupId: group.value.sId,
+          groupIds: resolvedGroups.map((g) => g.sId).join(","),
         },
       });
 
