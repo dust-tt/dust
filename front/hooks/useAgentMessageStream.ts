@@ -260,11 +260,11 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
-            // First "tokens" event means thinking → writing: flush pending CoT once.
+            // First "tokens" event means thinking → writing: flush pending CoT
+            // and transition agent state to "writing" (agent loop is done).
             if (
               classification === "tokens" &&
-              !writingStarted.current &&
-              chainOfThought.current
+              !writingStarted.current
             ) {
               writingStarted.current = true;
               const cotToFlush = chainOfThought.current;
@@ -277,11 +277,14 @@ export function useAgentMessageStream({
                   ...m,
                   streaming: {
                     ...m.streaming,
-                    inlineActivitySteps: appendThinkingStep(
-                      m.streaming.inlineActivitySteps,
-                      cotToFlush,
-                      `thinking-pretokens-${Date.now()}`
-                    ),
+                    agentState: "writing",
+                    inlineActivitySteps: cotToFlush
+                      ? appendThinkingStep(
+                          m.streaming.inlineActivitySteps,
+                          cotToFlush,
+                          `thinking-pretokens-${Date.now()}`
+                        )
+                      : m.streaming.inlineActivitySteps,
                   },
                 };
               });

@@ -50,7 +50,9 @@ export function InlineActivitySteps({
   const { openPanel } = useConversationSidePanelContext();
 
   const isDone =
-    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+    lastAgentStateClassification === "done" ||
+    lastAgentStateClassification === "writing" ||
+    agentMessage.status === "failed";
 
   const [isCollapsed, setIsCollapsed] = useState(isDone);
   const wasDoneRef = useRef(isDone);
@@ -103,7 +105,7 @@ export function InlineActivitySteps({
         {agentMessage.completionDurationMs !== null ? (
           `${agentMessage.status === "failed" ? "Errored after" : agentMessage.status === "cancelled" ? "Cancelled after" : "Completed in"} ${formatDurationString(agentMessage.completionDurationMs)}`
         ) : isDone ? (
-          "Completed"
+          <AnimatedText>Writing...</AnimatedText>
         ) : (
           <AnimatedText>Thinking...</AnimatedText>
         )}
