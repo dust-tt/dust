@@ -1,7 +1,5 @@
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
-import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
@@ -51,8 +49,12 @@ async function handler(
 
   const result = await FileResource.fetchByShareToken(token);
   if (result.isErr()) {
-    logger.warn(
-      { token, errorCode: result.error.code, errorMessage: result.error.message },
+    logger.info(
+      {
+        token,
+        errorCode: result.error.code,
+        errorMessage: result.error.message,
+      },
       "Public frame fetch failed"
     );
 
