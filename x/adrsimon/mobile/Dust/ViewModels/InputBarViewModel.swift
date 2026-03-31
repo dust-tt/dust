@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import os
+import SwiftUI
 
 private let logger = Logger(subsystem: AppConfig.bundleId, category: "InputBar")
 
@@ -10,15 +11,19 @@ final class InputBarViewModel: ObservableObject {
     @Published var messageText: String = ""
     @Published var isSending = false
     @Published var error: String?
-
-    /// Set to true when user types '@' — triggers the agent picker sheet.
     @Published var showAgentPicker = false
+    @Published var attachments: [Attachment] = []
+    @Published var showPhotoPicker = false
+    @Published var showDocumentPicker = false
 
     lazy var speechService = SpeechService(workspaceId: workspaceId, tokenProvider: tokenProvider)
 
     private let workspaceId: String
     private let tokenProvider: TokenProvider
     private let user: User
+
+    /// Continuations waiting for all uploads to finish.
+    private var uploadWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(workspaceId: String, tokenProvider: TokenProvider, user: User) {
         self.workspaceId = workspaceId
@@ -43,9 +48,7 @@ final class InputBarViewModel: ObservableObject {
         }
     }
 
-    /// Called when the text changes. Detects '@' to open the agent picker.
     func handleTextChange(_ text: String) {
-        // Check if user just typed '@' (last character)
         if text.hasSuffix("@") {
             let beforeAt = text.dropLast()
             if beforeAt.isEmpty || beforeAt.last == " " {
@@ -54,9 +57,7 @@ final class InputBarViewModel: ObservableObject {
         }
     }
 
-    /// Inserts an @mention for the selected agent into the text.
     func insertMention(_ agent: LightAgentConfiguration) {
-        // Remove trailing '@' that triggered the picker (if present)
         var base = messageText
         if base.hasSuffix("@") {
             base = String(base.dropLast())
@@ -66,15 +67,78 @@ final class InputBarViewModel: ObservableObject {
         showAgentPicker = false
     }
 
+    // MARK: - Attachments
+
+    func addAttachment(data: Data, fileName: String, contentType: String, thumbnail: UIImage?) {
+        let attachment = Attachment(
+            fileName: fileName,
+            contentType: contentType,
+            fileSize: data.count,
+            data: data,
+            thumbnailImage: thumbnail
+        )
+        attachments.append(attachment)
+
+        Task {
+            await uploadAttachment(id: attachment.id)
+        }
+    }
+
+    func removeAttachment(_ attachment: Attachment) {
+        attachments.removeAll { $0.id == attachment.id }
+        notifyWaitersIfDone()
+    }
+
+    func addPhotoResults(_ results: [PhotoPickerResult]) {
+        for result in results {
+            addAttachment(
+                data: result.data,
+                fileName: result.fileName,
+                contentType: result.contentType,
+                thumbnail: result.thumbnail
+            )
+        }
+    }
+
+    func addDocumentResults(_ results: [DocumentPickerResult]) {
+        for result in results {
+            addAttachment(
+                data: result.data,
+                fileName: result.fileName,
+                contentType: result.contentType,
+                thumbnail: nil
+            )
+        }
+    }
+
+    // MARK: - Sending
+
+    var canSend: Bool {
+        let hasText = !messageText
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasAttachments = !attachments.isEmpty
+        let hasFailedUploads = attachments.contains {
+            if case .failed = $0.uploadState { true } else { false }
+        }
+        return (hasText || hasAttachments)
+            && !isSending && !hasFailedUploads
+    }
+
     func sendMessage() async -> Conversation? {
-        guard let (text, context) = prepareSend() else { return nil }
+        guard canSend else { return nil }
+        let (text, context) = prepareSend()
+
+        await waitForUploads()
+
+        let fragmentPayloads = buildContentFragmentPayloads()
 
         let request = CreateConversationRequest(
             message: CreateMessagePayload(
                 content: text,
                 mentions: resolveMentionsWithDefault(in: text),
                 context: context
-            )
+            ),
+            contentFragments: fragmentPayloads
         )
 
         return await performSend {
@@ -87,7 +151,10 @@ final class InputBarViewModel: ObservableObject {
     }
 
     func sendReply(conversationId: String) async -> Bool {
-        guard let (text, context) = prepareSend() else { return false }
+        guard canSend else { return false }
+        let (text, context) = prepareSend()
+
+        await waitForUploads()
 
         let request = PostMessageRequest(
             content: text,
@@ -95,16 +162,34 @@ final class InputBarViewModel: ObservableObject {
             context: context
         )
 
-        let result: Bool? = await performSend {
+        let sent: Void? = await performSend {
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for attachment in self.attachments {
+                    if let fileId = attachment.fileId {
+                        let fileName = attachment.fileName
+                        group.addTask {
+                            try await FileUploadService.postContentFragment(
+                                workspaceId: self.workspaceId,
+                                conversationId: conversationId,
+                                fileId: fileId,
+                                fileName: fileName,
+                                profilePictureUrl: self.user.profilePictureUrl,
+                                tokenProvider: self.tokenProvider
+                            )
+                        }
+                    }
+                }
+                try await group.waitForAll()
+            }
+
             try await ConversationService.postMessage(
                 workspaceId: self.workspaceId,
                 conversationId: conversationId,
                 request: request,
                 tokenProvider: self.tokenProvider
             )
-            return true
         }
-        return result ?? false
+        return sent != nil
     }
 
     // MARK: - Voice Input
@@ -112,7 +197,6 @@ final class InputBarViewModel: ObservableObject {
     func startVoiceInput() {
         guard !speechService.isRecording, !speechService.isTranscribing else { return }
 
-        // Check permission synchronously first — fast path
         switch AVAudioApplication.shared.recordPermission {
         case .granted:
             speechService.startRecording()
@@ -150,14 +234,11 @@ final class InputBarViewModel: ObservableObject {
         )
     }
 
-    private func prepareSend() -> (text: String, context: MessageContext)? {
+    private func prepareSend() -> (text: String, context: MessageContext) {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return nil }
         return (text, messageContext)
     }
 
-    /// Resolve mentions by scanning the text for @agentName tokens
-    /// and matching them against known agents.
     private func resolveMentionsWithDefault(in text: String) -> [MentionPayload] {
         let mentions = resolveMentions(in: text)
         return mentions.isEmpty ? [MentionPayload(configurationId: "dust")] : mentions
@@ -184,12 +265,78 @@ final class InputBarViewModel: ObservableObject {
             let result = try await operation()
             isSending = false
             messageText = ""
+            attachments = []
             return result
         } catch {
             logger.error("Send failed: \(error)")
             self.error = error.localizedDescription
             isSending = false
             return nil
+        }
+    }
+
+    // MARK: - Upload
+
+    private func uploadAttachment(id: UUID) async {
+        guard let index = attachments.firstIndex(where: { $0.id == id }) else { return }
+
+        // Capture values before any async work
+        let fileName = attachments[index].fileName
+        let contentType = attachments[index].contentType
+        guard let fileData = attachments[index].data else { return }
+
+        attachments[index].uploadState = .uploading
+
+        do {
+            let fileId = try await FileUploadService.uploadFile(
+                workspaceId: workspaceId,
+                fileName: fileName,
+                contentType: contentType,
+                fileData: fileData,
+                tokenProvider: tokenProvider
+            )
+            if let idx = attachments.firstIndex(where: { $0.id == id }) {
+                attachments[idx].uploadState = .uploaded(fileId: fileId)
+                attachments[idx].data = nil
+            }
+        } catch {
+            logger.error("Upload failed for \(id): \(error)")
+            if let idx = attachments.firstIndex(where: { $0.id == id }) {
+                attachments[idx].uploadState = .failed(error: error.localizedDescription)
+            }
+        }
+
+        notifyWaitersIfDone()
+    }
+
+    /// Suspends until all attachments have finished uploading (or failed).
+    /// If all are already done, returns immediately.
+    private func waitForUploads() async {
+        guard attachments.contains(where: { !$0.isFinished }) else { return }
+
+        await withCheckedContinuation { continuation in
+            uploadWaiters.append(continuation)
+        }
+    }
+
+    private func notifyWaitersIfDone() {
+        guard !attachments.contains(where: { !$0.isFinished }) else { return }
+
+        let waiters = uploadWaiters
+        uploadWaiters = []
+        for waiter in waiters {
+            waiter.resume()
+        }
+    }
+
+    private func buildContentFragmentPayloads() -> [ContentFragmentPayload] {
+        attachments.compactMap { attachment in
+            guard let fileId = attachment.fileId else { return nil }
+            return ContentFragmentPayload(
+                title: attachment.fileName,
+                fileId: fileId,
+                context: ContentFragmentContext(profilePictureUrl: user.profilePictureUrl)
+            )
         }
     }
 }

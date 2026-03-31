@@ -135,6 +135,53 @@ enum APIClient {
         }
     }
 
+    /// Uploads file data as multipart/form-data. The URL may be absolute or relative.
+    static func authenticatedMultipartUpload<T: Decodable>(
+        _ urlString: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        tokenProvider: TokenProvider,
+        snakeCase: Bool = true
+    ) async throws -> T {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        let body = buildMultipartBody(fileData: fileData, fileName: fileName, mimeType: mimeType, boundary: boundary)
+        let decoder = snakeCase ? snakeCaseDecoder : camelCaseDecoder
+
+        return try await withAuthRetry(tokenProvider: tokenProvider) { token in
+            let fullURL: URL
+            if urlString.hasPrefix("http") {
+                guard let url = URL(string: urlString) else { throw APIError.invalidURL }
+                fullURL = url
+            } else {
+                guard let url = URL(string: "\(AppConfig.apiBaseURL)\(urlString)") else { throw APIError.invalidURL }
+                fullURL = url
+            }
+
+            var request = URLRequest(url: fullURL)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+            return try await execute(request, endpoint: urlString, decoder: decoder)
+        }
+    }
+
+    private static func buildMultipartBody(
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        boundary: String
+    ) -> Data {
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".utf8))
+        body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+        body.append(fileData)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        return body
+    }
+
     /// Executes a closure with a valid access token, retrying once on 401 after refreshing.
     private static func withAuthRetry<T>(
         tokenProvider: TokenProvider,

@@ -45,5 +45,13 @@ enum AppConfig {
         static func transcribe(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/services/transcribe"
         }
+
+        static func files(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/files"
+        }
+
+        static func conversationContentFragments(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/content_fragment"
+        }
     }
 }

@@ -5,7 +5,7 @@ struct CreateConversationRequest: Encodable {
     let visibility: String = "unlisted"
     let spaceId: String? = nil
     let message: CreateMessagePayload
-    let contentFragments: [String] = []
+    var contentFragments: [ContentFragmentPayload] = []
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -60,4 +60,52 @@ struct PostMessageRequest: Encodable {
 
 struct PostMessageResponse: Decodable {
     let message: UserMessage
+}
+
+// MARK: - Content Fragments
+
+struct ContentFragmentPayload: Encodable {
+    let title: String
+    let fileId: String
+    let url: String? = nil
+    let context: ContentFragmentContext
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(title, forKey: .title)
+        try container.encode(fileId, forKey: .fileId)
+        try container.encode(url, forKey: .url)
+        try container.encode(context, forKey: .context)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title, fileId, url, context
+    }
+}
+
+struct ContentFragmentContext: Encodable {
+    let profilePictureUrl: String?
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(profilePictureUrl, forKey: .profilePictureUrl)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case profilePictureUrl
+    }
+}
+
+struct PostContentFragmentRequest: Encodable {
+    let title: String
+    let fileId: String
+    let context: ContentFragmentContext
+}
+
+struct PostContentFragmentResponse: Decodable {
+    let contentFragment: ContentFragmentInfo
+}
+
+struct ContentFragmentInfo: Decodable {
+    let sId: String
 }

@@ -11,6 +11,10 @@ struct InputBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if !viewModel.attachments.isEmpty {
+                attachmentPreviewBar
+            }
+
             if viewModel.speechService.isRecording {
                 recordingView
             } else if viewModel.speechService.isTranscribing {
@@ -19,9 +23,10 @@ struct InputBarView: View {
                 textFieldView
             }
 
-            // Bottom toolbar: agent button (left) + action button (right)
             HStack {
                 agentButton
+
+                attachmentButton
 
                 Spacer()
 
@@ -51,6 +56,34 @@ struct InputBarView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $viewModel.showPhotoPicker) {
+            PhotoPickerView { results in
+                viewModel.addPhotoResults(results)
+                viewModel.showPhotoPicker = false
+            }
+        }
+        .sheet(isPresented: $viewModel.showDocumentPicker) {
+            DocumentPickerView { results in
+                viewModel.addDocumentResults(results)
+                viewModel.showDocumentPicker = false
+            }
+        }
+    }
+
+    // MARK: - Attachment Preview
+
+    private var attachmentPreviewBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.attachments) { attachment in
+                    AttachmentChipView(attachment: attachment) {
+                        viewModel.removeAttachment(attachment)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
     }
 
@@ -130,6 +163,31 @@ struct InputBarView: View {
         .disabled(viewModel.speechService.isRecording || viewModel.speechService.isTranscribing)
     }
 
+    // MARK: - Attachment Button
+
+    private var attachmentButton: some View {
+        Menu {
+            Button {
+                viewModel.showPhotoPicker = true
+            } label: {
+                Label("Photos", systemImage: "photo.on.rectangle")
+            }
+            Button {
+                viewModel.showDocumentPicker = true
+            } label: {
+                Label("Files", systemImage: "folder")
+            }
+        } label: {
+            SparkleIcon.plus.image
+                .resizable()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(Color.dustForeground)
+                .padding(8)
+        }
+        .liquidGlassCircle()
+        .disabled(viewModel.speechService.isRecording || viewModel.speechService.isTranscribing || viewModel.isSending)
+    }
+
     // MARK: - Action Button (Send, Mic, or Stop)
 
     @ViewBuilder
@@ -139,7 +197,7 @@ struct InputBarView: View {
         } else if viewModel.speechService.isTranscribing {
             // No action button while transcribing
             EmptyView()
-        } else if canSend {
+        } else if viewModel.canSend {
             sendButton
         } else {
             micButton
@@ -204,11 +262,6 @@ struct InputBarView: View {
                         .frame(width: 12, height: 12)
                 }
         }
-    }
-
-    private var canSend: Bool {
-        !viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !viewModel.isSending
     }
 }
 
