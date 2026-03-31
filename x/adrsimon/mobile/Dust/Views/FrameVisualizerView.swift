@@ -18,12 +18,12 @@ struct FrameVisualizerView: View {
                 Color.dustBackground.ignoresSafeArea()
 
                 FrameWebView(url: frameURL, isLoading: $isLoading, pageTitle: $pageTitle)
-                    .ignoresSafeArea(edges: .bottom)
 
                 if isLoading {
                     ProgressView()
                 }
             }
+            .ignoresSafeArea(edges: .bottom)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -53,8 +53,6 @@ struct FrameVisualizerView: View {
                     }
                 }
             }
-            .toolbarBackground(Color.dustBackground, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
         }
     }
 }

@@ -94,8 +94,10 @@ struct MainContainerView: View {
                                 .resizable()
                                 .frame(width: 24, height: 24)
                                 .foregroundStyle(Color.dustForeground)
-                                .padding(16)
+                                .padding(12)
                         }
+                        .liquidGlassCircle()
+                        .padding(4)
                     }
                 }
             }
