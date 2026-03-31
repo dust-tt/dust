@@ -180,55 +180,78 @@ export const getStoredUTMParams = (): UTMParams => {
   }
 };
 
-const REFERRER_COOKIE = "_dust_referrer";
-const REFERRER_COOKIE_EXPIRY_DAYS = 30;
+const LANDING_COOKIE = "_dust_landing";
+const LANDING_COOKIE_EXPIRY_DAYS = 30;
 
-// Persist `document.referrer` in a cross-subdomain cookie (first-touch only).
-// Only written when the referrer is external (not *.dust.tt) and the cookie
-// does not already exist, so the original traffic source survives the
-// dust.tt → signin → app.dust.tt auth flow.
-export function persistReferrerCookie(): void {
-  if (typeof document === "undefined") {
+interface LandingContext {
+  referrer: string | null;
+  host: string;
+  url: string;
+  pathname: string;
+}
+
+// Persist first-touch landing context in a single cross-subdomain cookie.
+// Survives the dust.tt -> signin -> app.dust.tt auth redirect flow.
+export function persistLandingContext(): void {
+  if (typeof window === "undefined") {
     return;
   }
 
-  if (getStoredReferrer()) {
+  if (getStoredLandingContext()) {
     return;
   }
 
-  const referrer = document.referrer;
-  if (!referrer) {
-    return;
-  }
-
-  try {
-    const host = new URL(referrer).hostname;
-    if (host === "localhost" || host.endsWith(".dust.tt")) {
-      return;
+  let referrer: string | null = null;
+  if (document.referrer) {
+    try {
+      const refHost = new URL(document.referrer).hostname;
+      if (refHost !== "localhost" && !refHost.endsWith(".dust.tt")) {
+        referrer = document.referrer;
+      }
+    } catch {
+      // Malformed referrer.
     }
-  } catch {
-    return;
   }
+
+  const context: LandingContext = {
+    referrer,
+    host: window.location.hostname,
+    url: window.location.href,
+    pathname: window.location.pathname,
+  };
 
   const domain = getRootCookieDomain();
   const domainPart = domain ? `; domain=${domain}` : "";
   const expires = new Date(
-    Date.now() + REFERRER_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    Date.now() + LANDING_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
   ).toUTCString();
 
-  document.cookie = `${REFERRER_COOKIE}=${encodeURIComponent(referrer)}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
+  document.cookie = `${LANDING_COOKIE}=${encodeURIComponent(JSON.stringify(context))}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
 }
 
-// Read the stored referrer from the cross-subdomain `_dust_referrer` cookie.
-export function getStoredReferrer(): string | null {
+export function getStoredLandingContext(): LandingContext | null {
   if (typeof document === "undefined") {
     return null;
   }
 
-  const prefix = `${REFERRER_COOKIE}=`;
+  const prefix = `${LANDING_COOKIE}=`;
   const cookie = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+  if (!cookie) {
+    return null;
+  }
 
-  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+  try {
+    return JSON.parse(
+      decodeURIComponent(cookie.slice(prefix.length))
+    ) as LandingContext;
+  } catch {
+    return null;
+  }
+}
+
+// Convenience helper for call sites that only need the referrer.
+export function getStoredReferrer(): string | null {
+  return getStoredLandingContext()?.referrer ?? null;
 }
 
 // Append UTM parameters to URLs.
