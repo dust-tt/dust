@@ -3,7 +3,6 @@ import { Op } from "sequelize";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
-import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
@@ -22,21 +21,6 @@ async function disableUpdateObjectForWorkspace(
   logger: Logger,
   cutoffDate: Date
 ): Promise<{ processedCount: number }> {
-  // Skip workspaces that had the salesforce_tool_write feature flag enabled.
-  // These workspaces were already using update_object, so we should not disable it.
-  const hasWriteFlag = await FeatureFlagResource.isEnabledForWorkspace(
-    workspace,
-    "salesforce_tool_write"
-  );
-
-  if (hasWriteFlag) {
-    logger.info(
-      { workspaceId: workspace.id },
-      "Skipping workspace: salesforce_tool_write feature flag is enabled."
-    );
-    return { processedCount: 0 };
-  }
-
   // Finding all internal MCP server connections created before deployment for this workspace.
   const connections = await MCPServerConnectionModel.findAll({
     where: {
