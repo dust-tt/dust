@@ -17,18 +17,20 @@ export type MinimalMessageType = {
   role: string;
 };
 
-export type InteractionWithTokens<T extends MinimalMessageType> = {
+export type Interaction<T extends MinimalMessageType> = {
   messages: T[];
   prunedContext?: boolean;
 };
+
+export type InteractionWithTokens = Interaction<MessageWithTokens>;
 
 /**
  * Prunes all tool results in an interaction.
  * Returns a new interaction with all tool results replaced by placeholders.
  */
-export function pruneAllToolResults<T extends MinimalMessageType>(
-  interaction: InteractionWithTokens<T>
-): InteractionWithTokens<T> {
+export function pruneAllToolResults(
+  interaction: InteractionWithTokens
+): InteractionWithTokens {
   const prunedMessages = interaction.messages.map((msg) => {
     if (msg.role === "function") {
       return {
@@ -49,7 +51,7 @@ export function pruneAllToolResults<T extends MinimalMessageType>(
  * Calculate total tokens for an interaction.
  */
 export function getInteractionTokenCount(
-  interaction: InteractionWithTokens<MessageWithTokens>
+  interaction: InteractionWithTokens
 ): number {
   return interaction.messages.reduce((sum, msg) => sum + msg.tokenCount, 0);
 }
@@ -59,9 +61,9 @@ export function getInteractionTokenCount(
  * Prunes from oldest to newest tool results until the interaction fits.
  */
 export function progressivelyPruneInteraction(
-  interaction: InteractionWithTokens<MessageWithTokens>,
+  interaction: InteractionWithTokens,
   maxTokens: number
-): InteractionWithTokens<MessageWithTokens> {
+): InteractionWithTokens {
   const currentTokens = getInteractionTokenCount(interaction);
   if (currentTokens <= maxTokens) {
     return interaction;
@@ -117,10 +119,10 @@ export function progressivelyPruneInteraction(
  * we'll fully prune the remaining interactions.
  */
 export function prunePreviousInteractions(
-  inputInteractions: InteractionWithTokens<MessageWithTokens>[],
+  inputInteractions: InteractionWithTokens[],
   maxTokens: number,
   interactionsToPreserve: number
-): InteractionWithTokens<MessageWithTokens>[] {
+): InteractionWithTokens[] {
   const interactions = [...inputInteractions];
 
   let shouldPrune = false;
