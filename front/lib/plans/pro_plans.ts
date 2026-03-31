@@ -57,6 +57,7 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
+    metronomePackageAlias: null,
   });
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_39_CODE,
@@ -85,6 +86,7 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
+    metronomePackageAlias: null,
   });
   PRO_PLANS_DATA.push({
     code: FREE_BYOK_PLAN_CODE,
@@ -113,6 +115,7 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: true,
+    metronomePackageAlias: null,
   });
 }
 
