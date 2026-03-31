@@ -61,6 +61,9 @@ export function getWhitelistedProviders(
     return whiteListedProviders;
   }
 
+  // For BYOK_TRANSITIONING workspaces, we fall back on Dust-managed keys for BYOK providers when
+  // the customer hasn't configured their own. Whitelist all BYOK providers so they remain available
+  // even if not yet configured.
   if (isByokTransitioningPlan(plan)) {
     const allByokProviderIds = new Set<ModelProviderIdType>(
       BYOK_MODEL_PROVIDER_IDS
