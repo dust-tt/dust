@@ -1,0 +1,54 @@
+front/lib/actions/mcp_internal_actions/utils/web_summarization.ts
+  07b35115dab44f87 39,101
+front/lib/api/assistant/agent_suggestion.ts
+  07b35115dab44f87 3,84
+front/lib/api/assistant/suggestions/emoji.ts
+  07b35115dab44f87 90-95,100-101
+front/components/agent_builder/transformAgentConfiguration.ts
+  07b35115dab44f87 6-12,15,17-18,64-70,72-79,81,92-94,110-111,114,133
+front/components/agent_builder/AgentBuilder.tsx
+  07b35115dab44f87 28,52,152-153,242,245-246,261-262,286-296,313
+front/lib/api/assistant/suggestions/description.ts
+  07b35115dab44f87 57-64,69-70
+front/lib/api/assistant/suggestions/instructions.ts
+  07b35115dab44f87 4,113-121,126-127
+front/lib/api/assistant/suggestions/name.ts
+  07b35115dab44f87 4,106-112,117-118
+front/lib/api/assistant/conversation/title.ts
+  07b35115dab44f87 168,249
+front/lib/api/assistant/suggestions/tags.ts
+  07b35115dab44f87 112-117,122-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "df805ab08e23e733d3128e70a5c4b95a8347bb73",
+  "prompts": {
+    "07b35115dab44f87": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbd28dcc-8291-4beb-913f-456b60c8e588",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 186,
+      "total_deletions": 156,
+      "accepted_lines": 109,
+      "overriden_lines": 7
+    },
+    "51ecfc49ff991f37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa70508f-10dd-4555-ae0e-437a26b341bd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}
