@@ -34,6 +34,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
@@ -165,11 +166,6 @@ async function relayEmailToOtherRegion(
     return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
-    return new Err(
-      error instanceof Error
-        ? error
-        : new Error("Failed to relay inbound email to other region")
-    );
   }
 }
 

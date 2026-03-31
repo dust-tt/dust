@@ -145,6 +145,7 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: true,
+    metronomePackageAlias: null,
   });
 }
 
