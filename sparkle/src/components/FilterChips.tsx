@@ -6,26 +6,36 @@ interface FilterChipsProps<T extends string> {
   filters: T[];
   onFilterClick: (filterName: T) => void;
   defaultFilter?: T;
+  /** When set, selection is controlled by the parent. */
+  selectedFilter?: T;
 }
 
 export function FilterChips<T extends string>({
   filters,
   onFilterClick,
   defaultFilter,
+  selectedFilter: selectedFilterControlled,
 }: FilterChipsProps<T>) {
-  const [selectedFilter, setSelectedFilter] = useState<T | null>(
-    defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
-  );
+  const [selectedFilterInternal, setSelectedFilterInternal] =
+    useState<T | null>(
+      defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
+    );
+
+  const selectedFilter =
+    selectedFilterControlled !== undefined
+      ? selectedFilterControlled
+      : selectedFilterInternal;
 
   const handleFilterClick = useCallback(
     (filterName: T) => {
-      // Avoid unnecessary re-renders by only triggering event if filter has changed.
       if (filterName !== selectedFilter) {
-        setSelectedFilter(filterName);
+        if (selectedFilterControlled === undefined) {
+          setSelectedFilterInternal(filterName);
+        }
         onFilterClick(filterName);
       }
     },
-    [onFilterClick, selectedFilter]
+    [onFilterClick, selectedFilter, selectedFilterControlled]
   );
 
   return (

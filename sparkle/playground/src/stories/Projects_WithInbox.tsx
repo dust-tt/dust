@@ -1603,12 +1603,13 @@ function DustMain() {
         projectTitle={previousSpaceId ? selectedProject?.name : undefined}
       />
     ) : // Priority 2: Show inbox view if inbox is selected
-    selectedView === "inbox" ? (
+    selectedView === "inbox" && user ? (
       <InboxView
         spaces={spaces}
         conversations={allConversations}
         users={mockUsers}
         agents={mockAgents}
+        currentUserId={user.id}
         onConversationClick={(conversation) => {
           setShowProfileView(false);
           setPreviousSpaceId(null);

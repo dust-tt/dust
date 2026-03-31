@@ -1491,12 +1491,13 @@ function DustMain() {
         projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
       />
     ) : // Priority 2: Show inbox view if inbox is selected
-    selectedView === "inbox" ? (
+    selectedView === "inbox" && user ? (
       <InboxView
         spaces={spaces}
         conversations={allConversations}
         users={mockUsers}
         agents={mockAgents}
+        currentUserId={user.id}
         onConversationClick={(conversation) => {
           setShowProfileView(false);
           setPreviousSpaceId(null);
@@ -1510,6 +1511,28 @@ function DustMain() {
           setSelectedView("space");
           setSelectedConversationId(null);
           setCameFromInbox(false);
+        }}
+        onAgentClick={(agent) => {
+          setShowProfileView(false);
+          setSelectedCollaboratorId(agent.id);
+          setSelectedCollaboratorType("agent");
+          setSelectedView("agent");
+          setSelectedConversationId(null);
+          setSelectedSpaceId(null);
+          setPreviousSpaceId(null);
+          setCameFromInbox(false);
+          setCameFromPersonAgent(false);
+        }}
+        onPersonClick={(person) => {
+          setShowProfileView(false);
+          setSelectedCollaboratorId(person.id);
+          setSelectedCollaboratorType("person");
+          setSelectedView("person");
+          setSelectedConversationId(null);
+          setSelectedSpaceId(null);
+          setPreviousSpaceId(null);
+          setCameFromInbox(false);
+          setCameFromPersonAgent(false);
         }}
       />
     ) : // Priority 3: Show template selection when Browse templates is clicked
