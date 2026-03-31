@@ -223,6 +223,22 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
             setOnceProps[`$initial_${param}`] = storedValue;
           }
         }
+
+        // Inject stored referrer so the real external referrer (e.g.
+        // google.com) is preserved instead of the stale signin.dust.tt
+        // that posthog-js computes after the auth redirect.
+        const storedReferrer = getStoredReferrer();
+        if (storedReferrer) {
+          setOnceProps["$initial_referrer"] = storedReferrer;
+          try {
+            setOnceProps["$initial_referring_domain"] = new URL(
+              storedReferrer
+            ).hostname;
+          } catch {
+            // Malformed referrer URL — skip the domain.
+          }
+        }
+
         if (Object.keys(setOnceProps).length > 0) {
           event.$set_once = {
             ...event.$set_once,
