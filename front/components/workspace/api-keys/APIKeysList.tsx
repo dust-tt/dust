@@ -26,7 +26,7 @@ const getKeySpaces = (
 ): string[] => {
   return key.groupIds
     .map((gId) => groupsById[gId])
-    .filter(Boolean)
+    .filter((g): g is GroupType => g !== undefined)
     .map((g) => prettifyGroupName(g));
 };
 

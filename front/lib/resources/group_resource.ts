@@ -553,7 +553,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         where: {
           workspaceId: key.workspaceId,
           id: { [Op.in]: key.groupIds },
-          kind: { [Op.in]: groupKinds },
         },
       });
     }
