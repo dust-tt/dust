@@ -359,6 +359,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: false,
     tools_arguments_requiring_approval: {
+      create_object: ["objectName"],
       update_object: ["objectName"],
     },
     tools_retry_policies: undefined,

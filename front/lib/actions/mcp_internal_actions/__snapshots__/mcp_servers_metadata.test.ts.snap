@@ -479,6 +479,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "run_dust_app": "never_ask",
   },
   "salesforce": {
+    "create_object": "medium",
     "describe_object": "never_ask",
     "execute_read_query": "never_ask",
     "list_attachments": "never_ask",
