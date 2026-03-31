@@ -22,6 +22,7 @@ const PRO_FEATURES = [
 const BUSINESS_EXTRA_FEATURES = [
   "US / EU data hosting",
   "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
+  "Advanced connections (Salesforce, etc)",
 ];
 
 const ENTERPRISE_FEATURES = [
@@ -98,7 +99,11 @@ export function SubscriptionPlanCards({
           <Button
             variant="highlight"
             size="md"
-            label={isBusiness ? "Subscribe to Enterprise" : "Subscribe to Pro"}
+            label={
+              isBusiness
+                ? "Subscribe to Enterprise (Seat-based)"
+                : "Subscribe to Pro"
+            }
             onClick={onSubscribe}
             disabled={isProcessing}
             className="w-full"
