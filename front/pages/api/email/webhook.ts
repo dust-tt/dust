@@ -26,6 +26,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -33,8 +34,10 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
+import { readFile } from "fs/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // Disabling Next.js's body parser as formidable has its own
@@ -43,6 +46,128 @@ export const config = {
     bodyParser: false,
   },
 };
+
+const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
+const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
+  "x-dust-email-webhook-source-region";
+const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
+
+function isRelayedWebhookRequest(
+  req: Pick<NextApiRequest, "headers">
+): boolean {
+  return (
+    req.headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE
+  );
+}
+
+function isRelayEligibleError(error: EmailTriggerError): boolean {
+  return (
+    error.type === "user_not_found" || error.type === "workspace_not_found"
+  );
+}
+
+export function shouldRelayToOtherRegion({
+  req,
+  error,
+}: {
+  req: Pick<NextApiRequest, "headers">;
+  error: EmailTriggerError;
+}): boolean {
+  return isRelayEligibleError(error) && !isRelayedWebhookRequest(req);
+}
+
+function hasValidSendgridAuthorization(
+  authHeader: string | undefined
+): boolean {
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
+    return false;
+  }
+
+  const base64Credentials = authHeader.split(" ")[1];
+  const credentials = Buffer.from(base64Credentials, "base64").toString(
+    "ascii"
+  );
+  const [username, password] = credentials.split(":");
+
+  return (
+    username === "sendgrid" && password === apiConfig.getEmailWebhookSecret()
+  );
+}
+
+function hasValidRelayAuthorization(
+  req: Pick<NextApiRequest, "headers">
+): boolean {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+
+  return (
+    isRelayedWebhookRequest(req) &&
+    authHeader.slice("Bearer ".length) === regionsConfig.getLookupApiSecret()
+  );
+}
+
+async function relayEmailToOtherRegion(
+  email: InboundEmail
+): Promise<Result<void, Error>> {
+  try {
+    const { url, name } = regionsConfig.getOtherRegionInfo();
+    const formData = new FormData();
+
+    formData.set("subject", email.subject);
+    formData.set("text", email.text);
+    formData.set("from", email.sender.full);
+    formData.set("SPF", email.auth.SPF);
+    formData.set("dkim", email.auth.dkimRaw);
+    formData.set("envelope", JSON.stringify(email.envelope));
+
+    if (email.rawHeaders) {
+      formData.set("headers", email.rawHeaders);
+    }
+
+    for (const [index, attachment] of email.attachments.entries()) {
+      const buffer = await readFile(attachment.filepath);
+      formData.append(
+        `attachment_${index}`,
+        new Blob([buffer], { type: attachment.contentType }),
+        attachment.filename
+      );
+    }
+
+    const response = await fetch(`${url}/api/email/webhook`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+        [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+          regionsConfig.getCurrentRegion(),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      return new Err(
+        new Error(
+          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+        )
+      );
+    }
+
+    logger.info(
+      {
+        senderEmail: email.sender.email,
+        targetRegion: name,
+        sourceRegion: regionsConfig.getCurrentRegion(),
+      },
+      "[email] Relayed inbound email to other region"
+    );
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
 
 function parseThreadingHeaders(rawHeaders: string | null) {
   if (!rawHeaders) {
@@ -136,6 +261,7 @@ const parseSendgridWebhookContent = async (
       threadingHeaders: parseThreadingHeaders(
         isString(rawHeaders) ? rawHeaders : null
       ),
+      rawHeaders: isString(rawHeaders) ? rawHeaders : null,
       sender: {
         email: senderRes.value,
         full: senderHeaderValue,
@@ -198,7 +324,7 @@ async function handler(
     case "POST":
       const authHeader = req.headers.authorization;
 
-      if (!authHeader || !authHeader.startsWith("Basic ")) {
+      if (!authHeader) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -208,15 +334,9 @@ async function handler(
         });
       }
 
-      const base64Credentials = authHeader.split(" ")[1];
-      const credentials = Buffer.from(base64Credentials, "base64").toString(
-        "ascii"
-      );
-      const [username, password] = credentials.split(":");
-
       if (
-        username !== "sendgrid" ||
-        password !== apiConfig.getEmailWebhookSecret()
+        !hasValidSendgridAuthorization(authHeader) &&
+        !hasValidRelayAuthorization(req)
       ) {
         return apiError(req, res, {
           status_code: 403,
@@ -281,6 +401,23 @@ async function handler(
         email: email.sender.email,
       });
       if (userRes.isErr()) {
+        if (shouldRelayToOtherRegion({ req, error: userRes.error })) {
+          const relayRes = await relayEmailToOtherRegion(email);
+          if (relayRes.isOk()) {
+            return;
+          }
+
+          logger.error(
+            {
+              senderEmail: email.sender.email,
+              error: relayRes.error,
+              sourceRegion: regionsConfig.getCurrentRegion(),
+              targetRegion: regionsConfig.getOtherRegionInfo().name,
+            },
+            "[email] Failed to relay inbound email to other region"
+          );
+        }
+
         await replyToError(email, userRes.error);
         return;
       }

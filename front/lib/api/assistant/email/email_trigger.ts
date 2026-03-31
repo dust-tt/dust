@@ -211,6 +211,7 @@ export type EmailThreadingHeaders = {
 export type InboundEmail = {
   subject: string;
   text: string;
+  rawHeaders?: string | null;
   auth: { SPF: string; dkim: InboundEmailDkimResult[]; dkimRaw: string };
   threadingHeaders: EmailThreadingHeaders;
   // Human-visible RFC 5322 From header.
