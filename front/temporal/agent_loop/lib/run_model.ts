@@ -38,7 +38,10 @@ import {
 } from "@app/lib/api/assistant/skill_actions";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
-import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
+import {
+  getByokUserFacingLLMErrorMessage,
+  getUserFacingLLMErrorMessage,
+} from "@app/lib/api/llm/types/errors";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -613,23 +616,29 @@ export async function runModel(
         const errorDustRunId = llm?.getTraceId();
         const currentAttempt = Context.current().info.attempt;
         const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
+        const plan = auth.getNonNullablePlan();
 
         if (
-          type === "authentication_error" &&
-          auth.getNonNullablePlan().isByok &&
-          isByokProviderId(model.providerId)
+          plan.isByok &&
+          isByokProviderId(model.providerId) &&
+          (type === "authentication_error" || type === "permission_error")
         ) {
           await ProviderCredentialResource.markAsUnhealthy(auth, {
             providerId: model.providerId,
           });
         }
 
+        const errorMessage =
+          plan.isByok && isByokProviderId(model.providerId)
+            ? getByokUserFacingLLMErrorMessage(type, metadata)
+            : getUserFacingLLMErrorMessage(type, metadata);
+
         if (!isRetryable || isLastAttempt) {
           // Non-retryable errors or last retry attempt: surface error to user.
           await publishAgentError(
             {
               code: "multi_actions_error",
-              message: getUserFacingLLMErrorMessage(type, metadata),
+              message: errorMessage,
               metadata: null,
             },
             errorDustRunId
@@ -638,9 +647,7 @@ export async function runModel(
         }
 
         // Throw to let Temporal handle the retry via its retry policy.
-        throw new Error(
-          `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`
-        );
+        throw new Error(`LLM error (${type}): ${errorMessage}`);
       }
       case "shouldReturnNull":
         return null;
