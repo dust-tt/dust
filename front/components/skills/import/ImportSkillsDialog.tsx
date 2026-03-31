@@ -90,8 +90,9 @@ export function ImportSkillsDialog({
 
   const selectedCount = selectedSkillNamesField.value.length;
 
-  const description =
-    detectedCount > 0
+  const description = isDetecting
+    ? "Detecting skills..."
+    : detectedCount > 0
       ? `${detectedCount} skill${pluralize(detectedCount)} detected. Select the ones to import.`
       : TAB_DESCRIPTION[importTypeField.value];
 
@@ -116,6 +117,8 @@ export function ImportSkillsDialog({
               onValueChange={(value) => {
                 if (isImportType(value)) {
                   importTypeField.onChange(value);
+                  selectedSkillNamesField.onChange([]);
+                  setDetectedCount(0);
                 }
               }}
             >
@@ -149,11 +152,11 @@ export function ImportSkillsDialog({
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            disabled: isDetecting || isImporting,
+            disabled: isImporting,
           }}
           rightButtonProps={{
-            label: "Import",
-            disabled: isImporting || selectedCount === 0,
+            label: isImporting ? "Importing..." : "Import",
+            disabled: isImporting || isDetecting || selectedCount === 0,
             isLoading: isImporting,
             onClick: form.handleSubmit(onSubmit),
           }}
