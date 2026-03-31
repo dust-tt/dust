@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
+import { isGoogleAuthenticationErrorMessage } from "@app/lib/api/llm/clients/google/utils/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/workflows/provider-credential-updated";
@@ -26,6 +27,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import { GoogleGenAI } from "@google/genai";
 import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
@@ -517,6 +519,19 @@ async function isCredentialHealthy({
 
       return true;
     }
+    case "google_ai_studio": {
+      const client = new GoogleGenAI({
+        apiKey: credentials.api_key,
+      });
+
+      try {
+        await client.models.list();
+      } catch (_error) {
+        return false;
+      }
+
+      return true;
+    }
     default:
       assertNever(provider);
   }
@@ -551,6 +566,19 @@ async function hasCredentialAuthError({
         return false;
       } catch (error) {
         return error instanceof OpenAI.AuthenticationError;
+      }
+    }
+    case "google_ai_studio": {
+      const client = new GoogleGenAI({
+        apiKey: credentials.api_key,
+      });
+      try {
+        await client.models.list();
+        return false;
+      } catch (error) {
+        const normalized = normalizeError(error);
+
+        return isGoogleAuthenticationErrorMessage(normalized.message);
       }
     }
     default:

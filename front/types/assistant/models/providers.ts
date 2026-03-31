@@ -24,6 +24,7 @@ export const MODEL_PROVIDER_IDS = [
 export const BYOK_MODEL_PROVIDER_IDS = [
   "anthropic",
   "openai",
+  "google_ai_studio",
 ] as const satisfies ModelProviderIdType[];
 
 export function getProviderDisplayName(
