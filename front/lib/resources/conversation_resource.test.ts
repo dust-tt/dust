@@ -37,6 +37,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+import { destroyConversation } from "../api/assistant/conversation/destroy";
 
 vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -189,7 +190,6 @@ describe("ConversationResource", () => {
 describe("destroyConversation", () => {
   let auth: Authenticator;
   let agentConfigurationId: string;
-  let conversationId: string | null = null;
 
   const getDestroyIdCounts = (calls: unknown[][]) => {
     return calls.map((call) => {
@@ -216,28 +216,25 @@ describe("destroyConversation", () => {
     agentConfigurationId = agents[0].sId;
   });
 
-  afterEach(async () => {
-    vi.restoreAllMocks();
-
-    if (conversationId) {
-      await destroyConversation(auth, { conversationId });
-    }
-  });
-
   it("should delete batched message resources chunk by chunk", async () => {
-    const conversation = await ConversationFactory.create(auth, {
+    const conversationType = await ConversationFactory.create(auth, {
       agentConfigurationId,
       messagesCreatedAt: Array.from({ length: 30 }, () => new Date()),
     });
-    conversationId = conversation.sId;
-
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    if (!conversation) {
+      throw new Error("Conversation should exist");
+    }
+    
     const userMessageDestroySpy = vi.spyOn(UserMessageModel, "destroy");
     const agentMessageDestroySpy = vi.spyOn(AgentMessageModel, "destroy");
 
-    const result = await destroyConversation(auth, { conversationId });
+    const result = await destroyConversation(auth, { conversation });
 
     expect(result.isOk()).toBe(true);
-    conversationId = null;
 
     const userMessageDestroyCounts = getDestroyIdCounts(
       userMessageDestroySpy.mock.calls as unknown[][]
