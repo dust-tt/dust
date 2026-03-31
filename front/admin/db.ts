@@ -72,6 +72,7 @@ import {
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
+import { ConversationTodoVersionedModel } from "@app/lib/resources/storage/models/conversation_todo_versioned";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -219,6 +220,7 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     ConversationButlerSuggestionModel,
+    ConversationTodoVersionedModel,
     ConversationBranchModel,
     ProjectTodoModel,
     ProjectTodoConversationModel,

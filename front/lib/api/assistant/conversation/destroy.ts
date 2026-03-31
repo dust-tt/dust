@@ -21,6 +21,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
+import { ConversationTodoVersionedModel } from "@app/lib/resources/storage/models/conversation_todo_versioned";
 import {
   ProjectTodoConversationModel,
   ProjectTodoSourceModel,
@@ -282,6 +283,13 @@ export async function destroyConversation(
   });
 
   await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+  });
+
+  await ConversationTodoVersionedModel.destroy({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
