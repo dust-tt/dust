@@ -1,5 +1,4 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -16,10 +15,8 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare status: "active" | "disabled";
   declare isSystem: boolean;
   declare role: RoleType;
-  declare scope: "default" | "restricted_group_only";
 
   declare userId: ForeignKey<UserModel["id"]>;
-  declare groupId: ForeignKey<GroupModel["id"]>;
 
   declare groupIds: ModelId[];
 
@@ -65,11 +62,6 @@ KeyModel.init(
       defaultValue: "builder",
       allowNull: false,
     },
-    scope: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "default",
-    },
     monthlyCapMicroUsd: {
       type: DataTypes.BIGINT,
       allowNull: true,
@@ -95,10 +87,5 @@ UserModel.hasMany(KeyModel, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
-GroupModel.hasMany(KeyModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
 
 KeyModel.belongsTo(UserModel);
-KeyModel.belongsTo(GroupModel);

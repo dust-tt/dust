@@ -110,8 +110,7 @@ describe("KeyResource", () => {
       expect(fetched!.status).toBe("active");
       expect(fetched!.isSystem).toBe(false);
       expect(fetched!.role).toBe("builder");
-      expect(fetched!.scope).toBe("default");
-      expect(fetched!.groupId).toBe(globalGroup.id);
+      expect(fetched!.groupIds).toEqual([globalGroup.id]);
       expect(fetched!.secret).toBe(key.secret);
     });
 
