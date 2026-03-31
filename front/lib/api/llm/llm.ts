@@ -398,7 +398,7 @@ export abstract class LLM<TPayload = unknown> {
       const payload = this.buildStreamRequestPayload(params);
 
       const generation = startObservation(
-        "llm-batch-input",
+        `llm-batch-input-${customId}`,
         {
           input: payload,
           model: this.modelId,
@@ -478,7 +478,7 @@ export abstract class LLM<TPayload = unknown> {
       const buffer = new LLMTraceBuffer(traceId, workspaceId, this.context!);
 
       const generation = startObservation(
-        "llm-batch-completion",
+        `llm-batch-completion-${customId}`,
         {
           input: { batchCustomId: customId },
           model: this.modelId,
