@@ -120,7 +120,7 @@ async function handler(
         });
       }
 
-      // Resolve groups: prefer group_ids (new), fall back to group_id (compat).
+      // Resolve groups: prefer group_ids (new), fall back to group_id (retro-compatibility).
       const globalGroupRes =
         await GroupResource.fetchWorkspaceGlobalGroup(auth);
       if (globalGroupRes.isErr()) {
@@ -136,14 +136,17 @@ async function handler(
 
       const resolvedGroups: GroupResource[] = [globalGroup];
 
-      const additionalIds = group_ids
+      const additionalGroupIds = group_ids
         ? group_ids.filter((gId) => gId !== globalGroup.sId)
         : group_id && group_id !== globalGroup.sId
           ? [group_id]
           : [];
 
-      if (additionalIds.length > 0) {
-        const groupsRes = await GroupResource.fetchByIds(auth, additionalIds);
+      if (additionalGroupIds.length > 0) {
+        const groupsRes = await GroupResource.fetchByIds(
+          auth,
+          additionalGroupIds
+        );
         if (groupsRes.isErr()) {
           return apiError(req, res, {
             status_code: 404,
