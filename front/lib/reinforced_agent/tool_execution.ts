@@ -36,14 +36,14 @@ export async function prepareReinforcedToolActions(
   {
     exploratoryToolCalls,
     agentMessageModelId,
-    agentMessageSId,
-    userMessageSId,
+    agentMessageId,
+    userMessageId,
     conversationId,
   }: {
     exploratoryToolCalls: ExploratoryToolCallInfo[];
     agentMessageModelId: ModelId;
-    agentMessageSId: string;
-    userMessageSId: string;
+    agentMessageId: string;
+    userMessageId: string;
     conversationId: string;
   }
 ): Promise<ReinforcedToolActionInfo> {
@@ -123,12 +123,12 @@ export async function prepareReinforcedToolActions(
   return {
     authType: auth.toJSON(),
     agentLoopArgs: {
-      agentMessageId: agentMessageSId,
+      agentMessageId: agentMessageId,
       agentMessageVersion: 0,
       conversationId,
       conversationTitle: null,
       conversationBranchId: null,
-      userMessageId: userMessageSId,
+      userMessageId: userMessageId,
       userMessageVersion: 0,
       initialStartTime: Date.now(),
     },

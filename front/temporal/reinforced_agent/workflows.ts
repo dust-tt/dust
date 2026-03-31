@@ -296,7 +296,7 @@ export async function reinforcedAgentForAgentWorkflow({
 }
 
 /**
- * Multi-step streaming analysis of a single conversation.
+ * Multi-step streaming analysis of a single conversation (non batch mode).
  * Calls the step activity, executes exploratory tools via the agent loop's
  * runRetryableToolActivity, and continues until terminal tools are called.
  *

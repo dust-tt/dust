@@ -17,7 +17,6 @@ import {
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import type { ExploratoryToolName } from "@app/lib/reinforced_agent/types";
 import { MAX_REINFORCED_ANALYSIS_STEPS } from "@app/lib/reinforced_agent/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { buildContinuationMessages } from "@app/lib/reinforced_agent/utils";
 import {
   BATCH_POLL_INTERVAL_MS,
@@ -35,6 +34,7 @@ import {
   type WorkspaceContext,
 } from "@app/tests/reinforced-agent-evals/lib/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function makeAction(input: {
   name: string;

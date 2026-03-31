@@ -114,7 +114,6 @@ export async function getRecentConversationsForAgentActivity({
   });
 }
 
-
 /**
  * Analyze a single conversation step for reinforcement.
  *
@@ -281,6 +280,12 @@ export async function analyzeConversationStepActivity({
 
   // If terminal tools were called, process suggestions.
   if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
+    if (terminalToolCalls.length > 0 && exploratoryToolCalls.length > 0) {
+      logger.warn(
+        { conversationId },
+        "ReinforcedAgent: LLM is sending both terminal and exploratory tool call."
+      );
+    }
     const analysedConversation = await ConversationResource.fetchById(
       auth,
       conversationId
@@ -301,8 +306,8 @@ export async function analyzeConversationStepActivity({
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
     exploratoryToolCalls,
     agentMessageModelId: storedResult.agentMessageModelId,
-    agentMessageSId: storedResult.agentMessageSId,
-    userMessageSId: storedResult.userMessageSId,
+    agentMessageId: storedResult.agentMessageSId,
+    userMessageId: storedResult.userMessageSId,
     conversationId: reinforcementConversationId,
   });
 
@@ -596,8 +601,8 @@ export async function processConversationAnalysisBatchResultActivity({
         const toolActionInfo = await prepareReinforcedToolActions(auth, {
           exploratoryToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
-          agentMessageSId: storedInfo.agentMessageSId,
-          userMessageSId: storedInfo.userMessageSId,
+          agentMessageId: storedInfo.agentMessageSId,
+          userMessageId: storedInfo.userMessageSId,
           conversationId: reinforcementConvId,
         });
 
