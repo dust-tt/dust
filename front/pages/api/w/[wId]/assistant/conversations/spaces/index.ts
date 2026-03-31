@@ -18,6 +18,25 @@ export type GetBySpacesSummaryResponseBody = {
   }>;
 };
 
+export function sortSpacesSummary<T extends { id: number }>(
+  spaces: T[],
+  conversationsBySpace: Map<number, { unreadConversations: unknown[] }>,
+  lastUserActivityBySpace: Map<number, Date>
+): T[] {
+  return [...spaces].sort((a, b) => {
+    const aHasUnread =
+      (conversationsBySpace.get(a.id)?.unreadConversations.length ?? 0) > 0;
+    const bHasUnread =
+      (conversationsBySpace.get(b.id)?.unreadConversations.length ?? 0) > 0;
+    if (aHasUnread !== bHasUnread) {
+      return aHasUnread ? -1 : 1;
+    }
+    const aActivity = lastUserActivityBySpace.get(a.id)?.getTime() ?? 0;
+    const bActivity = lastUserActivityBySpace.get(b.id)?.getTime() ?? 0;
+    return bActivity - aActivity;
+  });
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetBySpacesSummaryResponseBody>>,
@@ -39,11 +58,14 @@ async function handler(
       );
 
       // Fetch all unread conversations for the user in one query
-      const { unreadConversations, nonParticipantUnreadConversations } =
-        await ConversationResource.listSpaceUnreadConversationsForUser(
-          auth,
-          nonArchivedSpaces.map((s) => s.id)
-        );
+      const {
+        unreadConversations,
+        nonParticipantUnreadConversations,
+        lastUserActivityBySpace,
+      } = await ConversationResource.listSpaceUnreadConversationsForUser(
+        auth,
+        nonArchivedSpaces.map((s) => s.id)
+      );
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(
@@ -91,27 +113,30 @@ async function handler(
       }
 
       // Build response with all spaces (including those without unread conversations)
+      const filteredSpaces = nonArchivedSpaces.filter(
+        (space) =>
+          space.kind === "project" || conversationsBySpace.has(space.id)
+      );
       const response: GetBySpacesSummaryResponseBody = {
-        summary: nonArchivedSpaces
-          .filter(
-            (space) =>
-              space.kind === "project" || conversationsBySpace.has(space.id)
-          )
-          .map((space) => ({
-            space: {
-              ...space.toJSON(),
-              description: metadataMap.get(space.id)?.description ?? null,
+        summary: sortSpacesSummary(
+          filteredSpaces,
+          conversationsBySpace,
+          lastUserActivityBySpace
+        ).map((space) => ({
+          space: {
+            ...space.toJSON(),
+            description: metadataMap.get(space.id)?.description ?? null,
 
-              // We excluded archived projects and we only list projects where the user is a member.
-              archivedAt: null,
-              isMember: true,
-            },
-            unreadConversations:
-              conversationsBySpace.get(space.id)?.unreadConversations ?? [],
-            nonParticipantUnreadConversations:
-              conversationsBySpace.get(space.id)
-                ?.nonParticipantUnreadConversations ?? [],
-          })),
+            // We excluded archived projects and we only list projects where the user is a member.
+            archivedAt: null,
+            isMember: true,
+          },
+          unreadConversations:
+            conversationsBySpace.get(space.id)?.unreadConversations ?? [],
+          nonParticipantUnreadConversations:
+            conversationsBySpace.get(space.id)
+              ?.nonParticipantUnreadConversations ?? [],
+        })),
       };
 
       return res.status(200).json(response);
