@@ -164,6 +164,7 @@ async function relayEmailToOtherRegion(
 
     return new Ok(undefined);
   } catch (error) {
+    return new Err(normalizeError(error));
     return new Err(
       error instanceof Error
         ? error
