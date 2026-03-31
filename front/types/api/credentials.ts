@@ -1,5 +1,8 @@
-import type { LLMCredentialsType } from "@app/types/provider_credential";
-import type { CredentialsType, ProviderType } from "../provider";
+import type {
+  CredentialsType,
+  DustManagedCredentialsType,
+  ProviderType,
+} from "../provider";
 
 const {
   DUST_MANAGED_SERP_API_KEY = "",
@@ -78,10 +81,7 @@ export const credentialsFromProviders = (
   return credentials;
 };
 
-export const dustManagedServiceCredentials = (): Omit<
-  CredentialsType,
-  keyof LLMCredentialsType
-> => {
+export const dustManagedServiceCredentials = (): DustManagedCredentialsType => {
   return {
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
     BROWSERLESS_API_KEY: DUST_MANAGED_BROWSERLESS_API_KEY,

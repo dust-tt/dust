@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
+
 import type { Authenticator } from "@app/lib/auth";
+import { isByokTransitionningPlan } from "@app/lib/plans/plan_codes";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import {
@@ -12,11 +14,16 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
+// Fraction of requests that use BYOK credentials during the transition period.
+const BYOK_TRANSITION_BYOK_KEYS_RATIO = 0.2; // 20%
+
 /**
  * Returns LLM credentials for the workspace.
  *
  * - Non-BYOK workspaces: returns Dust-managed keys from environment variables.
  * - BYOK workspaces: resolves customer-provided keys from OAuth credentials.
+ *   - For BYOK_TRANSITIONNING plan, fallback on Dust-managed keys if customer keys are not provided.
+ *   - For all others, do not fallback.
  *
  * `OPENAI_EMBEDDING_API_KEY` is set separately from `OPENAI_API_KEY` so Dust apps
  * don't accidentally use the customer's LLM key for embeddings.
@@ -34,30 +41,66 @@ export async function getLlmCredentials(
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
-  if (!plan.isByok) {
-    const env = (key: string) =>
-      EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
+  const env = (key: string) =>
+    EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
 
+  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS = {
+    ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
+    OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
+  };
+
+  const DUST_MANAGED_OTHER_PROVIDERS_API_KEYS = {
+    AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
+    AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
+    MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
+    TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
+    GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
+    TOGETHERAI_API_KEY: env("DUST_MANAGED_TOGETHERAI_API_KEY"),
+    DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
+    FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
+    XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
+  };
+
+  // Safer to always point to the same hosting region while we handle US first,
+  // avoid region switching issues when welcoming EU BYOK workspaces later.
+  const BASE_VARIABLES = {
+    OPENAI_USE_EU_ENDPOINT:
+      config.getRegion() === "europe-west1" ? "true" : "false",
+    OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
+  };
+
+  if (!plan.isByok) {
     return {
-      ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
-      AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
-      AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
-      MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
-      OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
-      OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
-      OPENAI_USE_EU_ENDPOINT:
-        config.getRegion() === "europe-west1" ? "true" : "false",
-      TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
-      GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
-      TOGETHERAI_API_KEY: env("DUST_MANAGED_TOGETHERAI_API_KEY"),
-      DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
-      FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
-      XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
+      ...BASE_VARIABLES,
+      ...DUST_MANAGED_OTHER_PROVIDERS_API_KEYS,
+      ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
     };
   }
 
   const providerCredentials =
     await ProviderCredentialResource.listByWorkspace(auth);
+
+  // Use healthy keys only and fallback on Dust keys for this specific plan only
+  if (isByokTransitionningPlan(plan)) {
+    const healthyCredentials = mapOauthCredentialsToLlmCredentials(
+      providerCredentials
+        .filter(({ isHealthy }) => isHealthy)
+        .map((cred) => ({
+          providerId: cred.providerId,
+          content: cred.credentials,
+        }))
+    );
+
+    const shouldUseByokKeys = Math.random() < BYOK_TRANSITION_BYOK_KEYS_RATIO;
+
+    return shouldUseByokKeys
+      ? {
+          ...BASE_VARIABLES,
+          ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
+          ...healthyCredentials,
+        }
+      : { ...BASE_VARIABLES, ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS };
+  }
 
   const credentials = mapOauthCredentialsToLlmCredentials(
     providerCredentials.map((cred) => ({
@@ -73,7 +116,10 @@ export async function getLlmCredentials(
     );
   }
 
-  return credentials;
+  return {
+    ...BASE_VARIABLES,
+    ...credentials,
+  };
 }
 
 function mapOauthCredentialsToLlmCredentials(
