@@ -46,7 +46,8 @@ export function getEventMessageChannelId(event: AgentMessageEvents) {
   if (
     event.type === "tool_approve_execution" ||
     event.type === "tool_error" ||
-    event.type === "tool_personal_auth_required"
+    event.type === "tool_personal_auth_required" ||
+    event.type === "tool_file_auth_required"
   ) {
     return getMessageChannelId(
       event.metadata?.pubsubMessageId ?? event.messageId
