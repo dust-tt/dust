@@ -788,6 +788,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async fetchByNames(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<SkillResource[]> {
+    if (names.length === 0) {
+      return [];
+    }
+    return this.baseFetch(auth, {
+      where: {
+        name: names,
+        status: "active",
+      },
+    });
+  }
+
   /**
    * Fetches skills from rows that reference them via customSkillId or globalSkillId.
    */

@@ -1,4 +1,5 @@
 import { uploadBase64DataToFileStorage } from "@app/lib/api/files/upload";
+import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import {
   createZipAttachmentReader,
   detectSkillsFromZip,
@@ -24,12 +25,17 @@ type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
-  errored: { name: string; message: string }[];
+  skipped: { name: string; message: string }[];
 };
 
 /**
  * Imports skills from uploaded files. Detects skills from the files,
  * uploads their attachments, then creates or updates SkillResource objects.
+ *
+ * `onConflict` controls what happens when a skill name collides with an
+ * existing skill from a different source:
+ *  - "skip": the conflicting skill is skipped and reported in `skipped`.
+ *  - "error": the entire import is rejected upfront (no partial writes).
  */
 export async function importSkillsFromFiles(
   auth: Authenticator,
@@ -37,10 +43,12 @@ export async function importSkillsFromFiles(
     uploadedFiles,
     names,
     source = "local_file",
+    onConflict = "skip",
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
     source?: FileImportSource;
+    onConflict?: "error" | "skip";
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const allSkills: ZipDetectedSkill[] = [];
@@ -75,13 +83,29 @@ export async function importSkillsFromFiles(
     }
   }
 
-  const requestedNames = names ? new Set(names) : null;
+  const requestedSet = names ? new Set(names) : null;
   const selectedSkills = allSkills.filter(
     (skill) =>
       skill.name &&
       skill.instructions.trim() &&
-      (!requestedNames || requestedNames.has(skill.name))
+      (!requestedSet || requestedSet.has(skill.name))
   );
+
+  const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
+  const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+
+  if (onConflict === "error") {
+    // Validate all skills upfront, fail as a unit on semantic problems.
+    const validationResult = validateSkillsForImport({
+      selectedSkills,
+      requestedNames: names ?? null,
+      existingSkills,
+      isConflicting: (existing) => existing.source !== source,
+    });
+    if (validationResult.isErr()) {
+      return validationResult;
+    }
+  }
   if (selectedSkills.length === 0) {
     return new Err(new Error("No matching importable skills found."));
   }
@@ -89,15 +113,17 @@ export async function importSkillsFromFiles(
   const user = auth.user();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
-  const errored: { name: string; message: string }[] = [];
+  const skipped: { name: string; message: string }[] = [];
+
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   await concurrentExecutor(
     selectedSkills,
     async (skill) => {
-      const existing = await SkillResource.fetchActiveByName(auth, skill.name);
+      const existing = existingSkillsMap.get(skill.name) ?? null;
 
       if (existing && existing.source !== source) {
-        errored.push({
+        skipped.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
         });
@@ -106,7 +132,7 @@ export async function importSkillsFromFiles(
 
       const readEntry = readerBySkill.get(skill);
       if (!readEntry) {
-        errored.push({
+        skipped.push({
           name: skill.name,
           message: "Internal error: no zip reader for skill.",
         });
@@ -197,7 +223,7 @@ export async function importSkillsFromFiles(
     { concurrency: IMPORT_CONCURRENCY }
   );
 
-  return new Ok({ imported, updated, errored });
+  return new Ok({ imported, updated, skipped });
 }
 
 async function uploadAttachment(

@@ -12,6 +12,7 @@ import type {
   GitHubDetectedSkillAttachment,
   GitHubSkillDetectionError,
 } from "@app/lib/api/skills/detection/github/types";
+import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -19,7 +20,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { Octokit } from "@octokit/core";
 import path from "path";
 
@@ -28,7 +29,7 @@ const IMPORT_CONCURRENCY = 4;
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
-  errored: { name: string; message: string }[];
+  skipped: { name: string; message: string }[];
 };
 
 /**
@@ -40,9 +41,11 @@ export async function importSkillsFromGitHub(
   {
     repoUrl,
     names,
+    onConflict = "skip",
   }: {
     repoUrl: string;
     names: string[];
+    onConflict?: "error" | "skip";
   }
 ): Promise<Result<ImportSkillsResult, GitHubSkillDetectionError>> {
   const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
@@ -65,18 +68,45 @@ export async function importSkillsFromGitHub(
       requestedNames.has(skill.name) && skill.name && skill.instructions.trim()
   );
 
+  const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
+  const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+
+  if (onConflict === "error") {
+    const validationResult = validateSkillsForImport({
+      selectedSkills,
+      requestedNames: names,
+      existingSkills,
+      isConflicting: (existing: SkillResource) =>
+        !isSkillFromGitHubRepo(existing, { repoUrl }),
+    });
+    if (validationResult.isErr()) {
+      return new Err({
+        type: "validation_error",
+        message: validationResult.error.message,
+      });
+    }
+  }
+  if (selectedSkills.length === 0) {
+    return new Err({
+      type: "validation_error",
+      message: "No matching importable skills found.",
+    });
+  }
+
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+
   const user = auth.getNonNullableUser();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
-  const errored: { name: string; message: string }[] = [];
+  const skipped: { name: string; message: string }[] = [];
 
   await concurrentExecutor(
     selectedSkills,
     async (skill) => {
-      const existing = await SkillResource.fetchActiveByName(auth, skill.name);
+      const existing = existingSkillsMap.get(skill.name) ?? null;
 
       if (existing && !isSkillFromGitHubRepo(existing, { repoUrl })) {
-        errored.push({
+        skipped.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
         });
@@ -174,7 +204,7 @@ export async function importSkillsFromGitHub(
     { concurrency: IMPORT_CONCURRENCY }
   );
 
-  return new Ok({ imported, updated, errored });
+  return new Ok({ imported, updated, skipped });
 }
 
 async function uploadAttachment(

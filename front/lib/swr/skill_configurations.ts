@@ -436,12 +436,12 @@ function notifyImportResult(
   sendNotification: ReturnType<typeof useSendNotification>
 ): {
   successCount: number;
-  errors: string[];
+  skipped: string[];
 } {
   const importedCount = data.imported.length;
   const updatedCount = data.updated.length;
   const successCount = importedCount + updatedCount;
-  const errors = data.errored.map((e) => e.message);
+  const skipped = data.skipped.map((e) => e.message);
 
   if (successCount > 0) {
     const parts: string[] = [];
@@ -451,8 +451,8 @@ function notifyImportResult(
     if (updatedCount > 0) {
       parts.push(`${updatedCount} skill${pluralize(updatedCount)} updated`);
     }
-    if (errors.length > 0) {
-      parts.push(`${errors.length} skill${pluralize(errors.length)} failed`);
+    if (skipped.length > 0) {
+      parts.push(`${skipped.length} skill${pluralize(skipped.length)} skipped`);
     }
     sendNotification({
       type: "success",
@@ -463,11 +463,11 @@ function notifyImportResult(
     sendNotification({
       type: "error",
       title: "Import failed",
-      description: errors[0] ?? "Failed to import skills.",
+      description: skipped[0] ?? "Failed to import skills.",
     });
   }
 
-  return { successCount, errors };
+  return { successCount, skipped };
 }
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {

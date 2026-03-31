@@ -10,7 +10,8 @@ export type GitHubSkillDetectionError =
   | { type: "invalid_url"; message: string }
   | { type: "auth_error"; message: string }
   | { type: "not_found"; message: string }
-  | { type: "github_api_error"; message: string };
+  | { type: "github_api_error"; message: string }
+  | { type: "validation_error"; message: string };
 
 export type GitHubFileEntry = FileEntry & {
   sha: string;
