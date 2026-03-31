@@ -129,6 +129,34 @@ export const mockAgents: Agent[] = [
     backgroundColor: "s-bg-green-300",
     description: "Provides customer support and assistance",
   },
+  {
+    id: "agent-19",
+    name: "KnowledgeLibrarian",
+    emoji: "📚",
+    backgroundColor: "s-bg-amber-200",
+    description: "Organizes and retrieves internal knowledge articles",
+  },
+  {
+    id: "agent-20",
+    name: "SalesCopilot",
+    emoji: "📈",
+    backgroundColor: "s-bg-sky-200",
+    description: "Drafts outreach and summarizes deal activity",
+  },
+  {
+    id: "agent-21",
+    name: "LegalReviewer",
+    emoji: "⚖️",
+    backgroundColor: "s-bg-slate-300",
+    description: "Flags legal and policy issues in drafts",
+  },
+  {
+    id: "agent-22",
+    name: "OpsAutomator",
+    emoji: "⚙️",
+    backgroundColor: "s-bg-zinc-300",
+    description: "Automates repetitive operational workflows",
+  },
 ];
 
 /**
