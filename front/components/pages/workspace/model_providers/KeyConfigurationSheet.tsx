@@ -21,6 +21,7 @@ import { useState } from "react";
 const PROVIDER_ID_TO_DOCS_LINK: Record<ByokModelProviderIdType, string> = {
   openai: "https://developers.openai.com/api/docs/quickstart",
   anthropic: "https://platform.claude.com/docs/en/api/overview",
+  google_ai_studio: "https://ai.google.dev/gemini-api/docs/api-key",
 };
 
 interface ProviderInfoProps {

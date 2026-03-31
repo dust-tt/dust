@@ -8,6 +8,7 @@ import {
   type ApiKeyCredentialContentSchema,
   type LLMCredentialsType,
   PROVIDER_TO_CREDENTIAL_KEY,
+  type ProviderCredentialKey,
 } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
@@ -44,9 +45,13 @@ export async function getLlmCredentials(
   const env = (key: string) =>
     EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
 
-  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS = {
+  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS: Record<
+    ProviderCredentialKey,
+    string
+  > = {
     ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
     OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
+    GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
   };
 
   const DUST_MANAGED_OTHER_PROVIDERS_API_KEYS = {
@@ -139,6 +144,10 @@ function mapOauthCredentialsToLlmCredentials(
         break;
       }
       case "anthropic": {
+        result[PROVIDER_TO_CREDENTIAL_KEY[providerId]] = content.api_key;
+        break;
+      }
+      case "google_ai_studio": {
         result[PROVIDER_TO_CREDENTIAL_KEY[providerId]] = content.api_key;
         break;
       }

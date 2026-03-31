@@ -37,6 +37,7 @@ pub enum CredentialProvider {
     // BYOK model providers
     Openai,
     Anthropic,
+    GoogleAiStudio,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -267,6 +268,9 @@ impl Credential {
                 vec!["api_key"]
             }
             CredentialProvider::Anthropic => {
+                vec!["api_key"]
+            }
+            CredentialProvider::GoogleAiStudio => {
                 vec!["api_key"]
             }
         };
