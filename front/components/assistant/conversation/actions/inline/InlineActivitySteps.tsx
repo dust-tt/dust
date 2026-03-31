@@ -75,6 +75,7 @@ export function InlineActivitySteps({
   }
 
   // Show active thinking whenever the agent is thinking.
+  // Dedup in appendThinkingStep handles duplicate content at capture time.
   const showActiveThinking = isThinking;
   const activeAction =
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
