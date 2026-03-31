@@ -89,7 +89,7 @@ export function InlineActivitySteps({
   }
 
   return (
-    <div className="flex flex-col mt-2 gap-4 text-xs">
+    <div className="flex flex-col mt-2 gap-4 text-sm">
       {/* Collapsible header */}
       <button
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1"
@@ -138,7 +138,7 @@ export function InlineActivitySteps({
                       <Markdown
                         content={step.content}
                         isStreaming={false}
-                        forcedTextSize="text-xs"
+                        forcedTextSize="text-sm"
                         textColor="text-muted-foreground dark:text-muted-foreground-night"
                         isLastMessage={false}
                       />
@@ -185,7 +185,7 @@ export function InlineActivitySteps({
                     enableAnimation
                     animationDurationSeconds={0.3}
                     delimiter=" "
-                    forcedTextSize="text-xs"
+                    forcedTextSize="text-sm"
                     textColor="text-muted-foreground dark:text-muted-foreground-night"
                     isLastMessage={false}
                   />
@@ -208,7 +208,7 @@ export function InlineActivitySteps({
             )}
             {isDone && completedSteps.length > 0 && (
               <TimelineRow icon={CheckIcon} isLast>
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Done
                 </span>
               </TimelineRow>
