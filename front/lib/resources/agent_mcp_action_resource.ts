@@ -699,6 +699,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     let outputItems: AgentMCPActionOutputItemModel[] = [];
+
     if (ignoreContent) {
       outputItems = await AgentMCPActionOutputItemModel.findAll({
         attributes: { exclude: ["content", "contentGcsPath"] },
@@ -806,7 +807,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
       );
 
-      outputItems = batchResults.flat();
+      outputItems.push(...batchResults.flat());
     }
 
     const outputItemsByActionId = new Map<
@@ -869,7 +870,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     {
       actions,
       ignoreContent,
-    }: { actions: AgentMCPActionResource[]; ignoreContent: boolean }
+    }: {
+      actions: AgentMCPActionResource[];
+      ignoreContent: boolean;
+    }
   ): Promise<AgentMCPActionWithOutputType[]> {
     return tracer.trace(
       "agent_mcp_action.enrich_with_output_items",

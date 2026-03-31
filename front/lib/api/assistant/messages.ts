@@ -304,7 +304,8 @@ async function batchRenderUserMessages(
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  outputItemContentOnlyForAgentMessageIds: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -369,18 +370,55 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const agentMCPActions = await AgentMCPActionResource.fetchByStepContents(
+  const allAgentMCPActions = await AgentMCPActionResource.fetchByStepContents(
     auth,
     {
       stepContents,
       latestVersionsOnly: true,
     }
   );
-  const actionsWithOutputs =
-    await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-      actions: agentMCPActions,
-      ignoreContent: viewType === "light",
-    });
+
+  let agentMCPActionsWithContent: AgentMCPActionResource[] = [];
+  let agentMCPActionsWithoutContent: AgentMCPActionResource[] = [];
+
+  for (const action of allAgentMCPActions) {
+    // Light messages always exclude content for all actions.
+    // Otherwise, for full messages, we only include content for the actions that are in the optional outputItemContentOnlyForMessageIds.
+    if (
+      viewType === "light" ||
+      (outputItemContentOnlyForAgentMessageIds &&
+        !outputItemContentOnlyForAgentMessageIds.has(action.agentMessageId))
+    ) {
+      agentMCPActionsWithoutContent.push(action);
+    } else {
+      agentMCPActionsWithContent.push(action);
+    }
+  }
+
+  const [actionsWithOutputs, actionsWithoutOutputs] = await Promise.all([
+    AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
+      actions: agentMCPActionsWithContent,
+      ignoreContent: false,
+    }),
+    AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
+      actions: agentMCPActionsWithoutContent,
+      ignoreContent: true,
+    }),
+  ]);
+
+  const actionsByAgentMessageId: Record<
+    number,
+    AgentMCPActionWithOutputType[]
+  > = [...actionsWithOutputs, ...actionsWithoutOutputs].reduce(
+    (acc, a) => {
+      if (!acc[a.agentMessageId]) {
+        acc[a.agentMessageId] = [];
+      }
+      acc[a.agentMessageId].push(a);
+      return acc;
+    },
+    {} as Record<number, AgentMCPActionWithOutputType[]>
+  );
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
     stepContents.reduce(
@@ -413,9 +451,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = actionsWithOutputs
-        .filter((a) => a.agentMessageId === agentMessage.id)
-        .sort((a, b) => a.step - b.step);
+      const actions = (actionsByAgentMessageId[agentMessage.id] ?? []).sort(
+        (a, b) => a.step - b.step
+      );
 
       const agentConfiguration = agentConfigurationsById.get(
         agentMessage.agentConfigurationId
@@ -643,7 +681,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversation: ConversationResource,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  outputItemContentOnlyForAgentMessageIds: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full"
@@ -658,7 +697,12 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 > {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(auth, messages, viewType),
+    batchRenderAgentMessages(
+      auth,
+      messages,
+      viewType,
+      outputItemContentOnlyForAgentMessageIds
+    ),
     batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
 

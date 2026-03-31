@@ -1,3 +1,4 @@
+import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
@@ -43,8 +45,17 @@ export const getConversation = async (
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  branchId: string | null = null
-) => _getConversation(auth, conversationId, includeDeleted, branchId, "full");
+  branchId: string | null = null,
+  lastInteractionsToFetchContentFor: number | null = null
+) =>
+  _getConversation(
+    auth,
+    conversationId,
+    includeDeleted,
+    branchId,
+    "full",
+    lastInteractionsToFetchContentFor
+  );
 
 export const getLightConversation = async (
   auth: Authenticator,
@@ -58,7 +69,8 @@ async function _getConversation<V extends "light" | "full">(
   conversationId: string,
   includeDeleted: boolean = false,
   branchId: string | null = null,
-  viewType: V = "full" as V
+  viewType: V = "full" as V,
+  lastInteractionsToFetchContentFor: number | null = null
 ): Promise<
   Result<
     V extends "light"
@@ -153,11 +165,52 @@ async function _getConversation<V extends "light" | "full">(
     ],
   });
 
+  let outputItemContentOnlyForAgentMessageIds: Set<ModelId> | null = null;
+
+  // In the case of the agentic loop, to save memory and latency, we only want to fetch content for the last N interactions.
+  if (lastInteractionsToFetchContentFor !== null) {
+    if (lastInteractionsToFetchContentFor <= 0) {
+      outputItemContentOnlyForAgentMessageIds = new Set();
+    } else {
+      const interactions = groupMessagesIntoInteractions(
+        removeNulls(
+          messages.map((m) => {
+            if (m.userMessageId) {
+              return {
+                id: m.userMessageId,
+                role: "user",
+              };
+            } else if (m.agentMessageId) {
+              return {
+                id: m.agentMessageId,
+                role: "agent",
+              };
+            }
+            // We don't care about the other messages.
+          })
+        )
+      );
+
+      // Keep the last N interactions with the highest ranks (order is correct because of the sort above).
+      const interactionsToKeep = interactions.slice(
+        -lastInteractionsToFetchContentFor
+      );
+
+      // We only need to fetch content for the actions of the last N interactions.
+      outputItemContentOnlyForAgentMessageIds = new Set(
+        interactionsToKeep.flatMap((i) =>
+          i.messages.filter((m) => m.role === "agent").map((m) => m.id)
+        )
+      );
+    }
+  }
+
   const renderRes = await batchRenderMessages(
     auth,
     conversation,
     messages,
-    viewType
+    viewType,
+    outputItemContentOnlyForAgentMessageIds
   );
 
   if (renderRes.isErr()) {

@@ -1,3 +1,4 @@
+import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -21,7 +22,7 @@ import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
+import type { MessageWithTokens } from "./pruning";
 import {
   getInteractionTokenCount,
   progressivelyPruneInteraction,
@@ -29,7 +30,7 @@ import {
 } from "./pruning";
 
 // When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
-const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
+export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
@@ -284,62 +285,6 @@ export async function renderConversationForModel(
     tokensUsed,
     prunedContext,
   });
-}
-
-/**
- * Group messages into interactions (user turn + agent responses),
- * using turn type (user/content_fragment vs assistant/function) as the delimiter.
- *
- * Example: [content_fragment, user, content_fragment, user, assistant, function, function]
- * results in a single interaction.
- */
-function groupMessagesIntoInteractions(
-  messages: MessageWithTokens[]
-): InteractionWithTokens[] {
-  const interactions: InteractionWithTokens[] = [];
-  let currentInteraction: MessageWithTokens[] = [];
-
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i];
-    currentInteraction.push(message);
-
-    //Determine the high-level turn type for a message.
-    // - "user": user messages and content fragments
-    // - "agent": assistant messages and tool/function results*/
-    const turnTypeForMessage = (
-      message: MessageWithTokens
-    ): "user" | "agent" => {
-      if (message.role === "user" || message.role === "content_fragment") {
-        return "user";
-      }
-      // Includes "assistant" and "function" roles
-      return "agent";
-    };
-
-    const isLastMessage = i === messages.length - 1;
-
-    // Decide if we should close the current interaction.
-    // We close when:
-    // - it's the last message, or
-    // - the next message is a "user" turn while the current message is an "agent" turn.
-    // This ensures that all consecutive user/content_fragment messages remain in the same
-    // user turn, followed by all agent/tool messages for that interaction.
-    const shouldClose = (() => {
-      if (isLastMessage) {
-        return true;
-      }
-      const currentTurn = turnTypeForMessage(message);
-      const nextTurn = turnTypeForMessage(messages[i + 1]);
-      return currentTurn === "agent" && nextTurn === "user";
-    })();
-
-    if (shouldClose) {
-      interactions.push({ messages: currentInteraction });
-      currentInteraction = [];
-    }
-  }
-
-  return interactions;
 }
 
 async function countTokensForMessages(
