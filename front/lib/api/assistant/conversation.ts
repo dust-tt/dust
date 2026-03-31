@@ -875,22 +875,20 @@ export async function postUserMessage(
   });
 
   // Emit agent.executed for each agent being invoked.
-  if (auth.user()) {
-    for (const agentMessage of agentMessages) {
-      void emitAuditLogEvent({
-        auth,
-        action: "agent.executed",
-        targets: [
-          buildAuditLogTarget("workspace", conversation.owner),
-          buildAuditLogTarget("agent", agentMessage.configuration),
-        ],
-        metadata: {
-          conversationId: conversation.sId,
-          agentName: agentMessage.configuration.name,
-          origin: getAuditLogOrigin(auth),
-        },
-      });
-    }
+  for (const agentMessage of agentMessages) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", conversation.owner),
+        buildAuditLogTarget("agent", agentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: agentMessage.configuration.name,
+        origin: getAuditLogOrigin(auth),
+      },
+    });
   }
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.

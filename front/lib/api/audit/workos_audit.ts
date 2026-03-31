@@ -205,16 +205,33 @@ export async function emitAuditLogEventDirect({
 
 /**
  * Builds the audit actor from an Authenticator.
+ * Uses the authenticated user when available, falls back to the API key.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
+  if (user) {
+    return {
+      type: "user",
+      id: user.sId,
+      name: user.fullName() ?? undefined,
+      metadata: {
+        email: user.email,
+      },
+    };
+  }
+
+  const key = auth.key();
+  if (key) {
+    return {
+      type: "api_key",
+      id: String(key.id),
+      name: key.name,
+    };
+  }
+
   return {
-    type: "user",
-    id: user.sId,
-    name: user.fullName() ?? undefined,
-    metadata: {
-      email: user.email,
-    },
+    type: "system",
+    id: "unknown",
   };
 }
 
