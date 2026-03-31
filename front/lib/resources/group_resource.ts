@@ -1802,7 +1802,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
       await KeyModel.destroy({
         where: {
-          groupIds: { [Op.overlap]: [this.id] },
+          groupIds: { [Op.contains]: [this.id] },
           workspaceId: owner.id,
         },
         transaction,
