@@ -139,7 +139,9 @@ export function MemberSelectionTable({
 
   const columns: ColumnDef<MemberRowData>[] = useMemo(() => {
     return [
-      createSelectionColumn<MemberRowData>(),
+      createSelectionColumn<MemberRowData>({
+        hideSelectAll: !!searchText && rows.length <= 1,
+      }),
       {
         accessorKey: "fullName",
         header: "Name",
@@ -160,7 +162,7 @@ export function MemberSelectionTable({
       },
       ...(extraColumns ?? []),
     ];
-  }, [extraColumns]);
+  }, [extraColumns, rows.length, searchText]);
 
   return (
     <>
