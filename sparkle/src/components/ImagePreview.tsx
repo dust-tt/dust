@@ -240,5 +240,5 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
 
 ImagePreview.displayName = "ImagePreview";
 
-export { ImagePreview };
 export type { ImagePreviewProps };
+export { ImagePreview };

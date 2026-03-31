@@ -52,7 +52,6 @@ export function getSandboxImage(
   return getSandboxImageFromRegistry({ name: "dust-base" });
 }
 
-export { getRegisteredImages, getSandboxImageFromRegistry };
 export { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 export {
   createToolManifest,
@@ -73,3 +72,4 @@ export type {
   ToolRuntime,
 } from "@app/lib/api/sandbox/image/types";
 export { formatSandboxImageId } from "@app/lib/api/sandbox/image/types";
+export { getRegisteredImages, getSandboxImageFromRegistry };
