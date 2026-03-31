@@ -507,7 +507,7 @@ function DustHome() {
         {/* Input centered vertically */}
         <div className="s-flex s-flex-1 s-w-full s-items-center s-justify-center">
           <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-8">
-            <Page.Header title={`Hello, ${user.firstName}!`} />
+            <Page.Header title={`Konichiwa, ${user.firstName}!`} />
             <div className="s-w-full s-rounded-3xl s-bg-white s-shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
               <InputBar
                 placeholder="Ask a question"
