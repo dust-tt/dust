@@ -125,7 +125,8 @@ export function InlineActivitySteps({
               const isLast =
                 index === completedSteps.length - 1 &&
                 !showActiveThinking &&
-                !activeAction;
+                !activeAction &&
+                !isDone;
 
               switch (step.type) {
                 case "thinking":
@@ -175,7 +176,7 @@ export function InlineActivitySteps({
               <TimelineRow
                 icon={chainOfThought ? ChatBubbleThoughtIcon : null}
                 spinner={!chainOfThought}
-                isLast={!activeAction}
+                isLast={!activeAction && !isDone}
               >
                 {chainOfThought ? (
                   <Markdown
