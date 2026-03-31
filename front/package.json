@@ -56,6 +56,7 @@
     "@langfuse/otel": "^4.4.2",
     "@langfuse/tracing": "^4.4.2",
     "@mendable/firecrawl-js": "^1.29.1",
+    "@metronome/sdk": "^3.4.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "^1.27.0",

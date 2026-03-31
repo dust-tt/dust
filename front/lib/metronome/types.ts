@@ -1,9 +1,9 @@
 /**
  * Core types for the Metronome billing integration.
  *
- * MetronomeEvent is the wire format expected by the Metronome ingest API
- * (POST /v1/ingest). Every event carries a deterministic transaction_id
- * for idempotent retryability.
+ * SDK types (Metronome.V1.*) are used directly for API responses.
+ * MetronomeEvent is our own type — stricter than the SDK's UsageIngestParams
+ * because we enforce `properties: Record<string, string | number>` (no unknown).
  */
 export interface MetronomeEvent {
   transaction_id: string;
