@@ -338,6 +338,10 @@ interface NavigationListCollapsibleSectionProps
   children: React.ReactNode;
   /** Number of children to show when partially collapsed. undefined = show all (current behavior). */
   visibleItems?: number;
+  /** Count badge to show on the "Show all" button (e.g. total mentions in hidden items). */
+  overflowCount?: number;
+  /** Whether to bold the "Show all" button label (e.g. when hidden items have unread activity). */
+  overflowHasActivity?: boolean;
 }
 
 const collapseableStyles = cva(
@@ -388,6 +392,8 @@ const NavigationListCollapsibleSection = React.forwardRef<
       open,
       onOpenChange,
       visibleItems,
+      overflowCount,
+      overflowHasActivity,
       ...props
     },
     ref
@@ -461,6 +467,11 @@ const NavigationListCollapsibleSection = React.forwardRef<
                   icon={ChevronDownIcon}
                   variant="ghost-secondary"
                   label="Show all"
+                  isCounter={overflowCount !== undefined && overflowCount > 0}
+                  counterValue={String(overflowCount)}
+                  className={
+                    overflowHasActivity ? "[&>div]:s-font-bold" : undefined
+                  }
                   onClick={() => setIsShowingAll(true)}
                 />
               )}

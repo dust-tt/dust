@@ -664,12 +664,26 @@ export function AgentSidebarMenu({
     const projectCountInSummary = summary.length;
     const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
 
+    const VISIBLE_PROJECTS = 4;
+    const hiddenSummary = summary.slice(VISIBLE_PROJECTS);
+    const hiddenOverflowCount = hiddenSummary.reduce(
+      (sum, s) => sum + s.unreadConversations.length,
+      0
+    );
+    const hiddenOverflowHasActivity = hiddenSummary.some(
+      (s) =>
+        s.unreadConversations.length > 0 ||
+        s.nonParticipantUnreadConversations.length > 0
+    );
+
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label={showCount ? `Projects (${projectCountInSummary})` : "Projects"}
           type="collapse"
-          visibleItems={4}
+          visibleItems={VISIBLE_PROJECTS}
+          overflowCount={hiddenOverflowCount}
+          overflowHasActivity={hiddenOverflowHasActivity}
           open={!isProjectsSectionCollapsed}
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
