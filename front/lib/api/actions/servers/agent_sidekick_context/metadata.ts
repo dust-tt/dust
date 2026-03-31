@@ -241,8 +241,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
       "The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). " +
       "Each suggestion targets a specific block by its ID and provides the full replacement HTML for that block. " +
-      'That HTML must contain a single top level tag. If it needs multiple (e.g. "<p>...</p><p>...</p>"), it should ' +
-      'wrap them in a <div> (e.g. "<div><p>...</p><p>...</p></div>").' +
+      "That HTML must contain a single top level tag. If it needs multiple (e.g. '<p>...</p><p>...</p>'), it should " +
+      "wrap them in a <div> (e.g. '<div><p>...</p><p>...</p></div>'). " +
       `Each block ID must appear at most once. For full rewrites, use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}'. ` +
       "Word-level diffs will be computed and displayed inline. " +
       `There can't be more than ${MAX_PENDING_INSTRUCTIONS_SUGGESTIONS} pending prompt edits suggestions. ` +
