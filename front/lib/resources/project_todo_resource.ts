@@ -9,7 +9,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ProjectTodoSourceType } from "@app/types/project_todo";
+import type {
+  ProjectTodoSourceType,
+  ProjectTodoType,
+} from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
 import type {
@@ -211,6 +214,21 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  toJSON(): ProjectTodoType {
+    return {
+      sId: this.sId,
+      category: this.category,
+      status: this.status,
+      text: this.text,
+      version: this.version,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+      doneAt: this.doneAt ? this.doneAt.getTime() : null,
+      actorRationale: this.actorRationale,
+      createdByType: this.createdByType,
+    };
   }
 
   get sId(): string {

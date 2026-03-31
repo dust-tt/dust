@@ -18,3 +18,16 @@ export type ProjectTodoActorType = (typeof PROJECT_TODO_ACTOR_TYPES)[number];
 export const PROJECT_TODO_SOURCE_TYPES = ["conversation"] as const;
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
+
+export type ProjectTodoType = {
+  sId: string;
+  category: ProjectTodoCategory;
+  status: ProjectTodoStatus;
+  text: string;
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+  doneAt: number | null;
+  actorRationale: string | null;
+  createdByType: ProjectTodoActorType;
+};
