@@ -14,3 +14,9 @@ source "$SCRIPT_DIR/grep_files.sh"
 source "$SCRIPT_DIR/glob.sh"
 source "$SCRIPT_DIR/list_dir.sh"
 source "$SCRIPT_DIR/shell.sh"
+
+# Override ls to show detailed output with hidden files
+ls() {
+  command ls -al "$@"
+}
+export -f ls
