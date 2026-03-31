@@ -261,16 +261,6 @@ async function handler(
     }
 
     case "POST": {
-      if (!agentConfiguration.canRead && !auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "You need access to this agent to create triggers.",
-          },
-        });
-      }
-
       const postDecoded = PostTriggersRequestBodyCodec.safeParse(req.body);
       if (!postDecoded.success) {
         return apiError(req, res, {

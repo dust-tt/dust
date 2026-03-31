@@ -24,13 +24,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-type PageId = "trigger-selection" | "schedule-edition" | "webhook-edition";
-
-const PAGE_IDS = {
-  SELECTION: "trigger-selection",
-  SCHEDULE: "schedule-edition",
-  WEBHOOK: "webhook-edition",
-} as const satisfies Record<string, PageId>;
+export type PageId =
+  | "trigger-selection"
+  | "schedule-edition"
+  | "webhook-edition";
 
 interface UseTriggerSheetStateParams {
   owner: LightWorkspaceType;
@@ -49,9 +46,8 @@ export function useTriggerSheetState({
 }: UseTriggerSheetStateParams) {
   const { user } = useAuth();
 
-  const [currentPageId, setCurrentPageId] = useState<PageId>(
-    PAGE_IDS.SELECTION
-  );
+  const [currentPageId, setCurrentPageId] =
+    useState<PageId>("trigger-selection");
   const [selectedWebhookSourceView, setSelectedWebhookSourceView] =
     useState<WebhookSourceViewType | null>(null);
 
@@ -60,10 +56,8 @@ export function useTriggerSheetState({
     mode.type === "edit" ? mode.webhookSourceView : null;
 
   const webhookSourceView = editWebhookSourceView ?? selectedWebhookSourceView;
-
   const isEditor = editTrigger?.editor ? editTrigger.editor === user?.id : true;
-
-  const isOnSelectionPage = currentPageId === PAGE_IDS.SELECTION;
+  const isOnSelectionPage = currentPageId === "trigger-selection";
 
   const defaultValues = useMemo((): TriggerViewsSheetFormValues => {
     switch (editTrigger?.kind) {
@@ -109,7 +103,7 @@ export function useTriggerSheetState({
       type: "schedule",
       schedule: getScheduleFormDefaultValues(null),
     });
-    setCurrentPageId(PAGE_IDS.SCHEDULE);
+    setCurrentPageId("schedule-edition");
   }, [form]);
 
   const handleWebhookSelect = useCallback(
@@ -122,13 +116,13 @@ export function useTriggerSheetState({
           webhookSourceView: wsv,
         }),
       });
-      setCurrentPageId(PAGE_IDS.WEBHOOK);
+      setCurrentPageId("webhook-edition");
     },
     [form]
   );
 
   const handleCancel = useCallback(() => {
-    setCurrentPageId(PAGE_IDS.SELECTION);
+    setCurrentPageId("trigger-selection");
     setSelectedWebhookSourceView(null);
   }, []);
 
@@ -156,7 +150,6 @@ export function useTriggerSheetState({
             naturalLanguageDescription: triggerData.naturalLanguageDescription,
             configuration: triggerData.configuration,
             status: triggerData.status,
-            editor: undefined,
           };
 
           if (triggerData.sId) {
@@ -192,7 +185,6 @@ export function useTriggerSheetState({
             webhookSourceViewSId: triggerData.webhookSourceViewSId ?? "",
             executionPerDayLimitOverride:
               triggerData.executionPerDayLimitOverride ?? 0,
-            editor: undefined,
           };
 
           if (triggerData.sId) {
@@ -225,36 +217,33 @@ export function useTriggerSheetState({
     if (mode.type === "edit") {
       switch (mode.trigger.kind) {
         case "schedule":
-          setCurrentPageId(PAGE_IDS.SCHEDULE);
+          setCurrentPageId("schedule-edition");
           return;
         case "webhook":
           setSelectedWebhookSourceView(mode.webhookSourceView);
-          setCurrentPageId(PAGE_IDS.WEBHOOK);
+          setCurrentPageId("webhook-edition");
           return;
       }
     }
-    setCurrentPageId(PAGE_IDS.SELECTION);
+    setCurrentPageId("trigger-selection");
     setSelectedWebhookSourceView(null);
   }, [defaultValues, form, mode]);
 
-  let pageTitle: string;
-  if (isOnSelectionPage) {
-    pageTitle = "Add trigger";
-  } else if (currentPageId === PAGE_IDS.SCHEDULE) {
-    if (editTrigger) {
-      pageTitle = isEditor ? "Edit Schedule" : "View Schedule";
-    } else {
-      pageTitle = "Create Schedule";
-    }
-  } else {
-    if (editTrigger) {
-      pageTitle = isEditor ? "Edit Trigger" : "View Trigger";
-    } else if (webhookSourceView) {
-      pageTitle = `Create ${webhookSourceView.customName} Trigger`;
-    } else {
-      pageTitle = "Create Trigger";
-    }
-  }
+  const pageTitle = isOnSelectionPage
+    ? "Add trigger"
+    : currentPageId === "schedule-edition"
+      ? editTrigger
+        ? isEditor
+          ? "Edit Schedule"
+          : "View Schedule"
+        : "Create Schedule"
+      : editTrigger
+        ? isEditor
+          ? "Edit Trigger"
+          : "View Trigger"
+        : webhookSourceView
+          ? `Create ${webhookSourceView.customName} Trigger`
+          : "Create Trigger";
 
   return {
     form,

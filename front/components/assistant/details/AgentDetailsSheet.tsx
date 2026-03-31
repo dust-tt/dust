@@ -39,7 +39,6 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   Spinner,
@@ -303,7 +302,7 @@ export function AgentDetailsSheet({
 
   return (
     <Sheet open={!!agentId} onOpenChange={onClose}>
-      <SheetContent size="xl" className="outline-none pb-4">
+      <SheetContent size="xl" className="outline-none">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
@@ -467,8 +466,8 @@ function TriggerEditView({
   });
 
   return (
-    <FormProvider form={form} className="flex h-full flex-col overflow-hidden">
-      <SheetHeader className="flex flex-row items-center gap-2 text-sm text-foreground dark:text-foreground-night">
+    <FormProvider form={form} asForm={false}>
+      <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground dark:text-foreground-night">
         <Button
           icon={ArrowLeftIcon}
           variant="ghost"
@@ -482,7 +481,7 @@ function TriggerEditView({
           }}
         />
         <h2 className="text-lg font-semibold">{pageTitle}</h2>
-      </SheetHeader>
+      </div>
       <SheetContainer>
         {currentPageId === "trigger-selection" && (
           <TriggerSelectionPageContent
@@ -509,21 +508,21 @@ function TriggerEditView({
         )}
       </SheetContainer>
       {!isOnSelectionPage && (
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            onClick: () => {
+        <div className="flex flex-none justify-end gap-2 border-t border-border p-3 dark:border-border-night">
+          <Button
+            label="Cancel"
+            variant="outline"
+            onClick={() => {
               handleCancel();
               onClose();
-            },
-          }}
-          rightButtonProps={{
-            label: "Save",
-            variant: "primary",
-            onClick: form.handleSubmit(handleFormSubmit),
-          }}
-        />
+            }}
+          />
+          <Button
+            label="Save"
+            variant="primary"
+            onClick={form.handleSubmit(handleFormSubmit)}
+          />
+        </div>
       )}
     </FormProvider>
   );
