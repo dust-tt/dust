@@ -43,7 +43,7 @@ export function TruncatedContent({
   buttonClassName,
 }: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [exceedsThreshold, setExceedsThreshold] = useState(false);
+  const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   useEffect(() => {
