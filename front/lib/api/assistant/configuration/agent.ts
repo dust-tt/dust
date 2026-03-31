@@ -1424,8 +1424,7 @@ export async function unsafeHardDeleteAgentConfiguration(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
-  const workspace = auth.getNonNullableWorkspace();
-  const workspaceId = workspace.id;
+  const workspaceId = auth.getNonNullableWorkspace().id;
 
   await withTransaction(async (t) => {
     // Clean up MCP server configurations and their children first
@@ -1504,23 +1503,6 @@ export async function unsafeHardDeleteAgentConfiguration(
       },
       transaction: t,
     });
-  });
-
-  void emitAuditLogEvent({
-    auth,
-    action: "agent.deleted",
-    targets: [
-      buildWorkspaceTarget(workspace),
-      {
-        type: "agent",
-        id: agentConfiguration.sId,
-        name: agentConfiguration.name,
-      },
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      agentName: agentConfiguration.name,
-    },
   });
 }
 

@@ -66,7 +66,6 @@ type AuditAction =
   | "agent.created"
   | "agent.updated"
   | "agent.archived"
-  | "agent.deleted"
   | "agent.restored"
   | "agent.scope_changed"
   // Spaces.
