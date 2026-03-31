@@ -59,6 +59,8 @@ export interface ExecOptions {
   timeoutMs?: number;
   /** Additional environment variables for this execution only. */
   envVars?: Record<string, string>;
+  /** User to run the command as (e.g., "root" for privileged tasks). */
+  user?: string;
 }
 
 // ---------------------------------------------------------------------------

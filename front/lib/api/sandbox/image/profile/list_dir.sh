@@ -17,7 +17,7 @@ Output: File and directory paths, one per line. Limited to 200 entries.
 
 Examples:
   list_dir                    # List current dir, depth 2
-  list_dir /home/user         # List specific directory
+  list_dir /home/agent        # List specific directory
   list_dir . 1                # List current dir, no recursion
   list_dir src/ 3             # List src/ with depth 3
 EOF

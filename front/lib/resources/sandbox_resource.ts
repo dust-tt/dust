@@ -337,7 +337,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
         const createResult = await provider.create(
           tracingOpts,
-
           {
             ...createConfig,
             envVars: {
@@ -370,6 +369,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             "Failed to start fluent-bit telemetry"
           );
         }
+
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -421,7 +421,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
           const createResult = await provider.create(
             tracingOpts,
-
             {
               ...createConfig,
               envVars: {
@@ -450,6 +449,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               "Failed to start fluent-bit telemetry"
             );
           }
+
 
           logger.info(
             {
