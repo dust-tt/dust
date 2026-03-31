@@ -1436,7 +1436,7 @@ export async function getOrCreateSystemApiKey(
         role: "admin",
         name: DEFAULT_SYSTEM_KEY_NAME,
       },
-      group
+      [group]
     );
   }
 

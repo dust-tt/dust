@@ -26,11 +26,12 @@ import { v4 as uuidv4 } from "uuid";
 
 type CachedKeyData = Omit<
   Attributes<KeyModel>,
-  "secret" | "lastUsedAt" | "createdAt" | "updatedAt"
+  "secret" | "lastUsedAt" | "createdAt" | "updatedAt" | "groupIds"
 > & {
   lastUsedAt: number | null;
   createdAt: number;
   updatedAt: number;
+  groupIds?: ModelId[];
 };
 
 export interface KeyAuthType {
@@ -80,6 +81,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
       workspaceId: key.workspaceId,
       groupId: key.groupId,
+      groupIds: key.groupIds,
       userId: key.userId,
       lastUsedAt: key.lastUsedAt?.getTime() ?? null,
       createdAt: key.createdAt.getTime(),
@@ -108,9 +110,13 @@ export class KeyResource extends BaseResource<KeyModel> {
     data: CachedKeyData,
     secret: string
   ): KeyResource {
+    // Stale cache entries may lack groupIds; fall back to groupId.
+    const groupIds = data.groupIds ?? [data.groupId];
+
     return new KeyResource(KeyModel, {
       ...data,
       secret,
+      groupIds,
       lastUsedAt: data.lastUsedAt ? new Date(data.lastUsedAt) : null,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
@@ -135,13 +141,17 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId" | "scope">,
-    group: GroupResource
+    blob: Omit<
+      CreationAttributes<KeyModel>,
+      "secret" | "groupId" | "scope" | "groupIds"
+    >,
+    groups: GroupResource[]
   ) {
     const secret = this.createNewSecret();
     const key = await KeyResource.model.create({
       ...blob,
-      groupId: group.id,
+      groupId: groups[0].id,
+      groupIds: groups.map((g) => g.id),
       secret,
       scope: "default",
     });
@@ -274,8 +284,8 @@ export class KeyResource extends BaseResource<KeyModel> {
   ) {
     return this.model.count({
       where: {
-        groupId: {
-          [Op.in]: groups.map((g) => g.id),
+        groupIds: {
+          [Op.overlap]: groups.map((g) => g.id),
         },
         status: "active",
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -326,6 +336,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       secret,
       status: this.status,
       groupId: this.groupId,
+      groupIds: this.groupIds,
       role: this.role,
       scope: this.scope,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,

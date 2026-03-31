@@ -548,21 +548,11 @@ export class GroupResource extends BaseResource<GroupModel> {
           },
         },
       });
-    } else if (key.scope === "restricted_group_only") {
-      // Special case for restricted keys.
-      // Those are regular keys for which we want to restrict access to the global group.
-      groups = await this.model.findAll({
-        where: {
-          workspaceId: key.workspaceId,
-          id: key.groupId,
-        },
-      });
     } else {
-      // We fetch the associated group and the global group.
       groups = await this.model.findAll({
         where: {
           workspaceId: key.workspaceId,
-          [Op.or]: [{ id: key.groupId }, { kind: "global" }],
+          id: { [Op.in]: key.groupIds },
         },
       });
     }
