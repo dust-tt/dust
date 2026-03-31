@@ -183,6 +183,8 @@ export async function storeLlmResult(
         transaction: t,
       });
 
+      // Note: max rank cannot be inferred from parent message's rank:
+      // There can be several agent messages in a row without user message when doing tool calls.
       const maxRank = await MessageModel.max<number, MessageModel>("rank", {
         where: {
           conversationId: conversation.id,

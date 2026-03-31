@@ -71,12 +71,12 @@ export function buildReinforcedSpecifications(): AgentActionSpecification[] {
   });
 }
 
-interface ClassifiedToolCalls {
+interface CategorizedToolCalls {
   exploratoryToolCalls: ExploratoryToolCallInfo[];
   terminalToolCalls: TerminalToolCallInfo[];
 }
 
-export function classifyToolCalls(events: LLMEvent[]): ClassifiedToolCalls {
+export function classifyToolCalls(events: LLMEvent[]): CategorizedToolCalls {
   const terminalToolNames = new Set<string>(TERMINAL_TOOLS);
   const exploratoryToolNames = new Set<string>(EXPLORATORY_TOOLS);
 

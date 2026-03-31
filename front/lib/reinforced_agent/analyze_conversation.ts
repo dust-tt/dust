@@ -41,7 +41,7 @@ You can either:
 1. Call exploration tools first to discover available skills/tools, then make informed suggestions.
 2. Go straight to calling suggestion tools if you already have enough context.
 
-You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result. You MUST eventually call at least one suggestion tool. If after <analysis_workflow> you have determined no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
+You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result. You MUST eventually call at least one suggestion tool. You must do all the suggestions in parallel as after suggestions the conversation will be over. If after <analysis_workflow> you have determined no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
 
 The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.`,
 
@@ -170,4 +170,3 @@ export async function buildConversationAnalysisBatchMap(
 
   return batchMap.size > 0 ? batchMap : null;
 }
-
