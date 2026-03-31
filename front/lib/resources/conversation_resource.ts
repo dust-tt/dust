@@ -85,6 +85,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     super(ConversationModel, blob);
   }
 
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: number[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<ConversationResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversations = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        id: ids,
+      } as WhereOptions<ConversationModel>,
+      transaction,
+    });
+
+    // Note: no permission filtering here. Callers must ensure the auth is allowed.
+    return conversations.map((c) => new this(this.model, c.get(), null));
+  }
+
   get space(): SpaceResource | null {
     if (this.spaceId && !this._space) {
       throw new Error(

@@ -1,4 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -77,6 +82,72 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
     return branches.map(
       (b) => new this(ConversationBranchResource.model, b.get())
     );
+  }
+
+  static async fetchByModelId(
+    id: ModelId | string,
+    transaction?: Transaction
+  ): Promise<ConversationBranchResource | null>;
+  static async fetchByModelId(
+    auth: Authenticator,
+    id: number,
+    { transaction }: { transaction?: Transaction }
+  ): Promise<ConversationBranchResource | null>;
+  static async fetchByModelId(
+    arg1: Authenticator | ModelId | string,
+    arg2?: number | Transaction,
+    arg3?: { transaction?: Transaction }
+  ): Promise<ConversationBranchResource | null> {
+    // Authenticator overload: (auth, id, {transaction})
+    if (
+      typeof arg1 === "object" &&
+      arg1 !== null &&
+      "getNonNullableWorkspace" in arg1
+    ) {
+      const auth = arg1 as Authenticator;
+      const id = arg2 as number;
+      const [branch] = await this.fetchByModelIds(auth, [id]);
+      return branch ?? null;
+    }
+
+    // BaseResource-compatible overload: (id, transaction?)
+    const id = arg1 as ModelId | string;
+    const transaction = arg2 as Transaction | undefined;
+    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
+    const blob = await this.model.findByPk(parsedId, { transaction });
+    return blob ? new this(this.model, blob.get()) : null;
+  }
+
+  async fetchAllMessages(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<MessageModel[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    return MessageModel.findAll({
+      where: {
+        conversationId: this.conversationId,
+        workspaceId: owner.id,
+        branchId: this.id,
+      } as WhereOptions<MessageModel>,
+      order: [
+        ["rank", "ASC"],
+        ["version", "DESC"],
+      ],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+      transaction,
+    });
   }
 
   /**

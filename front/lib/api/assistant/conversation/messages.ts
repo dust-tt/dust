@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   MentionModel,
@@ -229,6 +230,85 @@ export async function createUserMessage(
     reactions: [],
   };
   return createdUserMessage;
+}
+
+export async function createAgentMessageFromText(
+  auth: Authenticator,
+  {
+    conversation,
+    parentId,
+    rank,
+    content,
+    agentConfiguration,
+    skipToolsValidation = true,
+    transaction,
+  }: {
+    conversation: ConversationType;
+    parentId: ModelId;
+    rank: number;
+    content: string;
+    agentConfiguration: { sId: string; version: number };
+    skipToolsValidation?: boolean;
+    transaction: Transaction;
+  }
+): Promise<{
+  id: ModelId;
+  sId: string;
+  agentMessageId: ModelId;
+}> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const agentMessageRow = await AgentMessageModel.create(
+    {
+      status: "succeeded",
+      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationVersion: agentConfiguration.version,
+      workspaceId: owner.id,
+      skipToolsValidation,
+      runIds: null,
+      completedAt: new Date(),
+      modelInteractionDurationMs: 0,
+      prunedContext: false,
+      errorCode: null,
+      errorMessage: null,
+      errorMetadata: null,
+    },
+    { transaction }
+  );
+
+  const messageRow = await MessageModel.create(
+    {
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId: conversation.id,
+      branchId: conversation.branchId
+        ? getResourceIdFromSId(conversation.branchId)
+        : null,
+      parentId,
+      agentMessageId: agentMessageRow.id,
+      workspaceId: owner.id,
+    },
+    { transaction }
+  );
+
+  await AgentStepContentModel.create(
+    {
+      workspaceId: owner.id,
+      agentMessageId: agentMessageRow.id,
+      step: 0,
+      index: 0,
+      version: 0,
+      type: "text_content",
+      value: { type: "text_content", value: content },
+    },
+    { transaction }
+  );
+
+  return {
+    id: messageRow.id,
+    sId: messageRow.sId,
+    agentMessageId: agentMessageRow.id,
+  };
 }
 
 export const createAgentMessages = async (
