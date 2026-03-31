@@ -793,7 +793,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     names: string[]
   ): Promise<SkillResource[]> {
     if (names.length === 0) {
-      return new Map();
+      return [];
     }
     return this.baseFetch(auth, {
       where: {
