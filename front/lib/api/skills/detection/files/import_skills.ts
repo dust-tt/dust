@@ -266,12 +266,6 @@ async function uploadAttachment(
   return uploadResult.value;
 }
 
-function hasSourceConflict(
-  source: FileImportSource
-): (existing: SkillResource) => boolean {
-  return (existing) => existing.source !== source;
-}
-
 async function cleanupTempFiles(files: formidable.File[]): Promise<void> {
   await concurrentExecutor(files, (f) => unlink(f.filepath).catch(() => {}), {
     concurrency: 8,
