@@ -51,12 +51,27 @@ async function provisionCustomer(
   });
 
   if (result.isOk()) {
+    const { metronomeCustomerId } = result.value;
+
+    const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
+      workspace.id,
+      metronomeCustomerId
+    );
+    if (updateResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId,
+          error: updateResult.error.message,
+        },
+        "Failed to persist metronomeCustomerId on workspace"
+      );
+      return;
+    }
+
     logger.info(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId: result.value.metronomeCustomerId,
-      },
-      "Metronome customer provisioned"
+      { workspaceId: workspace.sId, metronomeCustomerId },
+      "Metronome customer provisioned and workspace updated"
     );
   } else {
     logger.error(
