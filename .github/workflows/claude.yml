@@ -40,9 +40,6 @@ jobs:
         with:
           node-version: 22.22.0
 
-      - name: Install correct npm version
-        run: npm install -g npm@11.11.0
-
       # Setup Rust for core project
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
