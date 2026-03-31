@@ -30,6 +30,30 @@ interface InlineActivityStepsProps {
   completedSteps: InlineActivityStep[];
 }
 
+function getCompletionLabel(
+  status: LightAgentMessageType["status"],
+  completionDurationMs: number
+): string {
+  switch (status) {
+    case "failed":
+      return `Errored after ${formatDurationString(completionDurationMs)}`;
+    case "cancelled":
+      return `Cancelled after ${formatDurationString(completionDurationMs)}`;
+    default:
+      return `Completed in ${formatDurationString(completionDurationMs)}`;
+  }
+}
+
+function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
+  return {
+    gridTemplateRows: isCollapsed ? "0fr" : "1fr",
+    opacity: isCollapsed ? 0 : 1,
+    transition: isCollapsed
+      ? "grid-template-rows 200ms ease-out"
+      : "grid-template-rows 200ms ease-out, opacity 300ms",
+  };
+}
+
 /**
  * Inline activity steps component.
  * Everything is wrapped in a single collapsible "Work" section
@@ -99,7 +123,7 @@ export function InlineActivitySteps({
           <Icon size="xs" visual={ChevronRightIcon} />
         </span>
         {agentMessage.completionDurationMs !== null ? (
-          `${agentMessage.status === "failed" ? "Errored after" : agentMessage.status === "cancelled" ? "Cancelled after" : "Completed in"} ${formatDurationString(agentMessage.completionDurationMs)}`
+          getCompletionLabel(agentMessage.status, agentMessage.completionDurationMs)
         ) : isDone ? (
           "Completed"
         ) : (
@@ -109,13 +133,7 @@ export function InlineActivitySteps({
 
       <div
         className="grid ease-out"
-        style={{
-          gridTemplateRows: isCollapsed ? "0fr" : "1fr",
-          opacity: isCollapsed ? 0 : 1,
-          transition: isCollapsed
-            ? "grid-template-rows 200ms ease-out"
-            : "grid-template-rows 200ms ease-out, opacity 300ms",
-        }}
+        style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
           <div
