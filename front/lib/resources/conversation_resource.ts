@@ -889,17 +889,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
   }
 
-  static async listSpaceUnreadConversationsForUser(
+  static async listSpaceUnreadConversationsAndActivityForUser(
     auth: Authenticator,
     spaceIds: number[]
   ): Promise<{
     unreadConversations: ConversationResource[];
     nonParticipantUnreadConversations: ConversationResource[];
+    lastUserActivityBySpace: Map<number, Date>;
   }> {
     if (spaceIds.length === 0) {
       return {
         unreadConversations: [],
         nonParticipantUnreadConversations: [],
+        lastUserActivityBySpace: new Map(),
       };
     }
     const conversations = await this.baseFetchWithAuthorization(
@@ -914,7 +916,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (conversations.length === 0) {
-      return { unreadConversations: [], nonParticipantUnreadConversations: [] };
+      return {
+        unreadConversations: [],
+        nonParticipantUnreadConversations: [],
+        lastUserActivityBySpace: new Map(),
+      };
     }
 
     const participationMap = await this.fetchParticipationMapForUser(
@@ -934,6 +940,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return {
         unreadConversations: [],
         nonParticipantUnreadConversations: [],
+        lastUserActivityBySpace: new Map(),
       };
     }
 
@@ -978,7 +985,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         return false;
       });
 
-    return { unreadConversations, nonParticipantUnreadConversations };
+    const lastUserActivityBySpace = new Map<number, Date>();
+
+    for (const conversation of conversations) {
+      const spaceModelId = conversation.space?.id;
+      if (!spaceModelId) {
+        continue;
+      }
+      const participation = participationMap.get(conversation.id);
+      if (participation?.lastReadAt) {
+        const current = lastUserActivityBySpace.get(spaceModelId);
+        if (!current || participation.lastReadAt > current) {
+          lastUserActivityBySpace.set(spaceModelId, participation.lastReadAt);
+        }
+      }
+    }
+
+    for (const conversation of nonParticipantConversations) {
+      const spaceModelId = conversation.space?.id;
+      if (!spaceModelId) {
+        continue;
+      }
+      const lastReadAt = readMap.get(conversation.id);
+      if (lastReadAt) {
+        const current = lastUserActivityBySpace.get(spaceModelId);
+        if (!current || lastReadAt > current) {
+          lastUserActivityBySpace.set(spaceModelId, lastReadAt);
+        }
+      }
+    }
+
+    return {
+      unreadConversations,
+      nonParticipantUnreadConversations,
+      lastUserActivityBySpace,
+    };
   }
 
   static async getSpaceUnreadConversationIds(

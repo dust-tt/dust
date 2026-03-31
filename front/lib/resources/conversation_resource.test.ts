@@ -1957,7 +1957,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     );
 
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -1985,7 +1985,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     );
 
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2017,7 +2017,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     assert(participation, "Participation not found");
 
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2057,7 +2057,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
 
     // This method explicitly filters by visibility="unlisted", so test conversations are excluded
     const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
@@ -2084,7 +2084,7 @@ describe("listSpaceUnreadConversationsForUser", () => {
     });
 
     const spaceConversations =
-      await ConversationResource.listSpaceUnreadConversationsForUser(
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
         userAuth,
         spaceModelIds
       );
