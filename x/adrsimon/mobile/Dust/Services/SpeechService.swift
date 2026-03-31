@@ -1,131 +1,180 @@
+import AVFoundation
 import Foundation
+import Observation
 import os
-import Speech
 
 private let logger = Logger(subsystem: AppConfig.bundleId, category: "Speech")
 
 @MainActor
-final class SpeechService: ObservableObject {
-    @Published var transcribedText: String = ""
-    @Published var isRecording = false
-    @Published var error: String?
-    @Published var audioLevel: Float = 0
+@Observable
+final class SpeechService {
+    var transcribedText: String = ""
+    var isRecording = false
+    var isTranscribing = false
+    var error: String?
+    var audioLevel: Float = 0
 
-    private let audioEngine = AVAudioEngine()
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private let speechRecognizer = SFSpeechRecognizer()
+    private var audioEngine: AVAudioEngine?
+    private var audioFile: AVAudioFile?
+    private var recordingURL: URL?
     private var lastReportedLevel: Float = 0
+    private let writeQueue = DispatchQueue(label: "com.dust.audioFileWriter")
 
-    func requestPermissions() async -> Bool {
-        let speechStatus = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                continuation.resume(returning: status)
-            }
-        }
+    private let workspaceId: String
+    private let tokenProvider: TokenProvider
 
-        guard speechStatus == .authorized else {
-            logger.warning("Speech recognition authorization denied: \(String(describing: speechStatus))")
-            error = "Speech recognition permission denied"
-            return false
-        }
+    init(workspaceId: String, tokenProvider: TokenProvider) {
+        self.workspaceId = workspaceId
+        self.tokenProvider = tokenProvider
+    }
 
-        let micGranted = await AVAudioApplication.requestRecordPermission()
-
-        guard micGranted else {
-            logger.warning("Microphone permission denied")
+    func ensureMicPermission() async -> Bool {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted:
+            return true
+        case .denied:
             error = "Microphone permission denied"
             return false
+        case .undetermined:
+            let granted = await AVAudioApplication.requestRecordPermission()
+            if !granted { error = "Microphone permission denied" }
+            return granted
+        @unknown default:
+            return false
         }
-
-        return true
     }
 
     func startRecording() {
-        guard let speechRecognizer, speechRecognizer.isAvailable else {
-            logger.error("Speech recognizer not available")
-            error = "Speech recognition not available"
-            return
-        }
-
         transcribedText = ""
         error = nil
 
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        recognitionRequest = request
+        let engine = AVAudioEngine()
+        audioEngine = engine
 
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.record, mode: .measurement)
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            logger.error("Failed to configure audio session: \(error)")
-            self.error = "Failed to start recording"
-            return
-        }
+        guard configureAudioSession() else { return }
+        guard let hwFormat = validInputFormat(for: engine) else { return }
+        guard prepareAudioFile(format: hwFormat) else { return }
 
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
-            request.append(buffer)
-            Task { @MainActor in
-                self?.updateAudioLevel(from: buffer)
-            }
-        }
+        installAudioTap(on: engine.inputNode, format: hwFormat)
 
         do {
-            try audioEngine.start()
+            try engine.start()
         } catch {
             logger.error("Audio engine failed to start: \(error)")
             self.error = "Failed to start recording"
-            inputNode.removeTap(onBus: 0)
+            engine.inputNode.removeTap(onBus: 0)
             return
-        }
-
-        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
-            Task { @MainActor in
-                guard let self else { return }
-                if let result {
-                    self.transcribedText = result.bestTranscription.formattedString
-                }
-                if let error {
-                    logger.error("Recognition error: \(error)")
-                    self.error = error.localizedDescription
-                    self.stopRecording()
-                }
-            }
         }
 
         isRecording = true
         logger.info("Recording started")
     }
 
-    private func updateAudioLevel(from buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData?[0] else { return }
+    func stopRecording() {
+        guard let engine = audioEngine else { return }
+        engine.stop()
+        engine.inputNode.removeTap(onBus: 0)
+        audioEngine = nil
+        audioFile = nil
+        isRecording = false
+        audioLevel = 0
+        lastReportedLevel = 0
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        logger.info("Recording stopped")
+    }
+
+    func transcribe() async {
+        guard let recordingURL else {
+            error = "No recording available"
+            return
+        }
+
+        isTranscribing = true
+        defer {
+            isTranscribing = false
+            cleanupRecording()
+        }
+
+        do {
+            transcribedText = try await TranscriptionService.transcribe(
+                fileURL: recordingURL,
+                workspaceId: workspaceId,
+                tokenProvider: tokenProvider
+            )
+        } catch {
+            logger.error("Transcription failed: \(error)")
+            self.error = "Transcription failed: \(error.localizedDescription)"
+        }
+    }
+
+    func cleanupRecording() {
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+            recordingURL = nil
+        }
+    }
+
+    private func configureAudioSession() -> Bool {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            return true
+        } catch {
+            logger.error("Audio session failed: \(error)")
+            self.error = "Failed to start recording"
+            return false
+        }
+    }
+
+    private func validInputFormat(for engine: AVAudioEngine) -> AVAudioFormat? {
+        let hwFormat = engine.inputNode.outputFormat(forBus: 0)
+        guard hwFormat.sampleRate > 0, hwFormat.channelCount > 0 else {
+            logger.error("Invalid input format: \(hwFormat)")
+            error = "Microphone not available"
+            return nil
+        }
+        return hwFormat
+    }
+
+    private func prepareAudioFile(format: AVAudioFormat) -> Bool {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("recording-\(UUID().uuidString).wav")
+        do {
+            audioFile = try AVAudioFile(forWriting: url, settings: format.settings)
+            recordingURL = url
+            return true
+        } catch {
+            logger.error("Failed to create audio file: \(error)")
+            self.error = "Failed to start recording"
+            return false
+        }
+    }
+
+    private func installAudioTap(on inputNode: AVAudioInputNode, format: AVAudioFormat) {
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            guard let self else { return }
+            let file = audioFile
+            writeQueue.async {
+                try? file?.write(from: buffer)
+            }
+            let level = Self.computeLevel(from: buffer)
+            Task { @MainActor in
+                guard abs(level - self.lastReportedLevel) > 0.05 else { return }
+                self.lastReportedLevel = level
+                self.audioLevel = level
+            }
+        }
+    }
+
+    nonisolated private static func computeLevel(from buffer: AVAudioPCMBuffer) -> Float {
+        guard let channelData = buffer.floatChannelData?[0] else { return 0 }
         let frames = Int(buffer.frameLength)
         var sum: Float = 0
         for idx in 0 ..< frames {
             sum += channelData[idx] * channelData[idx]
         }
         let rms = sqrtf(sum / Float(max(frames, 1)))
-        let level = min(max(rms * 8, 0), 1)
-        guard abs(level - lastReportedLevel) > 0.05 else { return }
-        lastReportedLevel = level
-        audioLevel = level
-    }
-
-    func stopRecording() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
-        recognitionTask?.finish()
-        recognitionTask = nil
-        isRecording = false
-        audioLevel = 0
-        lastReportedLevel = 0
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        logger.info("Recording stopped")
+        return min(max(rms * 8, 0), 1)
     }
 }

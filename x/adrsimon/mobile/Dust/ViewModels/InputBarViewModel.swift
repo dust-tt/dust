@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import os
 
@@ -13,8 +14,7 @@ final class InputBarViewModel: ObservableObject {
     /// Set to true when user types '@' — triggers the agent picker sheet.
     @Published var showAgentPicker = false
 
-    @Published var isVoiceMode = false
-    lazy var speechService = SpeechService()
+    lazy var speechService = SpeechService(workspaceId: workspaceId, tokenProvider: tokenProvider)
 
     private let workspaceId: String
     private let tokenProvider: TokenProvider
@@ -110,29 +110,35 @@ final class InputBarViewModel: ObservableObject {
     // MARK: - Voice Input
 
     func startVoiceInput() {
-        guard !isVoiceMode else { return }
-        Task {
-            let granted = await speechService.requestPermissions()
-            guard granted else {
-                logger.warning("Voice permissions not granted")
-                return
-            }
-            isVoiceMode = true
+        guard !speechService.isRecording, !speechService.isTranscribing else { return }
+
+        // Check permission synchronously first — fast path
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted:
             speechService.startRecording()
+        case .undetermined:
+            Task {
+                let granted = await speechService.ensureMicPermission()
+                if granted { speechService.startRecording() }
+            }
+        default:
+            speechService.error = "Microphone permission denied"
         }
     }
 
     func stopVoiceInput() {
         speechService.stopRecording()
-        messageText = speechService.transcribedText
-        speechService.transcribedText = ""
-        isVoiceMode = false
+        Task {
+            await speechService.transcribe()
+            messageText = speechService.transcribedText
+            speechService.transcribedText = ""
+        }
     }
 
     func cancelVoiceInput() {
         speechService.stopRecording()
+        speechService.cleanupRecording()
         speechService.transcribedText = ""
-        isVoiceMode = false
     }
 
     // MARK: - Private
