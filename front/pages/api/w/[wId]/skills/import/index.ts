@@ -24,7 +24,7 @@ export type ImportSkillsRequestBody = t.TypeOf<
 export type ImportSkillsResponseBody = {
   imported: SkillType[];
   updated: SkillType[];
-  errored: { name: string; message: string }[];
+  skipped: { name: string; message: string }[];
 };
 
 async function handler(
@@ -119,7 +119,7 @@ async function handler(
       return res.status(200).json({
         imported: result.value.imported.map((skill) => skill.toJSON(auth)),
         updated: result.value.updated.map((skill) => skill.toJSON(auth)),
-        errored: result.value.errored,
+        skipped: result.value.skipped,
       });
     }
 

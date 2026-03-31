@@ -441,7 +441,7 @@ function notifyImportResult(
   const importedCount = data.imported.length;
   const updatedCount = data.updated.length;
   const successCount = importedCount + updatedCount;
-  const errors = data.errored.map((e) => e.message);
+  const errors = data.skipped.map((e) => e.message);
 
   if (successCount > 0) {
     const parts: string[] = [];
