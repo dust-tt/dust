@@ -85,7 +85,7 @@ KeyModel.init(
       { unique: true, fields: ["secret"] },
       { fields: ["userId"] },
       { fields: ["workspaceId"] },
-      { fields: ["groupIds"], using: "gin" },
+      { fields: ["groupIds"] },
     ],
   }
 );
