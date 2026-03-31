@@ -1,4 +1,7 @@
-import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -324,6 +327,7 @@ async function executeToolStreaming(
             auth,
             action: "tool.executed",
             targets: [
+              buildWorkspaceTarget(conversation.owner),
               {
                 type: "agent",
                 id: agentConfiguration.sId,

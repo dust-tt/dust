@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -191,6 +196,30 @@ export async function handler(
           "[Security] Admin updated space permissions without being a member"
         );
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "space.permissions_updated",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          { type: "space", id: space.sId, name: space.name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          spaceName: space.name,
+          managementMode: body.managementMode,
+          isRestricted: String(body.isRestricted),
+          ...(body.managementMode === "manual"
+            ? {
+                memberIds: body.memberIds.join(","),
+                editorIds: body.editorIds.join(","),
+              }
+            : {
+                groupIds: body.groupIds.join(","),
+                editorGroupIds: body.editorGroupIds.join(","),
+              }),
+        },
+      });
 
       // Trigger notifications for newly added members (projects only).
       if (

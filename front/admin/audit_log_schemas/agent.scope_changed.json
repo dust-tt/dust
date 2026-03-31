@@ -1,5 +1,5 @@
 {
-  "action": "agent.executed",
+  "action": "agent.scope_changed",
   "targets": [
     {
       "type": "workspace"
@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "conversationId": "string",
     "agentName": "string",
-    "origin": "string"
+    "previousScope": "string",
+    "newScope": "string"
   }
 }

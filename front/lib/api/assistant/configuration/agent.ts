@@ -16,6 +16,11 @@ import {
   PUBLISHING_RESTRICTIONS,
 } from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
@@ -852,6 +857,29 @@ export async function createAgentConfiguration(
       }
     }
 
+    if (agentConfiguration.status === "active") {
+      const isCreate =
+        !agentConfigurationId || agentConfiguration.version === 0;
+      void emitAuditLogEvent({
+        auth,
+        action: isCreate ? "agent.created" : "agent.updated",
+        targets: [
+          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+          {
+            type: "agent",
+            id: agentConfiguration.sId,
+            name: agentConfiguration.name,
+          },
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          agentName: agentConfiguration.name,
+          scope: scope,
+          model: `${model.providerId}/${model.modelId}`,
+        },
+      });
+    }
+
     return new Ok(agentConfiguration);
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
@@ -1247,6 +1275,19 @@ export async function archiveAgentConfiguration(
     if (editorGroupRes.isOk()) {
       await editorGroupRes.value.suspendMembers(auth);
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.archived",
+      targets: [
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+        { type: "agent", id: agentConfig.sId, name: agentConfig.name },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agentName: agentConfig.name,
+      },
+    });
   }
 
   const affectedCount = updated[0];
@@ -1353,6 +1394,25 @@ export async function restoreAgentConfiguration(
         );
       }
     }
+  }
+
+  if (updated[0] > 0) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.restored",
+      targets: [
+        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+        {
+          type: "agent",
+          id: latestConfig.sId,
+          name: latestConfig.name,
+        },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agentName: latestConfig.name,
+      },
+    });
   }
 
   return new Ok({ restored: updated[0] > 0 });
@@ -1659,6 +1719,21 @@ export async function updateAgentConfigurationScope(
       },
     }
   );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.scope_changed",
+    targets: [
+      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+      { type: "agent", id: agentConfig.sId, name: agentConfig.name },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      agentName: agentConfig.name,
+      previousScope: previousScope,
+      newScope: scope,
+    },
+  });
 
   // When scope changes from visible to hidden, disable triggers for non-editors.
   // Non-editors will no longer have access to the hidden agent.

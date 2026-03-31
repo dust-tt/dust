@@ -6,6 +6,7 @@ import type {
 import { createAuditLogEvent } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
@@ -61,7 +62,22 @@ type AuditAction =
   | "tool.executed"
   // Triggers.
   | "trigger.fired"
-  | "trigger.email_received";
+  | "trigger.email_received"
+  // Agent lifecycle.
+  | "agent.created"
+  | "agent.updated"
+  | "agent.archived"
+  | "agent.restored"
+  | "agent.scope_changed"
+  // Spaces.
+  | "space.created"
+  | "space.deleted"
+  | "space.permissions_updated"
+  // Data Sources.
+  | "datasource.created"
+  | "datasource.updated"
+  | "datasource.deleted"
+  | "datasource.deleted_admin";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;
@@ -153,9 +169,16 @@ export async function emitAuditLogEventDirect({
       return;
     }
 
-    const subscription =
-      await SubscriptionResource.fetchLastByWorkspace(workspace);
-    if (!subscription || !subscription.getPlan().isAuditLogsAllowed) {
+    const [subscription, featureFlags] = await Promise.all([
+      SubscriptionResource.fetchLastByWorkspace(workspace),
+      FeatureFlagResource.listForWorkspace(workspace),
+    ]);
+
+    const hasAuditFlag = featureFlags.some((f) => f.name === "audit_logs");
+    if (
+      !hasAuditFlag &&
+      (!subscription || !subscription.getPlan().isAuditLogsAllowed)
+    ) {
       return;
     }
 
@@ -203,6 +226,23 @@ export function buildWorkspaceTarget(workspace: {
   name: string;
 }): AuditLogTarget {
   return { type: "workspace", id: workspace.sId, name: workspace.name };
+}
+
+/**
+ * Derives the origin of an audit event from the Authenticator.
+ * - "web": user-initiated via browser (user present, client IP available)
+ * - "api": API-key-initiated (key present)
+ * - "trigger": trigger-initiated (user present but no client IP)
+ * - "system": system/internal (no user, no key)
+ */
+export function getAuditLogOrigin(auth: Authenticator): string {
+  if (auth.key()) {
+    return "api";
+  }
+  if (auth.user()) {
+    return auth.clientIp() ? "web" : "trigger";
+  }
+  return "system";
 }
 
 /**

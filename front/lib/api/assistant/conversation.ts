@@ -36,6 +36,7 @@ import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types"
 import {
   buildWorkspaceTarget,
   emitAuditLogEvent,
+  getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -890,6 +891,7 @@ export async function postUserMessage(
         metadata: {
           conversationId: conversation.sId,
           agentName: agentMessage.configuration.name,
+          origin: getAuditLogOrigin(auth),
         },
       });
     }

@@ -1,5 +1,5 @@
 {
-  "action": "agent.executed",
+  "action": "agent.updated",
   "targets": [
     {
       "type": "workspace"
@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "conversationId": "string",
     "agentName": "string",
-    "origin": "string"
+    "scope": "string",
+    "model": "string"
   }
 }

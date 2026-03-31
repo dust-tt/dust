@@ -1,0 +1,20 @@
+{
+  "action": "space.permissions_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "spaceName": "string",
+    "managementMode": "string",
+    "isRestricted": "string",
+    "memberIds": "string",
+    "editorIds": "string",
+    "groupIds": "string",
+    "editorGroupIds": "string"
+  }
+}
