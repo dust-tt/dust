@@ -196,6 +196,7 @@ export function AgentMessage({
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
+  const isInlineActivityEnabled = isDevInlineActivityEnabled();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -933,6 +934,13 @@ export function AgentMessage({
     );
   };
 
+  // Hide top-right completion status when inline activity has steps,
+  // since the inline section already shows "Completed in X".
+  const hideCompletionStatus =
+    isDeleted ||
+    (isInlineActivityEnabled &&
+      agentMessage.streaming.inlineActivitySteps.length > 0);
+
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
       <div className="inline-flex items-center gap-2">
@@ -950,7 +958,7 @@ export function AgentMessage({
             agentMessage.prunedContext ? <PrunedContextChip /> : undefined
           }
           completionStatus={
-            isDeleted ? undefined : (
+            hideCompletionStatus ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
             )
           }
