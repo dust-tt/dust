@@ -14,7 +14,9 @@ export async function getImageGenerationLLM(
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  if (isProviderWhitelisted(auth, "google_ai_studio")) {
+  const plan = auth.getNonNullablePlan();
+
+  if (!plan.isByok || isProviderWhitelisted(auth, "google_ai_studio")) {
     return new ImageGenerationGoogleLLM(auth, {
       modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
       credentials,

@@ -24,25 +24,29 @@ import type {
 } from "openai/resources/images";
 import { OPENAI_PROVIDER_ID } from "./types";
 
+const SQUARE = "1024x1024";
+const LANDSCAPE = "1536x1024";
+const PORTRAIT = "1024x1536";
+
 type SupportedImageSize = Extract<
   ImageGenerateParamsBase["size"],
-  "1024x1024" | "1536x1024" | "1024x1536"
+  typeof SQUARE | typeof LANDSCAPE | typeof PORTRAIT
 >;
 
-const ASPECT_RATIO_TO_SIZE: Record<
+const ASPECT_RATIO_TO_IMAGE_SIZE: Record<
   GenerateImageInputType["aspectRatio"],
   SupportedImageSize
 > = {
-  "1:1": "1024x1024",
-  "3:2": "1536x1024",
-  "4:3": "1536x1024",
-  "5:4": "1536x1024",
-  "16:9": "1536x1024",
-  "21:9": "1536x1024",
-  "2:3": "1024x1536",
-  "3:4": "1024x1536",
-  "4:5": "1024x1536",
-  "9:16": "1024x1536",
+  "1:1": SQUARE,
+  "3:2": LANDSCAPE,
+  "4:3": LANDSCAPE,
+  "5:4": LANDSCAPE,
+  "16:9": LANDSCAPE,
+  "21:9": LANDSCAPE,
+  "2:3": PORTRAIT,
+  "3:4": PORTRAIT,
+  "4:5": PORTRAIT,
+  "9:16": PORTRAIT,
 };
 
 function isSafetyBlockError(
@@ -84,7 +88,7 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>> {
     const { prompt, aspectRatio, fileResources, quality } = params;
 
-    const size = ASPECT_RATIO_TO_SIZE[aspectRatio];
+    const size = ASPECT_RATIO_TO_IMAGE_SIZE[aspectRatio];
 
     let response: ImagesResponse;
     try {
@@ -165,12 +169,14 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
     return new Ok(images);
   }
 
-  getModelParameters(
-    params: ImageGenerationInput
-  ): Record<string, string | number> {
+  getModelParameters({
+    aspectRatio,
+    quality,
+  }: ImageGenerationInput): Record<string, string | number> {
     return {
-      size: ASPECT_RATIO_TO_SIZE[params.aspectRatio],
-      quality: params.quality,
+      aspectRatio,
+      imageSize: ASPECT_RATIO_TO_IMAGE_SIZE[aspectRatio],
+      quality,
     };
   }
 

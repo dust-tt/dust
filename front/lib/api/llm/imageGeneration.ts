@@ -34,6 +34,8 @@ export abstract class ImageGenerationLLM {
   readonly modelId: ImageModelIdType;
   abstract readonly providerId: ModelProviderIdType;
 
+  protected readonly TEMPERATURE = 0.7;
+
   constructor(
     auth: Authenticator,
     {
@@ -52,7 +54,7 @@ export abstract class ImageGenerationLLM {
     params: ImageGenerationInput
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>>;
 
-  abstract getModelParameters(
+  abstract getModelParameters?(
     params: ImageGenerationInput
   ): Record<string, string | number>;
 }

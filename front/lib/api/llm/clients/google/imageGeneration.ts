@@ -100,7 +100,7 @@ export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
         model: this.modelId,
         contents,
         config: {
-          temperature: 0.7,
+          temperature: this.TEMPERATURE,
           responseModalities: ["IMAGE"],
           candidateCount: 1,
           imageConfig: {
@@ -194,13 +194,15 @@ export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
     }));
   }
 
-  getModelParameters(
-    params: ImageGenerationInput
-  ): Record<string, string | number> {
+  getModelParameters({
+    aspectRatio,
+    quality,
+  }: ImageGenerationInput): Record<string, string | number> {
     return {
-      aspectRatio: params.aspectRatio,
-      imageSize: QUALITY_TO_IMAGE_SIZE[params.quality],
-      temperature: 0.7,
+      aspectRatio,
+      imageSize: QUALITY_TO_IMAGE_SIZE[quality],
+      quality,
+      temperature: this.TEMPERATURE,
     };
   }
 
