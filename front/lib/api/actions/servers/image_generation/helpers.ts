@@ -12,7 +12,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import type { ImageModelIdType } from "@app/types/assistant/models/models";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import {
   fileSizeToHumanReadable,
   isSupportedImageContentType,
@@ -20,24 +21,23 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Part } from "@google/genai";
-import { createPartFromUri } from "@google/genai";
-import { z } from "zod";
 
-const GEMINI_SUPPORTED_IMAGE_TYPES = [
-  "image/bmp",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
+export type ImageGenerationErrorCode =
+  | "api_error"
+  | "safety_blocked"
+  | "empty_response";
 
-type GeminiSupportedImageType = (typeof GEMINI_SUPPORTED_IMAGE_TYPES)[number];
-
-function isGeminiSupportedImageType(
-  contentType: string
-): contentType is GeminiSupportedImageType {
-  return GEMINI_SUPPORTED_IMAGE_TYPES.some((type) => type === contentType);
+export class ImageGenerationError extends Error {
+  constructor(
+    public readonly code: ImageGenerationErrorCode,
+    message: string,
+    options?: { cause?: unknown }
+  ) {
+    super(message, { cause: options?.cause });
+    this.name = "ImageGenerationError";
+  }
 }
 
 export const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
@@ -55,39 +55,18 @@ export const QUALITY_TO_IMAGE_SIZE: Record<string, string> = {
   high: "4K",
 };
 
-const GeminiInlineDataPartSchema = z.object({
-  inlineData: z.object({
-    data: z.string(),
-    mimeType: z.string().optional(),
-  }),
-});
-
-export type GeminiInlineDataPart = z.infer<typeof GeminiInlineDataPartSchema>;
-
-export function isValidGeminiInlineDataPart(
-  part: unknown
-): part is GeminiInlineDataPart {
-  return GeminiInlineDataPartSchema.safeParse(part).success;
-}
-
 export type Base64ImageData = {
   base64: string;
   mimeType?: string;
 };
 
-export function geminiPartsToBase64Images(
-  parts: GeminiInlineDataPart[]
-): Base64ImageData[] {
-  return parts.map((part) => ({
-    base64: part.inlineData.data,
-    mimeType: part.inlineData.mimeType,
-  }));
-}
-
-export function computeImageGenerationCostDetails(usageMetadata: {
-  promptTokenCount?: number;
-  candidatesTokenCount?: number;
-}): {
+export function computeImageGenerationCostDetails(
+  usageMetadata: {
+    inputTokens: number;
+    outputTokens: number;
+  },
+  modelId: ImageModelIdType
+): {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -98,12 +77,12 @@ export function computeImageGenerationCostDetails(usageMetadata: {
     total: number;
   };
 } {
-  const inputTokens = usageMetadata.promptTokenCount ?? 0;
-  const outputTokens = usageMetadata.candidatesTokenCount ?? 0;
+  const inputTokens = usageMetadata.inputTokens;
+  const outputTokens = usageMetadata.outputTokens;
   const totalTokens = inputTokens + outputTokens;
 
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-    modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
+    modelId,
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     cachedTokens: null,
@@ -164,7 +143,8 @@ export async function sendImageProgressNotification(
 
 export async function checkImageGenerationRateLimit(
   auth: Authenticator,
-  workspace: { sId: string }
+  workspace: WorkspaceType,
+  providerId: ModelProviderIdType
 ): Promise<Ok<void> | Err<MCPError>> {
   const { limits } = auth.getNonNullablePlan();
   const { maxImagesPerWeek } = limits.capabilities.images;
@@ -178,7 +158,7 @@ export async function checkImageGenerationRateLimit(
 
   if (remaining <= 0) {
     getStatsDClient().increment("tools.image_generation.rate_limit_hit", 1, [
-      "provider:gemini",
+      `provider:${providerId}`,
     ]);
 
     return new Err(
@@ -195,68 +175,24 @@ export async function checkImageGenerationRateLimit(
   return new Ok(undefined);
 }
 
-export function validateGeminiImageResponse(
-  response: {
-    candidates?: Array<{
-      content?: {
-        parts?: unknown[];
-      };
-    }>;
-    promptFeedback?: {
-      blockReason?: string;
-      safetyRatings?: unknown;
-    };
-  },
-  operationType: "generation" | "editing",
-  promptText: string
-): Ok<GeminiInlineDataPart[]> | Err<MCPError> {
-  if (!response.candidates || response.candidates.length === 0) {
-    if (response.promptFeedback?.blockReason) {
-      logger.error(
-        {
-          blockReason: response.promptFeedback.blockReason,
-          safetyRatings: response.promptFeedback.safetyRatings,
-          prompt: promptText,
-        },
-        `Gemini image ${operationType}: Prompt blocked by safety filters`
-      );
-      return new Err(
-        new MCPError(
-          `Image ${operationType} blocked by safety filters: ${response.promptFeedback.blockReason}`
-        )
-      );
-    }
-    return new Err(new MCPError("No image generated."));
-  }
-
-  const content = response.candidates[0].content;
-  if (!content || !content.parts) {
-    return new Err(new MCPError("No image data in response"));
-  }
-
-  const imageParts = content.parts.filter(isValidGeminiInlineDataPart);
-  if (imageParts.length === 0) {
-    return new Err(new MCPError("No image data in response."));
-  }
-
-  return new Ok(imageParts);
-}
-
-export function trackGeminiTokenUsage(response: {
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-  };
+export function trackTokenUsage({
+  inputTokens,
+  outputTokens,
+  providerId,
+}: {
+  inputTokens: number;
+  outputTokens: number;
+  providerId: ModelProviderIdType;
 }): void {
   getStatsDClient().increment(
     "tools.image_generation.usage.input_tokens",
-    response.usageMetadata?.promptTokenCount ?? 0,
-    ["provider:gemini"]
+    inputTokens,
+    [`provider:${providerId}`]
   );
   getStatsDClient().increment(
     "tools.image_generation.usage.output_tokens",
-    response.usageMetadata?.candidatesTokenCount ?? 0,
-    ["provider:gemini"]
+    outputTokens,
+    [`provider:${providerId}`]
   );
 }
 
@@ -338,12 +274,16 @@ async function processSingleImageFile(
     imageFileId,
     conversationId,
     maxImageSize,
+    supportedContentTypes,
+    providerId,
   }: {
     imageFileId: string;
     conversationId: string;
     maxImageSize: number;
+    supportedContentTypes: string[];
+    providerId: ModelProviderIdType;
   }
-): Promise<Ok<Part> | Err<MCPError>> {
+): Promise<Ok<FileResource> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
   const fileResource = await FileResource.fetchById(auth, imageFileId);
   if (!fileResource) {
@@ -378,7 +318,7 @@ async function processSingleImageFile(
     getStatsDClient().increment(
       "tools.image_generation.file_size_limit_exceeded",
       1,
-      ["provider:gemini"]
+      [`provider:${providerId}`]
     );
 
     return new Err(
@@ -391,10 +331,12 @@ async function processSingleImageFile(
     );
   }
 
-  if (!isGeminiSupportedImageType(fileResource.contentType)) {
+  if (!supportedContentTypes.includes(fileResource.contentType)) {
     return new Err(
       new MCPError(
-        `File ${imageFileId} is not a supported image type for editing. Got: ${fileResource.contentType}. Supported types: ${GEMINI_SUPPORTED_IMAGE_TYPES.map((t) => t.replace("image/", "").toUpperCase()).join(", ")}.`,
+        `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: ${supportedContentTypes
+          .map((t) => t.replace("image/", "").toUpperCase())
+          .join(", ")}.`,
         {
           tracked: false,
         }
@@ -402,12 +344,7 @@ async function processSingleImageFile(
     );
   }
 
-  const signedUrl = await fileResource.getSignedUrlForDownload(
-    auth,
-    "original"
-  );
-
-  return new Ok(createPartFromUri(signedUrl, fileResource.contentType));
+  return new Ok(fileResource);
 }
 
 export async function processImageFileIds(
@@ -415,11 +352,15 @@ export async function processImageFileIds(
   {
     imageFileIds,
     agentLoopContext,
+    supportedContentTypes,
+    providerId,
   }: {
     imageFileIds: string[];
     agentLoopContext: AgentLoopContextType | undefined;
+    supportedContentTypes: string[];
+    providerId: ModelProviderIdType;
   }
-): Promise<Ok<Part[]> | Err<MCPError>> {
+): Promise<Ok<FileResource[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
@@ -438,6 +379,8 @@ export async function processImageFileIds(
         imageFileId,
         conversationId,
         maxImageSize,
+        supportedContentTypes,
+        providerId,
       }),
     { concurrency: 8 }
   );
@@ -447,9 +390,9 @@ export async function processImageFileIds(
     return firstError;
   }
 
-  const parts = results
-    .filter((r): r is Ok<Part> => r.isOk())
+  const fileResources = results
+    .filter((r): r is Ok<FileResource> => r.isOk())
     .map((r) => r.value);
 
-  return new Ok(parts);
+  return new Ok(fileResources);
 }

@@ -343,6 +343,11 @@ const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
     input: 0.25,
     output: 60.0,
   },
+  // https://platform.openai.com/docs/pricing
+  "gpt-image-1.5": {
+    input: 8.0,
+    output: 32.0,
+  },
 };
 
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.

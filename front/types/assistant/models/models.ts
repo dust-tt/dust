@@ -109,6 +109,7 @@ import {
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_CONFIG,
   GPT_5_NANO_MODEL_ID,
+  GPT_IMAGE_1_5_MODEL_ID,
   O1_MINI_MODEL_CONFIG,
   O1_MINI_MODEL_ID,
   O1_MODEL_CONFIG,
@@ -240,6 +241,7 @@ export const ModelIdSchema = z.custom<ModelIdType>(
 export const IMAGE_MODEL_IDS = [
   GEMINI_3_PRO_IMAGE_MODEL_ID,
   GEMINI_3_1_FLASH_IMAGE_MODEL_ID,
+  GPT_IMAGE_1_5_MODEL_ID,
 ] as const;
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];

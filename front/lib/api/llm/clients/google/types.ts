@@ -26,6 +26,7 @@ export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
 ] as const;
+
 export type GoogleAIStudioWhitelistedModelId =
   (typeof GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS)[number];
 
