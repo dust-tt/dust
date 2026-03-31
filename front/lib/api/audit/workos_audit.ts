@@ -258,16 +258,6 @@ export function buildAuditLogTarget(
 }
 
 /**
- * @deprecated Use buildAuditLogTarget("workspace", workspace) instead.
- */
-export function buildWorkspaceTarget(workspace: {
-  sId: string;
-  name: string;
-}): AuditLogTarget {
-  return buildAuditLogTarget("workspace", workspace);
-}
-
-/**
  * Derives the origin of an audit event from the Authenticator.
  * - "web": user-initiated via browser (user present, client IP available)
  * - "api": API-key-initiated (key present)
