@@ -54,7 +54,7 @@ export abstract class ImageGenerationLLM {
     params: ImageGenerationInput
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>>;
 
-  abstract getModelParameters?(
+  abstract getModelParameters(
     params: ImageGenerationInput
   ): Record<string, string | number>;
 }

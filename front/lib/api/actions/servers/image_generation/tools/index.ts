@@ -102,7 +102,7 @@ export function createImageGenerationTools(
           },
           model: imageGenerationModel.modelId,
           modelParameters:
-            imageGenerationModel.getModelParameters?.(generationInput),
+            imageGenerationModel.getModelParameters(generationInput),
         },
         { asType: "generation" }
       );
