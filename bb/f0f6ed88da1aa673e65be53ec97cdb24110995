@@ -1,0 +1,33 @@
+front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+  d85f24eaa205802a 19,143,893
+front/lib/actions/mcp_internal_actions/constants.ts
+  d85f24eaa205802a 592,643
+front/lib/api/files/processing.ts
+  d85f24eaa205802a 37,42,47,49,54,57,66,70-71,85-86,89,100,107,112,120,122,125,129,139,147,149,162-163,167-168,174,181,200-201,206,209,211,221,225,227,239,245,250,256,258-259,269,275,277,282-286,291-293,301,305,310,317,333,342-343,353,370,372,374,487,504,514,543,545,566,574-576,579,589,593-594,596,610,619,628,636-637,645-646,679,685-686,690,695,704-705,714,720-721,723
+front/pages/api/w/[wId]/services/transcribe/index.ts
+  d85f24eaa205802a 15,22,24,32,34,38-51,58-59,61-62,66,68,70,73-75,77,80,83,87,91-92,104,107,127,132,135,139,147,153,158,164,169-171,173
+front/components/agent_builder/AgentBuilderSidekick.tsx
+  d85f24eaa205802a 79,86,91
+front/components/workspace/settings/CapabilitiesSection.tsx
+  d85f24eaa205802a 5,8,13,18-19,26,28,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "bbf0f6ed88da1aa673e65be53ec97cdb24110995",
+  "prompts": {
+    "d85f24eaa205802a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9ecc4b2-faa0-4f7f-8097-5d64e8dd8903",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 8,
+      "accepted_lines": 161,
+      "overriden_lines": 0
+    }
+  }
+}
