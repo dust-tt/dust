@@ -11,17 +11,13 @@ struct InputBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Text input area
-            TextField("Ask anything or call an agent with @", text: $viewModel.messageText, axis: .vertical)
-                .sparkleCopySm()
-                .foregroundStyle(Color.dustForeground)
-                .lineLimit(1 ... 6)
-                .focused($isTextFieldFocused)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .onChange(of: viewModel.messageText) { _, newValue in
-                    viewModel.handleTextChange(newValue)
-                }
+            if viewModel.speechService.isRecording {
+                recordingView
+            } else if viewModel.speechService.isTranscribing {
+                transcribingView
+            } else {
+                textFieldView
+            }
 
             // Bottom toolbar: agent button (left) + action button (right)
             HStack {
@@ -56,25 +52,60 @@ struct InputBarView: View {
             )
             .presentationDetents([.medium, .large])
         }
-        .fullScreenCover(isPresented: $viewModel.isVoiceMode) {
-            VoiceOverlayView(
-                speechService: viewModel.speechService,
-                onStop: { viewModel.stopVoiceInput() },
-                onCancel: { viewModel.cancelVoiceInput() },
-                onSend: {
-                    viewModel.stopVoiceInput()
-                    Task {
-                        if let conversationId {
-                            if await viewModel.sendReply(conversationId: conversationId) {
-                                onMessageSent?()
-                            }
-                        } else if let conversation = await viewModel.sendMessage() {
-                            onConversationCreated?(conversation)
-                        }
-                    }
-                }
-            )
+    }
+
+    // MARK: - Text Field
+
+    private var textFieldView: some View {
+        TextField("Ask anything or call an agent with @", text: $viewModel.messageText, axis: .vertical)
+            .sparkleCopySm()
+            .foregroundStyle(Color.dustForeground)
+            .lineLimit(1 ... 6)
+            .focused($isTextFieldFocused)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .onChange(of: viewModel.messageText) { _, newValue in
+                viewModel.handleTextChange(newValue)
+            }
+    }
+
+    // MARK: - Recording View
+
+    private var recordingView: some View {
+        HStack(spacing: 12) {
+            AudioWaveView(level: viewModel.speechService.audioLevel)
+                .frame(maxWidth: .infinity)
+
+            Button {
+                viewModel.cancelVoiceInput()
+            } label: {
+                SparkleIcon.xMark.image
+                    .resizable()
+                    .frame(width: 12, height: 12)
+                    .foregroundStyle(Color.dustForeground.opacity(0.5))
+            }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(minHeight: 44)
+    }
+
+    // MARK: - Transcribing View
+
+    private var transcribingView: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .scaleEffect(0.8)
+                .tint(Color.highlight)
+            Text("Transcribing...")
+                .sparkleCopySm()
+                .foregroundStyle(Color.dustForeground.opacity(0.5))
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(minHeight: 44)
     }
 
     // MARK: - Agent Button
@@ -95,13 +126,19 @@ struct InputBarView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
         }
+        .disabled(viewModel.speechService.isRecording || viewModel.speechService.isTranscribing)
     }
 
-    // MARK: - Action Button (Send or Mic)
+    // MARK: - Action Button (Send, Mic, or Stop)
 
     @ViewBuilder
     private var actionButton: some View {
-        if canSend {
+        if viewModel.speechService.isRecording {
+            stopButton
+        } else if viewModel.speechService.isTranscribing {
+            // No action button while transcribing
+            EmptyView()
+        } else if canSend {
             sendButton
         } else {
             micButton
@@ -154,132 +191,59 @@ struct InputBarView: View {
         }
     }
 
+    // MARK: - Stop Button
+
+    private var stopButton: some View {
+        Button {
+            viewModel.stopVoiceInput()
+        } label: {
+            Circle()
+                .fill(Color.highlight)
+                .frame(width: 36, height: 36)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(.white)
+                        .frame(width: 12, height: 12)
+                }
+        }
+    }
+
     private var canSend: Bool {
         !viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !viewModel.isSending
     }
 }
 
-// MARK: - Voice Overlay
+// MARK: - Audio Wave Visualization
 
-private struct VoiceOverlayView: View {
-    @ObservedObject var speechService: SpeechService
-    let onStop: () -> Void
-    let onCancel: () -> Void
-    let onSend: () -> Void
+private struct AudioWaveView: View {
+    let level: Float
+
+    @State private var phase: Double = 0
+    private let barCount = 24
+    private let barSpacing: CGFloat = 3
 
     var body: some View {
-        ZStack {
-            Color.dustBackground
-                .ignoresSafeArea()
+        HStack(spacing: barSpacing) {
+            ForEach(0 ..< barCount, id: \.self) { index in
+                let position = Double(index) / Double(barCount - 1)
+                let distanceFromCenter = abs(position - 0.5)
+                let envelope = 1.0 - distanceFromCenter * 1.4
+                let wave = sin(position * .pi * 3 + phase)
+                let amplitude = Double(max(level, 0.05))
+                let height = max((0.15 + envelope * amplitude * (0.5 + wave * 0.5)) * 24, 3)
 
-            // Audio-reactive blue glow at the bottom
-            VStack {
-                Spacer()
-                RadialGradient(
-                    colors: [
-                        Color.highlight.opacity(0.08 + pow(Double(speechService.audioLevel), 2) * 0.45),
-                        Color.highlight.opacity(0),
-                    ],
-                    center: .bottom,
-                    startRadius: 0,
-                    endRadius: 250
-                )
-                .frame(height: 300)
-                .animation(.easeOut(duration: 0.15), value: speechService.audioLevel)
-            }
-            .ignoresSafeArea()
-
-            VStack {
-                Spacer()
-
-                // Live transcription
-                ScrollView {
-                    Text(speechService.transcribedText)
-                        .sparkleCopyXl()
-                        .foregroundStyle(Color.dustForeground)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
-                }
-
-                Spacer()
-
-                Text("Listening...")
-                    .sparkleCopySm()
-                    .foregroundStyle(Color.dustForeground.opacity(0.5))
-                    .padding(.bottom, 12)
-
-                // Controls
-                HStack(spacing: 8) {
-                    Button {
-                        onSend()
-                    } label: {
-                        Circle()
-                            .fill(Color.dustBackground)
-                            .frame(width: 48, height: 48)
-                            .overlay {
-                                SparkleIcon.arrowUp.image
-                                    .resizable()
-                                    .fontWeight(.bold)
-                                    .frame(width: 16, height: 16)
-                                    .foregroundStyle(Color.dustForeground)
-                            }
-                    }
-
-                    Button {
-                        onStop()
-                    } label: {
-                        Circle()
-                            .fill(Color.highlight)
-                            .frame(width: 56, height: 56)
-                            .overlay {
-                                SparkleIcon.actionMic.image
-                                    .resizable()
-                                    .frame(width: 22, height: 22)
-                                    .foregroundStyle(.white)
-                            }
-                            .modifier(PulseAnimationModifier())
-                    }
-
-                    Button {
-                        onCancel()
-                    } label: {
-                        Circle()
-                            .fill(Color.dustBackground)
-                            .frame(width: 48, height: 48)
-                            .overlay {
-                                SparkleIcon.xMark.image
-                                    .resizable()
-                                    .frame(width: 16, height: 16)
-                                    .foregroundStyle(Color.dustForeground)
-                            }
-                    }
-                }
-                .padding(6)
-                .background(
-                    Capsule()
-                        .fill(Color.dustMutedBackground)
-                )
-                .padding(.bottom, 48)
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(Color.highlight)
+                    .frame(width: 2, height: height)
             }
         }
-    }
-}
-
-// MARK: - Pulse Animation
-
-private struct PulseAnimationModifier: ViewModifier {
-    @State private var isPulsing = false
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isPulsing ? 1.08 : 1.0)
-            .opacity(isPulsing ? 0.85 : 1.0)
-            .animation(
-                .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
-                value: isPulsing
-            )
-            .onAppear { isPulsing = true }
+        .frame(height: 24)
+        .animation(.easeOut(duration: 0.12), value: level)
+        .onAppear {
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                phase = .pi * 2
+            }
+        }
     }
 }
