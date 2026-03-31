@@ -26,7 +26,7 @@ function getClient(): Metronome {
 
 /**
  * Send usage events to Metronome's ingest API.
- * Fire-and-forget: logs errors but never throws.
+ * Throws on failure so callers (e.g. Temporal activities) can retry.
  */
 export async function ingestMetronomeEvents(
   events: MetronomeEvent[]
@@ -35,14 +35,7 @@ export async function ingestMetronomeEvents(
     return;
   }
 
-  try {
-    await getClient().v1.usage.ingest({ usage: events });
-  } catch (err) {
-    logger.warn(
-      { error: normalizeError(err), eventCount: events.length },
-      "[Metronome] Failed to call ingest API"
-    );
-  }
+  await getClient().v1.usage.ingest({ usage: events });
 }
 
 // ---------------------------------------------------------------------------

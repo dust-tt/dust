@@ -22,7 +22,10 @@ import {
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
-import { launchTrackProgrammaticUsage } from "@app/temporal/agent_loop/activities/usage_tracking";
+import {
+  launchEmitMetronomeUsageEvents,
+  launchTrackProgrammaticUsage,
+} from "@app/temporal/agent_loop/activities/usage_tracking";
 import { signalButlerComplete } from "@app/temporal/butler/client";
 import { signalProjectTodoComplete } from "@app/temporal/project_todo/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -112,6 +115,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
     sendEmailReplyOnCompletion(authType, agentLoopArgs),
@@ -145,6 +149,7 @@ export async function finalizeCancelledAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     sendEmailReplyOnError(
       authType,
       agentLoopArgs,
@@ -164,6 +169,7 @@ export async function finalizeErroredAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     sendEmailReplyOnError(
       authType,
       agentLoopArgs,
