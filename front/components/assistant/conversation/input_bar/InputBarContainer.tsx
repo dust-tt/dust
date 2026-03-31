@@ -16,6 +16,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -139,6 +140,7 @@ const InputBarContainer = ({
   saveDraft,
   user,
 }: InputBarContainerProps) => {
+  const { subscription } = useAuth();
   const isMobile = useIsMobile();
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -888,7 +890,8 @@ const InputBarContainer = ({
               )}
               <div className="grow" />
               <div className="flex items-center gap-2 md:gap-1">
-                {owner.metadata?.allowVoiceTranscription !== false &&
+                {!subscription.plan.isByok &&
+                  owner.metadata?.allowVoiceTranscription !== false &&
                   actions.includes("voice") && (
                     <VoicePicker
                       status={voiceTranscriberService.status}
