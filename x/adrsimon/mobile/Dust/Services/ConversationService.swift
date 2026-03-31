@@ -72,6 +72,35 @@ enum ConversationService {
         )
     }
 
+    static func markAsRead(
+        workspaceId: String,
+        conversationId: String,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.conversation(
+            workspaceId: workspaceId,
+            conversationId: conversationId
+        )
+        let body = try JSONSerialization.data(withJSONObject: ["read": true])
+        try await APIClient.authenticatedSend(
+            endpoint, method: "PATCH", body: body, tokenProvider: tokenProvider
+        )
+    }
+
+    static func bulkMarkAsRead(
+        workspaceId: String,
+        conversationIds: [String],
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.conversationsBulkActions(workspaceId: workspaceId)
+        let body = try JSONSerialization.data(
+            withJSONObject: ["action": "mark_as_read", "conversationIds": conversationIds]
+        )
+        try await APIClient.authenticatedSend(
+            endpoint, method: "POST", body: body, tokenProvider: tokenProvider
+        )
+    }
+
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {
         var components = URLComponents(string: "\(AppConfig.apiBaseURL)\(endpoint)")
         components?.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }

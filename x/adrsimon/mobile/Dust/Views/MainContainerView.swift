@@ -9,6 +9,7 @@ struct MainContainerView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isDrawerOpen = false
     @State private var selectedConversation: Conversation?
+    @State private var showCatchUp = false
 
     private let tokenProvider: TokenProvider
 
@@ -45,6 +46,10 @@ struct MainContainerView: View {
                     onLogout: {
                         isDrawerOpen = false
                         onLogout()
+                    },
+                    onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
+                        showCatchUp = true
+                        isDrawerOpen = false
                     },
                     onRefresh: {
                         await viewModel.refresh()
@@ -96,6 +101,20 @@ struct MainContainerView: View {
         )
         .task {
             await viewModel.load()
+        }
+        .fullScreenCover(isPresented: $showCatchUp) {
+            if let workspaceId = viewModel.workspace?.sId {
+                CatchUpView(
+                    conversations: viewModel.unreadConversations,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    currentUserEmail: user.email,
+                    onDismiss: { markedIds in
+                        showCatchUp = false
+                        viewModel.markConversationsAsRead(markedIds)
+                    }
+                )
+            }
         }
         .onChange(of: scenePhase) {
             if scenePhase == .active {
