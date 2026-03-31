@@ -1,5 +1,5 @@
 import type {
-  InteractionWithTokens,
+  Interaction,
   MinimalMessageType,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 
@@ -12,8 +12,8 @@ import type {
  */
 export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
   messages: T[]
-): InteractionWithTokens<T>[] {
-  const interactions: InteractionWithTokens<T>[] = [];
+): Interaction<T>[] {
+  const interactions: Interaction<T>[] = [];
   let currentInteraction: T[] = [];
 
   // Determine the high-level turn type for a message.
