@@ -92,10 +92,7 @@ export async function importSkillsFromFiles(
   );
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
-  const existingSkills = await SkillResource.fetchByNames(
-    auth,
-    uniqueNames
-  );
+  const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
 
   if (onConflict === "error") {
     // Validate all skills upfront, fail as a unit on semantic problems.
@@ -108,7 +105,7 @@ export async function importSkillsFromFiles(
     if (validationResult.isErr()) {
       return validationResult;
     }
-  } 
+  }
   if (selectedSkills.length === 0) {
     return new Err(new Error("No matching importable skills found."));
   }
@@ -118,9 +115,7 @@ export async function importSkillsFromFiles(
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
 
-  const existingSkillsMap = new Map(
-    existingSkills.map((s) => [s.name, s])
-  );
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   await concurrentExecutor(
     selectedSkills,
