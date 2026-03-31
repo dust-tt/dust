@@ -111,6 +111,14 @@ async function handler(
                 message: error.message,
               },
             });
+          case "validation_error":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
           default:
             assertNever(error);
         }

@@ -1,5 +1,5 @@
 import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -16,7 +16,7 @@ export function validateSkillsForImport<T extends DetectedSkill>({
 }: {
   selectedSkills: T[];
   requestedNames: string[] | null;
-  existingSkills:  SkillResource[];
+  existingSkills: SkillResource[];
   isConflicting: (existing: SkillResource) => boolean;
 }): Result<T[], Error> {
   const messages: string[] = [];
@@ -51,7 +51,9 @@ export function validateSkillsForImport<T extends DetectedSkill>({
   // Check for source conflicts with existing skills.
   for (const existing of existingSkills) {
     if (isConflicting(existing)) {
-      messages.push(`A different skill named "${existing.name}" already exists.`);
+      messages.push(
+        `A different skill named "${existing.name}" already exists.`
+      );
     }
   }
 
