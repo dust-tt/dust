@@ -184,7 +184,11 @@ export async function importSkillsFromFiles(
             sourceMetadata: { filePath: skill.skillMdPath },
             isDefault: false,
           },
-          { mcpServerViews: [], fileAttachments }
+          {
+            mcpServerViews: [],
+            fileAttachments,
+            addCurrentUserAsEditor: auth.user() !== null,
+          }
         );
 
         await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
