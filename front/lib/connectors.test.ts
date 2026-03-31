@@ -21,7 +21,7 @@ import config from "@app/lib/api/config";
 describe("nodeCandidateFromUrl", () => {
   beforeEach(() => {
     // Reset the mock before each test
-    vi.mocked(config.getApiBaseUrl).mockReturnValue("https://dust.tt");
+    vi.mocked(config.getAppUrl).mockReturnValue("https://app.dust.tt");
   });
   describe("Confluence", () => {
     it("should extract node ID from Confluence page URL", () => {
@@ -352,28 +352,29 @@ describe("nodeCandidateFromUrl", () => {
 
   describe("Dust Project", () => {
     it("should normalize Dust project URL", () => {
-      const url = "https://dust.tt/w/workspace123/spaces/space456/apps/app789";
+      const url =
+        "https://app.dust.tt/w/workspace123/spaces/space456/apps/app789";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
       expect(isUrlCandidate(result)).toBe(true);
       if (isUrlCandidate(result)) {
         expect(result.url).toBe(
-          "https://dust.tt/w/workspace123/spaces/space456/apps/app789"
+          "https://app.dust.tt/w/workspace123/spaces/space456/apps/app789"
         );
         expect(result.provider).toBe("dust_project");
       }
     });
 
     it("should remove trailing slash from Dust project URL", () => {
-      const url = "https://dust.tt/w/workspace123/conversation/conv456/";
+      const url = "https://app.dust.tt/w/workspace123/conversation/conv456/";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
       expect(isUrlCandidate(result)).toBe(true);
       if (isUrlCandidate(result)) {
         expect(result.url).toBe(
-          "https://dust.tt/w/workspace123/conversation/conv456"
+          "https://app.dust.tt/w/workspace123/conversation/conv456"
         );
         expect(result.provider).toBe("dust_project");
       }
@@ -389,7 +390,7 @@ describe("nodeCandidateFromUrl", () => {
 
     it("should normalize Dust project URLs (query parameters are not preserved)", () => {
       const url =
-        "https://dust.tt/w/workspace123/conversation/conv456?param=value";
+        "https://app.dust.tt/w/workspace123/conversation/conv456?param=value";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
@@ -397,40 +398,40 @@ describe("nodeCandidateFromUrl", () => {
       if (isUrlCandidate(result)) {
         // Query parameters are not preserved in the normalized URL
         expect(result.url).toBe(
-          "https://dust.tt/w/workspace123/conversation/conv456"
+          "https://app.dust.tt/w/workspace123/conversation/conv456"
         );
         expect(result.provider).toBe("dust_project");
       }
     });
 
     it("should handle root Dust project URL", () => {
-      const url = "https://dust.tt/";
+      const url = "https://app.dust.tt/";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
       expect(isUrlCandidate(result)).toBe(true);
       if (isUrlCandidate(result)) {
-        expect(result.url).toBe("https://dust.tt");
+        expect(result.url).toBe("https://app.dust.tt");
         expect(result.provider).toBe("dust_project");
       }
     });
 
     it("should not match URLs that don't end with dust.tt", () => {
-      const url = "https://dust-tt.com/page";
+      const url = "https://app.dust-tt.com/page";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).toBeNull();
     });
 
     it("should handle localhost URLs when configured", () => {
-      const url = "https://dust.tt/w/workspace123/conversation/conv456";
+      const url = "https://app.dust.tt/w/workspace123/conversation/conv456";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
       expect(isUrlCandidate(result)).toBe(true);
       if (isUrlCandidate(result)) {
         expect(result.url).toBe(
-          "https://dust.tt/w/workspace123/conversation/conv456"
+          "https://app.dust.tt/w/workspace123/conversation/conv456"
         );
         expect(result.provider).toBe("dust_project");
       }
