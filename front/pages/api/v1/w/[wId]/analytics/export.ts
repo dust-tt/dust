@@ -1,27 +1,19 @@
 /** @ignoreswagger */
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import {
-  AGENT_EXPORT_HEADERS,
-  fetchAgentExportRows,
-} from "@app/lib/api/analytics/agents_export";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+
+import { exportTable } from "@app/lib/api/analytics/export_tables";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { stringify } from "csv-stringify/sync";
+import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
-});
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<string>>,
   auth: Authenticator
-) {
+): Promise<void> {
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -32,10 +24,27 @@ async function handler(
     });
   }
 
+  const flags = await getFeatureFlags(auth);
+  if (!flags.includes("analytics_csv_export")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "The workspace does not have access to the analytics export API.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
-      const { days } = req.query;
-      const q = QuerySchema.safeParse({ days });
+      const { table, startDate, endDate, timezone } = req.query;
+      const q = GetAnalyticsExportRequestSchema.safeParse({
+        table,
+        startDate,
+        endDate,
+        timezone,
+      });
       if (!q.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -47,37 +56,30 @@ async function handler(
       }
 
       const owner = auth.getNonNullableWorkspace();
-
-      const baseQuery = buildAgentAnalyticsBaseQuery({
-        workspaceId: owner.sId,
-        days: q.data.days,
+      const csv = await exportTable({
+        table: q.data.table,
+        startDate: q.data.startDate,
+        endDate: q.data.endDate,
+        timezone: q.data.timezone ?? "UTC",
+        owner,
       });
 
-      const result = await fetchAgentExportRows(baseQuery, owner);
-
-      if (result.isErr()) {
+      if (csv.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve agent analytics: ${result.error.message}`,
+            message: csv.error.message,
           },
         });
       }
 
-      const csvData = result.value.map((row) =>
-        AGENT_EXPORT_HEADERS.map((h) => row[h])
-      );
-      const csv = stringify([AGENT_EXPORT_HEADERS, ...csvData], {
-        header: false,
-      });
-
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="dust_agents_last_${q.data.days}_days.csv"`
+        `attachment; filename="dust_${q.data.table}_${q.data.startDate}_${q.data.endDate}.csv"`
       );
-      return res.status(200).send(csv);
+      return res.status(200).send(csv.value);
     }
     default:
       return apiError(req, res, {
@@ -90,4 +92,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withPublicAPIAuthentication(handler);

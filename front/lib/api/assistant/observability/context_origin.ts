@@ -77,14 +77,15 @@ type DailyOriginAggs = {
 };
 
 export async function fetchContextOriginDailyBreakdown(
-  baseQuery: estypes.QueryDslQueryContainer
+  baseQuery: estypes.QueryDslQueryContainer,
+  timezone: string = "UTC"
 ): Promise<Result<ContextOriginDailyPoint[], Error>> {
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_date: {
       date_histogram: {
         field: "timestamp",
         calendar_interval: "day",
-        time_zone: "UTC",
+        time_zone: timezone,
       },
       aggs: {
         by_origin: {

@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -44,7 +45,8 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const result = await fetchActiveUsersMetrics(owner, q.data.days);
+      const { startDate, endDate } = daysToDateRange(q.data.days);
+      const result = await fetchActiveUsersMetrics(owner, startDate, endDate);
 
       if (result.isErr()) {
         return apiError(req, res, {

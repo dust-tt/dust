@@ -73,19 +73,29 @@ function computeRollingActiveUsers(
  */
 export async function fetchActiveUsersMetrics(
   workspace: LightWorkspaceType,
-  days: number,
+  startDate: string,
+  endDate: string,
   timezone: string = "UTC"
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
-  // Extend the query range to include extra days for rolling window calculations
-  // We need MAU_WINDOW_DAYS - 1 extra days before the start to calculate MAU for day 1
-  const extendedDays = days + MAU_WINDOW_DAYS - 1;
+
+  const extendedStart = moment
+    .tz(startDate, timezone)
+    .subtract(MAU_WINDOW_DAYS - 1, "days")
+    .format("YYYY-MM-DD");
+  const rangeFilter: estypes.QueryDslQueryContainer = {
+    range: { timestamp: { gte: extendedStart, lte: endDate } },
+  };
+  const cutoffTimestamp = moment
+    .tz(startDate, timezone)
+    .startOf("day")
+    .valueOf();
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         { term: { workspace_id: workspaceId } },
-        { range: { timestamp: { gte: `now-${extendedDays}d/d` } } },
+        rangeFilter,
         { bool: { must_not: { term: { user_id: "unknown" } } } }, // Exclude programmatic usage
       ],
     },
@@ -132,10 +142,6 @@ export async function fetchActiveUsersMetrics(
   }
 
   sortedTimestamps.sort((a, b) => a - b);
-
-  // Determine the cutoff timestamp - we only return points for the requested range
-  const startOfToday = moment.tz(timezone).startOf("day").valueOf();
-  const cutoffTimestamp = startOfToday - (days - 1) * MS_PER_DAY;
 
   // Collect timestamps in the requested range for membership counting.
   const requestedTimestamps = sortedTimestamps.filter(
