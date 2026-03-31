@@ -3,13 +3,38 @@ import type { GenerateContentResponse } from "@google/genai";
 import { FinishReason } from "@google/genai";
 import { describe, expect, it } from "vitest";
 
-import { streamLLMEvents } from "../google_to_events";
+import { newId, streamLLMEvents } from "../google_to_events";
 
 // Test-specific type that omits computed/derived properties from GenerateContentResponse
 type PartialGenerateContentResponse = Omit<
   GenerateContentResponse,
   "text" | "data" | "functionCalls" | "executableCode" | "codeExecutionResult"
 >;
+
+describe("newId", () => {
+  // newId hashes a random UUID with blake3. A 64-char hex string corresponds
+  // to blake3's fixed 256-bit (32-byte) output.
+
+  it("returns a 64-character hex string", () => {
+    const id = newId();
+    expect(id).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("returns unique values on successive calls", () => {
+    const id1 = newId();
+    const id2 = newId();
+    expect(id1).not.toBe(id2);
+  });
+
+  it("does not return a raw UUID (blake3 is applied)", () => {
+    const id = newId();
+    // A UUID looks like xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx; blake3 output
+    // is a 64-char lowercase hex string without hyphens.
+    expect(id).not.toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    );
+  });
+});
 
 describe("streamLLMEvents", () => {
   describe("when finish reason is stop", () => {
