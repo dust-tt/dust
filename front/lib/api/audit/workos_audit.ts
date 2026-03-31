@@ -6,6 +6,7 @@ import type {
 import { createAuditLogEvent } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
@@ -168,9 +169,16 @@ export async function emitAuditLogEventDirect({
       return;
     }
 
-    const subscription =
-      await SubscriptionResource.fetchLastByWorkspace(workspace);
-    if (!subscription || !subscription.getPlan().isAuditLogsAllowed) {
+    const [subscription, featureFlags] = await Promise.all([
+      SubscriptionResource.fetchLastByWorkspace(workspace),
+      FeatureFlagResource.listForWorkspace(workspace),
+    ]);
+
+    const hasAuditFlag = featureFlags.some((f) => f.name === "audit_logs");
+    if (
+      !hasAuditFlag &&
+      (!subscription || !subscription.getPlan().isAuditLogsAllowed)
+    ) {
       return;
     }
 
