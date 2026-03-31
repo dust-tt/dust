@@ -19,8 +19,6 @@ export function useProvidersSelection(
     useState<ProvidersSelection>(ALL_PROVIDERS_SELECTED);
   const sendNotifications = useSendNotification();
 
-  // TODO(BYOK): For BYOK workspaces, this should also filter by healthy provider credentials.
-  // Needs a new endpoint + SWR hook to fetch BYOK-aware whitelisted providers.
   const enabledProviders: Readonly<ModelProviderIdType[]> =
     workspace?.whiteListedProviders ?? MODEL_PROVIDER_IDS;
 

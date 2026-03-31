@@ -3,17 +3,19 @@ import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import { MISTRAL_LARGE_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
-import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import {
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_MODEL_ID,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
+import { GPT_5_4_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
-  ModelProviderIdType,
+  ModelIdType,
 } from "@app/types/assistant/models/types";
-import { GROK_4_MODEL_CONFIG } from "@app/types/assistant/models/xai";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
+import type { UserType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
 /**
@@ -59,57 +61,37 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
-// TODO(BYOK): For BYOK workspaces, this should also check healthy provider credentials.
-// Needs a new endpoint + SWR hook to fetch BYOK-aware whitelisted providers.
-function isProviderWhitelistedSync(
-  owner: WorkspaceType,
-  providerId: ModelProviderIdType
-): boolean {
-  if (providerId === "noop") {
-    return true;
-  }
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
-  return whiteListedProviders.includes(providerId);
-}
+const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
+  CLAUDE_SONNET_4_6_MODEL_ID,
+  GPT_5_4_MODEL_ID,
+  GEMINI_3_PRO_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+  GROK_4_MODEL_ID,
+];
 
-function getLargeWhitelistedModelSync(
-  owner: WorkspaceType
-): ModelConfigurationType | null {
-  if (isProviderWhitelistedSync(owner, "anthropic")) {
-    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+export function getDefaultLargeModel(
+  availableModels: ModelConfigurationType[]
+): ModelConfigurationType {
+  for (const modelId of PREFERRED_LARGE_MODEL_IDS) {
+    const model = availableModels.find((m) => m.modelId === modelId);
+    if (model) {
+      return model;
+    }
   }
-  if (isProviderWhitelistedSync(owner, "openai")) {
-    return GPT_5_4_MODEL_CONFIG;
-  }
-  if (isProviderWhitelistedSync(owner, "google_ai_studio")) {
-    return GEMINI_3_PRO_MODEL_CONFIG;
-  }
-  if (isProviderWhitelistedSync(owner, "mistral")) {
-    return MISTRAL_LARGE_MODEL_CONFIG;
-  }
-  if (isProviderWhitelistedSync(owner, "xai")) {
-    return GROK_4_MODEL_CONFIG;
-  }
-  return null;
+
+  const fallbackModel = availableModels.find((m) => m.largeModel);
+
+  return fallbackModel ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
 }
 
 export function getDefaultAgentFormData({
   user,
-  owner,
 }: {
   user: UserType;
-  owner: WorkspaceType;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = getLargeWhitelistedModelSync(owner);
-
-  // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
-  // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
-  const modelConfiguration =
-    !isProviderWhitelistedSync(owner, preferredModel.providerId) &&
-    fallbackModel
-      ? fallbackModel
-      : preferredModel;
+  // Static fallback — overridden by the useEffect in AgentBuilder once available
+  // models are loaded.
+  const defaultModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
 
   return {
     agentSettings: {
@@ -125,11 +107,11 @@ export function getDefaultAgentFormData({
     instructions: "",
     generationSettings: {
       modelSettings: {
-        modelId: modelConfiguration.modelId,
-        providerId: modelConfiguration.providerId,
+        modelId: defaultModel.modelId,
+        providerId: defaultModel.providerId,
       },
       temperature: 0.7,
-      reasoningEffort: modelConfiguration.defaultReasoningEffort,
+      reasoningEffort: defaultModel.defaultReasoningEffort,
       responseFormat: undefined,
     },
     actions: [],
@@ -148,12 +130,10 @@ export function getDefaultAgentFormData({
  */
 export function transformTemplateToFormData(
   template: FetchAgentTemplateResponse,
-  user: UserType,
-  owner: WorkspaceType
+  user: UserType
 ): AgentBuilderFormData {
   const defaultFormData = getDefaultAgentFormData({
     user,
-    owner,
   });
 
   return {

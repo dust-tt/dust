@@ -35,8 +35,6 @@ export function Providers({ owner }: ProvidersProps) {
   );
   const [isModelProvider, setIsModelProvider] = useState(true);
 
-  // TODO(BYOK): For BYOK workspaces, this should also filter by healthy provider credentials.
-  // Needs a new endpoint + SWR hook to fetch BYOK-aware whitelisted providers.
   const appWhiteListedProviders = owner.whiteListedProviders
     ? [...owner.whiteListedProviders, "azure_openai"]
     : APP_MODEL_PROVIDER_IDS;

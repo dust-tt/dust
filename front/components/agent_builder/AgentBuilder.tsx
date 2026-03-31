@@ -25,6 +25,7 @@ import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/use
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
+  getDefaultLargeModel,
   transformAgentConfigurationToFormData,
   transformDuplicateAgentToFormData,
   transformTemplateToFormData,
@@ -48,6 +49,7 @@ import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/agent_editors";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -147,6 +149,8 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
+  const { models: availableModels } = useModels({ owner });
+
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
@@ -235,11 +239,11 @@ export default function AgentBuilder({
     }
 
     if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user, owner);
+      return transformTemplateToFormData(assistantTemplate, user);
     }
 
-    return getDefaultAgentFormData({ owner, user });
-  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user, owner]);
+    return getDefaultAgentFormData({ user });
+  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -253,6 +257,8 @@ export default function AgentBuilder({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const currentValues = form.getValues();
+
+    const defaultModel = getDefaultLargeModel(availableModels);
 
     form.reset({
       ...currentValues,
@@ -277,6 +283,17 @@ export default function AgentBuilder({
             : [user],
         slackChannels: agentSlackChannels,
       },
+      // For new agents, update model settings once available models are loaded.
+      ...(!agentConfiguration && {
+        generationSettings: {
+          ...currentValues.generationSettings,
+          modelSettings: {
+            modelId: defaultModel.modelId,
+            providerId: defaultModel.providerId,
+          },
+          reasoningEffort: defaultModel.defaultReasoningEffort,
+        },
+      }),
     });
   }, [
     triggers,
@@ -293,6 +310,7 @@ export default function AgentBuilder({
     editors,
     agentConfiguration,
     agentSlackChannels,
+    availableModels,
   ]);
 
   const { showDialog, ...dialogProps } = useAwaitableDialog({
