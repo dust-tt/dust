@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 
 import type { Authenticator } from "@app/lib/auth";
-import { isByokTransitionningPlan } from "@app/lib/plans/plan_codes";
+import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import {
@@ -22,7 +22,7 @@ const BYOK_TRANSITION_BYOK_KEYS_RATIO = 0.2; // 20%
  *
  * - Non-BYOK workspaces: returns Dust-managed keys from environment variables.
  * - BYOK workspaces: resolves customer-provided keys from OAuth credentials.
- *   - For BYOK_TRANSITIONNING plan, fallback on Dust-managed keys if customer keys are not provided.
+ *   - For BYOK_TRANSITIONING plan, fallback on Dust-managed keys if customer keys are not provided.
  *   - For all others, do not fallback.
  *
  * `OPENAI_EMBEDDING_API_KEY` is set separately from `OPENAI_API_KEY` so Dust apps
@@ -81,7 +81,7 @@ export async function getLlmCredentials(
     await ProviderCredentialResource.listByWorkspace(auth);
 
   // Use healthy keys only and fallback on Dust keys for this specific plan only
-  if (isByokTransitionningPlan(plan)) {
+  if (isByokTransitioningPlan(plan)) {
     const healthyCredentials = mapOauthCredentialsToLlmCredentials(
       providerCredentials
         .filter(({ isHealthy }) => isHealthy)
