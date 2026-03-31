@@ -330,6 +330,35 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
+   * Bulk delete a list of suggestion resources.
+   * Requires super user permissions.
+   */
+  static async bulkDelete(
+    auth: Authenticator,
+    suggestions: AgentSuggestionResource[]
+  ): Promise<Result<number, Error>> {
+    if (!auth.isDustSuperUser()) {
+      return new Err(new Error("Only super users can bulk delete suggestions"));
+    }
+
+    if (suggestions.length === 0) {
+      return new Ok(0);
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const ids = suggestions.map((s) => s.id);
+
+    const deletedCount = await AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: ids,
+      },
+    });
+
+    return new Ok(deletedCount);
+  }
+
+  /**
    * WARNING: This method deletes ALL suggestions for a workspace.
    * Only workspace admins can perform this operation.
    * This is intended for internal use only (e.g., workspace deletion workflows).
