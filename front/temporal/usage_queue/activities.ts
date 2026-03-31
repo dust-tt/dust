@@ -4,6 +4,13 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { ingestMetronomeEvents } from "@app/lib/metronome/client";
+import {
+  buildLlmUsageEvent,
+  buildToolUseEvents,
+  classifyMessageTier,
+  getToolCategory,
+} from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
   MessageModel,
@@ -13,7 +20,11 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
@@ -174,4 +185,140 @@ export async function trackProgrammaticUsageActivity(
   }
 
   return { tracked: false, origin: userMessageOrigin };
+}
+
+/**
+ * Emit Metronome llm_usage and tool_use events for an agent message.
+ * Called for ALL messages (not just programmatic) — always-on, fire-and-forget.
+ * Metronome failures don't affect the agent loop.
+ */
+export async function emitMetronomeUsageEventsActivity(
+  authType: AuthenticatorType,
+  { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
+): Promise<void> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    logger.warn(
+      { error: authResult.error.code },
+      "[Metronome] Failed to deserialize authenticator for usage events"
+    );
+    return;
+  }
+  const auth = authResult.value;
+  const workspace = auth.getNonNullableWorkspace();
+  const { agentMessageId, userMessageId } = agentLoopArgs;
+  const userMessageOrigin = agentLoopArgs.userMessageOrigin ?? "web";
+
+  // Query agent message with its run IDs.
+  const agentMessageRow = await MessageModel.findOne({
+    where: {
+      sId: agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  const agentMessage = agentMessageRow?.agentMessage;
+  if (!agentMessage || !agentMessage.runIds) {
+    return;
+  }
+
+  // Get user ID for the event.
+  const userMessageRow = await MessageModel.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        include: [{ model: UserModel, required: false }],
+      },
+    ],
+  });
+
+  const userId = userMessageRow?.userMessage?.user?.sId ?? null;
+
+  // Sub-agent messages have agenticMessageType set (e.g. "run_agent", "agent_handover").
+  // agenticOriginMessageId is the sId of the parent agent message that spawned this one.
+  const userMessage = userMessageRow?.userMessage;
+  const parentAgentMessageId = userMessage?.agenticOriginMessageId ?? null;
+  const isSubAgentMessage = userMessage?.agenticMessageType !== null;
+
+  const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
+  const timestamp = agentMessageRow.createdAt.toISOString();
+
+  // Get LLM run usages.
+  const runs = await RunResource.listByDustRunIds(auth, {
+    dustRunIds: agentMessage.runIds,
+  });
+  const runUsages = (
+    await concurrentExecutor(
+      runs,
+      (run) => {
+        return run.listRunUsages(auth);
+      },
+      { concurrency: 10 }
+    )
+  ).flat();
+
+  // Get MCP actions.
+  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    agentMessage.id,
+  ]);
+  const toolActions = mcpActions.map((a) => {
+    const json = a.toJSON();
+    return {
+      sId: json.sId,
+      toolName: json.toolName,
+      mcpServerId: json.mcpServerId,
+      internalMCPServerName: json.internalMCPServerName,
+      status: json.status,
+      executionDurationMs: json.executionDurationMs,
+    };
+  });
+
+  // Classify message tier.
+  const modelIds = runUsages.map((u) => u.modelId);
+  const toolCategories = toolActions.map((a) =>
+    getToolCategory(a.internalMCPServerName)
+  );
+  const messageTier = classifyMessageTier({ modelIds, toolCategories });
+
+  // Build and ingest events.
+  const llmEvent = buildLlmUsageEvent({
+    workspaceId: workspace.sId,
+    userId,
+    agentMessageId,
+    parentAgentMessageId,
+    runUsages,
+    origin: userMessageOrigin,
+    isProgrammaticUsage: programmatic,
+    messageTier,
+    isSubAgentMessage,
+    timestamp,
+  });
+
+  const toolEvents = buildToolUseEvents({
+    workspaceId: workspace.sId,
+    userId,
+    agentMessageId,
+    parentAgentMessageId,
+    actions: toolActions,
+    origin: userMessageOrigin,
+    isProgrammaticUsage: programmatic,
+    messageTier,
+    isSubAgentMessage,
+    timestamp,
+  });
+
+  await ingestMetronomeEvents([llmEvent, ...toolEvents]);
 }

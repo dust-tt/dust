@@ -3,8 +3,12 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
-import { makeTrackProgrammaticUsageWorkflowId } from "@app/temporal/usage_queue/helpers";
 import {
+  makeMetronomeUsageEventsWorkflowId,
+  makeTrackProgrammaticUsageWorkflowId,
+} from "@app/temporal/usage_queue/helpers";
+import {
+  emitMetronomeUsageEventsWorkflow,
   trackProgrammaticUsageWorkflow,
   updateWorkspaceUsageWorkflow,
 } from "@app/temporal/usage_queue/workflows";
@@ -118,6 +122,55 @@ export async function launchTrackProgrammaticUsageWorkflow({
           error: e,
         },
         "Failed starting agent analytics workflow"
+      );
+    }
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchEmitMetronomeUsageEventsWorkflow({
+  authType,
+  agentLoopArgs,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgs;
+}): Promise<Result<undefined, Error>> {
+  const { workspaceId } = authType;
+  const { agentMessageId, conversationId } = agentLoopArgs;
+
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workflowId = makeMetronomeUsageEventsWorkflowId({
+    agentMessageId,
+    conversationId,
+    workspaceId,
+  });
+
+  try {
+    await client.workflow.start(emitMetronomeUsageEventsWorkflow, {
+      args: [authType, { agentLoopArgs }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        conversationId: [conversationId],
+        workspaceId: workspaceId ? [workspaceId] : undefined,
+      },
+      memo: {
+        agentMessageId,
+        workspaceId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
+      logger.error(
+        {
+          workflowId,
+          agentMessageId,
+          error: e,
+        },
+        "[Metronome] Failed starting usage events workflow"
       );
     }
 

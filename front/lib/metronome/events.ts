@@ -182,11 +182,12 @@ export function getToolCategory(
 // ---------------------------------------------------------------------------
 
 /**
- * Build one Metronome event per LLM model call within an agent message.
+ * Build a single Metronome llm_usage event for an agent message, aggregating
+ * all LLM calls (tokens, cost) into one event.
  *
- * transaction_id pattern: llm-{workspaceId}-{agentMessageId}-{modelId}-{index}
+ * transaction_id pattern: llm-{workspaceId}-{agentMessageId}
  */
-export function buildLlmUsageEvents({
+export function buildLlmUsageEvent({
   workspaceId,
   userId,
   agentMessageId,
@@ -208,9 +209,24 @@ export function buildLlmUsageEvents({
   messageTier: MessageTier;
   isSubAgentMessage: boolean;
   timestamp: string;
-}): MetronomeEvent[] {
-  return runUsages.map((usage, index) => ({
-    transaction_id: `llm-${workspaceId}-${agentMessageId}-${index}`,
+}): MetronomeEvent {
+  const promptTokens = runUsages.reduce((sum, u) => sum + u.promptTokens, 0);
+  const completionTokens = runUsages.reduce(
+    (sum, u) => sum + u.completionTokens,
+    0
+  );
+  const cachedTokens = runUsages.reduce(
+    (sum, u) => sum + (u.cachedTokens ?? 0),
+    0
+  );
+  const cacheCreationTokens = runUsages.reduce(
+    (sum, u) => sum + (u.cacheCreationTokens ?? 0),
+    0
+  );
+  const costMicroUsd = runUsages.reduce((sum, u) => sum + u.costMicroUsd, 0);
+
+  return {
+    transaction_id: `llm-${workspaceId}-${agentMessageId}`,
     customer_id: workspaceId,
     event_type: "llm_usage",
     timestamp,
@@ -221,20 +237,18 @@ export function buildLlmUsageEvents({
       ...(parentAgentMessageId
         ? { parent_agent_message_id: parentAgentMessageId }
         : {}),
-      provider_id: usage.providerId,
-      model_id: usage.modelId,
-      prompt_tokens: usage.promptTokens,
-      completion_tokens: usage.completionTokens,
-      cached_tokens: usage.cachedTokens ?? 0,
-      cache_creation_tokens: usage.cacheCreationTokens ?? 0,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      cached_tokens: cachedTokens,
+      cache_creation_tokens: cacheCreationTokens,
       // Provider cost without markup — markup is applied in Metronome rate card.
-      cost_micro_usd: usage.costMicroUsd,
+      cost_micro_usd: costMicroUsd,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       message_tier: messageTier,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
     },
-  }));
+  };
 }
 
 // ---------------------------------------------------------------------------

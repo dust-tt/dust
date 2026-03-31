@@ -270,6 +270,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
+  metronome_billing: {
+    description:
+      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
