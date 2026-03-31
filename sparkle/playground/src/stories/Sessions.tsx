@@ -83,6 +83,7 @@ import {
 import TemplateSelection, { type Template } from "./TemplateSelection";
 import { inferConversationThreadKind } from "../utils/conversationThreadKind";
 import { createForkedConversation } from "../utils/createForkedConversation";
+import { createNewConversationFromComposer } from "../utils/createNewConversationFromComposer";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -1353,6 +1354,28 @@ function DustMain() {
     setCameFromPersonAgent(false);
   };
 
+  const handleComposerSubmit = ({
+    text,
+    agentId,
+  }: {
+    text: string;
+    agentId: string;
+  }) => {
+    if (!user || !text.trim()) return;
+    const newConv = createNewConversationFromComposer({
+      locutorUserId: user.id,
+      agentId,
+      messageText: text,
+    });
+    conversationCache.set(newConv.id, newConv);
+    setSelectedConversationId(newConv.id);
+    setSelectedView("conversation");
+    setSelectedCollaboratorId(agentId);
+    setSelectedCollaboratorType("agent");
+    setCameFromInbox(false);
+    setCameFromPersonAgent(false);
+  };
+
   // Main content
   const mainContent =
     // Priority 0: Show profile when opened from user menu
@@ -1372,6 +1395,7 @@ function DustMain() {
           users={mockUsers}
           agents={mockAgents}
           conversationsWithMessages={conversationsWithMessages}
+          attachConversations={allConversations}
           showBackButton={
             !!previousSpaceId || cameFromInbox || cameFromPersonAgent
           }
@@ -1386,6 +1410,7 @@ function DustMain() {
           users={mockUsers}
           agents={mockAgents}
           conversationsWithMessages={conversationsWithMessages}
+          attachConversations={allConversations}
           showBackButton={
             !!previousSpaceId || cameFromInbox || cameFromPersonAgent
           }
@@ -1505,7 +1530,11 @@ function DustMain() {
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>
-          <InputBar placeholder="Ask a question" />
+          <InputBar
+            placeholder="Ask a question"
+            onComposerSubmit={handleComposerSubmit}
+            attachConversations={allConversations}
+          />
           <div className="s-flex s-w-full s-flex-col s-gap-2">
             <div className="s-heading-lg s-text-foreground">
               Universal search

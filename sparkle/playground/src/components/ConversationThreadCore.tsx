@@ -84,6 +84,8 @@ export interface ConversationThreadCoreProps {
     newAgentId: string;
     sourceConversation: Conversation;
   }) => void;
+  /** List for the InputBar attach picker; defaults to mock conversations when omitted. */
+  attachConversations?: Conversation[];
 }
 
 export function ConversationThreadCore({
@@ -98,6 +100,7 @@ export function ConversationThreadCore({
   projectTitle,
   variant = "default",
   onForkConversationWithContext,
+  attachConversations,
 }: ConversationThreadCoreProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -155,6 +158,9 @@ export function ConversationThreadCore({
         };
       }
       if (item.kind === "activeIndicator") {
+        if (item.type === "agent") {
+          return item;
+        }
         return {
           ...item,
           name: undefined,
@@ -688,6 +694,7 @@ export function ConversationThreadCore({
               className="s-shadow-xl"
               conversationKey={conversation.id}
               initialAgentId={conversation.agentParticipants[0] ?? "agent-dust"}
+              attachConversations={attachConversations}
               forkWithContext={
                 onForkConversationWithContext
                   ? {

@@ -85,6 +85,8 @@ import {
   type User,
 } from "../data";
 import { createForkedConversation } from "../utils/createForkedConversation";
+import { createNewConversationFromComposer } from "../utils/createNewConversationFromComposer";
+import { conversationRowDragProps } from "../utils/conversationAttachDnD";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -679,6 +681,7 @@ function DustMain() {
                     selected={conversation.id === selectedConversationId}
                     status={status}
                     moreMenu={getConversationMoreMenu(conversation)}
+                    {...conversationRowDragProps(conversation)}
                     onClick={() => {
                       setShowProfileView(false);
                       setPreviousSpaceId(null);
@@ -867,6 +870,7 @@ function DustMain() {
                           label={conversation.title}
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
+                          {...conversationRowDragProps(conversation)}
                           onClick={() => {
                             setShowProfileView(false);
                             setPreviousSpaceId(null);
@@ -886,6 +890,7 @@ function DustMain() {
                           label={conversation.title}
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
+                          {...conversationRowDragProps(conversation)}
                           onClick={() => {
                             setShowProfileView(false);
                             setPreviousSpaceId(null);
@@ -905,6 +910,7 @@ function DustMain() {
                           label={conversation.title}
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
+                          {...conversationRowDragProps(conversation)}
                           onClick={() => {
                             setShowProfileView(false);
                             setPreviousSpaceId(null);
@@ -924,6 +930,7 @@ function DustMain() {
                           label={conversation.title}
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
+                          {...conversationRowDragProps(conversation)}
                           onClick={() => {
                             setShowProfileView(false);
                             setPreviousSpaceId(null);
@@ -1198,6 +1205,24 @@ function DustMain() {
     setSelectedView(null);
   };
 
+  const handleComposerSubmit = ({
+    text,
+    agentId,
+  }: {
+    text: string;
+    agentId: string;
+  }) => {
+    if (!user || !text.trim()) return;
+    const newConv = createNewConversationFromComposer({
+      locutorUserId: user.id,
+      agentId,
+      messageText: text,
+    });
+    setConversationsWithMessages((prev) => [...prev, newConv]);
+    setSelectedConversationId(newConv.id);
+    setSelectedView(null);
+  };
+
   // Main content
   const mainContent =
     // Priority 0: Show profile when opened from user menu
@@ -1221,6 +1246,7 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
+        attachConversations={allConversations}
         showBackButton={!!previousSpaceId}
         onBack={handleConversationBack}
         projectTitle={selectedSpace?.name}
@@ -1261,7 +1287,11 @@ function DustMain() {
           <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
             Welcome, Edouard!{" "}
           </div>
-          <InputBar placeholder="Ask a question" />
+          <InputBar
+            placeholder="Ask a question"
+            onComposerSubmit={handleComposerSubmit}
+            attachConversations={allConversations}
+          />
           <div className="s-flex s-w-full s-flex-col s-gap-2">
             <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
               Universal search

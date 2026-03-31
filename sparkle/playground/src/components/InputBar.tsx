@@ -4,6 +4,7 @@ import {
   Avatar,
   BoltIcon,
   Button,
+  ChatBubbleLeftRightIcon,
   cn,
   Dialog,
   DialogContainer,
@@ -18,6 +19,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  FilterChips,
   Icon,
   ImageIcon,
   ImageZoomDialog,
@@ -31,12 +33,63 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { mockConversations } from "../data/conversations";
+import { getAggregatedWorkspaceDataSources } from "../data/dataSources";
 import { getAgentAvatarProps, getAgentById, mockAgents } from "../data";
+import type { Conversation, DataSource } from "../data/types";
+import { getFakeDocumentDescription } from "../utils/attachSearchHelpers";
+import { getConversationIdFromDataTransfer } from "../utils/conversationAttachDnD";
 
 import { NewCitation, NewCitationGrid } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 
-type DroppedFile = { id: string; file: File; objectUrl?: string };
+const ATTACH_FILTER_LABELS = [
+  "All",
+  "PDF",
+  "Word",
+  "Excel",
+  "PowerPoint",
+  "Text",
+  "Markdown",
+  "DOC",
+  "Conversations",
+] as const;
+
+type AttachFilterLabel = (typeof ATTACH_FILTER_LABELS)[number];
+
+function docTypeForAttachFilter(
+  label: AttachFilterLabel
+): DataSource["fileType"] | null {
+  switch (label) {
+    case "All":
+    case "Conversations":
+      return null;
+    case "PDF":
+      return "pdf";
+    case "Word":
+      return "docx";
+    case "Excel":
+      return "xlsx";
+    case "PowerPoint":
+      return "pptx";
+    case "Text":
+      return "txt";
+    case "Markdown":
+      return "md";
+    case "DOC":
+      return "doc";
+  }
+}
+
+export type AttachedItem =
+  | { kind: "file"; id: string; file: File; objectUrl?: string }
+  | { kind: "dataSource"; id: string; dataSource: DataSource }
+  | { kind: "conversation"; id: string; conversation: Conversation };
+
+type CitationPreview =
+  | { kind: "file"; id: string; file: File; objectUrl?: string }
+  | { kind: "dataSource"; id: string; dataSource: DataSource }
+  | { kind: "conversation"; id: string; conversation: Conversation };
 
 export interface InputBarForkWithContext {
   sourceConversationId: string;
@@ -54,6 +107,10 @@ interface InputBarProps {
   initialAgentId?: string;
   /** When set, choosing another agent opens a confirm dialog before forking. */
   forkWithContext?: InputBarForkWithContext;
+  /** Welcome / composer: send creates a conversation with the current text and agent. */
+  onComposerSubmit?: (payload: { text: string; agentId: string }) => void;
+  /** Conversations offered in the attach picker; defaults to playground mock list. */
+  attachConversations?: Conversation[];
 }
 
 export function InputBar({
@@ -64,12 +121,16 @@ export function InputBar({
   conversationKey,
   initialAgentId,
   forkWithContext,
+  onComposerSubmit,
+  attachConversations: attachConversationsProp,
 }: InputBarProps) {
+  const attachConversations = attachConversationsProp ?? mockConversations;
+
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
-  const [selectedDroppedFile, setSelectedDroppedFile] =
-    useState<DroppedFile | null>(null);
+  const [attachedItems, setAttachedItems] = useState<AttachedItem[]>([]);
+  const [selectedPreview, setSelectedPreview] =
+    useState<CitationPreview | null>(null);
   const [isImageZoomOpen, setIsImageZoomOpen] = useState(false);
   const [isCitationSheetOpen, setIsCitationSheetOpen] = useState(false);
   const [mentionAgentSearch, setMentionAgentSearch] = useState("");
@@ -80,12 +141,84 @@ export function InputBar({
   const [pendingForkAgentId, setPendingForkAgentId] = useState<string | null>(
     null
   );
+  const [attachMobileOpen, setAttachMobileOpen] = useState(false);
+  const [attachDesktopOpen, setAttachDesktopOpen] = useState(false);
+  const [attachQuery, setAttachQuery] = useState("");
+  const [attachFilter, setAttachFilter] = useState<AttachFilterLabel>("All");
+
   const containerRef = useRef<HTMLDivElement>(null);
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
   const dragCounterRef = useRef(0);
   const objectUrlsRef = useRef<Set<string>>(new Set());
-  const selectedDroppedFileRef = useRef<DroppedFile | null>(null);
-  selectedDroppedFileRef.current = selectedDroppedFile;
+  const selectedPreviewRef = useRef<CitationPreview | null>(null);
+  selectedPreviewRef.current = selectedPreview;
+
+  const workspaceDocuments = useMemo(
+    () => getAggregatedWorkspaceDataSources(),
+    []
+  );
+
+  const closeAttachMenus = useCallback(() => {
+    setAttachMobileOpen(false);
+    setAttachDesktopOpen(false);
+    setAttachQuery("");
+  }, []);
+
+  const attachPickResults = useMemo(() => {
+    const q = attachQuery.trim().toLowerCase();
+    if (!q) {
+      return {
+        documents: [] as DataSource[],
+        conversations: [] as Conversation[],
+      };
+    }
+
+    const includeConversations =
+      attachFilter === "All" || attachFilter === "Conversations";
+    const includeDocuments = attachFilter !== "Conversations";
+    const docTypeOnly: DataSource["fileType"] | null =
+      attachFilter === "All" || attachFilter === "Conversations"
+        ? null
+        : docTypeForAttachFilter(attachFilter);
+
+    let documents: DataSource[] = [];
+    if (includeDocuments) {
+      documents = workspaceDocuments.filter((ds) => {
+        if (docTypeOnly != null && ds.fileType !== docTypeOnly) {
+          return false;
+        }
+        const desc = getFakeDocumentDescription(ds);
+        const haystack = `${ds.fileName}\n${desc}`.toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    let conversations: Conversation[] = [];
+    if (includeConversations) {
+      conversations = attachConversations.filter((c) => {
+        const haystack = `${c.title}\n${c.description ?? ""}`.toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    return { documents, conversations };
+  }, [attachConversations, attachFilter, attachQuery, workspaceDocuments]);
+
+  const addAttachedDataSource = useCallback((dataSource: DataSource) => {
+    const id = `attach-ds-${dataSource.id}`;
+    setAttachedItems((prev) => {
+      if (prev.some((p) => p.id === id)) return prev;
+      return [...prev, { kind: "dataSource", id, dataSource }];
+    });
+  }, []);
+
+  const addAttachedConversation = useCallback((conversation: Conversation) => {
+    const id = `attach-conv-${conversation.id}`;
+    setAttachedItems((prev) => {
+      if (prev.some((p) => p.id === id)) return prev;
+      return [...prev, { kind: "conversation", id, conversation }];
+    });
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -128,42 +261,54 @@ export function InputBar({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current = 0;
-    setIsDragOver(false);
-    setIsFocused(true);
-    const files = e.dataTransfer.files;
-    if (!files?.length) return;
-    const newItems: DroppedFile[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file) {
-        const isImage = file.type.startsWith("image/");
-        const objectUrl = isImage ? URL.createObjectURL(file) : undefined;
-        if (objectUrl) objectUrlsRef.current.add(objectUrl);
-        newItems.push({
-          id: `${file.name}-${i}-${Date.now()}`,
-          file,
-          objectUrl,
-        });
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+      setIsFocused(true);
+      const files = e.dataTransfer.files;
+      if (files?.length) {
+        const newItems: AttachedItem[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file) {
+            const isImage = file.type.startsWith("image/");
+            const objectUrl = isImage ? URL.createObjectURL(file) : undefined;
+            if (objectUrl) objectUrlsRef.current.add(objectUrl);
+            newItems.push({
+              kind: "file",
+              id: `${file.name}-${i}-${Date.now()}`,
+              file,
+              objectUrl,
+            });
+          }
+        }
+        setAttachedItems((prev) => [...prev, ...newItems]);
       }
-    }
-    setDroppedFiles((prev) => [...prev, ...newItems]);
-  }, []);
+      const convId = getConversationIdFromDataTransfer(e.dataTransfer);
+      if (convId) {
+        const conv = attachConversations.find((c) => c.id === convId);
+        if (conv) {
+          addAttachedConversation(conv);
+        }
+      }
+    },
+    [addAttachedConversation, attachConversations]
+  );
 
-  const removeFile = useCallback((id: string) => {
-    setDroppedFiles((prev) => {
+  const removeAttachment = useCallback((id: string) => {
+    setAttachedItems((prev) => {
       const item = prev.find((x) => x.id === id);
-      if (item?.objectUrl) {
+      if (item?.kind === "file" && item.objectUrl) {
         URL.revokeObjectURL(item.objectUrl);
         objectUrlsRef.current.delete(item.objectUrl);
       }
       return prev.filter((item) => item.id !== id);
     });
-    if (selectedDroppedFileRef.current?.id === id) {
-      setSelectedDroppedFile(null);
+    if (selectedPreviewRef.current?.id === id) {
+      setSelectedPreview(null);
       setIsImageZoomOpen(false);
       setIsCitationSheetOpen(false);
     }
@@ -225,6 +370,86 @@ export function InputBar({
 
   const showFocusStyle = isFocused || isDragOver;
 
+  const handleSendClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!onComposerSubmit) return;
+      const text = (richTextAreaRef.current?.getText() ?? "").trim();
+      if (!text) return;
+      onComposerSubmit({ text, agentId: selectedAgentId });
+      richTextAreaRef.current?.setContent("");
+    },
+    [onComposerSubmit, selectedAgentId]
+  );
+
+  const attachDropdownHeaders = (
+    <div className="s-flex s-flex-col s-gap-2 s-pb-2">
+      <DropdownMenuSearchbar
+        value={attachQuery}
+        onChange={setAttachQuery}
+        name="input-bar-attach-search"
+        placeholder="Search documents and conversations"
+      />
+      <div className="s-px-1" onPointerDown={(e) => e.preventDefault()}>
+        <FilterChips
+          filters={[...ATTACH_FILTER_LABELS]}
+          selectedFilter={attachFilter}
+          onFilterClick={(f) => setAttachFilter(f)}
+        />
+      </div>
+    </div>
+  );
+
+  const hasAttachQuery = attachQuery.trim().length > 0;
+  const attachListEmpty =
+    hasAttachQuery &&
+    attachPickResults.documents.length === 0 &&
+    attachPickResults.conversations.length === 0;
+
+  const renderAttachMenuBody = (afterSelect: () => void) => (
+    <>
+      <DropdownMenuSeparator />
+      {!hasAttachQuery ? (
+        <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          Type to search
+        </div>
+      ) : attachListEmpty ? (
+        <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          No results found
+        </div>
+      ) : (
+        <div className="s-flex s-flex-col s-pb-2">
+          {attachPickResults.documents.map((ds) => (
+            <DropdownMenuItem
+              key={ds.id}
+              label={ds.fileName}
+              description={getFakeDocumentDescription(ds)}
+              icon={<Icon visual={ds.icon ?? DocumentIcon} size="sm" />}
+              truncateText
+              onSelect={() => {
+                addAttachedDataSource(ds);
+                afterSelect();
+              }}
+            />
+          ))}
+          {attachPickResults.conversations.map((c) => (
+            <DropdownMenuItem
+              key={c.id}
+              label={c.title}
+              description={c.description}
+              icon={<Icon visual={ChatBubbleLeftRightIcon} size="sm" />}
+              truncateText
+              onSelect={() => {
+                addAttachedConversation(c);
+                afterSelect();
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -243,33 +468,69 @@ export function InputBar({
       )}
     >
       <div className="s-flex s-w-full s-flex-col">
-        {droppedFiles.length > 0 && (
+        {attachedItems.length > 0 && (
           <NewCitationGrid
             className="s-pt-2 s-px-2 s-pb-0 s-w-full"
             justify="start"
           >
-            {droppedFiles.map(({ id, file, objectUrl }) => (
-              <NewCitation
-                key={id}
-                label={file.name}
-                size="lg"
-                visual={
-                  file.type.startsWith("image/") ? ImageIcon : DocumentIcon
-                }
-                variant="secondary"
-                imgSrc={objectUrl}
-                onClick={() => {
-                  const item = { id, file, objectUrl };
-                  setSelectedDroppedFile(item);
-                  if (objectUrl) {
-                    setIsImageZoomOpen(true);
-                  } else {
+            {attachedItems.map((item) => {
+              if (item.kind === "file") {
+                const { id, file, objectUrl } = item;
+                return (
+                  <NewCitation
+                    key={id}
+                    label={file.name}
+                    size="lg"
+                    visual={
+                      file.type.startsWith("image/") ? ImageIcon : DocumentIcon
+                    }
+                    variant="secondary"
+                    imgSrc={objectUrl}
+                    onClick={() => {
+                      setSelectedPreview(item);
+                      if (objectUrl) {
+                        setIsImageZoomOpen(true);
+                      } else {
+                        setIsCitationSheetOpen(true);
+                      }
+                    }}
+                    onClose={() => removeAttachment(id)}
+                  />
+                );
+              }
+              if (item.kind === "dataSource") {
+                const { id, dataSource } = item;
+                return (
+                  <NewCitation
+                    key={id}
+                    label={dataSource.fileName}
+                    size="lg"
+                    visual={dataSource.icon ?? DocumentIcon}
+                    variant="secondary"
+                    onClick={() => {
+                      setSelectedPreview(item);
+                      setIsCitationSheetOpen(true);
+                    }}
+                    onClose={() => removeAttachment(id)}
+                  />
+                );
+              }
+              const { id, conversation } = item;
+              return (
+                <NewCitation
+                  key={id}
+                  label={conversation.title}
+                  size="lg"
+                  visual={ChatBubbleLeftRightIcon}
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedPreview(item);
                     setIsCitationSheetOpen(true);
-                  }
-                }}
-                onClose={() => removeFile(id)}
-              />
-            ))}
+                  }}
+                  onClose={() => removeAttachment(id)}
+                />
+              );
+            })}
           </NewCitationGrid>
         )}
         <RichTextArea
@@ -341,20 +602,58 @@ export function InputBar({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            variant="outline"
-            icon={PlusIcon}
-            size="sm"
-            tooltip="Attach a document"
-            className="md:s-hidden"
-          />
+          <DropdownMenu
+            open={attachMobileOpen}
+            onOpenChange={(open) => {
+              setAttachMobileOpen(open);
+              if (!open) setAttachQuery("");
+            }}
+            modal={false}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                icon={PlusIcon}
+                size="sm"
+                tooltip="Attach a document"
+                className="md:s-hidden"
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="s-w-[min(380px,calc(100vw-2rem))]"
+              dropdownHeaders={attachDropdownHeaders}
+            >
+              {renderAttachMenuBody(closeAttachMenus)}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="s-hidden s-gap-0 md:s-flex">
-            <Button
-              variant="ghost-secondary"
-              icon={AttachmentIcon}
-              size="sm"
-              tooltip="Attach a document"
-            />
+            <DropdownMenu
+              open={attachDesktopOpen}
+              onOpenChange={(open) => {
+                setAttachDesktopOpen(open);
+                if (!open) setAttachQuery("");
+              }}
+              modal={false}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost-secondary"
+                  icon={AttachmentIcon}
+                  size="sm"
+                  tooltip="Attach a document"
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="s-w-[min(380px,calc(100vw-2rem))]"
+                dropdownHeaders={attachDropdownHeaders}
+              >
+                {renderAttachMenuBody(closeAttachMenus)}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost-secondary"
               icon={BoltIcon}
@@ -371,6 +670,7 @@ export function InputBar({
               size="sm"
               tooltip="Send message"
               isRounded
+              onClick={onComposerSubmit ? handleSendClick : undefined}
             />
           </div>
         </div>
@@ -423,27 +723,25 @@ export function InputBar({
         </DialogContent>
       </Dialog>
 
-      {/* Image preview dialog */}
-      {selectedDroppedFile?.objectUrl && (
+      {selectedPreview?.kind === "file" && selectedPreview.objectUrl && (
         <ImageZoomDialog
           open={isImageZoomOpen}
           onOpenChange={(open) => {
             setIsImageZoomOpen(open);
-            if (!open) setSelectedDroppedFile(null);
+            if (!open) setSelectedPreview(null);
           }}
           image={{
-            src: selectedDroppedFile.objectUrl,
-            title: selectedDroppedFile.file.name,
+            src: selectedPreview.objectUrl,
+            title: selectedPreview.file.name,
           }}
         />
       )}
 
-      {/* Document preview sheet */}
       <Sheet
         open={isCitationSheetOpen}
         onOpenChange={(open) => {
           setIsCitationSheetOpen(open);
-          if (!open) setSelectedDroppedFile(null);
+          if (!open) setSelectedPreview(null);
         }}
       >
         <SheetContent size="3xl" side="right">
@@ -451,11 +749,26 @@ export function InputBar({
             <SheetTitle>
               <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
                 <div className="s-flex s-items-center s-gap-2">
-                  {selectedDroppedFile && (
+                  {selectedPreview?.kind === "file" && (
                     <Icon visual={DocumentIcon} size="md" />
                   )}
+                  {selectedPreview?.kind === "dataSource" && (
+                    <Icon
+                      visual={selectedPreview.dataSource.icon ?? DocumentIcon}
+                      size="md"
+                    />
+                  )}
+                  {selectedPreview?.kind === "conversation" && (
+                    <Icon visual={ChatBubbleLeftRightIcon} size="md" />
+                  )}
                   <span>
-                    {selectedDroppedFile?.file.name || "Document preview"}
+                    {selectedPreview?.kind === "file"
+                      ? selectedPreview.file.name
+                      : selectedPreview?.kind === "dataSource"
+                        ? selectedPreview.dataSource.fileName
+                        : selectedPreview?.kind === "conversation"
+                          ? selectedPreview.conversation.title
+                          : "Preview"}
                   </span>
                 </div>
               </div>
@@ -463,9 +776,22 @@ export function InputBar({
           </SheetHeader>
           <SheetContainer>
             <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
-              <p className="s-text-foreground dark:s-text-foreground-night">
-                Document preview — {selectedDroppedFile?.file.type || "file"}
-              </p>
+              {selectedPreview?.kind === "file" && (
+                <p className="s-text-foreground dark:s-text-foreground-night">
+                  Document preview — {selectedPreview.file.type || "file"}
+                </p>
+              )}
+              {selectedPreview?.kind === "dataSource" && (
+                <p className="s-text-foreground dark:s-text-foreground-night">
+                  {getFakeDocumentDescription(selectedPreview.dataSource)}
+                </p>
+              )}
+              {selectedPreview?.kind === "conversation" && (
+                <p className="s-text-foreground dark:s-text-foreground-night">
+                  {selectedPreview.conversation.description ??
+                    "Conversation preview — stub content for the playground."}
+                </p>
+              )}
             </div>
           </SheetContainer>
         </SheetContent>

@@ -69,6 +69,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getAgentAvatarProps } from "../data/agentAvatarProps";
 import { getAgentById } from "../data/agents";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
+import { getFakeDocumentDescription } from "../utils/attachSearchHelpers";
 import type {
   Agent,
   Conversation,
@@ -282,28 +283,6 @@ function generateJoinedAt(spaceId: string, memberId: string): Date {
   );
 
   return joinedAt;
-}
-
-const fakeDocumentFirstLines = [
-  "Introduction: This document outlines the initial scope and goals.",
-  "Summary: Key findings are consolidated in the sections below.",
-  "Overview: A first pass at the requirements and assumptions.",
-  "Draft note: Please review the proposed changes and provide feedback.",
-  "Excerpt: The following section captures the primary constraints.",
-  "Context: This file compiles the core decisions made so far.",
-  "Opening: A quick recap of the current state and next steps.",
-  "First line: The document begins with a brief background statement.",
-];
-
-function getFakeDocumentFirstLine(dataSource: DataSource): string {
-  const seed = `${dataSource.id}-${dataSource.fileName}`;
-  const index = Math.floor(
-    seededRandom(seed, 2) * fakeDocumentFirstLines.length
-  );
-  return (
-    fakeDocumentFirstLines[index] ||
-    "Overview: This document contains a summary of the content."
-  );
 }
 
 function getBaseConversationId(
@@ -975,7 +954,7 @@ export function GroupConversationView({
     const documentResults = dataSources.reduce<UniversalSearchItem[]>(
       (acc, dataSource) => {
         const title = dataSource.fileName;
-        const description = getFakeDocumentFirstLine(dataSource);
+        const description = getFakeDocumentDescription(dataSource);
         const titleMatch = title.toLowerCase().includes(searchLower);
         const descriptionMatch = description
           .toLowerCase()
@@ -1929,6 +1908,7 @@ export function GroupConversationView({
                 )}
                 <InputBar
                   placeholder={`Start a conversation in ${space.name}`}
+                  attachConversations={conversations}
                 />
                 {hasHistory && (
                   <div className="s-flex s-w-full s-gap-2 s-px-4">

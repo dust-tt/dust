@@ -9,6 +9,7 @@ import {
 import React from "react";
 
 import type { DataSource, User } from "./types";
+import { mockSpaces } from "./spaces";
 import { mockUsers } from "./users";
 
 // Seeded random function for deterministic randomness
@@ -313,4 +314,13 @@ export function getDataSourcesBySpaceId(spaceId: string): DataSource[] {
  */
 export function getRandomDataSources(count: number): DataSource[] {
   return generateDataSourcesForSpace(`random-${Date.now()}`, count);
+}
+
+/** All fake workspace documents (every mock space’s knowledge set). */
+export function getAggregatedWorkspaceDataSources(): DataSource[] {
+  const out: DataSource[] = [];
+  for (const space of mockSpaces) {
+    out.push(...getDataSourcesBySpaceId(space.id));
+  }
+  return out;
 }
