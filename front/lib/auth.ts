@@ -120,6 +120,7 @@ export class Authenticator {
     subscription,
     key,
     providersHealth,
+    clientIp,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -129,6 +130,7 @@ export class Authenticator {
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
     providersHealth?: ProvidersHealth | null;
+    clientIp?: string;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -141,6 +143,7 @@ export class Authenticator {
     this._authMethod = authMethod;
     this._key = key;
     this._providersHealth = providersHealth ?? null;
+    this._clientIp = clientIp;
     if (user) {
       tracer.setUser({
         id: user?.sId,
@@ -887,7 +890,7 @@ export class Authenticator {
   }
 
   exchangeKey(key: KeyAuthType) {
-    const auth = new Authenticator({
+    return new Authenticator({
       authMethod: this.authMethod(),
       key,
       role: this._role,
@@ -895,11 +898,8 @@ export class Authenticator {
       user: this._user,
       subscription: this._subscription,
       workspace: this._workspace,
+      clientIp: this._clientIp,
     });
-    if (this._clientIp) {
-      auth.setClientIp(this._clientIp);
-    }
-    return auth;
   }
 
   providersHealth(): ProvidersHealth | null {
@@ -1238,22 +1238,19 @@ export class Authenticator {
       subscription
     );
 
-    const auth = new Authenticator({
-      authMethod: authType.authMethod,
-      workspace,
-      user,
-      role: authType.role,
-      groupModelIds: groupIds,
-      subscription,
-      key: authType.key,
-      providersHealth,
-    });
-
-    if (authType.clientIp) {
-      auth.setClientIp(authType.clientIp);
-    }
-
-    return new Ok(auth);
+    return new Ok(
+      new Authenticator({
+        authMethod: authType.authMethod,
+        workspace,
+        user,
+        role: authType.role,
+        groupModelIds: groupIds,
+        subscription,
+        key: authType.key,
+        providersHealth,
+        clientIp: authType.clientIp,
+      })
+    );
   }
 }
 

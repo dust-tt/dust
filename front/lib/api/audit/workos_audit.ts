@@ -248,11 +248,22 @@ type AuditTargetType =
   | "group";
 
 /**
- * Builds a typed audit log target.
+ * Resource shape required for each audit target type.
+ * All currently use { sId, name }; individual types can be tightened
+ * to specific resource types (e.g., LightWorkspaceType) in the future.
  */
-export function buildAuditLogTarget(
-  type: AuditTargetType,
-  resource: { sId: string; name: string }
+type AuditTargetResourceMap = {
+  [K in AuditTargetType]: { sId: string; name: string };
+};
+
+/**
+ * Builds a typed audit log target.
+ * The generic constraint ensures the type string is a valid AuditTargetType
+ * and the resource matches the expected shape for that type.
+ */
+export function buildAuditLogTarget<T extends AuditTargetType>(
+  type: T,
+  resource: AuditTargetResourceMap[T]
 ): AuditLogTarget {
   return { type, id: resource.sId, name: resource.name };
 }
