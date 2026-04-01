@@ -499,14 +499,6 @@ module.exports = {
             transform: "translateY(0)",
           },
         },
-        "grow-down": {
-          from: { transform: "scaleY(0)" },
-          to: { transform: "scaleY(1)" },
-        },
-        "fade-in": {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
-        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
@@ -518,8 +510,6 @@ module.exports = {
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",
         "fade-in-up": "fade-in-up 0.5s ease-in-out",
-        "grow-down": "grow-down 0.3s ease-out forwards",
-        "fade-in": "fade-in 0.3s ease-out forwards",
       },
       colors: {
         // Creates night shades for all colors
