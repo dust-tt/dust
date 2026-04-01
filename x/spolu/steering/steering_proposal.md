@@ -20,12 +20,12 @@ so steering must go through the proper instructional channel for each provider.
 export type AgentSteeringContentType = {
   type: "steering";
   value: {
-    content: string;                  // The steering instruction text
+    content: string;                    // The steering instruction text
     context: UserMessageContext | null; // User context for attribution. When set, the
-                                       // steering message is attributed to this user
-                                       // (name, email, etc.) in both the model rendering
-                                       // and the UI. When null, it's a system-level
-                                       // steering message with no user attribution.
+                                        // steering message is attributed to this user
+                                        // (name, email, etc.) in both the model rendering
+                                        // and the UI. When null, it's a system-level
+                                        // steering message with no user attribution.
   };
 };
 ```
