@@ -258,23 +258,6 @@ export function buildAuditLogTarget(
 }
 
 /**
- * Derives the origin of an audit event from the Authenticator.
- * - "web": user-initiated via browser (user present, client IP available)
- * - "api": API-key-initiated (key present)
- * - "trigger": trigger-initiated (user present but no client IP)
- * - "system": system/internal (no user, no key)
- */
-export function getAuditLogOrigin(auth: Authenticator): string {
-  if (auth.key()) {
-    return "api";
-  }
-  if (auth.user()) {
-    return auth.clientIp() ? "web" : "trigger";
-  }
-  return "system";
-}
-
-/**
  * Builds the audit log context with the client IP address.
  * When called with a request object, extracts the IP from headers.
  * Otherwise returns the IP from auth or "internal" as the location.

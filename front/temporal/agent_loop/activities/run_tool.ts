@@ -1,7 +1,6 @@
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
-  getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -344,7 +343,6 @@ async function executeToolStreaming(
             toolName: action.toolConfiguration.name,
             toolType: action.toolConfiguration.mcpServerName,
             conversationId: conversation.sId,
-            origin: getAuditLogOrigin(auth),
           },
         });
 
