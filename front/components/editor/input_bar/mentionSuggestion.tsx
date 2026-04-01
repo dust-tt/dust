@@ -46,7 +46,11 @@ export function createMentionSuggestion({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     command: ({ editor, range, props }: any) => {
       const mention = props as RichMention;
-      if (mention.type === "agent" && singleAgentInputEnabled && onAgentSelect) {
+      if (
+        mention.type === "agent" &&
+        singleAgentInputEnabled &&
+        onAgentSelect
+      ) {
         // Delete the @query text without inserting a mention node.
         editor.chain().focus().deleteRange(range).run();
         onAgentSelect(mention);

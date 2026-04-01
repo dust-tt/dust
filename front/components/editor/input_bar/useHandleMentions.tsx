@@ -1,6 +1,6 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import { isSingleAgentInputEnabled } from "@app/lib/development";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type {
   RichAgentMention,
   RichMention,

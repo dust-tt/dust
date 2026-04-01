@@ -78,9 +78,9 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
       title: `Single agent input ${next ? "enabled" : "disabled"}`,
       description: "Reload the page to apply.",
       type: "success",
-    })
-  }
-  
+    });
+  };
+
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
