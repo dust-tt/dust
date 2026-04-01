@@ -64,6 +64,17 @@ export function SkillBuilderIsDefaultSection() {
               This skill will be set as default. Agents with&nbsp;
               <span className="font-semibold">Discover Skills</span>&nbsp; will
               be able to find and enable it on their own.
+              <ul className="mt-3 list-disc space-y-1 pl-5">
+                <li>
+                  This will expose the skill to every member of your workspace
+                  through the Discover Skills skill.
+                </li>
+                <li>
+                  Do not enable this for skills that are still experimental or
+                  under active development — agents may start using them in real
+                  conversations.
+                </li>
+              </ul>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
@@ -73,7 +84,7 @@ export function SkillBuilderIsDefaultSection() {
             }}
             rightButtonProps={{
               label: "Confirm",
-              variant: "primary",
+              variant: "warning",
               onClick: handleConfirm,
             }}
           />
