@@ -13,7 +13,7 @@ import {
 } from "@app/lib/api/actions/servers/gong/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 
-const MAX_CALLS_PER_REQUEST = 100;
+const MAX_CALLS_PER_REQUEST = 50;
 
 function isTrackedError(error: Error): boolean {
   return !(error instanceof GongApiError && error.isInvalidInput);
@@ -53,14 +53,11 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
     }
 
     const limitedCalls = calls.slice(0, MAX_CALLS_PER_REQUEST);
-    const wasLimited = calls.length > MAX_CALLS_PER_REQUEST;
 
-    let response = `Found ${totalRecords ?? calls.length} call(s):\n\n${renderCalls(limitedCalls)}`;
+    let response = `Found ${totalRecords ?? calls.length} call(s)${calls.length > MAX_CALLS_PER_REQUEST ? ` (showing first ${MAX_CALLS_PER_REQUEST})` : ""}:\n\n${renderCalls(limitedCalls)}`;
 
-    if (wasLimited) {
-      response += `\n\n---\n\n**Note:** Results limited to ${MAX_CALLS_PER_REQUEST} calls. Use a narrower date range or cursor to see more.`;
-    } else if (nextCursor) {
-      response += `\n\n---\n\n**Note:** More calls available. Use cursor "${nextCursor}" to fetch the next page.`;
+    if (nextCursor) {
+      response += `\n\n---\n\nMore calls available. Use cursor "${nextCursor}" to fetch the next page.`;
     }
 
     return new Ok([
