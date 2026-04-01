@@ -466,7 +466,7 @@ function TriggerEditView({
   });
 
   return (
-    <FormProvider form={form} asForm={false}>
+    <>
       <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground dark:text-foreground-night">
         <Button
           icon={ArrowLeftIcon}
@@ -482,31 +482,33 @@ function TriggerEditView({
         />
         <h2 className="text-lg font-semibold">{pageTitle}</h2>
       </div>
-      <SheetContainer>
-        {currentPageId === "trigger-selection" && (
-          <TriggerSelectionPageContent
-            onScheduleSelect={handleScheduleSelect}
-            onWebhookSelect={handleWebhookSelect}
-            webhookSourceViews={webhookSourceViews}
-          />
-        )}
-        {currentPageId === "schedule-edition" && (
-          <ScheduleEditionSheetContent
-            owner={owner}
-            trigger={editTrigger?.kind === "schedule" ? editTrigger : null}
-            isEditor={isEditor}
-          />
-        )}
-        {currentPageId === "webhook-edition" && (
-          <WebhookEditionSheetContent
-            owner={owner}
-            trigger={editTrigger?.kind === "webhook" ? editTrigger : null}
-            agentConfigurationId={agentConfigurationId}
-            webhookSourceView={webhookSourceView}
-            isEditor={isEditor}
-          />
-        )}
-      </SheetContainer>
+      <FormProvider form={form} asForm={false}>
+        <SheetContainer>
+          {currentPageId === "trigger-selection" && (
+            <TriggerSelectionPageContent
+              onScheduleSelect={handleScheduleSelect}
+              onWebhookSelect={handleWebhookSelect}
+              webhookSourceViews={webhookSourceViews}
+            />
+          )}
+          {currentPageId === "schedule-edition" && (
+            <ScheduleEditionSheetContent
+              owner={owner}
+              trigger={editTrigger?.kind === "schedule" ? editTrigger : null}
+              isEditor={isEditor}
+            />
+          )}
+          {currentPageId === "webhook-edition" && (
+            <WebhookEditionSheetContent
+              owner={owner}
+              trigger={editTrigger?.kind === "webhook" ? editTrigger : null}
+              agentConfigurationId={agentConfigurationId}
+              webhookSourceView={webhookSourceView}
+              isEditor={isEditor}
+            />
+          )}
+        </SheetContainer>
+      </FormProvider>
       {!isOnSelectionPage && (
         <div className="flex flex-none justify-end gap-2 border-t border-border p-3 dark:border-border-night">
           <Button
@@ -524,6 +526,6 @@ function TriggerEditView({
           />
         </div>
       )}
-    </FormProvider>
+    </>
   );
 }

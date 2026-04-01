@@ -1,5 +1,6 @@
 import type {
   AgentBuilderScheduleTriggerType,
+  AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
@@ -18,6 +19,7 @@ import {
   useCreateTrigger,
   useUpdateTrigger,
 } from "@app/lib/swr/agent_triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +37,32 @@ interface UseTriggerSheetStateParams {
   mode: SheetMode;
   webhookSourceViews: WebhookSourceViewType[];
   onSuccess: () => void;
+}
+
+function getPageTitle(
+  currentPageId: PageId,
+  editTrigger: AgentBuilderTriggerType | null,
+  isEditor: boolean,
+  webhookSourceView: WebhookSourceViewType | null
+): string {
+  switch (currentPageId) {
+    case "trigger-selection":
+      return "Add trigger";
+    case "schedule-edition":
+      if (!editTrigger) {
+        return "Create Schedule";
+      }
+      return isEditor ? "Edit Schedule" : "View Schedule";
+    case "webhook-edition":
+      if (!editTrigger) {
+        return webhookSourceView
+          ? `Create ${webhookSourceView.customName} Trigger`
+          : "Create Trigger";
+      }
+      return isEditor ? "Edit Trigger" : "View Trigger";
+    default:
+      assertNever(currentPageId);
+  }
 }
 
 export function useTriggerSheetState({
@@ -229,21 +257,12 @@ export function useTriggerSheetState({
     setSelectedWebhookSourceView(null);
   }, [defaultValues, form, mode]);
 
-  const pageTitle = isOnSelectionPage
-    ? "Add trigger"
-    : currentPageId === "schedule-edition"
-      ? editTrigger
-        ? isEditor
-          ? "Edit Schedule"
-          : "View Schedule"
-        : "Create Schedule"
-      : editTrigger
-        ? isEditor
-          ? "Edit Trigger"
-          : "View Trigger"
-        : webhookSourceView
-          ? `Create ${webhookSourceView.customName} Trigger`
-          : "Create Trigger";
+  const pageTitle = getPageTitle(
+    currentPageId,
+    editTrigger,
+    isEditor,
+    webhookSourceView
+  );
 
   return {
     form,
