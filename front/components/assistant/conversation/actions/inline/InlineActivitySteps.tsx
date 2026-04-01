@@ -129,7 +129,7 @@ export function InlineActivitySteps({
   }
 
   return (
-    <div className={`flex flex-col mt-2 text-sm ${isCollapsed ? "" : "gap-4"}`}>
+    <div className={`flex flex-col text-sm ${isCollapsed ? "" : "gap-4"}`}>
       <button
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
