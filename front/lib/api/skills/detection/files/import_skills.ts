@@ -1,4 +1,5 @@
 import { uploadBase64DataToFileStorage } from "@app/lib/api/files/upload";
+import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/suggest_mcp_servers";
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import {
   createZipAttachmentReader,
@@ -207,6 +208,11 @@ export async function importSkillsFromFiles(
           );
         }
 
+        const suggestedMCPServerViews = await suggestMCPServersForDetectedSkill(
+          auth,
+          skill
+        );
+
         const skillResource = await SkillResource.makeNew(
           auth,
           {
@@ -224,7 +230,7 @@ export async function importSkillsFromFiles(
             isDefault: false,
           },
           {
-            mcpServerViews: [],
+            mcpServerViews: suggestedMCPServerViews,
             fileAttachments,
             addCurrentUserAsEditor: auth.user() !== null,
           }
