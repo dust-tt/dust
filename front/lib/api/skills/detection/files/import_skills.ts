@@ -1,5 +1,5 @@
 import { uploadBase64DataToFileStorage } from "@app/lib/api/files/upload";
-import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/skill_tool_injection";
+import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/suggest_mcp_servers";
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import {
   createZipAttachmentReader,

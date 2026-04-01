@@ -12,7 +12,7 @@ import type {
   GitHubDetectedSkillAttachment,
   GitHubSkillDetectionError,
 } from "@app/lib/api/skills/detection/github/types";
-import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/skill_tool_injection";
+import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/suggest_mcp_servers";
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
