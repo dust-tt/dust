@@ -182,6 +182,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_messages": "never_ask",
     "send_mail": "high",
   },
+  "gong": {
+    "get_call": "never_ask",
+    "get_call_transcript": "never_ask",
+    "list_calls": "never_ask",
+  },
   "google_calendar": {
     "check_availability": "never_ask",
     "create_event": "medium",
