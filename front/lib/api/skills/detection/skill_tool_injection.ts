@@ -1,8 +1,7 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-
-import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 
 async function detectServerNames(
   skill: DetectedSkill
