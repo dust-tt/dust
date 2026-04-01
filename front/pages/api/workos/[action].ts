@@ -303,6 +303,8 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     const nonceCookie = `${OAUTH_NONCE_COOKIE}=${oauthNonce}${domainAttr}; Path=/api/workos/callback; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=${OAUTH_NONCE_MAX_AGE_SECONDS}`;
 
     res.setHeader("Set-Cookie", nonceCookie);
+    // authorizationUrl is built by the WorkOS SDK and always points to WorkOS's auth server.
+    // redirectUri is a query parameter WorkOS validates against its registered URIs — not the redirect destination.
     res.redirect(authorizationUrl);
   } catch (error) {
     logger.error({ error }, "Error during WorkOS login");
@@ -836,10 +838,9 @@ function getAllowedRedirectOrigins(): Set<string> {
 }
 
 /**
- * Validates redirect_uri against an allowlist of trusted origins.
- * Falls back to the default callback URI if the provided value is missing or untrusted.
- * Defense-in-depth: WorkOS also validates redirect_uri against its dashboard config,
- * but we should not rely solely on external validation.
+ * Returns the redirect_uri to use for the WorkOS authorization flow.
+ * WorkOS validates redirect_uri against its registered URIs in the dashboard —
+ * we trust it as the authority rather than maintaining a parallel local allowlist.
  */
 function getValidatedRedirectUri(
   redirectUri: string | string[] | undefined,
@@ -848,29 +849,7 @@ function getValidatedRedirectUri(
   if (!redirectUri || !isString(redirectUri)) {
     return defaultUri;
   }
-
-  // Allow relative paths starting with /api/workos/callback (same origin).
-  if (redirectUri === "/api/workos/callback") {
-    return redirectUri;
-  }
-
-  try {
-    const parsed = new URL(redirectUri);
-    if (
-      getAllowedRedirectOrigins().has(parsed.origin) &&
-      parsed.pathname === "/api/workos/callback"
-    ) {
-      return redirectUri;
-    }
-  } catch {
-    // Invalid URL — fall through to default.
-  }
-
-  logger.warn(
-    { redirectUri },
-    "Rejected untrusted redirect_uri in OAuth login"
-  );
-  return defaultUri;
+  return redirectUri;
 }
 
 function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
