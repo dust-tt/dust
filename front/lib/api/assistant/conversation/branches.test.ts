@@ -11,7 +11,8 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -67,6 +68,10 @@ describe("mergeConversationBranch", () => {
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: user.id,
+    });
+    const branchSId = ConversationBranchResource.modelIdToSId({
+      id: branch.id,
+      workspaceId: branch.workspaceId,
     });
 
     // Branch user message (rank 1 in branch).
@@ -139,7 +144,8 @@ describe("mergeConversationBranch", () => {
     ]);
 
     const mergeRes = await mergeConversationBranch(auth, {
-      branchId: branch.id,
+      branchId: branchSId,
+      conversationId: conversation.sId,
     });
     if (mergeRes.isErr()) {
       throw mergeRes.error;
@@ -203,12 +209,25 @@ describe("mergeConversationBranch", () => {
       workspace.sId
     );
 
-    const res = await mergeConversationBranch(auth, { branchId: 99999999 });
+    const conversation = await ConversationModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      title: "Merge branch not found test conversation",
+      requestedSpaceIds: [],
+    });
+
+    const res = await mergeConversationBranch(auth, {
+      branchId: ConversationBranchResource.modelIdToSId({
+        id: 99999999,
+        workspaceId: workspace.id,
+      }),
+      conversationId: conversation.sId,
+    });
     expect(res.isErr()).toBe(true);
-    expect(res.isErr() ? res.error.message : "").toBe("branch_not_found");
+    expect(res.isErr() ? res.error.code : "").toBe("branch_not_found");
   });
 
-  it("should return branch_write_not_authorized when branch belongs to someone else", async () => {
+  it("should return branch_not_found when branch belongs to someone else", async () => {
     const workspace = await WorkspaceFactory.basic();
     const owner = await UserFactory.basic();
     const other = await UserFactory.basic();
@@ -258,14 +277,17 @@ describe("mergeConversationBranch", () => {
       conversationId: conversation.id,
       userId: owner.id,
     });
+    const branchSId = ConversationBranchResource.modelIdToSId({
+      id: branch.id,
+      workspaceId: branch.workspaceId,
+    });
 
     const res = await mergeConversationBranch(otherAuth, {
-      branchId: branch.id,
+      branchId: branchSId,
+      conversationId: conversation.sId,
     });
     expect(res.isErr()).toBe(true);
-    expect(res.isErr() ? res.error.message : "").toBe(
-      "branch_write_not_authorized"
-    );
+    expect(res.isErr() ? res.error.code : "").toBe("branch_not_found");
   });
 
   it("should return branch_not_open when branch is not open", async () => {
@@ -316,10 +338,17 @@ describe("mergeConversationBranch", () => {
       conversationId: conversation.id,
       userId: user.id,
     });
+    const branchSId = ConversationBranchResource.modelIdToSId({
+      id: branch.id,
+      workspaceId: branch.workspaceId,
+    });
 
-    const res = await mergeConversationBranch(auth, { branchId: branch.id });
+    const res = await mergeConversationBranch(auth, {
+      branchId: branchSId,
+      conversationId: conversation.sId,
+    });
     expect(res.isErr()).toBe(true);
-    expect(res.isErr() ? res.error.message : "").toBe("branch_not_open");
+    expect(res.isErr() ? res.error.code : "").toBe("branch_not_open");
   });
 });
 
@@ -372,8 +401,15 @@ describe("closeConversationBranch", () => {
       conversationId: conversation.id,
       userId: user.id,
     });
+    const branchSId = ConversationBranchResource.modelIdToSId({
+      id: branch.id,
+      workspaceId: branch.workspaceId,
+    });
 
-    const res = await closeConversationBranch(auth, { branchId: branch.id });
+    const res = await closeConversationBranch(auth, {
+      branchId: branchSId,
+      conversationId: conversation.sId,
+    });
     if (res.isErr()) {
       throw res.error;
     }
@@ -395,12 +431,25 @@ describe("closeConversationBranch", () => {
       workspace.sId
     );
 
-    const res = await closeConversationBranch(auth, { branchId: 99999999 });
+    const conversation = await ConversationModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      title: "Close branch not found test conversation",
+      requestedSpaceIds: [],
+    });
+
+    const res = await closeConversationBranch(auth, {
+      branchId: ConversationBranchResource.modelIdToSId({
+        id: 99999999,
+        workspaceId: workspace.id,
+      }),
+      conversationId: conversation.sId,
+    });
     expect(res.isErr()).toBe(true);
-    expect(res.isErr() ? res.error.message : "").toBe("branch_not_found");
+    expect(res.isErr() ? res.error.code : "").toBe("branch_not_found");
   });
 
-  it("should return branch_write_not_authorized when branch belongs to someone else", async () => {
+  it("should return branch_not_found when branch belongs to someone else", async () => {
     const workspace = await WorkspaceFactory.basic();
     const owner = await UserFactory.basic();
     const other = await UserFactory.basic();
@@ -450,14 +499,17 @@ describe("closeConversationBranch", () => {
       conversationId: conversation.id,
       userId: owner.id,
     });
+    const branchSId = ConversationBranchResource.modelIdToSId({
+      id: branch.id,
+      workspaceId: branch.workspaceId,
+    });
 
     const res = await closeConversationBranch(otherAuth, {
-      branchId: branch.id,
+      branchId: branchSId,
+      conversationId: conversation.sId,
     });
     expect(res.isErr()).toBe(true);
-    expect(res.isErr() ? res.error.message : "").toBe(
-      "branch_write_not_authorized"
-    );
+    expect(res.isErr() ? res.error.code : "").toBe("branch_not_found");
   });
 
   it("should return branch_not_open when branch is not open", async () => {
@@ -508,9 +560,16 @@ describe("closeConversationBranch", () => {
       conversationId: conversation.id,
       userId: user.id,
     });
+    const branchSId = ConversationBranchResource.modelIdToSId({
+      id: branch.id,
+      workspaceId: branch.workspaceId,
+    });
 
-    const res = await closeConversationBranch(auth, { branchId: branch.id });
+    const res = await closeConversationBranch(auth, {
+      branchId: branchSId,
+      conversationId: conversation.sId,
+    });
     expect(res.isErr()).toBe(true);
-    expect(res.isErr() ? res.error.message : "").toBe("branch_not_open");
+    expect(res.isErr() ? res.error.code : "").toBe("branch_not_open");
   });
 });

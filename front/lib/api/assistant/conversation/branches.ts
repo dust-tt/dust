@@ -1,9 +1,11 @@
 import {
   createAgentMessageFromText,
-  createUserMessage,
-} from "@app/lib/api/assistant/conversation/messages";
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import type { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
@@ -19,19 +21,29 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+export type MergeConversationBranchErrorCode =
+  | "branch_not_found"
+  | "branch_write_not_authorized"
+  | "branch_not_open"
+  | "conversation_not_found"
+  | "branch_has_no_user_message"
+  | "internal_error";
+
 export async function mergeConversationBranch(
   auth: Authenticator,
   {
     branchId,
+    conversationId,
     transaction,
   }: {
-    branchId: number;
+    branchId: string;
+    conversationId: string;
     transaction?: Transaction;
   }
 ): Promise<
   Result<
     { mergedUserMessageSId: string; mergedAgentMessageSIds: string[] },
-    Error
+    DustError<MergeConversationBranchErrorCode>
   >
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -39,47 +51,55 @@ export async function mergeConversationBranch(
   return withTransaction(async (t) => {
     const effectiveTransaction = transaction ?? t;
 
-    const branch = await ConversationBranchResource.fetchByModelId(
+    const conversation = await ConversationResource.fetchById(
       auth,
-      branchId,
-      {
-        transaction: effectiveTransaction,
-      }
+      conversationId
     );
+    if (!conversation) {
+      return new Err(
+        new DustError("conversation_not_found", "Conversation not found.")
+      );
+    }
+
+    const branch = await ConversationBranchResource.fetchById(auth, branchId);
 
     if (!branch) {
-      return new Err(new Error("branch_not_found"));
+      return new Err(new DustError("branch_not_found", "Branch not found."));
+    }
+
+    if (branch.conversationId !== conversation.id) {
+      return new Err(new DustError("branch_not_found", "Branch not found."));
     }
 
     if (branch.userId !== auth.getNonNullableUser().id) {
-      return new Err(new Error("branch_write_not_authorized"));
+      return new Err(
+        new DustError(
+          "branch_write_not_authorized",
+          "Not authorized to modify this branch."
+        )
+      );
     }
 
     if (branch.state !== "open") {
-      return new Err(new Error("branch_not_open"));
+      return new Err(new DustError("branch_not_open", "Branch is not open."));
     }
 
     const branchMessages = await branch.fetchAllMessages(auth, {
       transaction: effectiveTransaction,
     });
 
-    const [conversation] = await ConversationResource.fetchByModelIds(
-      auth,
-      [branch.conversationId],
-      { transaction: effectiveTransaction }
-    );
-    if (!conversation) {
-      return new Err(new Error("conversation_not_found"));
-    }
+    const effectiveConversation = conversation;
 
     const renderedRes = await batchRenderMessages(
       auth,
-      conversation,
+      effectiveConversation,
       branchMessages,
       "light"
     );
     if (renderedRes.isErr()) {
-      return new Err(renderedRes.error);
+      return new Err(
+        new DustError("internal_error", renderedRes.error.message)
+      );
     }
     const rendered = renderedRes.value;
 
@@ -88,7 +108,12 @@ export async function mergeConversationBranch(
       .sort((a, b) => a.rank - b.rank || b.version - a.version)[0];
 
     if (!firstBranchUserMessage?.userMessage) {
-      return new Err(new Error("branch_has_no_user_message"));
+      return new Err(
+        new DustError(
+          "branch_has_no_user_message",
+          "Branch has no user message."
+        )
+      );
     }
 
     const renderedFirstUserMessage = rendered.find(
@@ -98,7 +123,12 @@ export async function mergeConversationBranch(
       !renderedFirstUserMessage ||
       !isUserMessageType(renderedFirstUserMessage)
     ) {
-      return new Err(new Error("branch_has_no_user_message"));
+      return new Err(
+        new DustError(
+          "branch_has_no_user_message",
+          "Branch has no user message."
+        )
+      );
     }
 
     const branchAgentMessageRowsAllVersions = branchMessages.filter(
@@ -118,18 +148,6 @@ export async function mergeConversationBranch(
       }
     }
 
-    const nextRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: branch.conversationId,
-          branchId: { [Op.is]: null },
-        },
-        transaction: effectiveTransaction,
-      })) ?? -1) + 1;
-
-    let rankCursor = nextRank;
-
     const src = firstBranchUserMessage.userMessage as UserMessageModel;
     const context: UserMessageContext = {
       username: src.userContextUsername,
@@ -146,26 +164,54 @@ export async function mergeConversationBranch(
       authMethod: src.userContextAuthMethod,
     };
 
-    const mergedUserMessage = await createUserMessage(auth, {
-      // Only id/branchId are used by createUserMessage.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      conversation: { id: branch.conversationId, branchId: null } as any,
+    const fullConversationRes = await getConversation(
+      auth,
+      conversationId,
+      false
+    );
+    if (fullConversationRes.isErr()) {
+      return new Err(
+        new DustError("conversation_not_found", "Conversation not found.")
+      );
+    }
+
+    const postRes = await postUserMessage(auth, {
+      conversation: fullConversationRes.value,
       content: src.content,
-      metadata: {
-        type: "create",
-        user: auth.user()?.toJSON() ?? null,
-        rank: rankCursor++,
-        context,
-        agenticMessageData:
-          src.agenticMessageType && src.agenticOriginMessageId
-            ? {
-                type: src.agenticMessageType,
-                originMessageId: src.agenticOriginMessageId,
-              }
-            : undefined,
-      },
-      transaction: effectiveTransaction,
+      mentions: [],
+      context,
+      agenticMessageData:
+        src.agenticMessageType && src.agenticOriginMessageId
+          ? {
+              type: src.agenticMessageType,
+              originMessageId: src.agenticOriginMessageId,
+            }
+          : undefined,
+      // We do not want to run any tool validations for those synthesized messages.
+      skipToolsValidation: true,
+      // Ensure we don't accidentally attribute to someone else.
+      doNotAssociateUser: false,
     });
+    if (postRes.isErr()) {
+      // We only expose branch-level error codes here.
+      return new Err(
+        new DustError("internal_error", postRes.error.api_error.message)
+      );
+    }
+
+    const mergedUserMessage = postRes.value.userMessage;
+
+    const nextRank =
+      ((await MessageModel.max<number | null, MessageModel>("rank", {
+        where: {
+          workspaceId: owner.id,
+          conversationId: branch.conversationId,
+          branchId: { [Op.is]: null },
+        },
+        transaction: effectiveTransaction,
+      })) ?? -1) + 1;
+
+    let rankCursor = nextRank;
 
     const mergedAgentMessageSIds: string[] = [];
     for (const branchAgentMessage of latestBranchAgentMessageRows) {
@@ -181,8 +227,7 @@ export async function mergeConversationBranch(
       const contentOnly = renderedAgent.content ?? "";
 
       const created = await createAgentMessageFromText(auth, {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        conversation: { id: branch.conversationId, branchId: null } as any,
+        conversation: fullConversationRes.value,
         parentId: mergedUserMessage.id,
         rank: rankCursor++,
         content: contentOnly,
@@ -192,7 +237,6 @@ export async function mergeConversationBranch(
         },
         skipToolsValidation:
           branchAgentMessage.agentMessage!.skipToolsValidation,
-        transaction: effectiveTransaction,
       });
 
       mergedAgentMessageSIds.push(created.sId);
@@ -213,39 +257,66 @@ export async function mergeConversationBranch(
   }, transaction);
 }
 
+export type CloseConversationBranchErrorCode =
+  | "branch_not_found"
+  | "branch_write_not_authorized"
+  | "branch_not_open"
+  | "conversation_not_found"
+  | "internal_error";
+
 export async function closeConversationBranch(
   auth: Authenticator,
   {
     branchId,
+    conversationId,
     transaction,
   }: {
-    branchId: number;
+    branchId: string;
+    conversationId: string;
     transaction?: Transaction;
   }
-): Promise<Result<{ closedBranchId: number }, Error>> {
+): Promise<
+  Result<
+    { closedBranchId: number },
+    DustError<CloseConversationBranchErrorCode>
+  >
+> {
   const owner = auth.getNonNullableWorkspace();
 
   return withTransaction(async (t) => {
     const effectiveTransaction = transaction ?? t;
 
-    const branch = await ConversationBranchResource.fetchByModelId(
+    const conversation = await ConversationResource.fetchById(
       auth,
-      branchId,
-      {
-        transaction: effectiveTransaction,
-      }
+      conversationId
     );
+    if (!conversation) {
+      return new Err(
+        new DustError("conversation_not_found", "Conversation not found.")
+      );
+    }
+
+    const branch = await ConversationBranchResource.fetchById(auth, branchId);
 
     if (!branch) {
-      return new Err(new Error("branch_not_found"));
+      return new Err(new DustError("branch_not_found", "Branch not found."));
+    }
+
+    if (branch.conversationId !== conversation.id) {
+      return new Err(new DustError("branch_not_found", "Branch not found."));
     }
 
     if (branch.userId !== auth.getNonNullableUser().id) {
-      return new Err(new Error("branch_write_not_authorized"));
+      return new Err(
+        new DustError(
+          "branch_write_not_authorized",
+          "Not authorized to modify this branch."
+        )
+      );
     }
 
     if (branch.state !== "open") {
-      return new Err(new Error("branch_not_open"));
+      return new Err(new DustError("branch_not_open", "Branch is not open."));
     }
 
     await ConversationBranchModel.update(
