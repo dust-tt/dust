@@ -33,6 +33,8 @@ import {
 } from "@mistralai/mistralai/models/components";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 import assert from "assert";
+import * as fs from "fs";
+import * as path from "path";
 import { z } from "zod";
 
 const mistralBatchOutputLineSchema = z.object({
@@ -112,6 +114,11 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
     payload: MistralChatStreamRequest
   ): AsyncGenerator<LLMEvent> {
     try {
+      await fs.promises.writeFile(
+        path.join(__dirname, `mistral_payload_${Date.now().toString()}.json`),
+        JSON.stringify(payload, null, 2),
+        "utf8"
+      );
       const completionEvents = await this.client.chat.stream(payload);
 
       yield* streamLLMEvents({
