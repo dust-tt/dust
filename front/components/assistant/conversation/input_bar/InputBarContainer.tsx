@@ -153,14 +153,11 @@ const InputBarContainer = ({
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
-  const onAgentSelect = useCallback(
-    (mention: RichMention) => {
-      if (isRichAgentMention(mention)) {
-        setSelectedAgent(mention);
-      }
-    },
-    [setSelectedAgent]
-  );
+  const onAgentSelect = (mention: RichMention) => {
+    if (isRichAgentMention(mention)) {
+      setSelectedAgent(mention);
+    }
+  };
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
