@@ -21,6 +21,8 @@ export function createMentionSuggestion({
   spaceId,
   select,
   includeCurrentUser = false,
+  onAgentSelect,
+  singleAgentInputEnabled,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -30,12 +32,35 @@ export function createMentionSuggestion({
     agents: boolean;
     users: boolean;
   };
+  onAgentSelect?: (mention: RichMention) => void;
+  singleAgentInputEnabled?: boolean;
 }) {
   return {
     pluginKey: mentionPluginKey,
     // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
     // text and keeps the dropdown active over the full label).
     allowSpaces: true,
+
+    // Override the default command to intercept agent mentions and redirect them
+    // to the picker button instead of inserting them into the editor.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    command: ({ editor, range, props }: any) => {
+      const mention = props as RichMention;
+      if (mention.type === "agent" && singleAgentInputEnabled && onAgentSelect) {
+        // Delete the @query text without inserting a mention node.
+        editor.chain().focus().deleteRange(range).run();
+        onAgentSelect(mention);
+      } else {
+        // Default: insert mention node (user mentions).
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({ type: "mention", attrs: props })
+          .insertContent(" ")
+          .run();
+      }
+    },
 
     render: () => {
       let component: ReactRenderer<

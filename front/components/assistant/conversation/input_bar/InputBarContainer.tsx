@@ -20,6 +20,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { isSingleAgentInputEnabled } from "@app/lib/development";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -31,7 +32,10 @@ import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import {
+  isRichAgentMention,
+  toRichAgentMentionType,
+} from "@app/types/assistant/mentions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
@@ -43,6 +47,7 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
+  Avatar,
   Button,
   CameraIcon,
   Chip,
@@ -54,6 +59,7 @@ import {
   DropdownMenuTrigger,
   GlobeAltIcon,
   PlusIcon,
+  RobotIcon,
   TextIcon,
   Toolbar,
   VoicePicker,
@@ -142,6 +148,19 @@ const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
+  const singleAgentInput = isSingleAgentInputEnabled();
+  const { setSelectedAgent } = useContext(InputBarContext);
+
+  // Callback for the editor's @ mention suggestion — sets the selected agent
+  // without focusing (the editor already has focus when the user types @).
+  const onAgentSelect = useCallback(
+    (mention: RichMention) => {
+      if (isRichAgentMention(mention)) {
+        setSelectedAgent(mention);
+      }
+    },
+    [setSelectedAgent]
+  );
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -317,6 +336,8 @@ const InputBarContainer = ({
     disableAutoFocus,
     disableUserMentions,
     onUrlDetected: handleUrlDetected,
+    onAgentSelect,
+    singleAgentInputEnabled: singleAgentInput,
     owner,
     conversationId: conversation?.sId,
     spaceId: space?.sId,
@@ -390,21 +411,33 @@ const InputBarContainer = ({
     owner,
     fileUploaderService,
     onTranscribeComplete: (transcript) => {
+      let lastAgentMention: RichAgentMention | null = null;
       for (const message of transcript) {
         switch (message.type) {
           case "text":
             editorService.insertText(message.text);
             break;
-          case "mention":
-            editorService.insertMention({
-              type: "agent",
-              id: message.id,
-              label: message.name,
-            });
+          case "mention": {
+            if (singleAgentInput) {
+              const agent = allAgents.find((a) => a.sId === message.id);
+              if (agent) {
+                lastAgentMention = toRichAgentMentionType(agent);
+              }
+            } else {
+              editorService.insertMention({
+                type: "agent",
+                id: message.id,
+                label: message.name,
+              });
+            }
             break;
+          }
           default:
             assertNever(message);
         }
+      }
+      if (singleAgentInput && lastAgentMention) {
+        handleAgentSelect(lastAgentMention);
       }
     },
     onError: (error) => {
@@ -556,6 +589,16 @@ const InputBarContainer = ({
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
   const { animate, captureActions } = useContext(InputBarContext);
+
+  const handleAgentSelect = useCallback(
+    (mention: RichMention) => {
+      if (isRichAgentMention(mention)) {
+        setSelectedAgent(mention);
+        editorService.focusEnd();
+      }
+    },
+    [setSelectedAgent, editorService]
+  );
 
   const isMac = useMemo(() => {
     if (typeof window === "undefined") {
@@ -825,67 +868,112 @@ const InputBarContainer = ({
                     className={cn("flex", !isMobile && "hidden")}
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") &&
-                    clientType !== "extension" && (
+                  {(() => {
+                    const agentButton = (actions.includes("agents-list") ||
+                      actions.includes("agents-list-with-actions")) && (
+                      <AgentPicker
+                        owner={owner}
+                        size={buttonSize}
+                        onItemClick={(c) => {
+                          if (singleAgentInput) {
+                            handleAgentSelect(toRichAgentMentionType(c));
+                          } else {
+                            editorService.insertMention(
+                              toRichAgentMentionType(c)
+                            );
+                          }
+                        }}
+                        agents={allAgents}
+                        showDropdownArrow={false}
+                        showFooterButtons={
+                          actions.includes("agents-list-with-actions") &&
+                          clientType !== "extension"
+                        }
+                        disabled={disableInput}
+                        pickerButton={
+                          singleAgentInput ? (
+                            selectedAgent ? (
+                              <Button
+                                variant="ghost-secondary"
+                                size={buttonSize}
+                                icon={() => (
+                                  <Avatar
+                                    size="xxs"
+                                    visual={selectedAgent.pictureUrl}
+                                  />
+                                )}
+                                label={selectedAgent.label}
+                              />
+                            ) : (
+                              <Button
+                                variant="ghost-secondary"
+                                size={buttonSize}
+                                icon={RobotIcon}
+                                label="Agent"
+                              />
+                            )
+                          ) : undefined
+                        }
+                      />
+                    );
+                    const toolsButton = actions.includes("capabilities") && (
+                      <CapabilitiesPicker
+                        owner={owner}
+                        user={user}
+                        selectedMCPServerViews={selectedMCPServerViews}
+                        onSelect={onMCPServerViewSelect}
+                        selectedSkills={selectedSkills}
+                        onSkillSelect={onSkillSelect}
+                        disabled={disableInput}
+                        buttonSize={buttonSize}
+                      />
+                    );
+                    const attachmentButton = actions.includes("attachment") &&
+                      clientType !== "extension" && (
+                        <>
+                          <input
+                            accept={getSupportedFileExtensions().join(",")}
+                            onChange={async (e) => {
+                              await fileUploaderService.handleFileChange(e);
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                              editorService.focusEnd();
+                            }}
+                            ref={fileInputRef}
+                            style={{ display: "none" }}
+                            type="file"
+                            multiple={true}
+                          />
+                          <InputBarAttachmentsPicker
+                            fileUploaderService={fileUploaderService}
+                            owner={owner}
+                            isLoading={false}
+                            onNodeSelect={onNodeSelect}
+                            onNodeUnselect={onNodeUnselect}
+                            attachedNodes={attachedNodes}
+                            disabled={disableInput}
+                            buttonSize={buttonSize}
+                            conversation={conversation}
+                            space={space}
+                            type="dropdown"
+                          />
+                        </>
+                      );
+                    return singleAgentInput ? (
                       <>
-                        <input
-                          accept={getSupportedFileExtensions().join(",")}
-                          onChange={async (e) => {
-                            await fileUploaderService.handleFileChange(e);
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = "";
-                            }
-                            editorService.focusEnd();
-                          }}
-                          ref={fileInputRef}
-                          style={{ display: "none" }}
-                          type="file"
-                          multiple={true}
-                        />
-                        <InputBarAttachmentsPicker
-                          fileUploaderService={fileUploaderService}
-                          owner={owner}
-                          isLoading={false}
-                          onNodeSelect={onNodeSelect}
-                          onNodeUnselect={onNodeUnselect}
-                          attachedNodes={attachedNodes}
-                          disabled={disableInput}
-                          buttonSize={buttonSize}
-                          conversation={conversation}
-                          space={space}
-                          type="dropdown"
-                        />
+                        {agentButton}
+                        {toolsButton}
+                        {attachmentButton}
                       </>
-                    )}
-                  {actions.includes("capabilities") && (
-                    <CapabilitiesPicker
-                      owner={owner}
-                      user={user}
-                      selectedMCPServerViews={selectedMCPServerViews}
-                      onSelect={onMCPServerViewSelect}
-                      selectedSkills={selectedSkills}
-                      onSkillSelect={onSkillSelect}
-                      disabled={disableInput}
-                      buttonSize={buttonSize}
-                    />
-                  )}
-                  {(actions.includes("agents-list") ||
-                    actions.includes("agents-list-with-actions")) && (
-                    <AgentPicker
-                      owner={owner}
-                      size={buttonSize}
-                      onItemClick={(c) => {
-                        editorService.insertMention(toRichAgentMentionType(c));
-                      }}
-                      agents={allAgents}
-                      showDropdownArrow={false}
-                      showFooterButtons={
-                        actions.includes("agents-list-with-actions") &&
-                        clientType !== "extension"
-                      }
-                      disabled={disableInput}
-                    />
-                  )}
+                    ) : (
+                      <>
+                        {attachmentButton}
+                        {toolsButton}
+                        {agentButton}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               <div className="grow" />
