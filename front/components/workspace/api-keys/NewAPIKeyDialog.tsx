@@ -10,8 +10,9 @@ import type { ModelId } from "@app/types/shared/model_id";
 import {
   Button,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -57,6 +58,7 @@ export const NewAPIKeyDialog = ({
   onCreate,
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [spaceSearch, setSpaceSearch] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -131,7 +133,7 @@ export const NewAPIKeyDialog = ({
           disabled={isGenerating || isRevoking}
         />
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>New API Key</SheetTitle>
         </SheetHeader>
@@ -153,73 +155,85 @@ export const NewAPIKeyDialog = ({
               </BaseFormFieldSection>
 
               <div className="flex flex-col gap-2">
-                <Label>Default Space</Label>
-                <div>
-                  <Button
-                    label={GLOBAL_SPACE_NAME}
-                    size="sm"
-                    variant="outline"
-                    disabled={true}
-                    tooltip={`${GLOBAL_SPACE_NAME} is mandatory.`}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label>Additional Spaces</Label>
-                {selectedGroupIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {selectedGroupIds.map((gId) => {
-                      const group = groupsById[gId];
-                      if (!group) {
-                        return null;
-                      }
-                      return (
-                        <Button
-                          key={gId}
-                          label={prettifyGroupName(group)}
-                          icon={XMarkIcon}
-                          size="xs"
-                          variant="outline"
-                          onClick={() => removeGroupId(gId)}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
+                <Label>Spaces</Label>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label="Add spaces"
-                        size="sm"
                         variant="outline"
+                        label="Add Spaces"
+                        size="sm"
                         isSelect
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {nonGlobalGroups.map((group: GroupType) => {
-                        const isSelected = selectedGroupIds.includes(group.id);
-                        return (
-                          <DropdownMenuCheckboxItem
+                    <DropdownMenuContent
+                      className="w-72"
+                      align="start"
+                      dropdownHeaders={
+                        <DropdownMenuSearchbar
+                          name="spaceSearch"
+                          placeholder="Search spaces"
+                          value={spaceSearch}
+                          onChange={setSpaceSearch}
+                        />
+                      }
+                    >
+                      {nonGlobalGroups.filter((g) =>
+                        prettifyGroupName(g)
+                          .toLowerCase()
+                          .includes(spaceSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="flex items-center justify-center py-4 text-sm">
+                          No spaces found
+                        </div>
+                      )}
+                      {nonGlobalGroups
+                        .filter(
+                          (g) =>
+                            !selectedGroupIds.includes(g.id) &&
+                            prettifyGroupName(g)
+                              .toLowerCase()
+                              .includes(spaceSearch.toLowerCase())
+                        )
+                        .map((group) => (
+                          <DropdownMenuItem
                             key={group.id}
                             label={prettifyGroupName(group)}
-                            checked={isSelected}
-                            onCheckedChange={() => {
-                              if (isSelected) {
-                                removeGroupId(group.id);
-                              } else {
-                                setSelectedGroupIds([
-                                  ...selectedGroupIds,
-                                  group.id,
-                                ]);
-                              }
-                            }}
+                            onSelect={(e) => e.preventDefault()}
+                            onClick={() =>
+                              setSelectedGroupIds([
+                                ...selectedGroupIds,
+                                group.id,
+                              ])
+                            }
                           />
-                        );
-                      })}
+                        ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    label={GLOBAL_SPACE_NAME}
+                    size="xs"
+                    variant="outline"
+                    disabled
+                  />
+                  {selectedGroupIds.map((gId) => {
+                    const group = groupsById[gId];
+                    if (!group) {
+                      return null;
+                    }
+                    return (
+                      <Button
+                        key={gId}
+                        label={prettifyGroupName(group)}
+                        icon={XMarkIcon}
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => removeGroupId(gId)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
 
