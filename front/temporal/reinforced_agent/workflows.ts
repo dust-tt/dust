@@ -238,7 +238,7 @@ export async function reinforcedAgentForAgentWorkflow({
       // Results are stored in the reinforcement conversations in DB.
       for (const c of continuations) {
         if (!c.toolActionInfo) {
-          // Only terminal tool call errors, to tool to execute
+          // Only terminal tool call errors, no tool to execute
           continue;
         }
         const { authType, agentLoopArgs, actionIds } = c.toolActionInfo;

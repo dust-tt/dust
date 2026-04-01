@@ -11,7 +11,7 @@ import {
   writeBatchUserMessages,
 } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
-import type { LLMEvent, ToolCallEvent } from "@app/lib/api/llm/types/events";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
@@ -60,22 +60,23 @@ interface CategorizedToolCalls {
 }
 
 export function classifyToolCalls(events: LLMEvent[]): CategorizedToolCalls {
-  const toolCallEvents = events.filter(
-    (e): e is ToolCallEvent =>
-      e.type === "tool_call" &&
-      (isTerminalToolName(e.content.name) ||
-        isExploratoryToolName(e.content.name))
-  );
-
   const exploratoryToolCalls: ExploratoryToolCallInfo[] = [];
   const terminalToolCalls: TerminalToolCallInfo[] = [];
 
-  for (const e of toolCallEvents) {
+  for (const e of events) {
+    if (e.type !== "tool_call") {
+      continue;
+    }
     const { id, name, arguments: args } = e.content;
     if (isExploratoryToolName(name)) {
       exploratoryToolCalls.push({ id, name, arguments: args });
     } else if (isTerminalToolName(name)) {
       terminalToolCalls.push({ id, name, arguments: args });
+    } else {
+      logger.warn(
+        { toolCallId: id, toolName: name },
+        "ReinforcedAgent: received tool call with unrecognized name"
+      );
     }
   }
 

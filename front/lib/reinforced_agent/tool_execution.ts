@@ -242,6 +242,7 @@ export async function storeTerminalToolCallResults(
     await action.createOutputItems(auth, [
       { content: { type: "text", text: message } },
     ]);
+    await action.markAsSucceeded({ executionDurationMs: 0 });
   }
 
   for (const { toolCall, errorMessage } of failedToolCalls) {
@@ -260,6 +261,7 @@ export async function storeTerminalToolCallResults(
     await action.createOutputItems(auth, [
       { content: { type: "text", text: errorMessage } },
     ]);
+    // TODO(reinforced agent) Do not hardcode execution time to 0.
     await action.markAsErrored({ executionDurationMs: 0 });
   }
 }
