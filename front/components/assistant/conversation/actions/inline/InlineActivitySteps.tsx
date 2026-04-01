@@ -20,6 +20,7 @@ import {
   cn,
   Icon,
   Markdown,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -176,7 +177,7 @@ export function InlineActivitySteps({
                           step.internalMCPServerName
                         )
                       ]
-                    : CheckIcon;
+                    : ToolsIcon;
 
                   return (
                     <TimelineRow
