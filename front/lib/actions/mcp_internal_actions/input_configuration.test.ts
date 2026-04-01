@@ -26,6 +26,7 @@ const mockWorkspace: WorkspaceType = {
   whiteListedProviders: null,
   defaultEmbeddingProvider: null,
   metadata: {},
+  metronomeCustomerId: null,
   sharingPolicy: "all_scopes",
 };
 

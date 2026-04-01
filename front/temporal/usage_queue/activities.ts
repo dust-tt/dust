@@ -8,9 +8,11 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildLlmUsageEvents,
   buildToolUseEvents,
+  buildWorkspaceGaugeEvent,
   classifyMessageTier,
   getToolCategory,
 } from "@app/lib/metronome/events";
+import type { MetronomeEvent } from "@app/lib/metronome/types";
 import {
   AgentMessageModel,
   MessageModel,
@@ -20,7 +22,9 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
+import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -31,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import { isDevelopment } from "@app/types/shared/env";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -320,4 +325,103 @@ export async function emitMetronomeUsageEventsActivity(
   });
 
   await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
+}
+
+/**
+ * Emit a single workspace_gauge event for each Metronome-enabled workspace.
+ * Collects all events first, then ingests in batches.
+ * Called daily by the Metronome gauge schedule.
+ */
+export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
+  // Only workspaces with a metronomeCustomerId.
+  const allWorkspaces = await WorkspaceResource.listAll();
+  const workspaces = allWorkspaces.filter(
+    (w) => w.metronomeCustomerId !== null
+  );
+
+  const now = new Date();
+  // In dev (hourly schedule), include the hour so re-runs aren't deduplicated.
+  // In prod (daily), use YYYY-MM-DD only.
+  const dateKey = isDevelopment()
+    ? now.toISOString().slice(0, 13) // YYYY-MM-DDTHH
+    : now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const timestamp = now.toISOString();
+
+  logger.info(
+    { workspaceCount: workspaces.length, dateKey },
+    "[Metronome] Emitting gauge events for Metronome-enabled workspaces"
+  );
+
+  // Process workspaces in chunks: build events concurrently, then ingest
+  // each chunk before moving to the next. Avoids holding all events in memory.
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < workspaces.length; i += CHUNK_SIZE) {
+    const chunk = workspaces.slice(i, i + CHUNK_SIZE);
+    const events: MetronomeEvent[] = [];
+
+    await concurrentExecutor(
+      chunk,
+      async (workspace) => {
+        try {
+          const event = await buildGaugeEventForWorkspace(
+            workspace,
+            timestamp,
+            dateKey
+          );
+          events.push(event);
+        } catch (err) {
+          logger.error(
+            { workspaceId: workspace.sId, error: err },
+            "[Metronome] Failed to build gauge event for workspace"
+          );
+        }
+      },
+      { concurrency: 10 }
+    );
+
+    await ingestMetronomeEvents(events);
+  }
+}
+
+async function buildGaugeEventForWorkspace(
+  workspace: WorkspaceResource,
+  timestamp: string,
+  dateKey: string
+): Promise<MetronomeEvent> {
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+  // Active member count.
+  const memberCount = await MembershipResource.countActiveMembersForWorkspace({
+    workspace: lightWorkspace,
+  });
+
+  // MAU counts — rolling 30-day window with different message thresholds.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [mau1Count, mau5Count, mau10Count] = await Promise.all([
+    countActiveUsersForPeriodInWorkspace({
+      messagesPerMonthForMau: 1,
+      since: thirtyDaysAgo,
+      workspace: lightWorkspace,
+    }),
+    countActiveUsersForPeriodInWorkspace({
+      messagesPerMonthForMau: 5,
+      since: thirtyDaysAgo,
+      workspace: lightWorkspace,
+    }),
+    countActiveUsersForPeriodInWorkspace({
+      messagesPerMonthForMau: 10,
+      since: thirtyDaysAgo,
+      workspace: lightWorkspace,
+    }),
+  ]);
+
+  return buildWorkspaceGaugeEvent({
+    workspaceId: workspace.sId,
+    memberCount,
+    mau1Count,
+    mau5Count,
+    mau10Count,
+    timestamp,
+    dateKey,
+  });
 }

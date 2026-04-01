@@ -1,6 +1,5 @@
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import {
   launchEmitMetronomeUsageEventsWorkflow,
@@ -44,19 +43,14 @@ export async function launchTrackProgrammaticUsage(
 
 /**
  * Launch Metronome usage events workflow in fire-and-forget mode.
- * Gated by the `metronome_billing` feature flag — no workflow started if unset.
+ * Only starts if the workspace has a metronomeCustomerId (i.e. is provisioned in Metronome).
  */
 export async function launchEmitMetronomeUsageEvents(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-
-  const enabled = await hasFeatureFlag(authResult.value, "metronome_billing");
-  if (!enabled) {
+  const owner = await getWorkspaceInfos(authType.workspaceId);
+  if (!owner?.metronomeCustomerId) {
     return;
   }
 
