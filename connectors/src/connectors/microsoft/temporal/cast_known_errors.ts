@@ -28,6 +28,17 @@ export function isItemNotFoundError(err: unknown): err is GraphError {
   );
 }
 
+// 400 with "malformed" in the message indicates a drive ID that is invalid or
+// refers to a deleted drive. The Graph API returns this instead of a 404 when
+// the drive ID format is recognized but the drive no longer exists.
+export function isMalformedDriveError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 400 &&
+    err.message.includes("malformed")
+  );
+}
+
 // 423 Locked with code "notAllowed" indicates a SharePoint site has been blocked
 // by an administrator. This is an external permission restriction that cannot
 // be resolved in-product.
