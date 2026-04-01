@@ -1,0 +1,38 @@
+connectors/src/connectors/slack/chat/blocks.ts
+  833a10e1d8bc700a 398
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  833a10e1d8bc700a 73,77,90,449,453-458,556-560,622,627-635
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "5a5047158e0faba6933d7702a26ee8229245ca2e",
+  "prompts": {
+    "60e39cbbf1113ece": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81adbb87-e8cf-40da-92f6-351d8f19cca6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 356,
+      "total_deletions": 271,
+      "accepted_lines": 52,
+      "overriden_lines": 0
+    },
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 21,
+      "accepted_lines": 286,
+      "overriden_lines": 0
+    }
+  }
+}
