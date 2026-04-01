@@ -315,13 +315,6 @@ function SearchResults({
           defaultOpen
           action={
             <>
-              <Button
-                size="xmini"
-                icon={ChatBubbleBottomCenterPlusIcon}
-                variant="ghost"
-                tooltip="New Conversation"
-                href={getConversationRoute(owner.sId)}
-              />
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -1425,15 +1418,6 @@ function NavigationListWithInbox({
           defaultOpen
           action={
             <>
-              <Button
-                size="xmini"
-                icon={ChatBubbleBottomCenterPlusIcon}
-                variant="ghost"
-                aria-label="New Conversation"
-                tooltip="New Conversation"
-                href={getConversationRoute(owner.sId)}
-                onClick={handleNewClick}
-              />
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
