@@ -71,6 +71,36 @@ vi.mock("@app/lib/api/assistant/observability/tool_usage", async () => ({
   fetchToolUsageMetrics: vi.fn(async () => new Ok([])),
 }));
 
+vi.mock("@app/lib/api/analytics/messages_export", async () => ({
+  MESSAGE_EXPORT_HEADERS: [
+    "messageId",
+    "createdAt",
+    "assistantId",
+    "assistantName",
+    "assistantSettings",
+    "conversationId",
+    "userId",
+    "userEmail",
+    "source",
+  ],
+  fetchMessageExportRows: vi.fn(
+    async () =>
+      new Ok([
+        {
+          messageId: "msg-1",
+          createdAt: "2024-06-01 10:00:00",
+          assistantId: "agent-1",
+          assistantName: "TestAgent",
+          assistantSettings: "published",
+          conversationId: "conv-1",
+          userId: "user-1",
+          userEmail: "alice@example.com",
+          source: "web",
+        },
+      ])
+  ),
+}));
+
 describe(
   "public api authentication tests",
   createPublicApiAuthenticationTests(handler)
@@ -267,5 +297,19 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(res._getStatusCode()).toBe(200);
     const csv = res._getData();
     expect(csv).toContain("date,toolName,executions,uniqueUsers");
+  });
+
+  it("returns CSV for messages table", async () => {
+    const { req, res } = await setupTest({ table: "messages" });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const csv = res._getData();
+    expect(csv).toContain(
+      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source"
+    );
+    expect(csv).toContain("msg-1");
+    expect(csv).toContain("alice@example.com");
   });
 });
