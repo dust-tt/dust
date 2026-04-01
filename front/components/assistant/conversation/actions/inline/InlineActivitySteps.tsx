@@ -20,6 +20,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   Icon,
+  cn,
   Markdown,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -118,16 +119,19 @@ export function InlineActivitySteps({
         onClick={() => setIsCollapsed((c) => !c)}
       >
         <span
-          className={`transition-transform duration-200 ease-out ${isCollapsed ? "" : "rotate-90"}`}
+          className={cn("transition-transform duration-200 ease-out", !isCollapsed && "rotate-90")}
         >
           <Icon size="xs" visual={ChevronRightIcon} />
         </span>
         {agentMessage.completionDurationMs !== null ? (
-          getCompletionLabel(agentMessage.status, agentMessage.completionDurationMs)
+          getCompletionLabel(
+            agentMessage.status,
+            agentMessage.completionDurationMs
+          )
         ) : isDone ? (
           "Completed"
         ) : (
-          <AnimatedText>Thinking...</AnimatedText>
+          <AnimatedText>Thinking…</AnimatedText>
         )}
       </button>
 
