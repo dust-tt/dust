@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -112,7 +112,7 @@ async function handler(
       void emitAuditLogEvent({
         auth,
         action: "credentials.created",
-        targets: [buildWorkspaceTarget(owner)],
+        targets: [buildAuditLogTarget("workspace", owner)],
         context: getAuditLogContext(auth, req),
         metadata: {
           provider: String(bodyValidation.right.provider),

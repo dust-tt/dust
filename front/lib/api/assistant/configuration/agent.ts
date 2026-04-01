@@ -17,7 +17,7 @@ import {
 } from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -864,12 +864,8 @@ export async function createAgentConfiguration(
         auth,
         action: isCreate ? "agent.created" : "agent.updated",
         targets: [
-          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-          {
-            type: "agent",
-            id: agentConfiguration.sId,
-            name: agentConfiguration.name,
-          },
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("agent", agentConfiguration),
         ],
         context: getAuditLogContext(auth),
         metadata: {
@@ -1280,8 +1276,8 @@ export async function archiveAgentConfiguration(
       auth,
       action: "agent.archived",
       targets: [
-        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-        { type: "agent", id: agentConfig.sId, name: agentConfig.name },
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agentConfig),
       ],
       context: getAuditLogContext(auth),
       metadata: {
@@ -1401,12 +1397,8 @@ export async function restoreAgentConfiguration(
       auth,
       action: "agent.restored",
       targets: [
-        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-        {
-          type: "agent",
-          id: latestConfig.sId,
-          name: latestConfig.name,
-        },
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", latestConfig),
       ],
       context: getAuditLogContext(auth),
       metadata: {
@@ -1724,8 +1716,8 @@ export async function updateAgentConfigurationScope(
     auth,
     action: "agent.scope_changed",
     targets: [
-      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-      { type: "agent", id: agentConfig.sId, name: agentConfig.name },
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("agent", agentConfig),
     ],
     context: getAuditLogContext(auth),
     metadata: {

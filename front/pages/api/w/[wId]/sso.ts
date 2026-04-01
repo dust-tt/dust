@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -128,7 +128,7 @@ async function handler(
       void emitAuditLogEvent({
         auth,
         action: "sso.connection_deleted",
-        targets: [buildWorkspaceTarget(workspace)],
+        targets: [buildAuditLogTarget("workspace", workspace)],
         context: getAuditLogContext(auth, req),
         metadata: {
           connectionType: activeConnection.type,

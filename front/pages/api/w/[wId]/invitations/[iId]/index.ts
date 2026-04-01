@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -92,12 +92,11 @@ async function handler(
           auth,
           action: "invitation.revoked",
           targets: [
-            buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-            {
-              type: "invitation",
-              id: invitation.sId,
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("invitation", {
+              sId: invitation.sId,
               name: invitation.inviteEmail,
-            },
+            }),
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
@@ -111,12 +110,11 @@ async function handler(
           auth,
           action: "invitation.role_updated",
           targets: [
-            buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-            {
-              type: "invitation",
-              id: invitation.sId,
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("invitation", {
+              sId: invitation.sId,
               name: invitation.inviteEmail,
-            },
+            }),
           ],
           context: getAuditLogContext(auth, req),
           metadata: {

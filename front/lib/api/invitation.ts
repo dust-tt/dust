@@ -1,4 +1,5 @@
 import {
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -384,11 +385,9 @@ export async function handleMembershipInvitations(
         void emitAuditLogEvent({
           auth,
           action: "member.invited",
-          targets: successfulInvites.map((r) => ({
-            type: "user" as const,
-            id: r.email,
-            name: r.email,
-          })),
+          targets: successfulInvites.map((r) =>
+            buildAuditLogTarget("user", { sId: r.email, name: r.email })
+          ),
           context: getAuditLogContext(auth),
           metadata: {
             invitedCount: String(successfulInvites.length),

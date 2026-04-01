@@ -110,7 +110,7 @@
  *         description: Invalid session_id
  */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
@@ -606,7 +606,10 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         auth: loginFailedAuth,
         action: "user.login_failed",
         targets: [
-          buildWorkspaceTarget(loginFailedAuth.getNonNullableWorkspace()),
+          buildAuditLogTarget(
+            "workspace",
+            loginFailedAuth.getNonNullableWorkspace()
+          ),
         ],
         metadata: {
           reason: normalizeError(error).message,
@@ -640,11 +643,10 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
             name: user?.name ?? session.user.name,
           },
           targets: [
-            {
-              type: "user",
-              id: user?.sId ?? "unknown",
+            buildAuditLogTarget("user", {
+              sId: user?.sId ?? "unknown",
               name: user?.name ?? session.user.name,
-            },
+            }),
           ],
           context: { location: getClientIp(req) },
         });

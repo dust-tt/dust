@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -106,8 +106,11 @@ async function handler(
         auth,
         action: "api_key.updated",
         targets: [
-          buildWorkspaceTarget(owner),
-          { type: "api_key", id: String(key.id), name: key.name },
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("api_key", {
+            sId: String(key.id),
+            name: key.name,
+          }),
         ],
         context: getAuditLogContext(auth, req),
         metadata: {

@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -126,7 +126,7 @@ async function handler(
       void emitAuditLogEvent({
         auth,
         action: "domain.removed",
-        targets: [buildWorkspaceTarget(workspace)],
+        targets: [buildAuditLogTarget("workspace", workspace)],
         context: getAuditLogContext(auth, req),
         metadata: {
           domain: body.domain,

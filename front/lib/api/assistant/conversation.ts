@@ -34,9 +34,8 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
-  getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -875,26 +874,20 @@ export async function postUserMessage(
   });
 
   // Emit agent.executed for each agent being invoked.
-  if (auth.user()) {
-    for (const agentMessage of agentMessages) {
-      void emitAuditLogEvent({
-        auth,
-        action: "agent.executed",
-        targets: [
-          buildWorkspaceTarget(conversation.owner),
-          {
-            type: "agent",
-            id: agentMessage.configuration.sId,
-            name: agentMessage.configuration.name,
-          },
-        ],
-        metadata: {
-          conversationId: conversation.sId,
-          agentName: agentMessage.configuration.name,
-          origin: getAuditLogOrigin(auth),
-        },
-      });
-    }
+  for (const agentMessage of agentMessages) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", conversation.owner),
+        buildAuditLogTarget("agent", agentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: agentMessage.configuration.name,
+        origin: context.origin,
+      },
+    });
   }
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.

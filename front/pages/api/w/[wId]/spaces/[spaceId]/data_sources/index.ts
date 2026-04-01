@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -203,12 +203,8 @@ async function handler(
           auth,
           action: "datasource.created",
           targets: [
-            buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-            {
-              type: "data_source",
-              id: dataSourceView.dataSource.sId,
-              name: dataSourceView.dataSource.name,
-            },
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("data_source", dataSourceView.dataSource),
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
@@ -631,8 +627,8 @@ const handleDataSourceWithProvider = async ({
     auth,
     action: "datasource.created",
     targets: [
-      buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-      { type: "data_source", id: dataSource.sId, name: dataSource.name },
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("data_source", dataSource),
     ],
     context: getAuditLogContext(auth, req),
     metadata: {

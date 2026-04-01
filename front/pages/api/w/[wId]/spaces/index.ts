@@ -103,7 +103,7 @@
  *         description: Unauthorized
  */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -276,8 +276,8 @@ async function handler(
         auth,
         action: "space.created",
         targets: [
-          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-          { type: "space", id: space.sId, name: space.name },
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("space", space),
         ],
         context: getAuditLogContext(auth, req),
         metadata: {

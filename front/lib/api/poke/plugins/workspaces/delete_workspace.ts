@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -84,7 +84,7 @@ export const deleteWorkspacePlugin = createPlugin({
     void emitAuditLogEvent({
       auth,
       action: "workspace.deleted",
-      targets: [buildWorkspaceTarget(workspace)],
+      targets: [buildAuditLogTarget("workspace", workspace)],
       context: getAuditLogContext(auth),
       metadata: {
         relocated: String(workspaceHasBeenRelocated ?? false),
