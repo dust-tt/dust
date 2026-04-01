@@ -267,6 +267,10 @@ function AgentActionsPanelContent({
 
   const streamActionProgress =
     messageStreamState?.streaming.actionProgress ?? new Map();
+  const pendingToolCallNames =
+    messageStreamState?.streaming.pendingToolCalls.map(
+      (toolCall) => toolCall.name
+    ) ?? [];
   return (
     <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
@@ -305,13 +309,18 @@ function AgentActionsPanelContent({
               <PanelAgentStep
                 stepNumber={currentStreamingStep}
                 reasoningContent={
-                  lastChainOfThoughtRef.current.step === currentStreamingStep
-                    ? lastChainOfThoughtRef.current.content
-                    : "Thinking..."
+                  pendingToolCallNames.length === 0
+                    ? lastChainOfThoughtRef.current.step ===
+                      currentStreamingStep
+                      ? lastChainOfThoughtRef.current.content
+                      : "Thinking..."
+                    : undefined
                 }
                 isStreaming={
+                  pendingToolCallNames.length === 0 &&
                   messageStreamState.streaming.agentState === "thinking"
                 }
+                pendingToolCallNames={pendingToolCallNames}
                 streamingActions={
                   messageStreamState.streaming.agentState === "acting"
                     ? messageStreamState.actions.filter((action) => {

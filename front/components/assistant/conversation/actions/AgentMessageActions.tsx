@@ -1,9 +1,11 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { MCPImageGenerationGroupedDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
+import { getPendingToolCallLabel } from "@app/components/assistant/conversation/actions/inline/types";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
   ActionProgressState,
   AgentStateClassification,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -27,6 +29,7 @@ interface AgentMessageActionsProps {
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
+  pendingToolCalls: PendingToolCall[];
 }
 
 export function AgentMessageActions({
@@ -34,6 +37,7 @@ export function AgentMessageActions({
   lastAgentStateClassification,
   actionProgress,
   owner,
+  pendingToolCalls,
 }: AgentMessageActionsProps) {
   const { openPanel, currentPanel, data } = useConversationSidePanelContext();
 
@@ -53,6 +57,7 @@ export function AgentMessageActions({
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const chainOfThought = agentMessage.chainOfThought || "";
+  const hasPendingToolCalls = pendingToolCalls.length > 0;
 
   const firstRender = useRef<boolean>(true);
   const onClick = () => {
@@ -115,7 +120,18 @@ export function AgentMessageActions({
         <div>
           <ContentMessage variant="primary" className="min-h-fit p-3">
             <div className="flex w-full flex-row">
-              {!chainOfThought ? (
+              {hasPendingToolCalls ? (
+                <div className="flex flex-col gap-y-1">
+                  {pendingToolCalls.map((toolCall) => (
+                    <span
+                      key={toolCall.key}
+                      className="text-sm text-muted-foreground dark:text-muted-foreground-night"
+                    >
+                      {getPendingToolCallLabel(toolCall.name)}
+                    </span>
+                  ))}
+                </div>
+              ) : !chainOfThought ? (
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
               ) : (
                 <Markdown
@@ -136,9 +152,8 @@ export function AgentMessageActions({
               )}
               <span className="flex-grow"></span>
               <div className="w-8 self-start pl-4 pt-0.5">
-                {lastAgentStateClassification === "thinking" && (
-                  <Spinner size="xs" />
-                )}
+                {(lastAgentStateClassification === "thinking" ||
+                  hasPendingToolCalls) && <Spinner size="xs" />}
               </div>
             </div>
           </ContentMessage>

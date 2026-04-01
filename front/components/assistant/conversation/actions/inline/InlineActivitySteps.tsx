@@ -1,9 +1,13 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
-import { getActionOneLineLabel } from "@app/components/assistant/conversation/actions/inline/types";
+import {
+  getActionOneLineLabel,
+  getPendingToolCallLabel,
+} from "@app/components/assistant/conversation/actions/inline/types";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
   AgentStateClassification,
   InlineActivityStep,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import type {
   LightAgentMessageType,
@@ -25,6 +29,7 @@ interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
+  pendingToolCalls: PendingToolCall[];
 }
 
 /**
@@ -38,6 +43,7 @@ export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
   completedSteps,
+  pendingToolCalls,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -59,6 +65,7 @@ export function InlineActivitySteps({
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
   const isThinking = lastAgentStateClassification === "thinking";
   const isActing = lastAgentStateClassification === "acting";
+  const hasPendingToolCalls = pendingToolCalls.length > 0;
 
   if (isDone && completedSteps.length === 0) {
     return null;
@@ -66,12 +73,15 @@ export function InlineActivitySteps({
 
   // Show active thinking whenever the agent is thinking.
   // Dedup in appendThinkingStep handles duplicate content at capture time.
-  const showActiveThinking = isThinking;
+  const showActiveThinking = isThinking && !hasPendingToolCalls;
   const activeAction =
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
 
   const hasContent =
-    completedSteps.length > 0 || showActiveThinking || activeAction;
+    completedSteps.length > 0 ||
+    showActiveThinking ||
+    activeAction ||
+    hasPendingToolCalls;
   if (!hasContent) {
     return null;
   }
@@ -128,6 +138,23 @@ export function InlineActivitySteps({
             }
           })}
 
+          {pendingToolCalls.map((toolCall, index) => {
+            const isLastPendingToolCall =
+              index === pendingToolCalls.length - 1 && !activeAction && !isDone;
+
+            return (
+              <TimelineRow
+                key={toolCall.key}
+                spinner={isLastPendingToolCall}
+                isLast={isLastPendingToolCall}
+              >
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {getPendingToolCallLabel(toolCall.name)}
+                </span>
+              </TimelineRow>
+            );
+          })}
+
           {/* Active thinking (streaming CoT) */}
           {showActiveThinking && (
             <TimelineRow
@@ -161,9 +188,10 @@ export function InlineActivitySteps({
           )}
 
           {/* Pending spinner — shown when between transitions (not done, nothing active) */}
-          {!isDone && !showActiveThinking && !activeAction && (
-            <TimelineRow spinner isLast />
-          )}
+          {!isDone &&
+            !showActiveThinking &&
+            !activeAction &&
+            !hasPendingToolCalls && <TimelineRow spinner isLast />}
 
           {/* Done marker */}
           {isDone && completedSteps.length > 0 && (

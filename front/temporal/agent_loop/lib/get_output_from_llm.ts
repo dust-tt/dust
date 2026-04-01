@@ -170,6 +170,7 @@ export async function getOutputFromLLMStream(
   const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
+  const startedToolCallKeys = new Set<string>();
 
   const logContext = {
     workspaceId: conversation.owner.sId,
@@ -230,6 +231,34 @@ export async function getOutputFromLLMStream(
           });
 
           nativeChainOfThought += event.content.delta;
+          continue;
+        }
+        case "tool_call_started": {
+          const startedToolCallKey =
+            event.content.id ??
+            `tool-call-${event.content.index ?? startedToolCallKeys.size}`;
+          if (startedToolCallKeys.has(startedToolCallKey)) {
+            continue;
+          }
+
+          startedToolCallKeys.add(startedToolCallKey);
+
+          await updateResourceAndPublishEvent(auth, {
+            event: {
+              type: "tool_call_started",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              ...(event.content.id ? { toolCallId: event.content.id } : {}),
+              ...(event.content.index !== undefined
+                ? { toolCallIndex: event.content.index }
+                : {}),
+              toolName: event.content.name,
+            },
+            agentMessage,
+            conversation,
+            step,
+          });
           continue;
         }
         case "tool_call_delta":

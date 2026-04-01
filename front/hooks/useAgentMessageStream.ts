@@ -2,6 +2,7 @@ import type {
   AgentMessageStateWithControlEvent,
   InlineActivityStep,
   MessageTemporaryState,
+  PendingToolCall,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -161,6 +162,24 @@ function appendThinkingStep(
     }
   }
   return [...steps, { type: "thinking", content: cotContent, id }];
+}
+
+function getPendingToolCallKey({
+  toolCallId,
+  toolCallIndex,
+  toolName,
+}: {
+  toolCallId?: string;
+  toolCallIndex?: number;
+  toolName: string;
+}): string {
+  if (toolCallId) {
+    return toolCallId;
+  }
+  if (toolCallIndex !== undefined) {
+    return `tool-call-${toolCallIndex}`;
+  }
+  return `tool-call-${toolName}`;
 }
 
 interface UseAgentMessageStreamParams {
@@ -333,6 +352,7 @@ export function useAgentMessageStream({
                     ([id]) => id !== action.id
                   )
                 ),
+                pendingToolCalls: [],
               },
             };
           });
@@ -362,6 +382,47 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "acting",
                 inlineActivitySteps: steps,
+                pendingToolCalls: [],
+              },
+            };
+          });
+          break;
+
+        case "tool_call_started":
+          const startedToolCall = eventPayload.data;
+          const cotAtToolCallStart = chainOfThought.current;
+          chainOfThought.current = "";
+          methods.data.map((m) => {
+            if (!isMessageTemporayState(m) || m.sId !== sId) {
+              return m;
+            }
+
+            const pendingToolCall: PendingToolCall = {
+              key: getPendingToolCallKey(startedToolCall),
+              name: startedToolCall.toolName,
+            };
+
+            const pendingToolCalls = m.streaming.pendingToolCalls.some(
+              (toolCall) => toolCall.key === pendingToolCall.key
+            )
+              ? m.streaming.pendingToolCalls
+              : [...m.streaming.pendingToolCalls, pendingToolCall];
+
+            const steps = cotAtToolCallStart
+              ? appendThinkingStep(
+                  m.streaming.inlineActivitySteps,
+                  cotAtToolCallStart,
+                  `thinking-tool-call-${Date.now()}`
+                )
+              : m.streaming.inlineActivitySteps;
+
+            return {
+              ...m,
+              chainOfThought: "",
+              streaming: {
+                ...m.streaming,
+                inlineActivitySteps: steps,
+                pendingToolCalls,
               },
             };
           });
@@ -400,6 +461,7 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "done",
                 inlineActivitySteps: steps,
+                pendingToolCalls: [],
               },
             };
           });
@@ -425,6 +487,7 @@ export function useAgentMessageStream({
                   streaming: {
                     ...m.streaming,
                     agentState: "done",
+                    pendingToolCalls: [],
                   },
                 }
               : m
@@ -455,6 +518,7 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "done",
                 inlineActivitySteps: steps,
+                pendingToolCalls: [],
               },
             };
           });

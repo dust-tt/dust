@@ -340,6 +340,7 @@ export function AgentMessage({
             break;
           }
           case "end-of-stream":
+          case "tool_call_started":
           case "tool_error":
           case "tool_notification":
           case "tool_params":
@@ -1257,6 +1258,7 @@ function AgentMessageContent({
           agentMessage={agentMessage}
           lastAgentStateClassification={agentMessage.streaming.agentState}
           completedSteps={agentMessage.streaming.inlineActivitySteps}
+          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
         />
       ) : (
         <AgentMessageActions
@@ -1264,6 +1266,7 @@ function AgentMessageContent({
           lastAgentStateClassification={agentMessage.streaming.agentState}
           actionProgress={agentMessage.streaming.actionProgress}
           owner={owner}
+          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
         />
       )}
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />

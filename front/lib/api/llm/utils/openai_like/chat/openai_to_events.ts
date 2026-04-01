@@ -16,7 +16,7 @@ export async function* streamLLMEvents(
   let reasoningDelta = "";
   const toolCalls: Map<
     number,
-    { id: string; name: string; arguments: string }
+    { id: string; name: string; arguments: string; hasEmittedStart: boolean }
   > = new Map();
   let hasYieldedResponseId = false;
   let hasError = false;
@@ -81,6 +81,7 @@ export async function* streamLLMEvents(
             id: "",
             name: "",
             arguments: "",
+            hasEmittedStart: false,
           });
         }
 
@@ -95,6 +96,23 @@ export async function* streamLLMEvents(
         }
         if (toolCallDelta.function?.arguments) {
           toolCall.arguments += toolCallDelta.function.arguments;
+        }
+
+        if (
+          !toolCall.hasEmittedStart &&
+          toolCall.name.length > 0 &&
+          toolCallDelta.function?.arguments !== undefined
+        ) {
+          toolCall.hasEmittedStart = true;
+          yield {
+            type: "tool_call_started",
+            content: {
+              ...(toolCall.id ? { id: toolCall.id } : {}),
+              index,
+              name: toolCall.name,
+            },
+            metadata,
+          };
         }
       }
       yield { type: "tool_call_delta", metadata };

@@ -1,4 +1,5 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import { getPendingToolCallLabel } from "@app/components/assistant/conversation/actions/inline/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -10,6 +11,7 @@ interface AgentStepProps {
   reasoningContent?: string;
   isStreaming?: boolean;
   streamingActions?: AgentMCPActionWithOutputType[];
+  pendingToolCallNames?: string[];
   streamActionProgress: Map<number, any>;
   owner: LightWorkspaceType;
   messageStatus: "created" | "succeeded" | "failed" | "cancelled";
@@ -22,6 +24,7 @@ export function PanelAgentStep({
   reasoningContent,
   isStreaming = false,
   streamingActions = [],
+  pendingToolCallNames = [],
   streamActionProgress,
   owner,
   messageStatus,
@@ -42,6 +45,23 @@ export function PanelAgentStep({
               textColor="text-muted-foreground dark:text-muted-foreground-night"
               isLastMessage={false}
             />
+          </ContentMessage>
+        </div>
+      )}
+
+      {pendingToolCallNames.length > 0 && (
+        <div className="transition-all duration-300 animate-in fade-in slide-in-from-bottom-1">
+          <ContentMessage variant="primary" size="lg">
+            <div className="flex flex-col gap-1">
+              {pendingToolCallNames.map((toolName, index) => (
+                <span
+                  key={`${toolName}-${index}`}
+                  className="text-sm text-muted-foreground dark:text-muted-foreground-night"
+                >
+                  {getPendingToolCallLabel(toolName)}
+                </span>
+              ))}
+            </div>
           </ContentMessage>
         </div>
       )}

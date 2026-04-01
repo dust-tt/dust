@@ -46,6 +46,11 @@ export type ActionProgressState = Map<
   }
 >;
 
+export interface PendingToolCall {
+  key: string;
+  name: string;
+}
+
 export type InlineActivityStep =
   | { type: "thinking"; content: string; id: string }
   | { type: "action"; action: AgentMCPActionWithOutputType; id: string };
@@ -56,6 +61,7 @@ export type MessageTemporaryState = LightAgentMessageWithActionsType & {
     isRetrying: boolean;
     lastUpdated: Date;
     actionProgress: ActionProgressState;
+    pendingToolCalls: PendingToolCall[];
     useFullChainOfThought: boolean;
     inlineActivitySteps: InlineActivityStep[];
   };
@@ -168,6 +174,7 @@ export const makeInitialMessageStreamState = (
       inlineActivitySteps: [],
       isRetrying: false,
       lastUpdated: new Date(),
+      pendingToolCalls: [],
       useFullChainOfThought: false,
     },
   };

@@ -12,3 +12,7 @@ export function getActionOneLineLabel(
     ? asDisplayName(action.functionCallName)
     : "Tool";
 }
+
+export function getPendingToolCallLabel(toolName: string): string {
+  return `Preparing to call ${asDisplayName(toolName)}`;
+}
