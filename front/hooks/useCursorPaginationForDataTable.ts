@@ -1,16 +1,6 @@
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-const FIRST_PAGE_INDEX = 0;
-
-function getInitialCursorPagination(pageSize: number): CursorPaginationParams {
-  return { cursor: null, limit: pageSize };
-}
-
-function getInitialTablePagination(pageSize: number): PaginationState {
-  return { pageIndex: FIRST_PAGE_INDEX, pageSize };
-}
+import { useCallback, useState } from "react";
 
 /**
  * Hook to manage pagination for a table where the data is fetched using cursor pagination.
@@ -26,12 +16,9 @@ function getInitialTablePagination(pageSize: number): PaginationState {
  * Users of this hook should eventually be updated to a less stateful pagination mechanism,
  *  where, for instance, both a next and a previous cursor would be exposed when fetching a page.
  */
-export function useCursorPaginationForDataTable(
-  pageSize: number,
-  resetKey?: string
-) {
+export function useCursorPaginationForDataTable(pageSize: number) {
   const [cursorPagination, setCursorPagination] =
-    useState<CursorPaginationParams>(getInitialCursorPagination(pageSize));
+    useState<CursorPaginationParams>({ cursor: null, limit: pageSize });
 
   // We keep a history of the cursors to allow going back in pages.
   const [cursorHistory, setCursorHistory] = useState<
@@ -39,67 +26,44 @@ export function useCursorPaginationForDataTable(
   >([null]);
 
   const [tablePagination, setTablePagination] = useState<PaginationState>({
-    pageIndex: FIRST_PAGE_INDEX,
+    pageIndex: 0,
     pageSize,
   });
-  const latestResetKeyRef = useRef(resetKey);
-  const shouldResetFromKeyChange = latestResetKeyRef.current !== resetKey;
-  const effectiveCursorPagination = shouldResetFromKeyChange
-    ? getInitialCursorPagination(pageSize)
-    : cursorPagination;
-  const effectiveCursorHistory = shouldResetFromKeyChange
-    ? [null]
-    : cursorHistory;
-  const effectiveTablePagination = shouldResetFromKeyChange
-    ? getInitialTablePagination(pageSize)
-    : tablePagination;
 
   const resetPagination = useCallback(() => {
-    setTablePagination(getInitialTablePagination(pageSize));
+    setTablePagination({ pageIndex: 0, pageSize: pageSize });
     setCursorHistory([null]);
-    setCursorPagination(getInitialCursorPagination(pageSize));
+    setCursorPagination({ cursor: null, limit: pageSize });
   }, [pageSize]);
-
-  useEffect(() => {
-    if (!shouldResetFromKeyChange) {
-      return;
-    }
-
-    latestResetKeyRef.current = resetKey;
-    resetPagination();
-  }, [resetKey, resetPagination, shouldResetFromKeyChange]);
 
   const handlePaginationChange = useCallback(
     (newTablePagination: PaginationState, nextPageCursor: string | null) => {
       if (
         // This pagination only supports going forward one page at a time.
-        newTablePagination.pageIndex ===
-          effectiveTablePagination.pageIndex + 1 &&
+        newTablePagination.pageIndex === tablePagination.pageIndex + 1 &&
         nextPageCursor
       ) {
         // Next page - update the history and the cursor.
         setTablePagination(newTablePagination);
-        if (newTablePagination.pageIndex === effectiveCursorHistory.length) {
+        if (newTablePagination.pageIndex === cursorHistory.length) {
           setCursorHistory((prev) => [...prev, nextPageCursor]);
         }
         setCursorPagination({ cursor: nextPageCursor, limit: pageSize });
-      } else if (
-        newTablePagination.pageIndex < effectiveTablePagination.pageIndex
-      ) {
+      } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
         // Older page - use the appropriate cursor.
         setTablePagination(newTablePagination);
         setCursorPagination({
-          cursor: effectiveCursorHistory[newTablePagination.pageIndex],
+          cursor: cursorHistory[newTablePagination.pageIndex],
           limit: pageSize,
         });
       }
     },
-    [effectiveCursorHistory, effectiveTablePagination.pageIndex, pageSize]
+    [tablePagination.pageIndex, cursorHistory, pageSize]
   );
 
   return {
-    cursorPagination: effectiveCursorPagination,
-    tablePagination: effectiveTablePagination,
+    cursorPagination,
+    tablePagination,
     resetPagination,
     handlePaginationChange,
   };
