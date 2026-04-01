@@ -1,5 +1,4 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { invalidateGlobalFeatureFlagsCache } from "@app/lib/auth";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -86,8 +85,6 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
       feature,
       rolloutPercentage
     );
-
-    invalidateGlobalFeatureFlagsCache();
 
     if (rolloutPercentage === 0) {
       return new Ok({

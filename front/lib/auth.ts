@@ -1517,7 +1517,7 @@ const _getGlobalFeatureFlags = memoizer<
   hash: () => "global_feature_flags",
 
   max: 1,
-  ttl: 3000,
+  ttl: 60000,
 });
 
 function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
@@ -1530,10 +1530,6 @@ function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
       }
     });
   });
-}
-
-export function invalidateGlobalFeatureFlagsCache(): void {
-  _getGlobalFeatureFlags.del({});
 }
 
 const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
