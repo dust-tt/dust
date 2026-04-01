@@ -34,9 +34,21 @@ export function SharedFramePage() {
     });
 
   // Fetch the frame to check if the user is already authorized.
-  const { error: frameError, mutateFrame } = usePublicFrame({
+  // Both metadata and public frame hooks fire in parallel. If the share lives in another region, the
+  // metadata hook triggers a region redirect (setRegionInfo) which invalidates
+  // the SWR cache and re-fetches the frame against the correct region.
+  // We ignore the frame error while metadata is still loading/redirecting
+  // because it may be a stale cross-region 404.
+  const {
+    error: publicFrameError,
+    isFrameLoading,
+    mutateFrame,
+  } = usePublicFrame({
     shareToken: token,
   });
+
+  const frameError =
+    isShareMetadataLoading || isFrameLoading ? undefined : publicFrameError;
 
   // Show the email form when:
   // 1. Metadata says the scope requires email verification, AND
