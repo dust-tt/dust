@@ -341,6 +341,19 @@ async function checkDiffFiles() {
         "A `front-sse` deploy is required alongside the `front` deploy."
     );
   }
+
+  // Shared code used by front-sse — changes here require a front-sse deploy too.
+  const sseSharedFiles = ["front/lib/auth.ts"];
+  const modifiedSseSharedFiles = diffFiles.filter((path) =>
+    sseSharedFiles.includes(path)
+  );
+  if (modifiedSseSharedFiles.length > 0) {
+    warn(
+      "`front/lib/auth.ts` (Authenticator) has been modified. This code runs " +
+        "on `front-sse` pods as well. A `front-sse` deploy is required " +
+        "alongside the `front` deploy."
+    );
+  }
 }
 
 void checkDiffFiles();
