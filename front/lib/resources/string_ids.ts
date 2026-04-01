@@ -77,6 +77,7 @@ export const RESOURCES_PREFIX = {
 
   // Project todos.
   project_todo: "ptd",
+  project_todo_state: "pts",
 
   // Butler
   user_project_digest: "pje",

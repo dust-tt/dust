@@ -1596,6 +1596,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "user_project_digest",
   "project_metadata",
   "webhook_sources_view",
+  "project_todo_state",
 ];
 
 describe("SpaceResource cleanup on delete", () => {
