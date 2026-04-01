@@ -127,15 +127,15 @@ export function InlineActivitySteps({
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
       >
+        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
         <span
           className={cn(
             "transition-transform duration-200 ease-out",
-            !isCollapsed && "rotate-90"
+            isCollapsed ? "rotate-0" : "rotate-90"
           )}
         >
           <Icon size="xs" visual={ChevronRightIcon} />
         </span>
-        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
       </button>
 
       <div
@@ -143,7 +143,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="flex flex-col gap-2 ml-4">
+          <div className="flex flex-col gap-2">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -190,8 +190,13 @@ export function InlineActivitySteps({
                       }
                     >
                       <TimelineRow icon={actionIcon} isLast={isLast}>
-                        <span className="text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
                           {step.label}
+                          <Icon
+                            size="xs"
+                            visual={ChevronRightIcon}
+                            className="shrink-0 opacity-50"
+                          />
                         </span>
                       </TimelineRow>
                     </div>
