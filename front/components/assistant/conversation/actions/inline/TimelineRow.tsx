@@ -2,7 +2,8 @@ import { Icon, Spinner } from "@dust-tt/sparkle";
 
 const LINE_ANIMATION_STYLE: React.CSSProperties = {
   transformOrigin: "top",
-  animation: "grow-down 0.3s ease-out forwards, fade-in 0.3s ease-out forwards",
+  animation:
+    "grow-down 0.3s ease-out forwards, fade-in 0.3s ease-out forwards",
 };
 
 interface TimelineRowProps {
