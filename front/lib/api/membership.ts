@@ -55,7 +55,10 @@ export async function revokeAndTrackMembership(
       action: "membership.revoked",
       targets: [
         buildAuditLogTarget("workspace", workspace),
-        buildAuditLogTarget("user", { sId: user.sId, name: user.fullName() }),
+        buildAuditLogTarget("user", {
+          sId: user.sId,
+          name: user.fullName() ?? "unknown",
+        }),
       ],
       context: getAuditLogContext(auth),
       metadata: {

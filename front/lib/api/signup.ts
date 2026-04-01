@@ -61,11 +61,14 @@ export async function createAndLogMembership({
     actor: {
       type: "user",
       id: user.sId,
-      name: user.fullName(),
+      name: user.fullName() ?? "unknown",
     },
     targets: [
       buildAuditLogTarget("workspace", w),
-      buildAuditLogTarget("user", { sId: user.sId, name: user.fullName() }),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
     ],
     context: { location: "internal" },
     metadata: {

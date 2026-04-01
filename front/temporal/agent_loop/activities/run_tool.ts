@@ -1,3 +1,4 @@
+import { isClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -335,13 +336,15 @@ async function executeToolStreaming(
             buildAuditLogTarget("agent", agentConfiguration),
             buildAuditLogTarget("tool", {
               sId: action.toolConfiguration.name,
-              name: action.toolConfiguration.name,
+              name: action.toolConfiguration.originalName,
             }),
           ],
           context: { location: auth.clientIp() ?? "internal" },
           metadata: {
-            toolName: action.toolConfiguration.name,
-            toolType: action.toolConfiguration.mcpServerName,
+            toolName: action.toolConfiguration.originalName,
+            toolType: isClientSideMCPToolConfiguration(action.toolConfiguration)
+              ? "remote"
+              : "internal",
             conversationId: conversation.sId,
           },
         });
