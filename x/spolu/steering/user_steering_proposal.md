@@ -8,11 +8,7 @@
 
 Add a new `AgentContentItemType` subtype `user_steering` that injects user-provided steering
 instructions into the agent's step content. The value is a simple string containing the steering
-text.
-
-This content type is unique: it is **visible to the model** (rendered in the conversation context)
-but **invisible in the UI** (not shown to users as activity steps or in the side panel). It behaves
-like an injected instruction at a specific step boundary.
+text along with the user name.
 
 **Key design constraint**: Steering must NOT be rendered as assistant content. It must be rendered
 as **user-role content** across all providers. Tool outputs are treated as untrusted data by models,
@@ -239,26 +235,9 @@ constraint is provider-specific. Two options:
   user/tool message (Anthropic/Google) or emitting standalone (OpenAI/Mistral).
 - More explicit but requires a new model message type and changes to all provider conversions.
 
-### 6. Frontend Rendering (what the user sees) — SKIP/IGNORE
+### 6. Frontend Rendering (what the user sees)
 
-The `user_steering` type should be **invisible** in the UI.
-
-**`front/lib/api/assistant/activity_steps.ts`** — `contentsToActivitySteps()` (lines 49-94)
-- Uses `isAgentReasoningContent`, `isAgentTextContent`, `isAgentFunctionCallContent` guards with
-  `continue` — unmatched types are silently ignored.
-- **No change needed** — `user_steering` will fall through without producing any activity step.
-
-**`front/components/assistant/conversation/actions/AgentActionsPanel.tsx`** (lines 144-194)
-- Same pattern: uses type guards — unmatched types are ignored.
-- **No change needed**.
-
-**`front/components/assistant/conversation/actions/PanelAgentStep.tsx`**
-- Renders `ParsedContentItem` objects (kind: "reasoning" | "action"). Since `user_steering` never
-  produces a `ParsedContentItem`, nothing to change.
-
-**`front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx`**
-- Renders `InlineActivityStep` objects (type: "thinking" | "action"). Since `user_steering` never
-  produces an `InlineActivityStep`, nothing to change.
+Out of scope of this proposal.
 
 ### 7. Resource Layer
 
@@ -273,12 +252,30 @@ The `user_steering` type should be **invisible** in the UI.
 
 ### 9. Event System & Streaming
 
+Steering messages need to be visible in the UI, which means the streaming system must surface
+them to the client.
+
 **`front/types/assistant/agent.ts`** — `AgentStepContentEvent` (lines 410-420)
-- Legacy/deprecated. No change needed — steering doesn't stream.
+- Defined but currently unused — the streaming system uses granular events (`generation_tokens`,
+  `agent_action_success`, `tool_params`) instead.
+- If we reuse this event type for steering, add `AgentUserSteeringContentType` to its content
+  union. Otherwise, introduce a dedicated streaming event (e.g. `user_steering`) to notify the
+  client when steering is injected.
 
 **`front/hooks/useAgentMessageStream.ts`**
-- `user_steering` is stored via `createNewVersion()` in the temporal worker, then shows up in
-  the completed message's `contents` array. No streaming hook changes needed.
+- Needs a new event handler for steering. When a steering event arrives, append it to the
+  message's `contents` array so the UI can render it.
+- The exact rendering (inline activity step, side panel entry, or a distinct visual treatment)
+  is out of scope for this doc (covered in section 6) but the streaming plumbing to deliver the
+  data to the client is required here.
+
+**`front/lib/api/assistant/activity_steps.ts`** — `contentsToActivitySteps()` (lines 49-94)
+- Add handling for `isAgentUserSteeringContent` to produce an `InlineActivityStep` so that
+  steering appears in the activity timeline for completed messages.
+
+**`front/components/assistant/conversation/actions/AgentActionsPanel.tsx`** (lines 144-194)
+- Add handling for `isAgentUserSteeringContent` to produce a `ParsedContentItem` so steering
+  appears in the side panel.
 
 ## Summary of Files to Modify
 
@@ -292,14 +289,16 @@ The `user_steering` type should be **invisible** in the UI.
 | 6 | `front/lib/api/assistant/conversation_rendering/message_rendering.ts` | Emit steering as `UserMessageTypeModel` after tool results |
 | 7 | Anthropic conversion call site | Merge consecutive user messages (tool results + steering) |
 | 8 | Google conversion call site | Merge consecutive user Content objects |
+| 9 | `front/types/assistant/agent.ts` or new event type | Steering streaming event |
+| 10 | `front/hooks/useAgentMessageStream.ts` | Handle steering event, update message contents |
+| 11 | `front/lib/api/assistant/activity_steps.ts` | Produce `InlineActivityStep` for steering |
+| 12 | `front/components/assistant/conversation/actions/AgentActionsPanel.tsx` | Produce `ParsedContentItem` for steering |
 
 Files that need **no changes**:
 - `front/lib/api/llm/utils/openai_like/responses/conversation_to_openai.ts` — user messages can be freely interleaved in the flat `ResponseInput` array
 - `front/lib/api/llm/utils/openai_like/chat/conversation_to_openai.ts` — steering emitted after all tool messages, which is the correct position for Chat Completions API
 - `front/lib/api/llm/clients/mistral/utils/conversation_to_mistral.ts` — tool results are `role: "tool"`, no conflict
 - `front/lib/api/assistant/conversation_rendering/index.ts` — steering counted as user message tokens
-- `front/lib/api/assistant/activity_steps.ts` — silently ignored
-- `front/components/assistant/conversation/actions/AgentActionsPanel.tsx` — silently ignored
 - `front/lib/api/v1/backward_compatibility.ts` — silently skipped
 - `front/lib/resources/agent_step_content_resource.ts` — default serialization works
 
