@@ -12,6 +12,7 @@ import type {
   GitHubDetectedSkillAttachment,
   GitHubSkillDetectionError,
 } from "@app/lib/api/skills/detection/github/types";
+import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/skill_tool_injection";
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
@@ -172,6 +173,11 @@ export async function importSkillsFromGitHub(
           );
         }
 
+        const detectedMCPServerViews = await suggestMCPServersForDetectedSkill(
+          auth,
+          skill
+        );
+
         const skillResource = await SkillResource.makeNew(
           auth,
           {
@@ -191,7 +197,7 @@ export async function importSkillsFromGitHub(
             },
             isDefault: false,
           },
-          { mcpServerViews: [], fileAttachments }
+          { mcpServerViews: detectedMCPServerViews, fileAttachments }
         );
 
         await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
