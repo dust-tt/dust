@@ -938,7 +938,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}": {
       "get": {
         "summary": "Get a conversation",
-        "description": "Get a conversation in the workspace identified by {wId}.",
+        "description": "Get a conversation in the workspace identified by {wId}. Supports optional pagination of message content via limit and lastValue query parameters.",
         "tags": [
           "Conversations"
         ],
@@ -962,6 +962,24 @@
             "name": "cId",
             "required": true,
             "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum number of messages to return. When omitted, all messages are returned.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lastValue",
+            "required": false,
+            "description": "Cursor value (message rank) from a previous response to fetch the next page of messages.",
             "schema": {
               "type": "string"
             }
