@@ -98,6 +98,7 @@ export function DetectedSkillsList({
                 visual={
                   <Checkbox
                     id="select-all-skills"
+                    size="xs"
                     checked={allSelected}
                     onCheckedChange={toggleAll}
                   />
@@ -119,6 +120,7 @@ export function DetectedSkillsList({
                     <div className="flex items-center gap-2">
                       <Checkbox
                         id={skill.name}
+                        size="xs"
                         checked={selectedField.value.includes(skill.name)}
                         disabled={!isImportableSkillStatus(skill.status)}
                         onCheckedChange={() => toggleSkill(skill.name)}
