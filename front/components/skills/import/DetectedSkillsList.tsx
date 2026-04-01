@@ -12,7 +12,6 @@ import {
   InformationCircleIcon,
   Label,
   PuzzleIcon,
-  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -106,7 +105,7 @@ export function DetectedSkillsList({
               />
             </ContextItem.List>
           )}
-          <ScrollArea className="max-h-64">
+          <div className="max-h-64 overflow-y-auto">
             <ContextItem.List>
               {detectedSkills.map((skill) => (
                 <ContextItem
@@ -144,7 +143,7 @@ export function DetectedSkillsList({
                 />
               ))}
             </ContextItem.List>
-          </ScrollArea>
+          </div>
         </div>
       )}
     </>
