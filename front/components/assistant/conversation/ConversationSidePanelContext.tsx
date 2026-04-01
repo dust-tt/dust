@@ -16,6 +16,7 @@ type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
+      actionId?: string;
     }
   | {
       type: "interactive_content";
@@ -105,16 +106,20 @@ export function ConversationSidePanelProvider({
 
       switch (params.type) {
         case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+          const newData = params.actionId
+            ? `${params.messageId}@${params.actionId}`
+            : params.messageId;
+
           /**
-           * If the panel is already open for the same messageId,
+           * If the panel is already open for the same data,
            * we close it.
            */
-          if (params.messageId === data) {
+          if (newData === data) {
             closePanel();
             return;
           }
 
-          setData(params.messageId);
+          setData(newData);
           break;
         }
 

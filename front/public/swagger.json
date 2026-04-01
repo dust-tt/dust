@@ -9074,6 +9074,10 @@
                 },
                 "id": {
                   "type": "string"
+                },
+                "actionId": {
+                  "type": "string",
+                  "description": "Action string identifier (action steps only)"
                 }
               }
             }

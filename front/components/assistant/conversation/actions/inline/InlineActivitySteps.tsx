@@ -84,13 +84,6 @@ export function InlineActivitySteps({
     }
   }, [isDone]);
 
-  const openBreakdownPanel = () => {
-    openPanel({
-      type: "actions",
-      messageId: agentMessage.sId,
-    });
-  };
-
   const isThinking = lastAgentStateClassification === "thinking";
   const isActing = lastAgentStateClassification === "acting";
 
@@ -150,10 +143,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div
-            className="cursor-pointer flex flex-col gap-2 ml-4"
-            onClick={openBreakdownPanel}
-          >
+          <div className="flex flex-col gap-2 ml-4">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -188,15 +178,23 @@ export function InlineActivitySteps({
                     : ToolsIcon;
 
                   return (
-                    <TimelineRow
+                    <div
                       key={step.id}
-                      icon={actionIcon}
-                      isLast={isLast}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        openPanel({
+                          type: "actions",
+                          messageId: agentMessage.sId,
+                          actionId: step.actionId,
+                        })
+                      }
                     >
-                      <span className="text-muted-foreground dark:text-muted-foreground-night">
-                        {step.label}
-                      </span>
-                    </TimelineRow>
+                      <TimelineRow icon={actionIcon} isLast={isLast}>
+                        <span className="text-muted-foreground dark:text-muted-foreground-night">
+                          {step.label}
+                        </span>
+                      </TimelineRow>
+                    </div>
                   );
                 }
                 default:
