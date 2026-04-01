@@ -7,7 +7,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
-const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+const daysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
 describe("AgentStepContentResource", () => {
   describe("getAgentsWithFunctionCalls", () => {
