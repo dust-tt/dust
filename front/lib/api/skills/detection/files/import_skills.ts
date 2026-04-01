@@ -20,6 +20,17 @@ import path from "path";
 
 const IMPORT_CONCURRENCY = 4;
 
+const IMPORT_CONFLICT_STRATEGIES = ["error", "skip", "override"] as const;
+
+export type ImportConflictStrategyType =
+  (typeof IMPORT_CONFLICT_STRATEGIES)[number];
+
+export function isImportConflictStrategy(
+  value: string
+): value is ImportConflictStrategyType {
+  return IMPORT_CONFLICT_STRATEGIES.includes(value as ImportConflictStrategyType);
+}
+
 type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 
 type ImportSkillsResult = {
@@ -48,7 +59,7 @@ export async function importSkillsFromFiles(
     uploadedFiles: formidable.File[];
     names?: string[];
     source?: FileImportSource;
-    onConflict?: "error" | "skip";
+    onConflict?: ImportConflictStrategyType;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const allSkills: ZipDetectedSkill[] = [];
@@ -122,7 +133,11 @@ export async function importSkillsFromFiles(
     async (skill) => {
       const existing = existingSkillsMap.get(skill.name) ?? null;
 
-      if (existing && existing.source !== source) {
+      if (
+        existing &&
+        existing.source !== source &&
+        onConflict !== "override"
+      ) {
         skipped.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,

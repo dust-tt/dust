@@ -1,6 +1,9 @@
 /** @ignoreswagger */
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
+import {
+  importSkillsFromFiles,
+  isImportConflictStrategy,
+} from "@app/lib/api/skills/detection/files/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -42,13 +45,14 @@ async function handler(
     });
   }
 
+  let fields: formidable.Fields;
   let files: formidable.Files;
   try {
     const form = formidable({
       multiples: true,
       maxFileSize: MAX_ZIP_SIZE_BYTES,
     });
-    [, files] = await form.parse(req);
+    [fields, files] = await form.parse(req);
   } catch (err) {
     return apiError(req, res, {
       status_code: 400,
@@ -70,10 +74,24 @@ async function handler(
     });
   }
 
+  const names = fields.names;
+
+  const onConflict = fields.onConflict?.[0] ?? "error";
+  if (!isImportConflictStrategy(onConflict)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid onConflict value: "${onConflict}". Must be one of: error, skip, override.`,
+      },
+    });
+  }
+
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
+    names,
     source: "api",
-    onConflict: "error",
+    onConflict,
   });
   if (result.isErr()) {
     return apiError(req, res, {
