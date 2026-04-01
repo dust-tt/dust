@@ -13,6 +13,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { SubscriptionType } from "@app/types/plan";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
@@ -249,16 +250,33 @@ function UnhealthyCredentialsBanner({
     return null;
   }
 
+  const title = "Your workspace is not operational";
+  const footer = isAdmin(owner) ? (
+    <LinkWrapper href={`/w/${owner.sId}/model-providers`} className="underline">
+      Model providers
+    </LinkWrapper>
+  ) : (
+    <>Contact your workspace admin.</>
+  );
+  const variant =
+    subscription.plan.code === FREE_BYOK_TRANSITIONING_PLAN_CODE
+      ? "info"
+      : "warning";
+
   const hasConfiguredProviders = Object.keys(providersHealth).length > 0;
+  const hasConfiguredEmbeddingProvider =
+    providersHealth[DEFAULT_EMBEDDING_PROVIDER_ID] !== undefined;
   const isWorkspaceHealthy = Object.values(providersHealth).every(Boolean);
 
-  if (hasConfiguredProviders && isWorkspaceHealthy) {
-    return null;
-  }
-
-  const description = !hasConfiguredProviders
-    ? "No provider credentials configured. Please set up at least one model provider."
-    : "The following model providers have invalid credentials: " +
+  let description: string | null = null;
+  if (!hasConfiguredProviders) {
+    description =
+      "No provider credentials configured. Please set up at least one model provider.";
+  } else if (!hasConfiguredEmbeddingProvider) {
+    description = "Please set up your OpenAI credentials.";
+  } else if (!isWorkspaceHealthy) {
+    description =
+      "The following model providers have invalid credentials: " +
       Object.entries(providersHealth)
         .filter(([_, isHealthy]) => !isHealthy)
         .map(
@@ -267,23 +285,15 @@ function UnhealthyCredentialsBanner({
         )
         .join(", ") +
       ".";
-  const footer = isAdmin(owner) ? (
-    <LinkWrapper href={`/w/${owner.sId}/model-providers`} className="underline">
-      Model providers
-    </LinkWrapper>
-  ) : (
-    <>Contact your workspace admin.</>
-  );
+  } else {
+    return null;
+  }
 
   return (
     <StatusBanner
-      title="Your workspace is not operational"
+      title={title}
       description={description}
-      variant={
-        subscription.plan.code === FREE_BYOK_TRANSITIONING_PLAN_CODE
-          ? "info"
-          : "warning"
-      }
+      variant={variant}
       footer={footer}
     />
   );
