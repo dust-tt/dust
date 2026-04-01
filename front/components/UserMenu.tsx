@@ -7,9 +7,11 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   forceUserRole,
   isInlineActivityEnabled,
+  isSingleAgentInputEnabled,
   sendOnboardingConversation,
   showDebugTools,
   toggleInlineActivity,
+  toggleSingleAgentInput,
 } from "@app/lib/development";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
@@ -66,6 +68,19 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
       type: "success",
     });
   }, [sendNotification]);
+  const [singleAgentInput, setSingleAgentInput] = useState(
+    isSingleAgentInputEnabled
+  );
+  const handleToggleSingleAgentInput = () => {
+    const next = toggleSingleAgentInput();
+    setSingleAgentInput(next);
+    sendNotification({
+      title: `Single agent input ${next ? "enabled" : "disabled"}`,
+      description: "Reload the page to apply.",
+      type: "success",
+    })
+  }
+  
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
@@ -278,6 +293,11 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                   <DropdownMenuItem
                     label={`${inlineActivity ? "Disable" : "Enable"} Inline Activity`}
                     onClick={handleToggleInlineActivity}
+                    icon={TestTubeIcon}
+                  />
+                  <DropdownMenuItem
+                    label={`${singleAgentInput ? "Disable" : "Enable"} Single Agent Input`}
+                    onClick={handleToggleSingleAgentInput}
                     icon={TestTubeIcon}
                   />
                   {owner.role === "admin" && (
