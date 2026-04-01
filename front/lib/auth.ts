@@ -1605,6 +1605,10 @@ export function invalidateFeatureFlagsCache(auth: Authenticator): void {
   _getFeatureFlags.del(workspace);
 }
 
+export function invalidateGlobalFeatureFlagsCache(): void {
+  _getGlobalFeatureFlags.del({});
+}
+
 export function getApiKeyNameFromHeaders(headers: {
   [key: string]: string | string[] | undefined;
 }) {
