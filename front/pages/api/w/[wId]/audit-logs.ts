@@ -1,5 +1,10 @@
 /** @ignoreswagger */
-import { isAuditLogsEnabled } from "@app/lib/api/audit/workos_audit";
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+  isAuditLogsEnabled,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
@@ -66,6 +71,13 @@ async function handler(
           returnUrl,
         }),
       ]);
+
+      void emitAuditLogEvent({
+        auth,
+        action: "audit_log.viewed",
+        targets: [buildWorkspaceTarget(owner)],
+        context: getAuditLogContext(auth, req),
+      });
 
       return res.status(200).json({
         viewLogsLink: viewLogsResult.link,
