@@ -1,6 +1,3 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   GongCall,
@@ -12,8 +9,10 @@ import {
 } from "@app/lib/api/actions/servers/gong/schemas";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { z } from "zod";
 
 const GONG_API_BASE_URL = "https://api.gong.io/v2";
 
@@ -173,19 +172,14 @@ export class GongClient {
               parties: true,
               content: {
                 topics: true,
-                trackers: true,
                 pointsOfInterest: true,
                 brief: true,
-                outline: true,
-                highlights: true,
                 callOutcome: true,
                 keyPoints: true,
               },
               interaction: {
                 speakers: true,
                 interactionStats: true,
-                questions: true,
-                video: true,
               },
               collaboration: {
                 publicComments: true,
@@ -206,6 +200,10 @@ export class GongClient {
   async getCallTranscripts(
     callIds: string[]
   ): Promise<Result<GongCallTranscript[], Error>> {
+    if (callIds.length === 0) {
+      return new Ok([]);
+    }
+
     const result = await this.request(
       "/calls/transcript",
       GongTranscriptsResponseSchema,

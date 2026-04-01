@@ -2,8 +2,8 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  getGongClient,
   GongApiError,
+  getGongClient,
 } from "@app/lib/api/actions/servers/gong/client";
 import { GONG_TOOLS_METADATA } from "@app/lib/api/actions/servers/gong/metadata";
 import {
@@ -11,7 +11,7 @@ import {
   renderCalls,
   renderTranscripts,
 } from "@app/lib/api/actions/servers/gong/rendering";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Hard limit on the number of calls returned per request to prevent unbounded results.
 const MAX_CALLS_PER_REQUEST = 100;
