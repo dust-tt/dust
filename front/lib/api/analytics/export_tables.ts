@@ -84,7 +84,7 @@ export async function exportTable({
           const r = await fetchAvailableSkills(q);
           return r.isOk()
             ? new Ok(r.value.map((s) => ({ name: s.skillName })))
-            : new Err(r.error);
+            : r;
         },
         fetchMetrics: fetchSkillUsageMetrics,
       });
@@ -99,7 +99,7 @@ export async function exportTable({
           const r = await fetchAvailableTools(q);
           return r.isOk()
             ? new Ok(r.value.map((t) => ({ name: t.serverName })))
-            : new Err(r.error);
+            : r;
         },
         fetchMetrics: fetchToolUsageMetrics,
       });

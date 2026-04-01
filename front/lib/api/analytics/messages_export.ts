@@ -2,6 +2,7 @@ import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -67,7 +68,7 @@ async function fetchAllMessageDocuments(
       return new Err(new Error(result.error.message));
     }
 
-    const hits = result.value.hits.hits;
+    const { hits } = result.value.hits;
     for (const hit of hits) {
       if (hit._source) {
         allDocs.push(hit._source);
@@ -87,7 +88,7 @@ async function fetchAllMessageDocuments(
 
 async function fetchAgentMetadata(
   agentIds: string[],
-  workspaceModelId: number
+  workspaceModelId: ModelId
 ): Promise<Map<string, { name: string; settings: string }>> {
   if (agentIds.length === 0) {
     return new Map();
@@ -108,6 +109,7 @@ async function fetchAgentMetadata(
     FROM "agent_configurations" ac
     WHERE ac."workspaceId" = :wId
       AND ac."sId" IN (:agentIds)
+      AND ac."status" = 'active'
     `,
     {
       type: QueryTypes.SELECT,
@@ -139,7 +141,7 @@ export async function fetchMessageExportRows({
   timezone,
 }: {
   workspaceId: string;
-  workspaceModelId: number;
+  workspaceModelId: ModelId;
   startDate: string;
   endDate: string;
   timezone: string;
