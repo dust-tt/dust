@@ -9,8 +9,6 @@ import type {
 } from "@app/types/api/internal/assistant";
 import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // TODO(sidekick): Remove useless suggestion types when sidekick is released.
@@ -24,20 +22,19 @@ async function handler(
   switch (req.method) {
     case "POST":
       const bodyValidation =
-        InternalPostBuilderSuggestionsRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        InternalPostBuilderSuggestionsRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
-      const suggestionsType = bodyValidation.right.type;
-      const suggestionsInputs = bodyValidation.right.inputs;
+      const suggestionsType = bodyValidation.data.type;
+      const suggestionsInputs = bodyValidation.data.inputs;
 
       const suggestionsRes = await getBuilderSuggestions(
         auth,

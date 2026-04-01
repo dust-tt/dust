@@ -1,11 +1,11 @@
 import { useClientType } from "@app/lib/context/clientType";
 import { useFetcher } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-import type {
-  InternalPostConversationsRequestBodySchema,
-  SupportedContentNodeContentType,
+import type { SupportedContentNodeContentType } from "@app/types/api/internal/assistant";
+import {
+  type InternalPostConversationsRequestBodySchema,
+  isSupportedContentNodeFragmentContentType,
 } from "@app/types/api/internal/assistant";
-import { isSupportedContentNodeFragmentContentType } from "@app/types/api/internal/assistant";
 import type {
   ClientMessageOrigin,
   ConversationMetadata,
@@ -19,8 +19,8 @@ import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import type * as t from "io-ts";
 import { useCallback } from "react";
+import type { z } from "zod";
 
 export function useCreateConversationWithMessage({
   owner,
@@ -75,58 +75,56 @@ export function useCreateConversationWithMessage({
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
 
-      const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
-        {
-          title: title ?? null,
-          visibility,
-          spaceId: spaceId ?? null,
-          metadata,
-          skipToolsValidation,
-          message: {
-            content: input,
-            context: {
-              timezone:
-                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-              profilePictureUrl: user.image,
-              clientSideMCPServerIds,
-              selectedMCPServerViewIds,
-              selectedSkillIds,
-              origin,
-            },
-            mentions,
+      const body: z.infer<typeof InternalPostConversationsRequestBodySchema> = {
+        title: title ?? null,
+        visibility,
+        spaceId: spaceId ?? null,
+        metadata,
+        skipToolsValidation,
+        message: {
+          content: input,
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+            profilePictureUrl: user.image,
+            clientSideMCPServerIds,
+            selectedMCPServerViewIds,
+            selectedSkillIds,
+            origin,
           },
-          contentFragments: [
-            ...contentFragments.uploaded.map((cf) => ({
+          mentions,
+        },
+        contentFragments: [
+          ...contentFragments.uploaded.map((cf) => ({
+            title: cf.title,
+            url: cf.url,
+            context: {
+              profilePictureUrl: user.image,
+            },
+            fileId: cf.fileId,
+          })),
+          ...contentFragments.contentNodes.map((cf) => {
+            const contentType = isSupportedContentNodeFragmentContentType(
+              cf.mimeType
+            )
+              ? (cf.mimeType as SupportedContentNodeContentType)
+              : null;
+            if (!contentType) {
+              throw new Error(
+                `Unsupported content node fragment mime type: ${cf.mimeType}`
+              );
+            }
+
+            return {
               title: cf.title,
-              url: cf.url,
               context: {
                 profilePictureUrl: user.image,
               },
-              fileId: cf.fileId,
-            })),
-            ...contentFragments.contentNodes.map((cf) => {
-              const contentType = isSupportedContentNodeFragmentContentType(
-                cf.mimeType
-              )
-                ? (cf.mimeType as SupportedContentNodeContentType)
-                : null;
-              if (!contentType) {
-                throw new Error(
-                  `Unsupported content node fragment mime type: ${cf.mimeType}`
-                );
-              }
-
-              return {
-                title: cf.title,
-                context: {
-                  profilePictureUrl: user.image,
-                },
-                nodeId: cf.internalId,
-                nodeDataSourceViewId: cf.dataSourceView.sId,
-              };
-            }),
-          ],
-        };
+              nodeId: cf.internalId,
+              nodeDataSourceViewId: cf.dataSourceView.sId,
+            };
+          }),
+        ],
+      };
 
       // Create new conversation and post the initial message at the same time.
       try {

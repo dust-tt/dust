@@ -150,8 +150,6 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationsResponseBody = {
@@ -221,18 +219,15 @@ async function handler(
         req.body.spaceId = null;
       }
 
-      const bodyValidation = InternalPostConversationsRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        InternalPostConversationsRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
@@ -245,7 +240,7 @@ async function handler(
         contentFragments,
         metadata,
         skipToolsValidation,
-      } = bodyValidation.right;
+      } = bodyValidation.data;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
