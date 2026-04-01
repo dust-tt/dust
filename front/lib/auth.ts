@@ -57,6 +57,8 @@ import type {
 } from "next";
 import type { Transaction } from "sequelize";
 
+// This code is used in front-sse.
+
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
