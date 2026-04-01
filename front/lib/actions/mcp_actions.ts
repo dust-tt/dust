@@ -911,6 +911,7 @@ export async function tryListMCPTools(
           new Error(
             `An error occurred while listing the available tools for ${action.name}. ` +
               "Tools from this server are not available for this message. " +
+              `Reason: ${normalizeError(toolsAndInstructionsRes.error).message}. ` +
               "Inform the user of this issue."
           )
         );
