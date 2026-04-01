@@ -560,8 +560,6 @@ export function useDetectSkillsFromFiles({
             body: formData,
           }
         );
-
-
         setDetectedSkills(data.skills);
       } catch (err) {
         setDetectError(
