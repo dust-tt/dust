@@ -34,7 +34,7 @@ export function TimelineRow({
           ) : null}
         </div>
         {!isLast && (
-          <div className="mt-0.5 w-0.5 flex-1 rounded-full bg-border dark:bg-border-night" />
+          <div className="mt-0.5 w-0.5 flex-1 origin-top animate-grow-down rounded-full bg-border dark:bg-border-night" />
         )}
       </div>
 
