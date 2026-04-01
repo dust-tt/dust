@@ -29,7 +29,7 @@ export function TimelineRow({
             <Icon
               visual={icon}
               size="xs"
-              className="s-text-faint dark:s-text-faint-night"
+              className="text-faint dark:text-faint-night"
             />
           ) : null}
         </div>
