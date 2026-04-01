@@ -1,10 +1,12 @@
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import { isSingleAgentInputEnabled } from "@app/lib/development";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { useEffect, useRef } from "react";
+import { isRichAgentMention } from "@app/types/assistant/mentions";
+import { useContext, useEffect, useRef } from "react";
 
 const useHandleMentions = (
   editorService: EditorService,
@@ -15,6 +17,18 @@ const useHandleMentions = (
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const singleAgentInput = isSingleAgentInputEnabled();
+  const { setSelectedAgent } = useContext(InputBarContext);
+
+  // In single agent mode, sync the selected agent from sticky mentions
+  // so the agent picker button shows the correct agent on existing conversations,
+  // and clears it when navigating to a new conversation.
+  useEffect(() => {
+    if (!singleAgentInput) {
+      return;
+    }
+    const agentMention = stickyMentions?.find(isRichAgentMention) ?? null;
+    setSelectedAgent(agentMention);
+  }, [singleAgentInput, stickyMentions, setSelectedAgent]);
 
   useEffect(() => {
     if (!stickyMentions || stickyMentions.length === 0) {
