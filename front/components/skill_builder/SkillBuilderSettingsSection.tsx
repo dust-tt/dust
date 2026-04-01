@@ -4,7 +4,6 @@ import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuil
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
 import {
-  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -34,14 +33,7 @@ export function SkillBuilderSettingsSection() {
       </div>
       <Collapsible defaultOpen>
         <CollapsibleTrigger variant="secondary">
-          <div className="flex items-center gap-2">
-            <span className="text-base text-foreground dark:text-foreground-night">
-              Advanced
-            </span>
-            <Chip color="golden" size="xs">
-              Preview
-            </Chip>
-          </div>
+          Advanced
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="pt-3">
