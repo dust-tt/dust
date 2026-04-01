@@ -115,7 +115,20 @@ export function useFileUploaderService(
           );
 
           if (tabContent && tabContent.content) {
-            const file = new File([tabContent.content], title, {
+            const parts = [];
+            if (tabContent.title) {
+              parts.push(`Title: ${tabContent.title}`);
+            }
+            if (tabContent.url) {
+              parts.push(`URL: ${tabContent.url}`);
+            }
+            if (parts.length > 0) {
+              // Add a visual separator between metadata and content
+              parts.push("");
+            }
+            parts.push(tabContent.content);
+
+            const file = new File([parts.join("\n")], title, {
               type: "text/markdown",
             });
 
