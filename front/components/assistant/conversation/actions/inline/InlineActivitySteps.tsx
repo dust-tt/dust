@@ -49,7 +49,7 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
     opacity: isCollapsed ? 0 : 1,
     transition: isCollapsed
-      ? "grid-template-rows 210ms ease-in, opacity 210ms"
+      ? "grid-template-rows 300ms ease-in, opacity 300ms"
       : "grid-template-rows 200ms ease-in",
   };
 }
