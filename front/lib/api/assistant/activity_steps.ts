@@ -88,6 +88,7 @@ export async function contentsToActivitySteps(
           type: "action",
           label: getActionOneLineLabel(matchingAction),
           id: `action-${matchingAction.id}`,
+          serverIcon: matchingAction.serverIcon,
         });
       }
     }

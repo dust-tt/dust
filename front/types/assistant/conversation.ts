@@ -248,7 +248,12 @@ export type BaseAgentMessageType = {
 
 export type InlineActivityStep =
   | { type: "thinking"; content: string; id: string }
-  | { type: "action"; label: string; id: string };
+  | {
+      type: "action";
+      label: string;
+      id: string;
+      serverIcon: string | null;
+    };
 
 export type ParsedContentItem =
   | { kind: "reasoning"; content: string }

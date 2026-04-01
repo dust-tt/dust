@@ -2,6 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
+  getInternalMCPServerIconByName,
   getInternalMCPServerNameFromSId,
   getInternalMCPServerToolDisplayLabels,
   type InternalMCPServerNameType,
@@ -982,6 +983,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       this.functionCallName;
     const mcpServerId = this.metadata.mcpServerId ?? null;
 
+    const serverIcon: string | null = internalMCPServerName
+      ? getInternalMCPServerIconByName(internalMCPServerName)
+      : (this.toolConfiguration.icon ?? null);
+
     const displayLabels = internalMCPServerName
       ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
           toolName
@@ -1004,6 +1009,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       functionCallName: this.functionCallName,
       functionCallId: this.stepContent.value.value.id,
       internalMCPServerName,
+      serverIcon,
       toolName,
       mcpServerId,
       params: this.augmentedInputs,

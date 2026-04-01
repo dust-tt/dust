@@ -196,6 +196,7 @@ export function AgentMessage({
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
+  const isInlineActivityEnabled = isDevInlineActivityEnabled();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -933,6 +934,8 @@ export function AgentMessage({
     );
   };
 
+  const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
+
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
       <div className="inline-flex items-center gap-2">
@@ -950,7 +953,7 @@ export function AgentMessage({
             agentMessage.prunedContext ? <PrunedContextChip /> : undefined
           }
           completionStatus={
-            isDeleted ? undefined : (
+            hideCompletionStatus ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
             )
           }
@@ -1316,7 +1319,7 @@ function AgentMessageContent({
       )}
       {agentMessage.status === "cancelled" && (
         <div className="flex flex-col gap-2">
-          <div className="text-faint dark:text-faint-night">
+          <div className="text-sm text-faint dark:text-faint-night">
             Message generation was interrupted
           </div>
           <div>
