@@ -1,9 +1,7 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
-import type {
-  InlineActivityStep,
-} from "@app/components/assistant/conversation/types";
+import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
@@ -19,8 +17,8 @@ import {
   ChatBubbleThoughtIcon,
   CheckIcon,
   ChevronRightIcon,
-  Icon,
   cn,
+  Icon,
   Markdown,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -119,7 +117,10 @@ export function InlineActivitySteps({
         onClick={() => setIsCollapsed((c) => !c)}
       >
         <span
-          className={cn("transition-transform duration-200 ease-out", !isCollapsed && "rotate-90")}
+          className={cn(
+            "transition-transform duration-200 ease-out",
+            !isCollapsed && "rotate-90"
+          )}
         >
           <Icon size="xs" visual={ChevronRightIcon} />
         </span>
@@ -169,10 +170,10 @@ export function InlineActivitySteps({
                     </TimelineRow>
                   );
                 case "action": {
-                  const actionIcon = step.action.internalMCPServerName
+                  const actionIcon = step.internalMCPServerName
                     ? InternalActionIcons[
                         getInternalMCPServerIconByName(
-                          step.action.internalMCPServerName
+                          step.internalMCPServerName
                         )
                       ]
                     : CheckIcon;
@@ -184,7 +185,7 @@ export function InlineActivitySteps({
                       isLast={isLast}
                     >
                       <span className="text-muted-foreground dark:text-muted-foreground-night">
-                        {getActionOneLineLabel(step.action)}
+                        {step.label}
                       </span>
                     </TimelineRow>
                   );

@@ -1,3 +1,4 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -248,7 +249,12 @@ export type BaseAgentMessageType = {
 
 export type InlineActivityStep =
   | { type: "thinking"; content: string; id: string }
-  | { type: "action"; label: string; id: string };
+  | {
+      type: "action";
+      label: string;
+      id: string;
+      internalMCPServerName: InternalMCPServerNameType | null;
+    };
 
 export type ParsedContentItem =
   | { kind: "reasoning"; content: string }
