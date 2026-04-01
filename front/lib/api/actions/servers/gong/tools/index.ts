@@ -13,7 +13,6 @@ import {
 } from "@app/lib/api/actions/servers/gong/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 
-// Hard limit on the number of calls returned per request to prevent unbounded results.
 const MAX_CALLS_PER_REQUEST = 100;
 
 function isTrackedError(error: Error): boolean {
@@ -53,7 +52,6 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
       ]);
     }
 
-    // Apply hard limit to prevent unbounded results.
     const limitedCalls = calls.slice(0, MAX_CALLS_PER_REQUEST);
     const wasLimited = calls.length > MAX_CALLS_PER_REQUEST;
 
@@ -117,17 +115,23 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
     }
     const client = clientResult.value;
 
-    const result = await client.getCallTranscripts([callId]);
+    const [transcriptResult, callResult] = await Promise.all([
+      client.getCallTranscripts([callId]),
+      client.getCallsExtensive([callId]),
+    ]);
 
-    if (result.isErr()) {
+    if (transcriptResult.isErr()) {
       return new Err(
-        new MCPError(`Failed to get call transcript: ${result.error.message}`, {
-          tracked: isTrackedError(result.error),
-        })
+        new MCPError(
+          `Failed to get call transcript: ${transcriptResult.error.message}`,
+          {
+            tracked: isTrackedError(transcriptResult.error),
+          }
+        )
       );
     }
 
-    const transcripts = result.value;
+    const transcripts = transcriptResult.value;
 
     if (transcripts.length === 0) {
       return new Err(
@@ -138,10 +142,23 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
       );
     }
 
+    // Build speakerId → name map from call parties.
+    const speakerNames: Record<string, string> = {};
+    if (callResult.isOk()) {
+      const call = callResult.value[0];
+      if (call?.parties) {
+        for (const party of call.parties) {
+          if (party.speakerId && party.name) {
+            speakerNames[party.speakerId] = party.name;
+          }
+        }
+      }
+    }
+
     return new Ok([
       {
         type: "text" as const,
-        text: renderTranscripts(transcripts),
+        text: renderTranscripts(transcripts, speakerNames),
       },
     ]);
   },

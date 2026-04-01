@@ -67,7 +67,6 @@ export function renderCall(call: GongCall, includeDetails = false): string {
     lines.push(`- **Purpose:** ${call.purpose}`);
   }
 
-  // Render parties
   if (call.parties && call.parties.length > 0) {
     lines.push("\n### Participants");
     for (const party of call.parties) {
@@ -79,7 +78,6 @@ export function renderCall(call: GongCall, includeDetails = false): string {
   }
 
   if (includeDetails) {
-    // Content summary
     if (call.content) {
       if (call.content.brief) {
         lines.push("\n### Summary");
@@ -126,7 +124,6 @@ export function renderCall(call: GongCall, includeDetails = false): string {
       }
     }
 
-    // Interaction stats
     if (call.interaction?.interactionStats) {
       lines.push("\n### Interaction Stats");
       for (const stat of call.interaction.interactionStats) {
@@ -136,7 +133,6 @@ export function renderCall(call: GongCall, includeDetails = false): string {
       }
     }
 
-    // Public comments
     if (
       call.collaboration?.publicComments &&
       call.collaboration.publicComments.length > 0
@@ -166,7 +162,10 @@ export function renderCalls(calls: GongCall[], includeDetails = false): string {
     .join("\n\n---\n\n");
 }
 
-export function renderTranscript(transcript: GongCallTranscript): string {
+export function renderTranscript(
+  transcript: GongCallTranscript,
+  speakerNames?: Record<string, string>
+): string {
   const lines: string[] = [];
 
   lines.push(`## Transcript for Call ${transcript.callId}`);
@@ -177,11 +176,13 @@ export function renderTranscript(transcript: GongCallTranscript): string {
     return lines.join("\n");
   }
 
-  // Each segment has a speakerId and sentences array
   for (const segment of transcript.transcript) {
-    const speakerLabel = segment.speakerId
-      ? `Speaker ${segment.speakerId}`
-      : "Unknown Speaker";
+    const speakerLabel =
+      segment.speakerId && speakerNames?.[segment.speakerId]
+        ? speakerNames[segment.speakerId]
+        : segment.speakerId
+          ? `Speaker ${segment.speakerId}`
+          : "Unknown Speaker";
     const topicLabel = segment.topic ? ` [${segment.topic}]` : "";
 
     if (!segment.sentences || segment.sentences.length === 0) {
@@ -203,10 +204,15 @@ export function renderTranscript(transcript: GongCallTranscript): string {
   return lines.join("\n");
 }
 
-export function renderTranscripts(transcripts: GongCallTranscript[]): string {
+export function renderTranscripts(
+  transcripts: GongCallTranscript[],
+  speakerNames?: Record<string, string>
+): string {
   if (transcripts.length === 0) {
     return "No transcripts found.";
   }
 
-  return transcripts.map(renderTranscript).join("\n\n---\n\n");
+  return transcripts
+    .map((t) => renderTranscript(t, speakerNames))
+    .join("\n\n---\n\n");
 }

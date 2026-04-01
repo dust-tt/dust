@@ -3,7 +3,6 @@ import { z } from "zod";
 // Helper to accept both string and number IDs (Gong API returns numeric IDs)
 const idSchema = z.coerce.string();
 
-// Party/participant schema - only fields used in rendering
 const GongPartySchema = z
   .object({
     name: z.string().optional().nullable(),
@@ -14,7 +13,6 @@ const GongPartySchema = z
   })
   .passthrough();
 
-// Call schema - only fields used in rendering
 const GongCallSchema = z
   .object({
     id: idSchema,
@@ -113,14 +111,12 @@ const GongCallSchema = z
   })
   .passthrough();
 
-// Pagination schema
 const GongRecordsSchema = z
   .object({
     totalRecords: z.number(),
   })
   .passthrough();
 
-// Response schema for calls endpoints
 export const GongCallsResponseSchema = z
   .object({
     calls: z.array(GongCallSchema),
@@ -129,7 +125,6 @@ export const GongCallsResponseSchema = z
   })
   .passthrough();
 
-// Transcript schemas
 const GongTranscriptSentenceSchema = z
   .object({
     text: z.string().optional().nullable(),
@@ -151,16 +146,11 @@ const GongCallTranscriptSchema = z
   })
   .passthrough();
 
-// Response schema for transcripts endpoint
 export const GongTranscriptsResponseSchema = z
   .object({
     callTranscripts: z.array(GongCallTranscriptSchema),
   })
   .passthrough();
 
-// Export types inferred from schemas
 export type GongCall = z.infer<typeof GongCallSchema>;
 export type GongCallTranscript = z.infer<typeof GongCallTranscriptSchema>;
-export type GongTranscriptSentence = z.infer<
-  typeof GongTranscriptSentenceSchema
->;
