@@ -59,6 +59,7 @@ import type {
 import { isDataSourceNameValid } from "@app/types/data_source";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { PlanType } from "@app/types/plan";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -565,7 +566,7 @@ export async function upsertDocument({
     );
   }
 
-  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  let credentials: LLMCredentialsType;
   try {
     credentials = await getLlmCredentials(auth);
   } catch (err) {
@@ -626,7 +627,7 @@ export async function handleDataSourceSearch({
     Omit<DustError, "code"> & { code: "data_source_error" }
   >
 > {
-  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  let credentials: LLMCredentialsType;
   try {
     credentials = await getLlmCredentials(auth);
   } catch (err) {
@@ -1105,7 +1106,7 @@ export async function createDataSourceWithoutProvider(
         });
       }
 
-      let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+      let credentials: LLMCredentialsType;
       try {
         credentials = await getLlmCredentials(auth);
       } catch (err) {

@@ -46,6 +46,7 @@ import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
@@ -405,7 +406,7 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  let credentials: LLMCredentialsType;
   try {
     credentials = await getLlmCredentials(auth);
   } catch (err) {

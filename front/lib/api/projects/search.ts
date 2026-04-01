@@ -9,6 +9,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -74,7 +75,7 @@ export async function searchProjectConversations(
   }));
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  let credentials: LLMCredentialsType;
   try {
     credentials = await getLlmCredentials(auth);
   } catch (err) {

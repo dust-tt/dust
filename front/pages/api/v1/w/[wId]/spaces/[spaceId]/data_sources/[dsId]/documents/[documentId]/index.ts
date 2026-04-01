@@ -20,6 +20,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { sectionFullText } from "@app/types/core/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { fileSizeToHumanReadable } from "@app/types/files";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
@@ -650,7 +651,7 @@ async function handler(
           },
         });
       } else {
-        let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+        let credentials: LLMCredentialsType;
         try {
           credentials = await getLlmCredentials(auth);
         } catch (err) {

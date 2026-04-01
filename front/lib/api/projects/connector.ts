@@ -27,6 +27,7 @@ import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embed
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -135,7 +136,7 @@ export async function createDataSourceAndConnectorForProject(
         coreProjectId = dustProject.value.project.project_id.toString();
 
         // Create Core API data source
-        let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+        let credentials: LLMCredentialsType;
         try {
           credentials = await getLlmCredentials(auth);
         } catch (err) {
