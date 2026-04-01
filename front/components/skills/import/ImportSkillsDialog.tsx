@@ -80,10 +80,8 @@ export function ImportSkillsDialog({
         return;
       }
 
-      const result = await importSkills(data, uploadedFilesRef.current);
-      if (result.successCount > 0) {
-        onClose();
-      }
+      await importSkills(data, uploadedFilesRef.current);
+      onClose();
     },
     [importSkills, onClose]
   );
