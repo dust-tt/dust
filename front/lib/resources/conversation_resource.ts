@@ -720,6 +720,115 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => c.sId);
   }
 
+  /**
+   * Returns the agent sIds that have at least one conversation updated
+   * since cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
+   * triggerId IS NULL and no user messages are present.
+   */
+  static async listConversationsForAgents(
+    auth: Authenticator,
+    {
+      agentSIds,
+      cutoffDate,
+      excludeHumanOutOfTheLoop = false,
+    }: {
+      agentSIds: string[];
+      cutoffDate: Date;
+      excludeHumanOutOfTheLoop?: boolean;
+    }
+  ): Promise<string[]> {
+    if (agentSIds.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: (conversationId, agentConfigurationId) pairs for target agents.
+    const participations = await MessageModel.findAll({
+      attributes: ["conversationId"],
+      where: { workspaceId },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+          where: { workspaceId, agentConfigurationId: { [Op.in]: agentSIds } },
+        },
+      ],
+    });
+
+    if (participations.length === 0) {
+      return [];
+    }
+
+    const conversationIds = [
+      ...new Set(participations.map((p) => p.conversationId)),
+    ];
+
+    // Step 2: Filter to conversations updated within the lookback window.
+    const candidateConversations = await ConversationModel.findAll({
+      attributes: ["id", "triggerId"],
+      where: {
+        workspaceId,
+        id: { [Op.in]: conversationIds },
+        updatedAt: { [Op.gte]: cutoffDate },
+      },
+      raw: true,
+    });
+
+    if (candidateConversations.length === 0) {
+      return [];
+    }
+
+    let qualifyingIds: Set<number>;
+
+    if (!excludeHumanOutOfTheLoop) {
+      qualifyingIds = new Set(candidateConversations.map((c) => c.id));
+    } else {
+      // Triggered conversations pass through; non-triggered require a user message.
+      const triggeredIds = candidateConversations
+        .filter((c) => c.triggerId !== null)
+        .map((c) => c.id);
+      const nonTriggeredIds = candidateConversations
+        .filter((c) => c.triggerId === null)
+        .map((c) => c.id);
+
+      if (nonTriggeredIds.length === 0) {
+        qualifyingIds = new Set(triggeredIds);
+      } else {
+        const convsWithUserMessages = await MessageModel.findAll({
+          attributes: [
+            [
+              Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+              "conversationId",
+            ],
+          ],
+          where: { workspaceId, conversationId: { [Op.in]: nonTriggeredIds } },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+              attributes: [],
+            },
+          ],
+          raw: true,
+        });
+        qualifyingIds = new Set([
+          ...triggeredIds,
+          ...convsWithUserMessages.map((m) => m.conversationId),
+        ]);
+      }
+    }
+
+    return uniq(
+      participations
+        .filter((p) => qualifyingIds.has(p.conversationId))
+        .map((p) => p.agentMessage!.agentConfigurationId)
+    );
+  }
+
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,

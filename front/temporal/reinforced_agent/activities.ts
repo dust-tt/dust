@@ -25,6 +25,7 @@ import {
   buildAnalysisSystemPrompt,
   buildConversationAnalysisBatchMap,
 } from "@app/lib/reinforced_agent/analyze_conversation";
+import { filterEligibleAgents } from "@app/lib/reinforced_agent/eligibility";
 import {
   buildReinforcedSpecifications,
   classifyToolCalls,
@@ -241,8 +242,10 @@ async function runReinforcedStep({
  */
 export async function getAgentConfigurationsActivity({
   workspaceId,
+  lookbackWindowDays = 1,
 }: {
   workspaceId: string;
+  lookbackWindowDays?: number;
 }): Promise<string[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -252,10 +255,8 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
-  // TODO(reinforced agent): for now, we only process those that are on, because we have not yet implemented 'auto' mode
-  return agents
-    .filter((a) => a.id > 0 && a.reinforcement === "on")
-    .map((a) => a.sId);
+  const eligible = await filterEligibleAgents(auth, agents, lookbackWindowDays);
+  return eligible.map((a) => a.sId);
 }
 
 /**
