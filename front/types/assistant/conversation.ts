@@ -246,6 +246,10 @@ export type BaseAgentMessageType = {
   prunedContext?: boolean;
 };
 
+export type InlineActivityStep =
+  | { type: "thinking"; content: string; id: string }
+  | { type: "action"; label: string; id: string };
+
 export type ParsedContentItem =
   | { kind: "reasoning"; content: string }
   | { kind: "action"; action: AgentMCPActionWithOutputType };
@@ -283,6 +287,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
+  activitySteps: InlineActivityStep[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events

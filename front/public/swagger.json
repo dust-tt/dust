@@ -9052,6 +9052,32 @@
             "type": "integer",
             "nullable": true
           },
+          "activitySteps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "thinking",
+                    "action"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "description": "Chain of thought text (thinking steps only)"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Action display label (action steps only)"
+                },
+                "id": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "reactions": {
             "type": "array",
             "items": {

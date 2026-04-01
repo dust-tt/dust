@@ -1,6 +1,5 @@
 import type {
   AgentMessageStateWithControlEvent,
-  InlineActivityStep,
   MessageTemporaryState,
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -12,9 +11,13 @@ import {
   isRunAgentChainOfThoughtProgressOutput,
   isRunAgentGenerationTokensProgressOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type {
+  InlineActivityStep,
+  LightAgentMessageWithActionsType,
+} from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
@@ -309,7 +312,7 @@ export function useAgentMessageStream({
             }
             // Add the completed action to inline activity steps.
             const alreadyCaptured = m.streaming.inlineActivitySteps.some(
-              (s) => s.type === "action" && s.action.id === action.id
+              (s) => s.id === `action-${action.id}`
             );
             const steps = alreadyCaptured
               ? m.streaming.inlineActivitySteps
@@ -317,7 +320,7 @@ export function useAgentMessageStream({
                   ...m.streaming.inlineActivitySteps,
                   {
                     type: "action" as const,
-                    action,
+                    label: getActionOneLineLabel(action),
                     id: `action-${action.id}`,
                   },
                 ];

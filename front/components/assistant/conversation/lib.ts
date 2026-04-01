@@ -171,6 +171,7 @@ export function createPlaceholderAgentMessage({
     },
     citations: {},
     generatedFiles: [],
+    activitySteps: [],
     actions: [],
     richMentions: [],
     completionDurationMs: null,

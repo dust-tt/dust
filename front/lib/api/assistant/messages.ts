@@ -1,3 +1,4 @@
+import { contentsToActivitySteps } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
@@ -645,7 +646,16 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       if (viewType === "full") {
         return new Ok(m);
       } else {
-        return new Ok(getLightAgentMessageFromAgentMessage(m));
+        const activitySteps = await contentsToActivitySteps(
+          agentStepContents,
+          actions,
+          agentConfiguration,
+          message.sId
+        );
+        return new Ok({
+          ...getLightAgentMessageFromAgentMessage(m),
+          activitySteps,
+        });
       }
     })
   );
