@@ -251,9 +251,8 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async makeNewAgentEditorsGroup(
     auth: Authenticator,
     agent: AgentConfigurationModel,
-    { transaction }: { transaction?: Transaction } = {}
+    { transaction, authorId }: { transaction?: Transaction; authorId: ModelId }
   ) {
-    const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
     if (agent.workspaceId !== workspace.id) {
@@ -270,7 +269,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
-      { transaction, memberIds: [user.id] }
+      { transaction, memberIds: [authorId] }
     );
 
     // Associate the group with the agent configuration.

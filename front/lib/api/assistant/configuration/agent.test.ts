@@ -47,6 +47,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
@@ -91,6 +92,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
@@ -140,6 +142,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isErr()).toBe(true);
@@ -177,6 +180,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
@@ -232,6 +236,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
