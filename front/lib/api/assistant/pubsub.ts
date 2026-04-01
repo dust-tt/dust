@@ -1,6 +1,8 @@
-import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
-import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import type {
+  AgentMessageEvents,
+  ConversationEvents,
+} from "@app/lib/api/assistant/streaming/types";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,12 +12,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
-import type {
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-} from "@app/types/assistant/agent";
-import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 export async function* getConversationEvents({
   conversationId,
@@ -144,13 +140,7 @@ export async function* getMessagesEvents(
 ): AsyncGenerator<
   {
     eventId: string;
-    data: (
-      | AgentErrorEvent
-      | AgentActionRunningEvents
-      | AgentActionSuccessEvent
-      | AgentGenerationCancelledEvent
-      | GenerationTokensEvent
-    ) & {
+    data: AgentMessageEvents & {
       step: number;
     };
   },

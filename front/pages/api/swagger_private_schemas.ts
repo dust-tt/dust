@@ -1090,6 +1090,7 @@
  *         propertyName: type
  *       oneOf:
  *         - $ref: '#/components/schemas/PrivateGenerationTokensEvent'
+ *         - $ref: '#/components/schemas/PrivateToolCallStartedEvent'
  *         - $ref: '#/components/schemas/PrivateAgentActionSuccessEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageSuccessEvent'
  *         - $ref: '#/components/schemas/PrivateAgentErrorEvent'
@@ -1123,6 +1124,27 @@
  *         delimiterClassification:
  *           type: string
  *           description: Present when classification is opening_delimiter or closing_delimiter
+ *         step:
+ *           type: integer
+ *     PrivateToolCallStartedEvent:
+ *       type: object
+ *       required: [type, created, configurationId, messageId, toolName]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [tool_call_started]
+ *         created:
+ *           type: integer
+ *         configurationId:
+ *           type: string
+ *         messageId:
+ *           type: string
+ *         toolCallId:
+ *           type: string
+ *         toolCallIndex:
+ *           type: integer
+ *         toolName:
+ *           type: string
  *         step:
  *           type: integer
  *     PrivateAgentActionSuccessEvent:

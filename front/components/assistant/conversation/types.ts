@@ -49,6 +49,8 @@ export type ActionProgressState = Map<
 export interface PendingToolCall {
   key: string;
   name: string;
+  toolCallId?: string;
+  toolCallIndex?: number;
 }
 
 export type InlineActivityStep =

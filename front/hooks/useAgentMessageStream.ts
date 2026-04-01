@@ -182,6 +182,111 @@ function getPendingToolCallKey({
   return `tool-call-${toolName}`;
 }
 
+function getPendingToolCallMatchIndex(
+  pendingToolCalls: PendingToolCall[],
+  {
+    toolCallId,
+    toolCallIndex,
+    toolName,
+  }: {
+    toolCallId?: string;
+    toolCallIndex?: number;
+    toolName: string;
+  }
+): number {
+  return pendingToolCalls.findIndex((pendingToolCall) => {
+    if (toolCallId && pendingToolCall.toolCallId === toolCallId) {
+      return true;
+    }
+
+    if (
+      toolCallIndex !== undefined &&
+      pendingToolCall.toolCallIndex === toolCallIndex
+    ) {
+      return true;
+    }
+
+    return (
+      !toolCallId &&
+      toolCallIndex === undefined &&
+      !pendingToolCall.toolCallId &&
+      pendingToolCall.toolCallIndex === undefined &&
+      pendingToolCall.name === toolName
+    );
+  });
+}
+
+export function upsertPendingToolCall(
+  pendingToolCalls: PendingToolCall[],
+  {
+    toolCallId,
+    toolCallIndex,
+    toolName,
+  }: {
+    toolCallId?: string;
+    toolCallIndex?: number;
+    toolName: string;
+  }
+): PendingToolCall[] {
+  const matchIndex = getPendingToolCallMatchIndex(pendingToolCalls, {
+    toolCallId,
+    toolCallIndex,
+    toolName,
+  });
+
+  const nextPendingToolCall: PendingToolCall = {
+    key:
+      matchIndex !== -1
+        ? pendingToolCalls[matchIndex].key
+        : getPendingToolCallKey({ toolCallId, toolCallIndex, toolName }),
+    name: toolName,
+    ...(toolCallId ? { toolCallId } : {}),
+    ...(toolCallIndex !== undefined ? { toolCallIndex } : {}),
+  };
+
+  if (matchIndex === -1) {
+    return [...pendingToolCalls, nextPendingToolCall];
+  }
+
+  return pendingToolCalls.map((pendingToolCall, index) =>
+    index === matchIndex
+      ? {
+          ...pendingToolCall,
+          ...nextPendingToolCall,
+        }
+      : pendingToolCall
+  );
+}
+
+export function removePendingToolCall(
+  pendingToolCalls: PendingToolCall[],
+  action: Pick<
+    AgentMCPActionWithOutputType,
+    "functionCallId" | "functionCallName"
+  >
+): PendingToolCall[] {
+  const pendingToolCallWithIdIndex = pendingToolCalls.findIndex(
+    (pendingToolCall) => pendingToolCall.toolCallId === action.functionCallId
+  );
+  if (pendingToolCallWithIdIndex !== -1) {
+    return pendingToolCalls.filter(
+      (_, index) => index !== pendingToolCallWithIdIndex
+    );
+  }
+
+  const pendingToolCallsWithSameName = pendingToolCalls.filter(
+    (pendingToolCall) => pendingToolCall.name === action.functionCallName
+  );
+
+  if (pendingToolCallsWithSameName.length !== 1) {
+    return pendingToolCalls;
+  }
+
+  return pendingToolCalls.filter(
+    (pendingToolCall) => pendingToolCall !== pendingToolCallsWithSameName[0]
+  );
+}
+
 interface UseAgentMessageStreamParams {
   agentMessage: MessageTemporaryState;
   conversationId: string | null;
@@ -352,7 +457,10 @@ export function useAgentMessageStream({
                     ([id]) => id !== action.id
                   )
                 ),
-                pendingToolCalls: [],
+                pendingToolCalls: removePendingToolCall(
+                  m.streaming.pendingToolCalls,
+                  action
+                ),
               },
             };
           });
@@ -382,7 +490,10 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "acting",
                 inlineActivitySteps: steps,
-                pendingToolCalls: [],
+                pendingToolCalls: removePendingToolCall(
+                  m.streaming.pendingToolCalls,
+                  toolParams.action
+                ),
               },
             };
           });
@@ -397,16 +508,10 @@ export function useAgentMessageStream({
               return m;
             }
 
-            const pendingToolCall: PendingToolCall = {
-              key: getPendingToolCallKey(startedToolCall),
-              name: startedToolCall.toolName,
-            };
-
-            const pendingToolCalls = m.streaming.pendingToolCalls.some(
-              (toolCall) => toolCall.key === pendingToolCall.key
-            )
-              ? m.streaming.pendingToolCalls
-              : [...m.streaming.pendingToolCalls, pendingToolCall];
+            const pendingToolCalls = upsertPendingToolCall(
+              m.streaming.pendingToolCalls,
+              startedToolCall
+            );
 
             const steps = cotAtToolCallStart
               ? appendThinkingStep(
