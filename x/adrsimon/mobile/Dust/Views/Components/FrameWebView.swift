@@ -2,9 +2,28 @@ import SwiftUI
 import WebKit
 
 struct FrameWebView: UIViewRepresentable {
-    let url: URL
+    enum Source {
+        case url(URL)
+        case htmlString(String, baseURL: URL?)
+    }
+
+    let source: Source
     @Binding var isLoading: Bool
     @Binding var pageTitle: String
+
+    /// Convenience init for URL-based loading (preserves existing call sites).
+    init(url: URL, isLoading: Binding<Bool>, pageTitle: Binding<String>) {
+        self.source = .url(url)
+        self._isLoading = isLoading
+        self._pageTitle = pageTitle
+    }
+
+    /// Init for loading raw HTML content (e.g. frames fetched by fileId).
+    init(htmlString: String, baseURL: URL? = nil, isLoading: Binding<Bool>, pageTitle: Binding<String>) {
+        self.source = .htmlString(htmlString, baseURL: baseURL)
+        self._isLoading = isLoading
+        self._pageTitle = pageTitle
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -19,7 +38,13 @@ struct FrameWebView: UIViewRepresentable {
         webView.allowsBackForwardNavigationGestures = false
 
         context.coordinator.observeTitle(webView)
-        webView.load(URLRequest(url: url))
+
+        switch source {
+        case let .url(url):
+            webView.load(URLRequest(url: url))
+        case let .htmlString(html, baseURL):
+            webView.loadHTMLString(html, baseURL: baseURL)
+        }
         return webView
     }
 

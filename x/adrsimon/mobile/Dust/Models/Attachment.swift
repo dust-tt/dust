@@ -32,7 +32,14 @@ struct Attachment: Identifiable {
         }
     }
 
+    static let frameContentTypePrefix = "application/vnd.dust.frame"
+
+    static func isFrame(_ contentType: String) -> Bool {
+        contentType.hasPrefix(frameContentTypePrefix)
+    }
+
     static func sfSymbol(for contentType: String) -> String {
+        if contentType.hasPrefix(frameContentTypePrefix) { return "rectangle.on.rectangle" }
         if contentType.hasPrefix("image/") { return "photo" }
         if contentType.contains("pdf") { return "doc.richtext" }
         if contentType.contains("text") || contentType.contains("json")

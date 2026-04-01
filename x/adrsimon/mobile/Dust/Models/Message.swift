@@ -38,7 +38,7 @@ struct UserMessageContext: Codable {
 
 // MARK: - Content Fragment (nested in UserMessage)
 
-struct ContentFragment: Codable, Identifiable {
+struct ContentFragment: Codable, Identifiable, Hashable {
     let id: Int
     let sId: String
     let created: Double

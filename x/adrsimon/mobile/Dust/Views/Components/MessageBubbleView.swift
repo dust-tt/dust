@@ -7,14 +7,15 @@ struct MessageBubbleView: View {
     let currentUserEmail: String
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
+    var onFragmentTap: ((ContentFragment) -> Void)?
 
     var body: some View {
         switch message {
         case let .user(msg):
             if msg.context?.email == currentUserEmail {
-                UserMessageBubble(message: msg)
+                UserMessageBubble(message: msg, onFragmentTap: onFragmentTap)
             } else {
-                OtherUserMessageBubble(message: msg)
+                OtherUserMessageBubble(message: msg, onFragmentTap: onFragmentTap)
             }
         case let .agent(msg):
             AgentMessageBubble(
@@ -28,11 +29,12 @@ struct MessageBubbleView: View {
 
 struct UserMessageBubble: View {
     let message: UserMessage
+    var onFragmentTap: ((ContentFragment) -> Void)?
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 6) {
             if let fragments = message.contentFragments, !fragments.isEmpty {
-                ContentFragmentList(fragments: fragments)
+                ContentFragmentList(fragments: fragments, onTap: onFragmentTap)
             }
 
             if !message.content.isEmpty {
@@ -52,6 +54,7 @@ struct UserMessageBubble: View {
 
 struct OtherUserMessageBubble: View {
     let message: UserMessage
+    var onFragmentTap: ((ContentFragment) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -64,7 +67,7 @@ struct OtherUserMessageBubble: View {
             }
 
             if let fragments = message.contentFragments, !fragments.isEmpty {
-                ContentFragmentList(fragments: fragments)
+                ContentFragmentList(fragments: fragments, onTap: onFragmentTap)
             }
 
             if !message.content.isEmpty {
@@ -119,11 +122,12 @@ struct AgentMessageBubble: View {
 
 struct ContentFragmentList: View {
     let fragments: [ContentFragment]
+    var onTap: ((ContentFragment) -> Void)?
 
     var body: some View {
         FlowLayout(spacing: 4) {
             ForEach(fragments) { fragment in
-                ContentFragmentChip(fragment: fragment)
+                ContentFragmentChip(fragment: fragment, onTap: onTap)
             }
         }
     }
@@ -131,22 +135,33 @@ struct ContentFragmentList: View {
 
 struct ContentFragmentChip: View {
     let fragment: ContentFragment
+    var onTap: ((ContentFragment) -> Void)?
+
+    private var isTappable: Bool {
+        fragment.fileId != nil && onTap != nil
+    }
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: Attachment.sfSymbol(for: fragment.contentType))
-                .font(.system(size: 13))
-                .foregroundStyle(Color.highlight)
+        Button {
+            onTap?(fragment)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: Attachment.sfSymbol(for: fragment.contentType))
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.highlight)
 
-            Text(fragment.title)
-                .sparkleCopyXs()
-                .foregroundStyle(Color.dustForeground)
-                .lineLimit(1)
+                Text(fragment.title)
+                    .sparkleCopyXs()
+                    .foregroundStyle(Color.dustForeground)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.dustMutedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.dustMutedBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .buttonStyle(.plain)
+        .disabled(!isTappable)
     }
 }
 

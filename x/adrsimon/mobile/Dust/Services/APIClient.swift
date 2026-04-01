@@ -182,6 +182,18 @@ enum APIClient {
         return body
     }
 
+    /// Authenticated GET that returns raw `Data` without JSON decoding.
+    static func authenticatedGetRawData(
+        _ endpoint: String,
+        tokenProvider: TokenProvider
+    ) async throws -> Data {
+        try await withAuthRetry(tokenProvider: tokenProvider) { token in
+            var request = try buildRequest(endpoint: endpoint, accessToken: token)
+            request.httpMethod = "GET"
+            return try await performRequest(request)
+        }
+    }
+
     /// Executes a closure with a valid access token, retrying once on 401 after refreshing.
     private static func withAuthRetry<T>(
         tokenProvider: TokenProvider,
