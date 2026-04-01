@@ -237,13 +237,23 @@ export async function reinforcedAgentForAgentWorkflow({
       // Execute exploratory tools via the agent loop's retryable tool activity.
       // Results are stored in the reinforcement conversations in DB.
       for (const c of continuations) {
+        if (!c.toolActionInfo) {
+          // Only terminal tool call errors, to tool to execute
+          continue;
+        }
         const { authType, agentLoopArgs, actionIds } = c.toolActionInfo;
         for (const actionId of actionIds) {
-          await runRetryableToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: 0,
-          });
+          try {
+            await runRetryableToolActivity(authType, {
+              actionId,
+              runAgentArgs: agentLoopArgs,
+              step: 0,
+            });
+          } catch {
+            // Tool execution failed after all retries.
+            // The AgentMCPActionResource exists but has no output — the rendering
+            // pipeline will inject a placeholder error for the LLM to see.
+          }
         }
       }
 
@@ -325,8 +335,13 @@ async function analyzeConversationWithMultiStep({
 
     reinforcementConversationId = result.reinforcementConversationId;
 
-    if (result.isTerminal || !result.toolActionInfo) {
+    if (result.isTerminal) {
       return;
+    }
+
+    if (!result.toolActionInfo) {
+      // Only terminal tool call failure: no exploratory tool to run
+      continue;
     }
 
     const { authType, agentLoopArgs, actionIds } = result.toolActionInfo;
@@ -334,11 +349,17 @@ async function analyzeConversationWithMultiStep({
     // Execute each exploratory tool via the agent loop's retryable tool activity.
     // Results are stored in the reinforcement conversation DB.
     for (const actionId of actionIds) {
-      await runRetryableToolActivity(authType, {
-        actionId,
-        runAgentArgs: agentLoopArgs,
-        step: 0,
-      });
+      try {
+        await runRetryableToolActivity(authType, {
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: 0,
+        });
+      } catch {
+        // Tool execution failed after all retries.
+        // The AgentMCPActionResource exists but has no output — the rendering
+        // pipeline will inject a placeholder error for the LLM to see.
+      }
     }
 
     // Next iteration will render the conversation from DB, picking up the tool results.

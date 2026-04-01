@@ -286,7 +286,7 @@ export async function aggregateSyntheticSuggestions(
 
   const { agentConfig, syntheticSuggestions, prompt } = ctx;
 
-  const createdCount = await runReinforcedAnalysis({
+  const result = await runReinforcedAnalysis({
     auth,
     agentConfig,
     prompt,
@@ -295,10 +295,10 @@ export async function aggregateSyntheticSuggestions(
     contextId: agentConfigurationId,
   });
 
-  if (createdCount > 0 && !disableNotifications) {
+  if (result.suggestionsCreated > 0 && !disableNotifications) {
     notifyAgentSuggestionsReady(auth, {
       agentConfiguration: agentConfig,
-      suggestionCount: createdCount,
+      suggestionCount: result.suggestionsCreated,
     });
     await createAgentSuggestionsConversations(auth, agentConfig);
   }
@@ -313,7 +313,8 @@ export async function aggregateSyntheticSuggestions(
     {
       agentConfigurationId,
       syntheticCount: syntheticSuggestions.length,
-      pendingCreated: createdCount,
+      pendingCreated: result.suggestionsCreated,
+      failedToolCalls: result.failedToolCalls.length,
     },
     "ReinforcedAgent: aggregated synthetic suggestions into pending"
   );

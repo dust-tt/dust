@@ -37,6 +37,7 @@ import {
 import {
   prepareReinforcedToolActions,
   type ReinforcedToolActionInfo,
+  storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -290,7 +291,7 @@ export async function analyzeConversationStepActivity({
       auth,
       conversationId
     );
-    await processReinforcedEvents({
+    const result = await processReinforcedEvents({
       auth,
       agentConfig,
       events,
@@ -299,6 +300,19 @@ export async function analyzeConversationStepActivity({
       contextId: conversationId,
       conversation: analysedConversation ?? undefined,
     });
+
+    // Store results for all terminal tool calls so the conversation is complete.
+    await storeTerminalToolCallResults(auth, {
+      successfulToolCalls: result.successfulToolCalls,
+      failedToolCalls: result.failedToolCalls,
+      agentMessageModelId: storedResult.agentMessageModelId,
+    });
+
+    // If any failed, let the LLM retry on the next step.
+    if (result.failedToolCalls.length > 0) {
+      return { isTerminal: false, reinforcementConversationId };
+    }
+
     return { isTerminal: true, reinforcementConversationId };
   }
 
@@ -498,7 +512,7 @@ export async function checkBatchStatusActivity({
 export interface ConversationContinuationInfo {
   analysedConversationId: string;
   reinforcementConversationId: string;
-  toolActionInfo: ReinforcedToolActionInfo;
+  toolActionInfo?: ReinforcedToolActionInfo;
 }
 
 /**
@@ -584,7 +598,7 @@ export async function processConversationAnalysisBatchResultActivity({
 
     // If terminal tools were called, process suggestions.
     if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
-      const createdCount = await processReinforcedEvents({
+      const result = await processReinforcedEvents({
         auth,
         agentConfig,
         events,
@@ -593,7 +607,25 @@ export async function processConversationAnalysisBatchResultActivity({
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
       });
-      totalCreated += createdCount;
+      totalCreated += result.suggestionsCreated;
+
+      // Store results for all terminal tool calls so the conversation is complete.
+      const storedInfo = storedResultInfo.get(reinforcementConvId);
+      if (storedInfo) {
+        await storeTerminalToolCallResults(auth, {
+          successfulToolCalls: result.successfulToolCalls,
+          failedToolCalls: result.failedToolCalls,
+          agentMessageModelId: storedInfo.agentMessageModelId,
+        });
+
+        // If any failed, add to continuations so the LLM can retry.
+        if (result.failedToolCalls.length > 0) {
+          continuations.push({
+            analysedConversationId: analysedConvId,
+            reinforcementConversationId: reinforcementConvId,
+          });
+        }
+      }
     } else {
       // Only exploratory tools — prepare actions for the workflow to execute.
       const storedInfo = storedResultInfo.get(reinforcementConvId);
@@ -747,7 +779,7 @@ export async function processAggregationBatchResultActivity({
 
   let createdCount = 0;
   if (events) {
-    createdCount = await processReinforcedEvents({
+    const result = await processReinforcedEvents({
       auth,
       agentConfig,
       events,
@@ -755,6 +787,8 @@ export async function processAggregationBatchResultActivity({
       operationType: "reinforced_agent_aggregate_suggestions",
       contextId: "n/a",
     });
+    // TODO(reinforced agent) Fabien: Support tool call and retry in aggregation too
+    createdCount = result.suggestionsCreated;
   }
 
   if (createdCount > 0 && !disableNotifications) {

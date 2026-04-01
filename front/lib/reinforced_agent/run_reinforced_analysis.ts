@@ -16,13 +16,19 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { ReinforcedOperationType } from "@app/lib/reinforced_agent/types";
 import {
+  ALL_TOOLS,
   type ExploratoryToolCallInfo,
-  type ExploratoryToolName,
   getReinforcementMetadata,
+  isExploratoryToolName,
+  isTerminalToolName,
+  type ProcessReinforcedEventsResult,
+  type ReinforcedOperationType,
+  type TerminalToolCallEvent,
+  type TerminalToolCallFailure,
   type TerminalToolCallInfo,
-  type TerminalToolName,
+  type TerminalToolCallSuccess,
+  TOOL_SCHEMAS,
 } from "@app/lib/reinforced_agent/types";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -34,30 +40,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const TERMINAL_TOOLS: TerminalToolName[] = [
-  "suggest_prompt_edits",
-  "suggest_tools",
-  "suggest_skills",
-];
-
-const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
-  "get_available_skills",
-  "get_available_tools",
-];
-
-const ALL_TOOLS = [...TERMINAL_TOOLS, ...EXPLORATORY_TOOLS];
-
-const TOOL_SCHEMAS: Record<TerminalToolName, z.ZodObject<z.ZodRawShape>> = {
-  suggest_prompt_edits: z.object(
-    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_prompt_edits.schema
-  ),
-  suggest_tools: z.object(
-    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_tools.schema
-  ),
-  suggest_skills: z.object(
-    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA.suggest_skills.schema
-  ),
-};
+export const REINFORCEMENT_AGENT_ID = "reinforcement";
 
 export function buildReinforcedSpecifications(): AgentActionSpecification[] {
   return ALL_TOOLS.map((toolName) => {
@@ -77,35 +60,27 @@ interface CategorizedToolCalls {
 }
 
 export function classifyToolCalls(events: LLMEvent[]): CategorizedToolCalls {
-  const terminalToolNames = new Set<string>(TERMINAL_TOOLS);
-  const exploratoryToolNames = new Set<string>(EXPLORATORY_TOOLS);
-
   const toolCallEvents = events.filter(
     (e): e is ToolCallEvent =>
       e.type === "tool_call" &&
-      (terminalToolNames.has(e.content.name) ||
-        exploratoryToolNames.has(e.content.name))
+      (isTerminalToolName(e.content.name) ||
+        isExploratoryToolName(e.content.name))
   );
 
-  return {
-    exploratoryToolCalls: toolCallEvents
-      .filter((e) => exploratoryToolNames.has(e.content.name))
-      .map((e) => ({
-        id: e.content.id,
-        name: e.content.name as ExploratoryToolName,
-        arguments: e.content.arguments,
-      })),
-    terminalToolCalls: toolCallEvents
-      .filter((e) => terminalToolNames.has(e.content.name))
-      .map((e) => ({
-        id: e.content.id,
-        name: e.content.name as TerminalToolName,
-        arguments: e.content.arguments,
-      })),
-  };
-}
+  const exploratoryToolCalls: ExploratoryToolCallInfo[] = [];
+  const terminalToolCalls: TerminalToolCallInfo[] = [];
 
-export const REINFORCEMENT_AGENT_ID = "reinforcement";
+  for (const e of toolCallEvents) {
+    const { id, name, arguments: args } = e.content;
+    if (isExploratoryToolName(name)) {
+      exploratoryToolCalls.push({ id, name, arguments: args });
+    } else if (isTerminalToolName(name)) {
+      terminalToolCalls.push({ id, name, arguments: args });
+    }
+  }
+
+  return { exploratoryToolCalls, terminalToolCalls };
+}
 
 export function getReinforcementDefaultOptions(
   reinforcedOperationType: ReinforcedOperationType,
@@ -217,7 +192,7 @@ export async function processReinforcedEvents({
   operationType: ReinforcedOperationType;
   contextId: string;
   conversation?: ConversationResource;
-}): Promise<number> {
+}): Promise<ProcessReinforcedEventsResult> {
   const errorEvents = events.filter((e) => e.type === "error");
   if (errorEvents.length > 0) {
     logger.error(
@@ -228,27 +203,37 @@ export async function processReinforcedEvents({
       },
       `ReinforcedAgent: batch LLM errors for ${operationType}`
     );
-    return 0;
+    return {
+      suggestionsCreated: 0,
+      successfulToolCalls: [],
+      failedToolCalls: [],
+    };
   }
 
-  const terminalToolNames = new Set<string>(TERMINAL_TOOLS);
   const toolCallEvents = events.filter(
-    (e) => e.type === "tool_call" && terminalToolNames.has(e.content.name)
+    (e): e is TerminalToolCallEvent =>
+      e.type === "tool_call" && isTerminalToolName(e.content.name)
   );
   if (toolCallEvents.length === 0) {
     logger.warn(
       { contextId },
       `ReinforcedAgent: no tool call in batch result for ${operationType}`
     );
-    return 0;
+    return {
+      suggestionsCreated: 0,
+      successfulToolCalls: [],
+      failedToolCalls: [],
+    };
   }
 
   let totalCreated = 0;
+  const successfulToolCalls: TerminalToolCallSuccess[] = [];
+  const failedToolCalls: TerminalToolCallFailure[] = [];
+
   for (const event of toolCallEvents) {
-    if (event.type !== "tool_call") {
-      continue;
-    }
-    totalCreated += await createSuggestionsFromToolCall({
+    const { id, name, arguments: args } = event.content;
+    const toolCall: TerminalToolCallInfo = { id, name, arguments: args };
+    const result = await createSuggestionsFromToolCall({
       auth,
       agentConfig,
       toolName: event.content.name,
@@ -258,9 +243,27 @@ export async function processReinforcedEvents({
       contextId,
       conversation,
     });
+    totalCreated += result.suggestionsCreated;
+    if (result.error) {
+      failedToolCalls.push({ toolCall, errorMessage: result.error });
+    } else {
+      successfulToolCalls.push({
+        toolCall,
+        message: `Successfully created ${result.suggestionsCreated} suggestion(s).`,
+      });
+    }
   }
 
-  return totalCreated;
+  return {
+    suggestionsCreated: totalCreated,
+    successfulToolCalls,
+    failedToolCalls,
+  };
+}
+
+interface ToolCallResult {
+  suggestionsCreated: number;
+  error?: string;
 }
 
 /**
@@ -284,12 +287,13 @@ async function createSuggestionsFromToolCall({
   operationType: ReinforcedOperationType;
   contextId: string;
   conversation?: ConversationResource;
-}): Promise<number> {
+}): Promise<ToolCallResult> {
   switch (toolName) {
     case "suggest_prompt_edits": {
       const parsed =
         TOOL_SCHEMAS.suggest_prompt_edits.safeParse(actionArguments);
       if (!parsed.success) {
+        const errorMessage = `Invalid arguments for ${toolName}: ${parsed.error.message}`;
         logger.warn(
           {
             agentConfigurationId: agentConfig.sId,
@@ -299,7 +303,7 @@ async function createSuggestionsFromToolCall({
           },
           `ReinforcedAgent: invalid LLM response shape for ${operationType}`
         );
-        return 0;
+        return { suggestionsCreated: 0, error: errorMessage };
       }
       const result = await createInstructionSuggestions({
         auth,
@@ -313,14 +317,18 @@ async function createSuggestionsFromToolCall({
           { agentConfigurationId: agentConfig.sId, contextId, toolName },
           `ReinforcedAgent: ${result.error}`
         );
-        return 0;
+        return {
+          suggestionsCreated: 0,
+          error: `Error creating suggestions: ${result.error}`,
+        };
       }
-      return result.value.length;
+      return { suggestionsCreated: result.value.length };
     }
 
     case "suggest_tools": {
       const parsed = TOOL_SCHEMAS.suggest_tools.safeParse(actionArguments);
       if (!parsed.success) {
+        const errorMessage = `Invalid arguments for ${toolName}: ${parsed.error.message}`;
         logger.warn(
           {
             agentConfigurationId: agentConfig.sId,
@@ -330,7 +338,7 @@ async function createSuggestionsFromToolCall({
           },
           `ReinforcedAgent: invalid LLM response shape for ${operationType}`
         );
-        return 0;
+        return { suggestionsCreated: 0, error: errorMessage };
       }
       const result = await createToolsSuggestions({
         auth,
@@ -344,14 +352,18 @@ async function createSuggestionsFromToolCall({
           { agentConfigurationId: agentConfig.sId, contextId, toolName },
           `ReinforcedAgent: ${result.error}`
         );
-        return 0;
+        return {
+          suggestionsCreated: 0,
+          error: `Error creating suggestions: ${result.error}`,
+        };
       }
-      return result.value.length;
+      return { suggestionsCreated: result.value.length };
     }
 
     case "suggest_skills": {
       const parsed = TOOL_SCHEMAS.suggest_skills.safeParse(actionArguments);
       if (!parsed.success) {
+        const errorMessage = `Invalid arguments for ${toolName}: ${parsed.error.message}`;
         logger.warn(
           {
             agentConfigurationId: agentConfig.sId,
@@ -361,7 +373,7 @@ async function createSuggestionsFromToolCall({
           },
           `ReinforcedAgent: invalid LLM response shape for ${operationType}`
         );
-        return 0;
+        return { suggestionsCreated: 0, error: errorMessage };
       }
       const result = await createSkillsSuggestions({
         auth,
@@ -375,9 +387,12 @@ async function createSuggestionsFromToolCall({
           { agentConfigurationId: agentConfig.sId, contextId, toolName },
           `ReinforcedAgent: ${result.error}`
         );
-        return 0;
+        return {
+          suggestionsCreated: 0,
+          error: `Error creating suggestions: ${result.error}`,
+        };
       }
-      return result.value.length;
+      return { suggestionsCreated: result.value.length };
     }
 
     default:
@@ -385,7 +400,7 @@ async function createSuggestionsFromToolCall({
         { agentConfigurationId: agentConfig.sId, contextId, toolName },
         `ReinforcedAgent: unexpected tool name for ${operationType}`
       );
-      return 0;
+      return { suggestionsCreated: 0 };
   }
 }
 
@@ -396,8 +411,6 @@ async function createSuggestionsFromToolCall({
  *
  * For multi-step conversations (exploratory tools), the loop is handled at the
  * Temporal workflow level via analyzeConversationStepActivity + runRetryableToolActivity.
- *
- * Returns the number of suggestions created.
  */
 export async function runReinforcedAnalysis({
   auth,
@@ -415,14 +428,18 @@ export async function runReinforcedAnalysis({
   operationType: ReinforcedOperationType;
   contextId: string;
   conversation?: ConversationResource;
-}): Promise<number> {
+}): Promise<ProcessReinforcedEventsResult> {
   const llm = await getReinforcedLLM(auth, operationType);
   if (!llm) {
     logger.error(
       { contextId },
       `ReinforcedAgent: no whitelisted model available for ${operationType}`
     );
-    return 0;
+    return {
+      suggestionsCreated: 0,
+      successfulToolCalls: [],
+      failedToolCalls: [],
+    };
   }
 
   const llmParams = buildReinforcedLLMParams(prompt);
