@@ -1,4 +1,4 @@
-# Proposal: `user_steering` Agent Step Content Type
+# Proposal: `steering` Agent Step Content Type
 
 ## Context
 
@@ -6,9 +6,9 @@
 
 ## Overview
 
-Add a new `AgentContentItemType` subtype `user_steering` that injects user-provided steering
-instructions into the agent's step content. The value is a simple string containing the steering
-text along with the user name.
+Add a new `AgentContentItemType` subtype `steering` that injects steering instructions into
+the agent's step content. The value contains the steering text and an optional
+`UserMessageContext` for user attribution (null for system-originated steering).
 
 **Key design constraint**: Steering must NOT be rendered as assistant content. It must be rendered
 as **user-role content** across all providers. Tool outputs are treated as untrusted data by models,
@@ -17,36 +17,44 @@ so steering must go through the proper instructional channel for each provider.
 ## Type Definition
 
 ```typescript
-export type AgentUserSteeringContentType = {
-  type: "user_steering";
+export type AgentSteeringContentType = {
+  type: "steering";
   value: {
-    content: string; // The steering instruction text
-    user: string; // User's display name (fullName || username), used as the `name`
-                  // field on the emitted UserMessageTypeModel so that the model sees
-                  // steering coherently with other user messages.
+    content: string;                  // The steering instruction text
+    context: UserMessageContext | null; // User context for attribution. When set, the
+                                       // steering message is attributed to this user
+                                       // (name, email, etc.) in both the model rendering
+                                       // and the UI. When null, it's a system-level
+                                       // steering message with no user attribution.
   };
 };
 ```
 
-The value is a struct (stored as JSONB) rather than a plain string, so that the emitted user
-message can carry the real user name. This matches how `renderUserMessage()` sets
-`name: m.context.fullName || m.context.username` (helpers.ts:345).
+The value is a struct (stored as JSONB). The `context` field reuses the existing
+`UserMessageContext` type (from `front/types/assistant/conversation.ts`) which carries
+`username`, `fullName`, `email`, `profilePictureUrl`, `timezone`, and `origin`. This enables:
+- **Model rendering**: `renderUserMessage()` uses `context.fullName || context.username` as
+  the `name` field on user messages (helpers.ts:345). The steering message can do the same.
+- **UI rendering**: The full context allows rendering user attribution (avatar, name) in the
+  activity timeline and side panel, matching how regular user messages are displayed.
+- **System steering**: When `context` is `null`, the steering is system-originated (no user
+  attribution in the UI, and a synthetic name like `"system"` in the model rendering).
 
 ## Changes Required
 
 ### 1. Type System (`front/types/`)
 
 **`front/types/assistant/agent_message_content.ts`**
-- Add `AgentUserSteeringContentType` definition (after line 34)
+- Add `AgentSteeringContentType` definition (after line 34)
 - Add to `AgentContentItemType` union (line 36-40)
-- Add `isAgentUserSteeringContent()` type guard (after line 64)
+- Add `isAgentSteeringContent()` type guard (after line 64)
 
 **`front/types/assistant/generation.ts`** (lines 63-78)
-- `user_steering` must be **excluded** from assistant message `contents`, alongside
+- `steering` must be **excluded** from assistant message `contents`, alongside
   `AgentErrorContentType`. The contents union in `AssistantFunctionCallMessageTypeModel` and
   `AssistantContentMessageTypeModel` should become:
   ```typescript
-  contents: Array<Exclude<AgentContentItemType, AgentErrorContentType | AgentUserSteeringContentType>>;
+  contents: Array<Exclude<AgentContentItemType, AgentErrorContentType | AgentSteeringContentType>>;
   ```
   This ensures steering never leaks into assistant messages at the type level — it's handled
   separately at the step rendering layer.
@@ -58,9 +66,9 @@ message can carry the real user name. This matches how `renderUserMessage()` set
 ### 2. Database
 
 **`front/lib/models/agent/agent_step_content.ts`** (line 61)
-- Add `"user_steering"` to the `isIn` validation array:
+- Add `"steering"` to the `isIn` validation array:
   ```
-  isIn: [["text_content", "reasoning", "function_call", "error", "user_steering"]]
+  isIn: [["text_content", "reasoning", "function_call", "error", "steering"]]
   ```
 
 **New migration** (e.g., `migration_NNN.sql`)
@@ -97,9 +105,8 @@ function:  { tool result 2 }
 user:      { steering text }    ← NEW
 ```
 
-The steering message is emitted as a `UserMessageTypeModel` with the real user's name (from
-`value.user`) after all tool results for the step. This makes the model see steering as
-coming from the same person who initiated the conversation.
+The steering message is emitted as a `UserMessageTypeModel` with the user's name derived from
+`value.context` (or `"system"` when null) after all tool results for the step.
 
 #### Files to change
 
@@ -108,31 +115,31 @@ coming from the same person who initiated the conversation.
 The `Step` type (line 38-44) needs a new field for steering content:
 ```typescript
 export type Step = {
-  contents: Exclude<AgentContentItemType, AgentErrorContentType | AgentUserSteeringContentType>[];
+  contents: Exclude<AgentContentItemType, AgentErrorContentType | AgentSteeringContentType>[];
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
   }[];
-  steering: { content: string; user: string }[];  // ← NEW: extracted user_steering values
+  steering: { content: string; context: UserMessageContext | null }[];  // ← NEW: extracted steering values
 };
 ```
 
 In the content processing loop (line 156-183), add handling before the default push:
 ```typescript
-if (content.content.type === "user_steering") {
+if (content.content.type === "steering") {
   stepByStepIndex[content.step].steering.push(content.content.value);
   continue;
 }
 ```
 
-Since `value` is now `{ content, user }`, the push captures both the text and the user name.
+Since `value` is `{ content, context }`, the push captures both the text and the user context.
 
 **`front/lib/api/assistant/conversation_rendering/message_rendering.ts`** — `renderAgentSteps()`
 (line 36-125)
 
 After emitting function results for each step (line 118-120), emit a user message for steering.
-The message uses the real user name so the model sees steering as coming from the conversation
-user (matching the `name` field of regular user messages):
+When `context` is set, the message uses the real user name (matching the `name` field of regular
+user messages). When `context` is null, the steering is system-originated:
 
 ```typescript
 for (const { result } of step.actions) {
@@ -140,13 +147,13 @@ for (const { result } of step.actions) {
 }
 
 // Emit steering as user message after tool results.
-// Uses the real user name so the model sees it as coming from the same person.
 if (step.steering.length > 0) {
   const steeringText = step.steering.map((s) => s.content).join("\n");
-  const user = step.steering[0].user; // All steering in a step comes from the same user.
+  const ctx = step.steering[0].context; // All steering in a step shares the same context.
+  const name = ctx ? (ctx.fullName || ctx.username) : "system";
   messages.push({
     role: "user",
-    name: user,
+    name,
     content: [{ type: "text", text: steeringText }],
   } satisfies UserMessageTypeModel);
 }
@@ -159,7 +166,7 @@ relevant context for the model to understand the conversation flow.
 **`front/lib/api/assistant/conversation_rendering/index.ts`** — `countTokensForMessages()`
 (line 290-368)
 
-Since `user_steering` is excluded from assistant message `contents` via the type system, it won't
+Since `steering` is excluded from assistant message `contents` via the type system, it won't
 appear in the assistant content switch. The steering text is counted as part of the synthetic
 `UserMessageTypeModel` via the `role === "user"` branch (line 303-314). **No change needed here.**
 
@@ -248,7 +255,7 @@ Out of scope of this proposal.
 ### 8. Backward Compatibility
 
 **`front/lib/api/v1/backward_compatibility.ts`** — `getRawContents()` (line 136-154)
-- Only extracts `text_content` — `user_steering` will be silently skipped. **No change needed.**
+- Only extracts `text_content` — `steering` will be silently skipped. **No change needed.**
 
 ### 9. Event System & Streaming
 
@@ -258,8 +265,8 @@ them to the client.
 **`front/types/assistant/agent.ts`** — `AgentStepContentEvent` (lines 410-420)
 - Defined but currently unused — the streaming system uses granular events (`generation_tokens`,
   `agent_action_success`, `tool_params`) instead.
-- If we reuse this event type for steering, add `AgentUserSteeringContentType` to its content
-  union. Otherwise, introduce a dedicated streaming event (e.g. `user_steering`) to notify the
+- If we reuse this event type for steering, add `AgentSteeringContentType` to its content
+  union. Otherwise, introduce a dedicated streaming event (e.g. `steering`) to notify the
   client when steering is injected.
 
 **`front/hooks/useAgentMessageStream.ts`**
@@ -270,11 +277,11 @@ them to the client.
   data to the client is required here.
 
 **`front/lib/api/assistant/activity_steps.ts`** — `contentsToActivitySteps()` (lines 49-94)
-- Add handling for `isAgentUserSteeringContent` to produce an `InlineActivityStep` so that
+- Add handling for `isAgentSteeringContent` to produce an `InlineActivityStep` so that
   steering appears in the activity timeline for completed messages.
 
 **`front/components/assistant/conversation/actions/AgentActionsPanel.tsx`** (lines 144-194)
-- Add handling for `isAgentUserSteeringContent` to produce a `ParsedContentItem` so steering
+- Add handling for `isAgentSteeringContent` to produce a `ParsedContentItem` so steering
   appears in the side panel.
 
 ## Summary of Files to Modify
@@ -282,7 +289,7 @@ them to the client.
 | # | File | Change |
 |---|------|--------|
 | 1 | `front/types/assistant/agent_message_content.ts` | Add type + type guard |
-| 2 | `front/types/assistant/generation.ts` | Exclude `AgentUserSteeringContentType` from assistant `contents` |
+| 2 | `front/types/assistant/generation.ts` | Exclude `AgentSteeringContentType` from assistant `contents` |
 | 3 | `front/lib/models/agent/agent_step_content.ts` | Add to `isIn` validation |
 | 4 | New migration SQL | Update CHECK constraint |
 | 5 | `front/lib/api/assistant/conversation_rendering/helpers.ts` | Add `steering` field to `Step`, extract in `getSteps()` |
@@ -324,7 +331,7 @@ Files that need **no changes**:
    but may have unintended side effects.
 
 3. **Creation point**: Out of scope for this document. The creation logic (where/when
-   `user_steering` content is injected in the agent loop) will be covered in a separate design
+   `steering` content is injected in the agent loop) will be covered in a separate design
    doc.
 
 4. ~~**Steering in `excludeActions` mode**~~ — **Resolved**: Steering messages are kept even in
