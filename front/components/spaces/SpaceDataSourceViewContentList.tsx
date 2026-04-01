@@ -265,7 +265,10 @@ export const SpaceDataSourceViewContentList = ({
     resetPagination,
     handlePaginationChange,
     tablePagination,
-  } = useCursorPaginationForDataTable(PAGE_SIZE);
+  } = useCursorPaginationForDataTable(
+    PAGE_SIZE,
+    `${dataSourceView.sId}:${parentId ?? ""}`
+  );
 
   const [viewType, setViewType] = useHashParam(
     "viewType",
