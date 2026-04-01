@@ -20,6 +20,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { sectionFullText } from "@app/types/core/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { fileSizeToHumanReadable } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type {
@@ -652,7 +653,11 @@ async function handler(
         let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
         try {
           credentials = await getLlmCredentials(auth);
-        } catch {
+        } catch (err) {
+          logger.error(
+            { error: normalizeError(err) },
+            "Failed to get LLM credentials"
+          );
           return apiError(req, res, {
             status_code: 400,
             api_error: {

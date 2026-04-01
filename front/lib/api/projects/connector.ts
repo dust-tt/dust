@@ -30,6 +30,7 @@ import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -137,7 +138,11 @@ export async function createDataSourceAndConnectorForProject(
         let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
         try {
           credentials = await getLlmCredentials(auth);
-        } catch {
+        } catch (err) {
+          logger.error(
+            { error: normalizeError(err) },
+            "Failed to get LLM credentials"
+          );
           return new Err(new Error(MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE));
         }
 

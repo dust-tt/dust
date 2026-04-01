@@ -62,6 +62,7 @@ import type { PlanType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type {
@@ -72,7 +73,6 @@ import type {
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";
-
 import { ConversationResource } from "../resources/conversation_resource";
 
 /**
@@ -568,7 +568,11 @@ export async function upsertDocument({
   let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
   try {
     credentials = await getLlmCredentials(auth);
-  } catch {
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials"
+    );
     return new Err(
       new DustError(
         "invalid_request_error",
@@ -625,7 +629,11 @@ export async function handleDataSourceSearch({
   let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
   try {
     credentials = await getLlmCredentials(auth);
-  } catch {
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials"
+    );
     return new Err({
       name: "dust_error",
       code: "data_source_error",
@@ -1100,7 +1108,11 @@ export async function createDataSourceWithoutProvider(
       let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
       try {
         credentials = await getLlmCredentials(auth);
-      } catch {
+      } catch (err) {
+        logger.error(
+          { error: normalizeError(err) },
+          "Failed to get LLM credentials"
+        );
         return new Err({
           name: "dust_error",
           code: "invalid_request_error",

@@ -47,6 +47,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
@@ -407,7 +408,11 @@ const handleDataSourceWithProvider = async ({
   let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
   try {
     credentials = await getLlmCredentials(auth);
-  } catch {
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials"
+    );
     return apiError(req, res, {
       status_code: 400,
       api_error: {

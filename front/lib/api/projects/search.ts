@@ -11,6 +11,7 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export interface SearchProjectConversationsOptions {
   query: string;
@@ -76,7 +77,11 @@ export async function searchProjectConversations(
   let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
   try {
     credentials = await getLlmCredentials(auth);
-  } catch {
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials"
+    );
     return new Err(
       new DustError(
         "invalid_request_error",
