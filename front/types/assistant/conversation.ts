@@ -1,4 +1,3 @@
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -253,7 +252,7 @@ export type InlineActivityStep =
       type: "action";
       label: string;
       id: string;
-      internalMCPServerName: InternalMCPServerNameType | null;
+      serverIcon: string | null;
     };
 
 export type ParsedContentItem =

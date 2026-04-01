@@ -618,6 +618,7 @@ describe("tryCallMCPTool", () => {
       updatedAt: Date.now(),
       agentMessageId: agentMessage.agentMessageId as number,
       internalMCPServerName: "search",
+      serverIcon: null,
       toolName: "semantic_search",
       mcpServerId: internalMCPServer.id,
       functionCallName: "semantic_search",

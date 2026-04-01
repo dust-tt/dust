@@ -825,6 +825,7 @@ const AgentActionTypeSchema = z.object({
   updatedAt: z.number(),
   mcpServerId: z.string().nullable(),
   internalMCPServerName: z.string().nullable(),
+  serverIcon: z.string().nullable().optional(),
   toolName: z.string(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string(),

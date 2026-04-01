@@ -44,6 +44,7 @@ describe("EventCoalescer", () => {
       updatedAt: Date.now(),
       agentMessageId: 456,
       internalMCPServerName: null,
+      serverIcon: null,
       toolName: "test_tool",
       mcpServerId: "mcp123",
       functionCallName: "test_function",

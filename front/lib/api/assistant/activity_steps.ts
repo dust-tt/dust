@@ -88,7 +88,7 @@ export async function contentsToActivitySteps(
           type: "action",
           label: getActionOneLineLabel(matchingAction),
           id: `action-${matchingAction.id}`,
-          internalMCPServerName: matchingAction.internalMCPServerName,
+          serverIcon: matchingAction.serverIcon,
         });
       }
     }

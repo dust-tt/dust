@@ -1,8 +1,11 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
-import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getIcon } from "@app/components/resources/resources_icons";
+import {
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icon_names";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
@@ -179,13 +182,12 @@ export function InlineActivitySteps({
                     </TimelineRow>
                   );
                 case "action": {
-                  const actionIcon = step.internalMCPServerName
-                    ? InternalActionIcons[
-                        getInternalMCPServerIconByName(
-                          step.internalMCPServerName
-                        )
-                      ]
-                    : ToolsIcon;
+                  const actionIcon =
+                    step.serverIcon &&
+                    (isCustomResourceIconType(step.serverIcon) ||
+                      isInternalAllowedIcon(step.serverIcon))
+                      ? getIcon(step.serverIcon)
+                      : ToolsIcon;
 
                   return (
                     <TimelineRow

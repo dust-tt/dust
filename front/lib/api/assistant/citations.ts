@@ -56,7 +56,7 @@ export function citationMetaPrompt(isUsingRunAgent: boolean) {
 export function getCitationsFromActions(
   actions: Omit<
     AgentMCPActionWithOutputType,
-    "internalMCPServerName" | "toolName" | "status" | "displayLabels"
+    "internalMCPServerName" | "serverIcon" | "toolName" | "status" | "displayLabels"
   >[]
 ): Record<string, CitationType> {
   // Prefer persisted citations when present (backfilled/new rows).

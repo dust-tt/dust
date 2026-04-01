@@ -13,6 +13,7 @@ export type AgentMCPActionType = {
 
   agentMessageId: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
+  serverIcon: string | null;
   toolName: string;
   mcpServerId: string | null;
   functionCallName: string;
