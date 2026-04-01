@@ -339,6 +339,8 @@ async function handler(
   switch (req.method) {
     case "POST":
       const authHeader = req.headers.authorization;
+      const isSendgridRequest = hasValidSendgridAuthorization(authHeader);
+      const isRelayRequest = hasValidRelayAuthorization(req);
 
       if (!authHeader) {
         return apiError(req, res, {
@@ -350,10 +352,7 @@ async function handler(
         });
       }
 
-      if (
-        !hasValidSendgridAuthorization(authHeader) &&
-        !hasValidRelayAuthorization(req)
-      ) {
+      if (!isSendgridRequest && !isRelayRequest) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -380,7 +379,10 @@ async function handler(
         });
       }
 
-      if (!isDevelopment()) {
+      // Only the original SendGrid ingress carries the signed raw multipart body.
+      // Cross-region relays rebuild the form-data payload, so the forwarded hop must
+      // trust our relay auth instead of re-running SendGrid signature verification.
+      if (isSendgridRequest && !isDevelopment()) {
         const signatureValidationRes = validateSendgridParseWebhookSignature({
           publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
           headers: req.headers,
