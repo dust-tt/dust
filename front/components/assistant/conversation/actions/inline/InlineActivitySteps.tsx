@@ -1,7 +1,10 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
+import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
+import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   InlineActivityStep,
   LightAgentMessageType,
@@ -10,19 +13,45 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
-  Button,
+  AnimatedText,
   ChatBubbleThoughtIcon,
   CheckIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
+  cn,
+  Icon,
   Markdown,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
+}
+
+function getCompletionLabel(
+  status: LightAgentMessageType["status"],
+  completionDurationMs: number
+): string {
+  switch (status) {
+    case "failed":
+      return `Errored after ${formatDurationString(completionDurationMs)}`;
+    case "cancelled":
+      return `Cancelled after ${formatDurationString(completionDurationMs)}`;
+    default:
+      return `Completed in ${formatDurationString(completionDurationMs)}`;
+  }
+}
+
+function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
+  return {
+    gridTemplateRows: isCollapsed ? "0fr" : "1fr",
+    opacity: isCollapsed ? 0 : 1,
+    transition: isCollapsed
+      ? "grid-template-rows 200ms ease-out, opacity"
+      : "grid-template-rows 200ms ease-out, opacity 300ms",
+  };
 }
 
 /**
@@ -44,7 +73,16 @@ export function InlineActivitySteps({
 
   const { openPanel } = useConversationSidePanelContext();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isDone =
+    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+
+  const [isCollapsed, setIsCollapsed] = useState(isDone);
+
+  useEffect(() => {
+    if (isDone) {
+      setIsCollapsed(true);
+    }
+  }, [isDone]);
 
   const openBreakdownPanel = () => {
     openPanel({
@@ -53,13 +91,28 @@ export function InlineActivitySteps({
     });
   };
 
-  const isDone =
-    lastAgentStateClassification === "done" || agentMessage.status === "failed";
   const isThinking = lastAgentStateClassification === "thinking";
   const isActing = lastAgentStateClassification === "acting";
 
+  const headerLabel =
+    agentMessage.completionDurationMs !== null
+      ? getCompletionLabel(
+          agentMessage.status,
+          agentMessage.completionDurationMs
+        )
+      : isDone
+        ? "Completed"
+        : null;
+
+  const toggleCollapse = () => setIsCollapsed((c) => !c);
+
+  // Done with no steps: show a static line — no toggle, not clickable.
   if (isDone && completedSteps.length === 0) {
-    return null;
+    return (
+      <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
+      </div>
+    );
   }
 
   // Show active thinking whenever the agent is thinking.
@@ -70,109 +123,133 @@ export function InlineActivitySteps({
 
   const hasContent =
     completedSteps.length > 0 || showActiveThinking || activeAction;
+
   if (!hasContent) {
     return null;
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Collapsible header */}
-      <Button
-        variant="ghost"
-        size="xs"
-        label={isDone ? "Work" : "Working\u2026"}
-        icon={isCollapsed ? ChevronRightIcon : ChevronDownIcon}
-        className="self-start text-muted-foreground dark:text-muted-foreground-night"
-        onClick={() => setIsCollapsed((c) => !c)}
-      />
-
-      {/* Timeline content — click anywhere to open breakdown panel */}
-      {!isCollapsed && (
-        <div className="ml-5 mt-1 cursor-pointer" onClick={openBreakdownPanel}>
-          {completedSteps.map((step, index) => {
-            const isLast =
-              index === completedSteps.length - 1 &&
-              !showActiveThinking &&
-              !activeAction &&
-              !isDone;
-
-            switch (step.type) {
-              case "thinking":
-                return (
-                  <TimelineRow
-                    key={step.id}
-                    icon={ChatBubbleThoughtIcon}
-                    isLast={isLast}
-                  >
-                    <Markdown
-                      content={step.content}
-                      isStreaming={false}
-                      forcedTextSize="text-sm"
-                      textColor="text-muted-foreground dark:text-muted-foreground-night"
-                      isLastMessage={false}
-                    />
-                  </TimelineRow>
-                );
-              case "action":
-                return (
-                  <TimelineRow key={step.id} icon={CheckIcon} isLast={isLast}>
-                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      {step.label}
-                    </span>
-                  </TimelineRow>
-                );
-              default:
-                assertNever(step);
-            }
-          })}
-
-          {/* Active thinking (streaming CoT) */}
-          {showActiveThinking && (
-            <TimelineRow
-              icon={chainOfThought ? ChatBubbleThoughtIcon : null}
-              spinner={!chainOfThought}
-              isLast={!activeAction && !isDone}
-            >
-              {chainOfThought ? (
-                <Markdown
-                  content={chainOfThought}
-                  isStreaming={false}
-                  streamingState="streaming"
-                  enableAnimation
-                  animationDurationSeconds={0.3}
-                  delimiter=" "
-                  forcedTextSize="text-sm"
-                  textColor="text-muted-foreground dark:text-muted-foreground-night"
-                  isLastMessage={false}
-                />
-              ) : null}
-            </TimelineRow>
+    <div className={`flex flex-col text-sm ${isCollapsed ? "" : "gap-4"}`}>
+      <button
+        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
+        onClick={toggleCollapse}
+      >
+        <span
+          className={cn(
+            "transition-transform duration-200 ease-out",
+            !isCollapsed && "rotate-90"
           )}
+        >
+          <Icon size="xs" visual={ChevronRightIcon} />
+        </span>
+        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+      </button>
 
-          {/* Active action (tool in progress) */}
-          {isActing && activeAction && (
-            <TimelineRow spinner isLast={false}>
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {getActionOneLineLabel(activeAction, "running")}
-              </span>
-            </TimelineRow>
-          )}
+      <div
+        className="grid ease-out"
+        style={getCollapseAnimationStyle(isCollapsed)}
+      >
+        <div className="overflow-hidden">
+          <div
+            className="cursor-pointer flex flex-col gap-2 ml-4"
+            onClick={openBreakdownPanel}
+          >
+            {completedSteps.map((step, index) => {
+              const isLast =
+                index === completedSteps.length - 1 &&
+                !showActiveThinking &&
+                !activeAction &&
+                !isDone;
 
-          {/* Pending spinner — shown when between transitions (not done, nothing active) */}
-          {!isDone && !showActiveThinking && !activeAction && (
-            <TimelineRow spinner isLast />
-          )}
+              switch (step.type) {
+                case "thinking":
+                  return (
+                    <TimelineRow
+                      key={step.id}
+                      icon={ChatBubbleThoughtIcon}
+                      isLast={isLast}
+                    >
+                      <Markdown
+                        content={step.content}
+                        isStreaming={false}
+                        forcedTextSize="text-sm"
+                        textColor="text-muted-foreground dark:text-muted-foreground-night"
+                        isLastMessage={false}
+                      />
+                    </TimelineRow>
+                  );
+                case "action": {
+                  const actionIcon = step.internalMCPServerName
+                    ? InternalActionIcons[
+                        getInternalMCPServerIconByName(
+                          step.internalMCPServerName
+                        )
+                      ]
+                    : ToolsIcon;
 
-          {/* Done marker */}
-          {isDone && completedSteps.length > 0 && (
-            <TimelineRow icon={CheckIcon} isLast>
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Done
-              </span>
-            </TimelineRow>
-          )}
+                  return (
+                    <TimelineRow
+                      key={step.id}
+                      icon={actionIcon}
+                      isLast={isLast}
+                    >
+                      <span className="text-muted-foreground dark:text-muted-foreground-night">
+                        {step.label}
+                      </span>
+                    </TimelineRow>
+                  );
+                }
+                default:
+                  assertNever(step);
+              }
+            })}
+
+            {/* Active thinking (streaming CoT) */}
+            {showActiveThinking && (
+              <TimelineRow
+                icon={chainOfThought ? ChatBubbleThoughtIcon : null}
+                spinner={!chainOfThought}
+                isLast={!activeAction && !isDone}
+              >
+                {chainOfThought ? (
+                  <Markdown
+                    content={chainOfThought}
+                    isStreaming={false}
+                    streamingState="streaming"
+                    enableAnimation
+                    animationDurationSeconds={0.3}
+                    delimiter=" "
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
+                    isLastMessage={false}
+                  />
+                ) : null}
+              </TimelineRow>
+            )}
+
+            {/* Active action (tool in progress) */}
+            {isActing && activeAction && (
+              <TimelineRow spinner isLast={false}>
+                <span className="text-muted-foreground dark:text-muted-foreground-night">
+                  {getActionOneLineLabel(activeAction, "running")}
+                </span>
+              </TimelineRow>
+            )}
+
+            {/* Pending spinner — shown when between transitions (not done, nothing active) */}
+            {!isDone && !showActiveThinking && !activeAction && (
+              <TimelineRow spinner isLast />
+            )}
+            {isDone && completedSteps.length > 0 && (
+              <TimelineRow icon={CheckIcon} isLast>
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Done
+                </span>
+              </TimelineRow>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

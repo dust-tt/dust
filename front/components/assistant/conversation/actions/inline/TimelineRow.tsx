@@ -21,8 +21,8 @@ export function TimelineRow({
   return (
     <div className="flex gap-2">
       {/* Icon column with connecting line */}
-      <div className="flex flex-col items-center pt-0.5">
-        <div className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+      <div className="flex flex-col items-center">
+        <div className="flex h-5 w-4 flex-shrink-0 items-center justify-center">
           {spinner ? (
             <Spinner size="xs" />
           ) : icon ? (
