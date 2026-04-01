@@ -28,7 +28,9 @@ export type ImportConflictStrategyType =
 export function isImportConflictStrategy(
   value: string
 ): value is ImportConflictStrategyType {
-  return IMPORT_CONFLICT_STRATEGIES.includes(value as ImportConflictStrategyType);
+  return IMPORT_CONFLICT_STRATEGIES.includes(
+    value as ImportConflictStrategyType
+  );
 }
 
 type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
@@ -133,11 +135,7 @@ export async function importSkillsFromFiles(
     async (skill) => {
       const existing = existingSkillsMap.get(skill.name) ?? null;
 
-      if (
-        existing &&
-        existing.source !== source &&
-        onConflict !== "override"
-      ) {
+      if (existing && existing.source !== source && onConflict !== "override") {
         skipped.push({
           name: skill.name,
           message: `A different skill named "${skill.name}" already exists.`,
