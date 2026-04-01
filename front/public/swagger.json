@@ -547,6 +547,93 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/agent_configurations/import/yaml": {
+      "post": {
+        "summary": "Import agent configuration from YAML",
+        "description": "Create a new agent configuration from a YAML definition.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "yamlContent"
+                ],
+                "properties": {
+                  "yamlContent": {
+                    "type": "string",
+                    "description": "The YAML content defining the agent configuration"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully created agent configuration from YAML",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfiguration": {
+                      "$ref": "#/components/schemas/AgentConfiguration"
+                    },
+                    "skippedActions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid YAML or request body."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "405": {
+            "description": "Method not supported. Only POST is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/agent_configurations/search": {
       "get": {
         "summary": "Search agents by name",
