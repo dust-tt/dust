@@ -74,7 +74,7 @@ async function handler(
     });
   }
 
-  const names = fields.names;
+  const { names } = fields;
 
   const onConflict = fields.onConflict?.[0] ?? "error";
   if (!isImportConflictStrategy(onConflict)) {
