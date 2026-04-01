@@ -1,6 +1,9 @@
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
+import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
+import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
@@ -13,18 +16,18 @@ interface SkippedAction {
   reason: string;
 }
 
-export async function importAgentConfigurationFromYAML(
+type ImportResult = Result<
+  {
+    agentConfiguration: AgentConfigurationType;
+    skippedActions: SkippedAction[];
+  },
+  APIErrorWithStatusCode
+>;
+
+async function importAgentConfiguration(
   auth: Authenticator,
-  yamlContent: string
-): Promise<
-  Result<
-    {
-      agentConfiguration: AgentConfigurationType;
-      skippedActions: SkippedAction[];
-    },
-    APIErrorWithStatusCode
-  >
-> {
+  yamlConfig: AgentYAMLConfig
+): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
     await KillSwitchResource.isKillSwitchEnabledCached(
       "save_agent_configurations"
@@ -40,18 +43,29 @@ export async function importAgentConfigurationFromYAML(
     });
   }
 
-  const yamlConfigResult = AgentYAMLConverter.fromYAMLString(yamlContent);
-  if (yamlConfigResult.isErr()) {
+  const editorSIds = yamlConfig.editors.map((e) => e.user_id);
+  if (editorSIds.length === 0) {
     return new Err({
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid YAML format: ${yamlConfigResult.error.message}`,
+        message: "At least one editor is required.",
       },
     });
   }
 
-  const yamlConfig = yamlConfigResult.value;
+  const editorUsers = await UserResource.fetchByIds(editorSIds);
+  if (editorUsers.length === 0) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "No valid editor users found.",
+      },
+    });
+  }
+
+  const authorId = editorUsers[0].id;
 
   const mcpConfigurationsResult =
     await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
@@ -106,6 +120,7 @@ export async function importAgentConfigurationFromYAML(
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
     assistant,
+    authorId,
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -125,4 +140,40 @@ export async function importAgentConfigurationFromYAML(
       reason,
     })),
   });
+}
+
+export async function importAgentConfigurationFromYAMLString(
+  auth: Authenticator,
+  yamlContent: string
+): Promise<ImportResult> {
+  const yamlConfigResult = AgentYAMLConverter.fromYAMLString(yamlContent);
+  if (yamlConfigResult.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid YAML format: ${yamlConfigResult.error.message}`,
+      },
+    });
+  }
+
+  return importAgentConfiguration(auth, yamlConfigResult.value);
+}
+
+export async function importAgentConfigurationFromJSON(
+  auth: Authenticator,
+  body: unknown
+): Promise<ImportResult> {
+  const parsed = agentYAMLConfigSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid agent configuration: ${parsed.error.message}`,
+      },
+    });
+  }
+
+  return importAgentConfiguration(auth, parsed.data);
 }

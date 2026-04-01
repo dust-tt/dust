@@ -1,5 +1,5 @@
 /** @ignoreswagger */
-import { importAgentConfigurationFromYAML } from "@app/lib/api/assistant/configuration/yaml_import";
+import { importAgentConfigurationFromYAMLString } from "@app/lib/api/assistant/configuration/yaml_import";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -55,7 +55,7 @@ async function handler(
     });
   }
 
-  const result = await importAgentConfigurationFromYAML(
+  const result = await importAgentConfigurationFromYAMLString(
     auth,
     bodyValidation.data.yamlContent
   );

@@ -1,19 +1,17 @@
-import { importAgentConfigurationFromYAML } from "@app/lib/api/assistant/configuration/yaml_import";
+import { importAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ImportAgentConfigurationFromYAMLResponseType } from "@dust-tt/client";
-import { ImportAgentConfigurationFromYAMLRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
 
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations/import/yaml:
  *   post:
  *     summary: Import agent configuration from YAML
- *     description: Create a new agent configuration from a YAML definition.
+ *     description: Create a new agent configuration from a JSON body matching the agent YAML config schema.
  *     tags:
  *       - Agents
  *     parameters:
@@ -30,16 +28,88 @@ import { fromError } from "zod-validation-error";
  *           schema:
  *             type: object
  *             required:
- *               - yamlContent
+ *               - agent
+ *               - instructions
+ *               - generation_settings
+ *               - tags
+ *               - editors
+ *               - toolset
  *             properties:
- *               yamlContent:
+ *               agent:
+ *                 type: object
+ *                 required:
+ *                   - handle
+ *                   - description
+ *                   - scope
+ *                   - max_steps_per_run
+ *                   - visualization_enabled
+ *                 properties:
+ *                   handle:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   scope:
+ *                     type: string
+ *                     enum: [visible, hidden]
+ *                   avatar_url:
+ *                     type: string
+ *                   max_steps_per_run:
+ *                     type: number
+ *                   visualization_enabled:
+ *                     type: boolean
+ *               instructions:
  *                 type: string
- *                 description: The YAML content defining the agent configuration
+ *               generation_settings:
+ *                 type: object
+ *                 properties:
+ *                   model_id:
+ *                     type: string
+ *                   provider_id:
+ *                     type: string
+ *                   temperature:
+ *                     type: number
+ *                   reasoning_effort:
+ *                     type: string
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     kind:
+ *                       type: string
+ *                       enum: [standard, protected]
+ *               editors:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     full_name:
+ *                       type: string
+ *               toolset:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                       enum: [MCP]
+ *                     configuration:
+ *                       type: object
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully created agent configuration from YAML
+ *         description: Successfully created agent configuration
  *         content:
  *           application/json:
  *             schema:
@@ -57,7 +127,7 @@ import { fromError } from "zod-validation-error";
  *                       reason:
  *                         type: string
  *       400:
- *         description: Bad Request. Invalid YAML or request body.
+ *         description: Bad Request. Invalid request body.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       405:
@@ -82,22 +152,7 @@ async function handler(
     });
   }
 
-  const bodyValidation =
-    ImportAgentConfigurationFromYAMLRequestSchema.safeParse(req.body);
-  if (!bodyValidation.success) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${fromError(bodyValidation.error).message}`,
-      },
-    });
-  }
-
-  const result = await importAgentConfigurationFromYAML(
-    auth,
-    bodyValidation.data.yamlContent
-  );
+  const result = await importAgentConfigurationFromJSON(auth, req.body);
 
   if (result.isErr()) {
     return apiError(req, res, result.error);
