@@ -24,8 +24,11 @@ function getClient(): Metronome {
 // Event ingestion
 // ---------------------------------------------------------------------------
 
+const METRONOME_INGEST_BATCH_SIZE = 100;
+
 /**
  * Send usage events to Metronome's ingest API.
+ * Batches into chunks of 100 (Metronome's max per request).
  * Throws on failure so callers (e.g. Temporal activities) can retry.
  */
 export async function ingestMetronomeEvents(
@@ -35,7 +38,11 @@ export async function ingestMetronomeEvents(
     return;
   }
 
-  await getClient().v1.usage.ingest({ usage: events });
+  const client = getClient();
+  for (let i = 0; i < events.length; i += METRONOME_INGEST_BATCH_SIZE) {
+    const batch = events.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
+    await client.v1.usage.ingest({ usage: batch });
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -182,12 +182,13 @@ export function getToolCategory(
 // ---------------------------------------------------------------------------
 
 /**
- * Build a single Metronome llm_usage event for an agent message, aggregating
- * all LLM calls (tokens, cost) into one event.
+ * Build aggregated Metronome llm_usage events for an agent message.
+ * Usages are grouped by (providerId, modelId) — one event per model used
+ * with aggregated token counts and cost.
  *
- * transaction_id pattern: llm-{workspaceId}-{agentMessageId}
+ * transaction_id pattern: llm-{workspaceId}-{agentMessageId}-{providerId}-{modelId}
  */
-export function buildLlmUsageEvent({
+export function buildLlmUsageEvents({
   workspaceId,
   userId,
   agentMessageId,
@@ -209,24 +210,45 @@ export function buildLlmUsageEvent({
   messageTier: MessageTier;
   isSubAgentMessage: boolean;
   timestamp: string;
-}): MetronomeEvent {
-  const promptTokens = runUsages.reduce((sum, u) => sum + u.promptTokens, 0);
-  const completionTokens = runUsages.reduce(
-    (sum, u) => sum + u.completionTokens,
-    0
-  );
-  const cachedTokens = runUsages.reduce(
-    (sum, u) => sum + (u.cachedTokens ?? 0),
-    0
-  );
-  const cacheCreationTokens = runUsages.reduce(
-    (sum, u) => sum + (u.cacheCreationTokens ?? 0),
-    0
-  );
-  const costMicroUsd = runUsages.reduce((sum, u) => sum + u.costMicroUsd, 0);
+}): MetronomeEvent[] {
+  // Group by (providerId, modelId).
+  const groups = new Map<
+    string,
+    {
+      providerId: string;
+      modelId: string;
+      promptTokens: number;
+      completionTokens: number;
+      cachedTokens: number;
+      cacheCreationTokens: number;
+      costMicroUsd: number;
+    }
+  >();
 
-  return {
-    transaction_id: `llm-${workspaceId}-${agentMessageId}`,
+  for (const usage of runUsages) {
+    const key = `${usage.providerId}|${usage.modelId}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.promptTokens += usage.promptTokens;
+      existing.completionTokens += usage.completionTokens;
+      existing.cachedTokens += usage.cachedTokens ?? 0;
+      existing.cacheCreationTokens += usage.cacheCreationTokens ?? 0;
+      existing.costMicroUsd += usage.costMicroUsd;
+    } else {
+      groups.set(key, {
+        providerId: usage.providerId,
+        modelId: usage.modelId,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        cachedTokens: usage.cachedTokens ?? 0,
+        cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+        costMicroUsd: usage.costMicroUsd,
+      });
+    }
+  }
+
+  return [...groups.values()].map((group) => ({
+    transaction_id: `llm-${workspaceId}-${agentMessageId}-${group.providerId}-${group.modelId}`,
     customer_id: workspaceId,
     event_type: "llm_usage",
     timestamp,
@@ -237,26 +259,27 @@ export function buildLlmUsageEvent({
       ...(parentAgentMessageId
         ? { parent_agent_message_id: parentAgentMessageId }
         : {}),
-      prompt_tokens: promptTokens,
-      completion_tokens: completionTokens,
-      cached_tokens: cachedTokens,
-      cache_creation_tokens: cacheCreationTokens,
+      provider_id: group.providerId,
+      model_id: group.modelId,
+      prompt_tokens: group.promptTokens,
+      completion_tokens: group.completionTokens,
+      cached_tokens: group.cachedTokens,
+      cache_creation_tokens: group.cacheCreationTokens,
       // Provider cost without markup — markup is applied in Metronome rate card.
-      cost_micro_usd: costMicroUsd,
+      cost_micro_usd: group.costMicroUsd,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       message_tier: messageTier,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
     },
-  };
+  }));
 }
 
 // ---------------------------------------------------------------------------
 // Tool use events
 // ---------------------------------------------------------------------------
 
-interface ToolAction {
-  sId: string;
+export interface ToolAction {
   toolName: string;
   mcpServerId: string | null;
   internalMCPServerName: InternalMCPServerNameType | null;
@@ -265,9 +288,11 @@ interface ToolAction {
 }
 
 /**
- * Build one Metronome event per MCP action within an agent message.
+ * Build aggregated Metronome tool_use events for an agent message.
+ * Actions are grouped by (toolName, internalMCPServerName, mcpServerId, status)
+ * — one event per group with `count` and `total_execution_duration_ms`.
  *
- * transaction_id pattern: tool-{workspaceId}-{actionSId}
+ * transaction_id pattern: tool-{workspaceId}-{agentMessageId}-{toolName}-{mcpServerId}-{status}
  */
 export function buildToolUseEvents({
   workspaceId,
@@ -292,8 +317,28 @@ export function buildToolUseEvents({
   isSubAgentMessage: boolean;
   timestamp: string;
 }): MetronomeEvent[] {
-  return actions.map((action) => ({
-    transaction_id: `tool-${workspaceId}-${action.sId}`,
+  // Group actions by (toolName, internalMCPServerName, mcpServerId, status).
+  const groups = new Map<
+    string,
+    { action: ToolAction; count: number; totalDurationMs: number }
+  >();
+  for (const action of actions) {
+    const key = `${action.toolName}|${action.internalMCPServerName ?? ""}|${action.mcpServerId ?? ""}|${action.status}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count++;
+      existing.totalDurationMs += action.executionDurationMs ?? 0;
+    } else {
+      groups.set(key, {
+        action,
+        count: 1,
+        totalDurationMs: action.executionDurationMs ?? 0,
+      });
+    }
+  }
+
+  return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
+    transaction_id: `tool-${workspaceId}-${agentMessageId}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`,
     customer_id: workspaceId,
     event_type: "tool_use",
     timestamp,
@@ -312,7 +357,8 @@ export function buildToolUseEvents({
       // aggregate all tool categories into a single "Tool Usage" invoice line.
       tool_group: "tools",
       status: action.status,
-      execution_duration_ms: action.executionDurationMs ?? 0,
+      count,
+      total_execution_duration_ms: totalDurationMs,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       message_tier: messageTier,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",

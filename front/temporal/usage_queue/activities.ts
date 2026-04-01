@@ -6,7 +6,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
-  buildLlmUsageEvent,
+  buildLlmUsageEvents,
   buildToolUseEvents,
   classifyMessageTier,
   getToolCategory,
@@ -277,7 +277,6 @@ export async function emitMetronomeUsageEventsActivity(
   const toolActions = mcpActions.map((a) => {
     const json = a.toJSON();
     return {
-      sId: json.sId,
       toolName: json.toolName,
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
@@ -294,7 +293,7 @@ export async function emitMetronomeUsageEventsActivity(
   const messageTier = classifyMessageTier({ modelIds, toolCategories });
 
   // Build and ingest events.
-  const llmEvent = buildLlmUsageEvent({
+  const llmEvents = buildLlmUsageEvents({
     workspaceId: workspace.sId,
     userId,
     agentMessageId,
@@ -320,5 +319,5 @@ export async function emitMetronomeUsageEventsActivity(
     timestamp,
   });
 
-  await ingestMetronomeEvents([llmEvent, ...toolEvents]);
+  await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
 }
