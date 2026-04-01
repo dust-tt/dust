@@ -223,7 +223,7 @@ export function buildAuditActor(auth: Authenticator): AuditLogActor {
   const key = auth.key();
   if (key) {
     return {
-      type: "api_key",
+      type: key.isSystem ? "system_key" : "api_key",
       id: String(key.id),
       name: key.name,
     };
@@ -231,7 +231,7 @@ export function buildAuditActor(auth: Authenticator): AuditLogActor {
 
   return {
     type: "system",
-    id: "unknown",
+    id: auth.authMethod(),
   };
 }
 
