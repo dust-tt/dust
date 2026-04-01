@@ -40,7 +40,7 @@ export function TimelineRow({
 
       {/* Content */}
       {children && (
-        <div className="flex min-h-6 flex-wrap items-start gap-1.5 pb-1">
+        <div className="flex min-h-6 min-w-0 flex-wrap items-start gap-1.5 overflow-x-auto pb-1">
           {children}
         </div>
       )}
