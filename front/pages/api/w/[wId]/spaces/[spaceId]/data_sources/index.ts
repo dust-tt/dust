@@ -412,7 +412,7 @@ const handleDataSourceWithProvider = async ({
   } catch (err) {
     logger.error(
       { error: normalizeError(err) },
-      "Failed to get LLM credentials"
+      "Failed to get LLM credentials to create data source"
     );
     return apiError(req, res, {
       status_code: 400,

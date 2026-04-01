@@ -142,7 +142,7 @@ export async function createDataSourceAndConnectorForProject(
         } catch (err) {
           logger.error(
             { error: normalizeError(err) },
-            "Failed to get LLM credentials"
+            "Failed to get LLM credentials to create data source and connector"
           );
           return new Err(new Error(MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE));
         }

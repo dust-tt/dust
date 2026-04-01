@@ -81,7 +81,7 @@ export async function searchProjectConversations(
   } catch (err) {
     logger.error(
       { error: normalizeError(err) },
-      "Failed to get LLM credentials"
+      "Failed to get LLM credentials to search project conversations"
     );
     return new Err(
       new DustError(

@@ -572,7 +572,7 @@ export async function upsertDocument({
   } catch (err) {
     logger.error(
       { error: normalizeError(err) },
-      "Failed to get LLM credentials"
+      "Failed to get LLM credentials to upsert document"
     );
     return new Err(
       new DustError(
@@ -633,7 +633,7 @@ export async function handleDataSourceSearch({
   } catch (err) {
     logger.error(
       { error: normalizeError(err) },
-      "Failed to get LLM credentials"
+      "Failed to get LLM credentials to search data source"
     );
     return new Err({
       name: "dust_error",
@@ -1112,7 +1112,7 @@ export async function createDataSourceWithoutProvider(
       } catch (err) {
         logger.error(
           { error: normalizeError(err) },
-          "Failed to get LLM credentials"
+          "Failed to get LLM credentials to create data source"
         );
         return new Err({
           name: "dust_error",

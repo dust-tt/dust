@@ -657,7 +657,7 @@ async function handler(
         } catch (err) {
           logger.error(
             { error: normalizeError(err) },
-            "Failed to get LLM credentials"
+            "Failed to get LLM credentials to upsert document"
           );
           return apiError(req, res, {
             status_code: 400,
