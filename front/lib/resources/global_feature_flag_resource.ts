@@ -61,28 +61,26 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
   }
 
   /**
-   * Deterministic check: given a flag name and workspace numeric ID, returns
-   * whether the workspace falls within the rollout percentage.
+   * Deterministic check: given a workspace numeric ID and rollout percentage,
+   * returns whether the workspace falls within the rollout.
+   *
+   * The bucket is derived solely from the workspace ID, so all flags at a
+   * given percentage cover the exact same set of workspaces. This is useful if
+   * a feature involves multiple flags.
    *
    * Properties:
-   * - Deterministic: same workspace always gets the same result for a given percentage.
+   * - Deterministic: same workspace always gets the same result.
    * - Monotonic: if included at 10%, still included at 20%.
-   * - Per-flag: different flags yield different buckets for the same workspace.
+   * - Uniform across flags: a workspace in the 10% bucket is in it for every flag.
    */
-  static isInRollout(
-    flagName: string,
-    workspaceId: number,
-    rolloutPercentage: number
-  ): boolean {
+  static isInRollout(workspaceId: number, rolloutPercentage: number): boolean {
     if (rolloutPercentage <= 0) {
       return false;
     }
     if (rolloutPercentage >= 100) {
       return true;
     }
-    const hash = createHash("md5")
-      .update(`${flagName}:${workspaceId}`)
-      .digest();
+    const hash = createHash("md5").update(`${workspaceId}`).digest();
     const bucket = hash.readUInt16BE(0) % 100; // 0–99
     return bucket < rolloutPercentage;
   }

@@ -1560,7 +1560,6 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
           if (
             !workspaceFlagNames.has(globalFlag.name) &&
             GlobalFeatureFlagResource.isInRollout(
-              globalFlag.name,
               workspace.id,
               globalFlag.rolloutPercentage
             )
