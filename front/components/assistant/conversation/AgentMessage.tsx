@@ -934,8 +934,6 @@ export function AgentMessage({
     );
   };
 
-  // Hide top-right completion status when inline activity has steps,
-  // since the inline section already shows "Completed in X".
   const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
 
   return (

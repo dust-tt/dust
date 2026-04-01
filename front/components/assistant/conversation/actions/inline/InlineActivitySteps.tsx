@@ -1,12 +1,12 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
-import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
+  InlineActivityStep,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
@@ -49,7 +49,7 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
     opacity: isCollapsed ? 0 : 1,
     transition: isCollapsed
-      ? "grid-template-rows 200ms ease-out"
+      ? "grid-template-rows 200ms ease-out opacity"
       : "grid-template-rows 200ms ease-out, opacity 300ms",
   };
 }
