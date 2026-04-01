@@ -1,0 +1,36 @@
+front/components/agent_builder/transformAgentConfiguration.ts
+  a02ce607fd4a7304 72-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "9e01b21e75f23f8c4938d6772efe9e195286e20a",
+  "prompts": {
+    "51ecfc49ff991f37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa70508f-10dd-4555-ae0e-437a26b341bd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    },
+    "a02ce607fd4a7304": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "445365df-da75-4243-be2c-0d7d11ee8744",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
