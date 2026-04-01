@@ -122,7 +122,7 @@ TriggerModel.init(
       },
     },
     indexes: [
-      { fields: ["workspaceId", "agentConfigurationId", "name"], unique: true },
+      { fields: ["workspaceId", "agentConfigurationId", "name"] },
       { fields: ["workspaceId", "webhookSourceViewId"] },
     ],
   }

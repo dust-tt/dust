@@ -220,26 +220,6 @@ async function processTriggers({
     return new Err(new Error("A user is required to update triggers"));
   }
 
-  // Validate trigger names are unique
-  const allTriggerNames = [
-    ...formData.triggersToCreate.map((t) => t.name),
-    ...formData.triggersToUpdate.map((t) => t.name),
-  ];
-  const uniqueTriggerNames = new Set(allTriggerNames);
-  if (uniqueTriggerNames.size !== allTriggerNames.length) {
-    datadogLogger.error(
-      {
-        workspaceId: owner.sId,
-        agentConfigurationId,
-        triggerNames: allTriggerNames,
-      },
-      "[Agent builder] - Duplicate trigger names found"
-    );
-    return new Err(
-      new Error("Trigger names must be unique for a given agent.")
-    );
-  }
-
   // Process triggers in order: DELETE -> PATCH -> POST (batch operations)
   // 1. Batch delete triggers
   if (formData.triggersToDelete.length > 0) {
