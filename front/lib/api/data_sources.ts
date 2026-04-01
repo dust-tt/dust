@@ -635,11 +635,12 @@ export async function handleDataSourceSearch({
       { error: normalizeError(err) },
       "Failed to get LLM credentials to search data source"
     );
-    return new Err({
-      name: "dust_error",
-      code: "data_source_error",
-      message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
-    });
+    return new Err(
+      new DustError(
+        "data_source_error",
+        MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+      )
+    );
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -1114,11 +1115,12 @@ export async function createDataSourceWithoutProvider(
           { error: normalizeError(err) },
           "Failed to get LLM credentials to create data source"
         );
-        return new Err({
-          name: "dust_error",
-          code: "invalid_request_error",
-          message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
-        });
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+          )
+        );
       }
 
       const dustDataSource = await coreAPI.createDataSource({
