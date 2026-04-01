@@ -49,7 +49,7 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
     opacity: isCollapsed ? 0 : 1,
     transition: isCollapsed
-      ? "grid-template-rows 200ms ease-out opacity"
+      ? "grid-template-rows 200ms ease-out, opacity"
       : "grid-template-rows 200ms ease-out, opacity 300ms",
   };
 }
@@ -94,8 +94,25 @@ export function InlineActivitySteps({
   const isThinking = lastAgentStateClassification === "thinking";
   const isActing = lastAgentStateClassification === "acting";
 
+  const headerLabel =
+    agentMessage.completionDurationMs !== null
+      ? getCompletionLabel(
+          agentMessage.status,
+          agentMessage.completionDurationMs
+        )
+      : isDone
+        ? "Completed"
+        : null;
+
+  const toggleCollapse = () => setIsCollapsed((c) => !c);
+
+  // Done with no steps: show a static line — no toggle, not clickable.
   if (isDone && completedSteps.length === 0) {
-    return null;
+    return (
+      <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
+      </div>
+    );
   }
 
   // Show active thinking whenever the agent is thinking.
@@ -115,7 +132,7 @@ export function InlineActivitySteps({
     <div className={`flex flex-col mt-2 text-sm ${isCollapsed ? "" : "gap-4"}`}>
       <button
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
-        onClick={() => setIsCollapsed((c) => !c)}
+        onClick={toggleCollapse}
       >
         <span
           className={cn(
@@ -125,16 +142,7 @@ export function InlineActivitySteps({
         >
           <Icon size="xs" visual={ChevronRightIcon} />
         </span>
-        {agentMessage.completionDurationMs !== null ? (
-          getCompletionLabel(
-            agentMessage.status,
-            agentMessage.completionDurationMs
-          )
-        ) : isDone ? (
-          "Completed"
-        ) : (
-          <AnimatedText>Thinking…</AnimatedText>
-        )}
+        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
       </button>
 
       <div

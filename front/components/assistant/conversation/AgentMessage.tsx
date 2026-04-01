@@ -1319,7 +1319,7 @@ function AgentMessageContent({
       )}
       {agentMessage.status === "cancelled" && (
         <div className="flex flex-col gap-2">
-          <div className="text-faint dark:text-faint-night">
+          <div className="text-sm text-faint dark:text-faint-night">
             Message generation was interrupted
           </div>
           <div>
