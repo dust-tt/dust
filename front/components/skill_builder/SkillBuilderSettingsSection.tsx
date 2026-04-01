@@ -32,9 +32,7 @@ export function SkillBuilderSettingsSection() {
         </div>
       </div>
       <Collapsible defaultOpen>
-        <CollapsibleTrigger variant="secondary">
-          Advanced
-        </CollapsibleTrigger>
+        <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
         <CollapsibleContent>
           <div className="pt-3">
             <SkillBuilderIsDefaultSection />
