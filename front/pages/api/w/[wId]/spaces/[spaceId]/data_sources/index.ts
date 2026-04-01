@@ -11,7 +11,10 @@ import {
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -43,7 +46,9 @@ import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
@@ -401,7 +406,22 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const credentials = await getLlmCredentials(auth);
+  let credentials: LLMCredentialsType;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials to create data source"
+    );
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+      },
+    });
+  }
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),

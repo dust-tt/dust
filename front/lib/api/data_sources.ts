@@ -3,7 +3,10 @@
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import {
   getMembers,
@@ -56,9 +59,11 @@ import type {
 import { isDataSourceNameValid } from "@app/types/data_source";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { PlanType } from "@app/types/plan";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type {
@@ -69,7 +74,6 @@ import type {
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";
-
 import { ConversationResource } from "../resources/conversation_resource";
 
 /**
@@ -562,7 +566,21 @@ export async function upsertDocument({
     );
   }
 
-  const credentials = await getLlmCredentials(auth);
+  let credentials: LLMCredentialsType;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials to upsert document"
+    );
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+      )
+    );
+  }
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
@@ -609,7 +627,21 @@ export async function handleDataSourceSearch({
     Omit<DustError, "code"> & { code: "data_source_error" }
   >
 > {
-  const credentials = await getLlmCredentials(auth);
+  let credentials: LLMCredentialsType;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials to search data source"
+    );
+    return new Err(
+      new DustError(
+        "data_source_error",
+        MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+      )
+    );
+  }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const data = await coreAPI.searchDataSource(
@@ -1075,7 +1107,21 @@ export async function createDataSourceWithoutProvider(
         });
       }
 
-      const credentials = await getLlmCredentials(auth);
+      let credentials: LLMCredentialsType;
+      try {
+        credentials = await getLlmCredentials(auth);
+      } catch (err) {
+        logger.error(
+          { error: normalizeError(err) },
+          "Failed to get LLM credentials to create data source"
+        );
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+          )
+        );
+      }
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
