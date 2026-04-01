@@ -7,7 +7,7 @@ import {
 } from "@app/lib/resources/storage/models/project_todo";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -35,14 +35,17 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     super(ProjectTodoModel, blob);
   }
 
+  // ── Creation ────────────────────────────────────────────────────────────────
+
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId">,
+    blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId" | "sId">,
     transaction?: Transaction
   ): Promise<ProjectTodoResource> {
     const todo = await ProjectTodoModel.create(
       {
         ...blob,
+        sId: generateRandomModelSId(),
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       { transaction }
@@ -50,6 +53,48 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
     return new this(ProjectTodoModel, todo.get());
   }
+
+  // Inserts a new version row for this logical todo, copying unchanged fields and
+  // applying the supplied updates. Mirrors the AgentConfiguration update pattern.
+  async createVersion(
+    auth: Authenticator,
+    updates: Partial<
+      Omit<
+        CreationAttributes<ProjectTodoModel>,
+        "workspaceId" | "sId" | "version"
+      >
+    >,
+    transaction?: Transaction
+  ): Promise<ProjectTodoResource> {
+    const newRow = await ProjectTodoModel.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: this.sId,
+        version: this.version + 1,
+        spaceId: this.spaceId,
+        userId: this.userId,
+        createdByType: this.createdByType,
+        createdByUserId: this.createdByUserId ?? null,
+        createdByAgentConfigurationId:
+          this.createdByAgentConfigurationId ?? null,
+        markedAsDoneByType: this.markedAsDoneByType ?? null,
+        markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
+        markedAsDoneByAgentConfigurationId:
+          this.markedAsDoneByAgentConfigurationId ?? null,
+        category: this.category,
+        text: this.text,
+        status: this.status,
+        doneAt: this.doneAt ?? null,
+        actorRationale: this.actorRationale ?? null,
+        ...updates,
+      },
+      { transaction }
+    );
+
+    return new ProjectTodoResource(ProjectTodoModel, newRow.get());
+  }
+
+  // ── Fetching ─────────────────────────────────────────────────────────────────
 
   private static async baseFetch(
     auth: Authenticator,
@@ -76,17 +121,15 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  static async fetchById(
+  // Fetches the latest version of a todo by its stable sId.
+  static async fetchBySId(
     auth: Authenticator,
     sId: string
   ): Promise<ProjectTodoResource | null> {
-    const modelId = getResourceIdFromSId(sId);
-    if (!modelId) {
-      return null;
-    }
-
     const results = await this.baseFetch(auth, {
-      where: { id: modelId },
+      where: { sId },
+      order: [["version", "DESC"]],
+      limit: 1,
     });
 
     return results[0] ?? null;
@@ -99,6 +142,21 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     return this.baseFetch(auth, {
       where: { spaceId },
       order: [["createdAt", "DESC"]],
+    });
+  }
+
+  // Returns every version row for (spaceId, userId), across all sIds. Used by the
+  // diff algorithm to reconstruct snapshots at arbitrary cutoff dates.
+  static async fetchAllVersionsBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId }
+  ): Promise<ProjectTodoResource[]> {
+    return this.baseFetch(auth, {
+      where: { spaceId, userId: auth.getNonNullableUser().id },
+      order: [
+        ["sId", "ASC"],
+        ["version", "ASC"],
+      ],
     });
   }
 
@@ -180,7 +238,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   async delete(
     auth: Authenticator,
@@ -211,22 +269,5 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
 
     return new Ok(undefined);
-  }
-
-  get sId(): string {
-    return ProjectTodoResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("project_todo", { id, workspaceId });
   }
 }
