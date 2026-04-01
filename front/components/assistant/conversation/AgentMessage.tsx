@@ -937,9 +937,7 @@ export function AgentMessage({
   // Hide top-right completion status when inline activity has steps,
   // since the inline section already shows "Completed in X".
   const hideCompletionStatus =
-    isDeleted ||
-    (isInlineActivityEnabled &&
-      agentMessage.streaming.inlineActivitySteps.length > 0);
+    isDeleted || isInlineActivityEnabled;
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
