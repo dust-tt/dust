@@ -342,10 +342,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "write_worksheet": "high",
   },
   "microsoft_teams": {
-    "get_transcript_content": "low",
     "list_channels": "never_ask",
     "list_chats": "never_ask",
-    "list_meetings": "never_ask",
     "list_messages": "never_ask",
     "list_teams": "never_ask",
     "list_users": "never_ask",
