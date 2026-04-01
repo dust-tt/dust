@@ -82,7 +82,7 @@ async function handler(
 
   const spaceIdToName = new Map(projectSpaces.map((s) => [s.sId, s.name]));
 
-  const conversations = await ConversationResource.fetchByIds(
+  const conversations = await ConversationResource.fetchByIdsWithReadState(
     auth,
     filteredResults.map((r) => r.conversationId)
   );

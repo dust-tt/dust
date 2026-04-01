@@ -59,7 +59,6 @@ export type FetchConversationOptions = {
 
 interface UserParticipation {
   actionRequired: boolean;
-  lastReadAt: Date | null;
   updated: number;
 }
 
@@ -74,8 +73,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static model: ModelStaticWorkspaceAware<ConversationModel> =
     ConversationModel;
 
-  // User-specific participation fields (populated when conversations are listed for a user).
+  // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
+  private userLastReadAt: Date | null = null;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -303,26 +303,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       attributes: ["actionRequired", "conversationId", "updatedAt"],
     });
 
-    const conversationReads = await UserConversationReadsModel.findAll({
-      where: {
-        conversationId: {
-          [Op.in]: participations.map((p) => p.conversationId),
-        },
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user.id,
-      },
-    });
-
-    const conversationReadMap = new Map<number, Date>(
-      conversationReads.map((read) => [read.conversationId, read.lastReadAt])
-    );
-
     return new Map(
       participations.map((p) => [
         p.conversationId,
         {
           actionRequired: p.actionRequired,
-          lastReadAt: conversationReadMap.get(p.conversationId) ?? null,
           updated: p.updatedAt.getTime(),
         },
       ])
@@ -349,7 +334,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  private static async enrichWithParticipation(
+  private static async enrichWithReadState(
+    auth: Authenticator,
+    conversations: ConversationResource[]
+  ): Promise<void> {
+    if (conversations.length === 0 || !auth.user()) {
+      return;
+    }
+
+    const readMap = await this.fetchReadMapForUser(
+      auth,
+      conversations.map((c) => c.id)
+    );
+
+    conversations.forEach((c) => {
+      c.userLastReadAt = readMap.get(c.id) ?? null;
+    });
+  }
+
+  private static async enrichWithParticipationAndReadState(
     auth: Authenticator,
     conversations: ConversationResource[]
   ): Promise<void> {
@@ -369,6 +372,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         c.userParticipation = participation;
       }
     });
+
+    await this.enrichWithReadState(auth, conversations);
   }
 
   static async fetchByIds(
@@ -391,6 +396,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const res = await this.fetchByIds(auth, [sId], options);
 
     return res.length > 0 ? res[0] : null;
+  }
+
+  static async fetchByIdsWithReadState(auth: Authenticator, sIds: string[]) {
+    const conversations = await this.fetchByIds(auth, sIds);
+    await this.enrichWithReadState(auth, conversations);
+    return conversations;
   }
 
   static async canAccess(
@@ -776,6 +787,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    await this.enrichWithReadState(auth, conversations);
+
     // Sort by participation updated time descending.
     return conversations.sort(
       (a, b) =>
@@ -861,6 +874,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    await this.enrichWithReadState(auth, resultConversations);
+
     const lastConversation =
       resultConversations[resultConversations.length - 1];
     const lastValue = lastConversation
@@ -927,29 +942,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       conversations.map((c) => c.id)
     );
-    const conversationIds = new Set(Array.from(participationMap.keys()));
+    const participantConversationIds = new Set(participationMap.keys());
 
-    const nonParticipantConversations = conversations.filter(
-      (c) => !conversationIds.has(c.id)
-    );
-
-    if (
-      conversationIds.size === 0 &&
-      nonParticipantConversations.length === 0
-    ) {
-      return {
-        unreadConversations: [],
-        nonParticipantUnreadConversations: [],
-        lastUserActivityBySpace: new Map(),
-      };
-    }
-
-    const readMap = await this.fetchReadMapForUser(
-      auth,
-      nonParticipantConversations.map((c) => c.id)
-    );
-
-    // Attach participation data to resources.
+    // Attach participation data and read state to all resources.
     conversations.forEach((c) => {
       const participation = participationMap.get(c.id);
       if (participation) {
@@ -957,33 +952,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    await this.enrichWithReadState(auth, conversations);
+
     // These conversations are used to display the unread count in the sidebar.
     // We do not count conversations the user does not participate in.
-    const unreadConversations = conversations.filter((c) => {
-      const participation = c.userParticipation;
-      if (!participation) {
-        return false;
-      }
-      if (participation.lastReadAt === null) {
-        return true;
-      }
-      if (c.updatedAt > participation.lastReadAt) {
-        return true;
-      }
-      return false;
-    });
+    const unreadConversations = conversations.filter(
+      (c) =>
+        c.userParticipation &&
+        (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
+    );
 
-    const nonParticipantUnreadConversations =
-      nonParticipantConversations.filter((c) => {
-        const lastReadAt = readMap.get(c.id);
-        if (!lastReadAt) {
-          return true;
-        }
-        if (c.updatedAt > lastReadAt) {
-          return true;
-        }
-        return false;
-      });
+    const nonParticipantUnreadConversations = conversations.filter(
+      (c) =>
+        !participantConversationIds.has(c.id) &&
+        (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
+    );
 
     const lastUserActivityBySpace = new Map<number, Date>();
 
@@ -992,21 +975,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       if (!spaceModelId) {
         continue;
       }
-      const participation = participationMap.get(conversation.id);
-      if (participation?.lastReadAt) {
-        const current = lastUserActivityBySpace.get(spaceModelId);
-        if (!current || participation.lastReadAt > current) {
-          lastUserActivityBySpace.set(spaceModelId, participation.lastReadAt);
-        }
-      }
-    }
-
-    for (const conversation of nonParticipantConversations) {
-      const spaceModelId = conversation.space?.id;
-      if (!spaceModelId) {
-        continue;
-      }
-      const lastReadAt = readMap.get(conversation.id);
+      const lastReadAt = conversation.userLastReadAt;
       if (lastReadAt) {
         const current = lastUserActivityBySpace.get(spaceModelId);
         if (!current || lastReadAt > current) {
@@ -1087,7 +1056,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["updatedAt", "DESC"]],
     });
 
-    await this.enrichWithParticipation(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     return conversations;
   }
@@ -1156,7 +1125,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       resultConversations = conversations.slice(0, pagination.limit);
     }
 
-    await this.enrichWithParticipation(auth, resultConversations);
+    await this.enrichWithParticipationAndReadState(auth, resultConversations);
 
     const lastConversation =
       resultConversations[resultConversations.length - 1];
@@ -2299,14 +2268,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   toJSON(): ConversationWithoutContentType {
-    // If conversation is fetched for a user, use the participation data.
-    const participation = this.userParticipation ?? {
-      actionRequired: false,
-      lastReadAt: null,
-    };
-
     return {
-      actionRequired: participation.actionRequired,
+      actionRequired: this.userParticipation?.actionRequired ?? false,
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
       spaceId: this.space?.sId ?? null,
@@ -2319,9 +2282,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       sId: this.sId,
       title: this.title,
       unread:
-        participation.lastReadAt === null ||
-        (!!this.updatedAt && this.updatedAt > participation.lastReadAt),
-      lastReadMs: participation.lastReadAt?.getTime() ?? null,
+        this.userLastReadAt === null ||
+        (!!this.updatedAt && this.updatedAt > this.userLastReadAt),
+      lastReadMs: this.userLastReadAt?.getTime() ?? null,
       depth: this.depth,
       metadata: this.metadata,
     };
