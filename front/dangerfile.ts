@@ -244,7 +244,7 @@ async function checkWorkspaceAwareModels(filePaths: string[]) {
 /**
  * Triggers related checks based on modified files
  */
-async function warnTriggersWorkflowChanges() {
+function warnTriggersWorkflowChanges() {
   warn(
     `Files in \`front/temporal/agent_schedules/\` have been modified.
     Be careful modifying workflows/activities signatures.
@@ -321,7 +321,7 @@ async function checkDiffFiles() {
     return path.startsWith("front/temporal/agent_schedules/");
   });
   if (modifiedWorkflowFiles.length > 0) {
-    await warnTriggersWorkflowChanges();
+    warnTriggersWorkflowChanges();
   }
 
   // SSE endpoint files — changes here require a front-sse deploy too.
