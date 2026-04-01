@@ -45,6 +45,7 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
+  Avatar,
   Button,
   CameraIcon,
   Chip,
@@ -56,6 +57,7 @@ import {
   DropdownMenuTrigger,
   GlobeAltIcon,
   PlusIcon,
+  RobotIcon,
   TextIcon,
   Toolbar,
   VoicePicker,

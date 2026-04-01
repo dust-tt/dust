@@ -84,7 +84,8 @@ export const InputBar = React.memo(function InputBar({
   >([]);
 
   const {
-    getAndClearSelectedAgent,
+    selectedAgent,
+    setSelectedAgent,
     selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
@@ -114,10 +115,6 @@ export const InputBar = React.memo(function InputBar({
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
-  const selectedAgent = useMemo(
-    () => getAndClearSelectedAgent(),
-    [getAndClearSelectedAgent]
-  );
   const pendingInputText = useMemo(
     () => getAndClearPendingInputText(),
     [getAndClearPendingInputText]
@@ -271,6 +268,7 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
+          setSelectedAgent(null);
         }
       } finally {
         setLoading(false);
@@ -297,6 +295,7 @@ export const InputBar = React.memo(function InputBar({
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
+        setSelectedAgent(null);
 
         await submitPromise;
       } finally {
