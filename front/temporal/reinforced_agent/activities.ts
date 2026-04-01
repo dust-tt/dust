@@ -8,7 +8,6 @@ import {
   downloadBatchResultFromLlm,
   sendBatchCallToLlm,
   storeLlmResult,
-  writeBatchUserMessages,
 } from "@app/lib/api/llm/batch_llm";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -16,8 +15,9 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
-  aggregateSyntheticSuggestions,
   buildAggregationBatchMap,
+  buildAggregationSystemPrompt,
+  loadAggregationContext,
 } from "@app/lib/reinforced_agent/aggregate_suggestions";
 import {
   buildAnalysisPrompt,
@@ -25,9 +25,9 @@ import {
   buildConversationAnalysisBatchMap,
 } from "@app/lib/reinforced_agent/analyze_conversation";
 import {
-  buildReinforcedLLMParams,
   buildReinforcedSpecifications,
   classifyToolCalls,
+  createReinforcementConversation,
   getReinforcedLLM,
   getReinforcementDefaultOptions,
   processReinforcedEvents,
@@ -39,11 +39,13 @@ import {
   type ReinforcedToolActionInfo,
   storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
+import type { ReinforcedOperationType } from "@app/lib/reinforced_agent/types";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { updateActiveTrace } from "@langfuse/tracing";
 import { ApplicationFailure } from "@temporalio/common";
 
@@ -61,6 +63,176 @@ async function getAuthForWorkspace(
     );
   }
   return Authenticator.internalAdminForWorkspace(workspaceId);
+}
+
+/**
+ * Common logic for a single reinforced step (analysis or aggregation).
+ *
+ * Fetches the reinforcement conversation, renders it for the LLM, streams the
+ * response, stores the result, and classifies tool calls. Terminal tool calls
+ * are processed into suggestions; exploratory tool calls are returned for the
+ * workflow to execute.
+ */
+async function runReinforcedStep({
+  auth,
+  agentConfig,
+  reinforcementConversationId,
+  operationType,
+  systemPrompt,
+  contextId,
+  source,
+  conversationId,
+}: {
+  auth: Authenticator;
+  agentConfig: LightAgentConfigurationType;
+  reinforcementConversationId: string;
+  operationType: ReinforcedOperationType;
+  systemPrompt: string;
+  contextId: string;
+  source: "synthetic" | "reinforcement";
+  /** When provided, fetches this conversation and passes it to processReinforcedEvents. */
+  conversationId?: string;
+}): Promise<{
+  isTerminal: boolean;
+  suggestionsCreated: number;
+  reinforcementConversationId?: string;
+  toolActionInfo?: ReinforcedToolActionInfo;
+}> {
+  const llm = await getReinforcedLLM(auth, operationType);
+  if (!llm) {
+    logger.error(
+      { contextId },
+      "ReinforcedAgent: no LLM available for step activity"
+    );
+    return { isTerminal: true, suggestionsCreated: 0 };
+  }
+
+  const conversationRes = await getConversation(
+    auth,
+    reinforcementConversationId
+  );
+  if (conversationRes.isErr()) {
+    throw conversationRes.error;
+  }
+
+  const specifications = buildReinforcedSpecifications();
+  const modelConfig = llm.getModelConfig();
+  const toolsJson = JSON.stringify(
+    specifications.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    }))
+  );
+
+  const renderResult = await renderConversationForModel(auth, {
+    conversation: conversationRes.value,
+    model: modelConfig,
+    prompt: systemPrompt,
+    tools: toolsJson,
+    allowedTokenCount:
+      modelConfig.contextSize - modelConfig.generationTokensCount,
+  });
+  if (renderResult.isErr()) {
+    throw renderResult.error;
+  }
+
+  const llmParams: LLMStreamParameters = {
+    conversation: renderResult.value.modelConversation,
+    prompt: systemPrompt,
+    specifications,
+  };
+
+  const events: LLMEvent[] = [];
+  for await (const event of llm.stream(llmParams)) {
+    events.push(event);
+  }
+
+  // Store agent response in the reinforcement conversation.
+  const reinforcementConv = await ConversationResource.fetchById(
+    auth,
+    reinforcementConversationId
+  );
+  if (!reinforcementConv) {
+    throw new Error(
+      `Reinforcement conversation not found: ${reinforcementConversationId}`
+    );
+  }
+
+  const storedResult = await storeLlmResult(
+    auth,
+    reinforcementConv,
+    events,
+    REINFORCEMENT_AGENT_ID
+  );
+
+  const { exploratoryToolCalls, terminalToolCalls } = classifyToolCalls(events);
+
+  // If terminal tools were called, process suggestions.
+  if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
+    if (terminalToolCalls.length > 0 && exploratoryToolCalls.length > 0) {
+      logger.warn(
+        { contextId },
+        "ReinforcedAgent: LLM is sending both terminal and exploratory tool call."
+      );
+    }
+
+    // For analysis, fetch the analyzed conversation to store FK reference.
+    let conversation: ConversationResource | undefined;
+    if (conversationId) {
+      conversation =
+        (await ConversationResource.fetchById(auth, conversationId)) ??
+        undefined;
+    }
+
+    const result = await processReinforcedEvents({
+      auth,
+      agentConfig,
+      events,
+      source,
+      operationType,
+      contextId,
+      conversation,
+    });
+
+    // Store results for all terminal tool calls so the conversation is complete.
+    await storeTerminalToolCallResults(auth, {
+      successfulToolCalls: result.successfulToolCalls,
+      failedToolCalls: result.failedToolCalls,
+      agentMessageModelId: storedResult.agentMessageModelId,
+    });
+
+    // If any failed, let the LLM retry on the next step.
+    if (result.failedToolCalls.length > 0) {
+      return {
+        isTerminal: false,
+        suggestionsCreated: result.suggestionsCreated,
+        reinforcementConversationId,
+      };
+    }
+
+    return {
+      isTerminal: true,
+      suggestionsCreated: result.suggestionsCreated,
+      reinforcementConversationId,
+    };
+  }
+
+  // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
+  const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    exploratoryToolCalls,
+    agentMessageModelId: storedResult.agentMessageModelId,
+    agentMessageId: storedResult.agentMessageSId,
+    userMessageId: storedResult.userMessageSId,
+    conversationId: reinforcementConversationId,
+  });
+
+  return {
+    isTerminal: false,
+    suggestionsCreated: 0,
+    reinforcementConversationId,
+    toolActionInfo,
+  };
 }
 
 /**
@@ -141,6 +313,7 @@ export async function analyzeConversationStepActivity({
   reinforcementConversationId?: string;
 }): Promise<{
   isTerminal: boolean;
+  suggestionsCreated: number;
   reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
@@ -156,7 +329,7 @@ export async function analyzeConversationStepActivity({
       { agentConfigurationId, workspaceId: owner.sId },
       "ReinforcedAgent: agent configuration not found for step activity"
     );
-    return { isTerminal: true };
+    return { isTerminal: true, suggestionsCreated: 0 };
   }
 
   // On first step, build the analysis prompt and create a reinforcement conversation.
@@ -173,7 +346,7 @@ export async function analyzeConversationStepActivity({
         { conversationId },
         "ReinforcedAgent: conversation not found for step activity"
       );
-      return { isTerminal: true };
+      return { isTerminal: true, suggestionsCreated: 0 };
     }
 
     const prompt = buildAnalysisPrompt(
@@ -181,172 +354,143 @@ export async function analyzeConversationStepActivity({
       conversationRes.value.text,
       agentSkills
     );
-    const llmParams = buildReinforcedLLMParams(prompt);
-    const { conversation: llmConversation, ...llmParamsWithoutConversation } =
-      llmParams;
-    const writeResult = await writeBatchUserMessages(auth, {
-      newMessages: llmConversation.messages,
-      title: reinforcementConversationTitle(
-        "reinforced_agent_analyze_conversation",
-        conversationId
-      ),
-      ...llmParamsWithoutConversation,
-      ...getReinforcementDefaultOptions(
-        "reinforced_agent_analyze_conversation",
-        agentConfigurationId
-      ),
-    });
-    if (writeResult.isErr()) {
-      throw writeResult.error;
-    }
-    reinforcementConversationId = writeResult.value.sId;
-  }
-
-  // Fetch the reinforcement conversation and render it for the LLM.
-  // On first step this has just the user message.
-  // On continuations this includes previous assistant tool calls + tool results.
-  const llm = await getReinforcedLLM(
-    auth,
-    "reinforced_agent_analyze_conversation"
-  );
-  if (!llm) {
-    logger.error(
-      { conversationId },
-      "ReinforcedAgent: no LLM available for step activity"
-    );
-    return { isTerminal: true };
-  }
-
-  const conversationRes = await getConversation(
-    auth,
-    reinforcementConversationId
-  );
-  if (conversationRes.isErr()) {
-    throw conversationRes.error;
-  }
-
-  const systemPrompt = buildAnalysisSystemPrompt();
-  const specifications = buildReinforcedSpecifications();
-  const modelConfig = llm.getModelConfig();
-  const toolsJson = JSON.stringify(
-    specifications.map((s) => ({
-      name: s.name,
-      description: s.description,
-      inputSchema: s.inputSchema,
-    }))
-  );
-
-  const renderResult = await renderConversationForModel(auth, {
-    conversation: conversationRes.value,
-    model: modelConfig,
-    prompt: systemPrompt,
-    tools: toolsJson,
-    allowedTokenCount:
-      modelConfig.contextSize - modelConfig.generationTokensCount,
-  });
-  if (renderResult.isErr()) {
-    throw renderResult.error;
-  }
-
-  const llmParams: LLMStreamParameters = {
-    conversation: renderResult.value.modelConversation,
-    prompt: systemPrompt,
-    specifications,
-  };
-
-  const events: LLMEvent[] = [];
-  for await (const event of llm.stream(llmParams)) {
-    events.push(event);
-  }
-
-  // Store agent response in the reinforcement conversation.
-  const reinforcementConv = await ConversationResource.fetchById(
-    auth,
-    reinforcementConversationId
-  );
-  if (!reinforcementConv) {
-    throw new Error(
-      `Reinforcement conversation not found: ${reinforcementConversationId}`
-    );
-  }
-
-  const storedResult = await storeLlmResult(
-    auth,
-    reinforcementConv,
-    events,
-    REINFORCEMENT_AGENT_ID
-  );
-
-  const { exploratoryToolCalls, terminalToolCalls } = classifyToolCalls(events);
-
-  // If terminal tools were called, process suggestions.
-  if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
-    if (terminalToolCalls.length > 0 && exploratoryToolCalls.length > 0) {
-      logger.warn(
-        { conversationId },
-        "ReinforcedAgent: LLM is sending both terminal and exploratory tool call."
-      );
-    }
-    const analysedConversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    const result = await processReinforcedEvents({
-      auth,
-      agentConfig,
-      events,
-      source: "synthetic",
+    reinforcementConversationId = await createReinforcementConversation(auth, {
+      prompt,
       operationType: "reinforced_agent_analyze_conversation",
       contextId: conversationId,
-      conversation: analysedConversation ?? undefined,
+      agentConfigurationId,
     });
-
-    // Store results for all terminal tool calls so the conversation is complete.
-    await storeTerminalToolCallResults(auth, {
-      successfulToolCalls: result.successfulToolCalls,
-      failedToolCalls: result.failedToolCalls,
-      agentMessageModelId: storedResult.agentMessageModelId,
-    });
-
-    // If any failed, let the LLM retry on the next step.
-    if (result.failedToolCalls.length > 0) {
-      return { isTerminal: false, reinforcementConversationId };
-    }
-
-    return { isTerminal: true, reinforcementConversationId };
   }
 
-  // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
-  const toolActionInfo = await prepareReinforcedToolActions(auth, {
-    exploratoryToolCalls,
-    agentMessageModelId: storedResult.agentMessageModelId,
-    agentMessageId: storedResult.agentMessageSId,
-    userMessageId: storedResult.userMessageSId,
-    conversationId: reinforcementConversationId,
+  return runReinforcedStep({
+    auth,
+    agentConfig,
+    reinforcementConversationId,
+    operationType: "reinforced_agent_analyze_conversation",
+    systemPrompt: buildAnalysisSystemPrompt(),
+    contextId: conversationId,
+    source: "synthetic",
+    conversationId,
   });
-
-  return { isTerminal: false, reinforcementConversationId, toolActionInfo };
 }
 
 /**
- * Aggregate synthetic suggestions for a specific agent into pending suggestions.
+ * Finalize aggregation: send notifications and mark synthetic suggestions as approved.
+ * Called by the workflow after the aggregation multi-step loop completes.
  */
-export async function aggregateSuggestionsActivity({
+export async function finalizeAggregationActivity({
   workspaceId,
   agentConfigurationId,
+  suggestionsCreated,
   disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  suggestionsCreated: number;
   disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  await aggregateSyntheticSuggestions(
+  if (suggestionsCreated > 0 && !disableNotifications) {
+    const [agentConfig] = await getAgentConfigurations(auth, {
+      agentIds: [agentConfigurationId],
+      variant: "light",
+    });
+    if (agentConfig) {
+      notifyAgentSuggestionsReady(auth, {
+        agentConfiguration: agentConfig,
+        suggestionCount: suggestionsCreated,
+      });
+    }
+  }
+
+  // Mark all synthetic suggestions as approved (consumed by aggregation).
+  const syntheticSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { sources: ["synthetic"], states: ["pending"] }
+    );
+
+  await AgentSuggestionResource.bulkUpdateState(
     auth,
-    agentConfigurationId,
-    disableNotifications
+    syntheticSuggestions,
+    "approved"
   );
+
+  logger.info(
+    {
+      agentConfigurationId,
+      syntheticCount: syntheticSuggestions.length,
+      pendingCreated: suggestionsCreated,
+    },
+    "ReinforcedAgent: finalized aggregation"
+  );
+}
+
+/**
+ * Single step of aggregation for reinforcement (streaming mode).
+ *
+ * Mirrors `analyzeConversationStepActivity` but for the aggregation phase.
+ * On the first step, loads the aggregation context (synthetic suggestions,
+ * agent config, etc.) and creates a reinforcement conversation.
+ * On continuation steps, re-renders from DB (which includes previous tool results).
+ *
+ * Returns `isTerminal: true` when the LLM calls terminal suggestion tools.
+ * Otherwise returns `toolActionInfo` for the workflow to execute exploratory tools.
+ */
+export async function aggregateSuggestionsStepActivity({
+  workspaceId,
+  agentConfigurationId,
+  reinforcementConversationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  reinforcementConversationId?: string;
+}): Promise<{
+  isTerminal: boolean;
+  suggestionsCreated: number;
+  reinforcementConversationId?: string;
+  toolActionInfo?: ReinforcedToolActionInfo;
+}> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "full",
+  });
+  if (!agentConfig || agentConfig.id < 0) {
+    logger.warn(
+      { agentConfigurationId },
+      "ReinforcedAgent: agent configuration not found for aggregation step activity"
+    );
+    return { isTerminal: true, suggestionsCreated: 0 };
+  }
+
+  // On first step, load aggregation context and create a reinforcement conversation.
+  if (!reinforcementConversationId) {
+    const ctx = await loadAggregationContext(auth, agentConfigurationId);
+    if (!ctx) {
+      return { isTerminal: true, suggestionsCreated: 0 };
+    }
+
+    reinforcementConversationId = await createReinforcementConversation(auth, {
+      prompt: ctx.prompt,
+      operationType: "reinforced_agent_aggregate_suggestions",
+      contextId: agentConfigurationId,
+      agentConfigurationId,
+    });
+  }
+
+  return runReinforcedStep({
+    auth,
+    agentConfig,
+    reinforcementConversationId,
+    operationType: "reinforced_agent_aggregate_suggestions",
+    systemPrompt: buildAggregationSystemPrompt(),
+    contextId: agentConfigurationId,
+    source: "reinforcement",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -669,19 +813,16 @@ export async function processConversationAnalysisBatchResultActivity({
 export async function startAggregationBatchActivity({
   workspaceId,
   agentConfigurationId,
+  existingReinforcementConversationId,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  existingReinforcementConversationId?: string;
 }): Promise<{
   batchId: string;
   reinforcementConversationIds: string[];
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-
-  const batchMap = await buildAggregationBatchMap(auth, agentConfigurationId);
-  if (!batchMap) {
-    return null;
-  }
 
   const llm = await getReinforcedLLM(
     auth,
@@ -691,21 +832,45 @@ export async function startAggregationBatchActivity({
     return null;
   }
 
-  const batchConversations: LlmConversationOptions[] = [];
-  for (const [, llmParams] of batchMap) {
-    const { conversation, ...llmParamsWithoutConversation } = llmParams;
-    batchConversations.push({
-      newMessages: conversation.messages,
-      title: reinforcementConversationTitle(
-        "reinforced_agent_aggregate_suggestions",
-        agentConfigurationId
-      ),
-      ...llmParamsWithoutConversation,
-      ...getReinforcementDefaultOptions(
-        "reinforced_agent_aggregate_suggestions",
-        agentConfigurationId
-      ),
-    });
+  const systemPrompt = buildAggregationSystemPrompt();
+  const specifications = buildReinforcedSpecifications();
+
+  let batchConversations: LlmConversationOptions[];
+
+  if (existingReinforcementConversationId) {
+    // Continuation: reuse existing reinforcement conversation (already has tool results).
+    batchConversations = [
+      {
+        newMessages: [],
+        existingConversationId: existingReinforcementConversationId,
+        prompt: systemPrompt,
+        specifications,
+        userContextOrigin: "reinforcement",
+      },
+    ];
+  } else {
+    // First time: build the aggregation prompt.
+    const batchMap = await buildAggregationBatchMap(auth, agentConfigurationId);
+    if (!batchMap) {
+      return null;
+    }
+
+    batchConversations = [];
+    for (const [, llmParams] of batchMap) {
+      const { conversation, ...llmParamsWithoutConversation } = llmParams;
+      batchConversations.push({
+        newMessages: conversation.messages,
+        title: reinforcementConversationTitle(
+          "reinforced_agent_aggregate_suggestions",
+          agentConfigurationId
+        ),
+        ...llmParamsWithoutConversation,
+        ...getReinforcementDefaultOptions(
+          "reinforced_agent_aggregate_suggestions",
+          agentConfigurationId
+        ),
+      });
+    }
   }
 
   const sendResult = await sendBatchCallToLlm(auth, llm, batchConversations);
@@ -727,22 +892,30 @@ export async function startAggregationBatchActivity({
 }
 
 /**
- * Download aggregation batch results, create suggestions, and mark synthetic ones as approved.
+ * Download aggregation batch results and process tool calls.
  * Also stores agent messages in the reinforced agent conversations.
+ *
+ * Returns `needsContinuation: true` with `toolActionInfo` when the LLM called
+ * exploratory tools (or terminal tools failed). The workflow should execute tools
+ * and resubmit the batch. Returns `needsContinuation: false` when terminal tools
+ * succeeded — the workflow should then finalize (notify + mark synthetic approved).
  */
 export async function processAggregationBatchResultActivity({
   workspaceId,
   agentConfigurationId,
   batchId,
   reinforcementConversationIds,
-  disableNotifications,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   batchId: string;
   reinforcementConversationIds: string[];
-  disableNotifications: boolean;
-}): Promise<void> {
+}): Promise<{
+  needsContinuation: boolean;
+  suggestionsCreated: number;
+  reinforcementConversationId?: string;
+  toolActionInfo?: ReinforcedToolActionInfo;
+}> {
   const auth = await getAuthForWorkspace(workspaceId);
 
   const [agentConfig] = await getAgentConfigurations(auth, {
@@ -754,7 +927,7 @@ export async function processAggregationBatchResultActivity({
       { agentConfigurationId },
       "ReinforcedAgent: agent not found for aggregation result processing"
     );
-    return;
+    return { needsContinuation: false, suggestionsCreated: 0 };
   }
 
   const llm = await getReinforcedLLM(
@@ -762,63 +935,92 @@ export async function processAggregationBatchResultActivity({
     "reinforced_agent_aggregate_suggestions"
   );
   if (!llm) {
-    return;
+    return { needsContinuation: false, suggestionsCreated: 0 };
   }
 
   // Download results and store agent messages in reinforcement conversations.
-  const { events: batchEvents } = await downloadBatchResultFromLlm(
-    auth,
-    llm,
-    batchId,
-    reinforcementConversationIds,
-    REINFORCEMENT_AGENT_ID
-  );
+  const { events: batchEvents, storedResultInfo } =
+    await downloadBatchResultFromLlm(
+      auth,
+      llm,
+      batchId,
+      reinforcementConversationIds,
+      REINFORCEMENT_AGENT_ID
+    );
 
   // The aggregation batch has a single entry — get the first result.
-  const events = batchEvents.values().next().value;
+  const firstConvId = reinforcementConversationIds[0];
+  const events = batchEvents.get(firstConvId);
 
-  let createdCount = 0;
-  if (events) {
+  if (!events) {
+    return { needsContinuation: false, suggestionsCreated: 0 };
+  }
+
+  const { exploratoryToolCalls, terminalToolCalls } = classifyToolCalls(events);
+
+  // If terminal tools were called, process suggestions.
+  if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
     const result = await processReinforcedEvents({
       auth,
       agentConfig,
       events,
       source: "reinforcement",
       operationType: "reinforced_agent_aggregate_suggestions",
-      contextId: "n/a",
+      contextId: agentConfigurationId,
     });
-    // TODO(reinforced agent) Fabien: Support tool call and retry in aggregation too
-    createdCount = result.suggestionsCreated;
-  }
 
-  if (createdCount > 0 && !disableNotifications) {
-    notifyAgentSuggestionsReady(auth, {
-      agentConfiguration: agentConfig,
-      suggestionCount: createdCount,
-    });
-  }
+    // Store results for all terminal tool calls.
+    const storedInfo = storedResultInfo.get(firstConvId);
+    if (storedInfo) {
+      await storeTerminalToolCallResults(auth, {
+        successfulToolCalls: result.successfulToolCalls,
+        failedToolCalls: result.failedToolCalls,
+        agentMessageModelId: storedInfo.agentMessageModelId,
+      });
 
-  // Mark all synthetic suggestions as approved (consumed by aggregation).
-  const syntheticSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      { sources: ["synthetic"], states: ["pending"] }
+      // If any failed, continue the loop for retry.
+      if (result.failedToolCalls.length > 0) {
+        return {
+          needsContinuation: true,
+          suggestionsCreated: result.suggestionsCreated,
+          reinforcementConversationId: firstConvId,
+        };
+      }
+    }
+
+    logger.info(
+      {
+        agentConfigurationId,
+        batchId,
+        suggestionsCreated: result.suggestionsCreated,
+      },
+      "ReinforcedAgent: processed aggregation batch results"
     );
 
-  await AgentSuggestionResource.bulkUpdateState(
-    auth,
-    syntheticSuggestions,
-    "approved"
-  );
+    return {
+      needsContinuation: false,
+      suggestionsCreated: result.suggestionsCreated,
+    };
+  }
 
-  logger.info(
-    {
-      agentConfigurationId,
-      batchId,
-      syntheticCount: syntheticSuggestions.length,
-      pendingCreated: createdCount,
-    },
-    "ReinforcedAgent: processed aggregation batch results"
-  );
+  // Only exploratory tools — prepare actions for the workflow to execute.
+  const storedInfo = storedResultInfo.get(firstConvId);
+  if (!storedInfo) {
+    return { needsContinuation: false, suggestionsCreated: 0 };
+  }
+
+  const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    exploratoryToolCalls,
+    agentMessageModelId: storedInfo.agentMessageModelId,
+    agentMessageId: storedInfo.agentMessageSId,
+    userMessageId: storedInfo.userMessageSId,
+    conversationId: firstConvId,
+  });
+
+  return {
+    needsContinuation: true,
+    suggestionsCreated: 0,
+    reinforcementConversationId: firstConvId,
+    toolActionInfo,
+  };
 }

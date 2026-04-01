@@ -1,6 +1,9 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
-import { SHARED_PROMPT_SECTIONS } from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
+import {
+  REINFORCED_TOOLS_DESCRIPTION,
+  SHARED_PROMPT_SECTIONS,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -26,24 +29,9 @@ type SectionKey = (typeof ASSEMBLY_ORDER)[number];
 export const REINFORCED_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
   primary: `You are an AI agent improvement analyst. Your job is to analyze a conversation handled by an AI agent and suggest concrete improvements to the agent's configuration.
 
-You have access to the following tools:
+${REINFORCED_TOOLS_DESCRIPTION}
 
-## Exploration tools (optional - use these first if you need more context)
-- get_available_skills: Lists all skills available in the workspace. Use this to discover skills you could suggest adding.
-- get_available_tools: Lists all tools (MCP servers) available in the workspace. Use this to discover tools you could suggest adding.
-
-## Suggestion tools (terminal — the conversation ends after these)
-- suggest_prompt_edits: For suggesting instruction changes.
-- suggest_tools: For suggesting tools to add or remove.
-- suggest_skills: For suggesting skills to add or remove.
-
-You can either:
-1. Call exploration tools first to discover available skills/tools, then make informed suggestions.
-2. Go straight to calling suggestion tools if you already have enough context.
-
-You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result. You MUST eventually call at least one suggestion tool. You must do all the suggestions in parallel as after suggestions the conversation will be over. If after <analysis_workflow> you have determined no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
-
-The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.`,
+You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result.`,
 
   analysis_workflow: `Follow this process for every conversation you analyze:
 
