@@ -1504,6 +1504,7 @@ export async function prodAPICredentialsForOwner(
 // causes memory growth.
 
 // Global feature flags are shared across all workspaces and cached separately.
+const GLOBAL_FEATURE_FLAG_TTL_MS = 60000;
 const _getGlobalFeatureFlags = memoizer<
   Record<string, never>,
   GlobalFeatureFlagResource[]
@@ -1517,7 +1518,7 @@ const _getGlobalFeatureFlags = memoizer<
   hash: () => "global_feature_flags",
 
   max: 1,
-  ttl: 60000,
+  ttl: GLOBAL_FEATURE_FLAG_TTL_MS,
 });
 
 function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
