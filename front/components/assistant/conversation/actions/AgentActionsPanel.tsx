@@ -381,7 +381,7 @@ export function AgentActionsPanel({
   // TODO: Clean up once inline activity is rolled out -- the single-action view
   // should fetch only the action it needs, not the full message.
   const [messageId, targetActionId] = rawData?.includes("@")
-    ? [rawData.split("@")[0], rawData.split("@")[1]]
+    ? rawData.split("@")
     : [rawData, undefined];
 
   const {
