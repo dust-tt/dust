@@ -66,13 +66,12 @@ export function SkillBuilderIsDefaultSection() {
               be able to find and enable it on their own.
               <ul className="mt-3 list-disc space-y-1 pl-5">
                 <li>
-                  This will expose the skill to every member of your workspace
+                  This will expose the skill to your entire workspace
                   through the Discover Skills skill.
                 </li>
                 <li>
-                  Do not enable this for skills that are still experimental or
-                  under active development — agents may start using them in real
-                  conversations.
+                  Experimental or in-progress skills should not be made
+                  discoverable.
                 </li>
               </ul>
             </DialogDescription>
