@@ -69,7 +69,12 @@ const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
   GROK_4_MODEL_ID,
 ];
 
-export function getDefaultLargeModel(
+/**
+ * Returns the best available model from the user's allowed models, matching
+ * against a preferred order. Falls back to any large model, then any model,
+ * then a hardcoded default.
+ */
+export function getDefaultModel(
   availableModels: ModelConfigurationType[]
 ): ModelConfigurationType {
   for (const modelId of PREFERRED_LARGE_MODEL_IDS) {
@@ -79,7 +84,9 @@ export function getDefaultLargeModel(
     }
   }
 
-  const fallbackModel = availableModels.find((m) => m.largeModel);
+  const fallbackModel =
+    availableModels.find((m) => m.largeModel) ??
+    availableModels.find((m) => !m.largeModel);
 
   return fallbackModel ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
 }

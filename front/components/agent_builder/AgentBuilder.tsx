@@ -25,7 +25,7 @@ import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/use
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
-  getDefaultLargeModel,
+  getDefaultModel,
   transformAgentConfigurationToFormData,
   transformDuplicateAgentToFormData,
   transformTemplateToFormData,
@@ -258,7 +258,7 @@ export default function AgentBuilder({
   useEffect(() => {
     const currentValues = form.getValues();
 
-    const defaultModel = getDefaultLargeModel(availableModels);
+    const defaultModel = getDefaultModel(availableModels);
 
     form.reset({
       ...currentValues,
