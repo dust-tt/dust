@@ -253,6 +253,7 @@ export type InlineActivityStep =
       type: "action";
       label: string;
       id: string;
+      actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
     };
 

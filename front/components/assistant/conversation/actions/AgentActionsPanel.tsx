@@ -1,3 +1,4 @@
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
@@ -374,7 +375,14 @@ export function AgentActionsPanel({
   conversation,
   owner,
 }: AgentActionsPanelProps) {
-  const { onPanelClosed, data: messageId } = useConversationSidePanelContext();
+  const { onPanelClosed, data: rawData } = useConversationSidePanelContext();
+
+  // data can be "messageId" or "messageId@actionId" for single-action view.
+  // TODO: Clean up once inline activity is rolled out -- the single-action view
+  // should fetch only the action it needs, not the full message.
+  const [messageId, targetActionId] = rawData?.includes("@")
+    ? rawData.split("@")
+    : [rawData, undefined];
 
   const {
     message: fullAgentMessage,
@@ -432,6 +440,32 @@ export function AgentActionsPanel({
         </div>
       </AgentActionsPanelHeader>
     );
+  }
+
+  // Single action detail view when an action is targeted from inline activity.
+  if (targetActionId) {
+    const action = fullAgentMessage.actions.find(
+      (a) => a.sId === targetActionId
+    );
+    if (action) {
+      return (
+        <div className="flex h-full flex-col bg-background dark:bg-background-night">
+          <AgentActionsPanelHeader
+            title="Tool detail"
+            onClose={onPanelClosed}
+          />
+          <div className="flex-1 overflow-y-auto p-4 pb-12">
+            <MCPActionDetails
+              displayContext="sidebar"
+              action={action}
+              lastNotification={null}
+              owner={owner}
+              messageStatus={fullAgentMessage.status}
+            />
+          </div>
+        </div>
+      );
+    }
   }
 
   // Use key to force remount when the message changes for proper state reset.
