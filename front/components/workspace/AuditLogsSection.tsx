@@ -34,6 +34,12 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
                 disabled={!viewLogsLink}
                 onClick={() => {
                   if (viewLogsLink) {
+                    // Fire-and-forget audit event — not awaited to avoid popup blocker.
+                    void fetch(`/api/w/${owner.sId}/audit-logs`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "audit_log.viewed" }),
+                    });
                     window.open(viewLogsLink, "_blank", "noopener,noreferrer");
                   }
                 }}
@@ -45,6 +51,13 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
                 disabled={!configureExportLink}
                 onClick={() => {
                   if (configureExportLink) {
+                    void fetch(`/api/w/${owner.sId}/audit-logs`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        action: "audit_log.export_configured",
+                      }),
+                    });
                     window.open(
                       configureExportLink,
                       "_blank",

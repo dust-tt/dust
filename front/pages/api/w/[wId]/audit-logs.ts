@@ -72,17 +72,41 @@ async function handler(
         }),
       ]);
 
-      void emitAuditLogEvent({
-        auth,
-        action: "audit_log.viewed",
-        targets: [buildWorkspaceTarget(owner)],
-        context: getAuditLogContext(auth, req),
-      });
-
       return res.status(200).json({
         viewLogsLink: viewLogsResult.link,
         configureExportLink: configureExportResult.link,
       });
+    }
+
+    // Emit audit events on button click. WorkOS portal links are org-scoped
+    // (not user-scoped), so this is the only place we can attribute portal
+    // access to a specific admin.
+    case "POST": {
+      const { action } = req.body;
+      const allowedActions = [
+        "audit_log.viewed",
+        "audit_log.export_configured",
+      ] as const;
+
+      if (!allowedActions.includes(action)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid action. Must be one of: ${allowedActions.join(", ")}`,
+          },
+        });
+      }
+
+      void emitAuditLogEvent({
+        auth,
+        action,
+        targets: [buildWorkspaceTarget(owner)],
+        context: getAuditLogContext(auth, req),
+      });
+
+      res.status(200).end();
+      return;
     }
 
     default:
