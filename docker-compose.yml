@@ -46,6 +46,7 @@ services:
     image: redis
     ports:
       - 6379:6379
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lfu
   apache-tika:
     image: apache/tika:2.9.2.1-full
     ports:
