@@ -395,33 +395,35 @@ Fix A is the primary mechanism — it serializes the decision. Fix B and C are d
 ## Edge Cases
 
 1. **Multiple pending messages** — If the user sends several messages before a step completes, all
-   are queued in `pendingUserMessages` and processed together at the next boundary (concatenated
-   into a single `steering`, or consumed sequentially as full messages if the loop ends).
+   are queued in `pendingUserMessages` and processed together at the next boundary. In both paths
+   (steering and promotion), all pending messages are concatenated into a single value:
+   - **Steering**: one `AgentStepContent` with `type: "steering"` whose `content` is the
+     concatenation of all pending messages (separated by newlines). The `context` is taken from
+     the first pending message (all come from the same user).
+   - **Promotion**: one `UserMessage` whose `content` is the concatenation of all pending
+     messages, triggering a single new `AgentMessage` + agent loop.
 
 2. **Agent loop fails/cancels** — All finalize activities (`finalizeSuccessfulAgentLoopActivity`,
    `finalizeCancelledAgentLoopActivity`, `finalizeErroredAgentLoopActivity`) query the DB for
-   orphaned `PendingUserMessageModel` rows with `status: "pending"` and promote them. This runs
-   inside `CancellationScope.nonCancellable`.
+   orphaned `PendingUserMessageModel` rows with `status: "pending"` and promote them (concatenated
+   into a single `UserMessage`). This runs inside `CancellationScope.nonCancellable`.
 
 3. **Lock contention** — The `FOR UPDATE` lock on `AgentMessageModel` is held only for the
    duration of the transaction that creates the `PendingUserMessageModel` (milliseconds). The
    finalization path that sets `status = "succeeded"` will briefly wait for this lock, which is
    acceptable — it's the same pattern used by `getConversationRankVersionLock`.
 
-4. **At most one pending per agent message** — For v1, we enforce at most one pending message per
-   running agent. If a second arrives before the first is consumed, we reject it with an error. This
-   simplifies the step boundary logic and avoids confusing UX.
-
-5. **`postUserMessage` fallback** — If the `FOR UPDATE` lock check reveals the agent has already
+4. **`postUserMessage` fallback** — If the `FOR UPDATE` lock check reveals the agent has already
    finished (`status !== "created"`), `postUserMessage` abandons the pending path and falls through
    to the normal flow: create `UserMessage` + `AgentMessage`, launch new agent loop.
 
+## API Callers
+
+For API key / programmatic callers, `postUserMessage` always falls back to the current behavior
+(creating a new `UserMessage` + `AgentMessage` pair, no pending message creation). This avoids
+breaking changes for existing API consumers, and supporting steering through the API is a niche
+use case unlikely to be built for now.
+
 ## Open Questions
 
-1. **Rendering of pending messages in UI** — The `PendingUserMessageNewEvent` notifies the frontend
-   that a message is pending. How should this be rendered? A greyed-out bubble? An inline indicator
-   in the agent's activity timeline? Deferred to a UI-focused design doc.
-
-2. **API key / programmatic callers** — Should the pending path be available to API callers, or
-   should they always get the existing parallel-loop behavior? API callers may rely on the current
-   semantics.
+1. **Rendering of pending messages in UI** — Out of scope, currently being worked on by design.
