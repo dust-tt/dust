@@ -345,6 +345,11 @@ export class Authenticator {
       ]);
     }
 
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
     return new Authenticator({
       authMethod: "session",
       workspace,
@@ -352,6 +357,7 @@ export class Authenticator {
       role: user?.isDustSuperUser ? "admin" : "none",
       groupModelIds: groups.map((g) => g.id),
       subscription,
+      providersHealth,
     });
   }
   /**

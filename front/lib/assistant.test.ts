@@ -337,11 +337,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({ providerId: "openai", largeModel: false });
 
-    const result = await filterCustomAvailableAndWhitelistedModels(
-      [model],
-      [],
-      auth
-    );
+    const result = filterCustomAvailableAndWhitelistedModels([model], [], auth);
     expect(result).toContain(model);
   });
 
@@ -355,11 +351,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = await filterCustomAvailableAndWhitelistedModels(
-      [model],
-      [],
-      auth
-    );
+    const result = filterCustomAvailableAndWhitelistedModels([model], [], auth);
     expect(result).toHaveLength(0);
   });
 
@@ -372,11 +364,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = await filterCustomAvailableAndWhitelistedModels(
-      [model],
-      [],
-      auth
-    );
+    const result = filterCustomAvailableAndWhitelistedModels([model], [], auth);
     expect(result).toHaveLength(0);
   });
 
@@ -389,7 +377,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = await filterCustomAvailableAndWhitelistedModels(
+    const result = filterCustomAvailableAndWhitelistedModels(
       [model],
       ["deepseek_feature"],
       auth
@@ -411,7 +399,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = await filterCustomAvailableAndWhitelistedModels(
+    const result = filterCustomAvailableAndWhitelistedModels(
       [openaiModel, xaiModel],
       [],
       auth
@@ -427,11 +415,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = await filterCustomAvailableAndWhitelistedModels(
-      [model],
-      [],
-      auth
-    );
+    const result = filterCustomAvailableAndWhitelistedModels([model], [], auth);
     expect(result).toContain(model);
   });
 });

@@ -165,7 +165,7 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = await getFastModelConfig(auth);
+  const model = getFastModelConfig(auth);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
@@ -244,9 +244,9 @@ async function generateConversationTitle(
   return new Err(new Error("No title found in LLM response"));
 }
 
-async function getFastModelConfig(
+function getFastModelConfig(
   auth: Authenticator
-): Promise<ModelConfigurationType | null> {
+): ModelConfigurationType | null {
   const providers = getWhitelistedProviders(auth);
 
   if (providers.has("openai")) {

@@ -1,13 +1,13 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
 import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types/assistant/generation";
-import { GPT_5_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isStringArray } from "@app/types/shared/utils/general";
@@ -110,12 +110,21 @@ export async function getBuilderInstructionsSuggestions(
   auth: Authenticator,
   inputs: BuilderSuggestionInputType
 ): Promise<Result<SuggestionResults, Error>> {
+  const model = getSmallWhitelistedModel(auth);
+  if (!model) {
+    return new Err(
+      new Error(
+        "Failed to find a whitelisted model for instruction suggestions"
+      )
+    );
+  }
+
   const res = await runMultiActionsAgent(
     auth,
     {
       functionCall: FUNCTION_NAME,
-      modelId: GPT_5_MINI_MODEL_ID,
-      providerId: "openai",
+      modelId: model.modelId,
+      providerId: model.providerId,
       temperature: 0.7,
       useCache: false,
     },
